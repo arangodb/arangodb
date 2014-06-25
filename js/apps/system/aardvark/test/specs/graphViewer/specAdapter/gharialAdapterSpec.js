@@ -266,6 +266,7 @@
         mockCollection = {};
         viewer = {
           cleanUp: function(){
+            return undefined;
           }
         };
         nodesCollection = "TestNodes321";
@@ -330,11 +331,12 @@
             var t = new GharialAdapter([], [], viewer, {
               graphName: ""
             });
+            return t;
           }
         ).not.toThrow();
       });
     
-      it('should automatically determine the host of not given', function() {
+      it('should automatically determine the host if not given', function() {
         adapter = new GharialAdapter(
           nodes,
           edges,
@@ -404,11 +406,14 @@
            apibase = "_api/",
            apiCursor = apibase + 'cursor';
           ajaxResponse = function() {
+            return undefined;
           };
           self.fakeReducerBucketRequest = function() {
+            return undefined;
           };
           mockWrapper = {};
           mockWrapper.call = function() {
+            return undefined;
           };
           spyOn(window, "NodeReducer").andCallFake(function() {
             return {
@@ -1044,7 +1049,7 @@
         });
         
         it('should not replace single nodes by communities', function() {
-          var inNodeCol, callNodes;
+          var inNodeCol;
           
           runs(function() {
             var addNNodes = function(n) {
@@ -1171,7 +1176,7 @@
                     contentType: "application/json",
                     processData: false,
                     async: false,
-                    success: function(data) {
+                    success: function() {
                       res = true;
                     },
                     error: function(data) {
@@ -1196,8 +1201,8 @@
                     contentType: "application/json",
                     processData: false,
                     async: false,
-                    success: function(data) {
-
+                    success: function() {
+                      return undefined;
                     },
                     error: function(data) {
                       if (data.status === 404) {
@@ -1223,7 +1228,8 @@
                         res = true;
                       }
                     },
-                    error: function(data) {                  
+                    error: function() {                  
+                      return undefined;
                     }
                   });
                   return res;
@@ -1474,8 +1480,7 @@
               it('should connect edges of internal nodes accordingly', function() {
                 
                 var commNode, called, counterCallback,
-                v0, v1, v2, v3, v4,
-                e0_1, e0_2, e1_3, e1_4, e2_3, e2_4;
+                v0, v1, v2, v3, v4;
                 
                 runs(function() {
                   var v = "vertices",
@@ -1488,12 +1493,12 @@
                   v2 = insertNode(v, 2);
                   v3 = insertNode(v, 3);
                   v4 = insertNode(v, 4);
-                  e0_1 = insertEdge(e, v0, v1);
-                  e0_2 = insertEdge(e, v0, v2);
-                  e1_3 = insertEdge(e, v1, v3);
-                  e1_4 = insertEdge(e, v1, v4);
-                  e2_3 = insertEdge(e, v2, v3);
-                  e2_4 = insertEdge(e, v2, v4);
+                  insertEdge(e, v0, v1);
+                  insertEdge(e, v0, v2);
+                  insertEdge(e, v1, v3);
+                  insertEdge(e, v1, v4);
+                  insertEdge(e, v2, v3);
+                  insertEdge(e, v2, v4);
                   nodeCollectionForGraph = function() {
                     return v;
                   };
@@ -1567,8 +1572,7 @@
               it('set inbound and outboundcounter correctly', function() {
                 
                 var commNode, called, counterCallback,
-                v0, v1, v2, v3, v4,
-                e0_1, e0_2, e1_3, e1_4, e2_3, e2_4;
+                v0, v1, v2, v3, v4;
                 
                 runs(function() {
                   var v = "vertices",
@@ -1581,12 +1585,12 @@
                   v2 = insertNode(v, 2);
                   v3 = insertNode(v, 3);
                   v4 = insertNode(v, 4);
-                  e0_1 = insertEdge(e, v0, v1);
-                  e0_2 = insertEdge(e, v0, v2);
-                  e1_3 = insertEdge(e, v1, v3);
-                  e1_4 = insertEdge(e, v1, v4);
-                  e2_3 = insertEdge(e, v2, v3);
-                  e2_4 = insertEdge(e, v2, v4);
+                  insertEdge(e, v0, v1);
+                  insertEdge(e, v0, v2);
+                  insertEdge(e, v1, v3);
+                  insertEdge(e, v1, v4);
+                  insertEdge(e, v2, v3);
+                  insertEdge(e, v2, v4);
                   called = 0;
                   counterCallback = function() {
                     called++;
@@ -1655,8 +1659,7 @@
             
             describe('that displays a community node already', function() {
               
-              var firstCommId,
-              fakeResult;
+              var firstCommId;
               
               beforeEach(function() {
                 runs(function() {
@@ -1916,6 +1919,284 @@
           
         });
         
+      });
+
+      describe("setup with a multi-collection graph", function() {
+        var vc1, vc2, vc3, ec1, ec2, ec3, gn,
+          requests, ajaxResponse, vertexCollections, edgeCollections;
+
+        beforeEach(function() {
+          var apibase = "_api/";
+          requests = {};
+          requests.node = function(graph, col) {
+            var read = apibase + "gharial/" + graph + "/vertex/" + col,
+              write = apibase + "gharial/" + graph + "/vertex/",
+              base = {
+                cache: false,
+                dataType: "json",
+                contentType: "application/json",
+                processData: false,
+                success: jasmine.any(Function),
+                error: jasmine.any(Function)
+              };
+            return {
+              create: function(data) {
+                return $.extend(base, {url: read, type: "POST", data: JSON.stringify(data)});
+              },
+              patch: function(id, data) {
+                return $.extend(base, {url: write + id, type: "PUT", data: JSON.stringify(data)});
+              },
+              del: function(id) {
+                return $.extend(base, {url: write + id, type: "DELETE"});
+              }
+            };
+          };
+          requests.edge = function(graph, col) {
+            var create = apibase + "gharial/" + graph + "/edge/" + col,
+              write = apibase + "gharial/" + graph + "/edge/",
+              base = {
+                cache: false,
+                dataType: "json",
+                contentType: "application/json",
+                processData: false,
+                success: jasmine.any(Function),
+                error: jasmine.any(Function)
+              };
+            return {
+              create: function(from, to, data) {
+                data._from = from;
+                data._to = to;
+                return $.extend(base, {
+                  url: create,
+                  type: "POST",
+                  data: JSON.stringify(data)
+                });
+              },
+              patch: function(id, data) {
+                return $.extend(base, {url: write + id, type: "PUT", data: JSON.stringify(data)});
+              },
+              del: function(id) {
+                return $.extend(base, {url: write + id, type: "DELETE"});
+              }
+            };
+          };
+ 
+          gn = "multiGraph";
+          vc1 = "vertex1";
+          vc2 = "vertex2";
+          vc3 = "vertex3";
+          ec1 = "edge1";
+          ec2 = "edge2";
+          ec3 = "edge3";
+          ajaxResponse = function() {
+            return undefined;
+          };
+          vertexCollections = [vc1, vc2, vc3];
+          edgeCollections = [ec1, ec2, ec3];
+
+          spyOn($, "ajax").andCallFake(function(req) {
+            var urlParts = req.url.split("/"),
+              didAnswer = false;
+            if (req.type === "GET") {
+              if (urlParts.length === 4) {
+                if (urlParts[3] === "edge") {
+                  didAnswer = true;
+                  req.success({
+                    collections: edgeCollections
+                  });
+                } else if (urlParts[3] === "vertex") {
+                  didAnswer = true;
+                  req.success({
+                    collections: vertexCollections
+                  });
+                } 
+              }
+            }
+            if (!didAnswer) {
+              ajaxResponse(req);
+            }
+          });
+
+          adapter = new GharialAdapter([{
+            _id: "s"
+          },
+          {
+            _id: "t"
+          }], [], {}, {
+            graphName: gn
+          });
+
+        });
+
+        describe("vertex collections", function() {
+
+          it("should offer the available list", function() {
+            var list = adapter.getNodeCollections();
+            expect(list).toEqual(vertexCollections);
+          });
+
+          it("should use the first as default", function() {
+
+            runs(function() {
+              callbackCheck = false;
+              ajaxResponse = function(req) {
+                if (req.type === "POST") {
+                  req.success({
+                    code: 200,
+                    error: false,
+                    vertex: {
+                      _id: "123"
+                    }
+                  });
+                }
+              };
+              adapter.createNode({}, function() {
+                callbackCheck = true;
+              });
+            });
+
+            waitsFor(function() {
+              return callbackCheck;
+            }, 1500);
+
+            runs(function() {
+              expect($.ajax).toHaveBeenCalledWith(
+                requests.node(gn, vertexCollections[0]).create({})
+              );
+            });
+          });
+
+          it("should switch between collections", function() {
+
+            runs(function() {
+              callbackCheck = false;
+              adapter.useNodeCollection(vc3);
+              ajaxResponse = function(req) {
+                if (req.type === "POST") {
+                  req.success({
+                    code: 200,
+                    error: false,
+                    vertex: {
+                      _id: "123"
+                    }
+                  });
+                }
+              };
+              adapter.createNode({}, function() {
+                callbackCheck = true;
+              });
+            });
+
+            waitsFor(function() {
+              return callbackCheck;
+            }, 1500);
+
+            runs(function() {
+              expect($.ajax).toHaveBeenCalledWith(
+                requests.node(gn, vc3).create({})
+              );
+            });
+          });
+          
+          it("should throw an error for unknwon collections", function() {
+
+            expect(function() {
+              adapter.useNodeCollection("unknown");
+            }).toThrow("Collection unknown is not available in the graph.");
+
+          });
+        });
+
+        describe("edge collections", function() {
+
+          it("should offer the available list", function() {
+            var list = adapter.getEdgeCollections();
+            expect(list).toEqual(edgeCollections);
+          });
+
+          it("should use the first as default", function() {
+
+            var edgeInfo;
+
+            runs(function() {
+              callbackCheck = false;
+              edgeInfo = {source: {_id: "s"}, target: {_id: "t"}};
+              ajaxResponse = function(req) {
+                if (req.type === "POST") {
+                  var body = JSON.parse(req.data);
+                  req.success({
+                    code: 200,
+                    error: false,
+                    edge: {
+                      _id: "123",
+                      _from: body._from,
+                      _to: body._to
+                    }
+                  });
+                }
+              };
+              adapter.createEdge(edgeInfo, function() {
+                callbackCheck = true;
+              });
+            });
+
+            waitsFor(function() {
+              return callbackCheck;
+            }, 1500);
+
+            runs(function() {
+              expect($.ajax).toHaveBeenCalledWith(
+                requests.edge(gn, edgeCollections[0]).create("s", "t", {})
+              );
+            });
+          });
+
+          it("should switch between collections", function() {
+
+            var edgeInfo;
+
+            runs(function() {
+              callbackCheck = false;
+              adapter.useEdgeCollection(ec3);
+              edgeInfo = {source: {_id: "s"}, target: {_id: "t"}};
+              ajaxResponse = function(req) {
+                if (req.type === "POST") {
+                  var body = JSON.parse(req.data);
+                  req.success({
+                    code: 200,
+                    error: false,
+                    edge: {
+                      _id: "123",
+                      _from: body._from,
+                      _to: body._to
+                    }
+                  });
+                }
+              };
+              adapter.createEdge(edgeInfo, function() {
+                callbackCheck = true;
+              });
+            });
+
+            waitsFor(function() {
+              return callbackCheck;
+            }, 1500);
+
+            runs(function() {
+              expect($.ajax).toHaveBeenCalledWith(
+                requests.edge(gn, ec3).create("s", "t", {})
+              );
+            });
+          });
+          
+          it("should throw an error for unknwon collections", function() {
+
+            expect(function() {
+              adapter.useEdgeCollection("unknown");
+            }).toThrow("Collection unknown is not available in the graph.");
+
+          });
+        });
       });
 
   });

@@ -89,8 +89,6 @@ function GharialAdapter(nodes, edges, viewer, config) {
       getCollectionsFromGraph(name);
       api.edges = api.graph + "/" + graphName + "/edge/";
       api.vertices = api.graph + "/" + graphName + "/vertex/";
-      api.collection = api.base + "collection/";
-      api.document = api.base + "document/";
       api.any = api.base + "simple/any";     
     },
 
@@ -487,6 +485,29 @@ function GharialAdapter(nodes, edges, viewer, config) {
         callback(ret);
       });
     }
+  };
+
+
+  self.getEdgeCollections = function() {
+    return edgeCollections;
+  };
+
+  self.useEdgeCollection = function(name) {
+    if (!_.contains(edgeCollections, name)) {
+      throw "Collection " + name + " is not available in the graph.";
+    }
+    selectedEdgeCol = name;
+  };
+
+  self.getNodeCollections = function() {
+    return nodeCollections;
+  };
+
+  self.useNodeCollection = function(name) {
+    if (!_.contains(nodeCollections, name)) {
+      throw "Collection " + name + " is not available in the graph.";
+    }
+    selectedNodeCol = name;
   };
 
   self.getDirection = function () {
