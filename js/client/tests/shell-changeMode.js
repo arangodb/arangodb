@@ -76,7 +76,7 @@ function changeOperationModePositiveCaseTestSuite () {
         collections: { }, 
         action: function () {
           var db = require('internal').db; 
-          var result = db._changeMode('ReadOnly');
+          var result = db._changeMode('NoCreate');
           return result;
         } 
       });
