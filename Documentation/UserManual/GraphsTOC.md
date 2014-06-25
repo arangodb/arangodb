@@ -1,4 +1,0 @@
-TOC {#GraphsTOC}
-================
-
-@EMBEDTOC{JSModuleGraphTOC}
