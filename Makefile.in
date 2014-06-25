@@ -1970,6 +1970,10 @@ JAVASCRIPT_JSLINT = \
 	`find @srcdir@/js/common/modules/org -name "*.js"` \
 	`find @srcdir@/js/client/modules -name "*.js"` \
 	`find @srcdir@/js/server/modules -name "*.js"` \
+	\
+	`find @srcdir@/js/apps/system/cerberus -name "*.js"` \
+	`find @srcdir@/js/apps/system/gharial -name "*.js"` \
+	\
 	`find @srcdir@/js/apps/system/aardvark/frontend/js/models -name "*.js"` \
 	`find @srcdir@/js/apps/system/aardvark/frontend/js/views -name "*.js"` \
 	`find @srcdir@/js/apps/system/aardvark/frontend/js/collections -name "*.js"` \
@@ -1981,7 +1985,7 @@ JAVASCRIPT_JSLINT = \
 	@srcdir@/js/server/server.js \
 	@srcdir@/js/server/version-check.js \
 	\
-	@srcdir@/js/apps/system/aardvark/frontend/js/shell/browser.js 
+	@srcdir@/js/apps/system/aardvark/frontend/js/shell/browser.js
 
 @ENABLE_MRUBY_TRUE@MRUBY_HEADER = \
 @ENABLE_MRUBY_TRUE@	mr/common/bootstrap/mr-error.h 

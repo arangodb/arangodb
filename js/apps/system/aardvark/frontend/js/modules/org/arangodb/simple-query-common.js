@@ -314,27 +314,31 @@ SimpleQuery.prototype.clone = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a query
+/// @startDocuBlock queryExecute
+/// `query.execute(batchSize)`
 ///
-/// @FUN{@FA{query}.execute(@FA{batchSize})}
+/// Executes a simple query. If the optional batchSize value is specified,
+/// the server will return at most batchSize values in one roundtrip.
+/// The batchSize cannot be adjusted after the query is first executed.
 ///
-/// Executes a simple query. If the optional @FA{batchSize} value is specified,
-/// the server will return at most @FN{batchSize} values in one roundtrip.
-/// The @FA{batchSize} cannot be adjusted after the query is first executed.
-///
-/// Note that there is no need to explicitly call the execute method if another
+/// **Note**: There is no need to explicitly call the execute method if another
 /// means of fetching the query results is chosen. The following two approaches
 /// lead to the same result:
-/// @code
+/// 
+/// @EXAMPLE_ARANGOSH_OUTPUT{executeQuery}
 /// result = db.users.all().toArray();
 /// q = db.users.all(); q.execute(); result = [ ]; while (q.hasNext()) { result.push(q.next()); }
-/// @endcode
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// The following two alternatives both use a @FA{batchSize} and return the same
+/// The following two alternatives both use a batchSize and return the same
 /// result:
-/// @code
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{executeQueryBatchSize}
 /// q = db.users.all(); q.setBatchSize(20); q.execute(); while (q.hasNext()) { print(q.next()); }
 /// q = db.users.all(); q.execute(20); while (q.hasNext()) { print(q.next()); }
-/// @endcode
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.execute = function () {
@@ -356,19 +360,21 @@ SimpleQuery.prototype.execute = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief limit
+/// @startDocuBlock queryLimit
+/// `query.limit(number)`
 ///
-/// @FUN{@FA{query}.limit(@FA{number})}
-///
-/// Limits a result to the first @FA{number} documents. Specifying a limit of
-/// @LIT{0} returns no documents at all. If you do not need a limit, just do
+/// Limits a result to the first *number* documents. Specifying a limit of
+/// *0* returns no documents at all. If you do not need a limit, just do
 /// not add the limit operator. The limit must be non-negative.
 ///
-/// In general the input to @FN{limit} should be sorted. Otherwise it will be
+/// In general the input to *limit* should be sorted. Otherwise it will be
 /// unclear which documents are used in the result set.
 ///
-/// *Examples*
+/// @EXAMPLES
 /// 
 /// @verbinclude simple2
+///
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.limit = function (limit) {
@@ -388,20 +394,22 @@ SimpleQuery.prototype.limit = function (limit) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief skip
+/// @startDocuBlock queySkip
+/// `query.skip(number)`
 ///
-/// @FUN{@FA{query}.skip(@FA{number})}
-///
-/// Skips the first @FA{number} documents. If @FA{number} is positive, then skip
-/// the number of documents. If @FA{number} is negative, then the total amount N
+/// Skips the first *number* documents. If *number* is positive, then skip
+/// the number of documents. If *number* is negative, then the total amount N
 /// of documents must be known and the results starts at position (N +
-/// @FA{number}).
+/// *number*).
 ///
-/// In general the input to @FN{limit} should be sorted. Otherwise it will be
+/// In general the input to *limit* should be sorted. Otherwise it will be
 /// unclear which documents are used in the result set.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude simple8
+///
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.skip = function (skip) {
@@ -460,11 +468,12 @@ SimpleQuery.prototype.toArray = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the batch size
-///
-/// @FUN{@FA{cursor}.getBatchSize()}
+/// @startDocuBlock cursorGetBatchSize
+/// `cursor.getBatchSize()`
 ///
 /// Returns the batch size for queries. If the returned value is undefined, the
 /// server will determine a sensible batch size for any following requests.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.getBatchSize = function () {
@@ -473,11 +482,12 @@ SimpleQuery.prototype.getBatchSize = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the batch size for any following requests
-///
-/// @FUN{@FA{cursor}.setBatchSize(@FA{number})}
+/// @startDocuBlock cursorSetBatchSize
+/// `cursor.setBatchSize(number)`
 ///
 /// Sets the batch size for queries. The batch size determines how many results
 /// are at most transferred from the server to the client in one chunk.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.setBatchSize = function (value) {
@@ -488,27 +498,27 @@ SimpleQuery.prototype.setBatchSize = function (value) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief counts the number of documents
+/// @startDocuBlock cursorCount
+/// `cursor.count()`
 ///
-/// @FUN{@FA{cursor}.count()}
-///
-/// The @FN{count} operator counts the number of document in the result set and
-/// returns that number. The @FN{count} operator ignores any limits and returns
+/// The *count* operator counts the number of document in the result set and
+/// returns that number. The *count* operator ignores any limits and returns
 /// the total number of documents found.
 ///
-/// @note Not all simple queries support counting. In this case @LIT{null} is
+/// **Note**: Not all simple queries support counting. In this case *null* is
 /// returned.
 ///
-/// @FUN{@FA{cursor}.count(@LIT{true})}
+/// `cursor.count(true)`
 ///
-/// If the result set was limited by the @FN{limit} operator or documents were
-/// skiped using the @FN{skip} operator, the @FN{count} operator with argument
-/// @LIT{true} will use the number of elements in the final result set - after
-/// applying @FN{limit} and @FN{skip}.
+/// If the result set was limited by the *limit* operator or documents were
+/// skiped using the *skip* operator, the *count* operator with argument
+/// *true* will use the number of elements in the final result set - after
+/// applying *limit* and *skip*.
 ///
-/// @note Not all simple queries support counting. In this case @LIT{null} is
+/// **Note**: Not all simple queries support counting. In this case *null* is
 /// returned.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Ignore any limit:
 ///
@@ -517,6 +527,8 @@ SimpleQuery.prototype.setBatchSize = function (value) {
 /// Counting any limit or skip:
 ///
 /// @verbinclude simple10
+///
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.count = function (applyPagination) {
@@ -531,16 +543,17 @@ SimpleQuery.prototype.count = function (applyPagination) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if the cursor is exhausted
+/// @startDocuBlock cursorHasNext
+/// `cursor.hasNext()`
 ///
-/// @FUN{@FA{cursor}.hasNext()}
+/// The *hasNext* operator returns *true*, then the cursor still has
+/// documents. In this case the next document can be accessed using the
+/// *next* operator, which will advance the cursor.
 ///
-/// The @FN{hasNext} operator returns @LIT{true}, then the cursor still has
-/// documents.  In this case the next document can be accessed using the
-/// @FN{next} operator, which will advance the cursor.
-///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude simple7
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.hasNext = function () {
@@ -551,18 +564,19 @@ SimpleQuery.prototype.hasNext = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the next result document
+/// @startDocuBlock cursorNext
+/// `cursor.next()`
 ///
-/// @FUN{@FA{cursor}.next()}
-///
-/// If the @FN{hasNext} operator returns @LIT{true}, then the underlying
+/// If the *hasNext* operator returns *true*, then the underlying
 /// cursor of the simple query still has documents.  In this case the
-/// next document can be accessed using the @FN{next} operator, which
-/// will advance the underlying cursor. If you use @FN{next} on an
-/// exhausted cursor, then @LIT{undefined} is returned.
+/// next document can be accessed using the *next* operator, which
+/// will advance the underlying cursor. If you use *next* on an
+/// exhausted cursor, then *undefined* is returned.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude simple5
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.next = function () {
@@ -573,12 +587,13 @@ SimpleQuery.prototype.next = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disposes the result
-///
-/// @FUN{@FA{cursor}.dispose()}
+/// @startDocuBlock cursorDispose
+/// `cursor.dispose()`
 ///
 /// If you are no longer interested in any further results, you should call
-/// @FN{dispose} in order to free any resources associated with the cursor.
-/// After calling @FN{dispose} you can no longer access the cursor.
+/// *dispose* in order to free any resources associated with the cursor.
+/// After calling *dispose* you can no longer access the cursor.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 SimpleQuery.prototype.dispose = function() {
