@@ -17,7 +17,7 @@ If *type* is set to *"cookie"*, the session cookie will be updated after every r
 *Parameter*
 
 * *options* (optional): an object with any of the following properties:
-  * *sessionStorageApp* (optional): mount point of the session storage app to use. Default: *"/_sessions"*.
+  * *sessionStorageApp* (optional): mount point of the session storage app to use. Default: *"/system/sessions"*.
   * *type* (optional): sessions type, currently only *"cookie"* is supported. Default: *"cookie"*.
   * *cookieName* (optional): name of the session cookie if using cookie sessions. If a *cookieSecret* is provided, the signature will be stored in a cookie named *cookieName + "_sig"*. Defaults to *"sid"*.
   * *cookieSecret* (optional): secret string to sign session cookies with if using cookie sessions.
@@ -28,7 +28,7 @@ If *type* is set to *"cookie"*, the session cookie will be updated after every r
 ```js
 var controller = new FoxxController(applicationContext);
 controller.activateSessions({
-  sessionStorageApp: '/_sessions',
+  sessionStorageApp: '/system/sessions',
   cookieName: 'sid',
   cookieSecret: 'secret',
   type: 'cookie'
