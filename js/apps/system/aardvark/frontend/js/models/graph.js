@@ -5,9 +5,9 @@
 
   window.Graph = Backbone.Model.extend({
 
-    idAttribute: "_key",
+    idAttribute: "name",
 
-    urlRoot: "/_api/graph",
+    urlRoot: "/_api/gharial",
 
     isNew: function() {
       return !this.get("_id");
@@ -18,11 +18,9 @@
     },
 
     defaults: {
-      "_key": "",
-      "_id": "",
-      "_rev": "",
-      "vertices": "",
-      "edges": ""
+      name: "",
+      edgeDefinitions: [],
+      orphanCollections: []
     }
   });
 }());
