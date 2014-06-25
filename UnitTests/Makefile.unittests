@@ -419,7 +419,7 @@ SHELL_COMMON = \
 ################################################################################
 
 SHELL_SERVER_ONLY = \
-							 @top_srcdir@/js/server/tests/shell-readonly-noncluster.js\
+               @top_srcdir@/js/server/tests/shell-readonly-noncluster.js\
                @top_srcdir@/js/server/tests/shell-wal-noncluster.js \
                @top_srcdir@/js/server/tests/shell-sharding-helpers.js \
                @top_srcdir@/js/server/tests/shell-compaction-noncluster.js \

@@ -218,7 +218,8 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
                                        TRI_json_t const* json,
                                        string& errorMsg) {
 
-  if (type == MARKER_DOCUMENT || type == MARKER_EDGE) {
+  if (type == REPLICATION_MARKER_DOCUMENT || 
+      type == REPLICATION_MARKER_EDGE) {
     // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
 
     TRI_ASSERT(json != nullptr);
@@ -241,7 +242,7 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
       if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // insert
 
-        if (type == MARKER_EDGE) {
+        if (type == REPLICATION_MARKER_EDGE) {
           // edge
           if (document->_info._type != TRI_COL_TYPE_EDGE) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
@@ -297,19 +298,28 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
     }
   }
 
-  else if (type == MARKER_REMOVE) {
+  else if (type == REPLICATION_MARKER_REMOVE) {
     // {"type":2402,"key":"592063"}
 
-    int res = TRI_RemoveShapedJsonDocumentCollection(trxCollection, key, rid, &_policy, false, false);
+    int res = TRI_ERROR_INTERNAL;
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+    try {
+      res = TRI_RemoveShapedJsonDocumentCollection(trxCollection, key, rid, &_policy, false, false);
+
+      if (res != TRI_ERROR_NO_ERROR && res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // ignore this error
         res = TRI_ERROR_NO_ERROR;
       }
-      else {
-        errorMsg = "document removal operation failed: " + string(TRI_errno_string(res));
-      }
+    }
+    catch (triagens::arango::Exception const& ex) {
+      res = ex.code();
+    }
+    catch (...) {
+      res = TRI_ERROR_INTERNAL;
+    }
+        
+    if (res != TRI_ERROR_NO_ERROR) {
+      errorMsg = "document removal operation failed: " + string(TRI_errno_string(res));
     }
 
     return res;

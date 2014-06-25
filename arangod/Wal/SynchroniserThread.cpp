@@ -183,7 +183,7 @@ int SynchroniserThread::doSync () {
   // get the logfile's file descriptor
   int fd = getLogfileDescriptor(region.logfileId);
   TRI_ASSERT(fd >= 0);
-  void** mmHandle = NULL;
+  void** mmHandle = nullptr;
   bool result = TRI_MSync(fd, mmHandle, region.mem, region.mem + region.size);
 
   LOG_TRACE("syncing logfile %llu, region %p - %p, length: %lu, wfs: %s",

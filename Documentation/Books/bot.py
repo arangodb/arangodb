@@ -27,12 +27,6 @@ def getTextFromSourceFile(searchText, full_path):
   if match:
     textExtracted = match.group(1)
     textExtracted = textExtracted.replace("<br />","\n")
-    textExtracted = re.sub(r"@RESTHEADER{(.*)}", r"*\g<1>*", textExtracted)
-    textExtracted = re.sub(r"@RESTRETURNCODE{(.*)}", r"*HTTP \g<1>*", textExtracted)
-    textExtracted = re.sub(r"@RESTBODYPARAM{(.*)}", r"*(\g<1>)*", textExtracted)
-    textExtracted = textExtracted.replace("@RESTDESCRIPTION","")
-    textExtracted = textExtracted.replace("@EXAMPLES","*Examples*")
-    textExtracted = textExtracted.replace("@RESTRETURNCODES","###Return Codes")
     replaceText(textExtracted, full_path, searchText)
 
 def replaceText(text, pathOfFile, searchText):
@@ -42,11 +36,28 @@ def replaceText(text, pathOfFile, searchText):
   f.close()
   f=open(pathOfFile,'w')
 
-  replaced=re.sub("@startDocuBlock\s+"+ searchText + "(?:\s+|$)",text,s)
+  replaced = re.sub("@startDocuBlock\s+"+ searchText + "(?:\s+|$)",text,s)
+
+  # HTTP API changing code
+  replaced = replaced.replace("@brief","")
+  replaced = re.sub(r"@RESTHEADER{([\s\w\/\_-]*),([\s\w]*)}", r"###\g<2>\n `\g<1>`", replaced)
+  replaced = replaced.replace("@RESTDESCRIPTION","")
+  replaced = replaced.replace("@RESTURLPARAMS","*URL Parameters*\n")
+  replaced = replaced.replace("@RESTQUERYPARAMS","*Query Parameters*\n")
+  replaced = replaced.replace("@RESTHEADERPARAMS","*Header Parameters*\n")
+  replaced = replaced.replace("@RESTBODYPARAMS","*Body Parameters*\n")
+  replaced = replaced.replace("@RESTRETURNCODES","*Return Codes*")
+  replaced = re.sub(r"@RESTPARAM{([\s\w\-]*),([\s\w\_\|-]*),\s[optional]}", r"* *\g<1>* (\g<3>):", replaced)
+  replaced = re.sub(r"@RESTPARAM{([\s\w-]*),([\s\w\_\|-]*),\s*(\w+)}", r"* *\g<1>*:", replaced)
+  #  replaced = re.sub(r"@RESTPARAM{(\s*\w+\-*\w+),(\s*\w+),\s*(\w+)}", r"* *\g<1>* (\g<3>):", replaced)
+  replaced = re.sub(r"@RESTRETURNCODE{(.*)}", r"* *HTTP \g<1>*:", replaced)
+  replaced = re.sub(r"@RESTBODYPARAMS{(.*)}", r"*(\g<1>)*", replaced)
+  replaced = replaced.replace("@EXAMPLES","*Examples*")
 
   f.write(replaced)
   f.close()
 
+        
 if __name__ == '__main__':
     path = ["Documentation/Books/Users"]
     for i in path:
