@@ -4345,10 +4345,13 @@ function GRAPH_PATHS (vertices, edgeCollection, direction, followCycles, minLeng
 /// `GRAPH_PATHS (graphName, options)`
 /// *The GRAPH\_PATHS function returns all paths of a graph.*
 ///
+/// The complexity of this method is **O(n\*n\*m)** with *n* being the amount of vertices in
+/// the graph and *m* the average amount of connected edges;
+///
 /// *Parameters*
 ///
 /// * *graphName*     : The name of the graph as a string.
-/// * *options*     : An object containing options, see below:
+/// * *options*     : An object containing the following options::
 ///   * *direction*        : The direction of the edges. Possible values are *any*,
 /// *inbound* and *outbound* (default).
 ///   * *followCycles* (optional) : If set to *true* the query follows cycles in the graph,
@@ -5250,6 +5253,9 @@ function IS_EXAMPLE_SET (example) {
 /// an end vertex. The option weight allows the user to define an edge attribute
 /// representing the length.
 ///
+/// The complexity of the function is described
+/// [here](#the_complexity_of_the_shortest_path_algorithms).
+///
 /// *Parameters*
 ///
 /// * *graphName*          : The name of the graph as a string.
@@ -5257,7 +5263,7 @@ function IS_EXAMPLE_SET (example) {
 /// (see [example](#short_explaination_of_the_vertex_example_parameter)).
 /// * *endVertexExample*   : An example for the desired
 /// end Vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
-/// * *options* (optional) : An object containing options, see below:
+/// * *options* (optional) : An object containing the following options::
 ///   * *direction*                        : The direction of the edges as a string.
 ///   Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeCollectionRestriction*        : One or multiple edge
@@ -5379,6 +5385,8 @@ function GRAPH_TRAVERSAL (vertexCollection,
 /// This function performs traversals on the given graph.
 /// For a more detailed documentation on the optional parameters see
 /// [Traversals](../Traversals/README.md).
+///
+/// The complexity of this function strongly depends on the usage.
 ///
 /// *Parameters*
 /// * *graphName*          : The name of the graph as a string.
@@ -5559,6 +5567,8 @@ function GENERAL_GRAPH_DISTANCE_TO (graphName,
 /// For a more detailed documentation on the optional parameters see
 /// [Traversals](../Traversals/README.md).
 ///
+/// The complexity of this function strongly depends on the usage.
+///
 /// *Parameters*
 ///
 /// * *graphName*          : The name of the graph as a string.
@@ -5717,13 +5727,16 @@ function GRAPH_NEIGHBORS (vertexCollection,
 ///
 /// By default only the direct neighbors (path length equals 1) are returned, but one can define
 /// the range of the path length to the neighbors with the options *minDepth* and *maxDepth*.
+/// The complexity of this method is **O(n\*m^x)** with *n* being the vertices defined by the
+/// parameter vertexExamplex, *m* the average amount of neighbors and *x* the maximal depths.
+/// Hence the default call would have a complexity of **O(n\*m)**;
 ///
 /// *Parameters*
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
 /// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
-/// * *options*            : An object containing options, see below:
+/// * *options*            : An object containing the following options::
 ///   * *direction*                        : The direction
 ///      of the edges. Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeExamples*                     : A filter example for the edges to
@@ -5830,13 +5843,17 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 /// `GRAPH_EDGES (graphName, vertexExample, options)`
 /// *The GRAPH\_EDGES function returns all edges of the graph connected to the vertices
 /// defined by the example.*
+/// The complexity of this method is **O(n\*m^x)** with *n* being the vertices defined by the
+/// parameter vertexExamplex, *m* the average amount of edges of a vertex and *x* the maximal
+/// depths.
+/// Hence the default call would have a complexity of **O(n\*m)**;
 ///
 /// *Parameters*
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
 /// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
-/// * *options* (optional) : An object containing options, see below:
+/// * *options* (optional) : An object containing the following options::
 ///   * *direction*                        : The direction
 /// of the edges as a string. Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeCollectionRestriction*        : One or multiple edge
@@ -5911,14 +5928,14 @@ function GENERAL_GRAPH_EDGES (
 /// *The GRAPH\_VERTICES function returns all vertices.*
 ///
 /// According to the optional filters it will only return vertices that have
-/// outbound, onbound or any (default) edges.
+/// outbound, inbound or any (default) edges.
 ///
 /// *Parameters*
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
 /// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
-/// * *options* (optional)           : An object containing options, see below:
+/// * *options* (optional)           : An object containing the following options::
 ///   * *direction*        : The direction of the edges as a string. Possible values are
 ///      *outbound*, *inbound* and *any* (default).
 ///   * *vertexCollectionRestriction*      : One or multiple
@@ -6005,6 +6022,11 @@ function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
 ///
 /// This function returns the intersection of *GRAPH_NEIGHBORS(vertex1Example, optionsVertex1)*
 /// and *GRAPH_NEIGHBORS(vertex2Example, optionsVertex2)*.
+/// The complexity of this method is **O(n\*m^x)** with *n* being the maximal amount of vertices
+/// defined by the parameters vertexExamples, *m* the average amount of neighbors and *x* the
+/// maximal depths.
+/// Hence the default call would have a complexity of **O(n\*m)**;
+///
 /// For parameter documentation read the documentation of
 /// [GRAPH_NEIGHBORS](#graph_neighbors).
 ///
@@ -6097,8 +6119,13 @@ function GENERAL_GRAPH_COMMON_NEIGHBORS (
 /// @startDocuBlock JSF_ahuacatl_general_graph_common_properties
 ///
 /// `GRAPH_COMMON_PROPERTIES (graphName, vertex1Example, vertex2Examples, options)`
-/// *The GRAPH\_COMMON\_PROPERTIES function returns all vertices
-/// defined by the examples that share common properties
+/// *The GRAPH\_COMMON\_PROPERTIES function returns a list of objects which have the id of
+/// the vertices defined by *vertex1Example* as keys and a list of vertices defined by
+/// *vertex21Example*, that share common properties as value. Notice that only the
+/// vertex id and the matching attributes are returned in the result.
+///
+/// The complexity of this method is **O(n)** with *n* being the maximal amount of vertices
+/// defined by the parameters vertexExamples.
 ///
 /// *Parameters*
 ///
@@ -6107,7 +6134,7 @@ function GENERAL_GRAPH_COMMON_NEIGHBORS (
 /// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
 /// * *vertex2Example*     : An example for the desired
 /// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
-/// * *options* (optional)    : An object containing options, see below:
+/// * *options* (optional)    : An object containing the following options::
 ///   * *vertex1CollectionRestriction* : One or multiple vertex
 ///   collection names. Only vertices from these collections will be considered.
 ///   * *vertex2CollectionRestriction*   : One or multiple vertex
@@ -6236,12 +6263,15 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 /// [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
 /// of the vertices defined by the examples.*
 ///
+/// The complexity of the function is described
+/// [here](#the_complexity_of_the_shortest_path_algorithms).
+///
 /// *Parameters*
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
 /// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
-/// * *options* (optional)    : An object containing options, see below:
+/// * *options* (optional)    : An object containing the following options::
 ///   * *direction*                        : The direction of the edges as a string.
 /// Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeCollectionRestriction*        : One or multiple edge
@@ -6337,10 +6367,13 @@ function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)
 /// [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
 /// of the graphs vertices*
 ///
+/// The complexity of the function is described
+/// [here](#the_complexity_of_the_shortest_path_algorithms).
+///
 /// *Parameters*
 ///
 /// * *graphName*          : The name of the graph as a string.
-/// * *options* (optional) : An object containing options, see below:
+/// * *options* (optional) : An object containing the following options::
 ///   * *direction*       : The direction of the edges as a string.
 /// Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *algorithm*       : The algorithm to calculate the shortest paths as a string. Possible
@@ -6412,12 +6445,15 @@ function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
 /// [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness_centrality)
 /// of the vertices defined by the examples.*
 ///
+/// The complexity of the function is described
+/// [here](#the_complexity_of_the_shortest_path_algorithms).
+///
 /// *Parameters*
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*     : An example for the desired
 /// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
-/// * *options*     : An object containing options, see below:
+/// * *options*     : An object containing the following options::
 ///   * *direction*                        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeCollectionRestriction*        : One or multiple edge
@@ -6513,10 +6549,13 @@ function GENERAL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
 /// [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness_centrality)
 /// of graphs vertices.*
 ///
+/// The complexity of the function is described
+/// [here](#the_complexity_of_the_shortest_path_algorithms).
+///
 /// *Parameters*
 ///
 /// * *graphName*          : The name of the graph as a string.
-/// * *options*     : An object containing options, see below:
+/// * *options*     : An object containing the following options::
 ///   * *direction*                        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *algorithm*                        : The algorithm to calculate
@@ -6607,9 +6646,12 @@ function GENERAL_GRAPH_CLOSENESS (graphName, options) {
 /// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
 /// of all vertices in the graph.*
 ///
+/// The complexity of the function is described
+/// [here](#the_complexity_of_the_shortest_path_algorithms).
+///
 ///
 /// * *graphName*          : The name of the graph as a string.
-/// * *options*            : An object containing options, see below:
+/// * *options*            : An object containing the following options::
 ///   * *direction*                        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *weight*                           : The name of the attribute of
@@ -6711,10 +6753,13 @@ function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 /// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
 /// of graphs vertices.*
 ///
+/// The complexity of the function is described
+/// [here](#the_complexity_of_the_shortest_path_algorithms).
+///
 /// *Parameters*
 ///
 /// * *graphName*          : The name of the graph as a string.
-/// * *options*     : An object containing options, see below:
+/// * *options*     : An object containing the following options::
 ///   * *direction*                        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *weight*                           : The name of the attribute of
@@ -6791,8 +6836,11 @@ function GENERAL_GRAPH_BETWEENNESS (graphName, options) {
 /// [radius](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
 /// of a graph.*
 ///
+/// The complexity of the function is described
+/// [here](#the_complexity_of_the_shortest_path_algorithms).
+///
 /// * *graphName*       : The name of the graph as a string.
-/// * *options*     : An object containing options, see below:
+/// * *options*     : An object containing the following options::
 ///   * *direction*     : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *algorithm*     : The algorithm to calculate the shortest paths as a string. Possible
@@ -6878,10 +6926,13 @@ function GENERAL_GRAPH_RADIUS (graphName, options) {
 /// [diameter](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
 /// of a graph.*
 ///
+/// The complexity of the function is described
+/// [here](#the_complexity_of_the_shortest_path_algorithms).
+///
 /// *Parameters*
 ///
 /// * *graphName*          : The name of the graph as a string.
-/// * *options*     : An object containing options, see below:
+/// * *options*     : An object containing the following options::
 ///   * *direction*        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *algorithm*        : The algorithm to calculate the shortest paths as a string. Possible
