@@ -1396,7 +1396,7 @@ bool LogfileManager::scanLogfile (Logfile const* logfile) {
 /// @brief write abort markers for all open transactions
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogfileManager::closeOpenTransactions () {
+void LogfileManager::abortOpenTransactions () {
   TRI_ASSERT(_recoverState != nullptr);
 
   if (! _recoverState->failedTransactions.empty()) {
@@ -1451,16 +1451,23 @@ bool LogfileManager::runRecovery () {
   // from now on, we allow writes to the logfile
   allowWrites(true);
 
-  try {
-    closeOpenTransactions();
+  if (true /*isMaster*/) {
+    // we will now abort any non-finished transactions
+    try {
+      abortOpenTransactions();
+    }
+    catch (triagens::arango::Exception const& ex) {
+      LOG_ERROR("could not abort previously open transactions: %s", TRI_errno_string(ex.code()));
+      return false;
+    }
+    catch (...) {
+      LOG_ERROR("could not abort previously open transactions");
+      return false;
+    }
   }
-  catch (triagens::arango::Exception const& ex) {
-    LOG_ERROR("could not abort previously open transactions: %s", TRI_errno_string(ex.code()));
-    return false;
-  }
-  catch (...) {
-    LOG_ERROR("could not abort previously open transactions");
-    return false;
+  else {
+    // we will now restart any non-finished transactions
+
   }
   
   // write the current state into the shutdown file

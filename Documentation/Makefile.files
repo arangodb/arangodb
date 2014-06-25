@@ -4,127 +4,6 @@
 ## --SECTION--                                                     DOCUMENTATION
 ## -----------------------------------------------------------------------------
 
-MANUAL_DST=www@www.arangodb.org:/var/www/www.arangodb.org/avoc/manuals
-
-OUTPUT_FOLDER=Doxygen/manuals/$(PACKAGE_VERSION)
-
-
-################################################################################
-### @brief pages
-################################################################################
-
-WIKI = \
-	Aql \
-	AqlExamples \
-	ArangoErrors \
-	CommandLine \
-	Communication \
-	Compiling \
-	CookbookCluster \
-	DbaManual \
-	DbaManualAuthentication \
-	DbaManualBasics \
-	DbaManualDatafileDebugger \
-	DbaManualEmergencyConsole \
-	DumpManual \
-	ExtendingAql \
-	FirstStepsArangoDB \
-	Glossary \
-	Graphs \
-	HandlingCollections \
-	HandlingDatabases \
-	HandlingDocuments \
-	HandlingEdges \
-	HandlingEndpoints \
-	HandlingIndexes \
-	Home \
-	HttpAqlFunctions \
-	HttpBatch \
-	HttpCollection \
-	HttpCursor \
-	HttpDatabase \
-	HttpEndpoint \
-	HttpGraph \
-	HttpImport \
-	HttpIndex \
-	HttpJob \
-	HttpMisc \
-	HttpQuery \
-	HttpReplication \
-	HttpSharding \
-	HttpSimple \
-	HttpSystem \
-	HttpTransactions \
-	HttpTraversals \
-	HttpUser \
-	ImpManual \
-	ImplementorManual \
-	ImplementorManualArangoErrors \
-	IndexBitArray \
-	IndexCap \
-	IndexFulltext \
-	IndexGeo \
-	IndexHash \
-	IndexSkiplist \
-	InstallManual \
-	Installing \
-	JSModuleActions \
-	JSModuleCluster \
-	JSModuleConsole \
-	JSModuleFs \
-	JSModuleGraph \
-	JSModuleGeneralGraph \
-	JSModules \
-	NamingConventions \
-	NewFeatures11 \
-	NewFeatures12 \
-	NewFeatures13 \
-	NewFeatures14 \
-	NewFeatures20 \
-	NewFeatures21 \
-	RefManual \
-	RefManualArangoErrors \
-	RefManualReplication \
-	RestDocument \
-	RestEdge \
-	RestoreManual \
-	Sharding \
-	SimpleQueries \
-	Tasks \
-	ToolsManual \
-	Transactions \
-	Traversals \
-	Upgrading \
-	UpgradingGeneral \
-	Upgrading11 \
-	Upgrading12 \
-	Upgrading13 \
-	Upgrading14 \
-	Upgrading20 \
-	Upgrading21 \
-	UserManual \
-	UserManualActions \
-	UserManualArangosh \
-	UserManualFoxx \
-	UserManualFoxxManager \
-	UserManualReplication \
-	UserManualWebInterface \
-	jsUnity
-
-################################################################################
-### @brief TOC files
-################################################################################
-
-DOXYGEN_TOC = \
-	Documentation/DbaManual/DbaManual.md \
-	Documentation/ImplementorManual/ImplementorManual.md \
-	Documentation/InstallationManual/InstallationManual.md \
-	Documentation/Manual/Home.md \
-	Documentation/RefManual/RefManual.md \
-	Documentation/ToolsManual/ToolsManual.md \
-	Documentation/UserManual/UserManual.md \
-	Documentation/Manual/Upgrading.md
-
 ################################################################################
 ### @brief install man pages
 ################################################################################
@@ -141,189 +20,22 @@ dist_man_MANS += \
 	Documentation/man/man8/foxx-manager.8 
 
 ################################################################################
-### @brief JavaScript files
-################################################################################
-
-DOXYGEN = \
-	Doxygen/js/actions/api-aqlfunction.c \
-	Doxygen/js/actions/api-cluster.c \
-	Doxygen/js/actions/api-collection.c \
-	Doxygen/js/actions/api-cursor.c \
-	Doxygen/js/actions/api-database.c \
-	Doxygen/js/actions/api-edges.c \
-	Doxygen/js/actions/api-endpoint.c \
-	Doxygen/js/actions/api-explain.c \
-	Doxygen/js/actions/api-foxx.c \
-	Doxygen/js/actions/api-graph.c \
-	Doxygen/js/actions/api-index.c \
-	Doxygen/js/actions/api-query.c \
-	Doxygen/js/actions/api-simple.c \
-	Doxygen/js/actions/api-system.c \
-	Doxygen/js/actions/api-transaction.c \
-	Doxygen/js/actions/api-traversal.c \
-	Doxygen/js/actions/api-user.c \
-	Doxygen/js/common/bootstrap/module-console.c \
-	Doxygen/js/common/bootstrap/module-fs.c \
-	Doxygen/js/common/bootstrap/modules.c \
-	Doxygen/js/common/modules/jsunity.c \
-	Doxygen/js/common/modules/org/arangodb/aql/functions.c \
-	Doxygen/js/common/modules/org/arangodb/graph/algorithms-common.c \
-	Doxygen/js/common/modules/org/arangodb/arango-collection-common.c \
-	Doxygen/js/common/modules/org/arangodb/arango-statement-common.c \
-	Doxygen/js/common/modules/org/arangodb/graph-common.c \
-	Doxygen/js/common/modules/org/arangodb/graph/algorithms-common.c \
-	Doxygen/js/common/modules/org/arangodb/simple-query-common.c \
-	Doxygen/js/server/modules/org/arangodb/actions.c \
-	Doxygen/js/server/modules/org/arangodb/arango-collection.c \
-	Doxygen/js/server/modules/org/arangodb/arango-database.c \
-	Doxygen/js/server/modules/org/arangodb/foxx.c \
-	Doxygen/js/server/modules/org/arangodb/foxx/authentication.c \
-	Doxygen/js/server/modules/org/arangodb/foxx/base_middleware.c \
-	Doxygen/js/server/modules/org/arangodb/foxx/controller.c \
-	Doxygen/js/server/modules/org/arangodb/foxx/format_middleware.c \
-	Doxygen/js/server/modules/org/arangodb/foxx/internals.c \
-	Doxygen/js/server/modules/org/arangodb/foxx/model.c \
-	Doxygen/js/server/modules/org/arangodb/foxx/repository.c \
-	Doxygen/js/server/modules/org/arangodb/foxx/request_context.c \
-	Doxygen/js/server/modules/org/arangodb/foxx/template_middleware.c \
-	Doxygen/js/server/modules/org/arangodb/graph-blueprint.c \
-	Doxygen/js/server/modules/org/arangodb/simple-query.c \
-	Doxygen/js/server/modules/org/arangodb/cluster.c \
-	Doxygen/js/server/modules/org/arangodb/cluster/planner.c \
-	Doxygen/js/server/modules/org/arangodb/cluster/kickstarter.c \
-	Doxygen/js/server/server.c
-
-## -----------------------------------------------------------------------------
-## --SECTION--                                                           DOXYGEN
-## -----------------------------------------------------------------------------
-
-################################################################################
-### @brief directory setup
-################################################################################
-
-.PHONY: doxygen-create-directories
-
-doxygen-create-directories:
-	@test -d Doxygen/doc || mkdir -p Doxygen/doc
-	@test -d Doxygen/website || mkdir -p Doxygen/website
-	@test -d Doxygen/js/actions || mkdir -p Doxygen/js/actions
-	@test -d Doxygen/js/common/bootstrap || mkdir -p Doxygen/js/common/bootstrap
-	@test -d Doxygen/js/common/modules/org/arangodb/aql || mkdir -p Doxygen/js/common/modules/org/arangodb/aql
-	@test -d Doxygen/js/common/modules/org/arangodb/graph || mkdir -p Doxygen/js/common/modules/org/arangodb/graph
-	@test -d Doxygen/js/server/modules/org/arangodb/foxx || mkdir -p Doxygen/js/server/modules/org/arangodb/foxx
-	@test -d Doxygen/js/server/modules/org/arangodb/graph || mkdir -p Doxygen/js/server/modules/org/arangodb/graph
-	@test -d Doxygen/js/server/modules/org/arangodb/cluster || mkdir -p Doxygen/js/server/modules/org/arangodb/cluster
-	@test -d Doxygen/js/client || mkdir -p Doxygen/js/client
-	@test -d Doxygen/man/man1 || mkdir -p Doxygen/man/man1
-	@test -d Doxygen/man/man8 || mkdir -p Doxygen/man/man8
-	@test -d Doxygen/xml || mkdir -p Doxygen/xml
-
-.PHONY: Doxygen/js Doxygen/js/system Doxygen/js/modules
-
-BUILT_SOURCES += Doxygen/.setup-directories
-
-Doxygen/.setup-directories: doxygen-create-directories
-	@touch $@
-
-Doxygen/js/actions/%.c: @srcdir@/js/actions/%.js Doxygen/.setup-directories
-	@python @top_srcdir@/Documentation/Scripts/js2doxy.py $< > $@
-
-Doxygen/js/common/bootstrap/%.c: @srcdir@/js/common/bootstrap/%.js Doxygen/.setup-directories
-	@python @top_srcdir@/Documentation/Scripts/js2doxy.py $< > $@
-
-Doxygen/js/common/modules/%.c: @srcdir@/js/common/modules/%.js Doxygen/.setup-directories
-	@python @top_srcdir@/Documentation/Scripts/js2doxy.py $< > $@
-
-Doxygen/js/server/%.c: @srcdir@/js/server/%.js Doxygen/.setup-directories
-	@python @top_srcdir@/Documentation/Scripts/js2doxy.py $< > $@
-
-Doxygen/js/server/modules/%.c: @srcdir@/js/server/modules/%.js Doxygen/.setup-directories
-	@python @top_srcdir@/Documentation/Scripts/js2doxy.py $< > $@
-
-Doxygen/xml/%.md: Doxygen/xml/%.xml
-	@python @top_srcdir@/Doxygen/Scripts/xml2md.py $< > $@
-
-################################################################################
-### @brief doxygen toc
-################################################################################
-
-.PHONY: doxygen-toc
-
-doxygen-toc:
-	python @top_srcdir@/Documentation/Scripts/generateTOC.py $(DOXYGEN_TOC) >> Doxygen/toc.doxy.tmp
-	cmp -s Doxygen/toc.doxy Doxygen/toc.doxy.tmp || mv Doxygen/toc.doxy.tmp Doxygen/toc.doxy
-	@rm -f Doxygen/toc.doxy.tmp
-
-Doxygen/toc.doxy: doxygen-toc
-
-################################################################################
-### @brief doxygen
-################################################################################
-
-.PHONY: doxygen
-
-Doxygen/arango-html.doxy: Documentation/arango.template Doxygen/toc.doxy
-	sed -e 's:GENERATE_HTML *= *NO:GENERATE_HTML = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = HTML:' < $< > $@
-	cat Doxygen/toc.doxy >> $@
-
-doxygen: Doxygen/.setup-directories Doxygen/arango-html.doxy $(DOXYGEN)
-	$(MAKE) lib/BasicsC/voc-errors.h
-	doxygen Doxygen/arango-html.doxy > /dev/null
-
-	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh --keep-title Doxygen/html/$$w.html Doxygen/website/$$w.html; done
-	cp -R @top_srcdir@/Documentation/images/* Doxygen/website/
-	cp -R @top_srcdir@/Documentation/arangodb.css Doxygen/website
-
-	@for w in $(WIKI); do @top_srcdir@/Documentation/Scripts/html2html.sh --full-html --keep-title Doxygen/html/$$w.html Doxygen/doc/$$w.html; done
-	cp -R @top_srcdir@/Documentation/images/* Doxygen/doc/
-	cp -R @top_srcdir@/Documentation/arangodb.css Doxygen/doc
-
-################################################################################
-### @brief latex
-################################################################################
-
-.PHONY: latex
-
-Doxygen/arango-latex.doxy: Documentation/arango.template Doxygen/toc.doxy
-	sed -e 's:GENERATE_LATEX *= *NO:GENERATE_LATEX = YES:' -e 's:ENABLED_SECTIONS *=:ENABLED_SECTIONS = LATEX:' < $< > $@
-	cat Doxygen/toc.doxy >> $@
-
-latex: Doxygen/.setup-directories Doxygen/arango-latex.doxy $(DOXYGEN)
-	$(MAKE) lib/BasicsC/voc-errors.h
-	doxygen Doxygen/arango-latex.doxy > /dev/null
-
-	cp -R Documentation/latex/*.tex Doxygen/latex
-
-	python @top_srcdir@/Documentation/Scripts/tex2tex.py Doxygen/latex/InstallManual.tex > Doxygen/latex/InstallManual.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode install-manual.tex || true
-
-	python @top_srcdir@/Documentation/Scripts/tex2tex.py Doxygen/latex/UserManual.tex > Doxygen/latex/UserManual.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode user-manual.tex || true
-
-	python @top_srcdir@/Documentation/Scripts/tex2tex.py Doxygen/latex/ImplementorManual.tex > Doxygen/latex/ImplementorManual.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode implementor-manual.tex || true
-
-	python @top_srcdir@/Documentation/Scripts/tex2tex.py Doxygen/latex/RefManual.tex > Doxygen/latex/RefManual.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode ref-manual.tex || true
-
-	python @top_srcdir@/Documentation/Scripts/tex2tex.py Doxygen/latex/DbaManual.tex > Doxygen/latex/DbaManual.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode dba-manual.tex || true
-
-	python @top_srcdir@/Documentation/Scripts/tex2tex.py Doxygen/latex/ToolsManual.tex > Doxygen/latex/ToolsManual.inc.tex
-	cd Doxygen/latex && pdflatex -interaction batchmode tools-manual.tex || true
-
-################################################################################
 ### @brief man pages
 ################################################################################
 
 .PHONY: man
 
 man: Doxygen/.setup-directories
-	for section in 1 8; do for i in `ls Documentation/man$$section`; do sed -f Documentation/Scripts/man.sed -e "s/\<SECTION\>/$$section/" -e "s/\<COMMAND\>/$$i/g" -e "s/DATE/`date`/g" Documentation/man$$section/$$i > Doxygen/man/man$$section/$$i.$$section; cp "Doxygen/man/man$$section/$$i.$$section" "Documentation/man/man$$section/$$i.$$section"; done; done
-
-## -----------------------------------------------------------------------------
-## --SECTION--                                                          EXAMPLES
-## -----------------------------------------------------------------------------
+	for section in 1 8; do \
+            for i in `ls Documentation/man$$section`; do \
+                sed -f Documentation/Scripts/man.sed \
+                  -e "s/\<SECTION\>/$$section/" \
+                  -e "s/\<COMMAND\>/$$i/g" \
+                  -e "s/DATE/`date`/g" Documentation/man$$section/$$i \
+                  > Doxygen/man/man$$section/$$i.$$section; \
+                cp "Doxygen/man/man$$section/$$i.$$section" "Documentation/man/man$$section/$$i.$$section"; \
+            done; \
+        done
 
 ################################################################################
 ### @brief generate json for swagger REST-API
@@ -332,7 +44,15 @@ man: Doxygen/.setup-directories
 .PHONY: swagger
 
 swagger:
-	(python @srcdir@/Documentation/Scripts/generateSwaggerApi.py @srcdir@ @srcdir@/js/apps/system/aardvark/api-docs api-docs) > @srcdir@/js/apps/system/aardvark/api-docs.json	
+	(python \
+            @srcdir@/Documentation/Scripts/generateSwaggerApi.py \
+                @srcdir@ \
+                @srcdir@/js/apps/system/aardvark/api-docs api-docs \
+        ) > @srcdir@/js/apps/system/aardvark/api-docs.json	
+
+## -----------------------------------------------------------------------------
+## --SECTION--                                                          EXAMPLES
+## -----------------------------------------------------------------------------
 
 ################################################################################
 ### @brief generate examples
@@ -366,57 +86,6 @@ examples:
 		--server.password "" \
 		--server.endpoint tcp://$(VOCHOST):$(VOCPORT) \
 		--javascript.execute /tmp/arangosh.examples
-
-## -----------------------------------------------------------------------------
-## --SECTION--                                                           HELPERS
-## -----------------------------------------------------------------------------
-
-################################################################################
-### @brief generate complete documentation including examples
-################################################################################
-
-.PHONY: documentation-complete
-
-documentation-complete: doxygen examples swagger
-
-################################################################################
-### @brief cleanup
-################################################################################
-
-CLEANUP += \
-	Doxygen/.setup-directories \
-        Doxygen/*
-
-
-################################################################################
-## publish
-################################################################################
-
-.PHONY: publish publish-html publish-pdf publish-copy
-
-publish: publish-html publish-pdf
-	make publish-copy
-
-publish-copy:
-	cd Doxygen/manuals && scp -r "$(PACKAGE_VERSION)" $(MANUAL_DST)
-
-publish-html:
-	$(MAKE) doxygen
-	mkdir -p $(OUTPUT_FOLDER)/images
-	@for w in $(WIKI); do cp Doxygen/website/$$w.html $(OUTPUT_FOLDER); done
-	@for i in `ls Doxygen/website/*.png`; do cp $$i $(OUTPUT_FOLDER)/; done
-	@cp Doxygen/website/arangodb.css $(OUTPUT_FOLDER)
-	@cp Documentation/Manual/shell_reference_card.pdf $(OUTPUT_FOLDER)
-
-publish-pdf: $(OUTPUT_FOLDER)
-	$(MAKE) latex
-	cp Doxygen/latex/dba-manual.pdf $(OUTPUT_FOLDER)
-	cp Doxygen/latex/implementor-manual.pdf $(OUTPUT_FOLDER)
-	cp Doxygen/latex/install-manual.pdf $(OUTPUT_FOLDER)
-	cp Doxygen/latex/user-manual.pdf $(OUTPUT_FOLDER)
-	cp Doxygen/latex/ref-manual.pdf $(OUTPUT_FOLDER)
-	cp Doxygen/latex/tools-manual.pdf $(OUTPUT_FOLDER)
-	cp Documentation/Manual/shell_reference_card.pdf $(OUTPUT_FOLDER)
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

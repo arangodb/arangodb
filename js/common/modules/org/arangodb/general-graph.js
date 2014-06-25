@@ -190,8 +190,8 @@ var wrapCollection = function(col) {
 /// *Examples* are used to filter the result set for objects that match the conditions.
 /// These *examples* can have the following values:
 ///
-/// * *Null*, there is no matching executed all found results are valid.
-/// * A *string*, only the result having this value as it's *_id* is returned.
+/// * *null*, there is no matching executed all found results are valid.
+/// * A *string*, only results are returned, which *_id* equal the value of the string
 /// * An example *object*, defining a set of attributes.
 ///     Only results having these attributes are matched.
 /// * A *list* containing example *objects* and/or *strings*.
@@ -1434,7 +1434,7 @@ var _directedRelation = function (
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_list
-/// `general_graph._list()`
+/// `graph_module._list()`
 /// *List all graphs.*
 ///
 /// Lists all graph names stored in this database.
@@ -1461,8 +1461,6 @@ var _list = function() {
 /// `graph_module._edgeDefinitions(relation1, relation2, ..., relationN)`
 /// *Create a list of edge definitions to construct a graph.*
 ///
-/// The edge definitions for a graph is an array containing arbitrary many directed
-/// and/or undirected relations as defined below.
 /// The list of edge definitions of a graph can be managed by the graph module itself.
 /// This function is the entry point for the management and will return the correct list.
 ///
@@ -1475,7 +1473,7 @@ var _list = function() {
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitions}
 ///   var graph_module = require("org/arangodb/general-graph");
 ///   directed_relation = graph_module._directedRelation("lives_in", "user", "city");
-///   undirected_relation = graph_module._directedRelation("knows", "user");
+///   undirected_relation = graph_module._undirectedRelation("knows", "user");
 ///   edgedefinitions = graph_module._edgeDefinitions(directed_relation, undirected_relation);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -1505,7 +1503,7 @@ var _edgeDefinitions = function () {
 ///
 /// *Parameter*
 ///
-/// * *edgeDefinitions*: An list of relation definition objects.
+/// * *edgeDefinitions*: A list of relation definition objects.
 /// * *relationX*: An object representing a definition of one relation in the graph
 ///
 /// *Examples*
@@ -1534,6 +1532,14 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
     }
   );
 };
+////////////////////////////////////////////////////////////////////////////////
+/// internal helper to sort a graph's edge definitions
+////////////////////////////////////////////////////////////////////////////////
+var sortEdgeDefinition = function(edgeDefinition) {
+  edgeDefinition.from = edgeDefinition.from.sort();
+  edgeDefinition.to = edgeDefinition.to.sort();
+  return edgeDefinition;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new graph
@@ -1547,7 +1553,7 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 ///   var graph_module = require("org/arangodb/general-graph");
 ///   var graph = graph_module._create("myGraph");
 ///   graph;
-/// ~ graph_module._drop("myGraph");
+/// ~ graph_module._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// * Add some vertex collections
@@ -1559,7 +1565,7 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 ///   graph._addVertexCollection("customer");
 ///   graph._addVertexCollection("pet");
 ///   graph;
-/// ~ graph_module._drop("myGraph");
+/// ~ graph_module._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// * Define relations on the
@@ -1570,7 +1576,7 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 ///   var rel = graph_module._directedRelation("isCustomer", ["shop"], ["customer"]);
 ///   graph._extendEdgeDefinitions(rel);
 ///   graph;
-/// ~ graph_module._drop("myGraph");
+/// ~ graph_module._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -1602,17 +1608,17 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraph}
 ///   var graph_module = require("org/arangodb/general-graph");
-///   graph = graph_module._create("mygraph");
-/// ~ graph_module._drop("mygraph");
+///   graph = graph_module._create("myGraph");
+/// ~ graph_module._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Create a graph with edge definitions and orphan collections:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraph2}
 ///   var graph_module = require("org/arangodb/general-graph");
-/// | graph = graph_module._create("mygraph",
-///   [graph_module._undirectedRelation("relation", ["male", "female"])], ["sessions"]);
-/// ~ graph_module._drop("mygraph");
+/// | graph = graph_module._create("myGraph",
+///   [graph_module._undirectedRelation("myRelation", ["male", "female"])], ["sessions"]);
+/// ~ graph_module._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -1621,7 +1627,7 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 
 var _create = function (graphName, edgeDefinitions, orphanCollections) {
 
-  if (!orphanCollections) {
+  if (! Array.isArray(orphanCollections) ) {
     orphanCollections = [];
   }
   var gdb = getGraphCollection(),
@@ -1699,8 +1705,16 @@ var _create = function (graphName, edgeDefinitions, orphanCollections) {
       findOrCreateCollectionByName(oC, ArangoCollection.TYPE_DOCUMENT);
     }
   );
+  edgeDefinitions.forEach(
+    function(eD, index) {
+      var tmp = sortEdgeDefinition(eD);
+      edgeDefinitions[index] = tmp;
+    }
+  );
+  orphanCollections = orphanCollections.sort();
 
-  gdb.save({
+      gdb.save({
+    'orphanCollections' : orphanCollections,
     'edgeDefinitions' : edgeDefinitions,
     '_key' : graphName
   });
@@ -1926,22 +1940,13 @@ var updateBindCollections = function(graph) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// internal helper to sort a graph's edge definitions
-////////////////////////////////////////////////////////////////////////////////
-var sortEdgeDefinition = function(edgeDefinition) {
-  edgeDefinition.from = edgeDefinition.from.sort();
-  edgeDefinition.to = edgeDefinition.to.sort();
-  return edgeDefinition;
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_vertex_collection_save
 /// `graph.vertexCollectionName.save(data)`
 /// *Create a new vertex in vertexCollectionName*
 ///
 /// *Parameter*
 ///
-/// * *data*: Json data of vertex.
+/// * *data*: JSON data of vertex.
 ///
 /// *Examples*
 ///
@@ -1962,7 +1967,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 /// *Parameter*
 ///
 /// * *vertexId*: *_id* attribute of the vertex
-/// * *data*: Json data of vertex.
+/// * *data*: JSON data of vertex.
 /// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
@@ -1985,7 +1990,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 /// *Parameter*
 ///
 /// * *vertexId*: *_id* attribute of the vertex
-/// * *data*: Json data of vertex.
+/// * *data*: JSON data of vertex.
 /// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
@@ -2037,7 +2042,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 ///
 /// * *from*: *_id* attribute of the source vertex
 /// * *to*: *_id* attribute of the target vertex
-/// * *data*: Json data of the edge
+/// * *data*: JSON data of the edge
 /// * *options* (optional): See [collection documentation](../Edges/EdgeMethods.md)
 ///
 /// *Examples*
@@ -2068,7 +2073,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 /// *Parameter*
 ///
 /// * *edgeId*: *_id* attribute of the edge
-/// * *data*: Json data of the edge
+/// * *data*: JSON data of the edge
 /// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
@@ -2091,7 +2096,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 /// *Parameter*
 ///
 /// * *edgeId*: *_id* attribute of the edge
-/// * *data*: Json data of the edge
+/// * *data*: JSON data of the edge
 /// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
@@ -2161,9 +2166,9 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_graph
 /// `graph_module._graph(graphName)`
-/// *Load a graph*
+/// *Get a graph*
 ///
-/// A graph can be loaded by its name.
+/// A graph can be get by its name.
 ///
 /// *Parameter*
 ///
@@ -2171,7 +2176,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 ///
 /// *Examples*
 ///
-/// Load a graph:
+/// Get a graph:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphLoadGraph}
 /// ~ var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -2247,6 +2252,7 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
           }
         );
       }
+
       var orphanCollections = graph.orphanCollections;
       if (orphanCollections) {
         if (orphanCollections.indexOf(colName) !== -1) {
@@ -2295,7 +2301,7 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
 /// ~ var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// ~ var g1 = examples.loadGraph("social");
 ///   var graph_module = require("org/arangodb/general-graph");
-///   graph._module_drop("social", true);
+///   graph_module._drop("social", true);
 ///   db._collection("female");
 ///   db._collection("male");
 ///   db._collection("relation");
@@ -2728,8 +2734,8 @@ Graph.prototype._neighbors = function(vertexExample, options) {
 /// `graph._commonNeighbors(vertex1Example, vertex2Examples, optionsVertex1, optionsVertex2)`
 /// *Get all common neighbors of the vertices defined by the examples.*
 ///
-/// This function returns the intersection of *general_graph._neighbors(vertex1Example, optionsVertex1)*
-/// and *general_graph._neighbors(vertex2Example, optionsVertex2)*.
+/// This function returns the intersection of *graph_module._neighbors(vertex1Example, optionsVertex1)*
+/// and *graph_module._neighbors(vertex2Example, optionsVertex2)*.
 /// For parameter documentation see [_neighbors](#_neighbors).
 ///
 /// *Examples*
@@ -2936,7 +2942,7 @@ Graph.prototype._commonProperties = function(vertex1Example, vertex2Example, opt
 /// graph._countCommonProperties({}, {});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, all german cities which share same properties except for population.
+/// A route planner example, all German cities which share same properties except for population.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAmountProperties2}
 /// ~ var db = require("internal").db;
@@ -2979,7 +2985,7 @@ Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_paths
 ///
-/// `graph._paths (options)`
+/// `graph._paths(options)`
 /// *The _paths function returns all paths of a graph.*
 ///
 /// This function determines all available paths in a graph.
@@ -3036,7 +3042,7 @@ Graph.prototype._paths = function(options) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_shortest_path
 ///
-/// `graph._shortestPath (startVertexExample, endVertexExample, options)`
+/// `graph._shortestPath(startVertexExample, endVertexExample, options)`
 /// *The _shortestPath function returns all shortest paths of a graph.*
 ///
 /// This function determines all shortest paths in a graph.
@@ -3134,7 +3140,7 @@ Graph.prototype._shortestPath = function(startVertexExample, endVertexExample, o
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_distance_to
 ///
-/// `graph._distanceTo (startVertexExample, endVertexExample, options)`
+/// `graph._distanceTo(startVertexExample, endVertexExample, options)`
 /// *The _distanceTo function returns all paths and there distance within a graph.*
 ///
 /// This function is a wrapper of [graph._shortestPath](#_shortestpath).
@@ -3366,7 +3372,7 @@ Graph.prototype._eccentricity = function(options) {
 ///   graph._absoluteCloseness({}, {weight : 'distance'});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, the absolute closeness of all german Cities regarding only
+/// A route planner example, the absolute closeness of all German Cities regarding only
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsCloseness3}
@@ -3520,7 +3526,7 @@ Graph.prototype._absoluteBetweenness = function(options) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_betweenness
 ///
-/// `general_graph._betweenness(options)`
+/// `graph_module._betweenness(options)`
 /// *Get the normalized*
 /// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
 /// *of graphs vertices.*
@@ -3877,7 +3883,7 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
 ///
 /// Edits one relation definition of a graph. The edge definition used as argument will
 /// replace the existing edge definition of the graph which has the same collection.
-/// Vertex Collections of the replaced edge definition, that are not used in the new
+/// Vertex Collections of the replaced edge definition that are not used in the new
 /// definition will transform to an orphan. Orphans that are used in this new edge
 /// definition will be deleted from the list of orphans. Other graphs with the same edge
 /// definition will be modified, too.
@@ -4022,7 +4028,8 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection) {
 /// *Add a vertex collection to the graph*
 ///
 /// Adds a vertex collection to the set of orphan collections of the graph. If the
-/// collection does not exist, it will be created.
+/// collection does not exist, it will be created. If it is already used by any edge
+/// definition of the graph, an error will be thrown.
 ///
 /// *Parameter*
 ///
@@ -4082,7 +4089,7 @@ Graph.prototype._addVertexCollection = function(vertexCollectionName, createColl
 /// `graph._orphanCollections()`
 /// *Get all orphan collections*
 ///
-/// Returns all vertex collections of the graph, that are not used in any edge definition.
+/// Returns all vertex collections of the graph that are not used in any edge definition.
 ///
 /// *Examples*
 ///
@@ -4207,3 +4214,40 @@ exports._list = _list;
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// some more documentation
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_create_graph_example1
+/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph_create_graph_example1}
+///   var graph_module = require("org/arangodb/general-graph");
+///   var edgeDefinitions = graph_module._edgeDefinitions();
+///   graph_module._extendEdgeDefinitions(edgeDefinitions, graph_module._undirectedRelation("friend_of", ["Customer"]));
+/// | graph_module._extendEdgeDefinitions(
+/// | edgeDefinitions, graph_module._directedRelation(
+///   "has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
+///   graph_module._create("myStore", edgeDefinitions);
+/// ~ graph_module._drop("myStore");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+///
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_create_graph_example2
+/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph_create_graph_example2}
+///   var graph_module = require("org/arangodb/general-graph");
+/// |  var edgeDefinitions = graph_module._edgeDefinitions(
+/// |  graph_module._undirectedRelation("friend_of", ["Customer"]), graph_module._directedRelation(
+///    "has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
+///   graph_module._create("myStore", edgeDefinitions);
+/// ~ graph_module._drop("myStore");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+///
+////////////////////////////////////////////////////////////////////////////////
