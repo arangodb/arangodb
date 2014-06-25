@@ -7,6 +7,7 @@
   window.GraphManagementView = Backbone.View.extend({
     el: '#content',
     template: templateEngine.createTemplate("graphManagementView.ejs"),
+    edgeDefintionTemplate: templateEngine.createTemplate("edgeDefinitionTable.ejs"),
 
     events: {
       "click #deleteGraph"                  : "deleteGraph",
@@ -19,7 +20,7 @@
 
     addNewGraph: function(e) {
       e.preventDefault();
-      this.createNewGraphModal2();
+      this.createNewGraphModal();
     },
 
     deleteGraph: function(e) {
@@ -43,11 +44,13 @@
       this.collection.fetch({
         async: false
       });
+
       $(this.el).html(this.template.render({
         graphs: this.collection,
         searchString : ''
       }));
       this.events["click .tableRow"] = this.showHideDefinition.bind(this);
+      this.events["click .graphViewer-icon-button"] = this.addRemoveDefintion.bind(this);
       return this;
     },
 
@@ -175,7 +178,6 @@
           }
         );
       }
-
 
       if (!name) {
         arangoHelper.arangoNotification(
@@ -317,13 +319,32 @@
     },
 
     showHideDefinition : function(e) {
-      var id = $(e.currentTarget).attr("id");
-      if (id === "row_newEdgeDefinitions1") {
-        $('#row_fromCollections1').toggle();
-        $('#row_toCollections1').toggle();
+      var id = $(e.currentTarget).attr("id"), number;
+      if (id.indexOf("row_newEdgeDefinitions") !== -1 ) {
+        number = id.split("row_newEdgeDefinitions")[1];
+        $('#row_fromCollections' + number).toggle();
+        $('#row_toCollections' + number).toggle();
       }
     },
 
+    addRemoveDefintion : function(e) {
+      var id = $(e.currentTarget).attr("id");
+      if (id.indexOf("addAfter_newEdgeDefinitions") !== -1 ) {
+        //do something
+        $('#row_newVertexCollections').before(
+          this.edgeDefintionTemplate.render({
+            number: 100
+          })
+        );
+        window.modalView.delegateEvents(this.events);
+        return;
+      }
+      if (id.indexOf("remove_newEdgeDefinitions") !== -1 ) {
+        //do something
+          $('#row_fromCollections' + id.charAt(id.length-1)).toggle();
+        $('#row_toCollections' + id.charAt(id.length-1)).toggle();
+      }
+    },
 
     createNewGraphModal2: function() {
       var buttons = [],
@@ -341,12 +362,14 @@
       );
 
       tableContent.push(
-        window.modalView.createTextEntry(
+        window.modalView.createSelect2Entry(
           "newEdgeDefinitions1",
           "Edge definitions",
           "",
           "Some info for edge definitions",
           "Edge definitions",
+          true,
+          true,
           true
         )
       );
@@ -389,7 +412,7 @@
 
 
       window.modalView.show(
-        "modalTable.ejs", "Add new Graph", buttons, tableContent, null, this.events
+        "modalGraphTable.ejs", "Add new Graph", buttons, tableContent, null, this.events
       );
       $('#row_fromCollections1').hide();
       $('#row_toCollections1').hide();
@@ -428,7 +451,7 @@
         window.modalView.createDeleteButton("Delete", this.deleteGraph.bind(this))
       );
 
-      window.modalView.show("modalTable.ejs", "Edit Graph", buttons, tableContent);
+      window.modalView.show("modalGraphTable.ejs", "Edit Graph", buttons, tableContent);
 
     }
 

@@ -49,7 +49,6 @@ def replaceText(text, pathOfFile, searchText):
   replaced = replaced.replace("@RESTRETURNCODES","*Return Codes*")
   replaced = re.sub(r"@RESTPARAM{([\s\w\-]*),([\s\w\_\|-]*),\s[optional]}", r"* *\g<1>* (\g<3>):", replaced)
   replaced = re.sub(r"@RESTPARAM{([\s\w-]*),([\s\w\_\|-]*),\s*(\w+)}", r"* *\g<1>*:", replaced)
-  #  replaced = re.sub(r"@RESTPARAM{(\s*\w+\-*\w+),(\s*\w+),\s*(\w+)}", r"* *\g<1>* (\g<3>):", replaced)
   replaced = re.sub(r"@RESTRETURNCODE{(.*)}", r"* *HTTP \g<1>*:", replaced)
   replaced = re.sub(r"@RESTBODYPARAMS{(.*)}", r"*(\g<1>)*", replaced)
   replaced = replaced.replace("@EXAMPLES","*Examples*")
