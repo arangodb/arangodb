@@ -1,4 +1,0 @@
-arango> c = db._create("cars");
-[ArangoCollection 111137, "cars" (status loaded)]
-arango> c.properties()
-{ "waitForSync" : false, "journalSize" : 33554432, "isVolatile" : false }

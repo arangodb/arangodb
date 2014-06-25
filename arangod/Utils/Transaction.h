@@ -80,21 +80,17 @@ namespace triagens {
 /// @brief create the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-          Transaction (TRI_vocbase_t* vocbase,
-                       TRI_server_id_t generatingServer,
-                       bool replicate) :
-            T(),
-            _setupState(TRI_ERROR_NO_ERROR),
-            _nestingLevel(0),
-            _errorData(),
-            _hints(0),
-            _timeout(0.0),
-            _waitForSync(false),
-            _replicate(replicate),
-            _isReal(true),
-            _trx(0),
-            _vocbase(vocbase),
-            _generatingServer(generatingServer) {
+          Transaction (TRI_vocbase_t* vocbase)
+            : T(),
+              _setupState(TRI_ERROR_NO_ERROR),
+              _nestingLevel(0),
+              _errorData(),
+              _hints(0),
+              _timeout(0.0),
+              _waitForSync(false),
+              _isReal(true),
+              _trx(0),
+              _vocbase(vocbase) {
 
             TRI_ASSERT(_vocbase != nullptr);
 
@@ -133,6 +129,14 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
         public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a transaction hint
+////////////////////////////////////////////////////////////////////////////////
+
+        void inline addHint (TRI_transaction_hint_e hint) {
+          _hints |= (TRI_transaction_hint_t) hint;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the registered error data
@@ -422,14 +426,6 @@ namespace triagens {
 
         void setWaitForSync () {
           _waitForSync = true;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a transaction hint
-////////////////////////////////////////////////////////////////////////////////
-
-        void addHint (TRI_transaction_hint_e hint) {
-          _hints |= (TRI_transaction_hint_t) hint;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1076,7 +1072,7 @@ namespace triagens {
                                    TRI_transaction_type_e type) {
           TRI_ASSERT(_trx != nullptr);
 
-          int res = TRI_AddCollectionTransaction(_trx, cid, type, _nestingLevel);
+          int res = TRI_AddCollectionTransaction(_trx, cid, type, _nestingLevel, false);
 
           if (res != TRI_ERROR_NO_ERROR) {
             return registerError(res);
@@ -1100,7 +1096,7 @@ namespace triagens {
             res = TRI_ERROR_TRANSACTION_INTERNAL;
           }
           else {
-            res = TRI_AddCollectionTransaction(_trx, cid, type, _nestingLevel);
+            res = TRI_AddCollectionTransaction(_trx, cid, type, _nestingLevel, false);
           }
 
           if (res != TRI_ERROR_NO_ERROR) {
@@ -1161,8 +1157,6 @@ namespace triagens {
 
           // we are not embedded. now start our own transaction
           _trx = TRI_CreateTransaction(_vocbase,
-                                       _generatingServer,
-                                       _replicate,
                                        _timeout,
                                        _waitForSync);
 
@@ -1234,12 +1228,6 @@ namespace triagens {
         bool _waitForSync;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief replicate flag for transaction
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _replicate;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not this is a "real" transaction
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1262,12 +1250,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_vocbase_t* const _vocbase;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the id of the generating server
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_server_id_t _generatingServer;
 
     };
 

@@ -119,9 +119,40 @@ actions.defineHttp({
     }
 
     /*jslint node: true, stupid: true */
-    internal.flushWal(req.parameters.waitForSync === "true", 
-                      req.parameters.waitForCollector === "true");
+    internal.wal.flush(req.parameters.waitForSync === "true", 
+                       req.parameters.waitForCollector === "true");
     actions.resultOk(req, res, actions.HTTP_OK);
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets or sets the WAL properties
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/wal/properties",
+  context : "admin",
+  prefix : false,
+
+  callback : function (req, res) {
+    var result;
+
+    if (req.requestType === actions.PUT) {
+      var body = actions.getJsonBody(req, res);
+      if (body === undefined) {
+        return;
+      }
+
+      result = internal.wal.properties(body);
+      actions.resultOk(req, res, actions.HTTP_OK, result);
+    }
+    else if (req.requestType === actions.GET) {
+      result = internal.wal.properties();
+      actions.resultOk(req, res, actions.HTTP_OK, result);
+    }
+    else {
+      actions.resultUnsupported(req, res);
+    }
   }
 });
 

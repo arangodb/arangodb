@@ -358,6 +358,9 @@ static bool ParseObject (yyscan_t scanner, TRI_json_t* result, int c) {
         return false;
       }
 
+      // need to reset errno because return value of 0 is not distinguishable from an error on Linux
+      errno = 0;
+
       // yytext is null-terminated. can use it directly without copying it into a temporary buffer
       d = strtod(yytext, &ep);
 

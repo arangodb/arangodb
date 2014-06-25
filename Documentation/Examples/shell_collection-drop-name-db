@@ -1,5 +1,0 @@
-arango> col = db.examples;
-[ArangoCollection 85198, "examples" (status new born)]
-arango> db._drop("examples");
-arango> col;
-[ArangoCollection 85198, "examples" (status deleted)]

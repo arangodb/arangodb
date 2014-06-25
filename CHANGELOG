@@ -1,6 +1,18 @@
 v2.2.0-alpha2 (XXXX-XX-XX)
 -------------------
 
+* honor startup option `--server.disable-statistics` when deciding whether or not
+  to start periodic statistics collection jobs
+
+  Previously, the statistics collection jobs were started even if the server was
+  started with the `--server.disable-statistics` flag being set to `true`
+
+* removed startup option `--random.no-seed`
+
+  This option had no effect in previous versions of ArangoDB and was thus removed.
+
+* removed startup option `--database.remove-on-drop`
+
 * introduced write-ahead log
 
   All write operations in an ArangoDB server instance are automatically logged

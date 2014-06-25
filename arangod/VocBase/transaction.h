@@ -145,10 +145,8 @@ typedef struct TRI_transaction_s {
   TRI_vector_pointer_t                 _collections;       // list of participating collections
   TRI_transaction_hint_t               _hints;             // hints;
   int                                  _nestingLevel;
-  TRI_server_id_t                      _generatingServer;  // id of server that generated the trx
   uint64_t                             _timeout;           // timeout for lock acquisition
   bool                                 _hasOperations;
-  bool                                 _replicate;         // replicate this transaction?
   bool                                 _waitForSync;       // whether or not the collection had a synchronous op
 }
 TRI_transaction_t;
@@ -181,8 +179,6 @@ TRI_transaction_collection_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_transaction_t* TRI_CreateTransaction (struct TRI_vocbase_s*,
-                                          TRI_server_id_t,
-                                          bool,
                                           double,
                                           bool);
 
@@ -235,33 +231,34 @@ TRI_transaction_collection_t* TRI_GetCollectionTransaction (TRI_transaction_t co
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AddCollectionTransaction (TRI_transaction_t*,
-                                  const TRI_voc_cid_t,
-                                  const TRI_transaction_type_e,
-                                  const int);
+                                  TRI_voc_cid_t,
+                                  TRI_transaction_type_e,
+                                  int,
+                                  bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request a lock for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_LockCollectionTransaction (TRI_transaction_collection_t*,
-                                   const TRI_transaction_type_e,
-                                   const int);
+                                   TRI_transaction_type_e,
+                                   int);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request an unlock for a collection
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_UnlockCollectionTransaction (TRI_transaction_collection_t*,
-                                     const TRI_transaction_type_e,
-                                     const int);
+                                     TRI_transaction_type_e,
+                                     int);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether a collection is locked in a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsLockedCollectionTransaction (TRI_transaction_collection_t*,
-                                        const TRI_transaction_type_e,
-                                        const int);
+                                        TRI_transaction_type_e,
+                                        int);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief begin a transaction

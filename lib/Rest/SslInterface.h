@@ -39,7 +39,8 @@ namespace triagens {
       enum Algorithm {
         ALGORITHM_SHA256 = 0,
         ALGORITHM_SHA1   = 1,
-        ALGORITHM_MD5    = 2
+        ALGORITHM_MD5    = 2,
+        ALGORITHM_SHA224   = 3
       };
 
 //////////////////////////////////////////////////////////////////////////

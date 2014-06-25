@@ -58,18 +58,32 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief flushes the write-ahead log
+/// @brief write-ahead log functionality
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.flushWal = function (waitForSync, waitForCollector) {
-    if (typeof internal.arango !== 'undefined') {
-      var wfs = waitForSync ? "true" : "false";
-      var wfc = waitForCollector ? "true" : "false";
-      internal.arango.PUT("/_admin/wal/flush?waitForSync=" + wfs + "&waitForCollector=" + wfc, "");
-      return;
-    }
+  internal.wal = {
+    flush: function (waitForSync, waitForCollector) {
+      if (typeof internal.arango !== 'undefined') {
+        var wfs = waitForSync ? "true" : "false";
+        var wfc = waitForCollector ? "true" : "false";
+        internal.arango.PUT("/_admin/wal/flush?waitForSync=" + wfs + "&waitForCollector=" + wfc, "");
+        return;
+      }
 
-    throw "not connected";
+      throw "not connected";
+    },
+
+    properties: function (value) {
+      if (typeof internal.arango !== 'undefined') {
+        if (value !== undefined) {
+          return internal.arango.PUT("/_admin/wal/properties", JSON.stringify(value));
+        }
+          
+        return internal.arango.GET("/_admin/wal/properties", "");
+      }
+      
+      throw "not connected";
+    }
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,9 +174,7 @@
       var i;
 
       if (typeof body !== 'string') {
-        internal.startCaptureMode();
-        print(body);
-        body = internal.stopCaptureMode();
+        body = internal.inspect(body);
       }
 
       curl = "shell> curl ";
@@ -228,7 +240,6 @@
     return function (response) {
       var key;
       var headers = response.headers;
-      var output;
 
       // generate header
       appender("HTTP/1.1 " + headers['http/1.1'] + "\n");
@@ -246,10 +257,7 @@
 
       // append body
       if (response.body !== undefined) {
-        internal.startCaptureMode();
-        print(response.body);
-        output = internal.stopCaptureMode();
-        appender(output);
+        appender(internal.inspect(response.body));
         appender("\n");
       }
     };

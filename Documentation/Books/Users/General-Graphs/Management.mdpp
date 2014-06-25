@@ -1,7 +1,7 @@
 !CHAPTER Graph Management
 
-In order to create a graph the philosophy of handling the graph content has to be introduced.
-A graph contains a set of edge definitions each referring to one edge collection and
+Before we create our first graph, the philosophy of handling the graph content has to be introduced.
+A graph contains of a set of edge definitions each referring to one edge collection and
 defining constraints on the vertex collections used as start and end points of the edges.
 Furthermore a graph can contain an arbitrary amount of vertex collections, called  orphan collections, that are not used in any edge definition but should be managed by the graph.
 In order to create a non empty graph the functionality to create edge definitions has to be introduced first:

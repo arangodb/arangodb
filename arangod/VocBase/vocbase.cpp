@@ -172,8 +172,7 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool UnregisterCollection (TRI_vocbase_t* vocbase,
-                                  TRI_vocbase_col_t* collection,
-                                  TRI_server_id_t generatingServer) {
+                                  TRI_vocbase_col_t* collection) {
   TRI_ASSERT(collection != nullptr);
   TRI_ASSERT(collection->_name != nullptr);
 
@@ -410,23 +409,15 @@ static bool DropCollectionCallback (TRI_collection_t* col,
                   newFilename);
       }
       else {
-        if (collection->_vocbase->_settings.removeOnDrop) {
-          LOG_DEBUG("wiping dropped collection '%s' from disk",
-                    collection->_name);
+        LOG_DEBUG("wiping dropped collection '%s' from disk",
+                  collection->_name);
 
-          res = TRI_RemoveDirectory(newFilename);
+        res = TRI_RemoveDirectory(newFilename);
 
-          if (res != TRI_ERROR_NO_ERROR) {
-            LOG_ERROR("cannot wipe dropped collecton '%s' from disk: %s",
-                      collection->_name,
-                      TRI_last_error());
-          }
-        }
-        else {
-          LOG_DEBUG("renamed dropped collection '%s' from '%s' to '%s'",
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG_ERROR("cannot wipe dropped collection '%s' from disk: %s",
                     collection->_name,
-                    collection->_path,
-                    newFilename);
+                    TRI_last_error());
         }
       }
 
@@ -577,8 +568,7 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
 
 static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
                                             TRI_col_info_t* parameter,
-                                            TRI_voc_cid_t cid,
-                                            TRI_server_id_t generatingServer) {
+                                            TRI_voc_cid_t cid) {
   char const* name = parameter->_name;
 
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -681,11 +671,9 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
 static int RenameCollection (TRI_vocbase_t* vocbase,
                              TRI_vocbase_col_t* collection,
                              char const* oldName,
-                             char const* newName,
-                             TRI_server_id_t generatingServer) {
+                             char const* newName) {
   TRI_col_info_t info;
   void const* found;
-  int res;
 
   TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
@@ -723,7 +711,7 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
   // .............................................................................
 
   else if (collection->_status == TRI_VOC_COL_STATUS_UNLOADED) {
-    res = TRI_LoadCollectionInfo(collection->_path, &info, true);
+    int res = TRI_LoadCollectionInfo(collection->_path, &info, true);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -754,7 +742,7 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
            collection->_status == TRI_VOC_COL_STATUS_UNLOADING ||
            collection->_status == TRI_VOC_COL_STATUS_LOADING) {
 
-    res = TRI_RenameCollection(collection->_collection, newName);
+    int res = TRI_RenameCollection(collection->_collection, newName);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -793,7 +781,7 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
   // now log the operation
-  res = TRI_ERROR_NO_ERROR;
+  int res = TRI_ERROR_NO_ERROR;
 
   try {
     triagens::wal::RenameCollectionMarker marker(vocbase->_id, collection->_cid, std::string(newName));
@@ -910,45 +898,13 @@ static int ScanPath (TRI_vocbase_t* vocbase,
       }
       else if (info._deleted) {
         // we found a collection that is marked as deleted.
-        // it depends on the configuration what will happen with these collections
+        // deleted collections should be removed on startup. this is the default
+        LOG_DEBUG("collection '%s' was deleted, wiping it", name);
 
-        if (vocbase->_settings.removeOnDrop) {
-          // deleted collections should be removed on startup. this is the default
-          LOG_DEBUG("collection '%s' was deleted, wiping it", name);
+        res = TRI_RemoveDirectory(file);
 
-          res = TRI_RemoveDirectory(file);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            LOG_WARNING("cannot wipe deleted collection: %s", TRI_last_error());
-          }
-        }
-        else {
-          // deleted collections shout not be removed on startup
-          char* newFile;
-          char* tmp1;
-          char* tmp2;
-
-          char const* first = name + matches[1].rm_so;
-          size_t firstLen = matches[1].rm_eo - matches[1].rm_so;
-
-          tmp1 = TRI_DuplicateString2(first, firstLen);
-          tmp2 = TRI_Concatenate2String("deleted-", tmp1);
-
-          TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
-
-          newFile = TRI_Concatenate2File(path, tmp2);
-
-          TRI_FreeString(TRI_CORE_MEM_ZONE, tmp2);
-
-          LOG_WARNING("collection '%s' was deleted, renaming it to '%s'", name, newFile);
-
-          res = TRI_RenameFile(file, newFile);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            LOG_WARNING("cannot rename deleted collection: %s", TRI_last_error());
-          }
-
-          TRI_FreeString(TRI_CORE_MEM_ZONE, newFile);
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG_WARNING("cannot wipe deleted collection: %s", TRI_last_error());
         }
       }
       else {
@@ -1514,28 +1470,6 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
   TRI_InitThread(&vocbase->_cleanup);
   TRI_StartThread(&vocbase->_cleanup, NULL, "[cleanup]", TRI_CleanupVocBase, vocbase);
 
-  vocbase->_replicationApplier = TRI_CreateReplicationApplier(vocbase);
-
-  if (vocbase->_replicationApplier == NULL) {
-    // TODO
-    LOG_FATAL_AND_EXIT("initialising replication applier for database '%s' failed", name);
-  }
-
-  if (vocbase->_replicationApplier->_configuration._autoStart) {
-    if (server->_disableReplicationAppliers) {
-      LOG_INFO("replication applier explicitly deactivated for database '%s'", name);
-    }
-    else {
-      res = TRI_StartReplicationApplier(vocbase->_replicationApplier, 0, false);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG_WARNING("unable to start replication applier for database '%s': %s",
-                    name,
-                    TRI_errno_string(res));
-      }
-    }
-  }
-
   // we are done
   return vocbase;
 }
@@ -1892,13 +1826,12 @@ TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t* vocbase,
 
 TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase (TRI_vocbase_t* vocbase,
                                                             char const* name,
-                                                            const TRI_col_type_t type,
-                                                            TRI_server_id_t generatingServer) {
+                                                            const TRI_col_type_t type) {
   TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
   TRI_vocbase_col_t* found = static_cast<TRI_vocbase_col_t*>(TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name));
   TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
-  if (found != NULL) {
+  if (found != nullptr) {
     return found;
   }
   else {
@@ -1911,8 +1844,8 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase (TRI_vocbase_t* vocba
                            name,
                            (TRI_col_type_e) type,
                            (TRI_voc_size_t) vocbase->_settings.defaultMaximalSize,
-                           NULL);
-    collection = TRI_CreateCollectionVocBase(vocbase, &parameter, 0, generatingServer);
+                           nullptr);
+    collection = TRI_CreateCollectionVocBase(vocbase, &parameter, 0);
     TRI_FreeCollectionInfoOptions(&parameter);
 
     return collection;
@@ -1930,8 +1863,7 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase (TRI_vocbase_t* vocba
 
 TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
                                                 TRI_col_info_t* parameters,
-                                                TRI_voc_cid_t cid,
-                                                TRI_server_id_t generatingServer) {
+                                                TRI_voc_cid_t cid) {
   TRI_ASSERT(parameters != nullptr);
 
   // check that the name does not contain any strange characters
@@ -1943,7 +1875,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
 
   TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
 
-  TRI_vocbase_col_t* collection = CreateCollection(vocbase, parameters, cid, generatingServer);
+  TRI_vocbase_col_t* collection = CreateCollection(vocbase, parameters, cid);
 
   TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
 
@@ -2036,9 +1968,7 @@ int TRI_UnloadCollectionVocBase (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
-                               TRI_vocbase_col_t* collection,
-                               TRI_server_id_t generatingServer) {
-  int res;
+                               TRI_vocbase_col_t* collection) {
 
   if (! collection->_canDrop) {
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
@@ -2054,7 +1984,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
 
   if (collection->_status == TRI_VOC_COL_STATUS_DELETED) {
     // mark collection as deleted
-    UnregisterCollection(vocbase, collection, generatingServer);
+    UnregisterCollection(vocbase, collection);
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -2071,7 +2001,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
     TRI_col_info_t info;
     char* tmpFile;
 
-    res = TRI_LoadCollectionInfo(collection->_path, &info, true);
+    int res = TRI_LoadCollectionInfo(collection->_path, &info, true);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -2108,7 +2038,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
     }
 
     collection->_status = TRI_VOC_COL_STATUS_DELETED;
-    UnregisterCollection(vocbase, collection, generatingServer);
+    UnregisterCollection(vocbase, collection);
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -2141,7 +2071,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
     }
 
     // try again with changed status
-    return TRI_DropCollectionVocBase(vocbase, collection, generatingServer);
+    return TRI_DropCollectionVocBase(vocbase, collection);
   }
 
   // .............................................................................
@@ -2151,7 +2081,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
   else if (collection->_status == TRI_VOC_COL_STATUS_LOADED || collection->_status == TRI_VOC_COL_STATUS_UNLOADING) {
     collection->_collection->_info._deleted = true;
 
-    res = TRI_UpdateCollectionInfo(vocbase, collection->_collection, nullptr);
+    int res = TRI_UpdateCollectionInfo(vocbase, collection->_collection, nullptr);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
@@ -2163,7 +2093,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
 
     collection->_status = TRI_VOC_COL_STATUS_DELETED;
 
-    UnregisterCollection(vocbase, collection, generatingServer);
+    UnregisterCollection(vocbase, collection);
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -2205,8 +2135,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
 int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
                                  TRI_vocbase_col_t* collection,
                                  char const* newName,
-                                 bool override,
-                                 TRI_server_id_t generatingServer) {
+                                 bool doOverride) {
   char* oldName;
   int res;
 
@@ -2233,7 +2162,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
     return TRI_ERROR_NO_ERROR;
   }
 
-  if (! override) {
+  if (! doOverride) {
     bool isSystem;
     isSystem = TRI_IsSystemNameCollection(oldName);
 
@@ -2259,7 +2188,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
 
   TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
 
-  res = RenameCollection(vocbase, collection, oldName, newName, generatingServer);
+  res = RenameCollection(vocbase, collection, oldName, newName);
 
   TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
 

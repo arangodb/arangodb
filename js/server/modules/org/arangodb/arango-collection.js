@@ -60,11 +60,12 @@ var ArangoDatabase = require("org/arangodb/arango-database").ArangoDatabase;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts collection into an array
-///
-/// @FUN{@FA{collection}.toArray()}
+/// @startDocuBlock collectionToArray
+/// `collection.toArray()`
 ///
 /// Converts the collection into an array of documents. Never use this call
 /// in a production environment.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.toArray = function () {
@@ -89,16 +90,18 @@ ArangoCollection.prototype.toArray = function () {
 /// Truncates a *collection*, removing all documents but keeping all its
 /// indexes.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Truncates a collection:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionTruncate}
-///   col = db.examples;
+/// ~ db._create("example");
+///   col = db.example;
 ///   col.save({ "Hello" : "World" });
 ///   col.count();
 ///   col.truncate();
 ///   col.count();
+/// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -249,10 +252,11 @@ function getEdges (collection, vertex, direction) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all edges connected to a vertex
+/// @startDocuBlock collectionEdgesAll
+/// `collection.edges(vertex-id)`
 ///
-/// @FUN{@FA{collection}.edges(@FA{vertex-id})}
-///
-/// Returns all edges connected to the vertex specified by @FA{vertex-id}.
+/// Returns all edges connected to the vertex specified by *vertex-id*.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.edges = function (vertex) {
@@ -261,10 +265,11 @@ ArangoCollection.prototype.edges = function (vertex) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns inbound edges connected to a vertex
+/// @startDocuBlock collectionEdgesInbound
+/// `collection.edges(vertex-id)`
 ///
-/// @FUN{@FA{collection}.edges(@FA{vertex-id})}
-///
-/// Returns inbound edges connected to the vertex specified by @FA{vertex-id}.
+/// Returns inbound edges connected to the vertex specified by *vertex-id*.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.inEdges = function (vertex) {
@@ -273,10 +278,11 @@ ArangoCollection.prototype.inEdges = function (vertex) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns outbound edges connected to a vertex
+/// @startDocuBlock collectionEdgesOutbound
+/// `collection.edges(vertex-id)`
 ///
-/// @FUN{@FA{collection}.edges(@FA{vertex-id})}
-///
-/// Returns outbound edges connected to the vertex specified by @FA{vertex-id}.
+/// Returns outbound edges connected to the vertex specified by *vertex-id*.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.outEdges = function (vertex) {
@@ -289,7 +295,7 @@ ArangoCollection.prototype.outEdges = function (vertex) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns any document from a collection
-/// @startDocuBlock documents_collectionAny
+/// @startDocuBlock documentsCollectionAny
 /// `collection.any()`
 ///
 /// Returns a random document from the collection or *null* if none exists.
@@ -333,7 +339,6 @@ ArangoCollection.prototype.any = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_ArangoCollection_prototype_first
-/// 
 /// @brief selects the n first documents in the collection
 /// @startDocuBlock documentsCollectionFirst
 /// `collection.first(count)`
@@ -352,20 +357,22 @@ ArangoCollection.prototype.any = function () {
 /// collection. If the collection does not contain any documents, the result 
 /// returned is *null*.
 ///
-/// Note: this method is not supported in sharded collections with more than
+/// **Note**: this method is not supported in sharded collections with more than
 /// one shard.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-/// arangod> db.example.first(1)
-/// [ { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World" } ]
-/// @endcode
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionFirst}
+/// ~ db._create("example");
+///   db.example.first(1)
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// @code
-/// arangod> db.example.first()
-/// { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World" }
-/// @endcode
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionFirstNull}
+/// ~ db._create("example");
+///   arangod> db.example.first()
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -497,22 +504,25 @@ ArangoCollection.prototype.last = function (count) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_ArangoCollection_prototype_firstExample
-///
 /// @brief constructs a query-by-example for a collection
-///
-/// @FUN{@FA{collection}.firstExample(@FA{example})}
+/// @startDocuBlock collectionFirstExample
+/// `collection.firstExample(example)`
 ///
 /// Returns the first document of a collection that matches the specified 
-/// example or @LIT{null}. The example must be specified as paths and values. 
+/// example or *null*. The example must be specified as paths and values. 
 /// See @FN{byExample} for details.
 ///
-/// @FUN{@FA{collection}.firstExample(@FA{path1}, @FA{value1}, ...)}
+/// `collection.firstExample(path1, value1, ...)`
 ///
 /// As alternative you can supply a list of paths and values.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @TINYEXAMPLE{shell-simple-query-first-example,finds a document with a given name}
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionFirstExample}
+///   db.users.firstExample("name", 1237);
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.firstExample = function (example) {

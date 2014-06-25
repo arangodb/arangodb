@@ -189,22 +189,29 @@ ArangoCollection.prototype.toString = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs an all query for a collection
-///
-/// @FUN{all()}
+/// @startDocuBlock collectionAll
+/// `collection.all()`
 ///
 /// Selects all documents of a collection and returns a cursor. You can use
-/// @FN{toArray}, @FN{next}, or @FN{hasNext} to access the result. The result
-/// can be limited using the @FN{skip} and @FN{limit} operator.
+/// *toArray*, *next*, or *hasNext* to access the result. The result
+/// can be limited using the *skip* and *limit* operator.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// Use @FN{toArray} to get all documents at once:
+/// Use *toArray* to get all documents at once:
 ///
-/// @verbinclude simple3
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionAll}
+///   db.five.all();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// Use @FN{next} to loop over all documents:
+/// Use *next* to loop over all documents:
 ///
-/// @verbinclude simple4
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionAllNext}
+///   var a = db.five.all().toArray();
+///   while (a.hasNext()) print(a.next());
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.all = function () {
@@ -213,58 +220,68 @@ ArangoCollection.prototype.all = function () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a query-by-example for a collection
-///
-/// @FUN{@FA{collection}.byExample(@FA{example})}
+/// @startDocuBlock collectionByExample
+/// `collection.byExample(example)`
 ///
 /// Selects all documents of a collection that match the specified
 /// example and returns a cursor. 
 ///
-/// You can use @FN{toArray}, @FN{next}, or @FN{hasNext} to access the
-/// result. The result can be limited using the @FN{skip} and @FN{limit}
+/// You can use *toArray*, *next*, or *hasNext* to access the
+/// result. The result can be limited using the *skip* and *limit*
 /// operator.
 ///
-/// An attribute name of the form @LIT{a.b} is interpreted as attribute path,
+/// An attribute name of the form *a.b* is interpreted as attribute path,
 /// not as attribute. If you use 
 /// 
-/// @LIT{{ a : { c : 1 } }} 
+/// *{ a : { c : 1 } }*
 ///
 /// as example, then you will find all documents, such that the attribute
-/// @LIT{a} contains a document of the form @LIT{{c : 1 }}. For example the document
+/// *a* contains a document of the form *{c : 1 }*. For example the document
 ///
-/// @LIT{{ a : { c : 1 }\, b : 1 }} 
+/// *{ a : { c : 1 }\, b : 1 }*
 ///
 /// will match, but the document 
 ///
-/// @LIT{{ a : { c : 1\, b : 1 } }}
+/// *{ a : { c : 1\, b : 1 } }*
 ///
 /// will not.
 ///
 /// However, if you use 
 ///
-/// @LIT{{ a.c : 1 }}, 
+/// *{ a.c : 1 }*, 
 ///
-/// then you will find all documents, which contain a sub-document in @LIT{a}
-/// that has an attribute @LIT{c} of value @LIT{1}. Both the following documents 
+/// then you will find all documents, which contain a sub-document in *a*
+/// that has an attribute *c* of value *1*. Both the following documents 
 ///
-/// @LIT{{ a : { c : 1 }\, b : 1 }} and 
+/// *{ a : { c : 1 }\, b : 1 }* and 
 ///
-/// @LIT{{ a : { c : 1\, b : 1 } }}
+/// *{ a : { c : 1\, b : 1 } }*
 ///
 /// will match.
 ///
-/// @FUN{@FA{collection}.byExample(@FA{path1}, @FA{value1}, ...)}
+/// `collection.byExample(path1, value1, ...)`
 ///
 /// As alternative you can supply a list of paths and values.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// Use @FN{toArray} to get all documents at once:
+/// Use *toArray* to get all documents at once:
 ///
-/// @TINYEXAMPLE{simple18,convert into a list}
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionByExample}
+///   db.users.all().toArray();
+///   db.users.byExample({ "id" : 323 }).toArray();
+///   db.users.byExample({ "name" : "Peter" }).toArray();
+///   db.users.byExample({ "name" : "Peter", "id" : 535 }).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// Use @FN{next} to loop over all documents:
+/// Use *next* to loop over all documents:
 ///
-/// @TINYEXAMPLE{simple19,iterate over the result-set}
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionByExampleNext}
+///   var a = db.users.byExample( {"name" : "Peter" } );
+///   while (a.hasNext()) print(a.next());
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.byExample = function (example) {
@@ -291,46 +308,47 @@ ArangoCollection.prototype.byExample = function (example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a query-by-example using a hash index
-///
-/// @FUN{@FA{collection}.byExampleHash(@FA{index, example})}
+/// @startDocuBLock collectionByExampleHash
+/// `collection.byExampleHash(index, example)`
 ///
 /// Selects all documents from the specified hash index that match the 
 /// specified example example and returns a cursor. 
 ///
-/// You can use @FN{toArray}, @FN{next}, or @FN{hasNext} to access the
-/// result. The result can be limited using the @FN{skip} and @FN{limit}
+/// You can use *toArray*, *next*, or *hasNext* to access the
+/// result. The result can be limited using the *skip* and *limit*
 /// operator.
 ///
-/// An attribute name of the form @LIT{a.b} is interpreted as attribute path,
+/// An attribute name of the form *a.b* is interpreted as attribute path,
 /// not as attribute. If you use 
 /// 
-/// @LIT{{ a : { c : 1 } }} 
+/// *{ a : { c : 1 } }*
 ///
 /// as example, then you will find all documents, such that the attribute
-/// @LIT{a} contains a document of the form @LIT{{c : 1 }}. For example the document
+/// *a* contains a document of the form *{c : 1 }*. For example the document
 ///
-/// @LIT{{ a : { c : 1 }\, b : 1 }} 
+/// *{ a : { c : 1 }\, b : 1 }*
 ///
 /// will match, but the document 
 ///
-/// @LIT{{ a : { c : 1\, b : 1 } }}
+/// *{ a : { c : 1\, b : 1 } }*
 ///
 /// will not.
 ///
 /// However, if you use 
 ///
-/// @LIT{{ a.c : 1 }}, 
+/// *{ a.c : 1 }*, 
 ///
-/// then you will find all documents, which contain a sub-document in @LIT{a}
-/// that has an attribute @LIT{c} of value @LIT{1}. Both the following documents 
+/// then you will find all documents, which contain a sub-document in *a*
+/// that has an attribute @LIT{c} of value *1*. Both the following documents 
 ///
-/// @LIT{{ a : { c : 1 }\, b : 1 }} and 
+/// *{ a : { c : 1 }\, b : 1 }* and 
 ///
-/// @LIT{{ a : { c : 1\, b : 1 } }}
+/// *{ a : { c : 1\, b : 1 } }*
 ///
 /// will match.
 ///
-/// @FUN{@FA{collection}.byExampleHash(@FA{index-id}, @FA{path1}, @FA{value1}, ...)}
+/// `collection.byExampleHash(index-id, path1, value1, ...)`
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.byExampleHash = function (index, example) {
@@ -343,46 +361,47 @@ ArangoCollection.prototype.byExampleHash = function (index, example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a query-by-example using a skiplist index
-///
-/// @FUN{@FA{collection}.byExampleSkiplist(@FA{index, example})}
+/// @startDocuBlock collectionByExampleSkiplist
+/// `collection}.byExampleSkiplist(index, example)
 ///
 /// Selects all documents from the specified skiplist index that match the 
 /// specified example example and returns a cursor. 
 ///
-/// You can use @FN{toArray}, @FN{next}, or @FN{hasNext} to access the
-/// result. The result can be limited using the @FN{skip} and @FN{limit}
+/// You can use *toArray*, *next*, or *hasNext* to access the
+/// result. The result can be limited using the *skip* and *limit*
 /// operator.
 ///
-/// An attribute name of the form @LIT{a.b} is interpreted as attribute path,
+/// An attribute name of the form *a.b* is interpreted as attribute path,
 /// not as attribute. If you use 
 /// 
-/// @LIT{{ a : { c : 1 } }} 
+/// *{ a : { c : 1 } }*
 ///
 /// as example, then you will find all documents, such that the attribute
-/// @LIT{a} contains a document of the form @LIT{{c : 1 }}. For example the document
+/// *a* contains a document of the form *{c : 1 }*. For example the document
 ///
-/// @LIT{{ a : { c : 1 }\, b : 1 }} 
+/// *{ a : { c : 1 }\, b : 1 }*
 ///
 /// will match, but the document 
 ///
-/// @LIT{{ a : { c : 1\, b : 1 } }}
+/// *{ a : { c : 1\, b : 1 } }*
 ///
 /// will not.
 ///
 /// However, if you use 
 ///
-/// @LIT{{ a.c : 1 }}, 
+/// *{ a.c : 1 }*, 
 ///
-/// then you will find all documents, which contain a sub-document in @LIT{a}
-/// that has an attribute @LIT{c} of value @LIT{1}. Both the following documents 
+/// then you will find all documents, which contain a sub-document in *a*
+/// that has an attribute @LIT{c} of value *1*. Both the following documents 
 ///
-/// @LIT{{ a : { c : 1 }\, b : 1 }} and 
+/// *{ a : { c : 1 }\, b : 1 }*and 
 ///
-/// @LIT{{ a : { c : 1\, b : 1 } }}
+/// *{ a : { c : 1\, b : 1 } }*
 ///
 /// will match.
 ///
-/// @FUN{@FA{collection}.byExampleHash(@FA{index-id}, @FA{path1}, @FA{value1}, ...)}
+/// `collection.byExampleHash(index-id, path1, value1, ...)`
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.byExampleSkiplist = function (index, example) {
@@ -395,46 +414,47 @@ ArangoCollection.prototype.byExampleSkiplist = function (index, example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a query-by-example using a bitarray index
-///
-/// @FUN{@FA{collection}.byExampleBitarray(@FA{index, example})}
+/// @startDocuBlock collectionByExampleBitArray
+/// `collection.byExampleBitarray(index, example)`
 ///
 /// Selects all documents from the specified bitarray index that match the 
 /// specified example example and returns a cursor. 
 ///
-/// You can use @FN{toArray}, @FN{next}, or @FN{hasNext} to access the
-/// result. The result can be limited using the @FN{skip} and @FN{limit}
+/// You can use *toArray*, *next*, or *hasNext* to access the
+/// result. The result can be limited using the *skip* and *limit*
 /// operator.
 ///
-/// An attribute name of the form @LIT{a.b} is interpreted as attribute path,
+/// An attribute name of the form *a.b* is interpreted as attribute path,
 /// not as attribute. If you use 
 /// 
-/// @LIT{{ a : { c : 1 } }} 
+/// *{ a : { c : 1 } }*
 ///
 /// as example, then you will find all documents, such that the attribute
-/// @LIT{a} contains a document of the form @LIT{{c : 1 }}. For example the document
+/// *a* contains a document of the form *{c : 1 }*. For example the document
 ///
-/// @LIT{{ a : { c : 1 }\, b : 1 }} 
+/// *{ a : { c : 1 }\, b : 1 }*
 ///
 /// will match, but the document 
 ///
-/// @LIT{{ a : { c : 1\, b : 1 } }}
+/// *{ a : { c : 1\, b : 1 } }*
 ///
 /// will not.
 ///
 /// However, if you use 
 ///
-/// @LIT{{ a.c : 1 }}, 
+/// *{ a.c : 1 }*, 
 ///
-/// then you will find all documents, which contain a sub-document in @LIT{a}
-/// that has an attribute @LIT{c} of value @LIT{1}. Both the following documents 
+/// then you will find all documents, which contain a sub-document in *a*
+/// that has an attribute @LIT{c} of value *1*. Both the following documents 
 ///
-/// @LIT{{ a : { c : 1 }\, b : 1 }} and 
+/// *{ a : { c : 1 }\, b : 1 }*and 
 ///
-/// @LIT{{ a : { c : 1\, b : 1 } }}
+/// *{ a : { c : 1\, b : 1 } }*
 ///
 /// will match.
 ///
-/// @FUN{@FA{collection}.byExampleHash(@FA{index-id}, @FA{path1}, @FA{value1}, ...)}
+/// `collection.byExampleHash(index-id, path1, value1, ...)`
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.byExampleBitarray = function (index, example) {
@@ -471,28 +491,32 @@ ArangoCollection.prototype.byConditionBitarray = function (index, condition) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a range query for a collection
+/// @startDocuBlock collectionRange
+/// `collection.range(attribute, left, right)`
 ///
-/// @FUN{@FA{collection}.range(@FA{attribute}, @FA{left}, @FA{right})}
+/// Selects all documents of a collection such that the *attribute* is
+/// greater or equal than *left* and strictly less than *right*.
 ///
-/// Selects all documents of a collection such that the @FA{attribute} is
-/// greater or equal than @FA{left} and strictly less than @FA{right}.
-///
-/// You can use @FN{toArray}, @FN{next}, or @FN{hasNext} to access the
-/// result. The result can be limited using the @FN{skip} and @FN{limit}
+/// You can use *toArray*, *next*, or *hasNext* to access the
+/// result. The result can be limited using the *skip* and *limit*
 /// operator.
 ///
-/// An attribute name of the form @LIT{a.b} is interpreted as attribute path,
+/// An attribute name of the form *a.b* is interpreted as attribute path,
 /// not as attribute.
 ///
 /// For range queries it is required that a skiplist index is present for the
 /// queried attribute. If no skiplist index is present on the attribute, an
 /// error will be thrown.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// Use @FN{toArray} to get all documents at once:
+/// Use *toArray* to get all documents at once:
 ///
-/// @TINYEXAMPLE{simple-query-range-to-array,convert into a list}
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionRange}
+/// l = db.skip.range("age", 10, 13).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.range = function (name, left, right) {
@@ -501,24 +525,25 @@ ArangoCollection.prototype.range = function (name, left, right) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a closed range query for a collection
+/// @startDocuBlock
+/// `collection.closedRange(attribute, left, right)`
 ///
-/// @FUN{@FA{collection}.closedRange(@FA{attribute}, @FA{left}, @FA{right})}
+/// Selects all documents of a collection such that the *attribute* is
+/// greater or equal than *left* and less or equal than *right*.
 ///
-/// Selects all documents of a collection such that the @FA{attribute} is
-/// greater or equal than @FA{left} and less or equal than @FA{right}.
-///
-/// You can use @FN{toArray}, @FN{next}, or @FN{hasNext} to access the
-/// result. The result can be limited using the @FN{skip} and @FN{limit}
+/// You can use *toArray*, *next*, or *hasNext* to access the
+/// result. The result can be limited using the *skip* and *limit*
 /// operator.
 ///
-/// An attribute name of the form @LIT{a.b} is interpreted as attribute path,
+/// An attribute name of the form *a.b* is interpreted as attribute path,
 /// not as attribute.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// Use @FN{toArray} to get all documents at once:
+/// Use *toArray* to get all documents at once:
 ///
 /// @TINYEXAMPLE{simple-query-closed-range-to-array,convert into a list}
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.closedRange = function (name, left, right) {
@@ -527,45 +552,43 @@ ArangoCollection.prototype.closedRange = function (name, left, right) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a geo index selection
+/// @startDocuBlock collectionGeo
+/// `collection.geo(location-attribute)`
 ///
-/// @FUN{@FA{collection}.geo(@FA{location-attribute})}
-//////////////////////////////////////////////////////
+/// Looks up a geo index defined on attribute *location-attribute*.
 ///
-/// Looks up a geo index defined on attribute @FA{location-attribute}.
-///
-/// Returns a geo index object if an index was found. The @FN{near} or 
-/// @FN{within} operators can then be used to execute a geo-spatial query on 
+/// Returns a geo index object if an index was found. The *near* or 
+/// *within* operators can then be used to execute a geo-spatial query on 
 /// this particular index.
 ///
 /// This is useful for collections with multiple defined geo indexes.
 ///
-/// @FUN{@FA{collection}.geo(@FA{location-attribute}, @LIT{true})}
-//////////////////////////////////////////////////////////////////
+/// `collection.geo(location-attribute, true)`
 ///
-/// Looks up a geo index on a compound attribute @FA{location-attribute}.
+/// Looks up a geo index on a compound attribute *location-attribute*.
 ///
-/// Returns a geo index object if an index was found. The @FN{near} or 
-/// @FN{within} operators can then be used to execute a geo-spatial query on 
+/// Returns a geo index object if an index was found. The *near* or 
+/// *within* operators can then be used to execute a geo-spatial query on 
 /// this particular index.
 ///
-/// @FUN{@FA{collection}.geo(@FA{latitude-attribute}, @FA{longitude-attribute})}
-////////////////////////////////////////////////////////////////////////////////
+/// `collection.geo(latitude-attribute, longitude-attribute)`
 ///
-/// Looks up a geo index defined on the two attributes @FA{latitude-attribute}
-/// and @FA{longitude-attribute}.
+/// Looks up a geo index defined on the two attributes *latitude-attribute*
+/// and *longitude-attribute*.
 ///
-/// Returns a geo index object if an index was found. The @FN{near} or 
-/// @FN{within} operators can then be used to execute a geo-spatial query on 
+/// Returns a geo index object if an index was found. The *near* or 
+/// *within* operators can then be used to execute a geo-spatial query on 
 /// this particular index.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// Assume you have a location stored as list in the attribute @LIT{home}
-/// and a destination stored in the attribute @LIT{work}. Then you can use the
-/// @FN{geo} operator to select which geo-spatial attributes (and thus which
+/// Assume you have a location stored as list in the attribute *home*
+/// and a destination stored in the attribute *work*. Then you can use the
+/// *geo* operator to select which geo-spatial attributes (and thus which
 /// index) to use in a near query.
 ///
 /// @TINYEXAMPLE{simple-query-geo,use a specific index}
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.geo = function(loc, order) {
@@ -632,54 +655,51 @@ ArangoCollection.prototype.geo = function(loc, order) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a near query for a collection
-///
-/// @FUN{@FA{collection}.near(@FA{latitude}, @FA{longitude})}
-/////////////////////////////////////////////////////////////
+/// @startDocuBlock collectionNear
+/// `collection.near(latitude, longitude)`
 ///
 /// The returned list is sorted according to the distance, with the nearest 
-/// document to the coordinate (@FA{latitude}, @FA{longitude}) coming first. 
+/// document to the coordinate (*latitude*, *longitude*) coming first. 
 /// If there are near documents of equal distance, documents are chosen randomly 
 /// from this set until the limit is reached. It is possible to change the limit 
-/// using the @FA{limit} operator.
+/// using the *limit* operator.
 ///
-/// In order to use the @FN{near} operator, a geo index must be defined for the
+/// In order to use the *near* operator, a geo index must be defined for the
 /// collection. This index also defines which attribute holds the coordinates
 /// for the document.  If you have more then one geo-spatial index, you can use
-/// the @FN{geo} operator to select a particular index.
+/// the *geo* operator to select a particular index.
 ///
-/// @note @FN{near} does not support negative skips. However, you can still use
-/// @FN{limit} followed to @FN{skip}.
+/// **Note**: *near* does not support negative skips. However, you can still use
+/// *limit* followed to *skip*.
 ///
-/// @FUN{@FA{collection}.near(@FA{latitude}, @FA{longitude}).limit(@FA{limit})}
-///////////////////////////////////////////////////////////////////////////////
+/// `collection.near(latitude, longitude).limit(limit)`
 ///
-/// Limits the result to @FA{limit} documents instead of the default 100.
+/// Limits the result to limit documents instead of the default 100.
 ///
-/// @note Unlike with multiple explicit limits, @FA{limit} will raise
-/// the implicit default limit imposed by @FN{within}.
+/// **Note**: Unlike with multiple explicit limits, limit} will raise
+/// the implicit default limit imposed by *within*.
 ///
-/// @FUN{@FA{collection}.near(@FA{latitude}, @FA{longitude}).distance()}
-////////////////////////////////////////////////////////////////////////
+/// `collection.near(latitude, longitude).distance()`
 ///
-/// This will add an attribute @LIT{distance} to all documents returned, which
+/// This will add an attribute *distance* to all documents returned, which
 /// contains the distance between the given point and the document in meter.
 ///
-/// @FUN{@FA{collection}.near(@FA{latitude}, @FA{longitude}).distance(@FA{name})}
-/////////////////////////////////////////////////////////////////////////////////
+/// `collection.near(latitude, longitude).distance(name)`
 ///
-/// This will add an attribute @FA{name} to all documents returned, which
+/// This will add an attribute *name* to all documents returned, which
 /// contains the distance between the given point and the document in meter.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// To get the nearst two locations:
 ///
 /// @TINYEXAMPLE{simple-query-near,nearest two location}
 ///
-/// If you need the distance as well, then you can use the @FN{distance}
+/// If you need the distance as well, then you can use the *distance*
 /// operator:
 ///
 /// @TINYEXAMPLE{simple-query-near2,nearest two location with distance in meter}
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.near = function (lat, lon) {
@@ -688,36 +708,34 @@ ArangoCollection.prototype.near = function (lat, lon) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a within query for a collection
-///
-/// @FUN{@FA{collection}.within(@FA{latitude}, @FA{longitude}, @FA{radius})}
-////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock collectionWithin
+/// `collection.within(latitude, longitude, radius)`
 ///
 /// This will find all documents within a given radius around the coordinate
-/// (@FA{latitude}, @FA{longitude}). The returned list is sorted by distance,
+/// (*latitude*, *longitude*). The returned list is sorted by distance,
 /// beginning with the nearest document. 
 ///
-/// In order to use the @FN{within} operator, a geo index must be defined for the
+/// In order to use the *within* operator, a geo index must be defined for the
 /// collection. This index also defines which attribute holds the coordinates
 /// for the document.  If you have more then one geo-spatial index, you can use
-/// the @FN{geo} operator to select a particular index.
+/// the *geo* operator to select a particular index.
 ///
-/// @FUN{@FA{collection}.within(@FA{latitude}, @FA{longitude}, @FA{radius})@LATEXBREAK.distance()}
-//////////////////////////////////////////////////////////////////////////////////////////////////
+/// `collection.within(latitude, longitude, radius).distance()`
 ///
-/// This will add an attribute @LIT{_distance} to all documents returned, which
+/// This will add an attribute *_distance* to all documents returned, which
 /// contains the distance between the given point and the document in meter.
 ///
-/// @FUN{@FA{collection}.within(@FA{latitude}, @FA{longitude}, @FA{radius})@LATEXBREAK.distance(@FA{name})}
-///////////////////////////////////////////////////////////////////////////////////////////////////////////
+/// `collection.within(latitude, longitude, radius).distance(name)`
 ///
-/// This will add an attribute @FA{name} to all documents returned, which
+/// This will add an attribute *name* to all documents returned, which
 /// contains the distance between the given point and the document in meter.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// To find all documents within a radius of 2000 km use:
 ///
 /// @TINYEXAMPLE{simple-query-within,within a radius}
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.within = function (lat, lon, radius) {
@@ -726,9 +744,8 @@ ArangoCollection.prototype.within = function (lat, lon, radius) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a fulltext query for a collection
-///
-/// @FUN{@FA{collection}.fulltext(@FA{attribute}, @FA{query})}
-////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock collectionFulltext
+/// `collection.fulltext(attribute, query)`
 ///
 /// This will find the documents from the collection's fulltext index that match the search
 /// query.
@@ -737,11 +754,12 @@ ArangoCollection.prototype.within = function (lat, lon, radius) {
 /// collection, for the specified attribute. If multiple fulltext indexes are defined
 /// for the collection and attribute, the most capable one will be selected.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// To find all documents which contain the terms @LIT{text} and @LIT{word}:
+/// To find all documents which contain the terms *text* and *word*:
 ///
 /// @TINYEXAMPLE{simple-query-fulltext,complete match query}
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.fulltext = function (attribute, query, iid) {
@@ -750,22 +768,22 @@ ArangoCollection.prototype.fulltext = function (attribute, query, iid) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterators over some elements of a collection
-///
-/// @FUN{@FA{collection}.iterate(@FA{iterator}, @FA{options})}
+/// @startDocuBlock collectionIterate
+/// `collection.iterate(iterator, options)`
 ///
 /// Iterates over some elements of the collection and apply the function
-/// @FA{iterator} to the elements. The function will be called with the
+/// *iterator* to the elements. The function will be called with the
 /// document as first argument and the current number (starting with 0)
 /// as second argument.
 ///
-/// @FA{options} must be an object with the following attributes:
+/// *options* must be an object with the following attributes:
 ///
-/// - @LIT{limit} (optional, default none): use at most @LIT{limit} documents.
+/// - *limit* (optional, default none): use at most *limit* documents.
 ///
-/// - @LIT{probability} (optional, default all): a number between @LIT{0} and
-///   @LIT{1}. Documents are chosen with this probability.
+/// - *probability* (optional, default all): a number between *0* and
+///   *1*. Documents are chosen with this probability.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @code
 /// arango> db.example.getIndexes().map(function(x) { return x.id; });
@@ -773,6 +791,7 @@ ArangoCollection.prototype.fulltext = function (attribute, query, iid) {
 /// arango> db.example.index("93013/0");
 /// { "id" : "93013/0", "type" : "primary", "fields" : ["_id"] }
 /// @endcode
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.iterate = function (iterator, options) {
@@ -861,7 +880,7 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes documents matching an example
-/// @startDocuBlock documents_collectionRemoveByExample
+/// @startDocuBlock documentsCollectionRemoveByExample
 /// `collection.removeByExample(example)`
 ///
 /// Removes all documents matching an example.
@@ -886,11 +905,12 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
 /// number of documents in the collection, it is undefined which documents are
 /// removed.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @code
 /// arangod> db.content.removeByExample({ "domain": "de.celler" })
 /// @endcode
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.removeByExample = function (example, waitForSync, limit) {
@@ -899,7 +919,7 @@ ArangoCollection.prototype.removeByExample = function (example, waitForSync, lim
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces documents matching an example
-/// @startDocuBlock documents_collectionReplaceByExample
+/// @startDocuBlock documentsCollectionReplaceByExample
 /// `collection.replaceByExample(example, newValue)`
 ///
 /// Replaces all documents matching an example with a new document body.
@@ -927,11 +947,12 @@ ArangoCollection.prototype.removeByExample = function (example, waitForSync, lim
 /// the number of documents in the collection, it is undefined which documents are
 /// replaced.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @code
 /// arangod> db.content.replaceByExample({ "domain": "de.celler" }, { "foo": "someValue }, false, 5)
 /// @endcode
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.replaceByExample = function (example, newValue, waitForSync, limit) {
@@ -940,7 +961,7 @@ ArangoCollection.prototype.replaceByExample = function (example, newValue, waitF
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief partially updates documents matching an example
-/// @startDocuBlock documents_collectionUpdateByExample
+/// @startDocuBlock documentsCollectionUpdateByExample
 /// `collection.updateByExample(example, newValue`
 ///
 /// Partially updates all documents matching an example with a new document body.
@@ -975,11 +996,12 @@ ArangoCollection.prototype.replaceByExample = function (example, newValue, waitF
 /// the number of documents in the collection, it is undefined which documents are
 /// updated.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @code
 /// arangod> db.content.updateByExample({ "domain": "de.celler" }, { "foo": "someValue, "domain": null }, false)
 /// @endcode
+/// endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.updateByExample = function (example, newValue, keepNull, waitForSync, limit) {

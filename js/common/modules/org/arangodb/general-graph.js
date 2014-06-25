@@ -1505,7 +1505,7 @@ var _edgeDefinitions = function () {
 ///
 /// *Parameter*
 ///
-/// * *edgeDefinitions*: An list of relation definition objects.
+/// * *edgeDefinitions*: A list of relation definition objects.
 /// * *relationX*: An object representing a definition of one relation in the graph
 ///
 /// *Examples*
@@ -1537,6 +1537,44 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new graph
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_how_to_create
+///
+/// * Create a graph
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphHowTo1}
+///   var graph_module = require("org/arangodb/general-graph");
+///   var graph = graph_module._create("myGraph");
+///   graph;
+/// ~ graph_module._drop("myGraph");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// * Add some vertex collections
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphHowTo2}
+/// ~ var graph_module = require("org/arangodb/general-graph");
+/// ~ var graph = graph_module._create("myGraph");
+///   graph._addVertexCollection("shop");
+///   graph._addVertexCollection("customer");
+///   graph._addVertexCollection("pet");
+///   graph;
+/// ~ graph_module._drop("myGraph");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// * Define relations on the
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphHowTo3}
+/// ~ var graph_module = require("org/arangodb/general-graph");
+/// ~ var graph = graph_module._create("myGraph");
+///   var rel = graph_module._directedRelation("isCustomer", ["shop"], ["customer"]);
+///   graph._extendEdgeDefinitions(rel);
+///   graph;
+/// ~ graph_module._drop("myGraph");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1903,7 +1941,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 ///
 /// *Parameter*
 ///
-/// * *data*: Json data of vertex.
+/// * *data*: JSON data of vertex.
 ///
 /// *Examples*
 ///
@@ -1924,7 +1962,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 /// *Parameter*
 ///
 /// * *vertexId*: *_id* attribute of the vertex
-/// * *data*: Json data of vertex.
+/// * *data*: JSON data of vertex.
 /// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
@@ -1947,7 +1985,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 /// *Parameter*
 ///
 /// * *vertexId*: *_id* attribute of the vertex
-/// * *data*: Json data of vertex.
+/// * *data*: JSON data of vertex.
 /// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
@@ -1999,7 +2037,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 ///
 /// * *from*: *_id* attribute of the source vertex
 /// * *to*: *_id* attribute of the target vertex
-/// * *data*: Json data of the edge
+/// * *data*: JSON data of the edge
 /// * *options* (optional): See [collection documentation](../Edges/EdgeMethods.md)
 ///
 /// *Examples*
@@ -2030,7 +2068,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 /// *Parameter*
 ///
 /// * *edgeId*: *_id* attribute of the edge
-/// * *data*: Json data of the edge
+/// * *data*: JSON data of the edge
 /// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
@@ -2053,7 +2091,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 /// *Parameter*
 ///
 /// * *edgeId*: *_id* attribute of the edge
-/// * *data*: Json data of the edge
+/// * *data*: JSON data of the edge
 /// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
@@ -2898,7 +2936,7 @@ Graph.prototype._commonProperties = function(vertex1Example, vertex2Example, opt
 /// graph._countCommonProperties({}, {});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, all german cities which share same properties except for population.
+/// A route planner example, all German cities which share same properties except for population.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAmountProperties2}
 /// ~ var db = require("internal").db;
@@ -2939,10 +2977,221 @@ Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example
 
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_paths
+///
+/// `graph._paths (options)`
+/// *The _paths function returns all paths of a graph.*
+///
+/// This function determines all available paths in a graph.
+///
+/// *Parameters*
+///
+/// * *options* (optional)    : An object containing options, see below:
+///   * *direction*        : The direction of the edges. Possible values are *any*,
+/// *inbound* and *outbound* (default).
+///   * *followCycles* (optional) : If set to *true* the query follows cycles in the graph,
+/// default is false.
+///   * *minLength* (optional)     : Defines the minimal length a path must
+/// have to be returned (default is 0).
+///   * *maxLength* (optional)     : Defines the maximal length a path must
+/// have to be returned (default is 10).
+///
+/// *Examples*
+///
+/// Return all paths of the graph "social":
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModulePaths}
+/// ~ var db = require("internal").db;
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   g._paths();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// Return all inbound paths of the graph "social" with a maximal
+/// length of 1 and a minimal length of 2:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModulePaths2}
+/// ~ var db = require("internal").db;
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("social");
+///   g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
+//
+////////////////////////////////////////////////////////////////////////////////
+Graph.prototype._paths = function(options) {
+  var query = "RETURN"
+    + " GRAPH_PATHS(@graphName"
+    + ',@options'
+    + ')';
+  options = options || {};
+  var bindVars = {
+    "graphName": this.__name,
+    "options": options
+  };
+  var result = db._query(query, bindVars).toArray();
+  return result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_shortest_path
+///
+/// `graph._shortestPath (startVertexExample, endVertexExample, options)`
+/// *The _shortestPath function returns all shortest paths of a graph.*
+///
+/// This function determines all shortest paths in a graph.
+/// The function accepts an id, an example, a list of examples
+/// or even an empty example as parameter for
+/// start and end vertex. If one wants to call this function to receive nearly all
+/// shortest paths for a graph the option *algorithm* should be set to
+/// [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm)
+/// to increase performance.
+/// If no algorithm is provided in the options the function chooses the appropriate
+/// one (either [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm)
+/// or [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm)) according to its parameters.
+/// The length of a path is by default the amount of edges from one start vertex to
+/// an end vertex. The option weight allows the user to define an edge attribute
+/// representing the length.
+///
+/// *Parameters*
+///
+/// * *startVertexExample* (optional) : An example for the desired start Vertices
+/// (see [Definition of examples](#definition_of_examples)).
+/// * *endVertexExample* (optional)  : An example for the desired
+/// end Vertices (see [Definition of examples](#definition_of_examples)).
+/// * *options* (optional) : An object containing options, see below:
+///   * *direction*                        : The direction of the edges as a string.
+///   Possible values are *outbound*, *inbound* and *any* (default).
+///   * *edgeCollectionRestriction*        : One or multiple edge
+///   collection names. Only edges from these collections will be considered for the path.
+///   * *startVertexCollectionRestriction* : One or multiple vertex
+///   collection names. Only vertices from these collections will be considered as
+///   start vertex of a path.
+///   * *endVertexCollectionRestriction*   : One or multiple vertex
+///   collection names. Only vertices from these collections will be considered as
+///   end vertex of a path.
+///   * *edgeExamples*                     : A filter example for the
+///   edges in the shortest paths
+///   (see [example](#short_explaination_of_the_vertex_example_parameter)).
+///   * *algorithm*                        : The algorithm to calculate
+///   the shortest paths. If both start and end vertex examples are empty
+///   [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) is
+///   used, otherwise the default is [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm)
+///   * *weight*                           : The name of the attribute of
+///   the edges containing the length as a string.
+///   * *defaultWeight*                    : Only used with the option *weight*.
+///   If an edge does not have the attribute named as defined in option *weight* this default
+///   is used as length.
+///   If no default is supplied the default would be positive Infinity so the path could
+///   not be calculated.
+///
+/// *Examples*
+///
+/// A route planner example, shortest path from all german to all french cities:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleShortestPaths1}
+/// ~ var db = require("internal").db;
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+/// | g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestriction : 'frenchCity',
+///   startVertexCollectionRestriction : 'germanCity'});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, shortest path from Hamburg and Cologne to Lyon:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleShortestPaths2}
+/// ~ var db = require("internal").db;
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+/// | g._shortestPath([{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'}], 'frenchCity/Lyon',
+///   {weight : 'distance'});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
+////////////////////////////////////////////////////////////////////////////////
+Graph.prototype._shortestPath = function(startVertexExample, endVertexExample, options) {
+  var ex1 = transformExample(startVertexExample);
+  var ex2 = transformExample(endVertexExample);
+  var query = "RETURN"
+    + " GRAPH_SHORTEST_PATH(@graphName"
+    + ',@ex1'
+    + ',@ex2'
+    + ',@options'
+    + ')';
+  options = options || {};
+  var bindVars = {
+    "graphName": this.__name,
+    "options": options,
+    "ex1": ex1,
+    "ex2": ex2
+  };
+  var result = db._query(query, bindVars).toArray();
+  return result;
+};
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_distance_to
+///
+/// `graph._distanceTo (startVertexExample, endVertexExample, options)`
+/// *The _distanceTo function returns all paths and there distance within a graph.*
+///
+/// This function is a wrapper of [graph._shortestPath](#_shortestpath).
+/// It does not return the actual path but only the distance between two vertices.
+///
+/// *Examples*
+///
+/// A route planner example, shortest distance from all german to all french cities:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleDistanceTo1}
+/// ~ var db = require("internal").db;
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+/// | g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestriction : 'frenchCity',
+///   startVertexCollectionRestriction : 'germanCity'});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// A route planner example, shortest distance from Hamburg and Cologne to Lyon:
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleDistanceTo2}
+/// ~ var db = require("internal").db;
+///   var examples = require("org/arangodb/graph-examples/example-graph.js");
+///   var g = examples.loadGraph("routeplanner");
+/// | g._distanceTo([{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'}], 'frenchCity/Lyon',
+///   {weight : 'distance'});
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+//
+////////////////////////////////////////////////////////////////////////////////
+Graph.prototype._distanceTo = function(startVertexExample, endVertexExample, options) {
+  var ex1 = transformExample(startVertexExample);
+  var ex2 = transformExample(endVertexExample);
+  var query = "RETURN"
+    + " GRAPH_DISTANCE_TO(@graphName"
+    + ',@ex1'
+    + ',@ex2'
+    + ',@options'
+    + ')';
+  options = options || {};
+  var bindVars = {
+    "graphName": this.__name,
+    "options": options,
+    "ex1": ex1,
+    "ex2": ex2
+  };
+  var result = db._query(query, bindVars).toArray();
+  return result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_absolute_eccentricity
+/// 
+/// Get the [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
+/// of the vertices defined by the examples.
+///
 /// `graph._absoluteEccentricity(vertexExample, options)`
-/// *Get the* [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
-/// *of the vertices defined by the examples.*
 ///
 /// The function accepts an id, an example, a list of examples or even an empty
 /// example as parameter for vertexExample.
@@ -2960,7 +3209,8 @@ Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example
 ///       considered for target vertices.
 ///   * *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition_of_examples)
 ///   * *algorithm*: The algorithm to calculate the shortest paths, possible values are
-///        *"Floyd-Warshall"* and *"Dijkstra"*.
+///        [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) and
+///  [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
 ///   * *weight*: The name of the attribute of the edges containing the weight.
 ///   * *defaultWeight*: Only used with the option *weight*.
 ///       If an edge does not have the attribute named as defined in option *weight* this default
@@ -3088,7 +3338,8 @@ Graph.prototype._eccentricity = function(options) {
 ///       considered for target vertices.
 ///   * *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition_of_examples)
 ///   * *algorithm*: The algorithm to calculate the shortest paths, possible values are
-///        *"Floyd-Warshall"* and *"Dijkstra"*.
+///        [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) and
+///  [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
 ///   * *weight*: The name of the attribute of the edges containing the weight.
 ///   * *defaultWeight*: Only used with the option *weight*.
 ///       If an edge does not have the attribute named as defined in option *weight* this default
@@ -3115,7 +3366,7 @@ Graph.prototype._eccentricity = function(options) {
 ///   graph._absoluteCloseness({}, {weight : 'distance'});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, the absolute closeness of all german Cities regarding only
+/// A route planner example, the absolute closeness of all German Cities regarding only
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsCloseness3}
@@ -3336,7 +3587,8 @@ Graph.prototype._betweenness = function(options) {
 /// * *options* (optional): An object defining further options. Can have the following values: 
 ///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *algorithm*: The algorithm to calculate the shortest paths, possible values are
-///        *"Floyd-Warshall"* and *"Dijkstra"*.
+///        [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) and
+///  [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
 ///   * *weight*: The name of the attribute of the edges containing the weight.
 ///   * *defaultWeight*: Only used with the option *weight*.
 ///       If an edge does not have the attribute named as defined in option *weight* this default
@@ -3404,7 +3656,8 @@ Graph.prototype._radius = function(options) {
 /// * *options* (optional): An object defining further options. Can have the following values: 
 ///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *algorithm*: The algorithm to calculate the shortest paths, possible values are
-///        *"Floyd-Warshall"* and *"Dijkstra"*.
+///        [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) and
+///  [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
 ///   * *weight*: The name of the attribute of the edges containing the weight.
 ///   * *defaultWeight*: Only used with the option *weight*.
 ///       If an edge does not have the attribute named as defined in option *weight* this default
@@ -3624,7 +3877,7 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
 ///
 /// Edits one relation definition of a graph. The edge definition used as argument will
 /// replace the existing edge definition of the graph which has the same collection.
-/// Vertex Collections of the replaced edge definition, that are not used in the new
+/// Vertex Collections of the replaced edge definition that are not used in the new
 /// definition will transform to an orphan. Orphans that are used in this new edge
 /// definition will be deleted from the list of orphans. Other graphs with the same edge
 /// definition will be modified, too.
@@ -3829,7 +4082,7 @@ Graph.prototype._addVertexCollection = function(vertexCollectionName, createColl
 /// `graph._orphanCollections()`
 /// *Get all orphan collections*
 ///
-/// Returns all vertex collections of the graph, that are not used in any edge definition.
+/// Returns all vertex collections of the graph that are not used in any edge definition.
 ///
 /// *Examples*
 ///
@@ -3927,6 +4180,8 @@ Graph.prototype._PRINT = function(context) {
   context.output += name;
   context.output += " EdgeDefinitions: ";
   internal.printRecursive(edgeDefs, context);
+  context.output += " VertexCollections: ";
+  internal.printRecursive(this.__orphanCollections, context);
   context.output += " ]";
 };
 

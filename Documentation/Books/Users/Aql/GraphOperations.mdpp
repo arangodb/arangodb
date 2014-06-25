@@ -1,18 +1,17 @@
 !CHAPTER Graph operations
 
-This chapter describe graph related aql functions.
+This chapter describes graph related AQL functions.
 
-!SUBSECTION Short explaination of the example parameter
+!SUBSECTION Short explanation of the example parameter
 
 A lot of the following functions accept a vertex (or edge) example as parameter. This can contain the following: 
 
 * {}                : Returns all possible vertices for this graph.
 * *idString*        : Returns the vertex/edge with the id *idString*.
-* {*key1* : *value1*, *key2* : *value2*} : Returns the vertices/edges that match this example, which means that have both *key1* and *key2* with the corresponding attributes.
+* {*key1* : *value1*, *key2* : *value2*} : Returns the vertices/edges that match this example, which means that both have *key1* and *key2* with the corresponding attributes.
 * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices/edges that match one of the examples, which means that either *key1* or *key2* are set with the corresponding value.
-the examples.
 
-!SUBSECTION Edges and Vertices related functions.
+!SUBSECTION Edges and Vertices related functions
 
 This section describes various AQL functions which can be used to receive information about the graph's vertices, edges, neighbor relationship and shared properties.
 
@@ -24,6 +23,10 @@ This section describes various AQL functions which can be used to receive inform
 
 @startDocuBlock JSF_ahuacatl_general_graph_vertices
 
+!SUBSUBSECTION GRAPH_NEIGHBORS
+
+@startDocuBlock JSF_ahuacatl_general_graph_neighbors
+
 !SUBSUBSECTION GRAPH_COMMON_NEIGHBORS
 
 @startDocuBlock JSF_ahuacatl_general_graph_common_neighbors
@@ -31,10 +34,6 @@ This section describes various AQL functions which can be used to receive inform
 !SUBSUBSECTION GRAPH_COMMON_PROPERTIES
 
 @startDocuBlock JSF_ahuacatl_general_graph_common_properties
-
-!SUBSUBSECTION GRAPH_NEIGHBORS
-
-@startDocuBlock JSF_ahuacatl_general_graph_neighbors
 
 !SUBSECTION Shortest Paths, distances and traversals.
 

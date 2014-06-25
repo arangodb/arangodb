@@ -123,7 +123,7 @@ namespace triagens {
 /// @brief return the collections that were synced
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::map<TRI_voc_cid_t, std::string>& getProcessedCollections () const {
+        std::map<TRI_voc_cid_t, std::string> const& getProcessedCollections () const {
           return _processedCollections;
         }
 
@@ -177,7 +177,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int handleCollectionDump (struct TRI_transaction_collection_s*,
-                                  const std::string&,
+                                  std::string const&,
                                   TRI_voc_tick_t,
                                   std::string&);
 
@@ -227,7 +227,7 @@ namespace triagens {
 /// @brief collection restriction type
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::string _restrictType;
+        std::string const _restrictType;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collections synced
@@ -257,7 +257,7 @@ namespace triagens {
 /// @brief chunk size to use
 ////////////////////////////////////////////////////////////////////////////////
 
-        string _chunkSize;
+        std::string _chunkSize;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief verbosity

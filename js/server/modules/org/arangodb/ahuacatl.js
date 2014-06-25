@@ -4342,22 +4342,20 @@ function GRAPH_PATHS (vertices, edgeCollection, direction, followCycles, minLeng
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_ahuacatl_general_graph_paths
 ///
-/// `GRAPH_PATHS (graphName, direction, followCycles, minLength, maxLength)`
+/// `GRAPH_PATHS (graphName, options)`
 /// *The GRAPH\_PATHS function returns all paths of a graph.*
-///
-/// This function determines all available paths in a graph identified by *graphName*.
-/// Except for *graphName* every other parameter is optional.
 ///
 /// *Parameters*
 ///
-/// * *graphName*     : The name of the graph as string.
-/// * *direction* (optional)     : The direction of the edges as string.
-/// Possible values are *any*, *inbound* and *outbound* (default).
-/// * *followCycles* (optional) : If set to *true* the query follows cycles in the graph,
+/// * *graphName*     : The name of the graph as a string.
+/// * *options*     : An object containing options, see below:
+///   * *direction*        : The direction of the edges. Possible values are *any*,
+/// *inbound* and *outbound* (default).
+///   * *followCycles* (optional) : If set to *true* the query follows cycles in the graph,
 /// default is false.
-/// * *minLength* (optional)     : Defines the minimal length a path must
+///   * *minLength* (optional)     : Defines the minimal length a path must
 /// have to be returned (default is 0).
-/// * *maxLength* (optional)     : Defines the maximal length a path must
+///   * *maxLength* (optional)     : Defines the maximal length a path must
 /// have to be returned (default is 10).
 ///
 /// *Examples*
@@ -4378,20 +4376,25 @@ function GRAPH_PATHS (vertices, edgeCollection, direction, followCycles, minLeng
 /// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
-///   db._query("RETURN GRAPH_PATHS('social', 'inbound', false, 1, 2)").toArray();
+/// | db._query(
+/// | "RETURN GRAPH_PATHS('social', {direction : 'inbound', minLength : 1, maxLength :  2})"
+///   ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-function GENERAL_GRAPH_PATHS (graphName, direction, followCycles, minLength, maxLength) {
+function GENERAL_GRAPH_PATHS (graphName, options) {
   "use strict";
 
   var searchDirection;
-  direction      = direction || "outbound";
-  followCycles   = followCycles || false;
-  minLength      = minLength || 0;
-  maxLength      = maxLength !== undefined ? maxLength : 10;
+  if (! options) {
+    options = {};
+  }
+  var direction      = options.direction || "outbound";
+  var followCycles   = options.followCycles || false;
+  var minLength      = options.minLength || 0;
+  var maxLength      = options.maxLength || 10;
 
   // check graph exists and load edgeDefintions
   var graph = DOCUMENT_HANDLE("_graphs/" + graphName);
@@ -5236,41 +5239,44 @@ function IS_EXAMPLE_SET (example) {
 /// *The GRAPH\_SHORTEST\_PATH function returns all shortest paths of a graph.*
 ///
 /// This function determines all shortest paths in a graph identified by *graphName*.
-/// The function accepts an id, an example, a list of examples
-/// or even an empty example as parameter for
-/// start and end vertex. If one wants to calls this function to receive nearly all
-/// shortest paths for a graph the
-/// option *algorithm* should be set to *Floyd-Warshall* to increase performance.
+/// If one wants to call this function to receive nearly all shortest paths for a
+/// graph the option *algorithm* should be set to
+/// [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) to
+/// increase performance.
 /// If no algorithm is provided in the options the function chooses the appropriate
-/// one (either *Floyd-Warshall* or *Dijsktra*) according to its parameters.
+/// one (either [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm)
+///  or [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm)) according to its parameters.
 /// The length of a path is by default the amount of edges from one start vertex to
 /// an end vertex. The option weight allows the user to define an edge attribute
 /// representing the length.
 ///
 /// *Parameters*
 ///
-/// * *graphName*          : The name of the graph as string.
+/// * *graphName*          : The name of the graph as a string.
 /// * *startVertexExample* : An example for the desired start Vertices
 /// (see [example](#short_explaination_of_the_vertex_example_parameter)).
 /// * *endVertexExample*   : An example for the desired
 /// end Vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
 /// * *options* (optional) : An object containing options, see below:
-///   * *direction*                        : The direction of the edges as string.
+///   * *direction*                        : The direction of the edges as a string.
 ///   Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeCollectionRestriction*        : One or multiple edge
-///   collections that should be considered.
+///   collection names. Only edges from these collections will be considered for the path.
 ///   * *startVertexCollectionRestriction* : One or multiple vertex
-///   collections that should be considered.
+///   collection names. Only vertices from these collections will be considered as
+///   start vertex of a path.
 ///   * *endVertexCollectionRestriction*   : One or multiple vertex
-///   collections that should be considered.
+///   collection names. Only vertices from these collections will be considered as
+///   end vertex of a path.
 ///   * *edgeExamples*                     : A filter example for the
-///   edges in the shortest paths (
-///   see [example](#short_explaination_of_the_vertex_example_parameter)).
+///   edges in the shortest paths
+///   (see [example](#short_explaination_of_the_vertex_example_parameter)).
 ///   * *algorithm*                        : The algorithm to calculate
-///   the shortest paths. If both start and end vertex examples are empty *Floyd-Warshall* is
-///   used, otherwise the default is *Dijkstra*
+///   the shortest paths. If both start and end vertex examples are empty
+///   [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) is
+///   used, otherwise the default is [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
 ///   * *weight*                           : The name of the attribute of
-///   the edges containing the length as string.
+///   the edges containing the length as a string.
 ///   * *defaultWeight*                    : Only used with the option *weight*.
 ///   If an edge does not have the attribute named as defined in option *weight* this default
 ///   is used as length.
@@ -5375,9 +5381,9 @@ function GRAPH_TRAVERSAL (vertexCollection,
 /// [Traversals](../Traversals/README.md).
 ///
 /// *Parameters*
-/// * *graphName*          : The name of the graph as string.
-/// * *startVertex*        : The ID of the start vertex of the traversal as string.
-/// * *direction*          : The direction of the edges as string. Possible values
+/// * *graphName*          : The name of the graph as a string.
+/// * *startVertex*        : The ID of the start vertex of the traversal as a string.
+/// * *direction*          : The direction of the edges as a string. Possible values
 /// are *outbound*, *inbound* and *any* (default).
 /// * *options* (optional) : Object containing optional options, see
 ///   [Traversals](../Traversals/README.md):
@@ -5555,10 +5561,10 @@ function GENERAL_GRAPH_DISTANCE_TO (graphName,
 ///
 /// *Parameters*
 ///
-/// * *graphName*          : The name of the graph as string.
+/// * *graphName*          : The name of the graph as a string.
 /// * *startVertex*         : The ID of the start vertex
-/// of the traversal as string.
-/// * *direction*          : The direction of the edges as string.
+/// of the traversal as a string.
+/// * *direction*          : The direction of the edges as a string.
 ///  Possible values are *outbound*, *inbound* and *any* (default).
 /// * *connectName*        : The result attribute which
 ///  contains the connection.
@@ -5709,12 +5715,12 @@ function GRAPH_NEIGHBORS (vertexCollection,
 /// `GRAPH_NEIGHBORS (graphName, vertexExample, options)`
 /// *The GRAPH\_NEIGHBORS function returns all neighbors of vertices.*
 ///
-/// The function accepts an id, an example, a list of examples or even an empty
-/// example as parameter for vertex.
+/// By default only the direct neighbors (path length equals 1) are returned, but one can define
+/// the range of the path length to the neighbors with the options *minDepth* and *maxDepth*.
 ///
 /// *Parameters*
 ///
-/// * *graphName*          : The name of the graph as string.
+/// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
 /// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
 /// * *options*            : An object containing options, see below:
@@ -5724,10 +5730,11 @@ function GRAPH_NEIGHBORS (vertexCollection,
 ///      the neighbors (see [example](#short_explaination_of_the_vertex_example_parameter)).
 ///   * *neighborExamples*                 : An example for the desired neighbors
 ///      (see [example](#short_explaination_of_the_vertex_example_parameter)).
-///   * *edgeCollectionRestriction*        : One or multiple
-///      edge collections that should be considered.
-///   * *vertexCollectionRestriction* : One or multiple
-///      vertex collections that should be considered.
+///   * *edgeCollectionRestriction*        : One or multiple edge
+///   collection names. Only edges from these collections will be considered for the path.
+///   * *vertexCollectionRestriction* : One or multiple vertex
+///   collection names. Only vertices from these collections will be considered as
+///   neighbor.
 ///   * *minDepth*                         : Defines the minimal
 ///      depth a path to a neighbor must have to be returned (default is 1).
 ///   * *maxDepth*                         : Defines the maximal
@@ -5821,10 +5828,8 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 /// @startDocuBlock JSF_ahuacatl_general_graph_edges
 ///
 /// `GRAPH_EDGES (graphName, vertexExample, options)`
-/// *The GRAPH\_EDGES function returns all edges of vertices.*
-///
-/// The function accepts an id, an example, a list of examples or even an empty
-/// example as parameter for vertex.
+/// *The GRAPH\_EDGES function returns all edges of the graph connected to the vertices
+/// defined by the example.*
 ///
 /// *Parameters*
 ///
@@ -5833,21 +5838,25 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 /// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
 /// * *options* (optional) : An object containing options, see below:
 ///   * *direction*                        : The direction
-/// of the edges as string. Possible values are *outbound*, *inbound* and *any* (default).
-///   * *edgeCollectionRestriction*        : One or multiple
-/// edge collections that should be considered.
-///   * *startVertexCollectionRestriction* : One or multiple
-/// vertex collections that should be considered.
-///   * *endVertexCollectionRestriction*   : One or multiple
-/// vertex collections that should be considered.
+/// of the edges as a string. Possible values are *outbound*, *inbound* and *any* (default).
+///   * *edgeCollectionRestriction*        : One or multiple edge
+///   collection names. Only edges from these collections will be considered for the path.
+///   * *startVertexCollectionRestriction* : One or multiple vertex
+///   collection names. Only vertices from these collections will be considered as
+///   start vertex of a path.
+///   * *endVertexCollectionRestriction*   : One or multiple vertex
+///   collection names. Only vertices from these collections will be considered as
+///   end vertex of a path.
 ///   * *edgeExamples*                     : A filter example
 /// for the edges (see [example](#short_explaination_of_the_vertex_example_parameter)).
 ///   * *neighborExamples*                 : An example for
 /// the desired neighbors (see [example](#short_explaination_of_the_vertex_example_parameter)).
-///   * *minDepth*                         : Defines the minimal
-/// depth a path to a neighbor must have to be returned (default is 1).
-///   * *maxDepth*                         : Defines the maximal
-/// depth a path to a neighbor must have to be returned (default is 1).
+///   * *minDepth*                         : Defines the minimal length of a path from an edge
+///  to a vertex (default is 1, which means only the edges directly connected to a vertex would
+///  be returned).
+///   * *maxDepth*                         : Defines the maximal length of a path from an edge
+///  to a vertex (default is 1, which means only the edges directly connected to a vertex would
+///  be returned).
 ///
 /// *Examples*
 ///
@@ -5901,18 +5910,16 @@ function GENERAL_GRAPH_EDGES (
 /// `GRAPH_VERTICES (graphName, vertexExample, options)`
 /// *The GRAPH\_VERTICES function returns all vertices.*
 ///
-/// The function accepts an id, an example, a list of examples or even an empty
-/// example as parameter for vertex.
 /// According to the optional filters it will only return vertices that have
 /// outbound, onbound or any (default) edges.
 ///
 /// *Parameters*
 ///
-/// * *graphName*          : The name of the graph as string.
+/// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
 /// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
 /// * *options* (optional)           : An object containing options, see below:
-///   * *direction*        : The direction of the edges as string. Possible values are
+///   * *direction*        : The direction of the edges as a string. Possible values are
 ///      *outbound*, *inbound* and *any* (default).
 ///   * *vertexCollectionRestriction*      : One or multiple
 /// vertex collections that should be considered.
@@ -5995,9 +6002,6 @@ function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
 /// optionsVertex1, optionsVertex2)`
 /// *The GRAPH\_COMMON\_NEIGHBORS function returns all common neighbors of the vertices
 /// defined by the examples.*
-///
-/// The function accepts an id, an example, a list of examples or even an empty
-/// example as parameter for vertex1Example and vertex2Example.
 ///
 /// This function returns the intersection of *GRAPH_NEIGHBORS(vertex1Example, optionsVertex1)*
 /// and *GRAPH_NEIGHBORS(vertex2Example, optionsVertex2)*.
@@ -6096,21 +6100,18 @@ function GENERAL_GRAPH_COMMON_NEIGHBORS (
 /// *The GRAPH\_COMMON\_PROPERTIES function returns all vertices
 /// defined by the examples that share common properties
 ///
-/// The function accepts an id, an example, a list of examples or even an empty
-/// example as parameter for vertex1Example and vertex2Example.
-///
 /// *Parameters*
 ///
-/// * *graphName*          : The name of the graph as string.
+/// * *graphName*          : The name of the graph as a string.
 /// * *vertex1Example*     : An example for the desired
 /// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
 /// * *vertex2Example*     : An example for the desired
 /// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
 /// * *options* (optional)    : An object containing options, see below:
-///   * *vertex1CollectionRestriction* : One or multiple
-///  vertex collections that should be considered.
-///   * *vertex2CollectionRestriction* : One or multiple
-///  vertex collections that should be considered.
+///   * *vertex1CollectionRestriction* : One or multiple vertex
+///   collection names. Only vertices from these collections will be considered.
+///   * *vertex2CollectionRestriction*   : One or multiple vertex
+///   collection names. Only vertices from these collections will be considered.
 ///   * *ignoreProperties* : One or multiple
 ///  attributes of a document that should be ignored, either a string or an array..
 ///
@@ -6233,32 +6234,33 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 /// `GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)`
 /// *The GRAPH\_ABSOLUTE\_ECCENTRICITY function returns the
 /// [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
-/// of the vertices defined by the examples.
-///
-/// The function accepts an id, an example, a list of examples or even an empty
-/// example as parameter for vertexExample.
+/// of the vertices defined by the examples.*
 ///
 /// *Parameters*
 ///
-/// * *graphName*          : The name of the graph as string.
+/// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
 /// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
 /// * *options* (optional)    : An object containing options, see below:
-///   * *direction*                        : The direction of the edges as string.
+///   * *direction*                        : The direction of the edges as a string.
 /// Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeCollectionRestriction*        : One or multiple edge
-/// collections that should be considered.
+///   collection names. Only edges from these collections will be considered for the path.
 ///   * *startVertexCollectionRestriction* : One or multiple vertex
-/// collections that should be considered.
+///   collection names. Only vertices from these collections will be considered as
+///   start vertex of a path.
 ///   * *endVertexCollectionRestriction*   : One or multiple vertex
-/// collections that should be considered.
+///   collection names. Only vertices from these collections will be considered as
+///   end vertex of a path.
 ///   * *edgeExamples*                     : A filter example for the edges in the
 ///  shortest paths (see [example](#short_explaination_of_the_vertex_example_parameter)).
 ///   * *algorithm*                        : The algorithm to calculate
-///  the shortest paths as string. If vertex example is empty *Floyd-Warshall* is
-///   used as default, otherwise the default is *Dijkstra*
+///  the shortest paths as a string. If vertex example is empty
+///  [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) is
+///  used as default, otherwise the default is
+///  [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm)
 ///   * *weight*                           : The name of the attribute of
-/// the edges containing the length as string.
+/// the edges containing the length as a string.
 ///   * *defaultWeight*                    : Only used with the option *weight*.
 /// If an edge does not have the attribute named as defined in option *weight* this default
 /// is used as length.
@@ -6287,7 +6289,7 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 ///   +"'routeplanner', {}, {weight : 'distance'})").toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, the absolute eccentricity of all german cities regarding only
+/// A route planner example, the absolute eccentricity of all German cities regarding only
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsEccentricity3}
@@ -6333,17 +6335,18 @@ function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)
 /// `GRAPH_ECCENTRICITY (graphName, options)`
 /// *The GRAPH\_ECCENTRICITY function returns the normalized
 /// [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
-/// of the graphs vertices
+/// of the graphs vertices*
 ///
 /// *Parameters*
 ///
-/// * *graphName*          : The name of the graph as string.
+/// * *graphName*          : The name of the graph as a string.
 /// * *options* (optional) : An object containing options, see below:
-///   * *direction*       : The direction of the edges as string.
+///   * *direction*       : The direction of the edges as a string.
 /// Possible values are *outbound*, *inbound* and *any* (default).
-///   * *algorithm*       : The algorithm to calculate the shortest paths as string. Possible
-/// values are  *Floyd-Warshall* (default) and *Dijkstra*.
-///   * *weight*          : The name of the attribute of the edges containing the length as string.
+///   * *algorithm*       : The algorithm to calculate the shortest paths as a string. Possible
+/// values are [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm)
+///  (default) and [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
+///   * *weight*         : The name of the attribute of the edges containing the length as a string.
 ///   * *defaultWeight*   : Only used with the option *weight*.
 /// If an edge does not have the attribute named as defined in option *weight* this default
 /// is used as length.
@@ -6407,30 +6410,31 @@ function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
 /// `GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options)`
 /// *The GRAPH\_ABSOLUTE\_CLOSENESS function returns the
 /// [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness_centrality)
-/// of the vertices defined by the examples.
-///
-/// The function accepts an id, an example, a list of examples or even an empty
-/// example as parameter for vertexExample.
+/// of the vertices defined by the examples.*
 ///
 /// *Parameters*
 ///
-/// * *graphName*          : The name of the graph as string.
+/// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*     : An example for the desired
 /// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
 /// * *options*     : An object containing options, see below:
 ///   * *direction*                        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeCollectionRestriction*        : One or multiple edge
-/// collections that should be considered.
+///   collection names. Only edges from these collections will be considered for the path.
 ///   * *startVertexCollectionRestriction* : One or multiple vertex
-/// collections that should be considered.
+///   collection names. Only vertices from these collections will be considered as
+///   start vertex of a path.
 ///   * *endVertexCollectionRestriction*   : One or multiple vertex
-/// collections that should be considered.
+///   collection names. Only vertices from these collections will be considered as
+///   end vertex of a path.
 ///   * *edgeExamples*                     : A filter example for the
 /// edges in the shortest paths (
 /// see [example](#short_explaination_of_the_vertex_example_parameter)).
 ///   * *algorithm*                        : The algorithm to calculate
-/// the shortest paths. Possible values are  *Floyd-Warshall* (default) and *Dijkstra*.
+/// the shortest paths. Possible values are
+/// [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) (default)
+///  and [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
 ///   * *weight*                           : The name of the attribute of
 /// the edges containing the length.
 ///   * *defaultWeight*                    : Only used with the option *weight*.
@@ -6461,7 +6465,7 @@ function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
 ///   +"'routeplanner', {}, {weight : 'distance'})").toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, the absolute closeness of all german cities regarding only
+/// A route planner example, the absolute closeness of all German cities regarding only
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsCloseness3}
@@ -6507,16 +6511,18 @@ function GENERAL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
 /// `GRAPH_CLOSENESS (graphName, options)`
 /// *The GRAPH\_CLOSENESS function returns the normalized
 /// [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness_centrality)
-/// of graphs vertices.
+/// of graphs vertices.*
 ///
 /// *Parameters*
 ///
-/// * *graphName*          : The name of the graph as string.
+/// * *graphName*          : The name of the graph as a string.
 /// * *options*     : An object containing options, see below:
 ///   * *direction*                        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *algorithm*                        : The algorithm to calculate
-/// the shortest paths. Possible values are  *Floyd-Warshall* (default) and *Dijkstra*.
+/// the shortest paths. Possible values are
+/// [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) (default)
+///  and [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
 ///   * *weight*                           : The name of the attribute of
 /// the edges containing the length.
 ///   * *defaultWeight*                    : Only used with the option *weight*.
@@ -6599,10 +6605,10 @@ function GENERAL_GRAPH_CLOSENESS (graphName, options) {
 /// `GRAPH_ABSOLUTE_BETWEENNESS (graphName, vertexExample, options)`
 /// *The GRAPH\_ABSOLUTE\_BETWEENNESS function returns the
 /// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
-/// of all vertices in the graph.
+/// of all vertices in the graph.*
 ///
 ///
-/// * *graphName*          : The name of the graph as string.
+/// * *graphName*          : The name of the graph as a string.
 /// * *options*            : An object containing options, see below:
 ///   * *direction*                        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
@@ -6703,11 +6709,11 @@ function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 /// `GRAPH_BETWEENNESS (graphName, options)`
 /// *The GRAPH\_BETWEENNESS function returns the
 /// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
-/// of graphs vertices.
+/// of graphs vertices.*
 ///
 /// *Parameters*
 ///
-/// * *graphName*          : The name of the graph as string.
+/// * *graphName*          : The name of the graph as a string.
 /// * *options*     : An object containing options, see below:
 ///   * *direction*                        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
@@ -6783,14 +6789,15 @@ function GENERAL_GRAPH_BETWEENNESS (graphName, options) {
 /// `GRAPH_RADIUS (graphName, options)`
 /// *The GRAPH\_RADIUS function returns the
 /// [radius](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
-/// of a graph.
+/// of a graph.*
 ///
-/// * *graphName*       : The name of the graph as string.
+/// * *graphName*       : The name of the graph as a string.
 /// * *options*     : An object containing options, see below:
 ///   * *direction*     : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
-///   * *algorithm*     : The algorithm to calculate the shortest paths as string. Possible
-/// values are  *Floyd-Warshall* (default) and *Dijkstra*.
+///   * *algorithm*     : The algorithm to calculate the shortest paths as a string. Possible
+/// values are [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm)
+///  (default) and [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
 ///   * *weight*           : The name of the attribute of
 /// the edges containing the length.
 ///   * *defaultWeight*    : Only used with the option *weight*.
@@ -6869,16 +6876,17 @@ function GENERAL_GRAPH_RADIUS (graphName, options) {
 /// `GRAPH_DIAMETER (graphName, options)`
 /// *The GRAPH\_DIAMETER function returns the
 /// [diameter](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
-/// of a graph.
+/// of a graph.*
 ///
 /// *Parameters*
 ///
-/// * *graphName*          : The name of the graph as string.
+/// * *graphName*          : The name of the graph as a string.
 /// * *options*     : An object containing options, see below:
 ///   * *direction*        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
-///   * *algorithm*        : The algorithm to calculate the shortest paths as string. Possible
-/// values are  *Floyd-Warshall* (default) and *Dijkstra*.
+///   * *algorithm*        : The algorithm to calculate the shortest paths as a string. Possible
+/// values are  [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm)
+///  (default) and [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm).
 ///   * *weight*           : The name of the attribute of
 /// the edges containing the length.
 ///   * *defaultWeight*    : Only used with the option *weight*.
