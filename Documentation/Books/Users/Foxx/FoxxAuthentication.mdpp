@@ -1,6 +1,0 @@
-!CHAPTER Foxx Authentication
-
-**Warning Deprecated**
-
-This functionality is deprecated and will be removed soon.
-Please use [Foxx Sessions](./FoxxSessions.md) instead.
