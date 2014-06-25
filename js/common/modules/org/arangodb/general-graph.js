@@ -1619,7 +1619,7 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
 
 var _create = function (graphName, edgeDefinitions, orphanCollections) {
 
-  if (!orphanCollections) {
+  if (! Array.isArray(orphanCollections) ) {
     orphanCollections = [];
   }
   var gdb = getGraphCollection(),
@@ -1697,9 +1697,16 @@ var _create = function (graphName, edgeDefinitions, orphanCollections) {
       findOrCreateCollectionByName(oC, ArangoCollection.TYPE_DOCUMENT);
     }
   );
+  edgeDefinitions.forEach(
+    function(eD, index) {
+      var tmp = sortEdgeDefinition(eD);
+      edgeDefinitions[index] = tmp;
+    }
+  );
+  orphanCollections = orphanCollections.sort();
 
-  gdb.save({
-    'orphanCollections' : orphanCollections.sort,
+      gdb.save({
+    'orphanCollections' : orphanCollections,
     'edgeDefinitions' : edgeDefinitions,
     '_key' : graphName
   });
@@ -2246,6 +2253,7 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
           }
         );
       }
+
       var orphanCollections = graph.orphanCollections;
       if (orphanCollections) {
         if (orphanCollections.indexOf(colName) !== -1) {
