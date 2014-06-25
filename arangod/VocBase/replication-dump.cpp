@@ -296,7 +296,7 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
       TRI_ASSERT(nullptr != document);
       auto m = reinterpret_cast<TRI_doc_deletion_key_marker_t const*>(marker);
       key = ((char*) m) + m->_offsetKey;
-      type = MARKER_REMOVE;
+      type = REPLICATION_MARKER_REMOVE;
       rid = m->_rid;
       haveData = false;
       break;
@@ -305,7 +305,7 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
       TRI_ASSERT(nullptr != document);
       auto m = reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker);
       key = ((char*) m) + m->_offsetKey;
-      type = MARKER_DOCUMENT;
+      type = REPLICATION_MARKER_DOCUMENT;
       rid = m->_rid;
       break;
     }
@@ -313,7 +313,7 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
       TRI_ASSERT(nullptr != document);
       auto m = reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker);
       key = ((char*) m) + m->_offsetKey;
-      type = MARKER_EDGE;
+      type = REPLICATION_MARKER_EDGE;
       rid = m->_rid;
       break;
     }
@@ -321,7 +321,7 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
       TRI_ASSERT(nullptr == document);
       auto m = static_cast<wal::remove_marker_t const*>(marker);
       key = ((char*) m) + sizeof(wal::remove_marker_t);
-      type = MARKER_REMOVE;
+      type = REPLICATION_MARKER_REMOVE;
       rid = m->_revisionId;
       haveData = false;
       isWal = true;
@@ -331,7 +331,7 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
       TRI_ASSERT(nullptr == document);
       auto m = static_cast<wal::document_marker_t const*>(marker);
       key = ((char*) m) + m->_offsetKey;
-      type = MARKER_DOCUMENT;
+      type = REPLICATION_MARKER_DOCUMENT;
       rid = m->_revisionId;
       isWal = true;
       break;
@@ -340,7 +340,7 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
       TRI_ASSERT(nullptr == document);
       auto m = static_cast<wal::edge_marker_t const*>(marker);
       key = ((char*) m) + m->_offsetKey;
-      type = MARKER_EDGE;
+      type = REPLICATION_MARKER_EDGE;
       rid = m->_revisionId;
       isWal = true;
       break;
@@ -693,29 +693,29 @@ static bool StringifyWalMarkerDropIndex (TRI_replication_dump_t* dump,
 static TRI_replication_operation_e TranslateType (TRI_df_marker_t const* marker) {
   switch (marker->_type) {
     case TRI_WAL_MARKER_DOCUMENT: 
-      return MARKER_DOCUMENT; 
+      return REPLICATION_MARKER_DOCUMENT; 
     case TRI_WAL_MARKER_EDGE:
-      return MARKER_EDGE;
+      return REPLICATION_MARKER_EDGE;
     case TRI_WAL_MARKER_REMOVE:
-      return MARKER_REMOVE;
+      return REPLICATION_MARKER_REMOVE;
     case TRI_WAL_MARKER_BEGIN_TRANSACTION: 
-      return TRI_TRANSACTION_START;
+      return REPLICATION_TRANSACTION_START;
     case TRI_WAL_MARKER_COMMIT_TRANSACTION: 
-      return TRI_TRANSACTION_COMMIT;
+      return REPLICATION_TRANSACTION_COMMIT;
     case TRI_WAL_MARKER_ABORT_TRANSACTION: 
-      return TRI_TRANSACTION_ABORT;
+      return REPLICATION_TRANSACTION_ABORT;
     case TRI_WAL_MARKER_CREATE_COLLECTION: 
-      return COLLECTION_CREATE;
+      return REPLICATION_COLLECTION_CREATE;
     case TRI_WAL_MARKER_DROP_COLLECTION: 
-      return COLLECTION_DROP;
+      return REPLICATION_COLLECTION_DROP;
     case TRI_WAL_MARKER_RENAME_COLLECTION: 
-      return COLLECTION_RENAME;
+      return REPLICATION_COLLECTION_RENAME;
     case TRI_WAL_MARKER_CHANGE_COLLECTION: 
-      return COLLECTION_CHANGE;
+      return REPLICATION_COLLECTION_CHANGE;
     case TRI_WAL_MARKER_CREATE_INDEX: 
-      return INDEX_CREATE;
+      return REPLICATION_INDEX_CREATE;
     case TRI_WAL_MARKER_DROP_INDEX: 
-      return INDEX_DROP;
+      return REPLICATION_INDEX_DROP;
        
     default: 
       return REPLICATION_INVALID;

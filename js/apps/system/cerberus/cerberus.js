@@ -1,4 +1,6 @@
-(function() {
+/*jslint indent: 2, nomen: true, maxlen: 120, regexp: true, vars: true */
+/*global module, require, exports, applicationContext */
+(function () {
   "use strict";
 
   var Foxx = require("org/arangodb/foxx"),
@@ -6,7 +8,7 @@
     controller = new Foxx.Controller(applicationContext),
     url = require("url");
 
-  controller.get("/initpwd/:token", function(req, res) {
+  controller.get("/initpwd/:token", function (req, res) {
     var token = req.params("token"),
       username;
 
@@ -26,14 +28,15 @@
 
   });
 
-  controller.post("/checkpwd", function(req, res) {
+  controller.post("/checkpwd", function (req, res) {
     var params = req.rawBody().split("&");
     var password = params[0].split("=")[1];
     var confirmPassword = params[1].split("=")[1];
     var token = params[2].split("=")[1];
+    var name = params[3].split("=")[1];
 
     //check, if passwords are equal
-    if(password !== confirmPassword) {
+    if (password !== confirmPassword) {
       var path = url.parse(req.url).pathname.split("/");
       path = path.slice(0, path.length - 2).join("/") + "/changePassword.html";
 

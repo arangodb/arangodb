@@ -6,7 +6,7 @@
   window.GraphCollection = Backbone.Collection.extend({
     model: window.Graph,
     
-    url: "/_api/graph",
+    url: "/_api/gharial",
 
     comparator: "_key",
 

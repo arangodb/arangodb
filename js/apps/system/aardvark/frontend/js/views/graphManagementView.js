@@ -19,7 +19,7 @@
 
     addNewGraph: function(e) {
       e.preventDefault();
-      this.createNewGraphModal();
+      this.createNewGraphModal2();
     },
 
     deleteGraph: function(e) {
@@ -137,6 +137,56 @@
         _key: _key,
         vertices: vertices,
         edges: edges
+      }, {
+        success: function() {
+          self.updateGraphManagementView();
+          window.modalView.hide();
+        },
+        error: function(obj, err) {
+          var response = JSON.parse(err.responseText),
+            msg = response.errorMessage;
+          // Gritter does not display <>
+          msg = msg.replace("<", "");
+          msg = msg.replace(">", "");
+          arangoHelper.arangoError(msg);
+        }
+      });
+    },
+
+    createNewGraph2: function() {
+      var name = $("#createNewGraphName").val(),
+        vertexCollections = _.pluck($('#newVertexCollections').select2("data"), "text"),
+        edgeDefinitions = [],
+        self = this,
+        hasNext = true,
+        collection,
+        from,
+        to;
+
+      collection = $('#newEdgeDefinitions1').val();
+      if (collection !== "") {
+        from = _.pluck($('#s2id_fromCollections1').select2("data"), "text");
+        to = _.pluck($('#s2id_toCollections1').select2("data"), "text");
+        edgeDefinitions.push(
+          {
+            collection: collection,
+            from: from,
+            to: to
+          }
+        );
+      }
+
+
+      if (!name) {
+        arangoHelper.arangoNotification(
+          "A name for the graph has to be provided."
+        );
+        return;
+      }
+      this.collection.create({
+        name: name,
+        edgeDefinitions: edgeDefinitions,
+        orphanCollections: vertexCollections
       }, {
         success: function() {
           self.updateGraphManagementView();
@@ -334,7 +384,7 @@
         )
       );
       buttons.push(
-        window.modalView.createSuccessButton("Create", this.createNewGraph.bind(this))
+        window.modalView.createSuccessButton("Create", this.createNewGraph2.bind(this))
       );
 
 

@@ -1506,7 +1506,7 @@ var _edgeDefinitions = function () {
 ///
 /// *Parameter*
 ///
-/// * *edgeDefinitions*: An list of relation definition objects.
+/// * *edgeDefinitions*: A list of relation definition objects.
 /// * *relationX*: An object representing a definition of one relation in the graph
 ///
 /// *Examples*
@@ -1702,6 +1702,7 @@ var _create = function (graphName, edgeDefinitions, orphanCollections) {
   );
 
   gdb.save({
+    'orphanCollections' : orphanCollections.sort,
     'edgeDefinitions' : edgeDefinitions,
     '_key' : graphName
   });
@@ -1942,7 +1943,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 ///
 /// *Parameter*
 ///
-/// * *data*: Json data of vertex.
+/// * *data*: JSON data of vertex.
 ///
 /// *Examples*
 ///
@@ -1963,7 +1964,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 /// *Parameter*
 ///
 /// * *vertexId*: *_id* attribute of the vertex
-/// * *data*: Json data of vertex.
+/// * *data*: JSON data of vertex.
 /// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
@@ -1986,7 +1987,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 /// *Parameter*
 ///
 /// * *vertexId*: *_id* attribute of the vertex
-/// * *data*: Json data of vertex.
+/// * *data*: JSON data of vertex.
 /// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
@@ -2038,7 +2039,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 ///
 /// * *from*: *_id* attribute of the source vertex
 /// * *to*: *_id* attribute of the target vertex
-/// * *data*: Json data of the edge
+/// * *data*: JSON data of the edge
 /// * *options* (optional): See [collection documentation](../Edges/EdgeMethods.md)
 ///
 /// *Examples*
@@ -2069,7 +2070,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 /// *Parameter*
 ///
 /// * *edgeId*: *_id* attribute of the edge
-/// * *data*: Json data of the edge
+/// * *data*: JSON data of the edge
 /// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
@@ -2092,7 +2093,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 /// *Parameter*
 ///
 /// * *edgeId*: *_id* attribute of the edge
-/// * *data*: Json data of the edge
+/// * *data*: JSON data of the edge
 /// * *options* (optional): See [collection documentation](../Documents/DocumentMethods.md)
 ///
 /// *Examples*
@@ -2937,7 +2938,7 @@ Graph.prototype._commonProperties = function(vertex1Example, vertex2Example, opt
 /// graph._countCommonProperties({}, {});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, all german cities which share same properties except for population.
+/// A route planner example, all German cities which share same properties except for population.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAmountProperties2}
 /// ~ var db = require("internal").db;
@@ -3367,7 +3368,7 @@ Graph.prototype._eccentricity = function(options) {
 ///   graph._absoluteCloseness({}, {weight : 'distance'});
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// A route planner example, the absolute closeness of all german Cities regarding only
+/// A route planner example, the absolute closeness of all German Cities regarding only
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAbsCloseness3}
@@ -3878,7 +3879,7 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
 ///
 /// Edits one relation definition of a graph. The edge definition used as argument will
 /// replace the existing edge definition of the graph which has the same collection.
-/// Vertex Collections of the replaced edge definition, that are not used in the new
+/// Vertex Collections of the replaced edge definition that are not used in the new
 /// definition will transform to an orphan. Orphans that are used in this new edge
 /// definition will be deleted from the list of orphans. Other graphs with the same edge
 /// definition will be modified, too.
@@ -4083,7 +4084,7 @@ Graph.prototype._addVertexCollection = function(vertexCollectionName, createColl
 /// `graph._orphanCollections()`
 /// *Get all orphan collections*
 ///
-/// Returns all vertex collections of the graph, that are not used in any edge definition.
+/// Returns all vertex collections of the graph that are not used in any edge definition.
 ///
 /// *Examples*
 ///

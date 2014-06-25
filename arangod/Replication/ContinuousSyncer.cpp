@@ -617,45 +617,47 @@ int ContinuousSyncer::applyLogMarker (TRI_json_t const* json,
   // handle marker type
   TRI_replication_operation_e type = (TRI_replication_operation_e) typeValue;
 
-  if (type == MARKER_DOCUMENT || type == MARKER_EDGE || type == MARKER_REMOVE) {
+  if (type == REPLICATION_MARKER_DOCUMENT || 
+      type == REPLICATION_MARKER_EDGE || 
+      type == REPLICATION_MARKER_REMOVE) {
     return processDocument(type, json, errorMsg);
   }
 
-  else if (type == TRI_TRANSACTION_START) {
+  else if (type == REPLICATION_TRANSACTION_START) {
     return startTransaction(json);
   }
 
-  else if (type == TRI_TRANSACTION_ABORT) {
+  else if (type == REPLICATION_TRANSACTION_ABORT) {
     return abortTransaction(json);
   }
 
-  else if (type == TRI_TRANSACTION_COMMIT) {
+  else if (type == REPLICATION_TRANSACTION_COMMIT) {
     return commitTransaction(json);
   }
 
-  else if (type == COLLECTION_CREATE) {
+  else if (type == REPLICATION_COLLECTION_CREATE) {
     TRI_json_t const* collectionJson = TRI_LookupArrayJson(json, "collection");
 
     return createCollection(collectionJson, nullptr);
   }
 
-  else if (type == COLLECTION_DROP) {
+  else if (type == REPLICATION_COLLECTION_DROP) {
     return dropCollection(json, false);
   }
 
-  else if (type == COLLECTION_RENAME) {
+  else if (type == REPLICATION_COLLECTION_RENAME) {
     return renameCollection(json);
   }
 
-  else if (type == COLLECTION_CHANGE) {
+  else if (type == REPLICATION_COLLECTION_CHANGE) {
     return changeCollection(json);
   }
 
-  else if (type == INDEX_CREATE) {
+  else if (type == REPLICATION_INDEX_CREATE) {
     return createIndex(json);
   }
 
-  else if (type == INDEX_DROP) {
+  else if (type == REPLICATION_INDEX_DROP) {
     return dropIndex(json);
   }
 

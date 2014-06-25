@@ -135,8 +135,8 @@ TRI_voc_document_operation_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_VOCBASE_MODE_NORMAL   = 1,    // CRUD is allowed
-  TRI_VOCBASE_MODE_READONLY = 2,  // C & U not allowed RD allowed
+  TRI_VOCBASE_MODE_NORMAL    = 1,    // CRUD is allowed
+  TRI_VOCBASE_MODE_NO_CREATE = 2,  // C & U not allowed RD allowed
 }
 TRI_vocbase_operationmode_e;
 
