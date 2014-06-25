@@ -96,6 +96,7 @@
   * [Dependency Injection](Foxx/FoxxInjection.md)
   * [Foxx Exports](Foxx/FoxxExports.md)
   * [Foxx Job Queues](Foxx/FoxxQueues.md)
+  * [Foxx Sessions](Foxx/FoxxSessions.md)
   * [Optional Functionality](Foxx/FoxxOptional.md)
   * [Bundled Applications](FoxxBundledApps/README.md)
     * [Session Storage](FoxxBundledApps/Sessions.md)
