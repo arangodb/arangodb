@@ -1,7 +1,5 @@
 !CHAPTER Windows
 
-!SECTION Choices 
-
 The default installation directory is *c:\Program Files\ArangoDB-1.x.y*. During the
 installation process you may change this. In the following description we will assume
 that ArangoDB has been installed in the location *<ROOTDIR>*.
