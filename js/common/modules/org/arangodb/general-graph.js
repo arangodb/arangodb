@@ -1532,6 +1532,14 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
     }
   );
 };
+////////////////////////////////////////////////////////////////////////////////
+/// internal helper to sort a graph's edge definitions
+////////////////////////////////////////////////////////////////////////////////
+var sortEdgeDefinition = function(edgeDefinition) {
+  edgeDefinition.from = edgeDefinition.from.sort();
+  edgeDefinition.to = edgeDefinition.to.sort();
+  return edgeDefinition;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new graph
@@ -1929,15 +1937,6 @@ var updateBindCollections = function(graph) {
     }
   );
   bindVertexCollections(graph, graph.__orphanCollections);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// internal helper to sort a graph's edge definitions
-////////////////////////////////////////////////////////////////////////////////
-var sortEdgeDefinition = function(edgeDefinition) {
-  edgeDefinition.from = edgeDefinition.from.sort();
-  edgeDefinition.to = edgeDefinition.to.sort();
-  return edgeDefinition;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

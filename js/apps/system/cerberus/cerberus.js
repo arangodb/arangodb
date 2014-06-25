@@ -33,6 +33,7 @@
     var password = params[0].split("=")[1];
     var confirmPassword = params[1].split("=")[1];
     var token = params[2].split("=")[1];
+    var name = params[3].split("=")[1];
 
     //check, if passwords are equal
     if (password !== confirmPassword) {
