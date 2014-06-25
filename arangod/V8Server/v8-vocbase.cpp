@@ -1445,9 +1445,9 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
   const string collectionName = string(collection->_name);
 
   // disallow index creation in read-only mode
-  if (! TRI_IsSystemNameCollection(collectionName.c_str()) &&
-      create &&
-      TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_READONLY) {
+  if (! TRI_IsSystemNameCollection(collectionName.c_str()) 
+      && create
+      && TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_READ_ONLY);
   }
 
@@ -3182,7 +3182,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
     TRI_V8_EXCEPTION_USAGE(scope, "_create(<name>, <properties>)");
   }
 
-  if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_READONLY) {
+  if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_READ_ONLY);
   }
 
@@ -7885,7 +7885,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
 /// *Examples*
 ///
 /// db._changeMode("Normal") every user can do all CRUD operations
-/// db._changeMode("ReadOnly") the user cannot create databases, indexes,
+/// db._changeMode("NoCreate") the user cannot create databases, indexes,
 ///                            and collections, and cannot carry out any
 ///                            data-modifying operations but dropping databases,
 ///                            indexes and collections.
@@ -7918,18 +7918,18 @@ static v8::Handle<v8::Value> JS_ChangeOperationModeVocbase (v8::Arguments const&
 
   // expecting one argument
   if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "_changeMode(<mode>), with modes: 'Normal', 'ReadOnly'");
+    TRI_V8_EXCEPTION_USAGE(scope, "_changeMode(<mode>), with modes: 'Normal', 'NoCreate'");
   }
 
   string const newModeStr = TRI_ObjectToString(argv[0]);
 
   TRI_vocbase_operationmode_e newMode = TRI_VOCBASE_MODE_NORMAL;
 
-  if (newModeStr == "ReadOnly") {
-    newMode = TRI_VOCBASE_MODE_READONLY;
+  if (newModeStr == "NoCreate") {
+    newMode = TRI_VOCBASE_MODE_NO_CREATE;
   }
   else if (newModeStr != "Normal") {
-    TRI_V8_EXCEPTION_USAGE(scope, "illegal mode, allowed modes are: 'Normal' and 'ReadOnly'");
+    TRI_V8_EXCEPTION_USAGE(scope, "illegal mode, allowed modes are: 'Normal' and 'NoCreate'");
   }
 
   TRI_ChangeOperationModeServer(newMode);
@@ -9066,7 +9066,7 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_READONLY) {
+  if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_READ_ONLY);
   }
 
