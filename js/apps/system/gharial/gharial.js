@@ -90,7 +90,7 @@
    * Creates a list of all available graphs.
    */
   controller.get("/", function(req, res) {
-    setResponse(res, "graphs", Graph._list());
+    setResponse(res, "graphs", Graph._listObjects());
   });
 
 ////////////////////////////////////////////////////////////////////////////////
