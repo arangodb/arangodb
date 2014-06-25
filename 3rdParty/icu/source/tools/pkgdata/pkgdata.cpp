@@ -1975,7 +1975,7 @@ static void loadLists(UPKGOptions *o, UErrorCode *status)
     FILE *p = NULL;
     size_t n;
     static char buf[512] = "";
-    char cmdBuf[1024];
+    char cmdBuf[1025];
     UErrorCode status = U_ZERO_ERROR;
     const char cmd[] = "icu-config --incpkgdatafile";
 
