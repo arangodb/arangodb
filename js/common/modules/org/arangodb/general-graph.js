@@ -1454,6 +1454,11 @@ var _list = function() {
 };
 
 
+var _listObjects = function() {
+  return getGraphCollection().toArray();
+};
+
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4205,6 +4210,7 @@ exports._create = _create;
 exports._drop = _drop;
 exports._exists = _exists;
 exports._list = _list;
+exports._listObjects = _listObjects;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
