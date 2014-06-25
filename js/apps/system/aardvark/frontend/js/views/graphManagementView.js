@@ -159,16 +159,21 @@
         edgeDefinitions = [],
         self = this,
         hasNext = false,
-        newEdgeDefinitions1;
+        newEdgeDefinitions1,
+        from,
+        to;
 
-
-      console.log("vertexCollections");
-      vertexCollections.forEach(
-        function(vc, index) {
-          console.log("vertexCollections " + index);
-          console.log(vertexCollections[index]);
-        }
-      );
+      newEdgeDefinitions1 = $("#newEdgeDefinitions1").val();
+      if (newEdgeDefinitions1 !== "") {
+        from = _.pluck($('#s2id_fromCollections1').select2("data"), "text");
+        to = _.pluck($('#s2id_toCollections1').select2("data"), "text");
+      }
+      console.log("newEdgeDefinitions1");
+      console.log(newEdgeDefinitions1);
+      console.log("from");
+      console.log(from);
+      console.log("to");
+      console.log(to);
       if (!name) {
         arangoHelper.arangoNotification(
           "A name for the graph has to be provided."
