@@ -47,7 +47,7 @@ If you want to use the *google* provider, you need to obtain a client ID and cli
 This app exposes its functionality via a JavaScript API named *providers*.
 
 ```js
-var providers = Foxx.requireApp('/_oauth2').providers;
+var providers = Foxx.requireApp('/system/oauth2').providers;
 ```
 
 !SUBSECTION Exceptions

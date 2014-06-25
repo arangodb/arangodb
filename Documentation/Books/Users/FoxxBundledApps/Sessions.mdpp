@@ -18,7 +18,7 @@ This app exposes a session storage via a JavaScript API named *sessionStorage*.
 @EXAMPLES
 
 ```js
-var sessionStorage = Foxx.requireApp('/_sessions').sessionStorage;
+var sessionStorage = Foxx.requireApp('/system/sessions').sessionStorage;
 ```
 
 !SUBSECTION Exceptions
