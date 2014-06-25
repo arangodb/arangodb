@@ -426,9 +426,9 @@ static int UseCollections (TRI_transaction_t* trx,
         return TRI_errno();
       }
 
-      if (trxCollection->_accessType == TRI_TRANSACTION_WRITE &&
-          TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_READONLY &&
-          ! TRI_IsSystemNameCollection(trxCollection->_collection->_collection->_info._name)) {
+      if (trxCollection->_accessType == TRI_TRANSACTION_WRITE
+          && TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE
+          && ! TRI_IsSystemNameCollection(trxCollection->_collection->_collection->_info._name)) {
         return TRI_ERROR_ARANGO_READ_ONLY;
       }
 
