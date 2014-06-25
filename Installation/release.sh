@@ -46,9 +46,6 @@ make || exit 1
 make examples || exit 1
 make swagger || exit 1
 
-make doxygen || exit 1
-make latex || exit 1
-
 if [ "$TAG" == "1" ];  then
   git commit -m "release version $VERSION" -a
   git push
