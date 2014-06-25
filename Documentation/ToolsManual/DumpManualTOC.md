@@ -1,4 +1,0 @@
-TOC {#DumpManualTOC}
-====================
-
-- @ref DumpManual
