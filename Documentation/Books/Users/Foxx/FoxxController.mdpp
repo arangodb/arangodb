@@ -81,11 +81,9 @@ This handles requests from the HTTP verb patch. See above for the arguments you 
 
 This handles requests from the HTTP verb delete. See above for the arguments you can give.
 
-**Warning**
+**Note**
 
-Do not forget that delete is a reserved word in JavaScript and therefore needs to be called as app['delete']. There is also an alias del for this very reason.
-
-
+If you are uncomfortable with using JavaScript keywords as property names, you can use the alias *del* instead.
 
 <!--
 
@@ -231,9 +229,9 @@ Provide it with a function that throws an exception if the normal processing sho
 
 !SUBSUBSECTION onlyIfAuthenticated
 
-`FoxxController::onlyIf(code, reason)`
+`FoxxController::onlyIfAuthenticated(code, reason)`
 
-Please activate authentification for this app if you want to use this function. If the user is logged in, it will do nothing. Otherwise it will respond with the status code and the reason you provided (the route handler won't be called). This will also add the according documentation for this route.
+Please activate authentication for this app if you want to use this function. If the user is logged in, it will do nothing. Otherwise it will respond with the status code and the reason you provided (the route handler won't be called). This will also add the according documentation for this route.
 
 *Examples*
 
