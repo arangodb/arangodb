@@ -16,7 +16,7 @@ This app exposes its functionality via a JavaScript API named *auth*.
 @EXAMPLES
 
 ```js
-var auth = Foxx.requireApp('/system/simple-auth').auth;
+var auth = Foxx.requireApp('/_system/simple-auth').auth;
 ```
 
 !SUBSECTION Generate an authentication object
