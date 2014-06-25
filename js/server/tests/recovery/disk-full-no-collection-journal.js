@@ -30,7 +30,7 @@ function runSetup () {
     }
   });
 
-  internal.flushWal();
+  internal.wal.flush();
   internal.wait(5);
 
   internal.debugSegfault("crashing server");

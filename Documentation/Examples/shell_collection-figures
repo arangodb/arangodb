@@ -1,3 +1,0 @@
-arango> db.demo.figures()
-{ "alive" : { "count" : 1000, "size" : 45000 }, "dead" : { "count" : 0, "size" : 0, "deletion" : 0 }, "datafiles" : { "count" : 0, "fileSize" : 0 }, "journals" : { "count" : 1, "fileSize" : 33554432 }, "shapes" : { "count" : 7 } }
-

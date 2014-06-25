@@ -3783,35 +3783,59 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
 /// @brief adjusts the WAL configuration at runtime
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_AdjustWal (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_PropertiesWal (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() != 1 || ! argv[0]->IsObject()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "adjustWal(<object>)");
-  }
-
-  v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(argv[0]);
-  if (object->Has(TRI_V8_STRING("reserveLogfiles"))) {
-    uint32_t logfiles = static_cast<uint32_t>(TRI_ObjectToUInt64(object->Get(TRI_V8_STRING("reserveLogfiles")), true));
-    triagens::wal::LogfileManager::instance()->reserveLogfiles(logfiles);
-  }
-
-  if (object->Has(TRI_V8_STRING("historicLogfiles"))) {
-    uint32_t logfiles = static_cast<uint32_t>(TRI_ObjectToUInt64(object->Get(TRI_V8_STRING("historicLogfiles")), true));
-    triagens::wal::LogfileManager::instance()->historicLogfiles(logfiles);
+  if (argv.Length() > 1 || (argv.Length() == 1 && ! argv[0]->IsObject())) {
+    TRI_V8_EXCEPTION_USAGE(scope, "properties(<object>)");
   }
   
-  if (object->Has(TRI_V8_STRING("throttleWait"))) {
-    uint64_t value = TRI_ObjectToUInt64(object->Get(TRI_V8_STRING("throttleWait")), true);
-    triagens::wal::LogfileManager::instance()->maxThrottleWait(value);
-  }
+  auto l = triagens::wal::LogfileManager::instance();
+
+  if (argv.Length() == 1) {
+    // set the properties
+    v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(argv[0]);
+    if (object->Has(TRI_V8_STRING("allowOversizeEntries"))) {
+      bool value = TRI_ObjectToBoolean(object->Get(TRI_V8_STRING("allowOversizeEntries")));
+      l->allowOversizeEntries(value);
+    }
+    
+    if (object->Has(TRI_V8_STRING("logfileSize"))) {
+      uint32_t value = static_cast<uint32_t>(TRI_ObjectToUInt64(object->Get(TRI_V8_STRING("logfileSize")), true));
+      l->filesize(value);
+    }
+
+    if (object->Has(TRI_V8_STRING("historicLogfiles"))) {
+      uint32_t value = static_cast<uint32_t>(TRI_ObjectToUInt64(object->Get(TRI_V8_STRING("historicLogfiles")), true));
+      l->historicLogfiles(value);
+    }
+    
+    if (object->Has(TRI_V8_STRING("reserveLogfiles"))) {
+      uint32_t value = static_cast<uint32_t>(TRI_ObjectToUInt64(object->Get(TRI_V8_STRING("reserveLogfiles")), true));
+      l->reserveLogfiles(value);
+    }
+    
+    if (object->Has(TRI_V8_STRING("throttleWait"))) {
+      uint64_t value = TRI_ObjectToUInt64(object->Get(TRI_V8_STRING("throttleWait")), true);
+      l->maxThrottleWait(value);
+    }
   
-  if (object->Has(TRI_V8_STRING("throttleWhenPending"))) {
-    uint64_t value = TRI_ObjectToUInt64(object->Get(TRI_V8_STRING("throttleWhenPending")), true);
-    triagens::wal::LogfileManager::instance()->throttleWhenPending(value);
+    if (object->Has(TRI_V8_STRING("throttleWhenPending"))) {
+      uint64_t value = TRI_ObjectToUInt64(object->Get(TRI_V8_STRING("throttleWhenPending")), true);
+      l->throttleWhenPending(value);
+    }
   }
 
-  return scope.Close(v8::True());
+  v8::Handle<v8::Object> result = v8::Object::New();
+  result->Set(TRI_V8_STRING("allowOversizeEntries"), v8::Boolean::New(l->allowOversizeEntries()));
+  result->Set(TRI_V8_STRING("logfileSize"), v8::Number::New(l->filesize()));
+  result->Set(TRI_V8_STRING("historicLogfiles"), v8::Number::New(l->historicLogfiles()));
+  result->Set(TRI_V8_STRING("reserveLogfiles"), v8::Number::New(l->reserveLogfiles()));
+  result->Set(TRI_V8_STRING("syncInterval"), v8::Number::New(l->syncInterval()));
+  result->Set(TRI_V8_STRING("throttleWait"), v8::Number::New(l->maxThrottleWait()));
+  result->Set(TRI_V8_STRING("throttleWhenPending"), v8::Number::New(l->throttleWhenPending()));
+
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5599,7 +5623,10 @@ static v8::Handle<v8::Value> JS_LookupIndexVocbaseCol (v8::Arguments const& argv
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell-collection-count
+/// @EXAMPLE_ARANGOSH_OUTPUT{HIER_FEHLT_DER_NAME}
+///   db.users.count();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -5818,11 +5845,11 @@ static v8::Handle<v8::Value> DropVocbaseColCoordinator (TRI_vocbase_col_t* colle
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionDrop}
-/// ~ db._create("examples");
-///   col = db.examples;
+/// ~ db._create("example");
+///   col = db.example;
 ///   col.drop();
 ///   col;
-/// ~ db._drop("examples");
+/// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -6483,17 +6510,17 @@ static v8::Handle<v8::Value> JS_PlanIdVocbaseCol (v8::Arguments const& argv) {
 /// Read all properties
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionProperties}
-/// ~ db._create("examples");
-///   db.examples.properties();
-/// ~ db._drop("examples");
+/// ~ db._create("example");
+///   db.example.properties();
+/// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Change a property
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionProperty}
-/// ~ db._create("examples");
-///   db.examples.properties({ waitForSync : false });
-/// ~ db._drop("examples");
+/// ~ db._create("example");
+///   db.example.properties({ waitForSync : false });
+/// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -6758,38 +6785,28 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 ///
 /// Remove a document:
 ///
-/// @code
-/// arango> a1 = db.example.save({ a : 1 });
-/// { "_id" : "example/3449537", "_key" : "3449537", "_rev" : "3449537" }
-/// arango> db.example.document(a1);
-/// { "_id" : "example/3449537", "_key" : "3449537", "_rev" : "3449537", "a" : 1 }
-/// arango> db.example.remove(a1);
-/// true
-/// arango> db.example.document(a1);
-/// JavaScript exception in file '(arango)' at 1,12: [ArangoError 1202: document not found: document not found]
-/// !db.example.document(a1);
-/// !           ^
-/// @endcode
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentDocumentRemove}
+/// ~ db._create("example");
+///   a1 = db.example.save({ a : 1 });
+///   db.example.document(a1);
+///   db.example.remove(a1);
+///   db.example.document(a1);
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Remove a document with a conflict:
 ///
-/// @code
-/// arango> a1 = db.example.save({ a : 1 });
-/// { "_id" : "example/3857139", "_key" : "3857139", "_rev" : "3857139" }
-/// arango> a2 = db.example.replace(a1, { a : 2 });
-/// { "_id" : "example/3857139", "_key" : "3857139", "_rev" : "3922675", "_oldRev" : 3857139 }
-/// arango> db.example.remove(a1);
-/// JavaScript exception in file '(arango)' at 1,18: [ArangoError 1200: conflict: cannot remove document]
-/// !db.example.remove(a1);
-/// !                 ^
-/// arango> db.example.remove(a1, true);
-/// true
-/// arango> db.example.document(a1);
-/// JavaScript exception in file '(arango)' at 1,12: [ArangoError 1202: document not found: document not found]
-/// !db.example.document(a1);
-/// !           ^
-/// @endcode
-/// @endCodeBlock
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentDocumentRemoveConflict}
+/// ~ db._create("example");
+///   a1 = db.example.save({ a : 1 });
+///   a2 = db.example.replace(a1, { a : 2 });
+///   db.example.remove(a1);
+///   db.example.remove(a1, true);
+///   db.example.document(a1);
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
@@ -6813,11 +6830,11 @@ static v8::Handle<v8::Value> JS_RemoveVocbaseCol (v8::Arguments const& argv) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionRename}
-/// ~ db._create("examples");
-///   c = db.examples;
+/// ~ db._create("example");
+///   c = db.example;
 ///   c.rename("better-example");
 ///   c;
-/// ~ db._drop("examples");
+/// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -7538,11 +7555,11 @@ static v8::Handle<v8::Value> JS_TypeVocbaseCol (v8::Arguments const& argv) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{CollectionUnload}
-/// ~ db._create("examples");
-///   col = db.examples;
+/// ~ db._create("example");
+///   col = db.example;
 ///   col.unload();
 ///   col;
-/// ~ db._drop("examples");
+/// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -7643,9 +7660,9 @@ static v8::Handle<v8::Object> WrapVocBase (TRI_vocbase_t const* database) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCollectionName}
-/// ~ db._create("examples");
-///   db.examples;
-/// ~ db._drop("examples");
+/// ~ db._create("example");
+///   db.example;
+/// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// 
 /// @endDocuBlock
@@ -7964,11 +7981,11 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionsDatabaseName}
-/// ~ db._create("examples");
-///   db.examples.load();
+/// ~ db._create("example");
+///   db.example.load();
 ///   var d = db.demo;
 ///   db._collections();
-/// ~ db._drop("examples");
+/// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -8252,7 +8269,7 @@ static v8::Handle<v8::Value> JS_CreateDocumentCollectionVocbase (v8::Arguments c
 ///
 /// @EXAMPLES
 ///
-/// See @ref JS_CreateVocbase for examples.
+/// See @ref JS_CreateVocbase for example.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -8357,7 +8374,7 @@ static v8::Handle<v8::Value> JS_RemoveVocbase (v8::Arguments const& argv) {
 /// identifier exists, or if the specified *_rev* value does not match the
 /// current revision of the document.
 ///
-/// Please note that if the method is executed on the arangod server (e.g. from
+/// **Note**: If the method is executed on the arangod server (e.g. from
 /// inside a Foxx application), an immutable document object will be returned
 /// for performance reasons. It is not possible to change attributes of this
 /// immutable object. To update or patch the returned document, it needs to be
@@ -8374,7 +8391,13 @@ static v8::Handle<v8::Value> JS_RemoveVocbase (v8::Arguments const& argv) {
 ///
 /// Returns the document:
 ///
-/// @verbinclude shell_read-document-db
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentsDocumentName}
+/// ~ db._create("example");
+/// ~ var myid = db.example.save({_key: "12345"})
+///   db._document("example/12345");
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -8448,7 +8471,14 @@ static v8::Handle<v8::Value> JS_ExistsVocbase (v8::Arguments const& argv) {
 ///
 /// Create and replace a document:
 ///
-/// @TINYEXAMPLE{shell_replace-document-db,replacing a document}
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentsDocumentReplace}
+/// ~ db._create("example");
+///   a1 = db.example.save({ a : 1 });
+///   a2 = db._replace(a1, { a : 2 });
+///   a3 = db._replace(a1, { a : 3 });
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -8505,7 +8535,14 @@ static v8::Handle<v8::Value> JS_ReplaceVocbase (v8::Arguments const& argv) {
 ///
 /// Create and update a document:
 ///
-/// @TINYEXAMPLE{shell_update-document-db,updating a document}
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentDocumentUpdate}
+/// ~ db._create("example");
+///   a1 = db.example.save({ a : 1 });
+///   a2 = db._update(a1, { b : 2 });
+///   a3 = db._update(a1, { c : 3 });
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -10160,7 +10197,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "RELOAD_AUTH", JS_ReloadAuth, true);
   TRI_AddGlobalFunctionVocbase(context, "TRANSACTION", JS_Transaction, true);
   TRI_AddGlobalFunctionVocbase(context, "WAL_FLUSH", JS_FlushWal, true);
-  TRI_AddGlobalFunctionVocbase(context, "WAL_ADJUST", JS_AdjustWal, true);
+  TRI_AddGlobalFunctionVocbase(context, "WAL_PROPERTIES", JS_PropertiesWal, true);
 
   // .............................................................................
   // create global variables

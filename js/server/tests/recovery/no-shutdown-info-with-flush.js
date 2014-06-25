@@ -15,7 +15,7 @@ function runSetup () {
   }
 
   // flush the logfile but do not write shutdown info
-  internal.flushWal(true, true);
+  internal.wal.flush(true, true);
 
   internal.debugSegfault("crashing server");
 }

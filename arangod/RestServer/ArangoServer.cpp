@@ -1116,7 +1116,7 @@ void ArangoServer::openDatabases (bool checkVersion,
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (checkVersion && res == TRI_ERROR_ARANGO_EMPTY_DATADIR) {
-      TRI_EXIT_FUNCTION(EXIT_SUCCESS, NULL);
+      TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
     }
 
     LOG_FATAL_AND_EXIT("cannot start server: %s", TRI_errno_string(res));

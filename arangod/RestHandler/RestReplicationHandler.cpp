@@ -2399,7 +2399,8 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
                                                        TRI_json_t const* json,
                                                        string& errorMsg) {
 
-  if (type == MARKER_DOCUMENT || type == MARKER_EDGE) {
+  if (type == REPLICATION_MARKER_DOCUMENT || 
+      type == REPLICATION_MARKER_EDGE) {
     // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
 
     TRI_ASSERT(json != nullptr);
@@ -2422,7 +2423,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
       if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // insert
 
-        if (type == MARKER_EDGE) {
+        if (type == REPLICATION_MARKER_EDGE) {
           // edge
           if (document->_info._type != TRI_COL_TYPE_EDGE) {
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
@@ -2482,21 +2483,30 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
     }
   }
 
-  else if (type == MARKER_REMOVE) {
+  else if (type == REPLICATION_MARKER_REMOVE) {
     // {"type":2402,"key":"592063"}
     // init the update policy
     TRI_doc_update_policy_t policy(TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr);
 
-    int res = TRI_RemoveShapedJsonDocumentCollection(trxCollection, key, rid, &policy, false, false);
+    int res = TRI_ERROR_INTERNAL;
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+    try {
+      res = TRI_RemoveShapedJsonDocumentCollection(trxCollection, key, rid, &policy, false, false);
+
+      if (res != TRI_ERROR_NO_ERROR && res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // ignore this error
         res = TRI_ERROR_NO_ERROR;
       }
-      else {
-        errorMsg = "document removal operation failed: " + string(TRI_errno_string(res));
-      }
+    }
+    catch (triagens::arango::Exception const& ex) {
+      res = ex.code();
+    }
+    catch (...) {
+      res = TRI_ERROR_INTERNAL;
+    }
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      errorMsg = "document removal operation failed: " + string(TRI_errno_string(res));
     }
 
     return res;
@@ -2837,7 +2847,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
         break;
       }
 
-      if (0 != doc && type != MARKER_REMOVE) {
+      if (0 != doc && type != REPLICATION_MARKER_REMOVE) {
         ShardID responsibleShard;
         bool usesDefaultSharding;
         res = ci->getResponsibleShard(col->id_as_string(), doc, true,
@@ -2862,7 +2872,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
           }
         }
       }
-      else if (type == MARKER_REMOVE) {
+      else if (type == REPLICATION_MARKER_REMOVE) {
         // A remove marker, this has to be appended to all!
         for (j = 0; j < bufs.size(); j++) {
           bufs[j]->appendText(ptr, pos-ptr);

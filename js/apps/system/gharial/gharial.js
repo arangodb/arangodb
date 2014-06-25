@@ -128,7 +128,11 @@
    */
   controller.post("/", function(req, res) {
     var infos = req.params("graph");
-    var g = Graph._create(infos.get("name"), infos.get("edgeDefinitions"));
+    var g = Graph._create(
+      infos.get("name"),
+      infos.get("edgeDefinitions"),
+      infos.get("orphanCollections")
+    );
     setGraphResponse(res, g, actions.HTTP_CREATED);
   }).errorResponse(
     ArangoError, actions.HTTP_CONFLICT, "Graph creation error.", function(e) {
