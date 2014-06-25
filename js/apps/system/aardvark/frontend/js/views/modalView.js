@@ -13,7 +13,8 @@
     };
   };
 
-  var createTextStub = function(type, label, value, info, placeholder, mandatory, regexp) {
+  var createTextStub = function(type, label, value, info, placeholder, mandatory, regexp,
+                                addDelete, addAdd) {
     var obj = {
       type: type,
       label: label
@@ -29,6 +30,12 @@
     }
     if (mandatory) {
       obj.mandatory = mandatory;
+    }
+    if (addDelete) {
+      obj.addDelete = addDelete;
+    }
+    if (addAdd) {
+      obj.addAdd = addAdd;
     }
     if (regexp){
       // returns true if the string contains the match
@@ -174,8 +181,10 @@
       return obj;
     },
 
-    createSelect2Entry: function(id, label, value, info, placeholder, mandatory) {
-      var obj = createTextStub(this.tables.SELECT2, label, value, info, placeholder, mandatory);
+    createSelect2Entry: function(
+      id, label, value, info, placeholder, mandatory, addDelete, addAdd) {
+      var obj = createTextStub(this.tables.SELECT2, label, value, info, placeholder, mandatory,
+        addDelete, addAdd);
       obj.id = id;
       return obj;
     },
