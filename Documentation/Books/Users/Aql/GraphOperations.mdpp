@@ -9,7 +9,18 @@ A lot of the following functions accept a vertex (or edge) example as parameter.
 * {}                : Returns all possible vertices for this graph.
 * *idString*        : Returns the vertex/edge with the id *idString*.
 * {*key1* : *value1*, *key2* : *value2*} : Returns the vertices/edges that match this example, which means that both have *key1* and *key2* with the corresponding attributes.
+* {*key1.key2* : *value1*, *key3* : *value2*} : It is possible to chain keys which means that a document *{ key1 : {key2 : value1}, key3 : value2}* would be a match.
 * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices/edges that match one of the examples, which means that either *key1* or *key2* are set with the corresponding value.
+
+!SUBSECTION The complexity of the shortest path algorithms
+
+Most of the functions described in this chapter calculate the shortest paths for subsets of the graphs vertices.
+Hence the complexity of these functions depends of the chosen algorithm for this task. For
+[Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) it is **O(n^3)**
+with *n* being the amount of vertices in the graph. For
+[Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm) it would be **O(x\*y\*n^2)** with *n* being
+the amount of vertices in the graph, *x* the amount of start vertices and *y* the amount of
+target vertices. Hence a suggestion might be to use Dijkstra when x\*y < n and the functions supports chosing your algorithm.
 
 !SUBSECTION Edges and Vertices related functions
 
