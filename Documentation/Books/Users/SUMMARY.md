@@ -91,6 +91,8 @@
   * [FoxxModel](Foxx/FoxxModel.md)
   * [FoxxRepository](Foxx/FoxxRepository.md)
   * [Developing Applications](Foxx/DevelopingAnApplication.md)
+  * [Dependency Injection](Foxx/FoxxInjection.md)
+  * [Foxx Exports](Foxx/FoxxExports.md)
   * [Optional Functionality](Foxx/FoxxOptional.md)
 <!-- 17 -->
 * [Foxx Manager](FoxxManager/README.md)

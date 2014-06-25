@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true, unparam: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, white: true, plusplus: true, unparam: true, regexp: true, vars: true */
 /*global require, applicationContext*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -76,7 +76,7 @@
 ///   examples.loadGraph("routeplanner");
 ///   var url = "/_api/gharial";
 ///   var response = logCurlRequest('GET', url);
-/// 
+///
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);
@@ -90,7 +90,7 @@
    * Creates a list of all available graphs.
    */
   controller.get("/", function(req, res) {
-    setResponse(res, "graphs", Graph._list());
+    setResponse(res, "graphs", Graph._listObjects());
   });
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,8 +101,8 @@
 /// |    graph._drop("myGraph", true);
 ///   }
 ///   var url = "/_api/gharial";
-///   body = { 
-///     name: "myGraph", 
+///   body = {
+///     name: "myGraph",
 ///     edgeDefinitions: [{
 ///       collection: "edges",
 ///       from: [ "startVertices" ],
@@ -111,13 +111,13 @@
 ///   };
 ///
 ///   var response = logCurlRequest('POST', url, body);
-/// 
+///
 ///   assert(response.code === 201);
 ///
 ///   logJsonResponse(response);
 ///
 ///   graph._drop("myGraph", true);
-///   
+///
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -150,7 +150,7 @@
 ///   examples.loadGraph("social");
 ///   var url = "/_api/gharial/social";
 ///   var response = logCurlRequest('DELETE', url);
-/// 
+///
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);
@@ -194,7 +194,7 @@
 ///   examples.loadGraph("social");
 ///   var url = "/_api/gharial/social/vertex";
 ///   var response = logCurlRequest('GET', url);
-/// 
+///
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);
@@ -233,11 +233,11 @@
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
 ///   var url = "/_api/gharial/social/vertex";
-///   body = { 
+///   body = {
 ///     collection: "otherVertices"
 ///   };
 ///   var response = logCurlRequest('POST', url, body);
-/// 
+///
 ///   assert(response.code === 201);
 ///
 ///   logJsonResponse(response);
@@ -285,7 +285,7 @@
 ///   g._addVertexCollection("otherVertices");
 ///   var url = "/_api/gharial/social/vertex/otherVertices";
 ///   var response = logCurlRequest('DELETE', url);
-/// 
+///
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);
@@ -298,7 +298,7 @@
 ///   var g = examples.loadGraph("social");
 ///   var url = "/_api/gharial/social/vertex/male";
 ///   var response = logCurlRequest('DELETE', url);
-/// 
+///
 ///   assert(response.code === 400);
 ///
 ///   logJsonResponse(response);
@@ -310,7 +310,7 @@
   /** Delete a vertex collection.
    *
    * Removes a vertex collection from this graph.
-   * If this collection is used in one or more edge definitions 
+   * If this collection is used in one or more edge definitions
    */
   controller.del("/:graph/vertex/:collection", function(req, res) {
     var name = req.params("graph");
@@ -339,7 +339,7 @@
 ///   examples.loadGraph("social");
 ///   var url = "/_api/gharial/social/edge";
 ///   var response = logCurlRequest('GET', url);
-/// 
+///
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);
@@ -377,13 +377,13 @@
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
 ///   var url = "/_api/gharial/social/edge";
-///   body = { 
+///   body = {
 ///     collection: "lives_in",
 ///     from: ["female", "male"],
 ///     to: ["city"]
 ///   };
 ///   var response = logCurlRequest('POST', url, body);
-/// 
+///
 ///   assert(response.code === 201);
 ///
 ///   logJsonResponse(response);
@@ -397,7 +397,7 @@
    * Stores a new edge definition with the information contained
    * within the body.
    * This has to contain the edge-collection name, as well as set of from and to
-   * collections-names respectively. 
+   * collections-names respectively.
    */
   controller.post("/:graph/edge", function(req, res) {
     var name = req.params("graph");
@@ -428,13 +428,13 @@
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   examples.loadGraph("social");
 ///   var url = "/_api/gharial/social/edge/relation";
-///   body = { 
+///   body = {
 ///     collection: "relation",
 ///     from: ["female", "male", "animal"],
 ///     to: ["female", "male", "animal"]
 ///   };
 ///   var response = logCurlRequest('PUT', url, body);
-/// 
+///
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);
@@ -493,7 +493,7 @@
 ///   examples.loadGraph("social");
 ///   var url = "/_api/gharial/social/edge/relation";
 ///   var response = logCurlRequest('DELETE', url);
-/// 
+///
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);
@@ -543,7 +543,7 @@
 ///     name: "Francis"
 ///   }
 ///   var response = logCurlRequest('POST', url, body);
-/// 
+///
 ///   assert(response.code === 201);
 ///
 ///   logJsonResponse(response);
@@ -580,7 +580,7 @@
 ///   examples.loadGraph("social");
 ///   var url = "/_api/gharial/social/vertex/female/alice";
 ///   var response = logCurlRequest('GET', url);
-/// 
+///
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);
@@ -634,7 +634,7 @@
 ///   }
 ///   var url = "/_api/gharial/social/vertex/female/alice";
 ///   var response = logCurlRequest('PUT', url, body);
-/// 
+///
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);
@@ -690,7 +690,7 @@
 ///   }
 ///   var url = "/_api/gharial/social/vertex/female/alice";
 ///   var response = logCurlRequest('PATCH', url, body);
-/// 
+///
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);
@@ -743,7 +743,7 @@
 ///   examples.loadGraph("social");
 ///   var url = "/_api/gharial/social/vertex/female/alice";
 ///   var response = logCurlRequest('DELETE', url);
-/// 
+///
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);
@@ -801,7 +801,7 @@
 ///     _to: "female/diana"
 ///   };
 ///   var response = logCurlRequest('POST', url, body);
-/// 
+///
 ///   assert(response.code === 201);
 ///
 ///   logJsonResponse(response);
@@ -857,7 +857,7 @@
 ///   examples.loadGraph("social");
 ///   var url = "/_api/gharial/social/edge/relation/aliceAndBob";
 ///   var response = logCurlRequest('GET', url);
-/// 
+///
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);
@@ -909,7 +909,7 @@
 ///     type: "divorced"
 ///   }
 ///   var response = logCurlRequest('PUT', url, body);
-/// 
+///
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);
@@ -964,7 +964,7 @@
 ///     since: "01.01.2001"
 ///   }
 ///   var response = logCurlRequest('PATCH', url, body);
-/// 
+///
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);
@@ -1018,7 +1018,7 @@
 ///   examples.loadGraph("social");
 ///   var url = "/_api/gharial/social/edge/relation/aliceAndBob";
 ///   var response = logCurlRequest('DELETE', url);
-/// 
+///
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);

@@ -2335,7 +2335,12 @@ static v8::Handle<v8::Value> JS_ChecksumCollection (v8::Arguments const& argv) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell-edge-edges
+/// @EXAMPLE_ARANGOSH_OUTPUT{edgeCollectionEdges}
+/// ~ db._create("example");
+///   db.relation.edges("vertex/1593622");
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2346,18 +2351,24 @@ static v8::Handle<v8::Value> JS_EdgesQuery (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects all inbound edges
 /// @startDocuBlock edgeCollectionInEdges
-/// @FUN{@FA{edge-collection}.inEdges(@FA{vertex})}
+/// `edge-collection.inEdges(vertex)`
 ///
-/// The @FN{edges} operator finds all edges ending in (inbound) @FA{vertex}.
+/// The *edges* operator finds all edges ending in (inbound) *vertex*.
 ///
-/// @FUN{@FA{edge-collection}.inEdges(@FA{vertices})}
+/// `edge-collection.inEdges(vertices)`
 ///
-/// The @FN{edges} operator finds all edges ending in (inbound) a document from
-/// @FA{vertices}, which must a list of documents or document handles.
+/// The *edges* operator finds all edges ending in (inbound) a document from
+/// *vertices*, which must a list of documents or document handles.
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell-edge-in-edges
+/// @EXAMPLE_ARANGOSH_OUTPUT{edgeCollectionInEdges}
+/// ~ db._create("example");
+///   db.relation.inEdges("vertex/1528086");
+///   db.relation.inEdges("vertex/1593622");
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2796,7 +2807,13 @@ static v8::Handle<v8::Value> JS_NearQuery (v8::Arguments const& argv) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell-edge-out-edges
+/// @EXAMPLE_ARANGOSH_OUTPUT{edgeCollectionOutEdges}
+/// ~ db._create("example");
+///   db.relation.inEdges("vertex/1528086");
+///   db.relation.inEdges("vertex/1593622");
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 

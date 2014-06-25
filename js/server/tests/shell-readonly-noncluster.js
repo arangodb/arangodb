@@ -56,7 +56,7 @@ function databaseTestSuite () {
       }
 
       db._createDatabase("testDB");
-      db._changeMode("ReadOnly");
+      db._changeMode("NoCreate");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -121,7 +121,7 @@ function operationsTestSuite () {
       db._drop("testCol");
       collection = db._create("testCol");
       collection.save({_key: "testDocKey", a: 2 });
-      db._changeMode("ReadOnly");
+      db._changeMode("NoCreate");
     },
 
 ////////////////////////////////////////////////////////////////////////////////

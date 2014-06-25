@@ -8,6 +8,7 @@ attributes are required though):
 * *author*: The author name
 * *contributors*: An array containing objects, each represents a contributor (with *name* and optional *email*)
 * *controllers*: Map routes to FoxxControllers
+* *exports*: Map names to Foxx exports
 * *defaultDocument*: The default document when the applicated root (*/*) is called (defaults to *index.html*)
 * *description*: A short description of the application (Meta information)
 * *engines*: Should be an object with *arangodb* set to the ArangoDB version your Foxx app is compatible with.
