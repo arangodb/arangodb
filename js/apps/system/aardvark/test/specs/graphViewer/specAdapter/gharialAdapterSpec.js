@@ -1849,7 +1849,7 @@
                   _to: target._id
                 };
                 var edgeInfo = {source: source, target: target};
-                adapter.createEdge(edgesCollection, edgeInfo, function(edge) {
+                adapter.createEdge(edgeInfo, function(edge) {
                   insertedId = edge._id;
                   callbackCheck = true;
                   insertedEdge = edge;
@@ -1905,7 +1905,7 @@
                   requests.node(graphName, nodesCollection).del(toDelete._id)
                 );
                 notExistNode(c2);
-                expect($.ajax).toHaveBeenCalledWith(
+                expect($.ajax).not.toHaveBeenCalledWith(
                   requests.edge(graphName, edgesCollection).del(e2_8)
                 );
                 notExistEdge(c2, c8);
@@ -1915,97 +1915,6 @@
           });
           
         });
-        
-        describe('displaying only parts of the graph', function() {
-    
-          it('should be able to remove a node and all '
-          + 'connected edges including not visible ones', function() {
-            var s0, s1, t0, toDel,
-            s0_toDel, s1_toDel, toDel_t0;
-        
-            runs(function() {
-          
-              callbackCheck = false;
-              s0 = insertNode(nodesCollection, 0);
-              s1 = insertNode(nodesCollection, 1);
-              t0 = insertNode(nodesCollection, 2);
-              toDel = insertNode(nodesCollection, 3);
-          
-              s0_toDel = insertEdge(edgesCollection, s0, toDel);
-              s1_toDel = insertEdge(edgesCollection, s1, toDel);
-              toDel_t0 = insertEdge(edgesCollection, toDel, t0);
-              
-              var loaded = false,
-                fakeResult = "";
-              
-              spyOn($, "ajax").andCallFake(function(request) {                
-                if (request.url.indexOf("cursor", request.url.length - "cursor".length) !== -1) {
-                  if (!loaded) {
-                    var vars = JSON.parse(request.data).bindVars;
-                    if (vars !== undefined) {
-                      loaded = true;
-                      request.success({result: loadGraph(vars)});
-                    }
-                  } else {
-                    request.success({result: [
-                     {
-                       _id: s0_toDel
-                     },{
-                       _id: s1_toDel
-                     },{
-                       _id: toDel_t0
-                     }      
-                    ]});    
-                  }
-                } else {
-                  request.success(fakeResult);
-                }
-              });
-
-              adapter.loadNodeFromTreeById(s0, checkCallbackFunction);
-            });
-        
-            waitsFor(function() {
-              return callbackCheck;
-            }, 1000);
-        
-            runs(function() {
-              callbackCheck = false;
-              adapter.deleteNode(nodeWithID(toDel), checkCallbackFunction);
-            });
-        
-            // Wait 2 seconds as no handle for the deletion of edges exists.
-            waits(2000);
-        
-            runs(function() {
-              notExistNodes([toDel, s1, t0]);
-              existNode(s0);
-          
-              notExistEdge(s0, toDel);
-              notExistEdge(s1, toDel);
-              notExistEdge(toDel, t0);
-              
-              expect($.ajax).toHaveBeenCalledWith(
-                requests.node(graphName, nodesCollection).del(toDel)
-              );
-              expect($.ajax).toHaveBeenCalledWith(
-                requests.edge(graphName, edgesCollection).del(s0_toDel)
-              );
-              expect($.ajax).toHaveBeenCalledWith(
-                requests.edge(graphName, edgesCollection).del(s1_toDel)
-              );
-              expect($.ajax).toHaveBeenCalledWith(
-                requests.edge(graphName, edgesCollection).del(toDel_t0)
-              );
-              
-              // Check if counter is set correctly
-              expect(nodeWithID(s0)._outboundCounter).toEqual(0);
-            });
-        
-          });
-    
-        });
-        
         
       });
 
