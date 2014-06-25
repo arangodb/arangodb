@@ -69,6 +69,8 @@ var MOUNTED_APPS = {};
 ////////////////////////////////////////////////////////////////////////////////
 
 function transformScript (file) {
+  'use strict';
+
   if (/\.coffee$/.test(file)) {
     return function (content) {
       return preprocess(content, "coffee");
@@ -83,6 +85,8 @@ function transformScript (file) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function getStorage () {
+  'use strict';
+
   return arangodb.db._collection('_aal');
 }
 
@@ -93,6 +97,7 @@ function getStorage () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function checkManifest (filename, mf) {
+  'use strict';
 
   // add some default attributes
   if (! mf.hasOwnProperty("author")) {
@@ -184,6 +189,8 @@ function checkManifest (filename, mf) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function extendContext (context, app, root) {
+  'use strict';
+
   var cp = context.collectionPrefix;
   var cname = "";
 
@@ -225,7 +232,9 @@ function extendContext (context, app, root) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function prefixFromMount (mount) {
-  return mount.substr(1).replace(/\//g, "_");
+  'use strict';
+
+  return mount.substr(1).replace(/-/g, "_").replace(/\//g, "_");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -233,6 +242,8 @@ function prefixFromMount (mount) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function mountFromId (mount) {
+  'use strict';
+
   var aal = getStorage();
   var doc = aal.firstExample({ type: "mount", _id: mount });
 
@@ -256,6 +267,8 @@ function mountFromId (mount) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function appFromAppId (appId) {
+  'use strict';
+
   var app = module.createApp(appId, {});
 
   if (app === null) {
@@ -270,6 +283,8 @@ function appFromAppId (appId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function buildAssetContent (app, assets, basePath) {
+  'use strict';
+
   var i;
   var j;
   var m;
@@ -352,6 +367,8 @@ function buildAssetContent (app, assets, basePath) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function buildFileAsset (app, path, basePath, asset) {
+  'use strict';
+
   var content = buildAssetContent(app, asset.files, basePath);
   var type;
 
@@ -392,6 +409,8 @@ function buildFileAsset (app, path, basePath, asset) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function buildDevelopmentAssetRoute (app, path, basePath, asset) {
+  'use strict';
+
   var internal = require("internal");
 
   return {
@@ -412,6 +431,8 @@ function buildDevelopmentAssetRoute (app, path, basePath, asset) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function buildAssetRoute (app, path, basePath, asset) {
+  'use strict';
+
   var c = buildFileAsset(app, path, basePath, asset);
 
   return {
@@ -425,6 +446,8 @@ function buildAssetRoute (app, path, basePath, asset) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function installAssets (app, routes) {
+  'use strict';
+
   var path;
 
   var desc = app._manifest;
@@ -491,6 +514,8 @@ function installAssets (app, routes) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function executeAppScript (app, name, mount, prefix) {
+  'use strict';
+
   var desc = app._manifest;
 
   if (! desc) {
@@ -538,6 +563,8 @@ function executeAppScript (app, name, mount, prefix) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function setupApp (app, mount, prefix) {
+  'use strict';
+
   return executeAppScript(app, "setup", mount, prefix);
 }
 
@@ -546,6 +573,8 @@ function setupApp (app, mount, prefix) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function teardownApp (app, mount, prefix) {
+  'use strict';
+
   return executeAppScript(app, "teardown", mount, prefix);
 }
 
@@ -555,6 +584,8 @@ function teardownApp (app, mount, prefix) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function upsertAalAppEntry (manifest, thumbnail, path) {
+  'use strict';
+
   var aal = getStorage();
   var doc = aal.firstExample({
     type: "app",
@@ -857,6 +888,8 @@ function routingAalApp (app, mount, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function scanDirectory (path) {
+  'use strict';
+
   var j;
 
   if (typeof path === "undefined") {
@@ -965,6 +998,28 @@ function checkConfiguration (app, options) {
   return options;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns mount point for system apps
+////////////////////////////////////////////////////////////////////////////////
+
+  function systemMountPoint (appName) {
+    'use strict';
+
+    if (appName === "aardvark") {
+      return "/_admin/aardvark";
+    }
+
+    if (appName === "gharial") {
+      return "/_api/gharial";
+    }
+
+    if (appName === "cerberus") {
+      return "/_system/cerberus";
+    }
+
+    return false;
+  }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -996,6 +1051,8 @@ exports.scanAppDirectory = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.rescan = function () {
+  'use strict';
+
   return exports.scanAppDirectory();
 };
 
@@ -1620,7 +1677,8 @@ exports.fetchFromGithub = function (url, name, version) {
   var gitFilename = "/gitinfo.json";
   fs.write(path+gitFilename, JSON.stringify(url));
 
-  this.scanAppDirectory();
+  exports.scanAppDirectory();
+
   return "app:" + source.name + ":" + source.version;
 };
 
@@ -1629,6 +1687,8 @@ exports.fetchFromGithub = function (url, name, version) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.availableJson = function () {
+  'use strict';
+
   return utils.availableJson();
 };
 
@@ -1637,6 +1697,8 @@ exports.availableJson = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.listJson = function () {
+  'use strict';
+
   return utils.listJson();
 };
 
@@ -1645,7 +1707,67 @@ exports.listJson = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.getFishbowlStorage = function () {
+  'use strict';
+
   return utils.getFishbowlStorage();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initializes the Foxx apps
+////////////////////////////////////////////////////////////////////////////////
+
+exports.initializeFoxx = function () {
+  'use strict';
+
+  try {
+    exports.scanAppDirectory();
+  }
+  catch (err) {
+    console.error("cannot initialize Foxx application: %s", String(err));
+  }
+  
+  var aal = getStorage();
+
+  if (aal !== null) {
+    var systemAppPath = module.systemAppPath();
+
+    var fs = require("fs");
+    var apps = fs.list(systemAppPath); 
+
+    // make sure the aardvark app is always there
+    if (apps.indexOf("aardvark") === -1) {
+      apps.push("aardvark");
+    }
+
+    apps.forEach(function (appName) {
+      var mount = systemMountPoint(appName);
+
+      // for all unknown system apps: check that the directory actually exists
+      if (! mount && ! fs.isDirectory(fs.join(systemAppPath, appName))) {
+        return;
+      }
+      
+      try {
+        if (! mount) {
+          mount = '/_system/' + appName;
+        }
+
+        var found = aal.firstExample({ type: "mount", mount: mount });
+
+        if (found === null) {
+          exports.mount(appName, mount, {reload: false});
+
+          var doc = mountFromId(mount);
+          var app = appFromAppId(doc.app);
+
+          setupApp(app, mount, doc.options.collectionPrefix);
+        }
+      }
+      catch (err) {
+        console.error("unable to mount system application '%s': %s", appName, String(err));
+      }
+    });
+  }
 };
 
 // -----------------------------------------------------------------------------
