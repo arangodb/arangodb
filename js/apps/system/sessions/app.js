@@ -6,7 +6,7 @@
   var Foxx = require('org/arangodb/foxx');
   var errors = require('./errors');
   var controller = new Foxx.Controller(applicationContext);
-  var api = Foxx.requireApp('/sessions').sessionStorage;
+  var api = Foxx.requireApp(applicationContext.mount).sessionStorage;
 
   controller.post('/', function (req, res) {
     var session = api.create(req.body());
