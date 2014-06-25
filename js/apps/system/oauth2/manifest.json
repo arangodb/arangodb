@@ -1,0 +1,17 @@
+{
+  "name": "oauth2",
+  "author": "Alan Plum",
+  "version": "0.1",
+  "isSystem": true,
+  "description": "OAuth2 authentication for Foxx.",
+
+  "exports": {
+    "providers": "providers.js"
+  },
+
+  "defaultDocument": "",
+
+  "lib": ".",
+
+  "setup": "setup.js"
+}
