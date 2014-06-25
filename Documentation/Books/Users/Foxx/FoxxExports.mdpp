@@ -16,6 +16,9 @@ In order to export modules in a Foxx app, you need to list the files in your man
     "exports": {
         "doodads": "./doodads.js",
         "anotherModule": "./someOtherFilename.js"
+    },
+    "controllers": {
+        "/etc": "./controllers.js"
     }
 }
 ```
@@ -83,4 +86,11 @@ controller.post('/doodads', function(request, response, injected) {
 
 There is currently no workaround to allow using one app's Foxx exports in another app's Foxx exports.
 
-If you don't need direct access to ArangoDB's functionality or the `applicationContext`, it is a better idea to use a regular npm module instead.
+If you want to import Foxx exports of an app in controllers of the same app, you can do so without knowing the mount path in advance by using *applicationContext.mount*:
+
+```js
+var Foxx = require('org/arangodb/foxx');
+var doodads = Foxx.requireApp(applicationContext.mount).doodads;
+```
+
+If you don't need direct access to ArangoDB's functionality or the *applicationContext*, it is a better idea to use a regular npm module instead.

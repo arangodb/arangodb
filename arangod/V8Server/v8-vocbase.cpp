@@ -2446,7 +2446,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
 /// Saves a new edge and returns the document-handle. *from* and *to*
 /// must be documents or document references.
 ///
-/// `edge-collection.save(from, to, document, waitForSync)
+/// `edge-collection.save(from, to, document, waitForSync)`
 ///
 /// The optional *waitForSync* parameter can be used to force
 /// synchronization of the document creation operation to disk even in case
@@ -2461,7 +2461,15 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
 ///
 /// @EXAMPLES
 ///
-/// @TINYEXAMPLE{shell_create-edge,create an edge}
+/// @EXAMPLE_ARANGOSH_OUTPUT{HIER_FEHLT_DER_NAME}
+/// ~ db._create("vertex");
+///   v1 = db.vertex.save({ name : "vertex 1" });
+///   v2 = db.vertex.save({ name : "vertex 2" });
+///   e1 = db.relation.save(v1, v2, { label : "knows" });
+///   db._document(e1);
+/// ~ db._drop("vertex");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
