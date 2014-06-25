@@ -1,0 +1,86 @@
+!CHAPTER Working with Foxx exports
+
+Instead of (or in addition to) defining controllers, Foxx apps can also define exports.
+
+Foxx exports are not intended to replace regular npm modules. They simply allow you to make your app's collections and *applicationContext* available in other Foxx apps or bundling ArangoDB-specific modules in re-usable Foxx apps.
+
+!SECTION Define an export module
+
+In order to export modules in a Foxx app, you need to list the files in your manifest:
+
+```json
+{
+    "name": "foxx_exports_example",
+    "version": "1.0.0",
+    "description": "Demonstrates Foxx exports.",
+    "exports": {
+        "doodads": "./doodads.js",
+        "anotherModule": "./someOtherFilename.js"
+    }
+}
+```
+
+The file *doodads.js* in the app's base path could look like this:
+
+```js
+var Foxx = require('org/arangodb/foxx');
+var Doodad = Foxx.Model.extend({}, {});
+var doodadRepo = new Foxx.Repository(
+    applicationContext.collection('doodads'),
+    {model: Doodad}
+);
+exports.repo = doodadRepo;
+exports.model = Doodad;
+```
+
+This module would then export the name "repo" bound to the variable *doodads* as well as the name "model" bound to the *Doodad* model.
+
+Note that the *applicationContext* is available to your Foxx exports just like in your Foxx controllers.
+
+**Warning**
+
+Foxx exports only support CommonJS exports using the special *exports* variable. Node-style exports via *module.exports* are not supported.
+
+!SECTION Import from another app
+
+In order to import from another app, you need to know where the app is mounted.
+
+Let's say we have mounted the example app above at */my-doodads*. We could now access the app's exports in another app like so:
+
+```js
+var Foxx = require('org/arangodb/foxx');
+var doodads = Foxx.requireApp('/my-doodads').doodads;
+var Doodad = doodads.model;
+var doodadRepo = doodads.repo;
+
+// use the imported model and repository
+var myDoodad = new Doodad();
+doodadRepo.save(myDoodad);
+```
+
+**Warning**
+
+When using Foxx exports in other apps, the load order of apps determines when which app's exports will become available.
+
+In order to use Foxx exports in another app's controllers it is recommended you use *controller.addInjector* to delay the import until all mounted apps have been loaded:
+
+```js
+var Foxx = require('org/arangodb/foxx');
+var controller = new Foxx.Controller(applicationContext);
+controller.addInjector({
+    doodads: function() {
+        return Foxx.requireApp('/my-doodads').doodads;
+    }
+});
+
+// use the imported model and repository
+controller.post('/doodads', function(request, response, injected) {
+    var myDoodad = new injected.doodads.model();
+    injected.doodads.repo.save(myDoodad);
+    response.json(myDoodad.forClient());
+});
+```
+
+There is currently no workaround to allow using one app's Foxx exports in another app's Foxx exports.
+
+If you don't need direct access to ArangoDB's functionality or the `applicationContext`, it is a better idea to use a regular npm module instead.
