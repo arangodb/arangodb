@@ -364,13 +364,16 @@ ArangoCollection.prototype.any = function () {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionFirst}
 /// ~ db._create("example");
-///   db.example.first(1)
+/// ~ db.example.save({ Hello : "world" });
+/// ~ db.example.save({ Foo : "bar" });
+///   db.example.first(1);
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionFirstNull}
 /// ~ db._create("example");
-///   arangod> db.example.first()
+/// ~ db.example.save({ Hello : "world" });
+///   db.example.first();
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
@@ -448,12 +451,15 @@ ArangoCollection.prototype.first = function (count) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionLast}
 /// ~ db._create("example");
-///   db.example.last(1);
+/// ~ db.example.save({ Hello : "world" });
+/// ~ db.example.save({ Foo : "bar" });
+///   db.example.last(2);
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionLastNull}
 /// ~ db._create("example");
+/// ~ db.example.save({ Hello : "world" });
 ///   db.example.last(1);
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -513,7 +519,7 @@ ArangoCollection.prototype.last = function (count) {
 ///
 /// Returns the first document of a collection that matches the specified 
 /// example or *null*. The example must be specified as paths and values. 
-/// See @FN{byExample} for details.
+/// See *byExample* for details.
 ///
 /// `collection.firstExample(path1, value1, ...)`
 ///
@@ -522,7 +528,10 @@ ArangoCollection.prototype.last = function (count) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionFirstExample}
+/// ~ db._create("users");
+/// ~ db.users.save("Foo");
 ///   db.users.firstExample("name", 1237);
+/// ~ db._drop("users");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock

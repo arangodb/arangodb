@@ -267,17 +267,21 @@ ArangoCollection.prototype.all = function () {
 /// Use *toArray* to get all documents at once:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionByExample}
+/// ~ db._create("users");
 ///   db.users.all().toArray();
 ///   db.users.byExample({ "id" : 323 }).toArray();
 ///   db.users.byExample({ "name" : "Peter" }).toArray();
 ///   db.users.byExample({ "name" : "Peter", "id" : 535 }).toArray();
+/// ~ db._drop("users");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Use *next* to loop over all documents:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionByExampleNext}
+/// ~ db._create("users");
 ///   var a = db.users.byExample( {"name" : "Peter" } );
 ///   while (a.hasNext()) print(a.next());
+/// ~ db._drop("users");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -512,7 +516,9 @@ ArangoCollection.prototype.byConditionBitarray = function (index, condition) {
 /// Use *toArray* to get all documents at once:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionRange}
-/// l = db.skip.range("age", 10, 13).toArray();
+/// ~ db._create("example");
+///   l = db.example.range("age", 10, 13).toArray();
+/// ~ db._drop("example")
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -908,8 +914,8 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionRemoveByExample}
 /// ~ db._create("example");
-/// ~ example.save("foo");
-///   example.removeByExample("foo");
+/// ~ db.example.save({ Hello : "world" });
+///   db.example.removeByExample( {Hello : "world"} );
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
@@ -953,8 +959,8 @@ ArangoCollection.prototype.removeByExample = function (example, waitForSync, lim
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionReplaceByExample}
 /// ~ db._create("example");
-/// ~ example.save("foo");
-///   example.replaceByExample("foo", "bar", false, 5);
+/// ~ db.example.save({ Hello : "world" });
+///   db.example.replaceByExample({ Hello: "world" }, {Hello: "mars"}, false, 5);
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
@@ -1005,11 +1011,11 @@ ArangoCollection.prototype.replaceByExample = function (example, newValue, waitF
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdateByExample}
 /// ~ db._create("example");
-/// ~ example.save("foo");
-///   example.updateByExample({ "example": "foo" }, { "example": "bar", "example": null }, false);
+/// ~ db.example.save({ Hello : "world" });
+///   db.example.updateByExample({ Hello: "world" }, { Hello: "foo", Hello: "bar" }, false);
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// endDocuBlock
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.updateByExample = function (example, newValue, keepNull, waitForSync, limit) {

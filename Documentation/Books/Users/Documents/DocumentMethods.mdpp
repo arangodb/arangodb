@@ -28,15 +28,6 @@
 <!-- js/server/modules/org/arangodb/arango-collection.js-->
 @startDocuBlock collectionToArray
 
-!SUBSECTION First
-<!-- js/server/modules/org/arangodb/arango-collection.js-->
-@startDocuBlock documentsCollectionFirst
-
-!SUBSECTION Last
-<!-- js/server/modules/org/arangodb/arango-collection.js-->
-@startDocuBlock documentsCollectionLast
-
-
 !SUBSECTION Document
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock documentsCollectionName
@@ -74,26 +65,9 @@
 @startDocuBlock documentsCollectionUpdateByExample
 
 !SUBSECTION First
-<!-- arangod/V8Server/v8-vocbase.cpp -->
+<!-- js/server/modules/org/arangodb/arango-collection.js-->
 @startDocuBlock documentsCollectionFirst
 
 !SUBSECTION Last
-<!-- arangod/V8Server/v8-vocbase.cpp -->
+<!-- js/server/modules/org/arangodb/arango-collection.js-->
 @startDocuBlock documentsCollectionLast
-
-
-
-<!--
-@anchor HandlingDocumentsRead
-@copydetails JS_DocumentVocbaseCol
-
-@CLEARPAGE
-@anchor HandlingDocumentsExists
-@copydetails JS_ExistsVocbaseCol
-
-@CLEARPAGE
-@anchor HandlingDocumentsAny
-@copydetails JS_AnyQuery
-
-@CLEARPAGE
--->

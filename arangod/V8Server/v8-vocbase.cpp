@@ -5624,7 +5624,9 @@ static v8::Handle<v8::Value> JS_LookupIndexVocbaseCol (v8::Arguments const& argv
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionCount}
+/// ~ db._create("users");
 ///   db.users.count();
+/// ~ db._drop("users");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -5789,7 +5791,7 @@ static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) 
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionNameUnknown}
 /// ~ db._create("example");
 /// ~ var myid = db.example.save({_key: "2873916"});
-///   db.example.document("example/2873916");
+///   db.example.document("example/4472917");
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -6918,8 +6920,8 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
 /// If there is a conflict, i. e. if the revision of the *document* does not
 /// match the revision in the collection, then an error is thrown.
 ///
-/// @FUN{@FA{collection}.replace(@FA{document}, @FA{data}, true)} or
-/// @FUN{@FA{collection}.replace(@FA{document}, @FA{data}, {@FA{overwrite}: true})}
+/// `collection.replace(document, data, true)` or
+/// `collection.replace(document, data, overwrite: true)`
 ///
 /// As before, but in case of a conflict, the conflict is ignored and the old
 /// document is overwritten.
