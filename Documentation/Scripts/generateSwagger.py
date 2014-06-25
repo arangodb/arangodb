@@ -223,7 +223,7 @@ class Regexen:
         self.EMPTY_LINE = re.compile('^\s*$')
         self.END_EXAMPLE_ARANGOSH_RUN = re.compile('.*@END_EXAMPLE_ARANGOSH_RUN')
         self.EXAMPLES = re.compile('.*@EXAMPLES')
-        self.EXAMPLE_ARANGOSH_RUN = re.compile('.*@EXAMPLE_ARANGOSH_RUN{|.*@verbinclude.*')
+        self.EXAMPLE_ARANGOSH_RUN = re.compile('.*@EXAMPLE_ARANGOSH_RUN{')
         self.FILE = re.compile('.*@file')
         self.RESTBODYPARAM = re.compile('.*@RESTBODYPARAM')
         self.RESTDESCRIPTION = re.compile('.*@RESTDESCRIPTION')
@@ -537,15 +537,8 @@ def example_arangosh_run(cargo, r=Regexen()):
     if DEBUG: print >> sys.stderr, "example_arangosh_run"
     fp, last = cargo
 
-    verbinclude = (last[4:-1].split()[0] == "@verbinclude")
-
-    # old examples code
-    if verbinclude:
-        examplefile = open(os.path.join(os.path.dirname(__file__), '../Examples/' + last[4:-1].split()[1]))
-
     # new examples code TODO should include for each example own object in json file
-    else:
-        examplefile = open(os.path.join(os.path.dirname(__file__), '../Examples/' + parameters(last) + '.generated'))
+    examplefile = open(os.path.join(os.path.dirname(__file__), '../Examples/' + parameters(last) + '.generated'))
 
     operation['examples'] += '<br><br><pre><code class="json">'
 
@@ -554,12 +547,13 @@ def example_arangosh_run(cargo, r=Regexen()):
 
     operation['examples'] += '</code></pre><br>'
 
-    if not verbinclude:
-        while not r.END_EXAMPLE_ARANGOSH_RUN.match(line):
-            line = fp.readline()
+    line = ""
 
-            if not line:
-                return eof, (fp, line)
+    while not r.END_EXAMPLE_ARANGOSH_RUN.match(line):
+        line = fp.readline()
+
+        if not line:
+            return eof, (fp, line)
 
     return examples, (fp, line)
 
