@@ -8,7 +8,7 @@ In order to create a non empty graph the functionality to create edge definition
 
 !SECTION Edge Definitions
 
-The edge definitions for a graph is an Array containing arbitrary many directed and/or undirected relations as defined below.
+An edge definition is a directed or undirected relation of a graph. Each graph can have arbitrary many relations defined within the edge definitions array.
 
 !SUBSECTION Initialize the list
 
@@ -26,17 +26,18 @@ The edge definitions for a graph is an Array containing arbitrary many directed 
 
 @startDocuBlock JSF_general_graph_directedRelation
 
-!SUBSECTION Orphan Collections
+!SUBSECTION Vertex Collections
 
-Each graph can have an arbitrary amount of orphan collections. These are vertex collections (type *document*), that are not
-used in an edge definition of the graph. If the graph is extended with an edge definition using one of the orphans,
+Each graph can have an arbitrary amount of vertex collections, which are not part of any edge definition of the graph.
+These collections are called orphan collections.
+If the graph is extended with an edge definition using one of the orphans,
 it will be removed from the set of orphan collection automatically.
 
 !SUBSUBSECTION Add
 
 @startDocuBlock JSF_general_graph__addVertexCollection
 
-!SUBSUBSECTION Read
+!SUBSUBSECTION Get
 
 @startDocuBlock JSF_general_graph__orphanCollections
 
@@ -54,31 +55,11 @@ After having introduced edge definitions and orphan collections a graph can be c
 
 Example Call:
 
-```js
-> var graph = require("org/arangodb/graph");
-> var edgeDefinitions = graph._edgeDefinitions();
-> graph._extendEdgeDefinitions(edgeDefinitions, graph._undirectedRelation("friend_of", ["Customer"]));
-> graph._extendEdgeDefinitions(edgeDefinitions, graph._directedRelation("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
-> graph._create("myStore", edgeDefinitions);
-{
-  _id: "_graphs/123",
-  _rev: "123",
-  _key: "123"
-}
-```
+@startDocuBlock JSF_general_graph_create_graph_example1
 
 alternative call:
 
-```js
-> var graph = require("org/arangodb/graph");
-> var edgeDefinitions = graph._edgeDefinitions(graph._undirectedRelation("friend_of", ["Customer"]), graph._directedRelation("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
-> graph._create("myStore", edgeDefinitions);
-{
-  _id: "_graphs/123",
-  _rev: "123",
-  _key: "123"
-};
-```
+@startDocuBlock JSF_general_graph_create_graph_example2
 
 !SUBSECTION List available graphs
 
@@ -92,7 +73,7 @@ alternative call:
 
 @startDocuBlock JSF_general_graph_drop
 
-!SECTION Edge
+!SECTION Vertex
 
 !SUBSECTION Save
 
