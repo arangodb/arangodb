@@ -230,7 +230,12 @@
         graphManagement: function () {
             if (!this.graphManagementView) {
                 this.graphManagementView =
-                    new window.GraphManagementView({collection: new window.GraphCollection()});
+                    new window.GraphManagementView(
+                      {
+                        collection: new window.GraphCollection(),
+                        collectionCollection: new window.arangoCollections()
+                      }
+                    );
             }
             this.graphManagementView.render();
             this.naviView.selectMenuItem('graphviewer-menu');
