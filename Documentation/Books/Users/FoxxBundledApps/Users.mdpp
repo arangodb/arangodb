@@ -9,7 +9,7 @@ This app exposes a user storage via a JavaScript API named *userStorage*.
 @EXAMPLES
 
 ```js
-var userStorage = Foxx.requireApp('/system/users').userStorage;
+var userStorage = Foxx.requireApp('/_system/users').userStorage;
 ```
 
 !SUBSECTION Exceptions
