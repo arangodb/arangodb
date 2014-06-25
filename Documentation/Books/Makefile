@@ -13,10 +13,12 @@ clean-md-files:
 
 .PHONY: build-books
 
-build-books: md-files
+build-books: build-books-keep-md
+	make clean-md-files
+
+build-books-keep-md: md-files
 	@test -d books || mkdir books
 	make build-book NAME=Users
-	make clean-md-files
 
 build-book:
 	@test -d books/$(NAME) || mkdir books/$(NAME)
