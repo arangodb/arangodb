@@ -87,28 +87,6 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns mount point for system apps
-////////////////////////////////////////////////////////////////////////////////
-
-  function systemMountPoint (appName) {
-    'use strict';
-
-    if (appName === "aardvark") {
-      return "/_admin/aardvark";
-    }
-
-    if (appName === "gharial") {
-      return "/_api/gharial";
-    }
-
-    if (appName === "cerberus") {
-      return "/system/cerberus";
-    }
-
-    return false;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief resets engine in development mode
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -205,52 +183,7 @@
   internal.initializeFoxx = function () {
     'use strict';
 
-    var fm = require("org/arangodb/foxx/manager");
-
-    try {
-      fm.scanAppDirectory();
-    }
-    catch (err) {
-      console.error("cannot initialize Foxx application: %s", String(err));
-    }
-    
-    var aal = internal.db._collection("_aal");
-
-    if (aal !== null) {
-      var systemAppPath = module.systemAppPath();
-
-      var fs = require("fs");
-      var apps = fs.list(systemAppPath); 
-
-      // make sure the aardvark app is always there
-      if (apps.indexOf("aardvark") === -1) {
-        apps.push("aardvark");
-      }
-
-      apps.forEach(function (appName) {
-        var mount = systemMountPoint(appName);
-
-        // for all unknown system apps: check that the directory actually exists
-        if (! mount && ! fs.isDirectory(fs.join(systemAppPath, appName))) {
-          return;
-        }
-          
-        try {
-          if (! mount) {
-            mount = '/system/' + appName;
-          }
-
-          var found = aal.firstExample({ type: "mount", mount: mount });
-
-          if (found === null) {
-            fm.mount(appName, mount, {reload: false});
-          }
-        }
-        catch (err) {
-          console.error("unable to mount system application '%s': %s", appName, String(err));
-        }
-      });
-    }
+    require("org/arangodb/foxx/manager").initializeFoxx();
   };
 
 ////////////////////////////////////////////////////////////////////////////////
