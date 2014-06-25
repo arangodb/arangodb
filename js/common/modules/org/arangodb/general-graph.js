@@ -1701,6 +1701,7 @@ var _create = function (graphName, edgeDefinitions, orphanCollections) {
   );
 
   gdb.save({
+    'orphanCollections' : orphanCollections.sort,
     'edgeDefinitions' : edgeDefinitions,
     '_key' : graphName
   });
