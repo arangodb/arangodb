@@ -441,20 +441,23 @@ ArangoCollection.prototype.first = function (count) {
 /// collection. If the collection does not contain any documents, the result 
 /// returned is *null*.
 ///
-/// Note: this method is not supported in sharded collections with more than
+/// **Note**: this method is not supported in sharded collections with more than
 /// one shard.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-/// arangod> db.example.last(1)
-/// [ { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World" } ]
-/// @endcode
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionLast}
+/// ~ db._create("example");
+///   db.example.last(1);
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// @code
-/// arangod> db.example.last()
-/// { "_id" : "example/222716379559", "_rev" : "222716379559", "Hello" : "World" }
-/// @endcode
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionLastNull}
+/// ~ db._create("example");
+///   db.example.last(1);
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 

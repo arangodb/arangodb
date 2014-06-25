@@ -5616,14 +5616,14 @@ static v8::Handle<v8::Value> JS_LookupIndexVocbaseCol (v8::Arguments const& argv
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief counts the number of documents in a result set
-/// @startDocuBlock colllectionCount
+/// @startDocuBlock collectionCount
 /// `collection.count()`
 ///
 /// Returns the number of living documents in the collection.
 ///
 /// @EXAMPLES
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{HIER_FEHLT_DER_NAME}
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionCount}
 ///   db.users.count();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -5777,29 +5777,30 @@ static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) 
 ///
 /// Returns the document for a document-handle:
 ///
-/// @code
-/// arango> db.example.document("example/2873916");
-/// { "_id" : "example/2873916", "_key" : "2873916", "_rev" : "2873916", "Hello" : "World" }
-/// @endcode
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionName}
+/// ~ db._create("example");
+/// ~ var myid = db.example.save({_key: "2873916"});
+///   db.example.document("example/2873916");
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// An error is raised if the document is unknown:
 ///
-/// @code
-/// arango> db.example.document("example/123456");
-/// JavaScript exception in file '(arango)' at 1,12:
-///   [ArangoError 1202: document not found: document not found]
-/// !db.example.document("example/123456");
-/// !           ^
-/// @endcode
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionNameUnknown}
+/// ~ db._create("example");
+/// ~ var myid = db.example.save({_key: "2873916"});
+///   db.example.document("example/2873916");
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// An error is raised if the handle is invalid:
 ///
-/// @code
-/// arango> db.example.document("");
-/// JavaScript exception in file '(arango)' at 1,28: [ArangoError 1205: illegal document handle]
-/// !db.example.document("");
-/// !           ^
-/// @endcode
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionNameHandle}
+/// ~ db._create("example");
+///   db.example.document("");
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -6036,6 +6037,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 ///
 /// As before. Instead of document a *document-handle* can be passed as
 /// first argument.
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -6358,7 +6360,14 @@ static v8::Handle<v8::Value> JS_GetIndexesVocbaseCol (v8::Arguments const& argv)
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell_collection-load
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionLoad}
+/// ~ db._create("example");
+///   col = db.example;
+///   col.load();
+///   col;
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -6519,7 +6528,7 @@ static v8::Handle<v8::Value> JS_PlanIdVocbaseCol (v8::Arguments const& argv) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionProperty}
 /// ~ db._create("example");
-///   db.example.properties({ waitForSync : false });
+///   db.example.properties({ waitForSync : true });
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -6928,7 +6937,7 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
 /// applied. The *waitForSync* parameter cannot be used to disable
 /// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
-///
+///m
 /// `collection.replace(document-handle, data)`
 ///
 /// As before. Instead of document a @FA{document-handle} can be passed as
@@ -6938,11 +6947,24 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
 ///
 /// Create and update a document:
 ///
-/// @TINYEXAMPLE{shell_replace-document,replacing a document}
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionReplace}
+/// ~ db._create("example");
+///   a1 = db.example.save({ a : 1 });
+///   a2 = db.example.replace(a1, { a : 2 });
+///   a3 = db.example.replace(a1, { a : 3 });
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Use a document handle:
 ///
-/// @TINYEXAMPLE{shell_replace-document-handle,replacing a document}
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionReplaceHandle}
+/// ~ db._create("example");
+/// ~ var myid = db.example.save({_key: "3903044"});
+///   a1 = db.example.save({ a : 1 });
+///   a2 = db.example.replace("example/3903044", { a : 2 });
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -7134,19 +7156,56 @@ static v8::Handle<v8::Value> JS_RotateVocbaseCol (v8::Arguments const& argv) {
 ///
 /// Create and update a document:
 ///
-/// @TINYEXAMPLE{shell_update-document,updating a document}
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdate}
+/// ~ db._create("example");
+///   a1 = db.example.save({"a" : 1});
+///   a2 = db.example.update(a1, {"b" : 2, "c" : 3});
+///   a3 = db.example.update(a1, {"d" : 4});
+///   a4 = db.example.update(a2, {"e" : 5, "f" : 6 });
+///   db.example.document(a4);
+///   a5 = db.example.update(a4, {"a" : 1, c : 9, e : 42 });
+///   db.example.document(a5);
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Use a document handle:
 ///
-/// @TINYEXAMPLE{shell_update-document-handle,updating a document}
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdateHandle}
+/// ~ db._create("example");
+/// ~ var myid = db.example.save({_key: "18612115"});
+///   a1 = db.example.save({"a" : 1});
+///   a2 = db.example.update("example/18612115", { "x" : 1, "y" : 2 });
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Use the keepNull parameter to remove attributes with null values:
 ///
-/// @TINYEXAMPLE{shell_update-document-keep-null,updating a document}
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdateHandleKeepNull}
+/// ~ db._create("example");
+/// ~ var myid = db.example.save({_key: "19988371"});
+///   db.example.save({"a" : 1});
+///   db.example.update("example/19988371", { "b" : null, "c" : null, "d" : 3 });
+///   db.example.document("example/19988371");
+///   db.example.update("example/19988371", { "a" : null }, false, false);
+///   db.example.document("example/19988371");
+///   db.example.update("example/19988371", { "b" : null, "c": null, "d" : null }, false, false);
+///   db.example.document("example/19988371");
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Patching array values:
 ///
-/// @TINYEXAMPLE{shell_update-document-array,updating a document}
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdateHandleArray}
+/// ~ db._create("example");
+/// ~ var myid = db.example.save({_key: "20774803"});
+///   db.example.save({"a" : { "one" : 1, "two" : 2, "three" : 3 }, "b" : { }});
+///   db.example.update("example/20774803", {"a" : { "four" : 4 }, "b" : { "b1" : 1 }});
+///   db.example.document("example/20774803");
+///   db.example.update("example/20774803", { "a" : { "one" : null }, "b" : null }, false, false);
+///   db.example.document("example/20774803");
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -7346,9 +7405,15 @@ static v8::Handle<v8::Value> SaveEdgeColCoordinator (TRI_vocbase_col_t* collecti
 /// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @verbinclude shell_create-document
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionSave}
+/// ~ db._create("example");
+///   db.example.save({ Hello : "World" });
+///   db.example.save({ Hello : "World" }, true);
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -7914,7 +7979,10 @@ static TRI_vocbase_col_t* GetCollectionFromArgument (TRI_vocbase_t* vocbase,
 /// Get a collection by id:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseNameId}
-///   db._collection(26859402);
+/// ~ db._create("example");
+/// ~ var myid = db.example.save({_key: "12345"});
+///   db._collection(12345);
+/// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Unknown collection:
@@ -7973,7 +8041,7 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all collections
-/// @startDocuBlock collectionsDatabaseName
+/// @startDocuBlock collectionDatabaseNameAll
 /// `db._collections()`
 ///
 /// Returns all collections of the given database.
@@ -8117,7 +8185,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 /// error is thrown. For more information on valid collection names please refer
 /// to the [naming conventions](../NamingConvention/README.md).
 ///
-/// `db._create(collection-name`, `properties)`
+/// `db._create(collection-name, properties)`
 ///
 /// *properties* must be an object with the following attributes:
 ///
@@ -8146,7 +8214,7 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 ///
 /// * *keyOptions* (optional): additional options for key generation. If
 ///   specified, then *keyOptions* should be a JSON array containing the
-///   following attributes (note: some of them are optional):
+///   following attributes (**note**: some of them are optional):
 ///   * *type*: specifies the type of the key generator. The currently
 ///     available generators are *traditional* and *autoincrement*.
 ///   * *allowUserKeys*: if set to *true*, then it is allowed to supply
@@ -8191,17 +8259,17 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
 /// With defaults:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCreate}
-///   c = db._create("cars");
-///   c.properties;
-/// ~ db._drop("cars");
+///   c = db._create("users");
+///   c.properties();
+/// ~ db._drop("users");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// With properties:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCreateProperties}
-///   c = db._create("cars", { waitForSync : true, journalSize : 1024 * 1204 });
-///   c.properties;
-/// ~ db._drop("cars");
+///   c = db._create("users", { waitForSync : true, journalSize : 1024 * 1204 });
+///   c.properties();
+/// ~ db._drop("users");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// With a key generator:
@@ -8314,49 +8382,36 @@ static v8::Handle<v8::Value> JS_CreateEdgeCollectionVocbase (v8::Arguments const
 ///
 /// Remove a document:
 ///
-/// @code
-/// arango> a1 = db.example.save({ a : 1 });
-/// { "_id" : "116308/4214943", "_rev" : "4214943" }
-/// arango> db._remove(a1);
-/// true
-/// arango> db._remove(a1);
-/// JavaScript exception in file '(arango)' at 1,4: [ArangoError 1202: document not found: cannot remove document]
-/// !db._remove(a1);
-/// !   ^
-/// arango> db._remove(a1, true);
-/// false
-/// @endcode
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionRemove}
+/// ~ db._create("example");
+///   a1 = db.example.save({ a : 1 });
+///   db._remove(a1);
+///   db._remove(a1);
+///   db._remove(a1, true);
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Remove a document with a conflict:
 ///
-/// @code
-/// arango> a1 = db.example.save({ a : 1 });
-/// { "_id" : "116308/4042634", "_rev" : "4042634" }
-/// arango> a2 = db._replace(a1, { a : 2 });
-/// { "_id" : "116308/4042634", "_rev" : "4108170", "_oldRev" : 4042634 }
-/// arango> db._delete(a1);
-/// JavaScript exception in file '(arango)' at 1,4: [ArangoError 1200: conflict: cannot delete document]
-/// !db._delete(a1);
-/// !   ^
-/// arango> db._delete(a1, true);
-/// true
-/// arango> db._document(a1);
-/// JavaScript exception in file '(arango)' at 1,4: [ArangoError 1202: document not found: document not found]
-/// !db._document(a1);
-/// !   ^
-/// @endcode
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionRemoveConflict}
+/// ~ db._create("example");
+///   a1 = db.example.save({ a : 1 });
+///   a2 = db._replace(a1, { a : 2 });
+///   db._delete(a1);
+///   db._delete(a1, true);
+///   db._document(a1);
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Remove a document using new signature:
-/// @code
-/// arangod> db.example.save({ a:  1 } );
-/// {
-///    "_id" : "example/11265325374",
-///   "_rev" : "11265325374",
-///   "_key" : "11265325374"
-/// }
-/// arangod> db.example.remove("example/11265325374", {overwrite: true, waitForSync: false})
-/// true
-/// @endcode
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionRemoveSignature}
+/// ~ db._create("example");
+///   db.example.save({ a:  1 } );
+///   db.example.remove("example/11265325374", {overwrite: true, waitForSync: false})
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -8393,7 +8448,7 @@ static v8::Handle<v8::Value> JS_RemoveVocbase (v8::Arguments const& argv) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsDocumentName}
 /// ~ db._create("example");
-/// ~ var myid = db.example.save({_key: "12345"})
+/// ~ var myid = db.example.save({_key: "12345"});
 ///   db._document("example/12345");
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
