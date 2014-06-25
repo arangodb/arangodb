@@ -151,7 +151,7 @@ function Sessions(opts) {
     opts.autoCreateSession = true;
   }
   if (!opts.sessionStorageApp) {
-    opts.sessionStorageApp = '/_sessions';
+    opts.sessionStorageApp = '/system/sessions';
   }
   this.configuration = opts;
 }
