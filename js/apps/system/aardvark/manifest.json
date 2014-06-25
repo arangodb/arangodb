@@ -48,6 +48,8 @@
         "frontend/js/templates/modalGraph.ejs",
         "frontend/js/templates/modalNewVersion.ejs",
         "frontend/js/templates/modalTable.ejs",
+        "frontend/js/templates/modalGraphTable.ejs",
+        "frontend/js/templates/edgeDefinitionTable.ejs",
         "frontend/js/templates/modalHotkeys.ejs",
         "frontend/js/templates/navigationView.ejs",
         "frontend/js/templates/dashboardView.ejs",
