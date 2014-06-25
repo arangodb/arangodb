@@ -43,6 +43,7 @@
       this.collection.fetch({
         async: false
       });
+console.log(this.collection);
       $(this.el).html(this.template.render({
         graphs: this.collection,
         searchString : ''
@@ -158,24 +159,25 @@
         vertexCollections = _.pluck($('#newVertexCollections').select2("data"), "text"),
         edgeDefinitions = [],
         self = this,
-        hasNext = false,
-        newEdgeDefinitions1,
+        hasNext = true,
+        collection,
         from,
         to;
 
-      newEdgeDefinitions1 = $("#newEdgeDefinitions1").val();
-      if (newEdgeDefinitions1 !== "") {
+      collection = $('#newEdgeDefinitions1').val();
+      if (collection !== "") {
         from = _.pluck($('#s2id_fromCollections1').select2("data"), "text");
         to = _.pluck($('#s2id_toCollections1').select2("data"), "text");
+        edgeDefinitions.push(
+          {
+            collection: collection,
+            from: from,
+            to: to
+          }
+        );
       }
-/*
-      console.log("newEdgeDefinitions1");
-      console.log(newEdgeDefinitions1);
-      console.log("from");
-      console.log(from);
-      console.log("to");
-      console.log(to);
-*/
+
+
       if (!name) {
         arangoHelper.arangoNotification(
           "A name for the graph has to be provided."
