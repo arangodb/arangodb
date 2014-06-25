@@ -8,30 +8,24 @@ function runSetup () {
   internal.debugClearFailAt();
   
   db._drop("UnitTestsRecovery");
-  var c = db._create("UnitTestsRecovery");
-      
-  internal.debugSetFailAt("CreateJournalDocumentCollection");
+  var c = db._create("UnitTestsRecovery"), i;
+  internal.wal.flush(true, true);
+  internal.wal.properties({ throttleWait: 1000, throttleWhenPending: 1000 });
 
-  db._executeTransaction({
-    collections: {
-      write: "UnitTestsRecovery"
-    },
-    action: function () {
-      var db = require("org/arangodb").db;
+  for (i = 0; i < 10000; ++i) {
+    c.save({ _key: "test" + i, value1: "test" + i, value2: i }); 
+  }
+  
+  internal.debugSetFailAt("CollectorThreadProcessQueuedOperations");
+  internal.wal.flush(true, false);
 
-      var i, c = db._collection("UnitTestsRecovery");
-      for (i = 0; i < 100000; ++i) {
-        c.save({ _key: "test" + i, value1: "test" + i, value2: i }, true); // wait for sync
-      }
-
-      for (i = 0; i < 100000; i += 2) {
-        c.remove("test" + i, true);
-      }
-    }
-  });
-
-  internal.wal.flush();
-  internal.wait(5);
+  // now let the write throttling become active
+  internal.wait(7);
+  try {
+    c.save({ _key: "foo" });
+  }
+  catch (err) {
+  }
 
   internal.debugSegfault("crashing server");
 }
@@ -50,23 +44,21 @@ function recoverySuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test whether we can restore the trx data
+/// @brief test whether we can restore the data
 ////////////////////////////////////////////////////////////////////////////////
     
-    testDiskFullNoJournal : function () {
+    testWriteThrottling : function () {
       var i, c = db._collection("UnitTestsRecovery");
         
-      assertEqual(50000, c.count());
-      for (i = 0; i < 100000; ++i) {
-        if (i % 2 == 0) {
-          assertFalse(c.exists("test" + i));
-        }
-        else {
-          assertEqual("test" + i, c.document("test" + i)._key); 
-          assertEqual("test" + i, c.document("test" + i).value1); 
-          assertEqual(i, c.document("test" + i).value2); 
-        }
+      assertEqual(10000, c.count());
+      for (i = 0; i < 10000; ++i) {
+        var doc = c.document("test" + i);
+
+        assertEqual("test" + i, doc.value1);
+        assertEqual(i, doc.value2);
       }
+
+      assertFalse(c.exists("foo"));
     }
         
   };

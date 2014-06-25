@@ -64,7 +64,7 @@ namespace triagens {
 
         AhuacatlTransaction (struct TRI_vocbase_s* vocbase,
                              TRI_aql_context_t* context)
-          : Transaction<T>(vocbase, TRI_GetIdServer(), false),
+          : Transaction<T>(vocbase),
             _context(context) {
 
           this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY);

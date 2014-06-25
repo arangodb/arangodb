@@ -1,4 +1,0 @@
-TOC {#DbaManualEmergencyConsoleTOC}
-===================================
-
-- @ref DbaManualEmergencyConsole

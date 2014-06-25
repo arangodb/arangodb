@@ -274,6 +274,9 @@ CollectorThread::CollectorThread (LogfileManager* logfileManager,
     _logfileManager(logfileManager),
     _server(server),
     _condition(),
+    _operationsQueueLock(),
+    _operationsQueue(),
+    _numPendingOperations(0),
     _stop(0),
     _inRecovery(true) {
 
@@ -413,6 +416,10 @@ bool CollectorThread::collectLogfiles () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool CollectorThread::processQueuedOperations () {
+  TRI_IF_FAILURE("CollectorThreadProcessQueuedOperations") {
+    return false;
+  }
+
   MUTEX_LOCKER(_operationsQueueLock);
 
   if (_operationsQueue.empty()) {
@@ -458,6 +465,20 @@ bool CollectorThread::processQueuedOperations () {
       }
 
       if (res == TRI_ERROR_NO_ERROR) {
+        uint64_t numOperations = (*it2)->operations->size();
+        uint64_t maxNumPendingOperations = _logfileManager->throttleWhenPending();
+
+        if (maxNumPendingOperations > 0 && 
+            _numPendingOperations >= maxNumPendingOperations &&
+            (_numPendingOperations - numOperations) < maxNumPendingOperations) {
+          // write-throttling was active, but can be turned off now
+          _logfileManager->deactivateWriteThrottling();
+          LOG_INFO("deactivating write-throttling");
+        }
+
+        _numPendingOperations -= numOperations;
+
+
         // delete the object
         delete (*it2);
 
@@ -467,6 +488,7 @@ bool CollectorThread::processQueuedOperations () {
         _logfileManager->decreaseCollectQueueSize(logfile);
       }
       else {
+        // do not delete the object but advance in the operations vector
         ++it2;
       }
     }
@@ -1064,20 +1086,40 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
 int CollectorThread::queueOperations (triagens::wal::Logfile* logfile,
                                       CollectorCache*& cache) {
   TRI_voc_cid_t cid = cache->collectionId;
+  uint64_t maxNumPendingOperations = _logfileManager->throttleWhenPending();
 
-  MUTEX_LOCKER(_operationsQueueLock);
+  TRI_IF_FAILURE("CollectorThreadQueueOperations") {
+    throw std::bad_alloc();
+  }
 
-  auto it = _operationsQueue.find(cid);
-  if (it == _operationsQueue.end()) {
-    std::vector<CollectorCache*> ops;
-    ops.push_back(cache);
-    _operationsQueue.insert(it, std::make_pair(cid, ops));
-    _logfileManager->increaseCollectQueueSize(logfile);
+  {
+    MUTEX_LOCKER(_operationsQueueLock);
+
+    auto it = _operationsQueue.find(cid);
+    if (it == _operationsQueue.end()) {
+      std::vector<CollectorCache*> ops;
+      ops.push_back(cache);
+      _operationsQueue.insert(it, std::make_pair(cid, ops));
+      _logfileManager->increaseCollectQueueSize(logfile);
+    }
+    else {
+      (*it).second.push_back(cache);
+      _logfileManager->increaseCollectQueueSize(logfile);
+    }
   }
-  else {
-    (*it).second.push_back(cache);
-    _logfileManager->increaseCollectQueueSize(logfile);
+  
+  uint64_t numOperations = cache->operations->size();
+
+  if (maxNumPendingOperations > 0 && 
+      _numPendingOperations < maxNumPendingOperations &&
+      (_numPendingOperations + numOperations) >= maxNumPendingOperations) {
+    // activate write-throttling!
+    _logfileManager->activateWriteThrottling();
+    LOG_WARNING("queued more than %llu pending WAL collector operations. now activating write-throttling", 
+                (unsigned long long) maxNumPendingOperations);
   }
+  
+  _numPendingOperations += numOperations;
 
   // we have put the object into the queue successfully
   // now set the original pointer to null so it isn't double-freed

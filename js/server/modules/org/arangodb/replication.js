@@ -64,7 +64,7 @@ logger.stop = function () {
  
   // the logger in ArangoDB 2.2 is now the WAL...
   // so the logger cannot be stopped
-  return false; 
+  return true; 
 };
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,2 +1,0 @@
-arango> db.examples;
-[ArangoCollection 110371, "examples" (status new born)]

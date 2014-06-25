@@ -1579,7 +1579,7 @@ static int OpenIteratorHandleShapeMarker (TRI_df_marker_t const* marker,
       state->_dfi = TRI_FindDatafileInfoDocumentCollection(document, state->_fid, true);
     }
 
-    if (state->_dfi != NULL) {
+    if (state->_dfi != nullptr) {
       state->_dfi->_numberShapes++;
       state->_dfi->_sizeShapes += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
     }
@@ -1605,7 +1605,7 @@ static int OpenIteratorHandleAttributeMarker (TRI_df_marker_t const* marker,
       state->_dfi = TRI_FindDatafileInfoDocumentCollection(document, state->_fid, true);
     }
 
-    if (state->_dfi != NULL) {
+    if (state->_dfi != nullptr) {
       state->_dfi->_numberAttributes++;
       state->_dfi->_sizeAttributes += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
     }
@@ -3411,8 +3411,7 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* 
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document,
-                                      TRI_idx_iid_t iid,
-                                      TRI_server_id_t generatingServer) {
+                                      TRI_idx_iid_t iid) {
   if (iid == 0) {
     // invalid index id or primary index
     return true;
@@ -3670,14 +3669,12 @@ static int CapConstraintFromJson (TRI_document_collection_t* document,
                                   TRI_json_t const* definition,
                                   TRI_idx_iid_t iid,
                                   TRI_index_t** dst) {
-  TRI_index_t* idx;
-
   if (dst != nullptr) {
     *dst = nullptr;
   }
 
-  TRI_json_t* val1 = TRI_LookupArrayJson(definition, "size");
-  TRI_json_t* val2 = TRI_LookupArrayJson(definition, "byteSize");
+  TRI_json_t const* val1 = TRI_LookupArrayJson(definition, "size");
+  TRI_json_t const* val2 = TRI_LookupArrayJson(definition, "byteSize");
 
   if (! TRI_IsNumberJson(val1) && ! TRI_IsNumberJson(val2)) {
     LOG_ERROR("ignoring cap constraint %llu, 'size' and 'byteSize' missing",
@@ -3705,7 +3702,7 @@ static int CapConstraintFromJson (TRI_document_collection_t* document,
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
 
-  idx = CreateCapConstraintDocumentCollection(document, count, size, iid, nullptr);
+  TRI_index_t* idx = CreateCapConstraintDocumentCollection(document, count, size, iid, nullptr);
   if (dst != nullptr) {
     *dst = idx;
   }
@@ -3738,8 +3735,7 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
                                                         TRI_idx_iid_t iid,
                                                         size_t count,
                                                         int64_t size,
-                                                        bool* created,
-                                                        TRI_server_id_t generatingServer) {
+                                                        bool* created) {
   TRI_index_t* idx;
 
   // .............................................................................
@@ -3754,7 +3750,7 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
 
   if (idx != nullptr) {
     if (created) {
-      int res = TRI_SaveIndex(document, idx, generatingServer);
+      int res = TRI_SaveIndex(document, idx);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = nullptr;
@@ -4147,8 +4143,7 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
                                                     bool geoJson,
                                                     bool unique,
                                                     bool ignoreNull,
-                                                    bool* created,
-                                                    TRI_server_id_t generatingServer) {
+                                                    bool* created) {
   TRI_index_t* idx;
 
   TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
@@ -4163,7 +4158,7 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
 
   if (idx != nullptr) {
     if (created) {
-      int res = TRI_SaveIndex(document, idx, generatingServer);
+      int res = TRI_SaveIndex(document, idx);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = nullptr;
@@ -4192,8 +4187,7 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
                                                     char const* longitude,
                                                     bool unique,
                                                     bool ignoreNull,
-                                                    bool* created,
-                                                    TRI_server_id_t generatingServer) {
+                                                    bool* created) {
   TRI_index_t* idx;
 
   TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
@@ -4208,7 +4202,7 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
 
   if (idx != nullptr) {
     if (created) {
-      int res = TRI_SaveIndex(document, idx, generatingServer);
+      int res = TRI_SaveIndex(document, idx);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = nullptr;
@@ -4388,8 +4382,7 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* d
                                                     TRI_idx_iid_t iid,
                                                     TRI_vector_pointer_t const* attributes,
                                                     bool unique,
-                                                    bool* created,
-                                                    TRI_server_id_t generatingServer) {
+                                                    bool* created) {
   TRI_index_t* idx;
 
   TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
@@ -4405,7 +4398,7 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* d
 
   if (idx != nullptr) {
     if (created) {
-      int res = TRI_SaveIndex(document, idx, generatingServer);
+      int res = TRI_SaveIndex(document, idx);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = nullptr;
@@ -4576,8 +4569,7 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
                                                         TRI_idx_iid_t iid,
                                                         TRI_vector_pointer_t const* attributes,
                                                         bool unique,
-                                                        bool* created,
-                                                        TRI_server_id_t generatingServer) {
+                                                        bool* created) {
   TRI_index_t* idx;
 
   TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
@@ -4592,7 +4584,7 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
 
   if (idx != nullptr) {
     if (created) {
-      int res = TRI_SaveIndex(document, idx, generatingServer);
+      int res = TRI_SaveIndex(document, idx);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = nullptr;
@@ -4828,8 +4820,7 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
                                                         const char* attributeName,
                                                         const bool indexSubstrings,
                                                         int minWordLength,
-                                                        bool* created,
-                                                        TRI_server_id_t generatingServer) {
+                                                        bool* created) {
   TRI_index_t* idx;
 
   TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
@@ -4844,7 +4835,7 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
 
   if (idx != nullptr) {
     if (created) {
-      int res = TRI_SaveIndex(document, idx, generatingServer);
+      int res = TRI_SaveIndex(document, idx);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = nullptr;
@@ -5056,8 +5047,7 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
                                                         bool supportUndef,
                                                         bool* created,
                                                         int* errorCode,
-                                                        char** errorStr,
-                                                        TRI_server_id_t generatingServer) {
+                                                        char** errorStr) {
   TRI_index_t* idx;
 
   *errorCode = TRI_ERROR_NO_ERROR;
@@ -5075,7 +5065,7 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
 
   if (idx != NULL) {
     if (created) {
-      int res = TRI_SaveIndex(document, idx, generatingServer);
+      int res = TRI_SaveIndex(document, idx);
 
       // ...........................................................................
       // If index could not be saved, report the error and return NULL
@@ -5297,6 +5287,7 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
                                             TRI_doc_update_policy_t const* policy,
                                             bool lock,
                                             bool forceSync) {
+
   rid = GetRevisionId(rid);
 
   TRI_ASSERT(key != nullptr);

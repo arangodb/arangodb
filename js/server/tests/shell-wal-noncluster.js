@@ -30,6 +30,165 @@ var arangodb = require("org/arangodb");
 var testHelper = require("org/arangodb/test-helper").Helper;
 var db = arangodb.db;
 var internal = require("internal");
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      wal failures
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
+function walFailureSuite () {
+  var cn = "UnitTestsWal";
+  var c;
+  var props;
+
+  return {
+
+    setUp: function () {
+      props = internal.wal.properties();
+      internal.debugClearFailAt();
+      db._drop(cn);
+      c = db._create(cn);
+    },
+
+    tearDown: function () {
+      internal.wal.properties(props);
+      internal.debugClearFailAt();
+      db._drop(cn);
+      c = null;
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bad alloc in collector
+////////////////////////////////////////////////////////////////////////////////
+
+    testCollectorBadAlloc : function () {
+      internal.wal.flush(true, true);
+      internal.debugSetFailAt("CollectorThreadQueueOperations");
+
+      var i = 0;
+      for (i = 0; i < 1000; ++i) {
+        c.save({ _key: "test" + i });
+      }
+
+      assertEqual(1000, c.count());
+      internal.wal.flush(true, false);
+      
+      assertEqual(1000, c.count());
+      internal.wait(6);
+      internal.debugClearFailAt();
+      
+      internal.wait(6);
+      testHelper.waitUnload(c);
+      
+      assertEqual(1000, c.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test no more available logfiles
+////////////////////////////////////////////////////////////////////////////////
+
+    testNoMoreLogfiles : function () {
+      internal.debugClearFailAt();
+
+      db._drop(cn);
+      c = db._create(cn);
+      
+      var i;
+      for (i = 0; i < 100; ++i) {
+        c.save({ _key: "test" + i, a: i });
+      } 
+      assertEqual(100, c.count());
+
+      internal.wal.flush(true, true);
+        
+      internal.debugSetFailAt("LogfileManagerGetWriteableLogfile");
+      try {
+        for (i = 0; i < 200000; ++i) {
+          c.save({ _key: "foo" + i, value: "the quick brown foxx jumped over the lazy dog" });
+        }
+
+        // we don't know the exact point where the above operation failed, however,
+        // it must fail somewhere
+        fail();
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_NO_JOURNAL.code, err.errorNum);
+      }
+
+      internal.debugClearFailAt();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test write throttling
+////////////////////////////////////////////////////////////////////////////////
+
+    testWriteNoThrottling : function () {
+      internal.debugClearFailAt();
+
+      db._drop(cn);
+      c = db._create(cn);
+      
+      internal.wal.flush(true, true);
+      
+      internal.debugSetFailAt("CollectorThreadProcessQueuedOperations");
+      internal.wal.properties({ throttleWait: 1000, throttleWhenPending: 1000 });
+
+      var i;
+      for (i = 0; i < 10; ++i) {
+        c.save({ _key: "test" + i, a: i });
+      } 
+      
+      internal.wal.flush(true, false);
+
+      c.save({ _key: "foo" });
+      assertEqual("foo", c.document("foo")._key);
+      assertEqual(11, c.count());
+
+      internal.debugClearFailAt();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test write throttling
+////////////////////////////////////////////////////////////////////////////////
+
+    testWriteThrottling : function () {
+      internal.debugClearFailAt();
+
+      db._drop(cn);
+      c = db._create(cn);
+
+      internal.wal.flush(true, true);
+      
+      internal.debugSetFailAt("CollectorThreadProcessQueuedOperations");
+      internal.wal.properties({ throttleWait: 1000, throttleWhenPending: 1000 });
+
+      var i;
+      for (i = 0; i < 1005; ++i) {
+        c.save({ _key: "test" + i, a: i });
+      } 
+
+      internal.wal.flush(true, false);
+
+      // let the collector build up its queue
+      internal.wait(7);
+
+      try {
+        c.save({ _key: "foo" });
+        fail();
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT.code, err.errorNum);
+      }
+
+      internal.debugClearFailAt();
+      assertEqual(1005, c.count());
+    }
+
+  };
+}
  
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     wal functions
@@ -39,20 +198,77 @@ var internal = require("internal");
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function WalSuite () {
+function walSuite () {
   var cn = "UnitTestsWal";
   var c;
+  var props;
 
   return {
 
     setUp: function () {
+      props = internal.wal.properties();
+
       db._drop(cn);
       c = db._create(cn);
     },
 
     tearDown: function () {
+      internal.wal.properties(props);
       db._drop(cn);
       c = null;
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test properties
+////////////////////////////////////////////////////////////////////////////////
+
+    testReadProperties : function () {
+      var p = internal.wal.properties();
+      
+      assertTrue(p.hasOwnProperty("allowOversizeEntries"));
+      assertTrue(p.hasOwnProperty("logfileSize"));
+      assertTrue(p.hasOwnProperty("historicLogfiles"));
+      assertTrue(p.hasOwnProperty("reserveLogfiles"));
+      assertTrue(p.hasOwnProperty("syncInterval"));
+      assertTrue(p.hasOwnProperty("throttleWait"));
+      assertTrue(p.hasOwnProperty("throttleWhenPending"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test properties
+////////////////////////////////////////////////////////////////////////////////
+
+    testSetProperties : function () {
+      var initial = internal.wal.properties();
+
+      var p = {
+        allowOversizeEntries: false,
+        logfileSize: 1024 * 1024 * 8,
+        historicLogfiles: 4, 
+        reserveLogfiles: 4,
+        syncInterval: 200,
+        throttleWait: 10000,
+        throttleWhenPending: 10000
+      };
+
+      var result = internal.wal.properties(p);
+
+      assertEqual(p.allowOversizeEntries, result.allowOversizeEntries);
+      assertEqual(p.logfileSize, result.logfileSize);
+      assertEqual(p.historicLogfiles, result.historicLogfiles);
+      assertEqual(p.reserveLogfiles, result.reserveLogfiles);
+      assertEqual(initial.syncInterval, result.syncInterval);
+      assertEqual(p.throttleWait, result.throttleWait);
+      assertEqual(p.throttleWhenPending, result.throttleWhenPending);
+      
+      var result2 = internal.wal.properties();
+      assertEqual(p.allowOversizeEntries, result2.allowOversizeEntries);
+      assertEqual(p.logfileSize, result2.logfileSize);
+      assertEqual(p.historicLogfiles, result2.historicLogfiles);
+      assertEqual(p.reserveLogfiles, result2.reserveLogfiles);
+      assertEqual(initial.syncInterval, result2.syncInterval);
+      assertEqual(p.throttleWait, result2.throttleWait);
+      assertEqual(p.throttleWhenPending, result2.throttleWhenPending);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,7 +287,7 @@ function WalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMaxTickNonEmptyCollection : function () {
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
       var i;
 
       for (i = 0; i < 100; ++i) {
@@ -83,7 +299,7 @@ function WalSuite () {
       assertEqual("0", fig.lastTick);
       assertTrue(fig.uncollectedLogfileEntries > 0);
 
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
 
       // now we should have a tick
       fig = c.figures();
@@ -102,7 +318,7 @@ function WalSuite () {
         c.save({ test:  i });
       }
 
-      internal.flushWal(true, true);
+      internal.wal.flush(true, true);
 
       testHelper.waitUnload(c);
 
@@ -123,7 +339,10 @@ function WalSuite () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(WalSuite);
+if (internal.debugCanUseFailAt()) {
+  jsunity.run(walFailureSuite);
+}
+jsunity.run(walSuite);
 
 return jsunity.done();
 

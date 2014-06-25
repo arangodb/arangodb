@@ -47,6 +47,7 @@
         graphs: this.collection,
         searchString : ''
       }));
+      this.events["click .tableRow"] = this.showHideDefinition.bind(this);
       return this;
     },
 
@@ -262,6 +263,122 @@
       );
 
       window.modalView.show("modalTable.ejs", "Graph Properties", buttons, tableContent);
+
+    },
+
+    showHideDefinition : function(e) {
+      var id = $(e.currentTarget).attr("id");
+      if (id === "row_newEdgeDefinitions1") {
+        $('#row_fromCollections1').toggle();
+        $('#row_toCollections1').toggle();
+      }
+    },
+
+
+    createNewGraphModal2: function() {
+      var buttons = [],
+        tableContent = [];
+
+      tableContent.push(
+        window.modalView.createTextEntry(
+          "createNewGraphName",
+          "Name",
+          "",
+          "The name to identify the graph. Has to be unique.",
+          "graphName",
+          true
+        )
+      );
+
+      tableContent.push(
+        window.modalView.createTextEntry(
+          "newEdgeDefinitions1",
+          "Edge definitions",
+          "",
+          "Some info for edge definitions",
+          "Edge definitions",
+          true
+        )
+      );
+
+      tableContent.push(
+        window.modalView.createSelect2Entry(
+          "fromCollections1",
+          "fromCollections",
+          "",
+          "The collection that contain the start vertices of the relation.",
+          "",
+          true
+        )
+      );
+      tableContent.push(
+        window.modalView.createSelect2Entry(
+          "toCollections1",
+          "toCollections",
+          "",
+          "The collection that contain the end vertices of the relation.",
+          "",
+          true
+        )
+      );
+
+
+      tableContent.push(
+        window.modalView.createSelect2Entry(
+          "newVertexCollections",
+          "Vertex collections",
+          "",
+          "Some info for vertex collections",
+          "Vertex Collections",
+          false
+        )
+      );
+      buttons.push(
+        window.modalView.createSuccessButton("Create", this.createNewGraph.bind(this))
+      );
+
+
+      window.modalView.show(
+        "modalTable.ejs", "Add new Graph", buttons, tableContent, null, this.events
+      );
+      $('#row_fromCollections1').hide();
+      $('#row_toCollections1').hide();
+    },
+
+    createEditGraphModal2: function(name, vertices, edges) {
+      var buttons = [],
+        tableContent = [];
+
+      tableContent.push(
+        window.modalView.createReadOnlyEntry(
+          "editGraphName",
+          "Name",
+          name,
+          false
+        )
+      );
+      tableContent.push(
+        window.modalView.createReadOnlyEntry(
+          "editVertices",
+          "Vertices",
+          vertices,
+          false
+        )
+      );
+      tableContent.push(
+        window.modalView.createReadOnlyEntry(
+          "editEdges",
+          "Edges",
+          edges,
+          false
+        )
+      );
+
+      buttons.push(
+        window.modalView.createDeleteButton("Delete", this.deleteGraph.bind(this))
+      );
+
+      window.modalView.show("modalTable.ejs", "Edit Graph", buttons, tableContent);
 
     }
 
