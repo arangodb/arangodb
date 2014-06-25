@@ -10,7 +10,7 @@
 
 !SUBSECTION All Collections
 <!-- arangod/V8-Server/v8-vocbase.cpp -->
-@startDocuBlock collectionDatabaseCreate
+@startDocuBlock collectionDatabaseNameAll
 
 !SUBSECTION Collection Name
 <!-- arangod/V8-Server/v8-vocbase.cpp -->
