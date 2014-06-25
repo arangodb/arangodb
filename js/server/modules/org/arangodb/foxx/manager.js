@@ -1236,7 +1236,7 @@ exports.unmount = function (mount) {
 
   var doc = mountFromId(mount);
 
-  if (doc.isSystem && (mount.charAt(1) === '_' || mount.indexOf('system') === 1)) {
+  if (doc.isSystem && mount.charAt(1) === '_') {
     throw new Error("Cannot unmount system application");
   }
 
