@@ -43,7 +43,6 @@
       this.collection.fetch({
         async: false
       });
-console.log(this.collection);
       $(this.el).html(this.template.render({
         graphs: this.collection,
         searchString : ''
