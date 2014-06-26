@@ -163,17 +163,23 @@
         self = this,
         collection,
         from,
-        to, i;
-      for (i = 0 ; i < $("tr[id*='newEdgeDefinitions']").length ; i++) {
-        if ($('#s2id_fromCollections' + i) &&
-            _.pluck($('#s2id_fromCollections'  + i).select2("data"), "text") &&
-            $('#newEdgeDefinitions'  + i) &&
-            $('#newEdgeDefinitions'  + i).val() &&
-            $('#s2id_toCollections'  + i) &&
-            _.pluck($('#s2id_toCollections' + i).select2("data"), "text") ) {
-          from = _.pluck($('#s2id_fromCollections'  + i).select2("data"), "text");
-          to = _.pluck($('#s2id_toCollections'  + i).select2("data"), "text");
-          collection = $('#newEdgeDefinitions'  + i).val();
+        to,
+        i,
+        id,
+        definitions;
+
+      definitions = $("tr[id*='newEdgeDefinitions']");
+      for (i = 0 ; i < definitions.length ; i++) {
+        id = definitions[i].id.split("row_newEdgeDefinitions")[1];
+        if ($('#s2id_fromCollections' + id) &&
+            _.pluck($('#s2id_fromCollections'  + id).select2("data"), "text") &&
+            $('#newEdgeDefinitions'  + id) &&
+            $('#newEdgeDefinitions'  + id).val() &&
+            $('#s2id_toCollections'  + id) &&
+            _.pluck($('#s2id_toCollections' + id).select2("data"), "text") ) {
+          from = _.pluck($('#s2id_fromCollections'  + id).select2("data"), "text");
+          to = _.pluck($('#s2id_toCollections'  + id).select2("data"), "text");
+          collection = $('#newEdgeDefinitions'  + id).val();
           edgeDefinitions.push(
             {
               collection: collection,
@@ -333,6 +339,12 @@
     },
 
     addRemoveDefinition : function(e) {
+      var collList = [],
+        collections = this.options.collectionCollection.models;
+
+      collections.forEach(function (c) {
+        collList.push(c.id);
+      });
       e.stopPropagation();
       var id = $(e.currentTarget).attr("id"), number;
       if (id.indexOf("addAfter_newEdgeDefinitions") !== -1 ) {
@@ -343,21 +355,21 @@
           })
         );
         $('#newEdgeDefinitions'+this.counter).select2({
-          tags: [],
+          tags: collList,
           showSearchBox: false,
           minimumResultsForSearch: -1,
           width: "336px",
           maximumSelectionSize: 1
         });
         $('#newfromCollections'+this.counter).select2({
-          tags: [],
+          tags: collList,
           showSearchBox: false,
           minimumResultsForSearch: -1,
           width: "336px",
           maximumSelectionSize: 10
         });
         $('#newtoCollections'+this.counter).select2({
-          tags: [],
+          tags: collList,
           showSearchBox: false,
           minimumResultsForSearch: -1,
           width: "336px",
@@ -376,9 +388,12 @@
     },
 
     createNewGraphModal2: function() {
-      var buttons = [],
-        tableContent = [];
+      var buttons = [], collList = [],
+        tableContent = [], collections = this.options.collectionCollection.models;
 
+      collections.forEach(function (c) {
+          collList.push(c.id);
+      });
       this.counter = 0;
       window.modalView.disableSubmitOnEnter = true;
 
@@ -403,7 +418,8 @@
           true,
           false,
           true,
-          1
+          1,
+          collList
         )
       );
       tableContent.push(
@@ -416,7 +432,8 @@
           true,
           false,
           false,
-          10
+          10,
+          collList
         )
       );
       tableContent.push(
@@ -429,7 +446,8 @@
           true,
           false,
           false,
-          10
+          10,
+          collList
         )
       );
 
@@ -441,7 +459,11 @@
           "",
           "Some info for vertex collections",
           "Vertex Collections",
-          false
+          false,
+          false,
+          false,
+          10,
+          collList
         )
       );
       buttons.push(
