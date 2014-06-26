@@ -306,7 +306,6 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
      callbacks.nodes.spot = dispatcher.events.EXPAND;
     };
 
-  console.log(dispatcherConfig.edgeEditor.adapter);
   createNewNodeCB();
   createViewCBs();
   createConnectCBs();
