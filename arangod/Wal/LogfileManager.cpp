@@ -730,6 +730,10 @@ SlotInfo LogfileManager::allocate (void const* src,
                                    uint32_t size) {
   if (! _allowWrites) {
     // no writes allowed
+#ifdef TRI_ENABLE_MAINTAINER_MODE    
+    TRI_ASSERT(false);
+#endif
+     
     return SlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
   }
 
