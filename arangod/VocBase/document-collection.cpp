@@ -2318,7 +2318,7 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection (TRI_document_collection_t*
 
   if (res != TRI_ERROR_NO_ERROR) {
     document->_lastError = journal->_lastError;
-    LOG_ERROR("cannot create collection header in file '%s': %s", journal->getName(journal), TRI_last_error());
+    LOG_ERROR("cannot create collection header in file '%s': %s", journal->getName(journal), TRI_errno_string(res));
 
     // close the journal and remove it
     TRI_CloseDatafile(journal);
@@ -2330,7 +2330,7 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection (TRI_document_collection_t*
 
   TRI_col_header_marker_t cm;
   TRI_InitMarkerDatafile((char*) &cm, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
-  cm.base._tick = (TRI_voc_tick_t) fid;
+  cm.base._tick = static_cast<TRI_voc_tick_t>(fid);
   cm._type = (TRI_col_type_t) document->_info._type;
   cm._cid  = document->_info._cid;
 
