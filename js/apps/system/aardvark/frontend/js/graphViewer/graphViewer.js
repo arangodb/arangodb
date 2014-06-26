@@ -208,6 +208,20 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       }
     });
   };
+
+  this.loadGraphWithRandomStart = function(callback) {
+    adapter.loadRandomNode(function (node) {
+      if (node.errorCode) {
+        callback(node);
+        return;
+      }
+      node._expanded = true;
+      self.start();
+      if (_.isFunction(callback)) {
+        callback();
+      }
+    });
+  };
   
   this.loadGraphWithAttributeValue = function(attribute, value, callback) {
     adapter.loadInitialNodeByAttributeValue(attribute, value, function (node) {
