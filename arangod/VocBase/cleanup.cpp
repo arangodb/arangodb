@@ -67,7 +67,8 @@ static int const CLEANUP_INDEX_ITERATIONS = 5;
 /// @brief checks all datafiles of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-static void CleanupDocumentCollection (TRI_document_collection_t* document) {
+static void CleanupDocumentCollection (TRI_vocbase_col_t* collection,
+                                       TRI_document_collection_t* document) {
   bool unloadChecked = false;
 
   // loop until done
@@ -121,10 +122,21 @@ static void CleanupDocumentCollection (TRI_document_collection_t* document) {
         // we must release the lock temporarily to check if the collection is fully collected
         TRI_UnlockSpin(&container->_lock);
 
+        bool isDeleted = false;
+
         // must not hold the spin lock while querying the collection
         if (! TRI_IsFullyCollectedDocumentCollection(document)) {
-          // collection is not fully collected - postpone the unload
-          return;
+          // if there is still some collection to perform, check if the collection was deleted already
+          if (TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
+            isDeleted = (collection->_status == TRI_VOC_COL_STATUS_DELETED);
+            TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+          }
+
+          if (! isDeleted) {
+            // collection is not fully collected and still undeleted - postpone the unload
+            return;
+          }
+          // if deleted, then we may unload / delete
         }
 
         unloadChecked = true;
@@ -248,26 +260,21 @@ void TRI_CleanupVocBase (void* data) {
 
     // check if we can get the compactor lock exclusively
     if (TRI_CheckAndLockCompactorVocBase(vocbase)) {
-      size_t i, n;
-
       // copy all collections
       TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
       TRI_CopyDataVectorPointer(&collections, &vocbase->_collections);
       TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
-      n = collections._length;
+      size_t const n = collections._length;
 
-      for (i = 0;  i < n;  ++i) {
-        TRI_vocbase_col_t* collection;
-        TRI_document_collection_t* document;
-
-        collection = (TRI_vocbase_col_t*) collections._buffer[i];
+      for (size_t i = 0;  i < n;  ++i) {
+        TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(collections._buffer[i]);
 
         TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
-        document = collection->_collection;
+        TRI_document_collection_t* document = collection->_collection;
 
-        if (document == NULL) {
+        if (document == nullptr) {
           TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
           continue;
         }
@@ -283,7 +290,7 @@ void TRI_CleanupVocBase (void* data) {
           document->cleanupIndexes(document);
         }
 
-        CleanupDocumentCollection(document);
+        CleanupDocumentCollection(collection, document);
       }
 
       TRI_UnlockCompactorVocBase(vocbase);
