@@ -898,7 +898,7 @@ int getDocumentOnCoordinator (
     }
     if (res->status == CL_COMM_ERROR) {
       // This could be a broken connection or an Http error:
-      if (!res->result->isComplete()) {
+      if (!res->result || !res->result->isComplete()) {
         delete res;
         return TRI_ERROR_CLUSTER_CONNECTION_LOST;
       }
