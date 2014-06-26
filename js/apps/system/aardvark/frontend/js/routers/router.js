@@ -233,7 +233,7 @@
                     new window.GraphManagementView(
                       {
                         collection: new window.GraphCollection(),
-                        collectionCollection: new window.arangoCollections()
+                        collectionCollection: this.arangoCollectionsStore
                       }
                     );
             }
