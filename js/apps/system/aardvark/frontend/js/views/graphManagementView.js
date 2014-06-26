@@ -211,19 +211,35 @@
       edgeDefinitions.forEach(
         function(edgeDefinition, index) {
           maxIndex = index;
-          tableContent.push(
-            window.modalView.createSelect2Entry(
-              "newEdgeDefinitions" + index,
-              "Edge definitions",
-              edgeDefinition.collection,
-              "Some info for edge definitions",
-              "Edge definitions",
-              true,
-              false,
-              true,
-              1
-            )
-          );
+          if (index === 0) {
+            tableContent.push(
+              window.modalView.createSelect2Entry(
+                "newEdgeDefinitions" + index,
+                "Edge definitions",
+                edgeDefinition.collection,
+                "Some info for edge definitions",
+                "Edge definitions",
+                true,
+                true,
+                true,
+                1
+              )
+            );
+          } else {
+            tableContent.push(
+              window.modalView.createSelect2Entry(
+                "newEdgeDefinitions" + index,
+                "Edge definitions",
+                edgeDefinition.collection,
+                "Some info for edge definitions",
+                "Edge definitions",
+                true,
+                true,
+                false,
+                1
+              )
+            );
+          }
           tableContent.push(
             window.modalView.createSelect2Entry(
               "newFromCollections" + index,
