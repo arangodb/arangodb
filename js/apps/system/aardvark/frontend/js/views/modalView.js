@@ -61,7 +61,7 @@
       yes: "#modal-confirm-delete",
       no: "#modal-abort-delete"
     },
-
+    disableSubmitOnEnter : false,
     enabledHotkey: false,
 
     buttons: {
@@ -269,6 +269,7 @@
 
       var template = templateEngine.createTemplate(templateName),
         model = {};
+      model.disableSubmitOnEnter = this.disableSubmitOnEnter;
       model.content = tableContent || [];
       model.advancedContent = advancedContent || false;
       $(".modal-body").html(template.render(model));
@@ -286,7 +287,7 @@
             showSearchBox: false,
             minimumResultsForSearch: -1,
             width: "336px",
-            maximumSelectionSize: r.maxEntrySize ? r.maxEntrySize : 8
+            maximumSelectionSize: r.maxEntrySize || 8
           });
         }
       });//handle select2
