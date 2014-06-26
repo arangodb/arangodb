@@ -5390,7 +5390,8 @@ function GRAPH_TRAVERSAL (vertexCollection,
 ///
 /// *Parameters*
 /// * *graphName*          : The name of the graph as a string.
-/// * *startVertex*        : The ID of the start vertex of the traversal as a string.
+/// * *startVertexExample*        : An example for the desired
+/// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
 /// * *direction*          : The direction of the edges as a string. Possible values
 /// are *outbound*, *inbound* and *any* (default).
 /// * *options* (optional) : Object containing optional options, see
@@ -5425,19 +5426,28 @@ function GRAPH_TRAVERSAL (vertexCollection,
 //
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_TRAVERSAL (graphName,
-                          startVertex,
+                                  startVertexExample,
                           direction,
                           options) {
   "use strict";
 
+  var result = [];
   options = TRAVERSAL_PARAMS(options);
+  options.fromVertexExample = startVertexExample;
+  options.direction =  direction;
 
-  return TRAVERSAL_FUNC("GRAPH_TRAVERSAL",
-    TRAVERSAL.generalGraphDatasourceFactory(graphName),
-    TO_ID(startVertex),
-    undefined,
-    direction,
-    options);
+  var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
+  var factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
+
+  graph.fromVertices.forEach(function (f) {
+    result.push(TRAVERSAL_FUNC("GRAPH_TRAVERSAL",
+      factory,
+      TO_ID(f),
+      undefined,
+      direction,
+      options));
+  });
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5572,8 +5582,8 @@ function GENERAL_GRAPH_DISTANCE_TO (graphName,
 /// *Parameters*
 ///
 /// * *graphName*          : The name of the graph as a string.
-/// * *startVertex*         : The ID of the start vertex
-/// of the traversal as a string.
+/// * *startVertexExample*         : An example for the desired
+/// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
 /// * *direction*          : The direction of the edges as a string.
 ///  Possible values are *outbound*, *inbound* and *any* (default).
 /// * *connectName*        : The result attribute which
@@ -5611,25 +5621,32 @@ function GENERAL_GRAPH_DISTANCE_TO (graphName,
 ////////////////////////////////////////////////////////////////////////////////
 
 function GENERAL_GRAPH_TRAVERSAL_TREE (graphName,
-                                       startVertex,
+                                       startVertexExample,
                                        direction,
                                        connectName,
                                        options) {
   "use strict";
 
+  var result = [];
   options = TRAVERSAL_TREE_PARAMS(options, connectName, "GRAPH_TRAVERSAL_TREE");
+  options.fromVertexExample = startVertexExample;
+  options.direction =  direction;
 
-  var result = TRAVERSAL_FUNC("GRAPH_TRAVERSAL_TREE",
-    TRAVERSAL.generalGraphDatasourceFactory(graphName),
-    TO_ID(startVertex),
-    undefined,
-    direction,
-    options);
+  var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
+  var factory = TRAVERSAL.generalGraphDatasourceFactory(graphName), r;
 
-  if (result.length === 0) {
-    return [ ];
-  }
-  return [ result[0][options.connect] ];
+  graph.fromVertices.forEach(function (f) {
+    r = TRAVERSAL_FUNC("GRAPH_TRAVERSAL_TREE",
+      factory,
+      TO_ID(f),
+      undefined,
+      direction,
+      options);
+    if (r.length > 0) {
+      result.push([ r[0][options.connect] ]);
+    }
+  });
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
