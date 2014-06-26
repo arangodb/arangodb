@@ -114,11 +114,18 @@
     
     describe('change graph control', function() {
       
-      var idPrefix = "#control_adapter_graph";
+      var idPrefix = "#control_adapter_graph",
+        callbacks;
 
       beforeEach(function() {
         runs(function() {
-          adapterUI.addControlChangeGraph();
+          callbacks = {
+            cb: function() {
+              return undefined;
+            }
+          };
+          spyOn(callbacks, "cb");
+          adapterUI.addControlChangeGraph(callbacks.cb);
           expect($("#control_adapter_list " + idPrefix).length).toEqual(1);
           expect($("#control_adapter_list " + idPrefix)[0]).toConformToListCSS();
           helper.simulateMouseEvent("click", idPrefix.substr(1) + "_button");
@@ -171,7 +178,45 @@
           );
         });
       });
+
+      it('should be possible to start with a random vertex', function() {
+        runs(function() {
+          spyOn(adapter, "loadRandomNode");
+          $(idPrefix + "_graph").prop("selectedIndex", 1);
+          $(idPrefix + "_undirected").attr("checked", true);
+          $(idPrefix + "_random").attr("checked", true);
+        
+          helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
       
+          expect(adapter.loadRandomNode).toHaveBeenCalled();
+        });
+      });
+      
+      it('should be possible to not start with a random vertex', function() {
+        runs(function() {
+          spyOn(adapter, "loadRandomNode");
+          $(idPrefix + "_graph").prop("selectedIndex", 1);
+          $(idPrefix + "_undirected").attr("checked", true);
+          $(idPrefix + "_random").attr("checked", false);
+        
+          helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
+      
+          expect(adapter.loadRandomNode).not.toHaveBeenCalled();
+        });
+      });
+
+      it('should trigger the callback', function() {
+        runs(function() {
+          $(idPrefix + "_graph").prop("selectedIndex", 1);
+          $(idPrefix + "_undirected").attr("checked", true);
+          $(idPrefix + "_random").attr("checked", false);
+        
+          helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
+      
+          expect(callbacks.cb).toHaveBeenCalled();
+        });
+      });
+
       it('should offer the available graphs as sorted lists', function() {
         runs(function() {
           var graphList = document.getElementById(idPrefix.substr(1) + "_graph"),
