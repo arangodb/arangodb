@@ -75,6 +75,7 @@
       this.events["click .tableRow"] = this.showHideDefinition.bind(this);
       this.events['change [id*="newEdgeDefinitions"]'] = this.setFromAndTo.bind(this);
       this.events["click .graphViewer-icon-button"] = this.addRemoveDefinition.bind(this);
+
       return this;
     },
 
@@ -89,7 +90,7 @@
       } else {
         id = e.currentTarget.id.split("row_newEdgeDefinitions")[1];
         $('#s2id_fromCollections'+id).select2("val", null);
-        $('#newFCollections'+id).attr('disabled', false);
+        $('#fromCollections'+id).attr('disabled', false);
         $('#s2id_toCollections'+id).select2("val", null);
         $('#toCollections'+id).attr('disabled', false);
       }
@@ -181,8 +182,8 @@
           index = index.replace("s2id_newEdgeDefinitions", "");
           collection = _.pluck($('#s2id_newEdgeDefinitions' + index).select2("data"), "text")[0];
           if (collection && collection !== "") {
-            from = _.pluck($('#s2id_newFromCollections' + index).select2("data"), "text");
-            to = _.pluck($('#s2id_newToCollections' + index).select2("data"), "text");
+            from = _.pluck($('#s2id_fromCollections' + index).select2("data"), "text");
+            to = _.pluck($('#s2id_toCollections' + index).select2("data"), "text");
             if (from !== 1 && to !== 1) {
               edgeDefinitions.push(
                 {
@@ -456,7 +457,7 @@
         }
       });
       this.counter = 0;
-      window.modalView.disableSubmitOnEnter = true;
+      window.modalView.enableHotKeys = false;
 
       tableContent.push(
         window.modalView.createTextEntry(
