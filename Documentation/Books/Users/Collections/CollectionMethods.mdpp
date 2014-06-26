@@ -16,6 +16,10 @@
 <!-- arangod/V8-Server/v8-vocbase.cpp -->
 @startDocuBlock collectionFigures
 
+!SUBSECTION Load
+<!-- arangod/V8-Server/v8-vocbase.cpp -->
+@startDocuBlock collectionLoad
+
 !SUBSECTION Reserve
 `collection.reserve( number)`
 

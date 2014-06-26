@@ -500,7 +500,7 @@
         );
       });
 
-      it("should navigate to the graphView", function () {
+      /*it("should navigate to the graphView", function () {
         spyOn(graphDummy, "render");
         simpleNavigationCheck(
           "graph",
@@ -514,7 +514,7 @@
           },
           true
         );
-      });
+      });*/
 
       it("should navigate to the appDocumentation", function () {
         var key = 5;
@@ -654,14 +654,14 @@
         );
       });
 
-      it("should route to the graph management tab", function () {
+      /*it("should route to the graph management tab", function () {
         simpleNavigationCheck(
           "graphManagement",
           "GraphManagementView",
           "graphviewer-menu",
           { collection: graphsDummy}
         );
-      });
+      });*/
 
       it("should route to the applications tab", function () {
         simpleNavigationCheck(

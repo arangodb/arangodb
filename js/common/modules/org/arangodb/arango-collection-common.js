@@ -267,17 +267,21 @@ ArangoCollection.prototype.all = function () {
 /// Use *toArray* to get all documents at once:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionByExample}
+/// ~ db._create("users");
 ///   db.users.all().toArray();
 ///   db.users.byExample({ "id" : 323 }).toArray();
 ///   db.users.byExample({ "name" : "Peter" }).toArray();
 ///   db.users.byExample({ "name" : "Peter", "id" : 535 }).toArray();
+/// ~ db._drop("users");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Use *next* to loop over all documents:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionByExampleNext}
+/// ~ db._create("users");
 ///   var a = db.users.byExample( {"name" : "Peter" } );
 ///   while (a.hasNext()) print(a.next());
+/// ~ db._drop("users");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -512,7 +516,9 @@ ArangoCollection.prototype.byConditionBitarray = function (index, condition) {
 /// Use *toArray* to get all documents at once:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionRange}
-/// l = db.skip.range("age", 10, 13).toArray();
+/// ~ db._create("example");
+///   l = db.example.range("age", 10, 13).toArray();
+/// ~ db._drop("example")
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -692,12 +698,17 @@ ArangoCollection.prototype.geo = function(loc, order) {
 ///
 /// To get the nearst two locations:
 ///
-/// @TINYEXAMPLE{simple-query-near,nearest two location}
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionNear}
+///   db.geo.near(0,0).limit(2).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// If you need the distance as well, then you can use the *distance*
 /// operator:
 ///
-/// @TINYEXAMPLE{simple-query-near2,nearest two location with distance in meter}
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionNearDistance}
+///   db.geo.near(0,0).distance().limit(2).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -733,7 +744,10 @@ ArangoCollection.prototype.near = function (lat, lon) {
 ///
 /// To find all documents within a radius of 2000 km use:
 ///
-/// @TINYEXAMPLE{simple-query-within,within a radius}
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionWithin}
+///   db.geo.within(0, 0, 2000 * 1000).distance().toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -749,7 +763,7 @@ ArangoCollection.prototype.within = function (lat, lon, radius) {
 /// This will find the documents from the collection's fulltext index that match the search
 /// query.
 ///
-/// In order to use the @FN{fulltext} operator, a fulltext index must be defined for the
+/// In order to use the *fulltext* operator, a fulltext index must be defined for the
 /// collection, for the specified attribute. If multiple fulltext indexes are defined
 /// for the collection and attribute, the most capable one will be selected.
 ///
@@ -757,7 +771,9 @@ ArangoCollection.prototype.within = function (lat, lon, radius) {
 ///
 /// To find all documents which contain the terms *text* and *word*:
 ///
-/// @TINYEXAMPLE{simple-query-fulltext,complete match query}
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionFulltext}
+///   db.emails.fulltext("text", "word").toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -886,15 +902,15 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
 ///
 /// `collection.removeByExample(document, waitForSync)`
 ///
-/// The optional *waitForSync* parameter can be used to force synchronisation
+/// The optional *waitForSync* parameter can be used to force synchronization
 /// of the document deletion operation to disk even in case that the
 /// *waitForSync* flag had been disabled for the entire collection.  Thus,
-/// the *waitForSync* parameter can be used to force synchronisation of just
+/// the *waitForSync* parameter can be used to force synchronization of just
 /// specific operations. To use this, set the *waitForSync* parameter to
 /// *true*. If the *waitForSync* parameter is not specified or set to
 /// *false*, then the collection's default *waitForSync* behavior is
 /// applied. The *waitForSync* parameter cannot be used to disable
-/// synchronisation for collections that have a default *waitForSync* value
+/// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///
 /// `collection.removeByExample(document, waitForSync, limit)`
@@ -906,9 +922,12 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
 ///
 /// @EXAMPLES
 ///
-/// @code
-/// arangod> db.content.removeByExample({ "domain": "de.celler" })
-/// @endcode
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionRemoveByExample}
+/// ~ db._create("example");
+/// ~ db.example.save({ Hello : "world" });
+///   db.example.removeByExample( {Hello : "world"} );
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -928,15 +947,15 @@ ArangoCollection.prototype.removeByExample = function (example, waitForSync, lim
 ///
 /// `collection.replaceByExample(document, newValue, waitForSync)`
 ///
-/// The optional *waitForSync* parameter can be used to force synchronisation
+/// The optional *waitForSync* parameter can be used to force synchronization
 /// of the document replacement operation to disk even in case that the
 /// *waitForSync* flag had been disabled for the entire collection.  Thus,
-/// the *waitForSync* parameter can be used to force synchronisation of just
+/// the *waitForSync* parameter can be used to force synchronization of just
 /// specific operations. To use this, set the *waitForSync* parameter to
 /// *true*. If the *waitForSync* parameter is not specified or set to
 /// *false*, then the collection's default *waitForSync* behavior is
 /// applied. The *waitForSync* parameter cannot be used to disable
-/// synchronisation for collections that have a default *waitForSync* value
+/// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///
 /// `collection.replaceByExample(document, newValue, waitForSync, limit)`
@@ -948,9 +967,12 @@ ArangoCollection.prototype.removeByExample = function (example, waitForSync, lim
 ///
 /// @EXAMPLES
 ///
-/// @code
-/// arangod> db.content.replaceByExample({ "domain": "de.celler" }, { "foo": "someValue }, false, 5)
-/// @endcode
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionReplaceByExample}
+/// ~ db._create("example");
+/// ~ db.example.save({ Hello : "world" });
+///   db.example.replaceByExample({ Hello: "world" }, {Hello: "mars"}, false, 5);
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -961,7 +983,7 @@ ArangoCollection.prototype.replaceByExample = function (example, newValue, waitF
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief partially updates documents matching an example
 /// @startDocuBlock documentsCollectionUpdateByExample
-/// `collection.updateByExample(example, newValue`
+/// `collection.updateByExample(example, newValue)`
 ///
 /// Partially updates all documents matching an example with a new document body.
 /// Specific attributes in the document body of each document matching the 
@@ -980,12 +1002,12 @@ ArangoCollection.prototype.replaceByExample = function (example, newValue, waitF
 /// The optional *waitForSync* parameter can be used to force synchronization
 /// of the document replacement operation to disk even in case that the
 /// *waitForSync* flag had been disabled for the entire collection.  Thus,
-/// the *waitForSync* parameter can be used to force synchronisation of just
+/// the *waitForSync* parameter can be used to force synchronization of just
 /// specific operations. To use this, set the *waitForSync* parameter to
 /// *true*. If the *waitForSync* parameter is not specified or set to
 /// *false*, then the collection's default *waitForSync* behavior is
 /// applied. The *waitForSync* parameter cannot be used to disable
-/// synchronisation for collections that have a default *waitForSync* value
+/// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///
 /// `collection.updateByExample(document, newValue, keepNull, waitForSync, limit)`
@@ -997,10 +1019,13 @@ ArangoCollection.prototype.replaceByExample = function (example, newValue, waitF
 ///
 /// @EXAMPLES
 ///
-/// @code
-/// arangod> db.content.updateByExample({ "domain": "de.celler" }, { "foo": "someValue, "domain": null }, false)
-/// @endcode
-/// endDocuBlock
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdateByExample}
+/// ~ db._create("example");
+/// ~ db.example.save({ Hello : "world" });
+///   db.example.updateByExample({ Hello: "world" }, { Hello: "foo", Hello: "bar" }, false);
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.updateByExample = function (example, newValue, keepNull, waitForSync, limit) {
