@@ -183,7 +183,7 @@
             );
           }
         } else {
-          searchForNext = false
+          searchForNext = false;
         }
         index++;
       }
