@@ -185,7 +185,7 @@ static TRI_datafile_t* CreateCompactor (TRI_document_collection_t* document,
 
   TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
-  TRI_datafile_t* compactor = TRI_CreateCompactorDocumentCollection(document, fid, static_cast<TRI_voc_size_t>(maximalSize));
+  TRI_datafile_t* compactor = TRI_CreateDatafileDocumentCollection(document, fid, static_cast<TRI_voc_size_t>(maximalSize), true);
 
   if (compactor != nullptr) {
     int res TRI_UNUSED = TRI_PushBackVectorPointer(&collection->_compactors, compactor);
@@ -867,7 +867,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
     return;
   }
 
-  if (! TRI_CloseCompactorDocumentCollection(document, j)) {
+  if (! TRI_CloseDatafileDocumentCollection(document, j, true)) {
     TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
     LOG_ERROR("could not close compactor file");
