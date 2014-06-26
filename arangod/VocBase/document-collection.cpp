@@ -3418,7 +3418,8 @@ static int PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
                                      TRI_vector_t* pids,
                                      TRI_vector_pointer_t* names,
                                      bool sorted,
-                                     bool create) {
+                                     bool create,
+                                     bool isTemporary) {
   pid_name_t* pidnames;
 
   // .............................................................................
@@ -3438,7 +3439,7 @@ static int PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
       pidnames[j]._name = static_cast<char*>(attributes->_buffer[j]);
 
       if (create) {
-        pidnames[j]._pid = shaper->findOrCreateAttributePathByName(shaper, pidnames[j]._name, true);
+        pidnames[j]._pid = shaper->findOrCreateAttributePathByName(shaper, pidnames[j]._name, true, isTemporary);
       }
       else {
         pidnames[j]._pid = shaper->lookupAttributePathByName(shaper, pidnames[j]._name);
@@ -3479,7 +3480,7 @@ static int PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
 
       TRI_shape_pid_t pid;
       if (create) {
-        pid = shaper->findOrCreateAttributePathByName(shaper, name, true);
+        pid = shaper->findOrCreateAttributePathByName(shaper, name, true, isTemporary);
       }
       else {
         pid = shaper->lookupAttributePathByName(shaper, name);
@@ -3716,7 +3717,7 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (location != nullptr) {
-    loc = shaper->findOrCreateAttributePathByName(shaper, location, true);
+    loc = shaper->findOrCreateAttributePathByName(shaper, location, true, true);
 
     if (loc == 0) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -3725,7 +3726,7 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   }
 
   if (latitude != nullptr) {
-    lat = shaper->findOrCreateAttributePathByName(shaper, latitude, true);
+    lat = shaper->findOrCreateAttributePathByName(shaper, latitude, true, true);
 
     if (lat == 0) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -3734,7 +3735,7 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   }
 
   if (longitude != nullptr) {
-    lon = shaper->findOrCreateAttributePathByName(shaper, longitude, true);
+    lon = shaper->findOrCreateAttributePathByName(shaper, longitude, true, true);
 
     if (lon == 0) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -4162,6 +4163,7 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
                                  &paths,
                                  &fields,
                                  true,
+                                 true,
                                  true);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -4270,7 +4272,8 @@ TRI_index_t* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t* d
                                  &paths,
                                  &fields,
                                  true,
-                                 false);
+                                 false,
+                                 true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return nullptr;
@@ -4355,6 +4358,7 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
                                  &paths,
                                  &fields,
                                  false,
+                                 true,
                                  true);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -4457,7 +4461,8 @@ TRI_index_t* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_
                                  &paths,
                                  &fields,
                                  false,
-                                 false);
+                                 false,
+                                 true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return nullptr;
@@ -4795,6 +4800,7 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
                                  &paths,
                                  &fields,
                                  false,
+                                 true,
                                  true);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -4929,7 +4935,8 @@ TRI_index_t* TRI_LookupBitarrayIndexDocumentCollection (TRI_document_collection_
                                     &paths,
                                     &fields,
                                     false,
-                                    false);
+                                    false,
+                                    true);
 
   if (result != TRI_ERROR_NO_ERROR) {
     return nullptr;
