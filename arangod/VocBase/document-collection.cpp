@@ -549,7 +549,7 @@ static int CreateHeader (TRI_document_collection_t* document,
   header->_rid     = marker->_rid;
   header->_fid     = fid;
   header->setDataPtr(marker);  // ONLY IN OPENITERATOR
-  header->_hash    = TRI_FnvHashString(TRI_EXTRACT_MARKER_KEY(header));  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+  header->_hash    = TRI_HashKeyPrimaryIndex(TRI_EXTRACT_MARKER_KEY(header));  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
   *result = header;
 
   return TRI_ERROR_NO_ERROR;
@@ -5412,7 +5412,7 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     keyString = key;
   }
 
-  uint64_t hash = TRI_FnvHashPointer(keyString.c_str(), keyString.size());
+  uint64_t hash = TRI_HashKeyPrimaryIndex(keyString.c_str());
 
   // construct a legend for the shaped json
   triagens::basics::JsonLegend legend(document->getShaper());  // PROTECTED by trx in trxCollection
