@@ -161,7 +161,7 @@
         vertexCollections = _.pluck($('#newVertexCollections').select2("data"), "text"),
         edgeDefinitions = [],
         self = this,
-        index = 1,
+        index = 0,
         collection,
         from,
         to,
@@ -169,8 +169,8 @@
 
 
       while(searchForNext) {
-        collection = $('#newEdgeDefinitions' + index).val();
-        if (collection !== "") {
+        collection = _.pluck($('#s2id_newEdgeDefinitions' + index).select2("data"), "text")[0];
+        if (collection && collection !== "") {
           from = _.pluck($('#s2id_fromCollections' + index).select2("data"), "text");
           to = _.pluck($('#s2id_toCollections' + index).select2("data"), "text");
           if (from !== 1 && to !== 1) {
