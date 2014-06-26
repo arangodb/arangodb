@@ -1139,48 +1139,6 @@ int TRI_IterateJsonIndexesCollectionInfo (TRI_vocbase_col_t* collection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief syncs the active journal of a collection
-/// note: the caller must make sure any required locks are held
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_SyncCollection (TRI_collection_t* collection) {
-  char const* synced;
-  char* written;
-
-  if (collection->_state != TRI_COL_STATE_WRITE) {
-    if (collection->_state == TRI_COL_STATE_READ) {
-
-      return TRI_ERROR_ARANGO_READ_ONLY;
-    }
-
-    return TRI_ERROR_ARANGO_ILLEGAL_STATE;
-  }
-
-  // get active journal
-  if (collection->_journals._length == 0) {
-    return TRI_ERROR_ARANGO_NO_JOURNAL;
-  }
-
-  TRI_datafile_t* journal = static_cast<TRI_datafile_t*>(collection->_journals._buffer[0]);
-
-  if (journal == NULL) {
-    return TRI_ERROR_ARANGO_NO_JOURNAL;
-  }
-
-
-  synced = journal->_synced;
-  written = journal->_written;
-
-  if (synced < written) {
-    if (! journal->sync(journal, synced, written)) {
-      return TRI_errno();
-    }
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief jsonify a parameter info block
 ////////////////////////////////////////////////////////////////////////////////
 

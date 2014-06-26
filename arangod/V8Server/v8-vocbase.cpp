@@ -311,7 +311,7 @@ static TRI_vector_pointer_t GetCollectionsCluster (TRI_vocbase_t* vocbase) {
   for (size_t i = 0, n = collections.size(); i < n; ++i) {
     TRI_vocbase_col_t* c = CoordinatorCollection(vocbase, *(collections[i]));
 
-    if (c != 0) {
+    if (c != nullptr) {
       TRI_PushBackVectorPointer(&result, c);
     }
   }
@@ -399,12 +399,12 @@ static inline bool ExtractForceSync (v8::Arguments const& argv,
   return (argv.Length() >= index && TRI_ObjectToBoolean(argv[index - 1]));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the update policy from a boolean parameter
+////////////////////////////////////////////////////////////////////////////////
+
 static inline TRI_doc_update_policy_e ExtractUpdatePolicy (bool overwrite) {
-  if (overwrite) {
-    // overwrite!
-    return TRI_DOC_UPDATE_LAST_WRITE;
-  }
-  return TRI_DOC_UPDATE_ERROR;
+  return (overwrite ? TRI_DOC_UPDATE_LAST_WRITE : TRI_DOC_UPDATE_ERROR);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3315,7 +3315,7 @@ static v8::Handle<v8::Object> CreateErrorObjectAhuacatl (TRI_aql_error_t* error)
 
   char* message = TRI_GetErrorMessageAql(error);
 
-  if (message != 0) {
+  if (message != nullptr) {
     std::string str(message);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, message);
 
@@ -5966,7 +5966,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-  if (collection == 0) {
+  if (collection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 

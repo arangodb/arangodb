@@ -1294,7 +1294,13 @@ leave:
       if (! _inRecovery) {
         // we only need the barriers when we are outside the recovery
         // the compactor will not run during recovery
-        cache->addBarrier(TRI_CreateBarrierElement(&document->_barrierList));
+        TRI_barrier_t* barrier = TRI_CreateBarrierElement(&document->_barrierList);
+        
+        if (barrier == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
+
+        cache->addBarrier(barrier);
       }
     }
   }
