@@ -161,6 +161,18 @@ function EventLibrary() {
       });
     };
   };
+
+  this.SelectNodeCollection = function(config) {
+    self.checkNodeEditorConfig(config);
+    var adapter = config.adapter;
+    if (!_.isFunction(adapter.useNodeCollection)) {
+      throw "The adapter has to support collection changes";
+    }
+    return function(name, callback) {
+      adapter.useNodeCollection(name);
+      callback();
+    };
+  };
   
   this.InsertEdge = function (config) {
     self.checkEdgeEditorConfig(config);

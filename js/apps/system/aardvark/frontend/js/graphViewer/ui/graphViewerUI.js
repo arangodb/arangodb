@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global document, $, _ */
 /*global EventDispatcherControls, NodeShaperControls, EdgeShaperControls */
-/*global LayouterControls, ArangoAdapterControls*/
+/*global LayouterControls, GharialAdapterControls*/
 /*global GraphViewer, d3, window*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -375,7 +375,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         configureLists.edges,
         graphViewer.edgeShaper
       );
-      adapterUI = new ArangoAdapterControls(
+      adapterUI = new GharialAdapterControls(
         configureLists.col,
         graphViewer.adapter
       );
@@ -402,7 +402,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       transparentHeader.appendChild(buttons);
       transparentHeader.appendChild(title);
       
-      adapterUI.addControlChangeCollections(function() {
+      adapterUI.addControlChangeGraph(function() {
         updateAttributeExamples();
         graphViewer.start();
       });

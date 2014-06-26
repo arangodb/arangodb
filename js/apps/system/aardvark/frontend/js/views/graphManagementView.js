@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true*/
-/*global Backbone, $, _, window, templateEngine, arangoHelper*/
+/*global Backbone, $, _, window, templateEngine, arangoHelper, GraphViewerUI */
 
 (function() {
   "use strict";
@@ -20,7 +20,17 @@
     },
 
     loadGraphViewer: function(e) {
-      console.log($(e.currentTarget).attr("id"));
+      var name = $(e.currentTarget).attr("id");
+      name = name.substr(0, name.length - 5);
+      var adapterConfig = {
+        type: "gharial",
+        graphName: name,
+        graph: name,
+        baseUrl: require("internal").arango.databasePrefix("/")
+      };
+      var width = $("#content").width() - 75;
+      $("#content").html("");
+      this.ui = new GraphViewerUI($("#content")[0], adapterConfig, width, 680, {});
     },
 
     addNewGraph: function(e) {
