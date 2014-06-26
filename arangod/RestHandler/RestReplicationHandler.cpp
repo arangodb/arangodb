@@ -2448,7 +2448,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
           }
 
           if (res == TRI_ERROR_NO_ERROR) {
-            res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, &mptr, shaped, &edge, false, false, true);
+            res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &mptr, shaped, &edge, false, false, true);
           }
         }
         else {
@@ -2457,7 +2457,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
           }
           else {
-            res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, &mptr, shaped, nullptr, false, false, true);
+            res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &mptr, shaped, nullptr, false, false, true);
           }
         }
       }
@@ -2466,7 +2466,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
 
         // init the update policy
         TRI_doc_update_policy_t policy(TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr);
-        res = TRI_UpdateShapedJsonDocumentCollection(trxCollection, key, rid, &mptr, shaped, &policy, false, false);
+        res = TRI_UpdateShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &mptr, shaped, &policy, false, false);
       }
 
       TRI_FreeShapedJson(zone, shaped);
@@ -2491,7 +2491,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
     int res = TRI_ERROR_INTERNAL;
 
     try {
-      res = TRI_RemoveShapedJsonDocumentCollection(trxCollection, key, rid, &policy, false, false);
+      res = TRI_RemoveShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &policy, false, false);
 
       if (res != TRI_ERROR_NO_ERROR && res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // ignore this error

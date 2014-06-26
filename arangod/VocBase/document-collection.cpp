@@ -31,7 +31,6 @@
 
 #include "BasicsC/conversions.h"
 #include "BasicsC/files.h"
-#include "BasicsC/hashes.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 #include "CapConstraint/cap-constraint.h"
@@ -575,7 +574,7 @@ static void UpdateHeader (TRI_voc_fid_t fid,
 
   marker = (TRI_doc_document_key_marker_t const*) m;
 
-  TRI_ASSERT(marker != NULL);
+  TRI_ASSERT(marker != nullptr);
   TRI_ASSERT(m->_size > 0);
 
   newHeader->_rid     = marker->_rid;
@@ -669,7 +668,7 @@ static int CleanupIndexes (TRI_document_collection_t* document) {
     for (size_t i = 0 ; i < n ; ++i) {
       TRI_index_t* idx = (TRI_index_t*) document->_allIndexes._buffer[i];
 
-      if (idx->cleanup != NULL) {
+      if (idx->cleanup != nullptr) {
         res = idx->cleanup(idx);
         if (res != TRI_ERROR_NO_ERROR) {
           break;
@@ -1119,7 +1118,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
   found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
 
   // it is a new entry
-  if (found == NULL) {
+  if (found == nullptr) {
     TRI_doc_mptr_t* header;
     int res;
 
@@ -1132,7 +1131,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
       return TRI_set_errno(res);
     }
 
-    TRI_ASSERT(header != NULL);
+    TRI_ASSERT(header != nullptr);
 
     // insert into primary index
     res = InsertPrimaryIndex(document, header, false);
@@ -1148,7 +1147,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     document->_numberDocuments++;
 
     // update the datafile info
-    if (state->_dfi != NULL) {
+    if (state->_dfi != nullptr) {
       state->_dfi->_numberAlive++;
       state->_dfi->_sizeAlive += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
     }
@@ -1178,10 +1177,10 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
       dfi = TRI_FindDatafileInfoDocumentCollection(document, oldData._fid, true);
     }
 
-    if (dfi != NULL && found->getDataPtr() != NULL) {  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+    if (dfi != nullptr && found->getDataPtr() != nullptr) {  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
       int64_t size;
 
-      TRI_ASSERT(found->getDataPtr() != NULL);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+      TRI_ASSERT(found->getDataPtr() != nullptr);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
       size = (int64_t) ((TRI_df_marker_t*) found->getDataPtr())->_size;  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
 
       dfi->_numberAlive--;
@@ -1191,7 +1190,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
       dfi->_sizeDead += TRI_DF_ALIGN_BLOCK(size);
     }
 
-    if (state->_dfi != NULL) {
+    if (state->_dfi != nullptr) {
       state->_dfi->_numberAlive++;
       state->_dfi->_sizeAlive += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
     }
@@ -1199,8 +1198,8 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
 
   // it is a stale update
   else {
-    if (state->_dfi != NULL) {
-      TRI_ASSERT(found->getDataPtr() != NULL);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
+    if (state->_dfi != nullptr) {
+      TRI_ASSERT(found->getDataPtr() != nullptr);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
 
       state->_dfi->_numberDead++;
       state->_dfi->_sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(((TRI_df_marker_t*) found->getDataPtr())->_size);  // ONLY IN OPENITERATOR, PROTECTED by RUNTIME
@@ -1821,7 +1820,7 @@ static bool OpenIndexIterator (char const* filename,
     return false;
   }
 
-  res = TRI_FromJsonIndexDocumentCollection(static_cast<TRI_document_collection_t*>(data), json, NULL);
+  res = TRI_FromJsonIndexDocumentCollection(static_cast<TRI_document_collection_t*>(data), json, nullptr);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1930,7 +1929,7 @@ static int InitBaseDocumentCollection (TRI_document_collection_t* document,
                                        HashKeyDatafile,
                                        HashElementDatafile,
                                        IsEqualKeyElementDatafile,
-                                       NULL);
+                                       nullptr);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -2119,7 +2118,7 @@ static int IterateMarkersCollection (TRI_collection_t* collection) {
   openState._deletions      = 0;
   openState._documents      = 0;
   openState._fid            = 0;
-  openState._dfi            = NULL;
+  openState._dfi            = nullptr;
   openState._vocbase        = collection->_vocbase;
 
   res = TRI_InitVector2(&openState._operations, TRI_UNKNOWN_MEM_ZONE, sizeof(open_iterator_operation_t), OpenIteratorBufferSize);
@@ -3128,8 +3127,8 @@ static int BitarrayBasedIndexFromJson (TRI_document_collection_t* document,
   int errorNum;
   char* errorStr;
 
-  if (dst != NULL) {
-    *dst = NULL;
+  if (dst != nullptr) {
+    *dst = nullptr;
   }
 
   // ...........................................................................
@@ -3138,7 +3137,7 @@ static int BitarrayBasedIndexFromJson (TRI_document_collection_t* document,
 
   keyValues = ExtractFieldValues(definition, &fieldCount, iid);
 
-  if (keyValues == NULL) {
+  if (keyValues == nullptr) {
     return TRI_errno();
   }
 
@@ -3162,7 +3161,7 @@ static int BitarrayBasedIndexFromJson (TRI_document_collection_t* document,
 
   // unique = false;
   uniqueIndex = TRI_LookupArrayJson(definition, "unique");
-  if (uniqueIndex == NULL || uniqueIndex->_type != TRI_JSON_BOOLEAN) {
+  if (uniqueIndex == nullptr || uniqueIndex->_type != TRI_JSON_BOOLEAN) {
     LOG_ERROR("ignoring index %llu, could not determine if unique or non-unique", (unsigned long long) iid);
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
@@ -3176,7 +3175,7 @@ static int BitarrayBasedIndexFromJson (TRI_document_collection_t* document,
 
   supportUndefIndex = TRI_LookupArrayJson(definition, "undefined");
 
-  if (supportUndefIndex == NULL || supportUndefIndex->_type != TRI_JSON_BOOLEAN) {
+  if (supportUndefIndex == nullptr || supportUndefIndex->_type != TRI_JSON_BOOLEAN) {
     LOG_ERROR("ignoring index %llu, could not determine if index supports undefined values", (unsigned long long) iid);
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
@@ -3209,7 +3208,7 @@ static int BitarrayBasedIndexFromJson (TRI_document_collection_t* document,
   // ...........................................................................
   // attempt to create the index or retrieve an existing one
   // ...........................................................................
-  errorStr = NULL;
+  errorStr = nullptr;
   idx = creator(document, &attributes, &values, iid, supportUndef, &created, &errorNum, &errorStr);
 
 
@@ -3225,16 +3224,16 @@ static int BitarrayBasedIndexFromJson (TRI_document_collection_t* document,
   // Check if the creation or lookup succeeded
   // ...........................................................................
 
-  if (idx == NULL) {
+  if (idx == nullptr) {
     LOG_ERROR("cannot create bitarray index %llu", (unsigned long long) iid);
-    if (errorStr != NULL) {
+    if (errorStr != nullptr) {
       LOG_TRACE("%s", errorStr);
       TRI_Free(TRI_CORE_MEM_ZONE, errorStr);
     }
     return errorNum;
   }
 
-  if (dst != NULL) {
+  if (dst != nullptr) {
     *dst = idx;
   }
 
@@ -3782,54 +3781,54 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   lat = 0;
   lon = 0;
   loc = 0;
-  idx = NULL;
+  idx = nullptr;
 
   shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
-  if (location != NULL) {
+  if (location != nullptr) {
     loc = shaper->findOrCreateAttributePathByName(shaper, location, true);
 
     if (loc == 0) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-      return NULL;
+      return nullptr;
     }
   }
 
-  if (latitude != NULL) {
+  if (latitude != nullptr) {
     lat = shaper->findOrCreateAttributePathByName(shaper, latitude, true);
 
     if (lat == 0) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-      return NULL;
+      return nullptr;
     }
   }
 
-  if (longitude != NULL) {
+  if (longitude != nullptr) {
     lon = shaper->findOrCreateAttributePathByName(shaper, longitude, true);
 
     if (lon == 0) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-      return NULL;
+      return nullptr;
     }
   }
 
   // check, if we know the index
-  if (location != NULL) {
+  if (location != nullptr) {
     idx = TRI_LookupGeoIndex1DocumentCollection(document, location, geoJson, unique, ignoreNull);
   }
-  else if (longitude != NULL && latitude != NULL) {
+  else if (longitude != nullptr && latitude != nullptr) {
     idx = TRI_LookupGeoIndex2DocumentCollection(document, latitude, longitude, unique, ignoreNull);
   }
   else {
     TRI_set_errno(TRI_ERROR_INTERNAL);
     LOG_TRACE("expecting either 'location' or 'latitude' and 'longitude'");
-    return NULL;
+    return nullptr;
   }
 
-  if (idx != NULL) {
+  if (idx != nullptr) {
     LOG_TRACE("geo-index already created for location '%s'", location);
 
-    if (created != NULL) {
+    if (created != nullptr) {
       *created = false;
     }
 
@@ -3837,14 +3836,14 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   }
 
   // create a new index
-  if (location != NULL) {
+  if (location != nullptr) {
     idx = TRI_CreateGeo1Index(document, iid, location, loc, geoJson, unique, ignoreNull);
 
     LOG_TRACE("created geo-index for location '%s': %ld",
               location,
               (unsigned long) loc);
   }
-  else if (longitude != NULL && latitude != NULL) {
+  else if (longitude != nullptr && latitude != nullptr) {
     idx = TRI_CreateGeo2Index(document, iid, latitude, lat, longitude, lon, unique, ignoreNull);
 
     LOG_TRACE("created geo-index for location '%s': %ld, %ld",
@@ -3853,9 +3852,9 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
               (unsigned long) lon);
   }
 
-  if (idx == NULL) {
+  if (idx == nullptr) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    return NULL;
+    return nullptr;
   }
 
   // initialises the index with all existing documents
@@ -3864,7 +3863,7 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeGeoIndex(idx);
 
-    return NULL;
+    return nullptr;
   }
 
   // and store index
@@ -3873,10 +3872,10 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeGeoIndex(idx);
 
-    return NULL;
+    return nullptr;
   }
 
-  if (created != NULL) {
+  if (created != nullptr) {
     *created = true;
   }
 
@@ -3900,8 +3899,8 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
   char const* typeStr;
   size_t fieldCount;
 
-  if (dst != NULL) {
-    *dst = NULL;
+  if (dst != nullptr) {
+    *dst = nullptr;
   }
 
   type = TRI_LookupArrayJson(definition, "type");
@@ -3915,7 +3914,7 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
   // extract fields
   fld = ExtractFields(definition, &fieldCount, iid);
 
-  if (fld == NULL) {
+  if (fld == nullptr) {
     return TRI_errno();
   }
 
@@ -3924,14 +3923,14 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
   // first try "unique" attribute
   bv = TRI_LookupArrayJson(definition, "unique");
 
-  if (bv != NULL && bv->_type == TRI_JSON_BOOLEAN) {
+  if (bv != nullptr && bv->_type == TRI_JSON_BOOLEAN) {
     unique = bv->_value._boolean;
   }
   else {
     // then "constraint"
     bv = TRI_LookupArrayJson(definition, "constraint");
 
-    if (bv != NULL && bv->_type == TRI_JSON_BOOLEAN) {
+    if (TRI_IsBooleanJson(bv)) {
       unique = bv->_value._boolean;
     }
   }
@@ -3940,7 +3939,7 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
   ignoreNull = false;
   bv = TRI_LookupArrayJson(definition, "ignoreNull");
 
-  if (bv != NULL && bv->_type == TRI_JSON_BOOLEAN) {
+  if (TRI_IsBooleanJson(bv)) {
     ignoreNull = bv->_value._boolean;
   }
 
@@ -3952,7 +3951,7 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
     geoJson = false;
     bv = TRI_LookupArrayJson(definition, "geoJson");
 
-    if (bv != NULL && bv->_type == TRI_JSON_BOOLEAN) {
+    if (TRI_IsBooleanJson(bv)) {
       geoJson = bv->_value._boolean;
     }
 
@@ -3962,19 +3961,19 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
 
       idx = CreateGeoIndexDocumentCollection(document,
                                         loc->_value._string.data,
-                                        NULL,
-                                        NULL,
+                                        nullptr,
+                                        nullptr,
                                         geoJson,
                                         unique,
                                         ignoreNull,
                                         iid,
-                                        NULL);
+                                        nullptr);
 
-      if (dst != NULL) {
+      if (dst != nullptr) {
         *dst = idx;
       }
 
-      return idx == NULL ? TRI_errno() : TRI_ERROR_NO_ERROR;
+      return idx == nullptr ? TRI_errno() : TRI_ERROR_NO_ERROR;
     }
     else {
       LOG_ERROR("ignoring %s-index %llu, 'fields' must be a list with 1 entries",
@@ -3991,20 +3990,20 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
       TRI_json_t* lon = static_cast<TRI_json_t*>(TRI_AtVector(&fld->_value._objects, 1));
 
       idx = CreateGeoIndexDocumentCollection(document,
-                                        NULL,
-                                        lat->_value._string.data,
-                                        lon->_value._string.data,
-                                        false,
-                                        unique,
-                                        ignoreNull,
-                                        iid,
-                                        NULL);
+                                             nullptr,
+                                             lat->_value._string.data,
+                                             lon->_value._string.data,
+                                             false,
+                                             unique,
+                                             ignoreNull,
+                                             iid,
+                                             nullptr);
 
-      if (dst != NULL) {
+      if (dst != nullptr) {
         *dst = idx;
       }
 
-      return idx == NULL ? TRI_errno() : TRI_ERROR_NO_ERROR;
+      return idx == nullptr ? TRI_errno() : TRI_ERROR_NO_ERROR;
     }
     else {
       LOG_ERROR("ignoring %s-index %llu, 'fields' must be a list with 2 entries",
@@ -4043,7 +4042,7 @@ TRI_index_t* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* d
   loc = shaper->lookupAttributePathByName(shaper, location);
 
   if (loc == 0) {
-    return NULL;
+    return nullptr;
   }
 
   n = document->_allIndexes._length;
@@ -4064,7 +4063,7 @@ TRI_index_t* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* d
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4087,7 +4086,7 @@ TRI_index_t* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* d
   lon = shaper->lookupAttributePathByName(shaper, longitude);
 
   if (lat == 0 || lon == 0) {
-    return NULL;
+    return nullptr;
   }
 
   n = document->_allIndexes._length;
@@ -4112,7 +4111,7 @@ TRI_index_t* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* d
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4136,7 +4135,7 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
-  idx = CreateGeoIndexDocumentCollection(document, location, NULL, NULL, geoJson, unique, ignoreNull, iid, created);
+  idx = CreateGeoIndexDocumentCollection(document, location, nullptr, nullptr, geoJson, unique, ignoreNull, iid, created);
 
   if (idx != nullptr) {
     if (created) {
@@ -4180,7 +4179,7 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
-  idx = CreateGeoIndexDocumentCollection(document, NULL, latitude, longitude, false, unique, ignoreNull, iid, created);
+  idx = CreateGeoIndexDocumentCollection(document, nullptr, latitude, longitude, false, unique, ignoreNull, iid, created);
 
   if (idx != nullptr) {
     if (created) {
@@ -4531,7 +4530,7 @@ TRI_index_t* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_
                                  false);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return NULL;
+    return nullptr;
   }
 
   idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, unique, true);
@@ -4629,7 +4628,7 @@ static TRI_index_t* LookupFulltextIndexDocumentCollection (TRI_document_collecti
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4652,10 +4651,10 @@ static TRI_index_t* CreateFulltextIndexDocumentCollection (TRI_document_collecti
   // ...........................................................................
 
   idx = LookupFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, minWordLength);
-  if (idx != NULL) {
+  if (idx != nullptr) {
     LOG_TRACE("fulltext-index already created");
 
-    if (created != NULL) {
+    if (created != nullptr) {
       *created = false;
     }
     return idx;
@@ -4664,9 +4663,9 @@ static TRI_index_t* CreateFulltextIndexDocumentCollection (TRI_document_collecti
   // Create the fulltext index
   idx = TRI_CreateFulltextIndex(document, iid, attributeName, indexSubstrings, minWordLength);
 
-  if (idx == NULL) {
+  if (idx == nullptr) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    return NULL;
+    return nullptr;
   }
 
   // initialises the index with all existing documents
@@ -4675,7 +4674,7 @@ static TRI_index_t* CreateFulltextIndexDocumentCollection (TRI_document_collecti
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeFulltextIndex(idx);
 
-    return NULL;
+    return nullptr;
   }
 
   // store index and return
@@ -4684,10 +4683,10 @@ static TRI_index_t* CreateFulltextIndexDocumentCollection (TRI_document_collecti
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeFulltextIndex(idx);
 
-    return NULL;
+    return nullptr;
   }
 
-  if (created != NULL) {
+  if (created != nullptr) {
     *created = true;
   }
 
@@ -4712,14 +4711,14 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
   bool doIndexSubstrings;
   int minWordLengthValue;
 
-  if (dst != NULL) {
-    *dst = NULL;
+  if (dst != nullptr) {
+    *dst = nullptr;
   }
 
   // extract fields
   fld = ExtractFields(definition, &fieldCount, iid);
 
-  if (fld == NULL) {
+  if (fld == nullptr) {
     return TRI_errno();
   }
 
@@ -4742,30 +4741,30 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
   // indexSubstrings = TRI_LookupArrayJson(definition, "indexSubstrings");
 
   doIndexSubstrings = false;
-  // if (indexSubstrings != NULL && indexSubstrings->_type == TRI_JSON_BOOLEAN) {
+  // if (indexSubstrings != nullptr && indexSubstrings->_type == TRI_JSON_BOOLEAN) {
   //  doIndexSubstrings = indexSubstrings->_value._boolean;
   // }
 
   minWordLength = TRI_LookupArrayJson(definition, "minLength");
   minWordLengthValue = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
 
-  if (minWordLength != NULL && minWordLength->_type == TRI_JSON_NUMBER) {
+  if (minWordLength != nullptr && minWordLength->_type == TRI_JSON_NUMBER) {
     minWordLengthValue = (int) minWordLength->_value._number;
   }
 
   // create the index
   idx = LookupFulltextIndexDocumentCollection(document, attributeName, doIndexSubstrings, minWordLengthValue);
 
-  if (idx == NULL) {
+  if (idx == nullptr) {
     bool created;
     idx = CreateFulltextIndexDocumentCollection(document, attributeName, doIndexSubstrings, minWordLengthValue, iid, &created);
   }
 
-  if (dst != NULL) {
+  if (dst != nullptr) {
     *dst = idx;
   }
 
-  if (idx == NULL) {
+  if (idx == nullptr) {
     LOG_ERROR("cannot create fulltext index %llu", (unsigned long long) iid);
     return TRI_errno();
   }
@@ -4869,12 +4868,12 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
                                  true);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    if (created != NULL) {
+    if (created != nullptr) {
       *created = false;
     }
     *errorNum = res;
     *errorStr  = TRI_DuplicateString("Bitarray index attributes could not be accessed.");
-    return NULL;
+    return nullptr;
   }
 
   // ...........................................................................
@@ -4885,7 +4884,7 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
 
   idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_BITARRAY_INDEX, false, false);
 
-  if (idx != NULL) {
+  if (idx != nullptr) {
 
     // .........................................................................
     // existing index has been located which matches the list of attributes
@@ -4896,7 +4895,7 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
     TRI_DestroyVectorPointer(&fields);
     LOG_TRACE("bitarray-index previously created");
 
-    if (created != NULL) {
+    if (created != nullptr) {
       *created = false;
     }
 
@@ -4910,11 +4909,11 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
 
   idx = TRI_CreateBitarrayIndex(document, iid, &fields, &paths, (TRI_vector_pointer_t*)(values), supportUndef, errorNum, errorStr);
 
-  if (idx == NULL) {
+  if (idx == nullptr) {
     TRI_DestroyVector(&paths);
     TRI_DestroyVectorPointer(&fields);
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    return NULL;
+    return nullptr;
   }
 
   // ...........................................................................
@@ -4941,7 +4940,7 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
     *errorStr = TRI_DuplicateString("Bitarray index creation aborted due to documents within collection.");
     TRI_FreeBitarrayIndex(idx);
 
-    return NULL;
+    return nullptr;
   }
 
   // ...........................................................................
@@ -4955,10 +4954,10 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
     *errorStr = TRI_DuplicateString(TRI_errno_string(res));
     TRI_FreeBitarrayIndex(idx);
 
-    return NULL;
+    return nullptr;
   }
 
-  if (created != NULL) {
+  if (created != nullptr) {
     *created = true;
   }
 
@@ -5003,7 +5002,7 @@ TRI_index_t* TRI_LookupBitarrayIndexDocumentCollection (TRI_document_collection_
                                     false);
 
   if (result != TRI_ERROR_NO_ERROR) {
-    return NULL;
+    return nullptr;
   }
 
   idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_BITARRAY_INDEX, false, true);
@@ -5033,7 +5032,7 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
   TRI_index_t* idx;
 
   *errorCode = TRI_ERROR_NO_ERROR;
-  *errorStr  = NULL;
+  *errorStr  = nullptr;
 
   TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
 
@@ -5045,7 +5044,7 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
 
   idx = CreateBitarrayIndexDocumentCollection(document, attributes, values, iid, supportUndef, created, errorCode, errorStr);
 
-  if (idx != NULL) {
+  if (idx != nullptr) {
     if (created) {
       int res = TRI_SaveIndex(document, idx);
 
@@ -5055,7 +5054,7 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
       // ...........................................................................
 
       if (res != TRI_ERROR_NO_ERROR) {
-        idx = NULL;
+        idx = nullptr;
         *errorCode = res;
         *errorStr  = TRI_DuplicateString("Bitarray index could not be saved.");
       }
@@ -5182,6 +5181,7 @@ int TRI_DeleteDocumentDocumentCollection (TRI_transaction_collection_t* trxColle
   return TRI_RemoveShapedJsonDocumentCollection(trxCollection,
                                                 (const TRI_voc_key_t) TRI_EXTRACT_MARKER_KEY(doc),
                                                 0,
+                                                nullptr,
                                                 policy,
                                                 false,
                                                 false);  // PROTECTED by trx in trxCollection
@@ -5266,6 +5266,7 @@ int TRI_ReadShapedJsonDocumentCollection (TRI_transaction_collection_t* trxColle
 int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCollection,
                                             TRI_voc_key_t key,
                                             TRI_voc_rid_t rid,
+                                            triagens::wal::Marker* marker,
                                             TRI_doc_update_policy_t const* policy,
                                             bool lock,
                                             bool forceSync) {
@@ -5286,11 +5287,15 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  triagens::wal::Marker* marker = new triagens::wal::RemoveMarker(document->_vocbase->_id,
-                                                                  document->_info._cid,
-                                                                  rid,
-                                                                  TRI_MarkerIdTransaction(trxCollection->_transaction),
-                                                                  std::string(key));
+  if (marker == nullptr) {
+    marker = new triagens::wal::RemoveMarker(document->_vocbase->_id,
+                                             document->_info._cid,
+                                             rid,
+                                             TRI_MarkerIdTransaction(trxCollection->_transaction),
+                                             std::string(key));
+  }
+
+  TRI_ASSERT(marker != nullptr);
 
   TRI_doc_mptr_t* header;
   int res;
@@ -5357,6 +5362,7 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCollection,
                                             const TRI_voc_key_t key,
                                             TRI_voc_rid_t rid,
+                                            triagens::wal::Marker* marker,
                                             TRI_doc_mptr_copy_t* mptr,
                                             TRI_shaped_json_t const* shaped,
                                             TRI_document_edge_t const* edge,
@@ -5404,55 +5410,59 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     return TRI_ERROR_DEBUG;
   }
 
-  TRI_IF_FAILURE("InsertDocumentNoLegendExcept") {
-    // test what happens if no legend can be created
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
 
-  int res = legend.addShape(shaped->_sid, &shaped->_data);
+  if (marker == nullptr) {
+    TRI_IF_FAILURE("InsertDocumentNoLegendExcept") {
+      // test what happens if no legend can be created
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  
+    int res = legend.addShape(shaped->_sid, &shaped->_data);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
 
-  TRI_IF_FAILURE("InsertDocumentNoMarker") {
-    // test what happens when no marker can be created
-    return TRI_ERROR_DEBUG;
-  }
+    TRI_IF_FAILURE("InsertDocumentNoMarker") {
+      // test what happens when no marker can be created
+      return TRI_ERROR_DEBUG;
+    }
 
-  TRI_IF_FAILURE("InsertDocumentNoMarkerExcept") {
-    // test what happens if no marker can be created
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
+    TRI_IF_FAILURE("InsertDocumentNoMarkerExcept") {
+      // test what happens if no marker can be created
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
 
-  triagens::wal::Marker* marker = nullptr;
 
-  if (edge == nullptr) {
-    // document
-    TRI_ASSERT(edge == nullptr);
+    if (edge == nullptr) {
+      // document
+      TRI_ASSERT(edge == nullptr);
 
-    marker = new triagens::wal::DocumentMarker(document->_vocbase->_id,
-                                               document->_info._cid,
-                                               rid,
-                                               TRI_MarkerIdTransaction(trxCollection->_transaction),
-                                               keyString,
-                                               legend,
-                                               shaped);
-  }
-  else {
-    // edge
-    marker = new triagens::wal::EdgeMarker(document->_vocbase->_id,
-                                           document->_info._cid,
-                                           rid,
-                                           TRI_MarkerIdTransaction(trxCollection->_transaction),
-                                           keyString,
-                                           edge,
-                                           legend,
-                                           shaped);
+      marker = new triagens::wal::DocumentMarker(document->_vocbase->_id,
+                                                 document->_info._cid,
+                                                 rid,
+                                                 TRI_MarkerIdTransaction(trxCollection->_transaction),
+                                                 keyString,
+                                                 legend,
+                                                 shaped);
+    }
+    else {
+      // edge
+      marker = new triagens::wal::EdgeMarker(document->_vocbase->_id,
+                                             document->_info._cid,
+                                             rid,
+                                             TRI_MarkerIdTransaction(trxCollection->_transaction),
+                                             keyString,
+                                             edge,
+                                             legend,
+                                             shaped);
+    }
   }
 
 
   TRI_ASSERT(marker != nullptr);
+  
+  int res = TRI_ERROR_NO_ERROR;
 
   // now insert into indexes
   {
@@ -5507,6 +5517,7 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCollection,
                                             TRI_voc_key_t key,
                                             TRI_voc_rid_t rid,
+                                            triagens::wal::Marker* marker,
                                             TRI_doc_mptr_copy_t* mptr,
                                             TRI_shaped_json_t const* shaped,
                                             TRI_doc_update_policy_t const* policy,
@@ -5524,23 +5535,7 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
   //TRI_ASSERT_EXPENSIVE(lock || TRI_IsLockedCollectionTransaction(trxCollection, TRI_TRANSACTION_WRITE, 0));
 
-  TRI_IF_FAILURE("UpdateDocumentNoLegend") {
-    // test what happens when no legend can be created
-    return TRI_ERROR_DEBUG;
-  }
-
-  TRI_IF_FAILURE("UpdateDocumentNoLegendExcept") {
-    // test what happens when no legend can be created
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  // create legend
-  triagens::basics::JsonLegend legend(document->getShaper());  // PROTECTED by trx in trxCollection
-  int res = legend.addShape(shaped->_sid, &shaped->_data);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
+  int res = TRI_ERROR_NO_ERROR;
 
   {
     TRI_IF_FAILURE("UpdateDocumentNoLock") {
@@ -5567,36 +5562,55 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    triagens::wal::Marker* marker = nullptr;
-    TRI_df_marker_t const* original = static_cast<TRI_df_marker_t const*>(oldHeader->getDataPtr());  // PROTECTED by trx in trxCollection
+    if (marker == nullptr) {
+      TRI_IF_FAILURE("UpdateDocumentNoLegend") {
+        // test what happens when no legend can be created
+        return TRI_ERROR_DEBUG;
+      }
 
-    if (original->_type == TRI_WAL_MARKER_DOCUMENT ||
-        original->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
-      // create a WAL document marker
+      TRI_IF_FAILURE("UpdateDocumentNoLegendExcept") {
+        // test what happens when no legend can be created
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
 
-      marker = triagens::wal::DocumentMarker::clone(original,
-                                                    document->_vocbase->_id,
-                                                    document->_info._cid,
-                                                    rid,
-                                                    TRI_MarkerIdTransaction(trxCollection->_transaction),
-                                                    legend,
-                                                    shaped);
-    }
-    else if (original->_type == TRI_WAL_MARKER_EDGE ||
-             original->_type == TRI_DOC_MARKER_KEY_EDGE) {
-      // create a WAL edge marker
+      // create legend
+      triagens::basics::JsonLegend legend(document->getShaper());  // PROTECTED by trx in trxCollection
+      int res = legend.addShape(shaped->_sid, &shaped->_data);
 
-      marker = triagens::wal::EdgeMarker::clone(original,
-                                                document->_vocbase->_id,
-                                                document->_info._cid,
-                                                rid,
-                                                TRI_MarkerIdTransaction(trxCollection->_transaction),
-                                                legend,
-                                                shaped);
-    }
-    else {
-      // invalid marker type
-      return TRI_ERROR_INTERNAL;
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+
+      TRI_df_marker_t const* original = static_cast<TRI_df_marker_t const*>(oldHeader->getDataPtr());  // PROTECTED by trx in trxCollection
+
+      if (original->_type == TRI_WAL_MARKER_DOCUMENT ||
+          original->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
+        // create a WAL document marker
+
+        marker = triagens::wal::DocumentMarker::clone(original,
+                                                      document->_vocbase->_id,
+                                                      document->_info._cid,
+                                                      rid,
+                                                      TRI_MarkerIdTransaction(trxCollection->_transaction),
+                                                      legend,
+                                                      shaped);
+      }
+      else if (original->_type == TRI_WAL_MARKER_EDGE ||
+               original->_type == TRI_DOC_MARKER_KEY_EDGE) {
+        // create a WAL edge marker
+
+        marker = triagens::wal::EdgeMarker::clone(original,
+                                                  document->_vocbase->_id,
+                                                  document->_info._cid,
+                                                  rid,
+                                                  TRI_MarkerIdTransaction(trxCollection->_transaction),
+                                                  legend,
+                                                  shaped);
+      }
+      else {
+        // invalid marker type
+        return TRI_ERROR_INTERNAL;
+      }
     }
 
     triagens::wal::DocumentOperation operation(marker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_UPDATE, rid);
