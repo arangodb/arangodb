@@ -229,9 +229,9 @@ Provide it with a function that throws an exception if the normal processing sho
 
 !SUBSUBSECTION onlyIfAuthenticated
 
-`FoxxController::onlyIf(code, reason)`
+`FoxxController::onlyIfAuthenticated(code, reason)`
 
-Please activate authentification for this app if you want to use this function. If the user is logged in, it will do nothing. Otherwise it will respond with the status code and the reason you provided (the route handler won't be called). This will also add the according documentation for this route.
+Please activate authentication for this app if you want to use this function. If the user is logged in, it will do nothing. Otherwise it will respond with the status code and the reason you provided (the route handler won't be called). This will also add the according documentation for this route.
 
 *Examples*
 

@@ -31,10 +31,10 @@
     if (mandatory) {
       obj.mandatory = mandatory;
     }
-    if (addDelete) {
+    if (addDelete !== undefined) {
       obj.addDelete = addDelete;
     }
-    if (addAdd) {
+    if (addAdd !== undefined) {
       obj.addAdd = addAdd;
     }
     if (regexp){
@@ -168,8 +168,9 @@
       return disabledButton;
     },
 
-    createReadOnlyEntry: function(id, label, value, info) {
-      var obj = createTextStub(this.tables.READONLY, label, value, info);
+    createReadOnlyEntry: function(id, label, value, info, addDelete, addAdd) {
+      var obj = createTextStub(this.tables.READONLY, label, value, info,undefined, undefined,
+        undefined,addDelete, addAdd);
       obj.id = id;
       return obj;
     },
@@ -183,8 +184,8 @@
 
     createSelect2Entry: function(
       id, label, value, info, placeholder, mandatory, addDelete, addAdd) {
-      var obj = createTextStub(this.tables.SELECT2, label, value, info, placeholder, mandatory,
-        addDelete, addAdd);
+      var obj = createTextStub(this.tables.SELECT2, label, value, info, placeholder,
+        mandatory, undefined, addDelete, addAdd);
       obj.id = id;
       return obj;
     },
