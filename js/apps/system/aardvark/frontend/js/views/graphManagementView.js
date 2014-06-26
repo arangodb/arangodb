@@ -25,12 +25,11 @@
       var adapterConfig = {
         type: "gharial",
         graphName: name,
-        graph: name,
         baseUrl: require("internal").arango.databasePrefix("/")
       };
       var width = $("#content").width() - 75;
       $("#content").html("");
-      this.ui = new GraphViewerUI($("#content")[0], adapterConfig, width, 680, {});
+      this.ui = new GraphViewerUI($("#content")[0], adapterConfig, width, 680, {}, true);
     },
 
     addNewGraph: function(e) {

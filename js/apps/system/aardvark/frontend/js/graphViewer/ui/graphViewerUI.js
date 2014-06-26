@@ -2,7 +2,7 @@
 /*global document, $, _ */
 /*global EventDispatcherControls, NodeShaperControls, EdgeShaperControls */
 /*global LayouterControls, GharialAdapterControls*/
-/*global GraphViewer, d3, window*/
+/*global GraphViewer, d3, window, alert*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -448,7 +448,15 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
   createColourList();
 
   if (startNode) {
-    graphViewer.loadGraph(startNode);
+    if (typeof startNode === "string") {
+      graphViewer.loadGraph(startNode);
+    } else {
+      graphViewer.loadGraphWithRandomStart(function(node) {
+        if (node && node.errorCode) {
+          alert("Sorry your graph seems to be empty");
+        }
+      });
+    }
   }
 
   this.changeWidth = function(w) {
