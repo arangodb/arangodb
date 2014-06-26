@@ -43,7 +43,7 @@
 
     addNewGraph: function(e) {
       e.preventDefault();
-      this.createNewGraphModal2();
+      this.createNewGraphModal();
     },
 
     deleteGraph: function(e) {
@@ -442,7 +442,7 @@
       return edgeDefinitionMap;
     },
 
-    createNewGraphModal2: function() {
+    createNewGraphModal: function() {
       var buttons = [], collList = [], eCollList = [],
         tableContent = [], collections = this.options.collectionCollection.models;
 

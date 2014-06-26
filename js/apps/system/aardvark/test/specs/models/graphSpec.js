@@ -38,15 +38,14 @@
       });
     });
 
-    /*it("should request /_api/graph on save", function() {
+    it("should request /_api/graph on save", function() {
       ajaxVerify = function(opt) {
-        expect(opt.url).toEqual("/_api/graph");
+        expect(opt.url).toEqual("/_api/gharial");
         expect(opt.type).toEqual("POST");
       };
       model.save();
       expect($.ajax).toHaveBeenCalled();
     });
-*/
     it("should store the attributes in the model", function() {
       var id = "_graph/" + myKey,
         rev = "12345";
@@ -81,15 +80,15 @@
       expect(model.get("graph")).toBeUndefined();
     });
 
-  /*  it("should request /_api/graph/_key on delete", function() {
+    it("should request /_api/graph/_key on delete", function() {
       model.save();
       ajaxVerify = function(opt) {
-        expect(opt.url).toEqual("/_api/graph/" + myKey);
+        expect(opt.url).toEqual("/_api/gharial/" + myKey);
         expect(opt.type).toEqual("DELETE");
       };
       model.destroy();
       expect($.ajax).toHaveBeenCalled();
-    });*/
+    });
 
 
 
