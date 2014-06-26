@@ -500,7 +500,7 @@
         );
       });
 
-      /*it("should navigate to the graphView", function () {
+     /* it("should navigate to the graphView", function () {
         spyOn(graphDummy, "render");
         simpleNavigationCheck(
           "graph",
@@ -654,14 +654,15 @@
         );
       });
 
-      /*it("should route to the graph management tab", function () {
+      it("should route to the graph management tab", function () {
         simpleNavigationCheck(
           "graphManagement",
           "GraphManagementView",
           "graphviewer-menu",
-          { collection: graphsDummy}
+          { collection: graphsDummy ,
+            collectionCollection : { id : 'store', fetch : jasmine.any(Function) } }
         );
-      });*/
+      });
 
       it("should route to the applications tab", function () {
         simpleNavigationCheck(

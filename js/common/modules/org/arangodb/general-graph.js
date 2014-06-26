@@ -4065,7 +4065,16 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection) {
       }
     }
   );
+
   updateBindCollections(this);
+  db._graphs.update(
+    this.__name,
+    {
+      orphanCollections: this.__orphanCollections,
+      edgeDefinitions: this.__edgeDefinitions
+    }
+  );
+
 
 };
 
