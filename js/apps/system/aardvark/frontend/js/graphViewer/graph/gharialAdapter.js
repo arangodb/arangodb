@@ -179,7 +179,9 @@ function GharialAdapter(nodes, edges, viewer, config) {
     },
     
     parseResultOfTraversal = function (result, callback) {
-      if (result.length === 0) {
+      if (result.length === 0
+        || result[0].length === 0
+        || result[0][0].length === 0) {
         if (callback) {
           callback({
             errorCode: 404
@@ -187,15 +189,7 @@ function GharialAdapter(nodes, edges, viewer, config) {
         }
         return;
       }
-      result = result[0];
-      if (result.length === 0) {
-        if (callback) {
-          callback({
-            errorCode: 404
-          });
-        }
-        return;
-      }
+      result = result[0][0];
       var inserted = {},
         n = absAdapter.insertNode(result[0].vertex),
         oldLength = nodes.length;
