@@ -151,6 +151,9 @@ AC_ARG_ENABLE(eff-cpp,
   [tr_WEFFCXX=no]
 )
 
+CFLAGS="$CFLAGS $RPM_OPT_FLAGS"
+CXXFLAGS="$CXXFLAGS $RPM_OPT_FLAGS"
+
 if test x$GCC == xyes;  then
   WALL="-Wall -Winit-self -Wno-long-long -Wno-variadic-macros"
 
