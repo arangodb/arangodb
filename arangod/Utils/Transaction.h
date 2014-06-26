@@ -863,6 +863,7 @@ namespace triagens {
             return TRI_InsertShapedJsonDocumentCollection(trxCollection,
                                                           key,
                                                           rid,
+                                                          nullptr,
                                                           mptr,
                                                           shaped,
                                                           static_cast<TRI_document_edge_t const*>(data),
@@ -942,6 +943,7 @@ namespace triagens {
             return TRI_UpdateShapedJsonDocumentCollection(trxCollection,
                                                           (const TRI_voc_key_t) key.c_str(),
                                                           rid,
+                                                          nullptr,
                                                           mptr,
                                                           shaped,
                                                           &updatePolicy,
@@ -974,6 +976,7 @@ namespace triagens {
             return TRI_RemoveShapedJsonDocumentCollection(trxCollection,
                                                           (TRI_voc_key_t) key.c_str(),
                                                           rid,
+                                                          nullptr,
                                                           &updatePolicy,
                                                           ! isLocked(trxCollection, TRI_TRANSACTION_WRITE),
                                                           forceSync);
@@ -1019,6 +1022,7 @@ namespace triagens {
               res = TRI_RemoveShapedJsonDocumentCollection(trxCollection,
                                                            (TRI_voc_key_t) (*it).c_str(),
                                                            0,
+                                                           nullptr, // marker 
                                                            nullptr, // policy
                                                            false,
                                                            forceSync);

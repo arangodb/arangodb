@@ -325,16 +325,16 @@ SimpleQuery.prototype.clone = function () {
 /// lead to the same result:
 /// 
 /// @EXAMPLE_ARANGOSH_OUTPUT{executeQuery}
-/// result = db.users.all().toArray();
-/// q = db.users.all(); q.execute(); result = [ ]; while (q.hasNext()) { result.push(q.next()); }
+///   result = db.users.all().toArray();
+///   q = db.users.all(); q.execute(); result = [ ]; while (q.hasNext()) { result.push(q.next()); }
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// The following two alternatives both use a batchSize and return the same
 /// result:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{executeQueryBatchSize}
-/// q = db.users.all(); q.setBatchSize(20); q.execute(); while (q.hasNext()) { print(q.next()); }
-/// q = db.users.all(); q.execute(20); while (q.hasNext()) { print(q.next()); }
+///   q = db.users.all(); q.setBatchSize(20); q.execute(); while (q.hasNext()) { print(q.next()); }
+///   q = db.users.all(); q.execute(20); while (q.hasNext()) { print(q.next()); }
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -370,8 +370,11 @@ SimpleQuery.prototype.execute = function () {
 /// unclear which documents are used in the result set.
 ///
 /// @EXAMPLES
-/// 
-/// @verbinclude simple2
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{queryLimit}
+///   db.five.all().toArray();
+///   db.five.all().limit(2).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -393,7 +396,7 @@ SimpleQuery.prototype.limit = function (limit) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief skip
-/// @startDocuBlock queySkip
+/// @startDocuBlock querySkip
 /// `query.skip(number)`
 ///
 /// Skips the first *number* documents. If *number* is positive, then skip
@@ -406,7 +409,10 @@ SimpleQuery.prototype.limit = function (limit) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude simple8
+/// @EXAMPLE_ARANGOSH_OUTPUT{querySkip}
+///   db.five.all().toArray();
+///   db.five.all().skip(3).toArray();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -521,11 +527,15 @@ SimpleQuery.prototype.setBatchSize = function (value) {
 ///
 /// Ignore any limit:
 ///
-/// @verbinclude simple9
+/// @EXAMPLE_ARANGOSH_OUTPUT{cursorCount}
+///   db.five.all().limit(2).count();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Counting any limit or skip:
 ///
-/// @verbinclude simple10
+/// @EXAMPLE_ARANGOSH_OUTPUT{cursorCountLimit}
+///   db.five.all().limit(2).count(true);
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -551,7 +561,10 @@ SimpleQuery.prototype.count = function (applyPagination) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude simple7
+/// @EXAMPLE_ARANGOSH_OUTPUT{cursorHasNext}
+///   var a = db.five.all();
+///   while (a.hasNext()) print(a.next());
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -574,7 +587,9 @@ SimpleQuery.prototype.hasNext = function () {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude simple5
+/// @EXAMPLE_ARANGOSH_OUTPUT{cursorNext}
+///   db.five.all().next();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
