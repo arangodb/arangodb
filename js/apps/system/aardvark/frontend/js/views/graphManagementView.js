@@ -20,7 +20,7 @@
 
     addNewGraph: function(e) {
       e.preventDefault();
-      this.createNewGraphModal2();
+      this.createNewGraphModal();
     },
 
     deleteGraph: function(e) {
@@ -114,49 +114,6 @@
     },
 
     createNewGraph: function() {
-      var _key = $("#createNewGraphName").val(),
-        vertices = $("#newGraphVertices").val(),
-        edges = $("#newGraphEdges").val(),
-        self = this;
-      if (!_key) {
-        arangoHelper.arangoNotification(
-          "A name for the graph has to be provided."
-        );
-        return;
-      }
-      if (!vertices) {
-        arangoHelper.arangoNotification(
-          "A vertex collection has to be provided."
-        );
-        return;
-      }
-      if (!edges) {
-        arangoHelper.arangoNotification(
-          "An edge collection has to be provided."
-        );
-        return;
-      }
-      this.collection.create({
-        _key: _key,
-        vertices: vertices,
-        edges: edges
-      }, {
-        success: function() {
-          self.updateGraphManagementView();
-          window.modalView.hide();
-        },
-        error: function(obj, err) {
-          var response = JSON.parse(err.responseText),
-            msg = response.errorMessage;
-          // Gritter does not display <>
-          msg = msg.replace("<", "");
-          msg = msg.replace(">", "");
-          arangoHelper.arangoError(msg);
-        }
-      });
-    },
-
-    createNewGraph2: function() {
       var name = $("#createNewGraphName").val(),
         vertexCollections = _.pluck($('#newVertexCollections').select2("data"), "text"),
         edgeDefinitions = [],
@@ -212,48 +169,6 @@
           arangoHelper.arangoError(msg);
         }
       });
-    },
-
-    createNewGraphModal: function() {
-      var buttons = [],
-        tableContent = [];
-
-      tableContent.push(
-        window.modalView.createTextEntry(
-          "createNewGraphName",
-          "Name",
-          "",
-          "The name to identify the graph. Has to be unique.",
-          "graphName",
-          true
-        )
-      );
-      tableContent.push(
-        window.modalView.createTextEntry(
-          "newGraphVertices",
-          "Vertices",
-          "",
-          "The path name of the document collection that should be used as vertices. "
-            + "If this does not exist it will be created.",
-          "Vertex Collection",
-          true
-        )
-      );
-      tableContent.push(
-        window.modalView.createTextEntry(
-          "newGraphEdges",
-          "Edges",
-          "",
-          "The path name of the edge collection that should be used as edges. "
-            + "If this does not exist it will be created.",
-          "Edge Collection",
-          true
-        )
-      );
-      buttons.push(
-        window.modalView.createSuccessButton("Create", this.createNewGraph2.bind(this))
-      );
-      window.modalView.show("modalTable.ejs", "Add new Graph", buttons, tableContent);
     },
 
     createEditGraphModal: function(name, vertices, edges) {
@@ -379,7 +294,7 @@
       }
     },
 
-    createNewGraphModal2: function() {
+    createNewGraphModal: function() {
       var buttons = [],
         tableContent = [];
 
@@ -449,7 +364,7 @@
         )
       );
       buttons.push(
-        window.modalView.createSuccessButton("Create", this.createNewGraph2.bind(this))
+        window.modalView.createSuccessButton("Create", this.createNewGraph.bind(this))
       );
 
 
