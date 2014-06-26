@@ -29,7 +29,16 @@
       };
       var width = $("#content").width() - 75;
       $("#content").html("");
-      this.ui = new GraphViewerUI($("#content")[0], adapterConfig, width, 680, {}, true);
+      this.ui = new GraphViewerUI($("#content")[0], adapterConfig, width, 680, {
+        nodeShaper: {
+          label: "_key",
+          color: {
+            type: "attribute",
+            key: "_key"
+          }
+        },
+
+      }, true);
     },
 
     addNewGraph: function(e) {
