@@ -564,30 +564,6 @@ static int CreateHeader (TRI_document_collection_t* document,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief rolls back a single update operation
-////////////////////////////////////////////////////////////////////////////////
-
-static int RollbackUpdate (TRI_document_collection_t* document,
-                           TRI_doc_mptr_t* header,
-                           TRI_doc_mptr_copy_t const* oldHeader) {
-  TRI_ASSERT(header != nullptr);
-  TRI_ASSERT(oldHeader != nullptr);
-
-  // ignore any errors we're getting from this
-  DeleteSecondaryIndexes(document, header, true);
-
-  header->copy(*oldHeader);
-
-  int res = InsertSecondaryIndexes(document, header, true);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("error rolling back update operation");
-  }
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief updates an existing header
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -725,7 +701,7 @@ static int PostInsertIndexes (TRI_transaction_collection_t* trxCollection,
     }
   }
 
-  // TODO: post-insert will never return an error
+  // post-insert will never return an error
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -861,7 +837,7 @@ static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
   TRI_doc_mptr_t* newHeader = oldHeader;
 
   // update the header. this will modify oldHeader, too !!!
-  newHeader->_rid  = operation.rid;
+  newHeader->_rid = operation.rid;
   newHeader->setDataPtr(operation.marker->mem());  // PROTECTED by trx in trxCollection
 
   // insert new document into secondary indexes
@@ -894,10 +870,6 @@ static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
   if (res == TRI_ERROR_NO_ERROR) {
     // write new header into result
     *mptr = *((TRI_doc_mptr_t*) newHeader);
-  }
-  else {
-    // TODO: check if rollbackupdate will do any harm here
-    RollbackUpdate(document, newHeader, &oldData);
   }
 
   return res;
@@ -2670,9 +2642,19 @@ int TRI_RollbackOperationDocumentCollection (TRI_document_collection_t* document
     return TRI_ERROR_NO_ERROR;
   }
   else if (type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
+    // copy the existing header's state
+    TRI_doc_mptr_copy_t copy = *header;
+    
+    // remove the current values from the indexes
     DeleteSecondaryIndexes(document, header, true);
-    int res = InsertSecondaryIndexes(document, oldData, true);
-
+    // revert to the old state
+    header->copy(*oldData);
+    // re-insert old state
+    int res = InsertSecondaryIndexes(document, header, true);
+    // revert again to the new state, because other parts of the new state
+    // will be reverted at some other place
+    header->copy(copy);
+    
     return res;
   }
   else if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
