@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _, d3*/
-/*global document, window*/
+/*global document, window, prompt*/
 /*global modalDialogHelper, uiComponentsHelper */
 /*global EventDispatcher*/
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,6 +89,11 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
       }
     },
     dispatcher = new EventDispatcher(nodeShaper, edgeShaper, dispatcherConfig),
+    adapter = dispatcherConfig.edgeEditor.adapter,
+    askForCollection = (!!adapter
+      && _.isFunction(adapter.useNodeCollection)
+      && _.isFunction(adapter.useEdgeCollection)),
+      
     
     appendToList = function(button) {
       list.appendChild(button);
@@ -216,13 +221,17 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
         }),
         nodesUp = dispatcher.events.FINISHCREATEEDGE(function(edge){
           edgeShaper.removeCursorFollowingEdge();
-          dispatcher.bind("svg", "mousemove", function(){});
+          dispatcher.bind("svg", "mousemove", function(){
+            return undefined;
+          });
           start();
         }),
         svgUp = function() {
           dispatcher.events.CANCELCREATEEDGE();
           edgeShaper.removeCursorFollowingEdge();
-          dispatcher.bind("svg", "mousemove", function(){});
+          dispatcher.bind("svg", "mousemove", function(){
+            return undefined;
+          });
         };
       callbacks.nodes.startEdge = nodesDown;
       callbacks.nodes.endEdge = nodesUp;
@@ -407,6 +416,10 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
   this.addControlNewNode = function() {
     var icon = icons.add,
       callback = function() {
+        if (askForCollection) {
+          var nodeCollection = prompt("Which edge collection should be stored?");
+          adapter.useNodeCollection(nodeCollection);
+        }
         self.rebindAll(self.newNodeRebinds());
       };
     createIcon(icon, "new_node", callback);
@@ -421,9 +434,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
   };
   
   this.addControlDrag = function() {
-    var prefix = "control_event_drag",
-      idprefix = prefix + "_",
-      icon = icons.drag,
+    var icon = icons.drag,
       callback = function() {
         self.rebindAll(self.dragRebinds());
       };
@@ -457,6 +468,10 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
   this.addControlConnect = function() {
     var icon = icons.edge,
       callback = function() {
+        if (askForCollection) {
+          var edgeCollection = prompt("Which edge collection should be stored?");
+          adapter.useEdgeCollection(edgeCollection);
+        }
         self.rebindAll(self.connectNodesRebinds());
       };
     createIcon(icon, "connect", callback);
