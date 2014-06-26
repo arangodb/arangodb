@@ -51,7 +51,7 @@ struct TRI_datafile_s;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_BARRIER_ELEMENT,
+  TRI_BARRIER_ELEMENT = 1,
   TRI_BARRIER_DATAFILE_DROP_CALLBACK,
   TRI_BARRIER_DATAFILE_RENAME_CALLBACK,
   TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK,
