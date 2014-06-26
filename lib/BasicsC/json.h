@@ -382,7 +382,8 @@ int TRI_CopyToJson (TRI_memory_zone_t*, TRI_json_t* dst, TRI_json_t const* src);
 /// @brief copies a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_CopyJson (TRI_memory_zone_t*, const TRI_json_t* const);
+TRI_json_t* TRI_CopyJson (TRI_memory_zone_t*, 
+                          TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a json string
