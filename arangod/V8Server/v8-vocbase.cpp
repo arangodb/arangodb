@@ -241,9 +241,9 @@ static void FreeCoordinatorCollection (TRI_vocbase_col_t* collection) {
 
 static TRI_vocbase_col_t* CoordinatorCollection (TRI_vocbase_t* vocbase,
                                                  CollectionInfo const& ci) {
-  TRI_vocbase_col_t* c = (TRI_vocbase_col_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_col_t), false);
+  TRI_vocbase_col_t* c = static_cast<TRI_vocbase_col_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_col_t), false));
 
-  if (c == 0) {
+  if (c == nullptr) {
     return 0;
   }
 
@@ -311,7 +311,7 @@ static TRI_vector_pointer_t GetCollectionsCluster (TRI_vocbase_t* vocbase) {
   for (size_t i = 0, n = collections.size(); i < n; ++i) {
     TRI_vocbase_col_t* c = CoordinatorCollection(vocbase, *(collections[i]));
 
-    if (c != 0) {
+    if (c != nullptr) {
       TRI_PushBackVectorPointer(&result, c);
     }
   }
@@ -332,10 +332,9 @@ static TRI_vector_string_t GetCollectionNamesCluster (TRI_vocbase_t* vocbase) {
 
   for (size_t i = 0, n = collections.size(); i < n; ++i) {
     string const& name = collections[i]->name();
-    char* s = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, name.c_str(),
-                                                          name.size());
+    char* s = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, name.c_str(), name.size());
 
-    if (s != 0) {
+    if (s != nullptr) {
       TRI_PushBackVectorString(&result, s);
     }
   }
@@ -399,12 +398,12 @@ static inline bool ExtractForceSync (v8::Arguments const& argv,
   return (argv.Length() >= index && TRI_ObjectToBoolean(argv[index - 1]));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the update policy from a boolean parameter
+////////////////////////////////////////////////////////////////////////////////
+
 static inline TRI_doc_update_policy_e ExtractUpdatePolicy (bool overwrite) {
-  if (overwrite) {
-    // overwrite!
-    return TRI_DOC_UPDATE_LAST_WRITE;
-  }
-  return TRI_DOC_UPDATE_ERROR;
+  return (overwrite ? TRI_DOC_UPDATE_LAST_WRITE : TRI_DOC_UPDATE_ERROR);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -440,10 +439,8 @@ static v8::Handle<v8::Object> WrapClass (v8::Persistent<v8::ObjectTemplate> clas
 static inline TRI_vocbase_t* GetContextVocBase () {
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
-  TRI_ASSERT(v8g->_vocbase != nullptr);
-  TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(v8g->_vocbase);
-
-  return vocbase;
+  TRI_ASSERT_EXPENSIVE(v8g->_vocbase != nullptr);
+  return static_cast<TRI_vocbase_t*>(v8g->_vocbase);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3178,7 +3175,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
-  if (vocbase == 0) {
+  if (vocbase == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
@@ -3227,7 +3224,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
     }
 
     // get optional values
-    TRI_json_t* keyOptions = 0;
+    TRI_json_t* keyOptions = nullptr;
     if (p->Has(v8g->KeyOptionsKey)) {
       keyOptions = TRI_ObjectToJson(p->Get(v8g->KeyOptionsKey));
     }
@@ -3235,7 +3232,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
     // TRI_InitCollectionInfo will copy keyOptions
     TRI_InitCollectionInfo(vocbase, &parameter, name.c_str(), collectionType, effectiveSize, keyOptions);
 
-    if (keyOptions != 0) {
+    if (keyOptions != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
     }
 
@@ -3315,7 +3312,7 @@ static v8::Handle<v8::Object> CreateErrorObjectAhuacatl (TRI_aql_error_t* error)
 
   char* message = TRI_GetErrorMessageAql(error);
 
-  if (message != 0) {
+  if (message != nullptr) {
     std::string str(message);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, message);
 
@@ -5501,7 +5498,7 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-  if (collection == 0) {
+  if (collection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
@@ -5645,7 +5642,7 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-  if (collection == 0) {
+  if (collection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
@@ -5966,7 +5963,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-  if (collection == 0) {
+  if (collection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
@@ -6547,11 +6544,12 @@ static v8::Handle<v8::Value> JS_PlanIdVocbaseCol (v8::Arguments const& argv) {
 
 static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
   TRI_vocbase_col_t const* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-  if (collection == 0) {
+  if (collection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
@@ -6597,7 +6595,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
         }
 
         if (info._isVolatile && info._waitForSync) {
-          if (info._keyOptions != 0) {
+          if (info._keyOptions != nullptr) {
             TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, info._keyOptions);
           }
           TRI_V8_EXCEPTION_PARAMETER(scope, "volatile collections do not support the waitForSync option");
@@ -6607,7 +6605,7 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
       int res = ClusterInfo::instance()->setCollectionPropertiesCoordinator(databaseName, StringUtils::itoa(collection->_cid), &info);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        if (info._keyOptions != 0) {
+        if (info._keyOptions != nullptr) {
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, info._keyOptions);
         }
         TRI_V8_EXCEPTION(scope, res);
@@ -6626,14 +6624,14 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
 
     shared_ptr<CollectionInfo> c = ClusterInfo::instance()->getCollection(databaseName, StringUtils::itoa(collection->_cid));
     v8::Handle<v8::Array> shardKeys = v8::Array::New();
-    const vector<string> sks = (*c).shardKeys();
+    vector<string> const sks = (*c).shardKeys();
     for (size_t i = 0; i < sks.size(); ++i) {
       shardKeys->Set((uint32_t) i, v8::String::New(sks[i].c_str(), (int) sks[i].size()));
     }
     result->Set(v8::String::New("shardKeys"), shardKeys);
     result->Set(v8::String::New("numberOfShards"), v8::Number::New((*c).numberOfShards()));
 
-    if (info._keyOptions != 0) {
+    if (info._keyOptions != nullptr) {
       result->Set(v8g->KeyOptionsKey, TRI_ObjectJson(info._keyOptions)->ToObject());
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, info._keyOptions);
     }
@@ -6752,12 +6750,12 @@ static v8::Handle<v8::Value> JS_PropertiesVocbaseCol (v8::Arguments const& argv)
   result->Set(v8g->IsVolatileKey, base->_info._isVolatile ? v8::True() : v8::False());
   result->Set(v8g->JournalSizeKey, v8::Number::New(base->_info._maximalSize));
 
-  TRI_json_t* keyOptions = document->_keyGenerator->toJson();
+  TRI_json_t* keyOptions = document->_keyGenerator->toJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (keyOptions != nullptr) {
     result->Set(v8g->KeyOptionsKey, TRI_ObjectJson(keyOptions)->ToObject());
 
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, keyOptions);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
   }
   else {
     result->Set(v8g->KeyOptionsKey, v8::Array::New());

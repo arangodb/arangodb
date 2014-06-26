@@ -6,8 +6,8 @@ API description is available at [Http Interface for AQL Query Cursor](../HttpAql
 You can also run AQL queries from arangosh. To do so, first create an
 ArangoStatement object as follows:
 
-    arangosh> stmt = db._createStatement( { "query": "FOR i IN [ 1, 2 ] RETURN i * 2" } );
-    [object ArangoStatement]
+    stmt = db._createStatement( { "query": "FOR i IN [ 1, 2 ] RETURN i * 2" } );
+    [object ArangoQueryCursor]
 
 To execute the query, use the *execute* method:
 
