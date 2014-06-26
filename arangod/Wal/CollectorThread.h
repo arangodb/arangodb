@@ -113,6 +113,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       void addBarrier (TRI_barrier_t* barrier) {
+        TRI_ASSERT(barrier != nullptr);
         barriers.push_back(barrier);
       }
 

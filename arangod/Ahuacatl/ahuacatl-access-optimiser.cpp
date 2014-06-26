@@ -2400,6 +2400,10 @@ static TRI_vector_pointer_t* ProcessNode (TRI_aql_context_t* const context,
                                           const TRI_vector_pointer_t* const inheritedRestrictions) {
   TRI_ASSERT(context != NULL);
   TRI_ASSERT(node != NULL);
+  
+  if (context->_error._code != TRI_ERROR_NO_ERROR) {
+    return NULL;
+  }
 
   if (node->_type == TRI_AQL_NODE_OPERATOR_UNARY_NOT) {
     TRI_aql_node_t* lhs = TRI_AQL_NODE_MEMBER(node, 0);
