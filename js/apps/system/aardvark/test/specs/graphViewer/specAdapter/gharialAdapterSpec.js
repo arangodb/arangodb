@@ -325,6 +325,24 @@
         ).toThrow("A reference to the graph viewer has to be given.");
       });
 
+      it('should throw an error if no config is given', function() {
+        expect(
+          function() {
+            var t = new GharialAdapter([], [], viewer);
+            return t;
+          }
+        ).toThrow("A configuration with graphName has to be given.");
+      });
+
+      it('should throw an error if the config does not contain graphName', function() {
+        expect(
+          function() {
+            var t = new GharialAdapter([], [], viewer, {});
+            return t;
+          }
+        ).toThrow("The graphname has to be given.");
+      });
+
       it('should not throw an error if everything is given', function() {
         expect(
           function() {
@@ -389,7 +407,7 @@
           jasmine.any(Function)
         );
       });
-    
+
       describe('setup correctly', function() {
         
         var traversalQuery,
