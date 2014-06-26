@@ -1,4 +1,4 @@
-v2.2.0-alpha4 (XXXX-XX-XX)
+v2.2.0-alpha5 (XXXX-XX-XX)
 -------------------
 
 * honor startup option `--server.disable-statistics` when deciding whether or not
