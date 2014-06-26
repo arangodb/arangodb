@@ -2,7 +2,7 @@
   <tr class="tableRow" id="row_newEdgeDefinitions<%= number%>">
     <th class="collectionTh">Edge definitions*:</th>
     <th class="collectionTh">
-      <div class="select2-container select2-container-multi" id="s2id_newEdgeDefinitions<%= number%>" style="width: 336px;"><ul class="select2-choices">  <li class="select2-search-field">    <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="select2-input select2-default" id="s2id_autogen1" style="width: 324px;">  </li></ul></div><input type="hidden" id="newEdgeDefinitions<%= number%>" value="" placeholder="Edge definitions" tabindex="-1" class="select2-offscreen">
+      <input onkeypress="return event.keyCode!=13" type="hidden" id="newEdgeDefinitions<%= number%>" value="" placeholder="Edge definitions" tabindex="-1" class="select2-offscreen">
       <button id="remove_newEdgeDefinitions<%= number%>" class="graphViewer-icon-button gv_internal_remove_line gv-icon-small delete"></button>
     </th><th>
     <a class="modalTooltips" title="Some info for edge definitions">
@@ -10,20 +10,20 @@
     </a>
     </th>
   </tr>
-  <tr class="tableRow" id="row_fromCollections<%= number%>" style="display: table-row;">
+  <tr class="tableRow" id="row_fromCollections<%= number%>">
     <th class="collectionTh">fromCollections*:</th>
     <th class="collectionTh">
-      <div class="select2-container select2-container-multi" id="s2id_fromCollections<%= number%>" style="width: 336px;"><ul class="select2-choices">  <li class="select2-search-field">    <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="select2-input" id="s2id_autogen2" style="width: 10px;">  </li></ul><div class="select2-drop select2-drop-multi select2-display-none">   <ul class="select2-results">   </ul></div></div><input type="hidden" id="fromCollections<%= number%>" value="" placeholder="" tabindex="-1" class="select2-offscreen">
+      <input onkeypress="return event.keyCode!=13" type="hidden" id="newFromCollections<%= number%>" value="" placeholder="fromCollections" tabindex="-1" class="select2-offscreen">
     </th><th>
     <a class="modalTooltips" title="The collection that contain the start vertices of the relation.">
       <span class="arangoicon icon_arangodb_info"></span>
     </a>
   </th>
   </tr>
-  <tr class="tableRow" id="row_toCollections<%= number%>" style="display: table-row;">
+  <tr class="tableRow" id="row_toCollections<%= number%>">
     <th class="collectionTh">toCollections*:</th>
     <th class="collectionTh">
-      <div class="select2-container select2-container-multi" id="s2id_toCollections<%= number%>" style="width: 336px;"><ul class="select2-choices">  <li class="select2-search-field">    <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="select2-input" id="s2id_autogen3" style="width: 10px;">  </li></ul><div class="select2-drop select2-drop-multi select2-display-none">   <ul class="select2-results">   </ul></div></div><input type="hidden" id="toCollections<%= number%>" value="" placeholder="" tabindex="-1" class="select2-offscreen">
+      <input onkeypress="return event.keyCode!=13" type="hidden" id="newToCollections<%= number%>" value="" placeholder="toCollections" tabindex="-1" class="select2-offscreen">
     </th><th>
     <a class="modalTooltips" title="The collection that contain the end vertices of the relation.">
       <span class="arangoicon icon_arangodb_info"></span>
