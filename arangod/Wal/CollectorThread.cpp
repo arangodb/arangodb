@@ -1261,10 +1261,10 @@ char* CollectorThread::nextFreeMarkerPosition (TRI_document_collection_t* docume
 
       // journal is full, close it and sync
       LOG_DEBUG("closing full journal '%s'", datafile->getName(datafile));
-      TRI_CloseJournalDocumentCollection(document, i);
+      TRI_CloseDatafileDocumentCollection(document, i, false);
     }
 
-    TRI_datafile_t* datafile = TRI_CreateJournalDocumentCollection(document, tick, targetSize);
+    TRI_datafile_t* datafile = TRI_CreateDatafileDocumentCollection(document, tick, targetSize, false);
 
     if (datafile == nullptr) {
       int res = TRI_errno();
@@ -1294,7 +1294,13 @@ leave:
       if (! _inRecovery) {
         // we only need the barriers when we are outside the recovery
         // the compactor will not run during recovery
-        cache->addBarrier(TRI_CreateBarrierElement(&document->_barrierList));
+        TRI_barrier_t* barrier = TRI_CreateBarrierElement(&document->_barrierList);
+        
+        if (barrier == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
+
+        cache->addBarrier(barrier);
       }
     }
   }

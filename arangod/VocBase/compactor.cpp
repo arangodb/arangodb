@@ -185,7 +185,7 @@ static TRI_datafile_t* CreateCompactor (TRI_document_collection_t* document,
 
   TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
 
-  TRI_datafile_t* compactor = TRI_CreateCompactorDocumentCollection(document, fid, static_cast<TRI_voc_size_t>(maximalSize));
+  TRI_datafile_t* compactor = TRI_CreateDatafileDocumentCollection(document, fid, static_cast<TRI_voc_size_t>(maximalSize), true);
 
   if (compactor != nullptr) {
     int res TRI_UNUSED = TRI_PushBackVectorPointer(&collection->_compactors, compactor);
@@ -253,7 +253,7 @@ static void DropDatafileCallback (TRI_datafile_t* datafile, void* data) {
 
   TRI_document_collection_t* document = static_cast<TRI_document_collection_t*>(data);
   fid     = datafile->_fid;
-  copy    = NULL;
+  copy    = nullptr;
 
   number   = TRI_StringUInt64(fid);
   name     = TRI_Concatenate3String("deleted-", number, ".db");
@@ -299,11 +299,11 @@ static void DropDatafileCallback (TRI_datafile_t* datafile, void* data) {
      }
 
      // check for .dead files
-     if (copy != NULL) {
+     if (copy != nullptr) {
       // remove .dead file for datafile
       char* deadfile = TRI_Concatenate2String(copy, ".dead");
 
-      if (deadfile != NULL) {
+      if (deadfile != nullptr) {
         // check if .dead file exists, then remove it
         if (TRI_ExistsFile(deadfile)) {
           TRI_UnlinkFile(deadfile);
@@ -317,7 +317,7 @@ static void DropDatafileCallback (TRI_datafile_t* datafile, void* data) {
   TRI_FreeDatafile(datafile);
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
-  if (copy != NULL) {
+  if (copy != nullptr) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, copy);
   }
 }
@@ -405,7 +405,7 @@ static void RenameDatafileCallback (TRI_datafile_t* datafile,
     // update dfi
     dfi = TRI_FindDatafileInfoDocumentCollection(document, compactor->_fid, false);
 
-    if (dfi != NULL) {
+    if (dfi != nullptr) {
       memcpy(dfi, &context->_dfi, sizeof(TRI_doc_datafile_info_t));
     }
     else {
@@ -701,7 +701,7 @@ static bool CalculateSize (TRI_df_marker_t const* marker,
 
     // check if the document is still active
     TRI_doc_mptr_t const* found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
-    deleted = (found == NULL || found->_rid > d->_rid);
+    deleted = (found == nullptr || found->_rid > d->_rid);
 
     if (deleted) {
       return true;
@@ -813,7 +813,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
   // we are re-using the _fid of the first original datafile!
   compactor = CreateCompactor(document, initial._fid, initial._targetSize);
 
-  if (compactor == NULL) {
+  if (compactor == nullptr) {
     // some error occurred
     LOG_ERROR("could not create compactor file");
 
@@ -867,7 +867,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
     return;
   }
 
-  if (! TRI_CloseCompactorDocumentCollection(document, j)) {
+  if (! TRI_CloseDatafileDocumentCollection(document, j, true)) {
     TRI_WRITE_UNLOCK_DATAFILES_DOC_COLLECTION(document);
 
     LOG_ERROR("could not close compactor file");
@@ -893,7 +893,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
         if (datafile->isPhysical(datafile)) {
           char* filename = TRI_Concatenate2String(datafile->getName(datafile), ".dead");
 
-          if (filename != NULL) {
+          if (filename != nullptr) {
             TRI_WriteFile(filename, "", 0);
             TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
           }
@@ -915,7 +915,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
       // add a deletion marker to the result set container
       b = TRI_CreateBarrierDropDatafile(&document->_barrierList, compaction->_datafile, DropDatafileCallback, document);
 
-      if (b == NULL) {
+      if (b == nullptr) {
         LOG_ERROR("out of memory when creating datafile-drop barrier");
       }
     }
@@ -930,7 +930,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
         if (datafile->isPhysical(datafile)) {
           char* filename = TRI_Concatenate2String(datafile->getName(datafile), ".dead");
 
-          if (filename != NULL) {
+          if (filename != nullptr) {
             TRI_WriteFile(filename, "", 0);
             TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
           }
@@ -952,7 +952,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
 
         b = TRI_CreateBarrierRenameDatafile(&document->_barrierList, compaction->_datafile, RenameDatafileCallback, copy);
 
-        if (b == NULL) {
+        if (b == nullptr) {
           LOG_ERROR("out of memory when creating datafile-rename barrier");
           TRI_Free(TRI_CORE_MEM_ZONE, copy);
         }
@@ -964,7 +964,7 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
         // add a drop datafile marker
         b = TRI_CreateBarrierDropDatafile(&document->_barrierList, compaction->_datafile, DropDatafileCallback, document);
 
-        if (b == NULL) {
+        if (b == nullptr) {
           LOG_ERROR("out of memory when creating datafile-drop barrier");
         }
       }

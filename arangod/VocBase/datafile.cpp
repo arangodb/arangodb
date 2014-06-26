@@ -229,7 +229,7 @@ static void InitDatafile (TRI_datafile_t* datafile,
 
   // filename is a string for physical datafiles, and NULL for anonymous regions
   // fd is a positive value for physical datafiles, and -1 for anonymous regions
-  if (filename == NULL) {
+  if (filename == nullptr) {
     TRI_ASSERT(fd == -1);
   }
   else {
@@ -730,7 +730,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
   void* mmHandle;
 
   // this function must not be called for non-physical datafiles
-  TRI_ASSERT(filename != NULL);
+  TRI_ASSERT(filename != nullptr);
 
   fid = GetNumericFilenamePart(filename);
 
@@ -745,7 +745,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
 
     LOG_ERROR("cannot open datafile '%s': '%s'", filename, TRI_last_error());
 
-    return NULL;
+    return nullptr;
   }
 
   // compute the size of the file
@@ -757,7 +757,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
 
     LOG_ERROR("cannot get status of datafile '%s': %s", filename, TRI_last_error());
 
-    return NULL;
+    return nullptr;
   }
 
   // check that file is not too small
@@ -769,7 +769,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
 
     LOG_ERROR("datafile '%s' is corrupt, size is only %u", filename, (unsigned int) size);
 
-    return NULL;
+    return nullptr;
   }
 
   // read header from file
@@ -782,7 +782,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
     LOG_ERROR("cannot read datafile header from '%s': %s", filename, TRI_last_error());
 
     TRI_CLOSE(fd);
-    return NULL;
+    return nullptr;
   }
 
   // check CRC
@@ -795,7 +795,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
 
     if (! ignoreErrors) {
       TRI_CLOSE(fd);
-      return NULL;
+      return nullptr;
     }
   }
 
@@ -1631,7 +1631,7 @@ bool TRI_CloseDatafile (TRI_datafile_t* datafile) {
     }
   }
   else if (datafile->_state == TRI_DF_STATE_CLOSED) {
-    LOG_WARNING("closing a already closed datafile '%s'", datafile->getName(datafile));
+    LOG_WARNING("closing an already closed datafile '%s'", datafile->getName(datafile));
     return true;
   }
   else {
@@ -1645,11 +1645,9 @@ bool TRI_CloseDatafile (TRI_datafile_t* datafile) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_RenameDatafile (TRI_datafile_t* datafile, char const* filename) {
-  int res;
-
   // this function must not be called for non-physical datafiles
   TRI_ASSERT(datafile->isPhysical(datafile));
-  TRI_ASSERT(filename != NULL);
+  TRI_ASSERT(filename != nullptr);
 
   if (TRI_ExistsFile(filename)) {
     LOG_ERROR("cannot overwrite datafile '%s'", filename);
@@ -1658,7 +1656,7 @@ bool TRI_RenameDatafile (TRI_datafile_t* datafile, char const* filename) {
     return false;
   }
 
-  res = TRI_RenameFile(datafile->_filename, filename);
+  int res = TRI_RenameFile(datafile->_filename, filename);
 
   if (res != TRI_ERROR_NO_ERROR) {
     datafile->_state = TRI_DF_STATE_RENAME_ERROR;

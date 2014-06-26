@@ -268,7 +268,7 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
           }
 
           if (res == TRI_ERROR_NO_ERROR) {
-            res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, &mptr, shaped, &edge, false, false, true);
+            res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &mptr, shaped, &edge, false, false, true);
           }
         }
         else {
@@ -277,13 +277,13 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
             res = TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
           }
           else {
-            res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, &mptr, shaped, nullptr, false, false, true);
+            res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &mptr, shaped, nullptr, false, false, true);
           }
         }
       }
       else {
         // update
-        res = TRI_UpdateShapedJsonDocumentCollection(trxCollection, key, rid, &mptr, shaped, &_policy, false, false);
+        res = TRI_UpdateShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &mptr, shaped, &_policy, false, false);
       }
 
       TRI_FreeShapedJson(zone, shaped);
@@ -304,7 +304,7 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
     int res = TRI_ERROR_INTERNAL;
 
     try {
-      res = TRI_RemoveShapedJsonDocumentCollection(trxCollection, key, rid, &_policy, false, false);
+      res = TRI_RemoveShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &_policy, false, false);
 
       if (res != TRI_ERROR_NO_ERROR && res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // ignore this error
@@ -376,7 +376,7 @@ int Syncer::createCollection (TRI_json_t const* json,
   TRI_json_t* keyOptions = nullptr;
 
   if (JsonHelper::isArray(JsonHelper::getArrayElement(json, "keyOptions"))) {
-    keyOptions = TRI_CopyJson(TRI_CORE_MEM_ZONE, JsonHelper::getArrayElement(json, "keyOptions"));
+    keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, JsonHelper::getArrayElement(json, "keyOptions"));
   }
 
   TRI_col_info_t params;
@@ -388,7 +388,7 @@ int Syncer::createCollection (TRI_json_t const* json,
                          keyOptions);
 
   if (keyOptions != nullptr) {
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, keyOptions);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
   }
 
   params._doCompact   = JsonHelper::getBooleanValue(json, "doCompact", true);

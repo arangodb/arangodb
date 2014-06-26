@@ -389,7 +389,7 @@ int TRI_SaveIndex (TRI_document_collection_t* document,
   TRI_vocbase_t* vocbase = document->_vocbase;
 
   // and save
-  bool ok = TRI_SaveJson(filename, json, vocbase->_settings.forceSyncProperties);
+  bool ok = TRI_SaveJson(filename, json, false);
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
