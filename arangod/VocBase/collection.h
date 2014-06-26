@@ -263,7 +263,7 @@ char* TRI_GetDirectoryCollection (char const*,
 TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t*,
                                         TRI_collection_t*,
                                         char const*,
-                                        const TRI_col_info_t* const);
+                                        TRI_col_info_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated, but does not free the pointer
@@ -317,7 +317,7 @@ struct TRI_json_s* TRI_CreateJsonCollectionInfo (TRI_col_info_t const*);
 
 int TRI_LoadCollectionInfo (char const*,
                             TRI_col_info_t*,
-                            const bool);
+                            bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a parameter info block to file

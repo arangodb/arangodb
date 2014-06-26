@@ -834,10 +834,10 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
   }
   parameter->_waitForSync   = vocbase->_settings.defaultWaitForSync;
 
-  parameter->_keyOptions    = NULL;
+  parameter->_keyOptions    = nullptr;
 
-  if (keyOptions != NULL) {
-    parameter->_keyOptions  = TRI_CopyJson(TRI_CORE_MEM_ZONE, keyOptions);
+  if (keyOptions != nullptr) {
+    parameter->_keyOptions  = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
   }
 
   TRI_CopyString(parameter->_name, name, sizeof(parameter->_name) - 1);
@@ -847,7 +847,8 @@ void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
 /// @brief copy a collection info block
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CopyCollectionInfo (TRI_col_info_t* dst, const TRI_col_info_t* const src) {
+void TRI_CopyCollectionInfo (TRI_col_info_t* dst, 
+                             TRI_col_info_t const* src) {
   TRI_ASSERT(dst);
   memset(dst, 0, sizeof(TRI_col_info_t));
 
@@ -865,10 +866,10 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst, const TRI_col_info_t* const sr
   dst->_waitForSync   = src->_waitForSync;
 
   if (src->_keyOptions) {
-    dst->_keyOptions  = TRI_CopyJson(TRI_CORE_MEM_ZONE, src->_keyOptions);
+    dst->_keyOptions  = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, src->_keyOptions);
   }
   else {
-    dst->_keyOptions  = NULL;
+    dst->_keyOptions  = nullptr;
   }
 
   TRI_CopyString(dst->_name, src->_name, sizeof(dst->_name) - 1);
@@ -879,9 +880,9 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst, const TRI_col_info_t* const sr
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeCollectionInfoOptions (TRI_col_info_t* parameter) {
-  if (parameter->_keyOptions != NULL) {
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, parameter->_keyOptions);
-    parameter->_keyOptions = NULL;
+  if (parameter->_keyOptions != nullptr) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameter->_keyOptions);
+    parameter->_keyOptions = nullptr;
   }
 }
 
@@ -940,20 +941,17 @@ char* TRI_GetDirectoryCollection (char const* path,
 TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
                                         TRI_collection_t* collection,
                                         char const* path,
-                                        const TRI_col_info_t* const parameter) {
-  char* filename;
-  int res;
-
+                                        TRI_col_info_t const* parameters) {
   // sanity check
-  if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) > parameter->_maximalSize) {
+  if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) > parameters->_maximalSize) {
     TRI_set_errno(TRI_ERROR_ARANGO_DATAFILE_FULL);
 
     LOG_ERROR("cannot create datafile '%s' in '%s', maximal size '%u' is too small",
-              parameter->_name,
+              parameters->_name,
               path,
-              (unsigned int) parameter->_maximalSize);
+              (unsigned int) parameters->_maximalSize);
 
-    return NULL;
+    return nullptr;
   }
 
   if (! TRI_IsDirectory(path)) {
@@ -961,49 +959,48 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
 
     LOG_ERROR("cannot create collection '%s', path is not a directory", path);
 
-    return NULL;
+    return nullptr;
   }
 
 
-  filename = TRI_GetDirectoryCollection(path,
-                                        parameter->_name,
-                                        parameter->_type,
-                                        parameter->_cid);
+  char* filename = TRI_GetDirectoryCollection(path,
+                                              parameters->_name,
+                                              parameters->_type,
+                                              parameters->_cid);
 
-  if (filename == NULL) {
-    LOG_ERROR("cannot create collection '%s'", TRI_last_error());
-    return NULL;
+  if (filename == nullptr) {
+    LOG_ERROR("cannot create collection '%s': %s", parameters->_name, TRI_last_error());
+    return nullptr;
   }
 
   // directory must not exist
   if (TRI_ExistsFile(filename)) {
     TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS);
 
-    LOG_ERROR("cannot create collection '%s' in '%s', directory already exists",
-              parameter->_name, filename);
+    LOG_ERROR("cannot create collection '%s' in directory '%s': directory already exists",
+              parameters->_name, filename);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
-    return NULL;
+    return nullptr;
   }
 
   // create directory
-  res = TRI_CreateDirectory(filename);
+  int res = TRI_CreateDirectory(filename);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("cannot create collection '%s' in '%s' as '%s': %s",
-              parameter->_name,
+    LOG_ERROR("cannot create collection '%s' in directory '%s': %s",
+              parameters->_name,
               path,
-              filename,
               TRI_errno_string(res));
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
-    return NULL;
+    return nullptr;
   }
 
   // create collection structure
-  if (collection == NULL) {
+  if (collection == nullptr) {
     try {
       collection = new TRI_collection_t();
     }
@@ -1014,14 +1011,14 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
     if (collection == nullptr) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
-      LOG_ERROR("cannot create collection '%s', out of memory", path);
+      LOG_ERROR("cannot create collection '%s': out of memory", path);
 
-      return NULL;
+      return nullptr;
     }
   }
 
   // we are passing filename to this struct, so we must not free it if you use the struct later
-  InitCollection(vocbase, collection, filename, parameter);
+  InitCollection(vocbase, collection, filename, parameters);
   /* PANAIA: 1) the parameter file if it exists must be removed
              2) if collection
   */
@@ -1071,17 +1068,15 @@ void TRI_FreeCollection (TRI_collection_t* collection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* TRI_ReadJsonCollectionInfo (TRI_vocbase_col_t* collection) {
-  TRI_json_t* json;
-  char* filename;
 
-  filename = TRI_Concatenate2File(collection->_path, TRI_VOC_PARAMETER_FILE);
+  char* filename = TRI_Concatenate2File(collection->_path, TRI_VOC_PARAMETER_FILE);
 
   // load JSON description of the collection
-  json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, NULL);
+  TRI_json_t* json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, nullptr);
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
-  if (json == NULL) {
-    return NULL;
+  if (json == nullptr) {
+    return nullptr;
   }
 
   return json;
@@ -1150,25 +1145,25 @@ TRI_json_t* TRI_CreateJsonCollectionInfo (TRI_col_info_t const* info) {
   // create a json info object
   json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 9);
 
-  if (json == NULL) {
-    return NULL;
+  if (json == nullptr) {
+    return nullptr;
   }
 
   cidString = TRI_StringUInt64((uint64_t) info->_cid);
 
-  if (cidString == NULL) {
+  if (cidString == nullptr) {
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
-    return NULL;
+    return nullptr;
   }
 
   planIdString = TRI_StringUInt64((uint64_t) info->_planId);
 
-  if (planIdString == NULL) {
+  if (planIdString == nullptr) {
     TRI_Free(TRI_CORE_MEM_ZONE, cidString);
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
-    return NULL;
+    return nullptr;
   }
 
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "version",      TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) info->_version));
@@ -1186,7 +1181,7 @@ TRI_json_t* TRI_CreateJsonCollectionInfo (TRI_col_info_t const* info) {
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "isVolatile",   TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_isVolatile));
   TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "waitForSync",  TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_waitForSync));
 
-  if (info->_keyOptions) {
+  if (info->_keyOptions != nullptr) {
     TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "keyOptions", TRI_CopyJson(TRI_CORE_MEM_ZONE, info->_keyOptions));
   }
 
@@ -1205,10 +1200,10 @@ TRI_json_t* TRI_CreateJsonCollectionInfo (TRI_col_info_t const* info) {
 
 int TRI_LoadCollectionInfo (char const* path,
                             TRI_col_info_t* parameter,
-                            const bool versionWarning) {
+                            bool versionWarning) {
   TRI_json_t* json;
   char* filename;
-  char* error = NULL;
+  char* error = nullptr;
   size_t i;
   size_t n;
 
@@ -1308,7 +1303,7 @@ int TRI_LoadCollectionInfo (char const* path,
     }
     else if (value->_type == TRI_JSON_ARRAY) {
       if (TRI_EqualString(key->_value._string.data, "keyOptions")) {
-        parameter->_keyOptions = TRI_CopyJson(TRI_CORE_MEM_ZONE, value);
+        parameter->_keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value);
       }
     }
   }
@@ -1336,7 +1331,7 @@ int TRI_LoadCollectionInfo (char const* path,
 
 int TRI_SaveCollectionInfo (char const* path,
                             const TRI_col_info_t* const info,
-                            const bool forceSync) {
+                            bool forceSync) {
   TRI_json_t* json;
   char* filename;
   bool ok;
@@ -1349,7 +1344,7 @@ int TRI_SaveCollectionInfo (char const* path,
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   if (! ok) {
-    LOG_ERROR("cannot save info block '%s': '%s'", filename, TRI_last_error());
+    LOG_ERROR("cannot save collection properties file '%s': %s", filename, TRI_last_error());
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
     return TRI_errno();

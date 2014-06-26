@@ -309,117 +309,9 @@ typedef struct TRI_doc_collection_info_s {
 TRI_doc_collection_info_t;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief primary collection
+/// @brief document collection with global read-write lock
 ///
-/// A primary collection is a collection of documents. These documents are
-/// represented as @ref ShapedJson "shaped JSON objects". Each document has a
-/// place in memory which is determined by the position in the memory mapped
-/// file. As datafiles are compacted during garbage collection, this position
-/// can change over time. Each active document also has a master pointer of type
-/// @ref TRI_doc_mptr_t. This master pointer never changes and is valid as long
-/// as the object is not deleted.
-///
-/// It is important to use locks for create, read, update, and delete.  The
-/// functions @FN{create}, @FN{update}, and
-/// @FN{destroy} are only allowed within a @FN{beginWrite} and
-/// @FN{endWrite}. The function @FN{read} is only allowed within a
-/// @FN{beginRead} and @FN{endRead}. Note that @FN{read} returns a copy of the
-/// master pointer.
-///
-/// If a document is deleted, it's master pointer becomes invalid. However, the
-/// document itself still exists. Executing a query and constructing its result
-/// set, must be done inside a "beginRead" and "endRead".
-///
-/// @FUN{int beginRead (TRI_document_collection_t*)}
-///////////////////////////////////////////////
-///
-/// Starts a read transaction. Query and calls to @FN{read} are allowed within a
-/// read transaction, but not calls to @FN{create}, @FN{update}, or
-/// @FN{destroy}.  Returns @ref TRI_ERROR_NO_ERROR if the transaction could be
-/// started. This call might block until a running write transaction is
-/// finished.
-///
-/// @FUN{int endRead (TRI_document_collection_t*)}
-/////////////////////////////////////////////
-///
-/// Ends a read transaction. Should only be called after a successful
-/// "beginRead".
-///
-/// @FUN{int beginWrite (TRI_document_collection_t*)}
-////////////////////////////////////////////////
-///
-/// Starts a write transaction. Query and calls to @FN{create}, @FN{read},
-/// @FN{update}, and @FN{destroy} are allowed within a write
-/// transaction. Returns @ref TRI_ERROR_NO_ERROR if the transaction could be
-/// started. This call might block until a running write transaction is
-/// finished.
-///
-/// @FUN{int endWrite (TRI_document_collection_t*)}
-//////////////////////////////////////////////
-///
-/// Ends a write transaction. Should only be called after a successful
-/// @LIT{beginWrite}.
-///
-/// @FUN{TRI_doc_mptr_t const create (TRI_document_collection_t*, TRI_df_marker_type_e, TRI_shaped_json_t const*, bool @FA{release})}
-///
-/// Adds a new document to the collection and returns the master pointer of the
-/// newly created entry. In case of an error, the attribute @LIT{_did} of the
-/// result is @LIT{0} and "TRI_errno()" is set accordingly. The function DOES
-/// NOT acquire a write lock. This must be done by the caller. If @FA{release}
-/// is true, it will release the write lock as soon as possible.
-///
-/// @FUN{TRI_doc_mptr_t const read (TRI_document_collection_t*, TRI_voc_key_t)}
-//////////////////////////////////////////////////////////////////////////
-///
-/// Returns the master pointer of the document with the given identifier. If the
-/// document does not exist or is deleted, then the identifier @LIT{_did} of
-/// the result is @LIT{0}. The function DOES NOT acquire or release a read
-/// lock. This must be done by the caller.
-///
-/// @FUN{TRI_doc_mptr_t const update (TRI_document_collection_t*, TRI_shaped_json_t const*, TRI_voc_key_t, TRI_voc_rid_t @FA{rid}, TRI_voc_rid_t* @FA{current}, TRI_doc_update_policy_e, bool @FA{release})}
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// Updates an existing document of the collection and returns copy of a valid
-/// master pointer in case of success. Otherwise, the attribute @LIT{_did} of
-/// the result is @LIT{0} and the "TRI_errno()" is set accordingly. The function
-/// DOES NOT acquire a write lock. This must be done by the caller. However, if
-/// @FA{release} is true, it will release the write lock as soon as possible.
-///
-/// If the policy is @ref TRI_doc_update_policy_e "TRI_DOC_UPDATE_LAST_WRITE",
-/// than the revision @FA{rid} is ignored and the update is always performed. If
-/// the policy is @ref TRI_doc_update_policy_e "TRI_DOC_UPDATE_ERROR" and the
-/// revision @FA{rid} is given (i. e. not equal 0), then the update is only
-/// performed if the current revision matches the given. In any case the current
-/// revision after the updated of the document is returned in @FA{current}.
-///
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// @FUN{int destroy (TRI_document_collection_t*, TRI_voc_key_t, TRI_voc_rid_t, TRI_voc_rid_t @FA{rid}, TRI_voc_rid_t* @FA{current}, TRI_doc_update_policy_e, bool @FA{release})}
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///
-/// Deletes an existing document from the given collection and returns @ref
-/// TRI_ERROR_NO_ERROR in case of success. Otherwise, an error is returned and
-/// the "TRI_errno()" is set accordingly. The function DOES NOT acquire a write
-/// lock.  However, if @FA{release} is true, it will release the write lock as
-/// soon as possible.
-///
-/// If the policy is @ref TRI_doc_update_policy_e "TRI_DOC_UPDATE_ERROR" and the
-/// revision is given, then it must match the current revision of the
-/// document. If the delete was executed, than @FA{current} contains the last
-/// valid revision of the document. If the delete was aborted, than @FA{current}
-/// contains the revision of the still alive document.
-///
-/// @FUN{TRI_doc_collection_info_t* figures (TRI_document_collection_t*)}
-////////////////////////////////////////////////////////////////////
-///
-/// Returns informatiom about the collection. You must hold a read lock and must
-/// destroy the result after usage.
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief primary collection with global read-write lock
-///
-/// A primary collection is a collection with a single read-write lock. This
+/// A document collection is a collection with a single read-write lock. This
 /// lock is used to coordinate the read and write transactions.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1024,6 +916,7 @@ int TRI_ReadShapedJsonDocumentCollection (TRI_transaction_collection_t*,
 int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t*,
                                             const TRI_voc_key_t,
                                             TRI_voc_rid_t,
+                                            triagens::wal::Marker*,
                                             TRI_doc_update_policy_t const*,
                                             bool,
                                             bool);
@@ -1036,6 +929,7 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t*,
 int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t*,
                                             const TRI_voc_key_t,
                                             TRI_voc_rid_t,
+                                            triagens::wal::Marker*,
                                             TRI_doc_mptr_copy_t*,
                                             TRI_shaped_json_t const*,
                                             TRI_document_edge_t const*,
@@ -1050,6 +944,7 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t*,
 int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t*,
                                             const TRI_voc_key_t,
                                             TRI_voc_rid_t,
+                                            triagens::wal::Marker*,
                                             TRI_doc_mptr_copy_t*,
                                             TRI_shaped_json_t const*,
                                             TRI_doc_update_policy_t const*,
