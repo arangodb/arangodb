@@ -365,6 +365,8 @@ namespace triagens {
           return begin() + sizeof(attribute_marker_t);
         }
 
+        void setType (TRI_df_marker_type_t);
+
         void dump () const;
     };
 

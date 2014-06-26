@@ -1,4 +1,4 @@
-/* A Bison parser, made by GNU Bison 3.0.  */
+/* A Bison parser, made by GNU Bison 3.0.2.  */
 
 /* Bison interface for Yacc-like parsers in C
 
@@ -110,14 +110,14 @@ extern int Ahuacatldebug;
 typedef union YYSTYPE YYSTYPE;
 union YYSTYPE
 {
-#line 26 "arangod/Ahuacatl/ahuacatl-grammar.y" /* yacc.c:1909  */
+#line 26 "arangod/Ahuacatl/ahuacatl-grammar.y" /* yacc.c:1915  */
 
   TRI_aql_node_t* node;
   char* strval;
   bool boolval;
   int64_t intval;
 
-#line 121 "arangod/Ahuacatl/ahuacatl-grammar.h" /* yacc.c:1909  */
+#line 121 "arangod/Ahuacatl/ahuacatl-grammar.h" /* yacc.c:1915  */
 };
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1

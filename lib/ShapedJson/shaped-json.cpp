@@ -834,7 +834,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
     }
 
     // first find an identifier for the name
-    p->_aid = shaper->findOrCreateAttributeByName(shaper, key->_value._string.data);
+    p->_aid = shaper->findOrCreateAttributeByName(shaper, key->_value._string.data, false);
 
     // convert value
     if (p->_aid == 0) {
