@@ -2281,6 +2281,91 @@ function transactionRollbackSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback inserts w/ secondary indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testRollbackInsertSecondaryIndexes : function () {
+      c1 = db._create(cn1);
+      c1.save({ _key: "foo", value: "foo", a: 1 });
+      c1.save({ _key: "bar", value: "bar", a: 1 });
+      c1.save({ _key: "meow", value: "meow" });
+
+      var hash = c1.ensureHashIndex("value");
+      var skip = c1.ensureSkiplist("value");
+      var good = false;
+     
+      var obj = {
+        collections : {
+          write: [ cn1 ]
+        },
+        action : function () {
+          c1.save({ _key: "tom", value: "tom" });
+          c1.save({ _key: "tim", value: "tim" });
+          c1.save({ _key: "tam", value: "tam" });
+          c1.save({ _key: "troet", value: "foo", a: 2 });
+          c1.save({ _key: "floxx", value: "bar", a: 2 });
+      
+          assertEqual(8, c1.count());
+
+          var docs;
+          docs = c1.byExampleHash(hash.id, { value: "foo" }).toArray();
+          assertEqual(2, docs.length);
+          docs = c1.byExampleSkiplist(skip.id, { value: "foo" }).toArray();
+          assertEqual(2, docs.length);
+          docs = c1.byExampleHash(hash.id, { value: "bar" }).toArray();
+          assertEqual(2, docs.length);
+          docs = c1.byExampleSkiplist(skip.id, { value: "bar" }).toArray();
+          assertEqual(2, docs.length);
+      
+          docs = c1.byExampleHash(hash.id, { value: "tim" }).toArray();
+          assertEqual(1, docs.length);
+          docs = c1.byExampleSkiplist(skip.id, { value: "tim" }).toArray();
+          assertEqual(1, docs.length);
+ 
+          good = true;
+          throw "rollback";
+        }
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
+      assertEqual(true, good);
+
+      assertEqual(3, c1.count());
+      
+      var docs;
+      docs = c1.byExampleHash(hash.id, { value: "foo" }).toArray();
+      assertEqual(1, docs.length);
+      assertEqual("foo", docs[0]._key);
+      assertEqual(1, docs[0].a);
+      
+      docs = c1.byExampleHash(hash.id, { value: "bar" }).toArray();
+      assertEqual(1, docs.length);
+      assertEqual("bar", docs[0]._key);
+      assertEqual(1, docs[0].a);
+
+      docs = c1.byExampleHash(hash.id, { value: "tim" }).toArray();
+      assertEqual(0, docs.length);
+
+      docs = c1.byExampleSkiplist(skip.id, { value: "foo" }).toArray();
+      assertEqual(1, docs.length);
+      assertEqual("foo", docs[0]._key);
+      assertEqual(1, docs[0].a);
+      
+      docs = c1.byExampleSkiplist(skip.id, { value: "bar" }).toArray();
+      assertEqual(1, docs.length);
+      assertEqual("bar", docs[0]._key);
+      assertEqual(1, docs[0].a);
+
+      docs = c1.byExampleSkiplist(skip.id, { value: "tim" }).toArray();
+      assertEqual(0, docs.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test: rollback inserts
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2425,6 +2510,107 @@ function transactionRollbackSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback remove w/ secondary indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testRollbackUpdateSecondaryIndexes : function () {
+      c1 = db._create(cn1);
+      c1.save({ _key: "foo", value: "foo", a: 1 });
+      c1.save({ _key: "bar", value: "bar", a: 1 });
+      c1.save({ _key: "meow", value: "meow" });
+
+      var hash = c1.ensureHashIndex("value");
+      var skip = c1.ensureSkiplist("value");
+      var good = false;
+     
+      var obj = {
+        collections : {
+          write: [ cn1 ]
+        },
+        action : function () {
+          c1.update("foo", { value: "foo", a: 2 });
+          c1.update("bar", { value: "bar", a: 2 });
+          c1.update("meow", { value: "troet" });
+
+          assertEqual(3, c1.count());
+
+          var docs;
+          docs = c1.byExampleHash(hash.id, { value: "foo" }).toArray();
+          assertEqual(1, docs.length);
+          assertEqual(2, docs[0].a);
+          assertEqual("foo", docs[0]._key);
+          docs = c1.byExampleSkiplist(skip.id, { value: "foo" }).toArray();
+          assertEqual(1, docs.length);
+          assertEqual(2, docs[0].a);
+          assertEqual("foo", docs[0]._key);
+          
+          docs = c1.byExampleHash(hash.id, { value: "bar" }).toArray();
+          assertEqual(1, docs.length);
+          assertEqual(2, docs[0].a);
+          assertEqual("bar", docs[0]._key);
+          docs = c1.byExampleSkiplist(skip.id, { value: "bar" }).toArray();
+          assertEqual(1, docs.length);
+          assertEqual(2, docs[0].a);
+          assertEqual("bar", docs[0]._key);
+
+          docs = c1.byExampleHash(hash.id, { value: "troet" }).toArray();
+          assertEqual(1, docs.length);
+          assertEqual("meow", docs[0]._key);
+          docs = c1.byExampleSkiplist(skip.id, { value: "troet" }).toArray();
+          assertEqual(1, docs.length);
+          assertEqual("meow", docs[0]._key);
+
+          docs = c1.byExampleHash(hash.id, { value: "meow" }).toArray();
+          assertEqual(0, docs.length);
+          docs = c1.byExampleSkiplist(skip.id, { value: "meow" }).toArray();
+          assertEqual(0, docs.length);
+          good = true;
+
+          throw "rollback";
+        }
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
+
+      assertEqual(true, good);
+      assertEqual(3, c1.count());
+      
+      var docs;
+      docs = c1.byExampleHash(hash.id, { value: "foo" }).toArray();
+      assertEqual(1, docs.length);
+      assertEqual("foo", docs[0]._key);
+      assertEqual(1, docs[0].a);
+      docs = c1.byExampleSkiplist(skip.id, { value: "foo" }).toArray();
+      assertEqual(1, docs.length);
+      assertEqual("foo", docs[0]._key);
+      assertEqual(1, docs[0].a);
+      
+      docs = c1.byExampleHash(hash.id, { value: "bar" }).toArray();
+      assertEqual(1, docs.length);
+      assertEqual("bar", docs[0]._key);
+      assertEqual(1, docs[0].a);
+      docs = c1.byExampleSkiplist(skip.id, { value: "bar" }).toArray();
+      assertEqual(1, docs.length);
+      assertEqual("bar", docs[0]._key);
+      assertEqual(1, docs[0].a);
+
+      docs = c1.byExampleHash(hash.id, { value: "meow" }).toArray();
+      assertEqual(1, docs.length);
+      docs = c1.byExampleSkiplist(skip.id, { value: "meow" }).toArray();
+      assertEqual(1, docs.length);
+
+      docs = c1.byExampleHash(hash.id, { value: "troet" }).toArray();
+      assertEqual(0, docs.length);
+      docs = c1.byExampleSkiplist(skip.id, { value: "troet" }).toArray();
+      assertEqual(0, docs.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test: rollback remove
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2492,6 +2678,164 @@ function transactionRollbackSuite () {
 
       assertEqual(1, c1.count());
       assertEqual([ "foo" ], sortedKeys(c1));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback remove w/ secondary indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testRollbackRemoveSecondaryIndexes : function () {
+      c1 = db._create(cn1);
+      c1.save({ _key: "foo", value: "foo", a: 1 });
+      c1.save({ _key: "bar", value: "bar", a: 1 });
+      c1.save({ _key: "meow", value: "meow" });
+
+      var hash = c1.ensureHashIndex("value");
+      var skip = c1.ensureSkiplist("value");
+      var good = false;
+     
+      var obj = {
+        collections : {
+          write: [ cn1 ]
+        },
+        action : function () {
+          c1.remove("meow");
+          c1.remove("bar");
+          c1.remove("foo");
+      
+          assertEqual(0, c1.count());
+
+          var docs;
+          docs = c1.byExampleHash(hash.id, { value: "foo" }).toArray();
+          assertEqual(0, docs.length);
+          docs = c1.byExampleSkiplist(skip.id, { value: "foo" }).toArray();
+          assertEqual(0, docs.length);
+          docs = c1.byExampleHash(hash.id, { value: "bar" }).toArray();
+          assertEqual(0, docs.length);
+          docs = c1.byExampleSkiplist(skip.id, { value: "bar" }).toArray();
+          assertEqual(0, docs.length);
+
+          good = true;
+
+          throw "rollback";
+        }
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
+
+      assertEqual(true, good);
+      assertEqual(3, c1.count());
+      
+      var docs;
+      docs = c1.byExampleHash(hash.id, { value: "foo" }).toArray();
+      assertEqual(1, docs.length);
+      assertEqual("foo", docs[0]._key);
+      assertEqual(1, docs[0].a);
+      
+      docs = c1.byExampleHash(hash.id, { value: "bar" }).toArray();
+      assertEqual(1, docs.length);
+      assertEqual("bar", docs[0]._key);
+      assertEqual(1, docs[0].a);
+
+      docs = c1.byExampleSkiplist(skip.id, { value: "foo" }).toArray();
+      assertEqual(1, docs.length);
+      assertEqual("foo", docs[0]._key);
+      assertEqual(1, docs[0].a);
+      
+      docs = c1.byExampleSkiplist(skip.id, { value: "bar" }).toArray();
+      assertEqual(1, docs.length);
+      assertEqual("bar", docs[0]._key);
+      assertEqual(1, docs[0].a);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback insert/remove w/ secondary indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testRollbackRemoveInsertSecondaryIndexes : function () {
+      c1 = db._create(cn1);
+      c1.save({ _key: "foo", value: "foo", a: 1 });
+      c1.save({ _key: "bar", value: "bar", a: 1 });
+      c1.save({ _key: "meow", value: "meow" });
+
+      var hash = c1.ensureHashIndex("value");
+      var skip = c1.ensureSkiplist("value");
+      var good = false;
+     
+      var obj = {
+        collections : {
+          write: [ cn1 ]
+        },
+        action : function () {
+          c1.remove("meow");
+          c1.remove("bar");
+          c1.remove("foo");
+          assertEqual(0, c1.count());
+
+          c1.save({ _key: "foo2", value: "foo", a: 2 });
+          c1.save({ _key: "bar2", value: "bar", a: 2 });
+          assertEqual(2, c1.count());
+      
+          var docs;
+          docs = c1.byExampleHash(hash.id, { value: "foo" }).toArray();
+          assertEqual(1, docs.length);
+          assertEqual(2, docs[0].a);
+          assertEqual("foo2", docs[0]._key);
+          docs = c1.byExampleSkiplist(skip.id, { value: "foo" }).toArray();
+          assertEqual(1, docs.length);
+          assertEqual(2, docs[0].a);
+          assertEqual("foo2", docs[0]._key);
+
+          docs = c1.byExampleHash(hash.id, { value: "bar" }).toArray();
+          assertEqual(1, docs.length);
+          assertEqual(2, docs[0].a);
+          assertEqual("bar2", docs[0]._key);
+          docs = c1.byExampleSkiplist(skip.id, { value: "bar" }).toArray();
+          assertEqual(1, docs.length);
+          assertEqual(2, docs[0].a);
+          assertEqual("bar2", docs[0]._key);
+
+          good = true;
+
+          throw "rollback";
+        }
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
+
+      assertEqual(true, good);
+      assertEqual(3, c1.count());
+      
+      var docs;
+      docs = c1.byExampleHash(hash.id, { value: "foo" }).toArray();
+      assertEqual(1, docs.length);
+      assertEqual("foo", docs[0]._key);
+      assertEqual(1, docs[0].a);
+      
+      docs = c1.byExampleHash(hash.id, { value: "bar" }).toArray();
+      assertEqual(1, docs.length);
+      assertEqual("bar", docs[0]._key);
+      assertEqual(1, docs[0].a);
+
+      docs = c1.byExampleSkiplist(skip.id, { value: "foo" }).toArray();
+      assertEqual(1, docs.length);
+      assertEqual("foo", docs[0]._key);
+      assertEqual(1, docs[0].a);
+      
+      docs = c1.byExampleSkiplist(skip.id, { value: "bar" }).toArray();
+      assertEqual(1, docs.length);
+      assertEqual("bar", docs[0]._key);
+      assertEqual(1, docs[0].a);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

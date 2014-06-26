@@ -287,12 +287,12 @@ void TraditionalKeyGenerator::track (TRI_voc_key_t) {
 /// @brief create a JSON representation of the generator
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TraditionalKeyGenerator::toJson () const {
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+TRI_json_t* TraditionalKeyGenerator::toJson (TRI_memory_zone_t* zone) const {
+  TRI_json_t* json = TRI_CreateArrayJson(zone);
 
   if (json != nullptr) {
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, name().c_str()));
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "allowUserKeys", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, _allowUserKeys));
+    TRI_Insert3ArrayJson(zone, json, "type", TRI_CreateStringCopyJson(zone, name().c_str()));
+    TRI_Insert3ArrayJson(zone, json, "allowUserKeys", TRI_CreateBooleanJson(zone, _allowUserKeys));
   }
 
   return json;
@@ -438,14 +438,14 @@ void AutoIncrementKeyGenerator::track (TRI_voc_key_t key) {
 /// @brief create a JSON representation of the generator
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* AutoIncrementKeyGenerator::toJson () const {
-  TRI_json_t* json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+TRI_json_t* AutoIncrementKeyGenerator::toJson (TRI_memory_zone_t* zone) const {
+  TRI_json_t* json = TRI_CreateArrayJson(zone);
 
   if (json != nullptr) {
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, name().c_str()));
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "allowUserKeys", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, _allowUserKeys));
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "offset", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) _offset));
-    TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, json, "increment", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) _increment));
+    TRI_Insert3ArrayJson(zone, json, "type", TRI_CreateStringCopyJson(zone, name().c_str()));
+    TRI_Insert3ArrayJson(zone, json, "allowUserKeys", TRI_CreateBooleanJson(zone, _allowUserKeys));
+    TRI_Insert3ArrayJson(zone, json, "offset", TRI_CreateNumberJson(zone, (double) _offset));
+    TRI_Insert3ArrayJson(zone, json, "increment", TRI_CreateNumberJson(zone, (double) _increment));
   }
 
   return json;

@@ -47,16 +47,17 @@
 
 static void LinkBarrierElement (TRI_barrier_t* element,
                                 TRI_barrier_list_t* container) {
-  TRI_ASSERT(container != NULL);
+  TRI_ASSERT(container != nullptr);
+  TRI_ASSERT(element != nullptr);
 
   element->_container = container;
 
   TRI_LockSpin(&container->_lock);
 
   // empty list
-  if (container->_end == NULL) {
-    element->_next = NULL;
-    element->_prev = NULL;
+  if (container->_end == nullptr) {
+    element->_next = nullptr;
+    element->_prev = nullptr;
 
     container->_begin = element;
     container->_end = element;
@@ -64,7 +65,7 @@ static void LinkBarrierElement (TRI_barrier_t* element,
 
   // add to the end
   else {
-    element->_next = NULL;
+    element->_next = nullptr;
     element->_prev = container->_end;
 
     container->_end->_next = element;
@@ -101,8 +102,8 @@ void TRI_InitBarrierList (TRI_barrier_list_t* container,
 
   TRI_InitSpin(&container->_lock);
 
-  container->_begin = NULL;
-  container->_end   = NULL;
+  container->_begin = nullptr;
+  container->_end   = nullptr;
 
   container->_numBarrierElements = 0;
 }
@@ -117,8 +118,8 @@ void TRI_DestroyBarrierList (TRI_barrier_list_t* container) {
 
   ptr = container->_begin;
 
-  while (ptr != NULL) {
-    ptr->_container = NULL;
+  while (ptr != nullptr) {
+    ptr->_container = nullptr;
     next = ptr->_next;
 
     if (ptr->_type == TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK ||
@@ -161,7 +162,7 @@ bool TRI_ContainsBarrierList (TRI_barrier_list_t* container,
 
   TRI_barrier_t* ptr = container->_begin;
 
-  while (ptr != NULL) {
+  while (ptr != nullptr) {
     if (ptr->_type == type) {
       TRI_UnlockSpin(&container->_lock);
 
@@ -209,8 +210,8 @@ TRI_barrier_t* TRI_CreateBarrierElementZ (TRI_barrier_list_t* container,
 TRI_barrier_t* TRI_CreateBarrierReplication (TRI_barrier_list_t* container) {
   TRI_barrier_replication_t* element = CreateBarrier<TRI_barrier_replication_t>();
 
-  if (element == NULL) {
-    return NULL;
+  if (element == nullptr) {
+    return nullptr;
   }
 
   element->base._type = TRI_BARRIER_COLLECTION_REPLICATION;
@@ -227,8 +228,8 @@ TRI_barrier_t* TRI_CreateBarrierReplication (TRI_barrier_list_t* container) {
 TRI_barrier_t* TRI_CreateBarrierCompaction (TRI_barrier_list_t* container) {
   TRI_barrier_compaction_t* element = CreateBarrier<TRI_barrier_compaction_t>();
 
-  if (element == NULL) {
-    return NULL;
+  if (element == nullptr) {
+    return nullptr;
   }
 
   element->base._type = TRI_BARRIER_COLLECTION_COMPACTION;
@@ -248,8 +249,8 @@ TRI_barrier_t* TRI_CreateBarrierDropDatafile (TRI_barrier_list_t* container,
                                               void* data) {
   TRI_barrier_datafile_drop_cb_t* element = CreateBarrier<TRI_barrier_datafile_drop_cb_t>();
 
-  if (element == NULL) {
-    return NULL;
+  if (element == nullptr) {
+    return nullptr;
   }
 
   element->base._type = TRI_BARRIER_DATAFILE_DROP_CALLBACK;
@@ -274,8 +275,8 @@ TRI_barrier_t* TRI_CreateBarrierRenameDatafile (TRI_barrier_list_t* container,
                                                 void* data) {
   TRI_barrier_datafile_rename_cb_t* element = CreateBarrier<TRI_barrier_datafile_rename_cb_t>();
 
-  if (element == NULL) {
-    return NULL;
+  if (element == nullptr) {
+    return nullptr;
   }
 
   element->base._type = TRI_BARRIER_DATAFILE_RENAME_CALLBACK;
@@ -300,8 +301,8 @@ TRI_barrier_t* TRI_CreateBarrierUnloadCollection (TRI_barrier_list_t* container,
                                                   void* data) {
   TRI_barrier_collection_cb_t* element = CreateBarrier<TRI_barrier_collection_cb_t>();
 
-  if (element == NULL) {
-    return NULL;
+  if (element == nullptr) {
+    return nullptr;
   }
 
   element->base._type = TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK;
@@ -326,8 +327,8 @@ TRI_barrier_t* TRI_CreateBarrierDropCollection (TRI_barrier_list_t* container,
                                                 void* data) {
   TRI_barrier_collection_cb_t* element = CreateBarrier<TRI_barrier_collection_cb_t>();
 
-  if (element == NULL) {
-    return NULL;
+  if (element == nullptr) {
+    return nullptr;
   }
 
   element->base._type = TRI_BARRIER_COLLECTION_DROP_CALLBACK;
@@ -349,14 +350,14 @@ TRI_barrier_t* TRI_CreateBarrierDropCollection (TRI_barrier_list_t* container,
 void TRI_FreeBarrier (TRI_barrier_t* element) {
   TRI_barrier_list_t* container;
 
-  TRI_ASSERT(element != NULL);
+  TRI_ASSERT(element != nullptr);
   container = element->_container;
-  TRI_ASSERT(container != NULL);
+  TRI_ASSERT(container != nullptr);
 
   TRI_LockSpin(&container->_lock);
 
   // element is at the beginning of the chain
-  if (element->_prev == NULL) {
+  if (element->_prev == nullptr) {
     container->_begin = element->_next;
   }
   else {
@@ -364,7 +365,7 @@ void TRI_FreeBarrier (TRI_barrier_t* element) {
   }
 
   // element is at the end of the chain
-  if (element->_next == NULL) {
+  if (element->_next == nullptr) {
     container->_end = element->_prev;
   }
   else {
