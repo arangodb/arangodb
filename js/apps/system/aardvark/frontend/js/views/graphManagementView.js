@@ -161,27 +161,28 @@
         vertexCollections = _.pluck($('#newVertexCollections').select2("data"), "text"),
         edgeDefinitions = [],
         self = this,
-        index = 1,
         collection,
         from,
-        to;
-      for (var i = 0 ; i < $("tr[id*='newEdgeDefinitions']").length ; i++) {
-        if (!$('#s2id_fromCollections' + i) || !_.pluck($('#s2id_fromCollections'  + i).select2("data"), "text") ||
-            !$('#newEdgeDefinitions'  + i) || !$('#newEdgeDefinitions'  + i).val() ||
-            !$('#s2id_toCollections'  + i) || !_.pluck($('#s2id_toCollections' + i).select2("data"), "text") ) {
-          continue;
+        to, i;
+      for (i = 0 ; i < $("tr[id*='newEdgeDefinitions']").length ; i++) {
+        if ($('#s2id_fromCollections' + i) &&
+            _.pluck($('#s2id_fromCollections'  + i).select2("data"), "text") &&
+            $('#newEdgeDefinitions'  + i) &&
+            $('#newEdgeDefinitions'  + i).val() &&
+            $('#s2id_toCollections'  + i) &&
+            _.pluck($('#s2id_toCollections' + i).select2("data"), "text") ) {
+          from = _.pluck($('#s2id_fromCollections'  + i).select2("data"), "text");
+          to = _.pluck($('#s2id_toCollections'  + i).select2("data"), "text");
+          collection = $('#newEdgeDefinitions'  + i).val();
+          edgeDefinitions.push(
+            {
+              collection: collection,
+              from: from,
+              to: to
+            }
+          );
         }
-        from = _.pluck($('#s2id_fromCollections'  + i).select2("data"), "text");
-        to = _.pluck($('#s2id_toCollections'  + i).select2("data"), "text");
-        collection = $('#newEdgeDefinitions'  + i).val();
-        edgeDefinitions.push(
-          {
-            collection: collection,
-            from: from,
-            to: to
-          }
-        );
-      };
+      }
 
       if (!name) {
         arangoHelper.arangoNotification(
@@ -379,6 +380,7 @@
         tableContent = [];
 
       this.counter = 0;
+      window.modalView.disableSubmitOnEnter = true;
 
       tableContent.push(
         window.modalView.createTextEntry(
