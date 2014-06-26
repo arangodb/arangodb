@@ -15,7 +15,12 @@
       "click .icon_arangodb_info"           : "info",
       "click #createGraph"                  : "addNewGraph",
       "keyup #graphManagementSearchInput"   : "search",
-      "click #graphManagementSearchSubmit"  : "search"
+      "click #graphManagementSearchSubmit"  : "search",
+      "click .tile-graph"                   : "loadGraphViewer"
+    },
+
+    loadGraphViewer: function(e) {
+      console.log($(e.currentTarget).attr("id"));
     },
 
     addNewGraph: function(e) {
@@ -55,6 +60,7 @@
     },
 
     editGraph : function(e) {
+      e.stopPropagation();
       this.collection.fetch();
       this.graphToEdit = this.evaluateGraphName($(e.currentTarget).attr("id"), '_settings');
       var graph = this.collection.findWhere({_key: this.graphToEdit});
@@ -62,6 +68,7 @@
     },
 
     info : function(e) {
+      e.stopPropagation();
       this.collection.fetch();
       var graph = this.collection.findWhere(
         {_key: this.evaluateGraphName($(e.currentTarget).attr("id"), '_info')}
