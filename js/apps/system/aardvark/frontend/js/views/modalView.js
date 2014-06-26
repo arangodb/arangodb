@@ -64,8 +64,8 @@
       yes: "#modal-confirm-delete",
       no: "#modal-abort-delete"
     },
-    disableSubmitOnEnter : false,
     enabledHotkey: false,
+    enableHotKeys : true,
 
     buttons: {
       SUCCESS: "success",
@@ -272,7 +272,6 @@
 
       var template = templateEngine.createTemplate(templateName),
         model = {};
-      model.disableSubmitOnEnter = this.disableSubmitOnEnter;
       model.content = tableContent || [];
       model.advancedContent = advancedContent || false;
       $(".modal-body").html(template.render(model));
@@ -320,7 +319,9 @@
         this.createInitModalHotkeys();
         this.enabledHotkey = true;
       }
-      this.createModalHotkeys();
+      if (this.enableHotKeys) {
+        this.createModalHotkeys();
+      }
     },
 
     hide: function() {
