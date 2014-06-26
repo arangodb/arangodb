@@ -1688,8 +1688,6 @@ static bool OpenIterator (TRI_df_marker_t const* marker,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int FillInternalIndexes (TRI_document_collection_t* document) {
-  TRI_ASSERT(! triagens::wal::LogfileManager::instance()->isInRecovery());
-
   int res = TRI_ERROR_NO_ERROR;
 
   for (size_t i = 0;  i < document->_allIndexes._length;  ++i) {
@@ -2697,16 +2695,11 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
 
   TRI_InitVocShaper(document->getShaper());  // ONLY in OPENCOLLECTION, PROTECTED by fake trx here
 
-  // secondary indexes must not be loaded during recovery
-  // this is because creating indexes might write attribute markers into the WAL,
-  // but the WAL is read-only at the point of recovery
-  if (! triagens::wal::LogfileManager::instance()->isInRecovery()) {
-    // fill internal indexes (this is, the edges index at the moment)
-    FillInternalIndexes(document);
+  // fill internal indexes (this is, the edges index at the moment)
+  FillInternalIndexes(document);
 
-    // fill user-defined secondary indexes
-    TRI_IterateIndexCollection(collection, OpenIndexIterator, collection);
-  }
+  // fill user-defined secondary indexes
+  TRI_IterateIndexCollection(collection, OpenIndexIterator, collection);
 
   return document;
 }
