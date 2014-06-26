@@ -79,14 +79,20 @@ voc_shaper_t;
 /// @brief extracts an attribute id from a marker
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline TRI_shape_aid_t GetAttributeId (void const* marker) {
+static inline TRI_shape_aid_t GetAttributeId (void const* marker, bool* isTemporary) {
   TRI_df_marker_t const* p = static_cast<TRI_df_marker_t const*>(marker);
 
   if (p != nullptr) {
     if (p->_type == TRI_DF_MARKER_ATTRIBUTE) {
+      *isTemporary = false;
       return reinterpret_cast<TRI_df_attribute_marker_t const*>(p)->_aid;
     }
     else if (p->_type == TRI_WAL_MARKER_ATTRIBUTE) {
+      *isTemporary = false;
+      return reinterpret_cast<triagens::wal::attribute_marker_t const*>(p)->_attributeId;
+    }
+    else if (p->_type == TRI_TEMP_MARKER_ATTRIBUTE) {
+      *isTemporary = true;
       return reinterpret_cast<triagens::wal::attribute_marker_t const*>(p)->_attributeId;
     }
   }
@@ -106,6 +112,9 @@ static inline char const* GetAttributeName (void const* marker) {
       return reinterpret_cast<char const*>(p) + sizeof(TRI_df_attribute_marker_t);
     }
     else if (p->_type == TRI_WAL_MARKER_ATTRIBUTE) {
+      return reinterpret_cast<char const*>(p) + sizeof(triagens::wal::attribute_marker_t);
+    }
+    else if (p->_type == TRI_TEMP_MARKER_ATTRIBUTE) {
       return reinterpret_cast<char const*>(p) + sizeof(triagens::wal::attribute_marker_t);
     }
   }
@@ -142,7 +151,7 @@ static bool EqualKeyAttributeName (TRI_associative_synced_t* array, void const* 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finds an attribute identifier by name
+/// @brief looks up an attribute identifier by name
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_shape_aid_t LookupAttributeByName (TRI_shaper_t* shaper,
@@ -153,55 +162,96 @@ static TRI_shape_aid_t LookupAttributeByName (TRI_shaper_t* shaper,
   void const* p = TRI_LookupByKeyAssociativeSynced(&s->_attributeNames, name);
 
   if (p != nullptr) {
-    return GetAttributeId(p);
+    bool isTemporary;
+    return GetAttributeId(p, &isTemporary);
   }
 
   return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finds an attribute identifier by name
+/// @brief looks up an attribute identifier by name
+////////////////////////////////////////////////////////////////////////////////
+
+static TRI_shape_aid_t LookupAttributeByName (TRI_shaper_t* shaper,
+                                              char const* name,
+                                              bool* isTemporary) {
+  TRI_ASSERT(name != nullptr);
+
+  voc_shaper_t* s = reinterpret_cast<voc_shaper_t*>(shaper);
+  void const* p = TRI_LookupByKeyAssociativeSynced(&s->_attributeNames, name);
+
+  if (p != nullptr) {
+    return GetAttributeId(p, isTemporary);
+  }
+
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief finds or creates an attribute identifier by name
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
-                                                    char const* name) {
-  // check if the attribute exists
-  TRI_shape_aid_t aid = LookupAttributeByName(shaper, name);
+                                                    char const* name,
+                                                    bool isTemporary) {
+  voc_shaper_t* s = reinterpret_cast<voc_shaper_t*>(shaper);
 
-  if (aid != 0) {
-    // yes
+  // get a lock for the attributes (TODO: replace assoc sync be normal unordered_map, maybe use RW lock?)
+  MUTEX_LOCKER(s->_attributeLock);
+
+  // check if the attribute exists
+  bool temp;
+  TRI_shape_aid_t aid = LookupAttributeByName(shaper, name, &temp);
+
+  // yes, we found found - check the temporary flag
+  if (aid != 0 && ((temp && isTemporary) || ! temp)) {
     return aid;
   }
 
-  // we need to create a new attribute marker
+  // we need to remove the old entries
+  if (temp) {
+    void* old;
 
-  // increase attribute id value
-  voc_shaper_t* s = reinterpret_cast<voc_shaper_t*>(shaper);
-  aid = s->_nextAid++;
+    TRI_ASSERT(aid != 0);
 
-  TRI_document_collection_t* document = s->_collection;
+    old = TRI_RemoveKeyAssociativeSynced(&s->_attributeIds, &aid);
+    TRI_ASSERT(old != nullptr);
 
+    old = TRI_RemoveKeyAssociativeSynced(&s->_attributeNames, name);
+    TRI_ASSERT(old != nullptr);
+
+    if (old != nullptr) {
+      delete[] static_cast<char*>(old);
+    }
+  }
+
+  // increase attribute id value, if we do not already know it
+  if (aid == 0) {
+    aid = s->_nextAid++;
+  }
+
+  // try to create an entry, either temporary or permanently
   int res = TRI_ERROR_NO_ERROR;
 
   try {
+    TRI_document_collection_t* document = s->_collection;
     triagens::wal::AttributeMarker marker(document->_vocbase->_id, document->_info._cid, aid, std::string(name));
 
-    // lock the index and check that the element is still missing
-    {
-      MUTEX_LOCKER(s->_attributeLock);
+    TRI_IF_FAILURE("ShaperWriteAttributeMarker") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
 
-      void const* p = TRI_LookupByKeyAssociativeSynced(&s->_attributeNames, name);
+    void* ptr;
 
-      // if the element appeared, return the aid
-      if (p != nullptr) {
-        return GetAttributeId(p);
-      }
+    // create a temporary entry
+    if (isTemporary) {
+      marker.setType(TRI_TEMP_MARKER_ATTRIBUTE);
+      ptr = marker.steal();
+    }
 
-      TRI_IF_FAILURE("ShaperWriteAttributeMarker") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-
-      // write marker into wal
+    // create a permanent entry, write marker into wal
+    else {
       triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
 
       if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
@@ -209,13 +259,15 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
         THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
       }
 
-      void* f TRI_UNUSED = TRI_InsertKeyAssociativeSynced(&s->_attributeIds, &aid, const_cast<void*>(slotInfo.mem), false);
-      TRI_ASSERT(f == nullptr);
-
-      // enter into the dictionaries
-      f = TRI_InsertKeyAssociativeSynced(&s->_attributeNames, name, const_cast<void*>(slotInfo.mem), false);
-      TRI_ASSERT(f == nullptr);
+      ptr = const_cast<void*>(slotInfo.mem);
     }
+
+    void* f TRI_UNUSED = TRI_InsertKeyAssociativeSynced(&s->_attributeIds, &aid, ptr, false);
+    TRI_ASSERT(f == nullptr);
+
+    // enter into the dictionaries
+    f = TRI_InsertKeyAssociativeSynced(&s->_attributeNames, name, ptr, false);
+    TRI_ASSERT(f == nullptr);
 
     return aid;
   }
@@ -246,7 +298,8 @@ static uint64_t HashKeyAttributeId (TRI_associative_synced_t* array, void const*
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashElementAttributeId (TRI_associative_synced_t* array, void const* element) {
-  TRI_shape_aid_t aid = GetAttributeId(element);
+  bool isTemporary;
+  TRI_shape_aid_t aid = GetAttributeId(element, &isTemporary);
 
   return TRI_FnvHashPointer(&aid, sizeof(TRI_shape_aid_t));
 }
@@ -257,7 +310,8 @@ static uint64_t HashElementAttributeId (TRI_associative_synced_t* array, void co
 
 static bool EqualKeyAttributeId (TRI_associative_synced_t* array, void const* key, void const* element) {
   TRI_shape_aid_t const* k = static_cast<TRI_shape_aid_t const*>(key);
-  TRI_shape_aid_t aid = GetAttributeId(element);
+  bool isTemporary;
+  TRI_shape_aid_t aid = GetAttributeId(element, &isTemporary);
 
   return *k == aid;
 }
@@ -688,6 +742,7 @@ int TRI_MoveMarkerVocShaper (TRI_shaper_t* s,
     // remove the old marker
     // and re-insert the marker with the new pointer
     f = TRI_InsertKeyAssociativeSynced(&shaper->_shapeIds, &l->_sid, l, true);
+
     // note: this assertion is wrong if the recovery collects the shape in the WAL and it has not been transferred
     // into the collection datafile yet
     // TRI_ASSERT(f != nullptr);
@@ -698,6 +753,7 @@ int TRI_MoveMarkerVocShaper (TRI_shaper_t* s,
     // same for the shape dictionary
     // delete and re-insert
     f = TRI_InsertElementAssociativeSynced(&shaper->_shapeDictionary, l, true);
+
     // note: this assertion is wrong if the recovery collects the shape in the WAL and it has not been transferred
     // into the collection datafile yet
     // TRI_ASSERT(f != nullptr);
@@ -716,6 +772,7 @@ int TRI_MoveMarkerVocShaper (TRI_shaper_t* s,
     // are identical in old and new marker)
     // and re-insert same attribute with adjusted pointer
     f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeNames, p, m, true);
+
     // note: this assertion is wrong if the recovery collects the attribute in the WAL and it has not been transferred
     // into the collection datafile yet
     // TRI_ASSERT(f != nullptr);
@@ -726,6 +783,7 @@ int TRI_MoveMarkerVocShaper (TRI_shaper_t* s,
     // same for attribute ids
     // delete and re-insert same attribute with adjusted pointer
     f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeIds, &m->_aid, m, true);
+
     // note: this assertion is wrong if the recovery collects the attribute in the WAL and it has not been transferred
     // into the collection datafile yet
     // TRI_ASSERT(f != nullptr);
