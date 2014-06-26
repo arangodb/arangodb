@@ -188,6 +188,14 @@ function GharialAdapter(nodes, edges, viewer, config) {
         return;
       }
       result = result[0];
+      if (result.length === 0) {
+        if (callback) {
+          callback({
+            errorCode: 404
+          });
+        }
+        return;
+      }
       var inserted = {},
         n = absAdapter.insertNode(result[0].vertex),
         oldLength = nodes.length;
