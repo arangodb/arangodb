@@ -48,7 +48,7 @@
                 + argCounter
                 + " arguments.";
             };
-            if (typeof(obj[func]) !== "function") {
+            if (typeof obj[func] !== "function") {
               return false;
             }
             if (obj[func].length < argCounter) {
