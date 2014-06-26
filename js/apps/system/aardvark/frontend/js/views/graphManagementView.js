@@ -101,7 +101,91 @@
     },
 
     saveEditedGraph: function() {
+      var name = $("#editGraphName").html(),
+        vertexCollections = _.pluck($('#newVertexCollections').select2("data"), "text"),
+        edgeDefinitions = [],
+        newEdgeDefinitions = {},
+        self = this,
+        collection,
+        from,
+        to,
+        index,
+        edgeDefinitionElements;
 
+      edgeDefinitionElements = $('[id^=s2id_newEdgeDefinitions]').toArray();
+      edgeDefinitionElements.forEach(
+        function(eDElement) {
+          index = $(eDElement).attr("id");
+          index = index.replace("s2id_newEdgeDefinitions", "");
+          collection = _.pluck($('#s2id_newEdgeDefinitions' + index).select2("data"), "text")[0];
+          if (collection && collection !== "") {
+            from = _.pluck($('#s2id_newFromCollections' + index).select2("data"), "text");
+            to = _.pluck($('#s2id_newToCollections' + index).select2("data"), "text");
+            if (from !== 1 && to !== 1) {
+              var edgeDefinition = {
+                collection: collection,
+                from: from,
+                to: to
+              };
+              edgeDefinitions.push(edgeDefinition);
+              newEdgeDefinitions[collection] = edgeDefinition;
+            }
+          }
+        }
+      );
+
+      //get current edgeDefs/orphanage
+      var graph = this.collection.findWhere({_key: name});
+      var currentEdgeDefinitions = graph.get("edgeDefinitions");
+      var currentOrphanage = graph.get("orphanCollections");
+      var currentCollections = [];
+
+
+      //evaluate all new, edited and deleted edge definitions
+      var newEDs = [];
+      var editedEDs = [];
+      var deletedEDs = [];
+
+      currentEdgeDefinitions.forEach(
+        function(eD) {
+          var collection = eD.collection;
+          currentCollections.push(collection);
+          var newED = newEdgeDefinitions[collection];
+          if (newED === undefined) {
+            deletedEDs.push(collection);
+          } else if (JSON.stringify(newED) !== JSON.stringify(eD)) {
+            editedEDs.push(collection);
+          }
+        }
+      );
+      edgeDefinitions.forEach(
+        function(eD) {
+          var collection = eD.collection;
+          if (currentCollections.indexOf(collection) === -1) {
+            newEDs.push(collection);
+          }
+        }
+      );
+
+      newEDs.forEach(
+        function(eD) {
+          graph.addEdgeDefinition(newEdgeDefinitions[eD]);
+        }
+      );
+
+      editedEDs.forEach(
+        function(eD) {
+          graph.modifyEdgeDefinition(newEdgeDefinitions[eD]);
+        }
+      );
+
+      deletedEDs.forEach(
+        function(eD) {
+          graph.deleteEdgeDefinition(eD);
+        }
+      );
+
+      this.updateGraphManagementView();
     },
 
     evaluateGraphName : function(str, substr) {
@@ -404,7 +488,7 @@
       }
     },
 
-    createNewGraphModal2: function() {
+    createNewGraphModal: function() {
       var buttons = [], collList = [],
         tableContent = [], collections = this.options.collectionCollection.models;
 
@@ -484,7 +568,7 @@
         )
       );
       buttons.push(
-        window.modalView.createSuccessButton("Create", this.createNewGraph2.bind(this))
+        window.modalView.createSuccessButton("Create", this.createNewGraph.bind(this))
       );
 
 
