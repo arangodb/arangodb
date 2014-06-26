@@ -49,7 +49,7 @@ function ReplicationLoggerSuite () {
   var cn2 = "UnitTestsReplication2";
   
   var waitForSync = function () {
-    internal.wait(0.5, false);
+    internal.wait(0.75, false);
   };
   
   var getLogEntries = function (tick, type) {
