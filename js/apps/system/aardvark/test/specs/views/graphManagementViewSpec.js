@@ -26,7 +26,8 @@
             div.id = "content";
             document.body.appendChild(div);
             view = new window.GraphManagementView({
-                collection: graphs
+                collection: graphs,
+                collectionCollection: new window.arangoCollections()
             });
         });
 
@@ -98,14 +99,13 @@
                         $("#newGraphEdges").val("newEdges");
                         spyOn($, "ajax").andCallFake(function (opts) {
                             expect(opts.type).toEqual("POST");
-                            expect(opts.url).toEqual("/_api/graph");
-                            expect(opts.data).toEqual(JSON.stringify({
-                                _key: "newGraph",
-                                vertices: "newVertices",
-                                edges: "newEdges",
-                                _id: "",
-                                _rev: ""
-                            }));
+                            expect(opts.url).toEqual("/_api/gharial");
+                            expect(opts.data).toEqual(JSON.stringify(
+                              {
+                                "name":"newGraph",
+                                "edgeDefinitions":[],
+                                "orphanCollections":[]
+                              }));
                         });
                         $("#modalButton1").click();
                         expect($.ajax).toHaveBeenCalled();

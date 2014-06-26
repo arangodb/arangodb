@@ -1688,8 +1688,6 @@ static bool OpenIterator (TRI_df_marker_t const* marker,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int FillInternalIndexes (TRI_document_collection_t* document) {
-  TRI_ASSERT(! triagens::wal::LogfileManager::instance()->isInRecovery());
-
   int res = TRI_ERROR_NO_ERROR;
 
   for (size_t i = 0;  i < document->_allIndexes._length;  ++i) {
@@ -2320,7 +2318,7 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection (TRI_document_collection_t*
 
   if (res != TRI_ERROR_NO_ERROR) {
     document->_lastError = journal->_lastError;
-    LOG_ERROR("cannot create collection header in file '%s': %s", journal->getName(journal), TRI_last_error());
+    LOG_ERROR("cannot create collection header in file '%s': %s", journal->getName(journal), TRI_errno_string(res));
 
     // close the journal and remove it
     TRI_CloseDatafile(journal);
@@ -2332,7 +2330,7 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection (TRI_document_collection_t*
 
   TRI_col_header_marker_t cm;
   TRI_InitMarkerDatafile((char*) &cm, TRI_COL_MARKER_HEADER, sizeof(TRI_col_header_marker_t));
-  cm.base._tick = (TRI_voc_tick_t) fid;
+  cm.base._tick = static_cast<TRI_voc_tick_t>(fid);
   cm._type = (TRI_col_type_t) document->_info._type;
   cm._cid  = document->_info._cid;
 
@@ -2697,16 +2695,11 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
 
   TRI_InitVocShaper(document->getShaper());  // ONLY in OPENCOLLECTION, PROTECTED by fake trx here
 
-  // secondary indexes must not be loaded during recovery
-  // this is because creating indexes might write attribute markers into the WAL,
-  // but the WAL is read-only at the point of recovery
-  if (! triagens::wal::LogfileManager::instance()->isInRecovery()) {
-    // fill internal indexes (this is, the edges index at the moment)
-    FillInternalIndexes(document);
+  // fill internal indexes (this is, the edges index at the moment)
+  FillInternalIndexes(document);
 
-    // fill user-defined secondary indexes
-    TRI_IterateIndexCollection(collection, OpenIndexIterator, collection);
-  }
+  // fill user-defined secondary indexes
+  TRI_IterateIndexCollection(collection, OpenIndexIterator, collection);
 
   return document;
 }

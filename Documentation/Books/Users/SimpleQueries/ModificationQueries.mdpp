@@ -11,8 +11,8 @@ modify lots of documents in a collection.
 All methods can optionally be restricted to a specific number of operations.
 However, if a limit is specific but is less than the number of matches, it
 will be undefined which of the matching documents will get removed/modified.
-[Remove by Example](../Documents/DocumentMethods.html#remove_by_example),  
-[Replace by Example](../Documents/DocumentMethods.html#replace_by_example) and 
-[Update by Example](../Documents/DocumentMethods.html#update_by_example) 
-are described with examples in the subchapter 
+[Remove by Example](../Documents/DocumentMethods.html#remove_by_example),
+ [Replace by Example](../Documents/DocumentMethods.html#replace_by_example) and 
+[Update by Example](../Documents/DocumentMethods.html#update_by_example)
+ are described with examples in the subchapter 
 [Collection Methods](../Documents/DocumentMethods.md).  
