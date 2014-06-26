@@ -43,7 +43,7 @@
 
     addNewGraph: function(e) {
       e.preventDefault();
-      this.createNewGraphModal();
+      this.createNewGraphModal2();
     },
 
     deleteGraph: function(e) {
@@ -73,8 +73,26 @@
         searchString : ''
       }));
       this.events["click .tableRow"] = this.showHideDefinition.bind(this);
+      this.events['change [id*="newEdgeDefinitions"]'] = this.setFromAndTo.bind(this);
       this.events["click .graphViewer-icon-button"] = this.addRemoveDefinition.bind(this);
       return this;
+    },
+
+    setFromAndTo : function (e) {
+      var map = this.calculateEdgeDefinitionMap(), id;
+      if (map[e.val]) {
+        id = e.currentTarget.id.split("row_newEdgeDefinitions")[1];
+        $('#s2id_fromCollections'+id).select2("val", map[e.val].from);
+        $('#fromCollections'+id).attr('disabled', true);
+        $('#s2id_toCollections'+id).select2("val", map[e.val].to);
+        $('#toCollections'+id).attr('disabled', true);
+      } else {
+        id = e.currentTarget.id.split("row_newEdgeDefinitions")[1];
+        $('#s2id_fromCollections'+id).select2("val", null);
+        $('#newFCollections'+id).attr('disabled', false);
+        $('#s2id_toCollections'+id).select2("val", null);
+        $('#toCollections'+id).attr('disabled', false);
+      }
     },
 
     editGraph : function(e) {
@@ -208,7 +226,6 @@
       var buttons = [],
         tableContent = [],
         maxIndex;
-
       this.counter = 0;
       window.modalView.disableSubmitOnEnter = true;
 
@@ -255,7 +272,7 @@
           }
           tableContent.push(
             window.modalView.createSelect2Entry(
-              "newFromCollections" + index,
+              "fromCollections" + index,
               "fromCollections",
               edgeDefinition.from,
               "The collection that contain the start vertices of the relation.",
@@ -268,7 +285,7 @@
           );
           tableContent.push(
             window.modalView.createSelect2Entry(
-              "newToCollections" + index,
+              "toCollections" + index,
               "toCollections",
               edgeDefinition.to,
               "The collection that contain the end vertices of the relation.",
@@ -306,8 +323,8 @@
 
       var i;
       for (i = 0; i <= maxIndex; i++) {
-        $('#row_newFromCollections' + i).hide();
-        $('#row_newToCollections' + i).hide();
+        $('#row_fromCollections' + i).hide();
+        $('#row_toCollections' + i).hide();
       }
 
     },
@@ -356,11 +373,18 @@
     },
 
     addRemoveDefinition : function(e) {
-      var collList = [],
+
+      var collList = [], eCollList = [],
         collections = this.options.collectionCollection.models;
 
       collections.forEach(function (c) {
+        if (c.get("isSystem")) {
+          return;
+        }
         collList.push(c.id);
+        if (c.get('type') === "edge") {
+          eCollList.push(c.id);
+        }
       });
       e.stopPropagation();
       var id = $(e.currentTarget).attr("id"), number;
@@ -372,20 +396,20 @@
           })
         );
         $('#newEdgeDefinitions'+this.counter).select2({
-          tags: collList,
+          tags: eCollList,
           showSearchBox: false,
           minimumResultsForSearch: -1,
           width: "336px",
           maximumSelectionSize: 1
         });
-        $('#newfromCollections'+this.counter).select2({
+        $('#fromCollections'+this.counter).select2({
           tags: collList,
           showSearchBox: false,
           minimumResultsForSearch: -1,
           width: "336px",
           maximumSelectionSize: 10
         });
-        $('#newtoCollections'+this.counter).select2({
+        $('#toCollections'+this.counter).select2({
           tags: collList,
           showSearchBox: false,
           minimumResultsForSearch: -1,
@@ -404,12 +428,32 @@
       }
     },
 
+    calculateEdgeDefinitionMap : function () {
+      var edgeDefinitionMap = {};
+      this.collection.models.forEach(function(m) {
+        m.get("edgeDefinitions").forEach(function (ed) {
+          edgeDefinitionMap[ed.collection] = {
+            from : ed.from,
+            to : ed.to
+          };
+        });
+      });
+      return edgeDefinitionMap;
+    },
+
     createNewGraphModal2: function() {
-      var buttons = [], collList = [],
+      var buttons = [], collList = [], eCollList = [],
         tableContent = [], collections = this.options.collectionCollection.models;
 
       collections.forEach(function (c) {
+        if (c.get("isSystem")) {
+          return;
+        }
         collList.push(c.id);
+        if (c.get('type') === "edge") {
+
+          eCollList.push(c.id);
+        }
       });
       this.counter = 0;
       window.modalView.disableSubmitOnEnter = true;
@@ -436,7 +480,7 @@
           false,
           true,
           1,
-          collList
+          eCollList
         )
       );
       tableContent.push(
@@ -484,7 +528,7 @@
         )
       );
       buttons.push(
-        window.modalView.createSuccessButton("Create", this.createNewGraph2.bind(this))
+        window.modalView.createSuccessButton("Create", this.createNewGraph.bind(this))
       );
 
 
