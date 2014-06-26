@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true*/
-/*global Backbone, $, _, window, templateEngine, arangoHelper, GraphViewerUI */
+/*global Backbone, $, _, window, templateEngine, arangoHelper, GraphViewerUI, require */
 
 (function() {
   "use strict";
