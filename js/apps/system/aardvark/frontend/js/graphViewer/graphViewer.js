@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global _, $*/
-/*global ArangoAdapter, JSONAdapter, FoxxAdapter, PreviewAdapter */
+/*global ArangoAdapter, JSONAdapter, FoxxAdapter, PreviewAdapter, GharialAdapter*/
 /*global ForceLayouter, EdgeShaper, NodeShaper, ZoomManager */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -136,6 +136,17 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       );
       adapter.setChildLimit(10);
       break;
+    case "gharial":
+      adapterConfig.width = width;
+      adapterConfig.height = height;
+      adapter = new GharialAdapter(
+        nodes,
+        edges,
+        this,
+        adapterConfig
+      );
+      adapter.setChildLimit(10);
+      break;
     case "foxx":
       adapterConfig.width = width;
       adapterConfig.height = height;
@@ -186,6 +197,20 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
 //    loadNode
 //  loadInitialNode
     adapter.loadInitialNode(nodeId, function (node) {
+      if (node.errorCode) {
+        callback(node);
+        return;
+      }
+      node._expanded = true;
+      self.start();
+      if (_.isFunction(callback)) {
+        callback();
+      }
+    });
+  };
+
+  this.loadGraphWithRandomStart = function(callback) {
+    adapter.loadRandomNode(function (node) {
       if (node.errorCode) {
         callback(node);
         return;
