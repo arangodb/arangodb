@@ -151,10 +151,31 @@ describe("Graph Viewer", function() {
         width = 20,
         height = 10;
       spyOn(window, "ArangoAdapter").andReturn({
-        setChildLimit: function(){}
+        setChildLimit: function(){
+          return undefined;
+        }
       });
       gv = new GraphViewer(svg, width, height, adapterConfig);
       expect(window.ArangoAdapter).wasCalledWith(
+        jasmine.any(Array),
+        jasmine.any(Array),
+        gv,
+        jasmine.any(Object)
+      );
+    });
+
+    it('should be able to be setup with a gharial adapter', function() {
+      var adapterConfig = {type: "gharial"},
+        gv,
+        width = 20,
+        height = 10;
+      spyOn(window, "GharialAdapter").andReturn({
+        setChildLimit: function(){
+          return undefined;
+        }
+      });
+      gv = new GraphViewer(svg, width, height, adapterConfig);
+      expect(window.GharialAdapter).wasCalledWith(
         jasmine.any(Array),
         jasmine.any(Array),
         gv,

@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true*/
-/*global Backbone, $, _, window, templateEngine, arangoHelper*/
+/*global Backbone, $, _, window, templateEngine, arangoHelper, GraphViewerUI, require */
 
 (function() {
   "use strict";
@@ -15,7 +15,21 @@
       "click .icon_arangodb_info"           : "info",
       "click #createGraph"                  : "addNewGraph",
       "keyup #graphManagementSearchInput"   : "search",
-      "click #graphManagementSearchSubmit"  : "search"
+      "click #graphManagementSearchSubmit"  : "search",
+      "click .tile-graph"                   : "loadGraphViewer"
+    },
+
+    loadGraphViewer: function(e) {
+      var name = $(e.currentTarget).attr("id");
+      name = name.substr(0, name.length - 5);
+      var adapterConfig = {
+        type: "gharial",
+        graphName: name,
+        baseUrl: require("internal").arango.databasePrefix("/")
+      };
+      var width = $("#content").width() - 75;
+      $("#content").html("");
+      this.ui = new GraphViewerUI($("#content")[0], adapterConfig, width, 680, {}, true);
     },
 
     addNewGraph: function(e) {
@@ -55,6 +69,7 @@
     },
 
     editGraph : function(e) {
+      e.stopPropagation();
       this.collection.fetch();
       this.graphToEdit = this.evaluateGraphName($(e.currentTarget).attr("id"), '_settings');
       var graph = this.collection.findWhere({_key: this.graphToEdit});
@@ -62,6 +77,7 @@
     },
 
     info : function(e) {
+      e.stopPropagation();
       this.collection.fetch();
       var graph = this.collection.findWhere(
         {_key: this.evaluateGraphName($(e.currentTarget).attr("id"), '_info')}
