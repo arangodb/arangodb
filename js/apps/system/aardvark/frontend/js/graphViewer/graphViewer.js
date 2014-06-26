@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global _, $*/
-/*global ArangoAdapter, JSONAdapter, FoxxAdapter, PreviewAdapter */
+/*global ArangoAdapter, JSONAdapter, FoxxAdapter, PreviewAdapter, GharialAdapter*/
 /*global ForceLayouter, EdgeShaper, NodeShaper, ZoomManager */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -129,6 +129,17 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       adapterConfig.width = width;
       adapterConfig.height = height;
       adapter = new ArangoAdapter(
+        nodes,
+        edges,
+        this,
+        adapterConfig
+      );
+      adapter.setChildLimit(10);
+      break;
+    case "gharial":
+      adapterConfig.width = width;
+      adapterConfig.height = height;
+      adapter = new GharialAdapter(
         nodes,
         edges,
         this,
