@@ -601,32 +601,18 @@ int TRI_RollbackOperationDocumentCollection (TRI_document_collection_t*,
 /// @brief creates a new journal
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_datafile_t* TRI_CreateJournalDocumentCollection (TRI_document_collection_t*,
-                                                     TRI_voc_fid_t,
-                                                     TRI_voc_size_t);
+TRI_datafile_t* TRI_CreateDatafileDocumentCollection (TRI_document_collection_t*,
+                                                      TRI_voc_fid_t,
+                                                      TRI_voc_size_t,
+                                                      bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes an existing journal
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CloseJournalDocumentCollection (TRI_document_collection_t*,
-                                         size_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a new compactor file
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_datafile_t* TRI_CreateCompactorDocumentCollection (TRI_document_collection_t*,
-                                                       TRI_voc_fid_t,
-                                                       TRI_voc_size_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief closes an existing compactor file
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_CloseCompactorDocumentCollection (TRI_document_collection_t*,
-                                           size_t);
-
+bool TRI_CloseDatafileDocumentCollection (TRI_document_collection_t*,
+                                          size_t,
+                                          bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing collection

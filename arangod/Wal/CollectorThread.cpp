@@ -1261,10 +1261,10 @@ char* CollectorThread::nextFreeMarkerPosition (TRI_document_collection_t* docume
 
       // journal is full, close it and sync
       LOG_DEBUG("closing full journal '%s'", datafile->getName(datafile));
-      TRI_CloseJournalDocumentCollection(document, i);
+      TRI_CloseDatafileDocumentCollection(document, i, false);
     }
 
-    TRI_datafile_t* datafile = TRI_CreateJournalDocumentCollection(document, tick, targetSize);
+    TRI_datafile_t* datafile = TRI_CreateDatafileDocumentCollection(document, tick, targetSize, false);
 
     if (datafile == nullptr) {
       int res = TRI_errno();

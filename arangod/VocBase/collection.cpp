@@ -106,13 +106,13 @@ static bool UpgradeShapeIterator (TRI_df_marker_t const* marker,
 static uint64_t GetNumericFilenamePart (const char* filename) {
   const char* pos1 = strrchr(filename, '.');
 
-  if (pos1 == NULL) {
+  if (pos1 == nullptr) {
     return 0;
   }
 
   const char* pos2 = strrchr(filename, '-');
 
-  if (pos2 == NULL || pos2 > pos1) {
+  if (pos2 == nullptr || pos2 > pos1) {
     return 0;
   }
 
@@ -703,18 +703,15 @@ static bool CheckCollection (TRI_collection_t* collection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeDatafilesVector (TRI_vector_pointer_t* const vector) {
-  size_t i;
-  size_t n;
+  TRI_ASSERT(vector != nullptr);
 
-  TRI_ASSERT(vector);
-
-  n = vector->_length;
-  for (i = 0; i < n ; ++i) {
-    TRI_datafile_t* datafile = (TRI_datafile_t*) vector->_buffer[i];
+  size_t const n = vector->_length;
+  for (size_t i = 0; i < n ; ++i) {
+    TRI_datafile_t* datafile = static_cast<TRI_datafile_t*>(vector->_buffer[i]);
 
     LOG_TRACE("freeing collection datafile");
 
-    TRI_ASSERT(datafile != NULL);
+    TRI_ASSERT(datafile != nullptr);
     TRI_FreeDatafile(datafile);
   }
 
@@ -728,23 +725,16 @@ static void FreeDatafilesVector (TRI_vector_pointer_t* const vector) {
 static bool IterateDatafilesVector (const TRI_vector_pointer_t* const files,
                                     bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*),
                                     void* data) {
-  size_t i, n;
+  size_t const n = files->_length;
 
-  n = files->_length;
-
-  for (i = 0;  i < n;  ++i) {
-    TRI_datafile_t* datafile;
-    int result;
-
-    datafile = (TRI_datafile_t*) TRI_AtVectorPointer(files, i);
+  for (size_t i = 0;  i < n;  ++i) {
+    TRI_datafile_t* datafile = static_cast<TRI_datafile_t*>(TRI_AtVectorPointer(files, i));
 
     LOG_TRACE("iterating over datafile '%s', fid %llu",
               datafile->getName(datafile),
               (unsigned long long) datafile->_fid);
 
-    result = TRI_IterateDatafile(datafile, iterator, data);
-
-    if (! result) {
+    if (! TRI_IterateDatafile(datafile, iterator, data)) {
       return false;
     }
   }
@@ -757,14 +747,14 @@ static bool IterateDatafilesVector (const TRI_vector_pointer_t* const files,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool CloseDataFiles (const TRI_vector_pointer_t* const files) {
-  size_t n = files->_length;
-  size_t i;
   bool result = true;
 
-  for (i = 0;  i < n;  ++i) {
+  size_t const n = files->_length;
+
+  for (size_t i = 0;  i < n;  ++i) {
     TRI_datafile_t* datafile = static_cast<TRI_datafile_t*>(files->_buffer[i]);
 
-    TRI_ASSERT(datafile);
+    TRI_ASSERT(datafile != nullptr);
 
     result &= TRI_CloseDatafile(datafile);
   }
@@ -1042,7 +1032,10 @@ void TRI_DestroyCollection (TRI_collection_t* collection) {
   FreeDatafilesVector(&collection->_compactors);
 
   TRI_DestroyVectorString(&collection->_indexFiles);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, collection->_directory);
+  if (collection->_directory != nullptr) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, collection->_directory);
+    collection->_directory = nullptr;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1507,40 +1500,23 @@ void TRI_IterateIndexCollection (TRI_collection_t* collection,
 TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
                                       TRI_collection_t* collection,
                                       char const* path) {
-  TRI_col_info_t info;
-  bool freeCol;
-  bool ok;
-  int res;
-
-  freeCol = false;
+  TRI_ASSERT(collection != nullptr);
 
   if (! TRI_IsDirectory(path)) {
     TRI_set_errno(TRI_ERROR_ARANGO_DATADIR_INVALID);
 
     LOG_ERROR("cannot open '%s', not a directory or not found", path);
 
-    return NULL;
+    return nullptr;
   }
 
   // read parameters, no need to lock as we are opening the collection
-  res = TRI_LoadCollectionInfo(path, &info, true);
+  TRI_col_info_t info;
+  int res = TRI_LoadCollectionInfo(path, &info, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot load collection parameter '%s': %s", path, TRI_last_error());
-    return NULL;
-  }
-
-  // create collection
-  if (collection == NULL) {
-    collection = static_cast<TRI_collection_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_collection_t), false));
-
-    if (collection == NULL) {
-      LOG_ERROR("cannot open '%s', out of memory", path);
-
-      return NULL;
-    }
-
-    freeCol = true;
+    return nullptr;
   }
 
   InitCollection(vocbase, collection, TRI_DuplicateString(path), &info);
@@ -1548,18 +1524,17 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
   TRI_FreeCollectionInfoOptions(&info);
 
   // check for journals and datafiles
-  ok = CheckCollection(collection);
+  bool ok = CheckCollection(collection);
 
   if (! ok) {
     LOG_DEBUG("cannot open '%s', check failed", collection->_directory);
 
-    TRI_FreeString(TRI_CORE_MEM_ZONE, collection->_directory);
-
-    if (freeCol) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
+    if (collection->_directory != nullptr) {
+      TRI_FreeString(TRI_CORE_MEM_ZONE, collection->_directory);
+      collection->_directory = nullptr;
     }
 
-    return NULL;
+    return nullptr;
   }
 
   return collection;
