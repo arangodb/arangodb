@@ -42,6 +42,7 @@
 #include "VocBase/server.h"
 #include "Wal/AllocatorThread.h"
 #include "Wal/CollectorThread.h"
+#include "Wal/RecoverState.h"
 #include "Wal/Slots.h"
 #include "Wal/SynchroniserThread.h"
 
