@@ -144,7 +144,7 @@ class KeyGenerator {
 /// @brief return a JSON representation of the generator
 ////////////////////////////////////////////////////////////////////////////////
 
-    virtual struct TRI_json_s* toJson () const = 0;
+    virtual struct TRI_json_s* toJson (TRI_memory_zone_t*) const = 0;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected functions
@@ -243,7 +243,7 @@ class TraditionalKeyGenerator : public KeyGenerator {
 /// @brief return a JSON representation of the generator
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct TRI_json_s* toJson () const;
+    struct TRI_json_s* toJson (TRI_memory_zone_t*) const;
 };
 
 // -----------------------------------------------------------------------------
@@ -321,7 +321,7 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
 /// @brief return a JSON representation of the generator
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct TRI_json_s* toJson () const;
+    struct TRI_json_s* toJson (TRI_memory_zone_t*) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

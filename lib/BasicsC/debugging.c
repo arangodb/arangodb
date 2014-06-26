@@ -94,7 +94,11 @@ void TRI_SegfaultDebugging (char const* message) {
   TRI_ShutdownLogging(true);
 
   // and now crash
+#ifndef __APPLE__
   *((char*) -1) = '!';
+#endif
+
+  abort();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
