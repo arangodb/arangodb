@@ -2514,3 +2514,5 @@ TRI_json_t* TRI_JsonFile (TRI_memory_zone_t* zone, char const* path, char** erro
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
 
+#define DUMMY_FUNC(a) dummy ## a
+void DUMMY_FUNC(__FILE__) (yyconst char* msg , yyscan_t yyscanner) {yy_fatal_error(msg,yyscanner);}

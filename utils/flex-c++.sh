@@ -30,6 +30,9 @@ cat ${OUTPUT} \
   | sed -e 's:register ::g' \
   > ${OUTPUT}.tmp
 
+echo "#define DUMMY_FUNC(a) dummy ## a" >> ${OUTPUT}.tmp
+echo "void DUMMY_FUNC(__FILE__) (yyconst char* msg , yyscan_t yyscanner) {yy_fatal_error(msg,yyscanner);}" >> ${OUTPUT}.tmp
+
 # give some information
 diff -u ${OUTPUT} ${OUTPUT}.tmp
 
