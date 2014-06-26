@@ -161,7 +161,7 @@
         vertexCollections = _.pluck($('#newVertexCollections').select2("data"), "text"),
         edgeDefinitions = [],
         self = this,
-        hasNext = true,
+        index = 1,
         collection,
         from,
         to;
