@@ -701,6 +701,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
       var actual, result = [];
 
       actual = getQueryResults("FOR e IN GRAPH_TRAVERSAL('werKenntWen', 'UnitTests_Hamburger/Caesar', 'outbound') RETURN e");
+      actual = actual[0];
       actual.forEach(function (s) {
         result.push(s.vertex._key);
       });
@@ -716,11 +717,18 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
       ]);
     },
 
+    testGRAPH_TRAVERSALWithExamples: function () {
+      var actual, result = [];
+
+      actual = getQueryResults("FOR e IN GRAPH_TRAVERSAL('werKenntWen', {}, 'outbound') RETURN e");
+      assertEqual(actual.length , 7);
+    },
+
     testGENERAL_GRAPH_TRAVERSAL_TREE: function () {
       var actual, start, middle;
 
       actual = getQueryResults("FOR e IN GRAPH_TRAVERSAL_TREE('werKenntWen', 'UnitTests_Hamburger/Caesar', 'outbound', 'connected') RETURN e");
-      start = actual[0][0];
+      start = actual[0][0][0];
 
       assertEqual(start._key, "Caesar");
       assertTrue(start.hasOwnProperty("connected"));
