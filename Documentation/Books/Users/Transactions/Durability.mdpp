@@ -28,7 +28,7 @@ whether the delayed synchronization had kicked in or not.
 To ensure durability of transactions on a collection that have the *waitForSync*
 property set to *false*, you can set the *waitForSync* attribute of the object
 that is passed to *executeTransaction*. This will force a synchronization of the
-transaction to disk even for collections that have *waitForSync set to *false*:
+transaction to disk even for collections that have *waitForSync* set to *false*:
 
     db._executeTransaction({
       collections: { 

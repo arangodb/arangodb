@@ -12,9 +12,9 @@ When a fulltext index exists, it can be queried using a fulltext query.
 
 !SUBSECTION Fulltext
 <!-- js/common/modules/org/arangodb/arango-collection-common.js-->
-@startDocuBlock simple-query-fulltext
+@startDocuBlock collectionFulltext
 
-!SUBSECTION Fulltext query syntax:
+!SUBSECTION Fulltext Syntax:
 
 In the simplest form, a fulltext query contains just the sought word. If
 multiple search words are given in a query, they should be separated by commas.
