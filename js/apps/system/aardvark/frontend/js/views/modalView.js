@@ -14,7 +14,7 @@
   };
 
   var createTextStub = function(type, label, value, info, placeholder, mandatory, regexp,
-                                addDelete, addAdd) {
+                                addDelete, addAdd, maxEntrySize) {
     var obj = {
       type: type,
       label: label
@@ -36,6 +36,9 @@
     }
     if (addAdd !== undefined) {
       obj.addAdd = addAdd;
+    }
+    if (maxEntrySize !== undefined) {
+      obj.maxEntrySize = maxEntrySize;
     }
     if (regexp){
       // returns true if the string contains the match
@@ -183,9 +186,9 @@
     },
 
     createSelect2Entry: function(
-      id, label, value, info, placeholder, mandatory, addDelete, addAdd) {
+      id, label, value, info, placeholder, mandatory, addDelete, addAdd, maxEntrySize) {
       var obj = createTextStub(this.tables.SELECT2, label, value, info, placeholder,
-        mandatory, undefined, addDelete, addAdd);
+        mandatory, undefined, addDelete, addAdd, maxEntrySize);
       obj.id = id;
       return obj;
     },
@@ -283,7 +286,7 @@
             showSearchBox: false,
             minimumResultsForSearch: -1,
             width: "336px",
-            maximumSelectionSize: 8
+            maximumSelectionSize: r.maxEntrySize ? r.maxEntrySize : 8
           });
         }
       });//handle select2
