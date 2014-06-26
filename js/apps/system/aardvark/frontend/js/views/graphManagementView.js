@@ -142,28 +142,31 @@
         collection,
         from,
         to,
-        searchForNext = true;
+        searchForNext = true,
+        edgeDefinitionElements;
 
 
-      while(searchForNext) {
-        collection = _.pluck($('#s2id_newEdgeDefinitions' + index).select2("data"), "text")[0];
-        if (collection && collection !== "") {
-          from = _.pluck($('#s2id_newFromCollections' + index).select2("data"), "text");
-          to = _.pluck($('#s2id_newToCollections' + index).select2("data"), "text");
-          if (from !== 1 && to !== 1) {
-            edgeDefinitions.push(
-              {
-                collection: collection,
-                from: from,
-                to: to
-              }
-            );
+      edgeDefinitionElements = $('[id^=s2id_newEdgeDefinitions]').toArray();
+      edgeDefinitionElements.forEach(
+        function(eDElement) {
+          index = $(eDElement).attr("id");
+          index = index.replace("s2id_newEdgeDefinitions", "");
+          collection = _.pluck($('#s2id_newEdgeDefinitions' + index).select2("data"), "text")[0];
+          if (collection && collection !== "") {
+            from = _.pluck($('#s2id_newFromCollections' + index).select2("data"), "text");
+            to = _.pluck($('#s2id_newToCollections' + index).select2("data"), "text");
+            if (from !== 1 && to !== 1) {
+              edgeDefinitions.push(
+                {
+                  collection: collection,
+                  from: from,
+                  to: to
+                }
+              );
+            }
           }
-        } else {
-          searchForNext = false;
         }
-        index++;
-      }
+      );
 
       if (!name) {
         arangoHelper.arangoNotification(
