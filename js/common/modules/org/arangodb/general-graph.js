@@ -423,11 +423,14 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
 /// `graph_query.edges(examples)`
 /// *Select all edges for the vertices selected before.*
 ///
-/// 
 /// Creates an AQL statement to select all edges for each of the vertices selected
 /// in the step before.
 /// This will include *inbound* as well as *outbound* edges.
 /// The resulting set of edges can be filtered by defining one or more *examples*.
+///
+/// The complexity of this method is **O(n\*m^x)** with *n* being the vertices defined by the
+/// parameter vertexExamplex, *m* the average amount of edges of a vertex and *x* the maximal depths.
+/// Hence the default call would have a complexity of **O(n\*m)**;
 ///
 /// *Parameter*
 ///
@@ -1454,6 +1457,11 @@ var _list = function() {
 };
 
 
+var _listObjects = function() {
+  return getGraphCollection().toArray();
+};
+
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1705,6 +1713,7 @@ var _create = function (graphName, edgeDefinitions, orphanCollections) {
       findOrCreateCollectionByName(oC, ArangoCollection.TYPE_DOCUMENT);
     }
   );
+
   edgeDefinitions.forEach(
     function(eD, index) {
       var tmp = sortEdgeDefinition(eD);
@@ -1713,7 +1722,7 @@ var _create = function (graphName, edgeDefinitions, orphanCollections) {
   );
   orphanCollections = orphanCollections.sort();
 
-      gdb.save({
+  gdb.save({
     'orphanCollections' : orphanCollections,
     'edgeDefinitions' : edgeDefinitions,
     '_key' : graphName
@@ -2681,6 +2690,9 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 ///
 /// The function accepts an id, an example, a list of examples or even an empty
 /// example as parameter for vertexExample.
+/// The complexity of this method is **O(n\*m^x)** with *n* being the vertices defined by the
+/// parameter vertexExamplex, *m* the average amount of neighbors and *x* the maximal depths.
+/// Hence the default call would have a complexity of **O(n\*m)**;
 ///
 /// *Parameter*
 ///
@@ -2737,6 +2749,11 @@ Graph.prototype._neighbors = function(vertexExample, options) {
 /// This function returns the intersection of *graph_module._neighbors(vertex1Example, optionsVertex1)*
 /// and *graph_module._neighbors(vertex2Example, optionsVertex2)*.
 /// For parameter documentation see [_neighbors](#_neighbors).
+///
+/// The complexity of this method is **O(n\*m^x)** with *n* being the maximal amount of vertices
+/// defined by the parameters vertexExamples, *m* the average amount of neighbors and *x* the
+/// maximal depths.
+/// Hence the default call would have a complexity of **O(n\*m)**;
 ///
 /// *Examples*
 ///
@@ -2867,6 +2884,9 @@ Graph.prototype._countCommonNeighbors = function(vertex1Example, vertex2Example,
 /// The function accepts an id, an example, a list of examples or even an empty
 /// example as parameter for vertex1Example and vertex2Example.
 ///
+/// The complexity of this method is **O(n)** with *n* being the maximal amount of vertices
+/// defined by the parameters vertexExamples.
+///
 /// *Parameter*
 ///
 /// * *vertex1Examples*: Filter the set of source vertices, see [Definition of examples](#definition_of_examples)
@@ -2990,6 +3010,9 @@ Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example
 ///
 /// This function determines all available paths in a graph.
 ///
+/// The complexity of this method is **O(n\*n\*m)** with *n* being the amount of vertices in
+/// the graph and *m* the average amount of connected edges;
+///
 /// *Parameters*
 ///
 /// * *options* (optional)    : An object containing options, see below:
@@ -3058,6 +3081,9 @@ Graph.prototype._paths = function(options) {
 /// The length of a path is by default the amount of edges from one start vertex to
 /// an end vertex. The option weight allows the user to define an edge attribute
 /// representing the length.
+///
+/// The complexity of the function is described
+/// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
 ///
 /// *Parameters*
 ///
@@ -3202,6 +3228,9 @@ Graph.prototype._distanceTo = function(startVertexExample, endVertexExample, opt
 /// The function accepts an id, an example, a list of examples or even an empty
 /// example as parameter for vertexExample.
 ///
+/// The complexity of the function is described
+/// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
+///
 /// *Parameter*
 ///
 /// * *vertexExample*: Filter the vertices, see [Definition of examples](#definition_of_examples)
@@ -3284,6 +3313,9 @@ Graph.prototype._absoluteEccentricity = function(vertexExample, options) {
 ///
 /// Similar to [_absoluteEccentricity](#_absoluteeccentricity) but returns a normalized result.
 ///
+/// The complexity of the function is described
+/// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
+///
 /// @EXAMPLES
 ///
 /// A route planner example, the eccentricity of all locations.
@@ -3330,6 +3362,9 @@ Graph.prototype._eccentricity = function(options) {
 ///
 /// The function accepts an id, an example, a list of examples or even an empty
 /// example as parameter for *vertexExample*.
+///
+/// The complexity of the function is described
+/// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
 ///
 /// *Parameter*
 ///
@@ -3411,6 +3446,9 @@ Graph.prototype._absoluteCloseness = function(vertexExample, options) {
 ///
 /// Similar to [_absoluteCloseness](#_absolutecloseness) but returns a normalized value.
 ///
+/// The complexity of the function is described
+/// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
+///
 /// @EXAMPLES
 ///
 /// A route planner example, the normalized closeness of all locations.
@@ -3465,6 +3503,9 @@ Graph.prototype._closeness = function(options) {
 /// *Get the*
 /// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
 /// *of all vertices in the graph.*
+///
+/// The complexity of the function is described
+/// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
 ///
 /// *Parameter*
 ///
@@ -3588,6 +3629,9 @@ Graph.prototype._betweenness = function(options) {
 /// [radius](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
 /// *of a graph.*
 ///
+/// The complexity of the function is described
+/// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
+///
 /// *Parameter*
 ///
 /// * *options* (optional): An object defining further options. Can have the following values: 
@@ -3656,6 +3700,9 @@ Graph.prototype._radius = function(options) {
 /// *Get the*
 /// [diameter](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
 /// *of a graph.*
+///
+/// The complexity of the function is described
+/// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
 ///
 /// *Parameter*
 ///
@@ -4205,6 +4252,7 @@ exports._create = _create;
 exports._drop = _drop;
 exports._exists = _exists;
 exports._list = _list;
+exports._listObjects = _listObjects;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

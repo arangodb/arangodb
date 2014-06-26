@@ -214,7 +214,7 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseDrop}
 /// ~ db._create("example");
 ///   col = db.example;
-///   db._drop(col)
+///   db._drop(col);
 ///   col;
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT

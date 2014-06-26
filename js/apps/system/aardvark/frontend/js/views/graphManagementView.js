@@ -7,6 +7,7 @@
   window.GraphManagementView = Backbone.View.extend({
     el: '#content',
     template: templateEngine.createTemplate("graphManagementView.ejs"),
+    edgeDefintionTemplate: templateEngine.createTemplate("edgeDefinitionTable.ejs"),
 
     events: {
       "click #deleteGraph"                  : "deleteGraph",
@@ -43,11 +44,13 @@
       this.collection.fetch({
         async: false
       });
+
       $(this.el).html(this.template.render({
         graphs: this.collection,
         searchString : ''
       }));
       this.events["click .tableRow"] = this.showHideDefinition.bind(this);
+      this.events["click .graphViewer-icon-button"] = this.addRemoveDefinition.bind(this);
       return this;
     },
 
@@ -164,6 +167,7 @@
         to;
 
       collection = $('#newEdgeDefinitions1').val();
+      //collection = $("tr[id*='newEdgeDefinitions'").val();
       if (collection !== "") {
         from = _.pluck($('#s2id_fromCollections1').select2("data"), "text");
         to = _.pluck($('#s2id_toCollections1').select2("data"), "text");
@@ -175,7 +179,6 @@
           }
         );
       }
-
 
       if (!name) {
         arangoHelper.arangoNotification(
@@ -317,17 +320,42 @@
     },
 
     showHideDefinition : function(e) {
-      var id = $(e.currentTarget).attr("id");
-      if (id === "row_newEdgeDefinitions1") {
-        $('#row_fromCollections1').toggle();
-        $('#row_toCollections1').toggle();
+      e.stopPropagation();
+      var id = $(e.currentTarget).attr("id"), number;
+      if (id.indexOf("row_newEdgeDefinitions") !== -1 ) {
+        number = id.split("row_newEdgeDefinitions")[1];
+        $('#row_fromCollections' + number).toggle();
+        $('#row_toCollections' + number).toggle();
       }
     },
 
+    addRemoveDefinition : function(e) {
+      e.stopPropagation();
+      var id = $(e.currentTarget).attr("id"), number;
+      if (id.indexOf("addAfter_newEdgeDefinitions") !== -1 ) {
+        this.counter++;
+        $('#row_newVertexCollections').before(
+          this.edgeDefintionTemplate.render({
+            number: this.counter
+          })
+        );
+        window.modalView.undelegateEvents();
+        window.modalView.delegateEvents(this.events);
+        return;
+      }
+      if (id.indexOf("remove_newEdgeDefinitions") !== -1 ) {
+        number = id.split("remove_newEdgeDefinitions")[1];
+        $('#row_newEdgeDefinitions' + number).remove();
+        $('#row_fromCollections' + number).remove();
+        $('#row_toCollections' + number).remove();
+      }
+    },
 
     createNewGraphModal2: function() {
       var buttons = [],
         tableContent = [];
+
+      this.counter = 0;
 
       tableContent.push(
         window.modalView.createTextEntry(
@@ -341,19 +369,21 @@
       );
 
       tableContent.push(
-        window.modalView.createTextEntry(
-          "newEdgeDefinitions1",
+        window.modalView.createSelect2Entry(
+          "newEdgeDefinitions0",
           "Edge definitions",
           "",
           "Some info for edge definitions",
           "Edge definitions",
+          true,
+          false,
           true
         )
       );
 
       tableContent.push(
         window.modalView.createSelect2Entry(
-          "fromCollections1",
+          "fromCollections0",
           "fromCollections",
           "",
           "The collection that contain the start vertices of the relation.",
@@ -363,7 +393,7 @@
       );
       tableContent.push(
         window.modalView.createSelect2Entry(
-          "toCollections1",
+          "toCollections0",
           "toCollections",
           "",
           "The collection that contain the end vertices of the relation.",
@@ -389,37 +419,66 @@
 
 
       window.modalView.show(
-        "modalTable.ejs", "Add new Graph", buttons, tableContent, null, this.events
+        "modalGraphTable.ejs", "Add new Graph", buttons, tableContent, null, this.events
       );
       $('#row_fromCollections1').hide();
       $('#row_toCollections1').hide();
     },
 
-    createEditGraphModal2: function(name, vertices, edges) {
+    createEditGraphModal2: function(name, vertices, edgeDefinitions) {
       var buttons = [],
         tableContent = [];
 
+      this.counter = 0;
+
       tableContent.push(
         window.modalView.createReadOnlyEntry(
-          "editGraphName",
+          "graphName",
           "Name",
           name,
-          false
+          "The name to identify the graph. Has to be unique."
         )
       );
+      edgeDefinitions.forEach(function(ed) {
+        tableContent.push(
+          window.modalView.createReadOnlyEntry(
+            "edgeDefinitions" + this.counter,
+            "Edge definitions",
+            ed.collection,
+            "Some info for edge definitions"
+          )
+        );
+
+        tableContent.push(
+          window.modalView.createSelect2Entry(
+            "fromCollections" + this.counter,
+            "fromCollections",
+            ed.from,
+            "The collection that contain the start vertices of the relation.",
+            "",
+            true
+          )
+        );
+        tableContent.push(
+          window.modalView.createSelect2Entry(
+            "toCollections" + this.counter,
+            "toCollections",
+            ed.to,
+            "The collection that contain the end vertices of the relation.",
+            "",
+            true
+          )
+        );
+        this.counter++;
+      });
+
       tableContent.push(
-        window.modalView.createReadOnlyEntry(
-          "editVertices",
-          "Vertices",
+        window.modalView.createSelect2Entry(
+          "vertexCollections",
+          "Vertex collections",
           vertices,
-          false
-        )
-      );
-      tableContent.push(
-        window.modalView.createReadOnlyEntry(
-          "editEdges",
-          "Edges",
-          edges,
+          "Some info for vertex collections",
+          "Vertex Collections",
           false
         )
       );
@@ -427,8 +486,11 @@
       buttons.push(
         window.modalView.createDeleteButton("Delete", this.deleteGraph.bind(this))
       );
+      buttons.push(
+        window.modalView.createNeutralButton("Save", this.deleteGraph.bind(this))
+      );
 
-      window.modalView.show("modalTable.ejs", "Edit Graph", buttons, tableContent);
+      window.modalView.show("modalGraphTable.ejs", "Edit Graph", buttons, tableContent);
 
     }
 
