@@ -193,7 +193,7 @@
         expect($(menuSelector).length).toEqual(1);
         expect($("span", menuSelector).attr("title")).toEqual("Configure");
         expect($("span", menuSelector)).toBeOfClass("icon_arangodb_settings2");
-        expect($(dropDownSelector +  " #control_adapter_collections").length).toEqual(1);
+        expect($(dropDownSelector +  " #control_adapter_graph").length).toEqual(1);
         expect($(dropDownSelector +  " #control_node_labelandcolourlist").length).toEqual(1);
         expect($(dropDownSelector +  " #control_adapter_priority").length).toEqual(1);
       });
