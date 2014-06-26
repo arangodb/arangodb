@@ -185,6 +185,7 @@ static TRI_shape_aid_t LookupAttributeByName (TRI_shaper_t* shaper,
     return GetAttributeId(p, isTemporary);
   }
 
+  *isTemporary = false;
   return 0;
 }
 
