@@ -106,6 +106,7 @@ namespace triagens {
         if (operations != nullptr) {
           delete operations;
         }
+        freeBarriers();
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -113,6 +114,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       void addBarrier (TRI_barrier_t* barrier) {
+        TRI_ASSERT(barrier != nullptr);
         barriers.push_back(barrier);
       }
 
@@ -124,6 +126,7 @@ namespace triagens {
         for (auto it = barriers.begin(); it != barriers.end(); ++it) {
           TRI_FreeBarrier((*it));
         }
+
         barriers.clear();
       }
 

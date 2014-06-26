@@ -634,7 +634,7 @@ static int FillShapeValueArray (TRI_shaper_t* shaper,
     }
 
     if (create) {
-      p->_aid = shaper->findOrCreateAttributeByName(shaper, *keyStr);
+      p->_aid = shaper->findOrCreateAttributeByName(shaper, *keyStr, false);
     }
     else {
       p->_aid = shaper->lookupAttributeByName(shaper, *keyStr);

@@ -389,7 +389,7 @@ int TRI_SaveIndex (TRI_document_collection_t* document,
   TRI_vocbase_t* vocbase = document->_vocbase;
 
   // and save
-  bool ok = TRI_SaveJson(filename, json, vocbase->_settings.forceSyncProperties);
+  bool ok = TRI_SaveJson(filename, json, false);
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
@@ -1826,7 +1826,7 @@ TRI_index_t* TRI_CreateFulltextIndex (TRI_document_collection_t* document,
 
   // look up the attribute
   shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
-  attribute = shaper->findOrCreateAttributePathByName(shaper, attributeName, true);
+  attribute = shaper->findOrCreateAttributePathByName(shaper, attributeName, true, true);
 
   if (attribute == 0) {
     return nullptr;

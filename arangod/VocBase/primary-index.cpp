@@ -168,13 +168,13 @@ void TRI_DestroyPrimaryIndex (TRI_primary_index_t* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_LookupByKeyPrimaryIndex (TRI_primary_index_t* idx,
-                                   void const* key) {
+                                   char const* key) {
   if (idx->_nrUsed == 0) {
     return nullptr;
   }
 
   // compute the hash
-  uint64_t const hash = TRI_FnvHashString((char const*) key);
+  uint64_t const hash = TRI_HashKeyPrimaryIndex(key);
   uint64_t const n = idx->_nrAlloc;
   uint64_t i, k;
 
@@ -183,9 +183,9 @@ void* TRI_LookupByKeyPrimaryIndex (TRI_primary_index_t* idx,
   TRI_ASSERT_EXPENSIVE(n > 0);
 
   // search the table
-  for (; i < n && idx->_table[i] != nullptr && IsDifferentHashElement((char const*) key, hash, idx->_table[i]); ++i);
+  for (; i < n && idx->_table[i] != nullptr && IsDifferentHashElement(key, hash, idx->_table[i]); ++i);
   if (i == n) {
-    for (i = 0; i < k && idx->_table[i] != nullptr && IsDifferentHashElement((char const*) key, hash, idx->_table[i]); ++i);
+    for (i = 0; i < k && idx->_table[i] != nullptr && IsDifferentHashElement(key, hash, idx->_table[i]); ++i);
   }
 
   TRI_ASSERT_EXPENSIVE(i < n);
@@ -246,17 +246,17 @@ int TRI_InsertKeyPrimaryIndex (TRI_primary_index_t* idx,
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_RemoveKeyPrimaryIndex (TRI_primary_index_t* idx,
-                                 void const* key) {
-  uint64_t const hash = TRI_FnvHashString((char const*) key);
+                                 char const* key) {
+  uint64_t const hash = TRI_HashKeyPrimaryIndex(key);
   uint64_t const n = idx->_nrAlloc;
   uint64_t i, k;
 
   i = k = hash % n;
 
   // search the table
-  for (; i < n && idx->_table[i] != nullptr && IsDifferentHashElement((char const*) key, hash, idx->_table[i]); ++i);
+  for (; i < n && idx->_table[i] != nullptr && IsDifferentHashElement(key, hash, idx->_table[i]); ++i);
   if (i == n) {
-    for (i = 0; i < k && idx->_table[i] != nullptr && IsDifferentHashElement((char const*) key, hash, idx->_table[i]); ++i);
+    for (i = 0; i < k && idx->_table[i] != nullptr && IsDifferentHashElement(key, hash, idx->_table[i]); ++i);
   }
 
   TRI_ASSERT_EXPENSIVE(i < n);

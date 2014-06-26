@@ -6,10 +6,6 @@
       mandatory = '*';
     }
 
-    var disableSubmitOnEnterString = '';
-    if (disableSubmitOnEnter) {
-      disableSubmitOnEnterString = 'onkeypress="event.stopPropagation()"';
-    }
     %>
       <tr class="tableRow" id="<%='row_' + row.id%>">
         <th class="collectionTh"><%=row.label%><%=mandatory%>:</th>
@@ -18,12 +14,12 @@
             switch(row.type) {
               case "text":
           %>
-          <input <%=disableSubmitOnEnterString%> type="text" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+          <input type="text" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
           <%
               break;
             case "password":
           %>
-          <input <%=disableSubmitOnEnterString%> type="password" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+          <input type="password" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
           <%
               break;
             case "readonly":
@@ -41,7 +37,7 @@
                   disabled = 'disabled';
                 }
           %>
-          <input <%=disableSubmitOnEnterString%> type="checkbox" id="<%=row.id%>" value="<%=row.value%>" <%=checked%> <%=disabled%>></input>
+          <input type="checkbox" id="<%=row.id%>" value="<%=row.value%>" <%=checked%> <%=disabled%>></input>
           <%
               break;
               case "select":
@@ -59,7 +55,7 @@
               break;
               case "select2":
           %>
-          <input <%=disableSubmitOnEnterString%> type="hidden" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
+          <input type="hidden" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>"></input>
           <% if (row.addAdd) {%>
             <button id="<%='addAfter_' + row.id%>" class="graphViewer-icon-button gv-icon-small add"></button>
           <% } %>
@@ -89,7 +85,7 @@
     <tbody>
       <%
       _.each(content, function(row) {
-        createTR(row, disableSubmitOnEnter);
+        createTR(row);
       });
       %>
 
@@ -111,7 +107,7 @@
               <tbody>
                 <%
                 _.each(advancedContent.content, function(row) {
-                  createTR(row, disableSubmitOnEnter);
+                  createTR(row);
                 });
                 %>
               </tbody>

@@ -478,7 +478,6 @@ bool CollectorThread::processQueuedOperations () {
 
         _numPendingOperations -= numOperations;
 
-
         // delete the object
         delete (*it2);
 
@@ -652,16 +651,11 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
     // finally update all datafile statistics
     LOG_TRACE("updating datafile statistics for collection '%s'", document->_info._name);
     updateDatafileStatistics(document, cache);
-
-    // TODO: the following assertion is only true in a running system
-    // if we just started the server, we don't know how many uncollected operations we have!!
-    // TRI_ASSERT(document->_uncollectedLogfileEntries >= cache->totalOperationsCount);
+        
     document->_uncollectedLogfileEntries -= cache->totalOperationsCount;
     if (document->_uncollectedLogfileEntries < 0) {
       document->_uncollectedLogfileEntries = 0;
     }
-
-    cache->freeBarriers();
 
     res = TRI_ERROR_NO_ERROR;
   }
@@ -866,7 +860,6 @@ int CollectorThread::transferMarkers (Logfile* logfile,
 
   if (cache != nullptr) {
     // prevent memleak
-    cache->freeBarriers();
     delete cache;
   }
 
@@ -1261,10 +1254,10 @@ char* CollectorThread::nextFreeMarkerPosition (TRI_document_collection_t* docume
 
       // journal is full, close it and sync
       LOG_DEBUG("closing full journal '%s'", datafile->getName(datafile));
-      TRI_CloseJournalDocumentCollection(document, i);
+      TRI_CloseDatafileDocumentCollection(document, i, false);
     }
 
-    TRI_datafile_t* datafile = TRI_CreateJournalDocumentCollection(document, tick, targetSize);
+    TRI_datafile_t* datafile = TRI_CreateDatafileDocumentCollection(document, tick, targetSize, false);
 
     if (datafile == nullptr) {
       int res = TRI_errno();
@@ -1294,7 +1287,13 @@ leave:
       if (! _inRecovery) {
         // we only need the barriers when we are outside the recovery
         // the compactor will not run during recovery
-        cache->addBarrier(TRI_CreateBarrierElement(&document->_barrierList));
+        TRI_barrier_t* barrier = TRI_CreateBarrierElement(&document->_barrierList);
+        
+        if (barrier == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
+
+        cache->addBarrier(barrier);
       }
     }
   }
