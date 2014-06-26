@@ -478,7 +478,6 @@ bool CollectorThread::processQueuedOperations () {
 
         _numPendingOperations -= numOperations;
 
-
         // delete the object
         delete (*it2);
 
@@ -652,16 +651,11 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
     // finally update all datafile statistics
     LOG_TRACE("updating datafile statistics for collection '%s'", document->_info._name);
     updateDatafileStatistics(document, cache);
-
-    // TODO: the following assertion is only true in a running system
-    // if we just started the server, we don't know how many uncollected operations we have!!
-    // TRI_ASSERT(document->_uncollectedLogfileEntries >= cache->totalOperationsCount);
+        
     document->_uncollectedLogfileEntries -= cache->totalOperationsCount;
     if (document->_uncollectedLogfileEntries < 0) {
       document->_uncollectedLogfileEntries = 0;
     }
-
-    cache->freeBarriers();
 
     res = TRI_ERROR_NO_ERROR;
   }
@@ -866,7 +860,6 @@ int CollectorThread::transferMarkers (Logfile* logfile,
 
   if (cache != nullptr) {
     // prevent memleak
-    cache->freeBarriers();
     delete cache;
   }
 

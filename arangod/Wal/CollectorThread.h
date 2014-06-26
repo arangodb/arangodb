@@ -106,6 +106,7 @@ namespace triagens {
         if (operations != nullptr) {
           delete operations;
         }
+        freeBarriers();
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -125,6 +126,7 @@ namespace triagens {
         for (auto it = barriers.begin(); it != barriers.end(); ++it) {
           TRI_FreeBarrier((*it));
         }
+
         barriers.clear();
       }
 
