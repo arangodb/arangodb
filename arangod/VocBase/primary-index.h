@@ -32,6 +32,7 @@
 #define ARANGODB_VOC_BASE_PRIMARY__INDEX_H 1
 
 #include "BasicsC/common.h"
+#include "BasicsC/hashes.h"
 #include "BasicsC/locks.h"
 
 struct TRI_doc_mptr_t;
@@ -73,11 +74,19 @@ void TRI_DestroyPrimaryIndex (TRI_primary_index_t*);
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief hash the key
+////////////////////////////////////////////////////////////////////////////////
+  
+static inline uint64_t TRI_HashKeyPrimaryIndex (char const* key) {
+  return TRI_FnvHashString(key);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_LookupByKeyPrimaryIndex (TRI_primary_index_t*,
-                                   void const* key);
+                                   char const* key);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an key/element to the index
@@ -93,7 +102,7 @@ int TRI_InsertKeyPrimaryIndex (TRI_primary_index_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 void* TRI_RemoveKeyPrimaryIndex (TRI_primary_index_t*,
-                                 void const* key);
+                                 char const* key);
 
 #endif
 

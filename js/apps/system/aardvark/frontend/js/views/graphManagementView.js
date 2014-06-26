@@ -170,31 +170,31 @@
         collection,
         from,
         to,
-        i,
-        id,
-        definitions;
+        index,
+        edgeDefinitionElements;
 
-      definitions = $("tr[id*='newEdgeDefinitions']");
-      for (i = 0 ; i < definitions.length ; i++) {
-        id = definitions[i].id.split("row_newEdgeDefinitions")[1];
-        if ($('#s2id_fromCollections' + id) &&
-            _.pluck($('#s2id_fromCollections'  + id).select2("data"), "text") &&
-            $('#newEdgeDefinitions'  + id) &&
-            $('#newEdgeDefinitions'  + id).val() &&
-            $('#s2id_toCollections'  + id) &&
-            _.pluck($('#s2id_toCollections' + id).select2("data"), "text") ) {
-          from = _.pluck($('#s2id_fromCollections'  + id).select2("data"), "text");
-          to = _.pluck($('#s2id_toCollections'  + id).select2("data"), "text");
-          collection = $('#newEdgeDefinitions'  + id).val();
-          edgeDefinitions.push(
-            {
-              collection: collection,
-              from: from,
-              to: to
+
+      edgeDefinitionElements = $('[id^=s2id_newEdgeDefinitions]').toArray();
+      edgeDefinitionElements.forEach(
+        function(eDElement) {
+          index = $(eDElement).attr("id");
+          index = index.replace("s2id_newEdgeDefinitions", "");
+          collection = _.pluck($('#s2id_newEdgeDefinitions' + index).select2("data"), "text")[0];
+          if (collection && collection !== "") {
+            from = _.pluck($('#s2id_newFromCollections' + index).select2("data"), "text");
+            to = _.pluck($('#s2id_newToCollections' + index).select2("data"), "text");
+            if (from !== 1 && to !== 1) {
+              edgeDefinitions.push(
+                {
+                  collection: collection,
+                  from: from,
+                  to: to
+                }
+              );
             }
-          );
+          }
         }
-      }
+      );
 
       if (!name) {
         arangoHelper.arangoNotification(

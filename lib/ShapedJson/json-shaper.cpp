@@ -128,7 +128,7 @@ static bool EqualPidKeyAttributePath (TRI_associative_synced_t* array, void cons
 /// @brief looks up an attribute path by identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_shape_path_t const* LookupPidAttributePath (TRI_shaper_t* shaper, TRI_shape_pid_t pid) {
+static TRI_shape_path_t const* LookupAttributePathByPid (TRI_shaper_t* shaper, TRI_shape_pid_t pid) {
   return static_cast<TRI_shape_path_t const*>(TRI_LookupByKeyAssociativeSynced(&shaper->_attributePathsByPid, &pid));
 }
 
@@ -182,7 +182,8 @@ static bool EqualNameKeyAttributePath (TRI_associative_synced_t* array, void con
 static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
                                                     char const* name,
                                                     bool create,
-                                                    bool isLocked) {
+                                                    bool isLocked,
+                                                    bool isTemporary) {
   TRI_shape_aid_t* aids;
   TRI_shape_path_t* result;
   size_t count;
@@ -245,7 +246,7 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
 
       if (ptr != prev) {
         if (create) {
-          aids[count++] = shaper->findOrCreateAttributeByName(shaper, prev);
+          aids[count++] = shaper->findOrCreateAttributeByName(shaper, prev, isTemporary);
         }
         else {
           aids[count] = shaper->lookupAttributeByName(shaper, prev);
@@ -304,8 +305,11 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
 
 static TRI_shape_pid_t FindOrCreateAttributePathByName (TRI_shaper_t* shaper,
                                                         char const* name,
-                                                        bool isLocked) {
-  TRI_shape_path_t const* path = FindShapePathByName(shaper, name, true, isLocked);
+                                                        bool isLocked,
+                                                        bool isTemporary) {
+
+  // TODO: is isTemporary always true?
+  TRI_shape_path_t const* path = FindShapePathByName(shaper, name, true, isLocked, isTemporary);
 
   return path == nullptr ? 0 : path->_pid;
 }
@@ -316,7 +320,9 @@ static TRI_shape_pid_t FindOrCreateAttributePathByName (TRI_shaper_t* shaper,
 
 static TRI_shape_pid_t LookupAttributePathByName (TRI_shaper_t* shaper,
                                                   char const* name) {
-  TRI_shape_path_t const* path = FindShapePathByName(shaper, name, false, true);
+
+  // do not create an unknown attribute (therefore isTemporary will be ignored)
+  TRI_shape_path_t const* path = FindShapePathByName(shaper, name, false, true, false);
 
   return path == nullptr ? 0 : path->_pid;
 }
@@ -385,7 +391,7 @@ int TRI_InitShaper (TRI_shaper_t* shaper, TRI_memory_zone_t* zone) {
 
   shaper->_nextPid = 1;
 
-  shaper->lookupAttributePathByPid = LookupPidAttributePath;
+  shaper->lookupAttributePathByPid = LookupAttributePathByPid;
   shaper->findOrCreateAttributePathByName = FindOrCreateAttributePathByName;
   shaper->lookupAttributePathByName = LookupAttributePathByName;
 
