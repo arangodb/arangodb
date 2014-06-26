@@ -20,7 +20,7 @@
 
     addNewGraph: function(e) {
       e.preventDefault();
-      this.createNewGraphModal();
+      this.createNewGraphModal2();
     },
 
     deleteGraph: function(e) {
@@ -161,23 +161,39 @@
         vertexCollections = _.pluck($('#newVertexCollections').select2("data"), "text"),
         edgeDefinitions = [],
         self = this,
-        hasNext = true,
+        index = 1,
         collection,
         from,
-        to;
+        to,
+        searchForNext = true;
 
-      collection = $('#newEdgeDefinitions1').val();
-      if (collection !== "") {
-        from = _.pluck($('#s2id_fromCollections1').select2("data"), "text");
-        to = _.pluck($('#s2id_toCollections1').select2("data"), "text");
-        edgeDefinitions.push(
-          {
-            collection: collection,
-            from: from,
-            to: to
+
+      while(searchForNext) {
+        console.log("while");
+
+        collection = $('#newEdgeDefinitions' + index).val();
+        if (collection !== "") {
+          from = _.pluck($('#s2id_fromCollections' + index).select2("data"), "text");
+          console.log("from");
+          console.log(from);
+          to = _.pluck($('#s2id_toCollections' + index).select2("data"), "text");
+          if (from !== 1 && to !== 1) {
+            edgeDefinitions.push(
+              {
+                collection: collection,
+                from: from,
+                to: to
+              }
+            );
           }
-        );
+        } else {
+          searchForNext = false
+        }
+        index++;
       }
+
+
+
 
       if (!name) {
         arangoHelper.arangoNotification(
