@@ -648,7 +648,8 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t*)
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_DropIndexDocumentCollection (TRI_document_collection_t*,
-                                      TRI_idx_iid_t);
+                                      TRI_idx_iid_t,
+                                      bool);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    CAP CONSTRAINT

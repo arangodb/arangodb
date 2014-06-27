@@ -1453,7 +1453,8 @@ static int OpenIteratorHandleShapeMarker (TRI_df_marker_t const* marker,
                                           TRI_datafile_t* datafile,
                                           open_iterator_state_t* state) {
   TRI_document_collection_t* document = state->_document;
-  int res = TRI_InsertShapeVocShaper(document->getShaper(), marker);  // ONLY IN OPENITERATOR, PROTECTED by fake trx from above
+
+  int res = TRI_InsertShapeVocShaper(document->getShaper(), marker, true);  // ONLY IN OPENITERATOR, PROTECTED by fake trx from above
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (state->_fid != datafile->_fid) {
@@ -1479,7 +1480,7 @@ static int OpenIteratorHandleAttributeMarker (TRI_df_marker_t const* marker,
                                               open_iterator_state_t* state) {
   TRI_document_collection_t* document = state->_document;
 
-  int res = TRI_InsertAttributeVocShaper(document->getShaper(), marker);   // ONLY IN OPENITERATOR, PROTECTED by fake trx from above
+  int res = TRI_InsertAttributeVocShaper(document->getShaper(), marker, true);   // ONLY IN OPENITERATOR, PROTECTED by fake trx from above
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (state->_fid != datafile->_fid) {
@@ -3315,7 +3316,8 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t* 
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document,
-                                      TRI_idx_iid_t iid) {
+                                      TRI_idx_iid_t iid,
+                                      bool writeMarker) {
   if (iid == 0) {
     // invalid index id or primary index
     return true;
@@ -3371,26 +3373,28 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document,
 
     TRI_FreeIndex(found);
 
-    int res = TRI_ERROR_NO_ERROR;
+    if (writeMarker) {
+      int res = TRI_ERROR_NO_ERROR;
 
-    try {
-      triagens::wal::DropIndexMarker marker(vocbase->_id, document->_info._cid, iid);
-      triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
+      try {
+        triagens::wal::DropIndexMarker marker(vocbase->_id, document->_info._cid, iid);
+        triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
 
-      if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
+        if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+          THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
+        }
+
+        return true;
+      }
+      catch (triagens::arango::Exception const& ex) {
+        res = ex.code();
+      }
+      catch (...) {
+        res = TRI_ERROR_INTERNAL;
       }
 
-      return true;
+      LOG_WARNING("could not save index drop marker in log: %s", TRI_errno_string(res));
     }
-    catch (triagens::arango::Exception const& ex) {
-      res = ex.code();
-    }
-    catch (...) {
-      res = TRI_ERROR_INTERNAL;
-    }
-
-    LOG_WARNING("could not save index drop marker in log: %s", TRI_errno_string(res));
 
     // TODO: what to do here?
     return result;
@@ -3655,7 +3659,7 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
 
   if (idx != nullptr) {
     if (created) {
-      int res = TRI_SaveIndex(document, idx);
+      int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = nullptr;
@@ -4063,7 +4067,7 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
 
   if (idx != nullptr) {
     if (created) {
-      int res = TRI_SaveIndex(document, idx);
+      int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = nullptr;
@@ -4107,7 +4111,7 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
 
   if (idx != nullptr) {
     if (created) {
-      int res = TRI_SaveIndex(document, idx);
+      int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = nullptr;
@@ -4305,7 +4309,7 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* d
 
   if (idx != nullptr) {
     if (created) {
-      int res = TRI_SaveIndex(document, idx);
+      int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = nullptr;
@@ -4493,7 +4497,7 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
 
   if (idx != nullptr) {
     if (created) {
-      int res = TRI_SaveIndex(document, idx);
+      int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = nullptr;
@@ -4744,7 +4748,7 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
 
   if (idx != nullptr) {
     if (created) {
-      int res = TRI_SaveIndex(document, idx);
+      int res = TRI_SaveIndex(document, idx, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
         idx = nullptr;
@@ -4976,7 +4980,7 @@ TRI_index_t* TRI_EnsureBitarrayIndexDocumentCollection (TRI_document_collection_
 
   if (idx != nullptr) {
     if (created) {
-      int res = TRI_SaveIndex(document, idx);
+      int res = TRI_SaveIndex(document, idx, true);
 
       // ...........................................................................
       // If index could not be saved, report the error and return NULL
@@ -5200,7 +5204,7 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
                                             TRI_doc_update_policy_t const* policy,
                                             bool lock,
                                             bool forceSync) {
-
+  bool const freeMarker = (marker == nullptr);
   rid = GetRevisionId(rid);
 
   TRI_ASSERT(key != nullptr);
@@ -5223,6 +5227,7 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
                                              rid,
                                              TRI_MarkerIdTransaction(trxCollection->_transaction),
                                              std::string(key));
+
   }
 
   TRI_ASSERT(marker != nullptr);
@@ -5237,7 +5242,7 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 
     triagens::arango::CollectionWriteLocker collectionLocker(document, lock);
 
-    triagens::wal::DocumentOperation operation(marker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_REMOVE, rid);
+    triagens::wal::DocumentOperation operation(marker, freeMarker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_REMOVE, rid);
 
     res = LookupDocument(document, key, policy, header);
 
@@ -5299,6 +5304,8 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
                                             bool lock,
                                             bool forceSync,
                                             bool isRestore) {
+  
+  bool const freeMarker = (marker == nullptr);
 
   TRI_ASSERT(mptr != nullptr);
   mptr->setDataPtr(nullptr);  // PROTECTED by trx in trxCollection
@@ -5403,7 +5410,7 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 
     triagens::arango::CollectionWriteLocker collectionLocker(document, lock);
 
-    triagens::wal::DocumentOperation operation(marker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_INSERT, rid);
+    triagens::wal::DocumentOperation operation(marker, freeMarker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_INSERT, rid);
 
     TRI_IF_FAILURE("InsertDocumentNoHeader") {
       // test what happens if no header can be acquired
@@ -5453,6 +5460,7 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
                                             TRI_doc_update_policy_t const* policy,
                                             bool lock,
                                             bool forceSync) {
+  bool const freeMarker = (marker == nullptr);
 
   rid = GetRevisionId(rid);
 
@@ -5543,7 +5551,7 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
       }
     }
 
-    triagens::wal::DocumentOperation operation(marker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_UPDATE, rid);
+    triagens::wal::DocumentOperation operation(marker, freeMarker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_UPDATE, rid);
     operation.header = oldHeader;
     operation.init();
 

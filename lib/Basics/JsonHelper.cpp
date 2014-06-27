@@ -193,6 +193,16 @@ TRI_json_t* JsonHelper::fromString (std::string const& data) {
 /// @brief create JSON from string
 ////////////////////////////////////////////////////////////////////////////////
 
+TRI_json_t* JsonHelper::fromString (char const* data) {
+  TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data);
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create JSON from string
+////////////////////////////////////////////////////////////////////////////////
+
 TRI_json_t* JsonHelper::fromString (char const* data,
                                     size_t length) {
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data);
