@@ -19,7 +19,7 @@ If you want to inject a function as a dependency, you need to wrap it in a funct
 * *name*: the name under which the dependency will be available in the route handler.
 * *factory*: a function returning the dependency or an arbitrary value that will be passed as-is.
 
-@EXAMPLES
+*Examples*
 
 ```js
 function myFunc() {
@@ -50,7 +50,7 @@ Equivalent to calling *addInjector(name, value)* for each property of the object
 
 * *object*: an object mapping dependency names to dependency factories.
 
-@EXAMPLES
+*Examples*
 
 ```js
 function myFunc() {
@@ -69,3 +69,4 @@ controller.get('/some/route', function(request, response, injected) {
         fn: injected.fn.name // 'myFunc'
     });
 });
+```

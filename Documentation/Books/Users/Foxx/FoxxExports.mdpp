@@ -38,7 +38,7 @@ exports.model = Doodad;
 
 This module would then export the name "repo" bound to the variable *doodads* as well as the name "model" bound to the *Doodad* model.
 
-Note that the *applicationContext* is available to your Foxx exports just like in your Foxx controllers.
+**Note**: that the *applicationContext* is available to your Foxx exports just like in your Foxx controllers.
 
 **Warning**
 

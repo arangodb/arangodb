@@ -4,7 +4,9 @@
 
 To use this plugin, please require it first:
 
+```js
   FormatMiddleware = require("org/arangodb/foxx/template_middleware").FormatMiddleware;
+```
 
 This Middleware gives you Rails-like format handling via the *extension* of 
 the URL or the accept header. Say you request an URL like */people.json*:
@@ -19,8 +21,10 @@ an error is raised.
 
 Use it by calling:
 
-    FormatMiddleware = require('foxx').FormatMiddleware;
-    app.before(FormatMiddleware.new(['json']));
+```js
+FormatMiddleware = require('foxx').FormatMiddleware;
+app.before(FormatMiddleware.new(['json']));
+```
 
 In both forms you can give a default format as a second parameter, if no 
 format could be determined. If you give no *defaultFormat* this case will be 
@@ -30,18 +34,22 @@ handled as an error.
 
 To use this plugin, please require it first:
 
-  TemplateMiddleware = require("org/arangodb/foxx/template_middleware").TemplateMiddleware;
+```js
+TemplateMiddleware = require("org/arangodb/foxx/template_middleware").TemplateMiddleware;
+```
 
 The *TemplateMiddleware* can be used to give a Foxx.Controller the capability 
 of using templates. Currently you can only use Underscore Templates.  It 
 expects documents in the following form in this collection:
 
-    {
-      path: "high/way",
-      content: "hello <%= username %>",
-      contentType: "text/plain",
-      templateLanguage: "underscore"
-    }
+```js
+{
+  path: "high/way",
+  content: "hello <%= username %>",
+  contentType: "text/plain",
+  templateLanguage: "underscore"
+}
+```
 
 The *content* is the string that will be rendered by the template processor. 
 The *contentType* is the type of content that results from this call. And with 
@@ -51,35 +59,10 @@ one choice now: *underscore*.  Which would set the body of the response to
 *contentType* to *text/plain* in this case.  In addition to the attributes 
 you provided, you also have access to all your view helpers.
 
-!SUBSUBSECTION Initialize
+<!-- js/server/modules/org/arangodb/foxx/template_middleware.js -->
+!SUBSECTION Initialize
+@startDocuBlock JSF_foxx_TemplateMiddleware_initializer
 
-Initialize with the name of a collection or a collection and optionally a set of helper functions. Then use before to attach the initialized middleware to your Foxx.Controller
-
-*Examples*
-
-	templateMiddleware = new TemplateMiddleware("templates", {
-		uppercase: function (x) { return x.toUpperCase(); }
-	});
-	// or without helpers:
-	//templateMiddleware = new TemplateMiddleware("templates");
-	app.before(templateMiddleware);
-
-!SUBSUBSECTION Render
-
-`response.render(templatePath, data)`
-
-When the TemplateMiddleware is included, you will have access to the render function on the response object. If you call render, Controller will look into the this collection and search by the path attribute. It will then render the template with the given data.
-
-*Examples*
-
-	response.render("high/way", {username: 'Application'})
-
-<!--
-### Initialize
-
-@copydetails JSF_foxx_TemplateMiddleware_initializer
-
-### Render
-
-@copydetails JSF_foxx_TemplateMiddleware_response_render
--->
+<!-- js/server/modules/org/arangodb/foxx/template_middleware.js -->
+!SUBSECTION Render
+@startDocuBlock JSF_foxx_TemplateMiddleware_response_render
