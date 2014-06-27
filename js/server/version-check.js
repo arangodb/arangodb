@@ -719,7 +719,8 @@
           result = task.func();
         }
         catch (err) {
-          logger.error("Executing " + taskName + " failed with exception: " + String(err.stack || err));
+          logger.error("Executing " + taskName + " failed with exception: " + 
+                       String(err.stack || err));
         }
 
         if (result) {
