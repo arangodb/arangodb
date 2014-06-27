@@ -61,7 +61,6 @@
     * [Conventions](AqlExtending/Conventions.md)
     * [Registering Functions](AqlExtending/Functions.md)
   * [AQL Examples](AqlExamples/README.md)
-    * [Examples](AqlExamples/Examples.md)
     * [Collection based queries](AqlExamples/CollectionQueries.md)
     * [Projections and filters](AqlExamples/ProjectionsAndFilters.md)
     * [Joins](AqlExamples/Join.md)
@@ -78,7 +77,6 @@
   * [Edge Methods](Blueprint-Graphs/EdgeMethods.md)
 <!-- 15 -->
 * [Traversals](Traversals/README.md)
-  * [Starting from Scratch](Traversals/StartingFromScratch.md)
   * [Using Traversal Objects](Traversals/UsingTraversalObjects.md)
   * [Example Data](Traversals/ExampleData.md)
 <!-- 16 -->
