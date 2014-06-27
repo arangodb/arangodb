@@ -687,6 +687,25 @@ static bool StringifyWalMarkerDropIndex (TRI_replication_dump_t* dump,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a marker should be replicated
+////////////////////////////////////////////////////////////////////////////////
+     
+static inline bool MustReplicateWalMarkerType (TRI_df_marker_t const* marker) { 
+  return (marker->_type == TRI_WAL_MARKER_DOCUMENT ||
+          marker->_type == TRI_WAL_MARKER_EDGE ||
+          marker->_type == TRI_WAL_MARKER_REMOVE ||
+          marker->_type == TRI_WAL_MARKER_BEGIN_TRANSACTION ||
+          marker->_type == TRI_WAL_MARKER_COMMIT_TRANSACTION ||
+          marker->_type == TRI_WAL_MARKER_ABORT_TRANSACTION ||
+          marker->_type == TRI_WAL_MARKER_CREATE_COLLECTION ||
+          marker->_type == TRI_WAL_MARKER_DROP_COLLECTION ||
+          marker->_type == TRI_WAL_MARKER_RENAME_COLLECTION ||
+          marker->_type == TRI_WAL_MARKER_CHANGE_COLLECTION ||
+          marker->_type == TRI_WAL_MARKER_CREATE_INDEX ||
+          marker->_type == TRI_WAL_MARKER_DROP_INDEX);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief translate a marker type to a replication type
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -728,6 +747,7 @@ static TRI_replication_operation_e TranslateType (TRI_df_marker_t const* marker)
 
 static bool StringifyWalMarker (TRI_replication_dump_t* dump,
                                 TRI_df_marker_t const* marker) {
+  TRI_ASSERT_EXPENSIVE(MustReplicateWalMarkerType(marker));
     
   APPEND_STRING(dump->_buffer, "{\"tick\":\"");
   APPEND_UINT64(dump->_buffer, (uint64_t) marker->_tick);
@@ -738,12 +758,6 @@ static bool StringifyWalMarker (TRI_replication_dump_t* dump,
   bool result = true;
 
   switch (marker->_type) {
-    case TRI_WAL_MARKER_ATTRIBUTE:
-    case TRI_WAL_MARKER_SHAPE: {
-      TRI_ASSERT(false);
-      return false;
-    }
-
     case TRI_WAL_MARKER_DOCUMENT: {
       result = StringifyWalMarkerDocument(dump, marker);
       break;
@@ -795,6 +809,15 @@ static bool StringifyWalMarker (TRI_replication_dump_t* dump,
       result = StringifyWalMarkerDropIndex(dump, marker);
       break;
     }
+    
+    case TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION:
+    case TRI_WAL_MARKER_COMMIT_REMOTE_TRANSACTION:
+    case TRI_WAL_MARKER_ABORT_REMOTE_TRANSACTION:
+    case TRI_WAL_MARKER_ATTRIBUTE:
+    case TRI_WAL_MARKER_SHAPE: {
+      TRI_ASSERT(false);
+      return false;
+    }
   }
     
   APPEND_STRING(dump->_buffer, "}\n");
@@ -816,6 +839,8 @@ static TRI_voc_tick_t GetDatabaseId (TRI_df_marker_t const* marker) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_voc_tick_t GetDatabaseFromWalMarker (TRI_df_marker_t const* marker) {
+  TRI_ASSERT_EXPENSIVE(MustReplicateWalMarkerType(marker));
+
   switch (marker->_type) {
     case TRI_WAL_MARKER_ATTRIBUTE: 
       return GetDatabaseId<triagens::wal::attribute_marker_t>(marker);
@@ -897,25 +922,6 @@ static TRI_voc_tick_t GetCollectionFromWalMarker (TRI_df_marker_t const* marker)
       return 0;
     }
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a marker should be replicated
-////////////////////////////////////////////////////////////////////////////////
-     
-static inline bool MustReplicateWalMarkerType (TRI_df_marker_t const* marker) { 
-  return (marker->_type == TRI_WAL_MARKER_DOCUMENT ||
-          marker->_type == TRI_WAL_MARKER_EDGE ||
-          marker->_type == TRI_WAL_MARKER_REMOVE ||
-          marker->_type == TRI_WAL_MARKER_BEGIN_TRANSACTION ||
-          marker->_type == TRI_WAL_MARKER_COMMIT_TRANSACTION ||
-          marker->_type == TRI_WAL_MARKER_ABORT_TRANSACTION ||
-          marker->_type == TRI_WAL_MARKER_CREATE_COLLECTION ||
-          marker->_type == TRI_WAL_MARKER_DROP_COLLECTION ||
-          marker->_type == TRI_WAL_MARKER_RENAME_COLLECTION ||
-          marker->_type == TRI_WAL_MARKER_CHANGE_COLLECTION ||
-          marker->_type == TRI_WAL_MARKER_CREATE_INDEX ||
-          marker->_type == TRI_WAL_MARKER_DROP_INDEX);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
