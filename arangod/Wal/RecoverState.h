@@ -39,6 +39,7 @@
 #include "VocBase/vocbase.h"
 #include "Wal/Logfile.h"
 #include "Wal/Marker.h"
+#include <functional>
 
 struct TRI_server_s;
 

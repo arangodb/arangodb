@@ -3837,9 +3837,9 @@ static v8::Handle<v8::Value> JS_PropertiesWal (v8::Arguments const& argv) {
   result->Set(TRI_V8_STRING("logfileSize"), v8::Number::New(l->filesize()));
   result->Set(TRI_V8_STRING("historicLogfiles"), v8::Number::New(l->historicLogfiles()));
   result->Set(TRI_V8_STRING("reserveLogfiles"), v8::Number::New(l->reserveLogfiles()));
-  result->Set(TRI_V8_STRING("syncInterval"), v8::Number::New(l->syncInterval()));
-  result->Set(TRI_V8_STRING("throttleWait"), v8::Number::New(l->maxThrottleWait()));
-  result->Set(TRI_V8_STRING("throttleWhenPending"), v8::Number::New(l->throttleWhenPending()));
+  result->Set(TRI_V8_STRING("syncInterval"), v8::Number::New((double) l->syncInterval()));
+  result->Set(TRI_V8_STRING("throttleWait"), v8::Number::New((double) l->maxThrottleWait()));
+  result->Set(TRI_V8_STRING("throttleWhenPending"), v8::Number::New((double) l->throttleWhenPending()));
 
   return scope.Close(result);
 }
