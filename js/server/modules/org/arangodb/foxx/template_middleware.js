@@ -33,24 +33,24 @@ var TemplateMiddleware,
   _ = require("underscore");
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_TemplateMiddleware_initializer
-/// @brief The Template Middleware
+/// @startDocuBlock JSF_foxx_TemplateMiddleware_initializer
 ///
 /// Initialize with the name of a collection or a collection and optionally
 /// a set of helper functions.
-/// Then use `before` to attach the initialized middleware to your Foxx.Controller
+/// Then use *before* to attach the initialized middleware to your Foxx.Controller
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     templateMiddleware = new TemplateMiddleware("templates", {
-///       uppercase: function (x) { return x.toUpperCase(); }
-///     });
-///     // or without helpers:
-///     //templateMiddleware = new TemplateMiddleware("templates");
+/// ```js
+/// templateMiddleware = new TemplateMiddleware("templates", {
+///   uppercase: function (x) { return x.toUpperCase(); }
+/// });
+/// // or without helpers:
+/// //templateMiddleware = new TemplateMiddleware("templates");
 ///
-///     app.before(templateMiddleware);
-/// @endcode
+/// app.before(templateMiddleware);
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 TemplateMiddleware = function (templateCollection, helper) {
@@ -62,22 +62,22 @@ TemplateMiddleware = function (templateCollection, helper) {
     responseFunctions = {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_TemplateMiddleware_response_render
-/// @brief Render a template as the response
+/// @startDocuBlock JSF_foxx_TemplateMiddleware_response_render
 ///
-/// @FUN{response.render(@FA{templatePath}, @FA{data})}
+/// `response.render(templatePath, data)`
 ///
 /// When the TemplateMiddleware is included, you will have access to the
-/// `render` function on the response object.
+/// *render* function on the response object.
 /// If you call render, Controller will look into the this collection and
 /// search by the path attribute.  It will then render the template with the
 /// given data.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     response.render("high/way", {username: 'Application'})
-/// @endcode
+/// ```js
+/// response.render("high/way", {username: 'Application'})
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
       render: function (templatePath, data) {
