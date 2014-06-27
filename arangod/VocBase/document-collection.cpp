@@ -2859,11 +2859,9 @@ static TRI_json_t* ExtractFieldValues (TRI_json_t const* jsonIndex,
 
 static int FillIndex (TRI_document_collection_t* document,
                       TRI_index_t* idx) {
-  void** end;
-  void** ptr;
 
-  ptr = document->_primaryIndex._table;
-  end = ptr + document->_primaryIndex._nrAlloc;
+  void** ptr = document->_primaryIndex._table;
+  void** end = ptr + document->_primaryIndex._nrAlloc;
 
   if (idx->sizeHint != nullptr) {
     // give the index a size hint
