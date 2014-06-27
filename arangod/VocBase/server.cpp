@@ -741,7 +741,7 @@ static int OpenDatabases (TRI_server_t* server,
     }
 
     // should never have a duplicate database name
-    TRI_ASSERT(found == NULL);
+    TRI_ASSERT(found == nullptr);
 
     LOG_INFO("loaded database '%s' from '%s'",
              vocbase->_name,

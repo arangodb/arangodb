@@ -281,12 +281,9 @@ static void InitDatafile (TRI_datafile_t* datafile,
 
 static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
                                     TRI_voc_size_t vocSize) {
-  char* filename;
   char* oldname;
   char zero;
-  int fd;
   int res;
-  size_t maximalSize;
   void* data;
   void* mmHandle;
 
@@ -294,7 +291,7 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
   TRI_ASSERT(datafile->isPhysical(datafile));
 
   // use multiples of page-size
-  maximalSize = ((vocSize + sizeof(TRI_df_footer_marker_t) + PageSize - 1) / PageSize) * PageSize;
+  size_t maximalSize = ((vocSize + sizeof(TRI_df_footer_marker_t) + PageSize - 1) / PageSize) * PageSize;
 
   // sanity check
   if (sizeof(TRI_df_header_marker_t) + sizeof(TRI_df_footer_marker_t) > maximalSize) {
@@ -303,9 +300,9 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
   }
 
   // open the file
-  filename = TRI_Concatenate2String(datafile->_filename, ".new");
+  char* filename = TRI_Concatenate2String(datafile->_filename, ".new");
 
-  fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+  int fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
   if (fd < 0) {
     LOG_ERROR("cannot create new datafile '%s': '%s'", filename, TRI_last_error());
@@ -837,7 +834,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
 
       if (! ignoreErrors) {
         TRI_CLOSE(fd);
-        return NULL;
+        return nullptr;
       }
     }
   }
@@ -858,17 +855,17 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
     TRI_CLOSE(fd);
 
     LOG_ERROR("cannot memory map datafile '%s': %s", filename, TRI_errno_string(res));
-    return NULL;
+    return nullptr;
   }
 
   // create datafile structure
   TRI_datafile_t* datafile = static_cast<TRI_datafile_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_datafile_t), false));
 
-  if (datafile == NULL) {
+  if (datafile == nullptr) {
     TRI_UNMMFile(data, size, fd, &mmHandle);
     TRI_CLOSE(fd);
 
-    return NULL;
+    return nullptr;
   }
 
   InitDatafile(datafile,
@@ -907,25 +904,25 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
     LOG_ERROR("cannot create datafile, maximal size '%u' is too small", (unsigned int) maximalSize);
     TRI_set_errno(TRI_ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL);
 
-    return NULL;
+    return nullptr;
   }
 
   // create either an anonymous or a physical datafile
-  if (filename == NULL) {
+  if (filename == nullptr) {
 #ifdef TRI_HAVE_ANONYMOUS_MMAP
     datafile = TRI_CreateAnonymousDatafile(fid, maximalSize);
 #else
     // system does not support anonymous mmap
-    return NULL;
+    return nullptr;
 #endif
   }
   else {
     datafile = TRI_CreatePhysicalDatafile(filename, fid, maximalSize);
   }
 
-  if (datafile == NULL) {
+  if (datafile == nullptr) {
     // an error occurred during creation
-    return NULL;
+    return nullptr;
   }
 
 
@@ -942,7 +939,7 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
       datafile->destroy(datafile);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, datafile);
 
-      return NULL;
+      return nullptr;
     }
   }
 
@@ -981,14 +978,14 @@ TRI_datafile_t* TRI_CreateAnonymousDatafile (TRI_voc_fid_t fid,
   // TODO: find a good workaround for Windows
   fd = TRI_OPEN("/dev/zero", O_RDWR);
   if (fd == -1) {
-    return NULL;
+    return nullptr;
   }
 
   flags = MAP_PRIVATE;
 #endif
 
   // memory map the data
-  res = TRI_MMFile(NULL, maximalSize, PROT_WRITE | PROT_READ, flags, fd, &mmHandle, 0, &data);
+  res = TRI_MMFile(nullptr, maximalSize, PROT_WRITE | PROT_READ, flags, fd, &mmHandle, 0, &data);
 
 #ifdef MAP_ANONYMOUS
   // nothing to do
@@ -1002,21 +999,21 @@ TRI_datafile_t* TRI_CreateAnonymousDatafile (TRI_voc_fid_t fid,
     TRI_set_errno(res);
 
     LOG_ERROR("cannot memory map anonymous region: %s", TRI_last_error());
-    return NULL;
+    return nullptr;
   }
 
   // create datafile structure
-  datafile = (TRI_datafile_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_datafile_t), false);
+  datafile = static_cast<TRI_datafile_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_datafile_t), false));
 
-  if (datafile == NULL) {
+  if (datafile == nullptr) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
     LOG_ERROR("out of memory");
-    return NULL;
+    return nullptr;
   }
 
   InitDatafile(datafile,
-               NULL,
+               nullptr,
                fd,
                mmHandle,
                maximalSize,
@@ -1037,18 +1034,17 @@ TRI_datafile_t* TRI_CreatePhysicalDatafile (char const* filename,
                                             TRI_voc_fid_t fid,
                                             TRI_voc_size_t maximalSize) {
   TRI_datafile_t* datafile;
-  int fd;
   ssize_t res;
   void* data;
   void* mmHandle;
 
-  TRI_ASSERT(filename != NULL);
+  TRI_ASSERT(filename != nullptr);
 
-  fd = CreateSparseFile(filename, maximalSize);
+  int fd = CreateSparseFile(filename, maximalSize);
 
   if (fd < 0) {
     // an error occurred
-    return NULL;
+    return nullptr;
   }
 
   // memory map the data
@@ -1062,19 +1058,19 @@ TRI_datafile_t* TRI_CreatePhysicalDatafile (char const* filename,
     TRI_UnlinkFile(filename);
 
     LOG_ERROR("cannot memory map file '%s': '%s'", filename, TRI_errno_string((int) res));
-    return NULL;
+    return nullptr;
   }
 
 
   // create datafile structure
-  datafile = (TRI_datafile_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_datafile_t), false);
+  datafile = static_cast<TRI_datafile_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_datafile_t), false));
 
-  if (datafile == NULL) {
+  if (datafile == nullptr) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
     TRI_CLOSE(fd);
 
     LOG_ERROR("out of memory");
-    return NULL;
+    return nullptr;
   }
 
   InitDatafile(datafile,
