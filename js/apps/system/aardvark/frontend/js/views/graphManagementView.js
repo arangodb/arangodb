@@ -121,7 +121,7 @@
 
     saveEditedGraph: function() {
       var name = $("#editGraphName").html(),
-        vertexCollections = _.pluck($('#newVertexCollections').select2("data"), "text"),
+        editedVertexCollections = _.pluck($('#newVertexCollections').select2("data"), "text"),
         edgeDefinitions = [],
         newEdgeDefinitions = {},
         self = this,
@@ -138,8 +138,8 @@
           index = index.replace("s2id_newEdgeDefinitions", "");
           collection = _.pluck($('#s2id_newEdgeDefinitions' + index).select2("data"), "text")[0];
           if (collection && collection !== "") {
-            from = _.pluck($('#s2id_newFromCollections' + index).select2("data"), "text");
-            to = _.pluck($('#s2id_newToCollections' + index).select2("data"), "text");
+            from = _.pluck($('#s2id_fromCollections' + index).select2("data"), "text");
+            to = _.pluck($('#s2id_toCollections' + index).select2("data"), "text");
             if (from !== 1 && to !== 1) {
               var edgeDefinition = {
                 collection: collection,
@@ -159,11 +159,30 @@
       var currentOrphanage = graph.get("orphanCollections");
       var currentCollections = [];
 
+      //delete removed orphans
+      currentOrphanage.forEach(
+        function(oC) {
+          if (editedVertexCollections.indexOf(oC) === -1) {
+            graph.deleteVertexCollection(oC);
+          }
+        }
+      );
+
+      //add new orphans
+      editedVertexCollections.forEach(
+        function(vC) {
+          if (currentOrphanage.indexOf(vC) === -1) {
+            graph.addVertexCollection(vC);
+          }
+        }
+      );
+
 
       //evaluate all new, edited and deleted edge definitions
       var newEDs = [];
       var editedEDs = [];
       var deletedEDs = [];
+
 
       currentEdgeDefinitions.forEach(
         function(eD) {
@@ -185,6 +204,8 @@
           }
         }
       );
+
+
 
       newEDs.forEach(
         function(eD) {
@@ -309,8 +330,26 @@
 
     createEditGraphModal: function(name, edgeDefinitions, orphanCollections) {
       var buttons = [],
+        collList = [],
+        eCollList = [],
         tableContent = [],
+        collections = this.options.collectionCollection.models,
         maxIndex;
+
+      collections.forEach(function (c) {
+        if (c.get("isSystem")) {
+          return;
+        }
+        collList.push(c.id);
+        if (c.get('type') === "edge") {
+
+          eCollList.push(c.id);
+        }
+      });
+      this.counter = 0;
+      window.modalView.enableHotKeys = false;
+
+
       this.counter = 0;
       window.modalView.disableSubmitOnEnter = true;
 
@@ -335,9 +374,10 @@
                 "Some info for edge definitions",
                 "Edge definitions",
                 true,
+                false,
                 true,
-                true,
-                1
+                1,
+                eCollList
               )
             );
           } else {
@@ -351,7 +391,8 @@
                 true,
                 true,
                 false,
-                1
+                1,
+                eCollList
               )
             );
           }
@@ -365,7 +406,8 @@
               true,
               false,
               false,
-              10
+              10,
+              collList
             )
           );
           tableContent.push(
@@ -378,7 +420,8 @@
               true,
               false,
               false,
-              10
+              10,
+              collList
             )
           );
         }
@@ -391,7 +434,11 @@
           orphanCollections,
           "Some info for vertex collections",
           "Vertex Collections",
-          false
+          false,
+          false,
+          false,
+          10,
+          collList
         )
       );
       buttons.push(
@@ -403,7 +450,7 @@
 
 
       window.modalView.show(
-        "modalGraphTable.ejs", "Add new Graph", buttons, tableContent, null, this.events
+        "modalGraphTable.ejs", "Edit Graph", buttons, tableContent, null, this.events
       );
 
       var i;
@@ -527,8 +574,11 @@
     },
 
     createNewGraphModal: function() {
-      var buttons = [], collList = [], eCollList = [],
-        tableContent = [], collections = this.options.collectionCollection.models;
+      var buttons = [],
+        collList = [],
+        eCollList = [],
+        tableContent = [],
+        collections = this.options.collectionCollection.models;
 
       collections.forEach(function (c) {
         if (c.get("isSystem")) {
@@ -622,75 +672,6 @@
       );
       $('#row_fromCollections1').hide();
       $('#row_toCollections1').hide();
-    },
-
-    createEditGraphModal2: function(name, vertices, edgeDefinitions) {
-      var buttons = [],
-        tableContent = [];
-
-      this.counter = 0;
-
-      tableContent.push(
-        window.modalView.createReadOnlyEntry(
-          "graphName",
-          "Name",
-          name,
-          "The name to identify the graph. Has to be unique."
-        )
-      );
-      edgeDefinitions.forEach(function(ed) {
-        tableContent.push(
-          window.modalView.createReadOnlyEntry(
-            "edgeDefinitions" + this.counter,
-            "Edge definitions",
-            ed.collection,
-            "Some info for edge definitions"
-          )
-        );
-
-        tableContent.push(
-          window.modalView.createSelect2Entry(
-            "fromCollections" + this.counter,
-            "fromCollections",
-            ed.from,
-            "The collection that contain the start vertices of the relation.",
-            "",
-            true
-          )
-        );
-        tableContent.push(
-          window.modalView.createSelect2Entry(
-            "toCollections" + this.counter,
-            "toCollections",
-            ed.to,
-            "The collection that contain the end vertices of the relation.",
-            "",
-            true
-          )
-        );
-        this.counter++;
-      });
-
-      tableContent.push(
-        window.modalView.createSelect2Entry(
-          "vertexCollections",
-          "Vertex collections",
-          vertices,
-          "Some info for vertex collections",
-          "Vertex Collections",
-          false
-        )
-      );
-
-      buttons.push(
-        window.modalView.createDeleteButton("Delete", this.deleteGraph.bind(this))
-      );
-      buttons.push(
-        window.modalView.createNeutralButton("Save", this.deleteGraph.bind(this))
-      );
-
-      window.modalView.show("modalGraphTable.ejs", "Edit Graph", buttons, tableContent);
-
     }
 
   });
