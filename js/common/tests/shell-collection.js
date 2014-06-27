@@ -413,7 +413,7 @@ function CollectionSuite () {
 
       assertEqual(false, p.waitForSync);
       assertEqual(false, p.isVolatile);
-      assertEqual(1048576, p.journalSize);
+      /* assertEqual(1048576, p.journalSize); */
       assertEqual(true, p.doCompact);
 
       db._drop(cn);
@@ -464,7 +464,7 @@ function CollectionSuite () {
       var p = c1.properties();
 
       assertEqual(true, p.isVolatile);
-      assertEqual(1048576, p.journalSize);
+      /* assertEqual(1048576, p.journalSize); */
       assertEqual(false, p.doCompact);
       db._drop(cn);
     },
@@ -628,107 +628,6 @@ function CollectionSuite () {
       assertEqual(ArangoCollection.STATUS_LOADED, c1.status());
       assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
       assertEqual(0, c1.count());
-
-      db._drop(cn);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief figures
-////////////////////////////////////////////////////////////////////////////////
-
-    testFigures : function () {
-      var cn = "example";
-
-      db._drop(cn);
-      var c1 = db._create(cn);
-
-      c1.load();
-
-      var f = c1.figures();
-      assertEqual(0, f.datafiles.count);
-      assertEqual(0, f.compactors.count);
-      assertEqual(0, f.shapefiles.count);
-      assertEqual(0, f.shapefiles.fileSize);
-      assertEqual(0, f.alive.count);
-      assertEqual(0, f.alive.size);
-      assertEqual(0, f.dead.count);
-      assertEqual(0, f.dead.size);
-      assertEqual(0, f.dead.deletion);
-
-      var d1 = c1.save({ hello : 1 });
-
-      internal.wal.flush(true, true);
-      f = c1.figures();
-
-      assertEqual(0, f.datafiles.count);
-      assertEqual(0, f.datafiles.fileSize);
-      assertEqual(1, f.journals.count);
-      assertTrue(f.journals.fileSize > 0);
-      assertEqual(0, f.compactors.count);
-      assertEqual(0, f.shapefiles.count);
-      assertEqual(0, f.shapefiles.fileSize);
-      assertEqual(1, f.alive.count);
-      assertNotEqual(0, f.alive.size);
-      assertEqual(0, f.dead.count);
-      assertEqual(0, f.dead.size);
-      assertEqual(0, f.dead.deletion);
-
-      var d2 = c1.save({ hello : 2 });
-
-      internal.wal.flush(true, true);
-      f = c1.figures();
-
-      assertEqual(0, f.datafiles.count);
-      assertEqual(0, f.datafiles.fileSize);
-
-      assertEqual(1, f.journals.count);
-      assertTrue(f.journals.fileSize > 0);
-      assertEqual(2, f.alive.count);
-      assertNotEqual(0, f.alive.size);
-      assertEqual(0, f.dead.count);
-      assertEqual(0, f.dead.size);
-      assertEqual(0, f.dead.deletion);
-
-      c1.remove(d1);
-
-      internal.wal.flush(true, true);
-      f = c1.figures();
-
-      assertEqual(0, f.datafiles.count);
-      assertEqual(0, f.datafiles.fileSize);
-      assertEqual(1, f.journals.count);
-      assertTrue(f.journals.fileSize > 0);
-      assertEqual(1, f.alive.count);
-      assertNotEqual(0, f.alive.size);
-      assertEqual(1, f.dead.count);
-      assertNotEqual(0, f.dead.size);
-      assertEqual(1, f.dead.deletion);
-
-      c1.remove(d2);
-
-      internal.wal.flush(true, true);
-      f = c1.figures();
-
-      assertEqual(0, f.datafiles.count);
-      assertEqual(0, f.datafiles.fileSize);
-      assertEqual(1, f.journals.count);
-      assertTrue(f.journals.fileSize > 0);
-      assertEqual(0, f.alive.count);
-      assertEqual(0, f.alive.size);
-      assertEqual(2, f.dead.count);
-      assertNotEqual(0, f.dead.size);
-      assertEqual(2, f.dead.deletion);
-
-      var attributes = f.attributes.count;
-      var shapes = f.shapes.count;
-
-      c1.save({ b0rk : "abc" });
-
-      internal.wal.flush(true, true);
-      f = c1.figures();
-
-      assertEqual(attributes + 1, f.attributes.count);
-      assertEqual(shapes + 1, f.shapes.count);
 
       db._drop(cn);
     },

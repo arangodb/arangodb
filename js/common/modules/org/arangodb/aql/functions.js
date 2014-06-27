@@ -161,7 +161,7 @@ var stringifyFunction = function (code, name) {
 /// @fn JSF_aqlfunctions_unregister
 /// @brief delete an existing AQL user function
 /// @startDocuBlock aqlFunctionsUnregister
-/// `{aqlfunctions.unregister(name)`
+/// `aqlfunctions.unregister(name)`
 ///
 /// Unregisters an existing AQL user function, identified by the fully qualified
 /// function name.
@@ -171,9 +171,9 @@ var stringifyFunction = function (code, name) {
 ///
 /// @EXAMPLES
 ///
-/// @code
-/// arangosh> require("org/arangodb/aql/functions").unregister("myfunctions::temperature::celsiustofahrenheit");
-/// @endcode
+/// ```js
+///   require("org/arangodb/aql/functions").unregister("myfunctions::temperature::celsiustofahrenheit");
+/// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -215,11 +215,11 @@ var unregisterFunction = function (name) {
 ///
 /// @EXAMPLES
 ///
-/// @code
-/// arangosh> require("org/arangodb/aql/functions").unregisterGroup("myfunctions::temperature");
+/// ```js
+///   require("org/arangodb/aql/functions").unregisterGroup("myfunctions::temperature");
 ///
-/// arangosh> require("org/arangodb/aql/functions").unregisterGroup("myfunctions");
-/// @endcode
+///   require("org/arangodb/aql/functions").unregisterGroup("myfunctions");
+/// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -262,16 +262,16 @@ var unregisterFunctionsGroup = function (group) {
 /// The *isDeterministic* attribute can be used to specify whether the 
 /// function results are fully deterministic (i.e. depend solely on the input 
 /// and are the same for repeated calls with the same input values). It is not
-/// used at the moment but may be used for optimisations later.
+/// used at the moment but may be used for optimizations later.
 ///
 /// @EXAMPLES
 ///
-/// @code
-/// arangosh> require("org/arangodb/aql/functions").register("myfunctions::temperature::celsiustofahrenheit", 
-///                   function (celsius) {
-///                     return celsius * 1.8 + 32; 
-///                   });
-/// @endcode
+/// ```js
+///   require("org/arangodb/aql/functions").register("myfunctions::temperature::celsiustofahrenheit", 
+///   function (celsius) {
+///     return celsius * 1.8 + 32; 
+///   });
+/// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -357,21 +357,21 @@ var registerFunction = function (name, code, isDeterministic) {
 ///
 /// To list all available user functions:
 ///
-/// @code
-/// arangosh> require("org/arangodb/aql/functions").toArray();
-/// @endcode
+/// ```js
+///   require("org/arangodb/aql/functions").toArray();
+/// ```
 ///
 /// To list all available user functions in the *myfunctions* namespace:
 ///
-/// @code
-/// arangosh> require("org/arangodb/aql/functions").toArray("myfunctions");
-/// @endcode
+/// ```js
+///   require("org/arangodb/aql/functions").toArray("myfunctions");
+/// ```
 ///
 /// To list all available user functions in the *myfunctions::temperature* namespace:
 ///
-/// @code
-/// arangosh> require("org/arangodb/aql/functions").toArray("myfunctions::temperature");
-/// @endcode
+/// ```js
+///   require("org/arangodb/aql/functions").toArray("myfunctions::temperature");
+/// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   

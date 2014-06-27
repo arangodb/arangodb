@@ -326,6 +326,51 @@ function walSuite () {
       fig = c.figures();
       assertNotEqual("0", fig.lastTick);
       assertEqual(0, fig.uncollectedLogfileEntries);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief oversize marker
+////////////////////////////////////////////////////////////////////////////////
+
+    testOversizeMarkerAllowed : function () {
+      var i, value = "", doc = { _key: "foo", };
+
+      for (i = 0; i < 240; ++i) {
+        value += "the quick brown foxx jumped over the lazy dog.";
+      }
+
+      for (i = 0; i < 4000; ++i) {
+        doc["test" + i] = value; 
+      }
+
+      internal.wal.properties({ allowOversizeEntries: true });
+      var result = c.save(doc);
+      assertEqual("foo", result._key);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief oversize marker
+////////////////////////////////////////////////////////////////////////////////
+
+    testOversizeMarkerDisallowed : function () {
+      var i, value = "", doc = { };
+
+      for (i = 0; i < 240; ++i) {
+        value += "the quick brown foxx jumped over the lazy dog.";
+      }
+
+      for (i = 0; i < 4000; ++i) {
+        doc["test" + i] = value; 
+      }
+      
+      internal.wal.properties({ allowOversizeEntries: false });
+      try {
+        c.save(doc);
+        fail();
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_DOCUMENT_TOO_LARGE.code, err.errorNum);
+      }
     }
 
   };
