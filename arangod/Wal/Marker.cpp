@@ -856,10 +856,175 @@ AbortTransactionMarker::~AbortTransactionMarker () {
 
 #ifdef DEBUG_WAL
 void AbortTransactionMarker::dump () const {
-  transaction_commit_marker_t* m = reinterpret_cast<transaction_commit_marker_t*>(begin());
+  transaction_abort_marker_t* m = reinterpret_cast<transaction_abort_marker_t*>(begin());
 
   std::cout << "WAL TRANSACTION ABORT MARKER FOR DB " << m->_databaseId
             << ", TRANSACTION " << m->_transactionId
+            << ", SIZE: " << size()
+            << "\n";
+
+#ifdef DEBUG_WAL_DETAIL
+  dumpBinary();
+#endif
+}
+#endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      BeginRemoteTransactionMarker
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create marker
+////////////////////////////////////////////////////////////////////////////////
+
+BeginRemoteTransactionMarker::BeginRemoteTransactionMarker (TRI_voc_tick_t databaseId,
+                                                            TRI_voc_tid_t transactionId,
+                                                            TRI_voc_tid_t externalId)
+  : Marker(TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION, sizeof(transaction_remote_begin_marker_t)) {
+
+  transaction_remote_begin_marker_t* m = reinterpret_cast<transaction_remote_begin_marker_t*>(begin());
+
+  m->_databaseId    = databaseId;
+  m->_transactionId = transactionId;
+  m->_externalId    = externalId;
+
+#ifdef DEBUG_WAL
+  dump();
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy marker
+////////////////////////////////////////////////////////////////////////////////
+
+BeginRemoteTransactionMarker::~BeginRemoteTransactionMarker () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump marker
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef DEBUG_WAL
+void BeginRemoteTransactionMarker::dump () const {
+  transaction_remote_begin_marker_t* m = reinterpret_cast<transaction_remote_begin_marker_t*>(begin());
+
+  std::cout << "WAL REMOTE TRANSACTION BEGIN MARKER FOR DB " << m->_databaseId
+            << ", TRANSACTION " << m->_transactionId
+            << ", EXTERNAL ID " << m->_externalId
+            << ", SIZE: " << size()
+            << "\n";
+
+#ifdef DEBUG_WAL_DETAIL
+  dumpBinary();
+#endif
+}
+#endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                     CommitRemoteTransactionMarker
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create marker
+////////////////////////////////////////////////////////////////////////////////
+
+CommitRemoteTransactionMarker::CommitRemoteTransactionMarker (TRI_voc_tick_t databaseId,
+                                                              TRI_voc_tid_t transactionId,
+                                                              TRI_voc_tid_t externalId)
+  : Marker(TRI_WAL_MARKER_COMMIT_REMOTE_TRANSACTION, sizeof(transaction_remote_commit_marker_t)) {
+
+  transaction_remote_commit_marker_t* m = reinterpret_cast<transaction_remote_commit_marker_t*>(begin());
+
+  m->_databaseId    = databaseId;
+  m->_transactionId = transactionId;
+  m->_externalId    = externalId;
+
+#ifdef DEBUG_WAL
+  dump();
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy marker
+////////////////////////////////////////////////////////////////////////////////
+
+CommitRemoteTransactionMarker::~CommitRemoteTransactionMarker () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump marker
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef DEBUG_WAL
+void CommitRemoteTransactionMarker::dump () const {
+  transaction_remote_commit_marker_t* m = reinterpret_cast<transaction_remote_commit_marker_t*>(begin());
+
+  std::cout << "WAL REMOTE_TRANSACTION COMMIT MARKER FOR DB " << m->_databaseId
+            << ", TRANSACTION " << m->_transactionId
+            << ", EXTERNAL ID " << m->_externalId
+            << ", SIZE: " << size()
+            << "\n";
+
+#ifdef DEBUG_WAL_DETAIL
+  dumpBinary();
+#endif
+}
+#endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      AbortRemoteTransactionMarker
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create marker
+////////////////////////////////////////////////////////////////////////////////
+
+AbortRemoteTransactionMarker::AbortRemoteTransactionMarker (TRI_voc_tick_t databaseId,
+                                                            TRI_voc_tid_t transactionId,
+                                                            TRI_voc_tid_t externalId)
+  : Marker(TRI_WAL_MARKER_ABORT_REMOTE_TRANSACTION, sizeof(transaction_remote_abort_marker_t)) {
+
+  transaction_remote_abort_marker_t* m = reinterpret_cast<transaction_remote_abort_marker_t*>(begin());
+
+  m->_databaseId    = databaseId;
+  m->_transactionId = transactionId;
+  m->_externalId    = externalId;
+
+#ifdef DEBUG_WAL
+  dump();
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy marker
+////////////////////////////////////////////////////////////////////////////////
+
+AbortRemoteTransactionMarker::~AbortRemoteTransactionMarker () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dump marker
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef DEBUG_WAL
+void AbortRemoteTransactionMarker::dump () const {
+  transaction_remote_abort_marker_t* m = reinterpret_cast<transaction_remote_abort_marker_t*>(begin());
+
+  std::cout << "WAL REMOTE TRANSACTION ABORT MARKER FOR DB " << m->_databaseId
+            << ", TRANSACTION " << m->_transactionId
+            << ", EXTERNAL ID " << m->_externalId
             << ", SIZE: " << size()
             << "\n";
 

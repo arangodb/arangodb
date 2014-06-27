@@ -359,9 +359,10 @@ function CompactionSuite () {
 
       internal.wal.flush(true, true);
       fig = c1.figures();
+      var alive = fig["alive"]["size"];
       assertEqual(2, c1.count());
       assertEqual(2, fig["alive"]["count"]);
-      assertTrue(0 < fig["alive"]["size"]);
+      assertTrue(0 < alive);
       assertEqual(0, fig["dead"]["count"]);
       assertEqual(0, fig["dead"]["size"]);
       assertEqual(0, fig["dead"]["deletion"]);
@@ -370,11 +371,11 @@ function CompactionSuite () {
       assertEqual(0, fig["compactors"]["count"]);
 
       testHelper.rotate(c1);
-     
+    
       fig = c1.figures();
       assertEqual(2, c1.count());
       assertEqual(2, fig["alive"]["count"]);
-      assertTrue(0 < fig["alive"]["size"]);
+      assertEqual(alive, fig["alive"]["size"]);
       assertEqual(0, fig["dead"]["count"]);
       assertEqual(0, fig["dead"]["size"]);
       assertEqual(0, fig["dead"]["deletion"]);
@@ -389,12 +390,22 @@ function CompactionSuite () {
       assertEqual(0, c1.count());
       assertEqual(0, fig["alive"]["count"]);
       assertEqual(0, fig["alive"]["size"]);
-      assertEqual(2, fig["dead"]["count"]);
-      assertTrue(0 < fig["dead"]["size"]);
-      assertEqual(2, fig["dead"]["deletion"]);
+
+      if (fig.datafiles.count === 1) {
+        // compaction has already cleaned up
+        assertEqual(0, fig["dead"]["count"]);
+        assertEqual(0, fig["dead"]["size"]);
+        assertEqual(0, fig["dead"]["deletion"]);
+        assertEqual(1, fig["datafiles"]["count"]);
+      }
+      else {
+        // compaction has not yet cleaned up
+        assertEqual(2, fig["dead"]["count"]);
+        assertTrue(0 < fig["dead"]["size"]);
+        assertEqual(2, fig["dead"]["deletion"]);
+        assertEqual(2, fig["datafiles"]["count"]);
+      }
       assertEqual(0, fig["journals"]["count"]);
-      assertEqual(2, fig["datafiles"]["count"]);
-      assertEqual(0, fig["compactors"]["count"]);
 
       c1.drop();
     },

@@ -77,30 +77,33 @@
             break;
           case "POST":
             if (req.url.match(/_api\/cursor$/)) {
-              req.success({result:
-              [
-                [{
-                  vertex: node1,
-                  path: {
-                    edges: [],
-                    vertices: [
-                     node1
-                    ]
-                  }
-            
-                },{
-                  vertex: node2,
-                  path: {
-                    edges: [
-                      edge
-                    ],
-                    vertices: [
-                      node1,
-                      node2
-                    ]
-                  }
-                }]
-              ]});
+              req.success({
+                result: [
+                  [
+                    [{
+                      vertex: node1,
+                      path: {
+                        edges: [],
+                        vertices: [
+                         node1
+                        ]
+                      }
+                
+                    },{
+                      vertex: node2,
+                      path: {
+                        edges: [
+                          edge
+                        ],
+                        vertices: [
+                          node1,
+                          node2
+                        ]
+                      }
+                    }]
+                  ]
+                ]
+              });
             } else if (req.url.match(/_api\/gharial\/myGraph\/edge/)) {
               req.success({_id: "1-2"});
             } else {
@@ -520,7 +523,7 @@
                 inner.push(constructPath(ncol, ecol, nid, key));
               });
             }
-            return res;
+            return [res];
           };
           spyOn($, "ajax").andCallFake(function(req) {
             var urlParts = req.url.split("/"),

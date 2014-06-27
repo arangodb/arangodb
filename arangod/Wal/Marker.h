@@ -174,6 +174,36 @@ namespace triagens {
     };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief wal remote transaction begin marker
+////////////////////////////////////////////////////////////////////////////////
+
+    struct transaction_remote_begin_marker_t : TRI_df_marker_t {
+      TRI_voc_tick_t  _databaseId;
+      TRI_voc_tid_t   _transactionId;
+      TRI_voc_tid_t   _externalId;
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wal remote transaction commit marker
+////////////////////////////////////////////////////////////////////////////////
+
+    struct transaction_remote_commit_marker_t : TRI_df_marker_t {
+      TRI_voc_tick_t  _databaseId;
+      TRI_voc_tid_t   _transactionId;
+      TRI_voc_tid_t   _externalId;
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wal remote transaction abort marker
+////////////////////////////////////////////////////////////////////////////////
+
+    struct transaction_remote_abort_marker_t : TRI_df_marker_t {
+      TRI_voc_tick_t  _databaseId;
+      TRI_voc_tid_t   _transactionId;
+      TRI_voc_tid_t   _externalId;
+    };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief wal document marker
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -238,9 +268,7 @@ namespace triagens {
       protected:
 
         Marker& operator= (Marker const&) = delete;
-
         Marker (Marker&&) = delete;
-
         Marker (Marker const&) = delete;
 
         Marker (TRI_df_marker_type_e,
@@ -620,6 +648,64 @@ namespace triagens {
 
         void dump () const;
     };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      BeginRemoteTransactionMarker
+// -----------------------------------------------------------------------------
+
+    class BeginRemoteTransactionMarker : public Marker {
+
+      public:
+
+        BeginRemoteTransactionMarker (TRI_voc_tick_t,
+                                      TRI_voc_tid_t,
+                                      TRI_voc_tid_t);
+
+        ~BeginRemoteTransactionMarker ();
+
+      public:
+
+        void dump () const;
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                     CommitRemoteTransactionMarker
+// -----------------------------------------------------------------------------
+
+    class CommitRemoteTransactionMarker : public Marker {
+
+      public:
+
+        CommitRemoteTransactionMarker (TRI_voc_tick_t,
+                                       TRI_voc_tid_t,
+                                       TRI_voc_tid_t);
+
+        ~CommitRemoteTransactionMarker ();
+
+      public:
+
+        void dump () const;
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      AbortRemoteTransactionMarker
+// -----------------------------------------------------------------------------
+
+    class AbortRemoteTransactionMarker : public Marker {
+
+      public:
+
+        AbortRemoteTransactionMarker (TRI_voc_tick_t,
+                                      TRI_voc_tid_t,
+                                      TRI_voc_tid_t);
+
+        ~AbortRemoteTransactionMarker ();
+
+      public:
+
+        void dump () const;
+    };
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    DocumentMarker
