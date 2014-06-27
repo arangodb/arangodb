@@ -106,7 +106,8 @@ void TRI_doc_mptr_copy_t::setDataPtr (void const* d) {
 /// @brief create a document collection
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_document_collection_t::TRI_document_collection_t () {
+TRI_document_collection_t::TRI_document_collection_t () 
+  : _keyGenerator(nullptr) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
