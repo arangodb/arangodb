@@ -395,20 +395,17 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     bool SimpleHttpClient::readHeader () {
-      char* pos = (char*) memchr(_readBuffer.c_str(), '\n', _readBuffer.length());
+      size_t remain = _readBuffer.length();
+      char const* ptr = _readBuffer.c_str();
+      char const* pos = (char*) memchr(ptr, '\n', remain);
 
       while (pos) {
-        TRI_ASSERT(pos >= _readBuffer.c_str());
 
-        // size_t is unsigned, can never get < 0
-        size_t len = pos - _readBuffer.c_str();
-        string line(_readBuffer.c_str(), len);
-        _readBuffer.move_front(len + 1);
-
-        //printf("found header line %s\n", line.c_str());
-
-        if (line == "\r" || line == "") {
+        if (*ptr == '\r' || *ptr == '\0') {
           // end of header found
+          size_t len = pos - _readBuffer.c_str();
+          _readBuffer.move_front(len + 1);
+
           if (_result->isChunked()) {
             _state = IN_READ_CHUNKED_HEADER;
             return readChunkedHeader();
@@ -444,13 +441,24 @@ namespace triagens {
           break;
         }
         else {
-          _result->addHeaderField(line);
-        }
+          size_t len = pos - ptr;
+          _result->addHeaderField(ptr, len);
+          ptr += len + 1;
+        
+          TRI_ASSERT(remain >= (len + 1));
+          remain -= (len + 1);
 
-        pos = (char*) memchr(_readBuffer.c_str(), '\n', _readBuffer.length());
+          pos = (char*) memchr(ptr, '\n', remain);
+          if (pos == nullptr) {
+            // reached the end
+            _readBuffer.move_front((ptr - _readBuffer.c_str()) + 1);
+          } 
+        }
       }
+
       return true;
     }
+
 
     bool SimpleHttpClient::readBody () {
       if (_method == HttpRequest::HTTP_REQUEST_HEAD) {
