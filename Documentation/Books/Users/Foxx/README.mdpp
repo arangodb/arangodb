@@ -21,10 +21,10 @@ other technologies. A Foxx app provides one or more URLs, which can either
 be accessed directly from the browser or from a backend application written e.g. in
 Ruby or C#. Other features include:
 
-* **Routing:** Define arbitrary routes namespaced via the *Controllers*
-* **Accesses data:** Direct access to all data in ArangoDB using simple queries, AQL, traversals and more
-* **Manipulates data:** Create new or manipulate existing entries
-* Deliver **static files** like HTML pages, CSS or images directly
+* *Routing:* Define arbitrary routes namespaced via the *Controllers*
+* *Accesses data:* Direct access to all data in ArangoDB using simple queries, AQL, traversals and more
+* *Manipulates data:* Create new or manipulate existing entries
+* Deliver *static files* like HTML pages, CSS or images directly
 
 The typical request to a Foxx application will work as follows (only conceptually,
 a lot of the steps are cached in reality):
@@ -36,14 +36,14 @@ a lot of the steps are cached in reality):
 The handler will now parse the request. This includes determining all parameters
 from the body (which is typically JSON encoded) to the path parameters of the URL.
 It is then up to you to handle this request and generate a response. In this process
-you will probably access the database. This is done via the **Repository**: This is an
+you will probably access the database. This is done via the *Repository*: This is an
 entity that is responsible for a collection and specifically:
 
 1. Creating new entries in this collection
 2. Modify or delete existing entries in this collection
 3. Search for entries in this collection
 
-To represent an entry in this collection it will use a **Model**, which is a wrapper around
+To represent an entry in this collection it will use a *Model*, which is a wrapper around
 the raw data from the database. Here you can implement helper functions or simple access
 methods.
 
@@ -71,39 +71,45 @@ use the database's name as the directory name instead of *_system*.
 Finally, we can add a sub-directory *my_app* in the *_system* directory and should
 end up with the following directory layout (starting at */home/user* in our example):
 
-    apps/
-      databases/
-        _system/
-          my_app/
+```
+apps/
+  databases/
+    _system/
+      my_app/
+```
 
 In the *my_app* directory, create a file named *app.js* and save the following content
 in it:
 
-    (function() {
-        "use strict";
-    
-        var Foxx = require("org/arangodb/foxx"),
-            controller = new Foxx.Controller(applicationContext)
-    
-        controller.get("/hello/:name", function(req, res) {
-            res.set("Content-Type", "text/plain");
-            res.body = "Hello " + req.params("name");
-        }); 
-    
-    }());
+```js
+(function() {
+    "use strict";
+
+    var Foxx = require("org/arangodb/foxx"),
+        controller = new Foxx.Controller(applicationContext)
+
+    controller.get("/hello/:name", function(req, res) {
+        res.set("Content-Type", "text/plain");
+        res.body = "Hello " + req.params("name");
+    }); 
+
+}());
+```
 
 Beside the *app.js* we need a manifest file. In order to achieve that, we 
 create a file called *manifest.json* in our *my_app* directory with the 
 following content:
 
-    {
-      "name": "my_app",
-      "version": "0.0.1",
-      "author": "me and myself",
-      "controllers": {
-        "/": "app.js"
-      }
-    }
+```js
+{
+  "name": "my_app",
+  "version": "0.0.1",
+  "author": "me and myself",
+  "controllers": {
+    "/": "app.js"
+  }
+}
+```
 
 You **must** specify a name and a version number for your application, 
 otherwise it won't be loaded into ArangoDB.
@@ -111,12 +117,14 @@ otherwise it won't be loaded into ArangoDB.
 You should now have the following files and directories with your 
 application (starting at */home/user* in our example):
 
-    apps/
-      databases/
-        _system/
-          my_app/
-            manifest.json
-            app.js
+```js
+apps/
+  databases/
+    _system/
+      my_app/
+        manifest.json
+        app.js
+```
 
 This is your application, and you're ready to use it.
 
@@ -124,7 +132,9 @@ This is your application, and you're ready to use it.
 
 Start ArangoDB as follows:
 
-    $ arangod --javascript.dev-app-path /home/user/apps /tmp/fancy_db
+```js
+$ arangod --javascript.dev-app-path /home/user/apps /tmp/fancy_db
+```
 
 If you chose a different directory name, you need to replace */home/user/apps* 
 with the actual directory name of course. Replace */tmp/fancy_db* with the
@@ -139,19 +149,19 @@ Note: if you use the development mode for the first time or choose a different
 directory for *dev-app-path*, it may be necessary to start ArangoDB with the
 *--upgrade* option once. This will initialize the specified application directory.
 
-Note: the development mode is convenient when developing applications but the
+**Note**: the development mode is convenient when developing applications but the
 permanent reloading has an impact on performance. Therefore permanent reloading is
 only performed in development mode and not in production mode. Whenever you think 
 your application is ready for production, you can install it using the Foxx manager
 and avoid the overhead of reloading.
 
-Now point your browser to *http://localhost:8529/dev/my_app/hello/YourName* and you should 
+Now point your browser to *localhost:8529/dev/my_app/hello/YourName* and you should 
 see "Hello YourName". 
 
-Note: the above and all following examples assume that you are using the default 
+**Note**: the above and all following examples assume that you are using the default 
 database (*_system*).If you use a different database than *_system*, URLs must be 
 changed to include the database name, too. For example, if your database name is 
-*mydb*, the above URL changes to *http://localhost:8529/_db/mydb/dev/my_app/hello/YourName*. 
+*mydb*, the above URL changes to *localhost:8529/_db/mydb/dev/my_app/hello/YourName*. 
 For more information on how to access specific databases, please refer to 
 [Address of a Database](../HttpDatabase/README.md). 
 

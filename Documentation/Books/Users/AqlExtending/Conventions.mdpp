@@ -1,16 +1,18 @@
 !CHAPTER Conventions
 
-The *::* symbol is used inside AQL as the namespace separator. Using 
+The **::** symbol is used inside AQL as the namespace separator. Using 
 the namespace separator, users can create a multi-level hierarchy of 
 function groups if required.
 
 Examples:
 
-    RETURN myfunctions::myfunc()
+``` js
+RETURN myfunctions::myfunc()
 
-    RETURN myfunctions::math::random()
+RETURN myfunctions::math::random()
+```
 
-Note: As all function names in AQL, user function names are also
+**Note**: As all function names in AQL, user function names are also
 case-insensitive.
 
 Built-in AQL functions reside in the namespace *_aql*, which is also
@@ -38,5 +40,5 @@ to undefined behavior and should be avoided.
 
 Internally, user functions are stored in a system collection named
 *_aqlfunctions*. That means that by default they are excluded from dumps
-created with arangodump. To include AQL user functions in a dump, the
+created with [arangodump](../Arangodump/README.md). To include AQL user functions in a dump, the
 dump should be started with the option *--include-system-collections true*.
