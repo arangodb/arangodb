@@ -514,7 +514,8 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase (TRI_vocbase_t*,
 
 TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t*,
                                                 struct TRI_col_info_s*,
-                                                TRI_voc_cid_t cid);
+                                                TRI_voc_cid_t cid, 
+                                                bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unloads a (document) collection
@@ -529,7 +530,8 @@ int TRI_UnloadCollectionVocBase (TRI_vocbase_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DropCollectionVocBase (TRI_vocbase_t*,
-                               TRI_vocbase_col_t*);
+                               TRI_vocbase_col_t*,
+                               bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a (document) collection

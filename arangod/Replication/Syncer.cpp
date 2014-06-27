@@ -424,7 +424,7 @@ int Syncer::createCollection (TRI_json_t const* json,
     TRI_FreeString(TRI_CORE_MEM_ZONE, dirName);
   }
 
-  col = TRI_CreateCollectionVocBase(_vocbase, &params, cid);
+  col = TRI_CreateCollectionVocBase(_vocbase, &params, cid, true);
   TRI_FreeCollectionInfoOptions(&params);
 
   if (col == nullptr) {
@@ -455,7 +455,7 @@ int Syncer::dropCollection (TRI_json_t const* json,
     return TRI_ERROR_NO_ERROR;
   }
 
-  return TRI_DropCollectionVocBase(_vocbase, col);
+  return TRI_DropCollectionVocBase(_vocbase, col, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -492,7 +492,7 @@ int Syncer::createIndex (TRI_json_t const* json) {
     res = TRI_FromJsonIndexDocumentCollection(document, indexJson, &idx);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      res = TRI_SaveIndex(document, idx);
+      res = TRI_SaveIndex(document, idx, true);
     }
 
     res = trx.finish(res);
@@ -531,7 +531,7 @@ int Syncer::dropIndex (TRI_json_t const* json) {
 
     TRI_document_collection_t* document = guard.collection()->_collection;
 
-    bool result = TRI_DropIndexDocumentCollection(document, iid);
+    bool result = TRI_DropIndexDocumentCollection(document, iid, true);
 
     if (! result) {
       // TODO: index not found, should we care??

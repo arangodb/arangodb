@@ -3199,7 +3199,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
   TRI_voc_size_t effectiveSize = vocbase->_settings.defaultMaximalSize;
 
   // extract the name
-  const string name = TRI_ObjectToString(argv[0]);
+  string const name = TRI_ObjectToString(argv[0]);
 
   // extract the parameters
   TRI_col_info_t parameter;
@@ -3286,7 +3286,8 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
 
   TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase,
                                                                     &parameter,
-                                                                    0);
+                                                                    0, 
+                                                                    true);
 
   TRI_FreeCollectionInfoOptions(&parameter);
 
@@ -5879,7 +5880,7 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
     return scope.Close(DropVocbaseColCoordinator(collection));
   }
 
-  int res = TRI_DropCollectionVocBase(collection->_vocbase, collection);
+  int res = TRI_DropCollectionVocBase(collection->_vocbase, collection, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot drop collection");
@@ -6010,7 +6011,7 @@ static v8::Handle<v8::Value> JS_DropIndexVocbaseCol (v8::Arguments const& argv) 
   // inside a write transaction, write-lock is acquired by TRI_DropIndex...
   // .............................................................................
 
-  bool ok = TRI_DropIndexDocumentCollection(document, idx->_iid);
+  bool ok = TRI_DropIndexDocumentCollection(document, idx->_iid, true);
 
   // .............................................................................
   // outside a write transaction
@@ -9132,7 +9133,7 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
   string const name = TRI_ObjectToString(argv[0]);
 
   TRI_vocbase_t* database;
-  int res = TRI_CreateDatabaseServer((TRI_server_t*) v8g->_server, name.c_str(), &defaults, &database);
+  int res = TRI_CreateDatabaseServer(static_cast<TRI_server_t*>(v8g->_server), name.c_str(), &defaults, &database, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
@@ -9255,7 +9256,7 @@ static v8::Handle<v8::Value> JS_DropDatabase (v8::Arguments const& argv) {
   string const name = TRI_ObjectToString(argv[0]);
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
-  int res = TRI_DropDatabaseServer((TRI_server_t*) v8g->_server, name.c_str());
+  int res = TRI_DropDatabaseServer((TRI_server_t*) v8g->_server, name.c_str(), true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);

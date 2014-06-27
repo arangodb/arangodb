@@ -2064,8 +2064,8 @@ int TRI_StartServer (TRI_server_t* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitDatabasesServer (TRI_server_t* server) {
-  SignalUnloadAll(server);
-  WaitForUnloadAll(server);
+//  SignalUnloadAll(server);
+//  WaitForUnloadAll(server);
   InitAll(server);
 
   return TRI_ERROR_NO_ERROR;
@@ -2182,7 +2182,8 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
 int TRI_CreateDatabaseServer (TRI_server_t* server,
                               char const* name,
                               TRI_vocbase_defaults_t const* defaults,
-                              TRI_vocbase_t** database) {
+                              TRI_vocbase_t** database,
+                              bool writeMarker) {
 
   if (! TRI_IsAllowedNameVocBase(false, name)) {
     return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
@@ -2299,7 +2300,9 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
   TRI_UnlockMutex(&server->_createLock);
 
   // write marker into log
-  res = WriteCreateMarker(vocbase->_id, json);
+  if (writeMarker) {
+    res = WriteCreateMarker(vocbase->_id, json);
+  }
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
@@ -2429,13 +2432,13 @@ int TRI_DropCoordinatorDatabaseServer (TRI_server_t* server,
   return res;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an existing database
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DropDatabaseServer (TRI_server_t* server,
-                            char const* name) {
+                            char const* name,
+                            bool writeMarker) {
   if (TRI_EqualString(name, TRI_VOC_SYSTEM_DATABASE)) {
     // prevent deletion of system database
     return TRI_ERROR_FORBIDDEN;
@@ -2473,7 +2476,9 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
       TRI_PushBackVectorPointer(&server->_droppedDatabases, vocbase);
 
       // TODO: what to do in case of error?
-      WriteDropMarker(vocbase->_id);
+      if (writeMarker) {
+        WriteDropMarker(vocbase->_id);
+      }
     }
     else {
       // already deleted
@@ -2482,6 +2487,33 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
   }
 
   return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops an existing database
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_DropByIdDatabaseServer (TRI_server_t* server,
+                                TRI_voc_tick_t id,
+                                bool writeMarker) {
+  std::string name;
+  
+  {
+    DatabaseReadLocker locker(&server->_databasesLock);
+
+    size_t const n = server->_databases._nrAlloc;
+
+    for (size_t i = 0; i < n; ++i) {
+      TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
+
+      if (vocbase != nullptr && vocbase->_id == id) {
+        name = vocbase->_name;
+        break;
+      }
+    }
+  }
+  
+  return TRI_DropDatabaseServer(server, name.c_str(), writeMarker);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2586,6 +2618,26 @@ void TRI_ReleaseDatabaseServer (TRI_server_t* server,
                                 TRI_vocbase_t* vocbase) {
 
   TRI_ReleaseVocBase(vocbase);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a database by its id
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ExistsDatabaseByIdServer (TRI_server_t* server,
+                                   TRI_voc_tick_t id) {
+  DatabaseReadLocker locker(&server->_databasesLock);
+  size_t const n = server->_databases._nrAlloc;
+
+  for (size_t i = 0; i < n; ++i) {
+    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
+
+    if (vocbase != nullptr && vocbase->_id == id) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
