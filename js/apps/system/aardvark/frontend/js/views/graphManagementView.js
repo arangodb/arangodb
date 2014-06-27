@@ -14,7 +14,6 @@
     events: {
       "click #deleteGraph"                  : "deleteGraph",
       "click .icon_arangodb_settings2"      : "editGraph",
-      "click .icon_arangodb_info"           : "info",
       "click #createGraph"                  : "addNewGraph",
       "keyup #graphManagementSearchInput"   : "search",
       "click #graphManagementSearchSubmit"  : "search",
@@ -50,7 +49,7 @@
 
     deleteGraph: function(e) {
       var self = this;
-      var name = $('#editGraphName').html();
+      var name = $("#editGraphName")[0].value;
       this.collection.get(name).destroy({
         success: function() {
           self.updateGraphManagementView();
@@ -139,18 +138,6 @@
       );
     },
 
-    info : function(e) {
-      e.stopPropagation();
-      this.collection.fetch();
-      var graph = this.collection.findWhere(
-        {_key: this.evaluateGraphName($(e.currentTarget).attr("id"), '_info')}
-      );
-      this.createInfoGraphModal(
-        graph.get('_key'),
-        graph.get('vertices'),
-        graph.get('edges')
-      );
-    },
 
     saveEditedGraph: function() {
       var name = $("#editGraphName")[0].value,
@@ -535,39 +522,6 @@
         $('#row_fromCollections' + i).hide();
         $('#row_toCollections' + i).hide();
       }
-
-    },
-
-    createInfoGraphModal: function(name, vertices, edges) {
-      var buttons = [],
-        tableContent = [];
-
-      tableContent.push(
-        window.modalView.createReadOnlyEntry(
-          "infoGraphName",
-          "Name",
-          name,
-          false
-        )
-      );
-      tableContent.push(
-        window.modalView.createReadOnlyEntry(
-          "infoVertices",
-          "Vertices",
-          vertices,
-          false
-        )
-      );
-      tableContent.push(
-        window.modalView.createReadOnlyEntry(
-          "infoEdges",
-          "Edges",
-          edges,
-          false
-        )
-      );
-
-      window.modalView.show("modalTable.ejs", "Graph Properties", buttons, tableContent);
 
     },
 
