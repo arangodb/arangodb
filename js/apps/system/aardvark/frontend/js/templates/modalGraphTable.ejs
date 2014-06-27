@@ -1,10 +1,11 @@
 <script id="modalGraphTable.ejs" type="text/template">
   <%
-  var createTR = function(row) {
+  var createTR = function(row, disableSubmitOnEnter) {
     var mandatory = '';
     if (row.mandatory) {
       mandatory = '*';
     }
+
     %>
       <tr class="tableRow" id="<%='row_' + row.id%>">
         <th class="collectionTh"><%=row.label%><%=mandatory%>:</th>

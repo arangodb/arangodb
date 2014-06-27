@@ -210,6 +210,7 @@ unittests-recovery:
 	@echo "================================================================================"
 	@echo
 
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="no-journal"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="write-throttling"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="collector-oom"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="transaction-no-abort"
@@ -385,7 +386,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-attributes.js \
                @top_srcdir@/js/common/tests/shell-base64.js \
                @top_srcdir@/js/common/tests/shell-collection.js \
-               @top_srcdir@/js/common/tests/shell-collection-volatile.js \
+               @top_srcdir@/js/common/tests/shell-collection-volatile-noncluster.js \
                @top_srcdir@/js/common/tests/shell-crypto.js \
                @top_srcdir@/js/common/tests/shell-collection-noncluster.js \
                @top_srcdir@/js/common/tests/shell-database.js \
@@ -565,8 +566,8 @@ unittests-shell-server-ahuacatl:
 ### @brief SHELL CLIENT TESTS
 ################################################################################
 
-UNITTESTS_READONLY = $(addprefix --javascript.unit-tests ,@top_srcdir@/js/client/tests/shell-changeMode.js)
-UNITTESTS_NO_READONLY = $(addprefix --javascript.unit-tests ,@top_srcdir@/js/client/tests/shell-noChangeMode.js)
+UNITTESTS_READONLY = $(addprefix --javascript.unit-tests ,@top_srcdir@/js/client/tests/shell-changeMode-noncluster.js)
+UNITTESTS_NO_READONLY = $(addprefix --javascript.unit-tests ,@top_srcdir@/js/client/tests/shell-noChangeMode-noncluster.js)
 .PHONY: unittests-shell-client-readonly
 
 unittests-shell-client-readonly:

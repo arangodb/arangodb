@@ -151,7 +151,7 @@ static v8::Handle<v8::Object> CreateErrorObject (int errorNumber,
   errorObject->Set(v8::String::New("errorNum"), v8::Number::New(errorNumber));
   errorObject->Set(v8::String::New("errorMessage"), errorMessage);
 
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
   v8::Handle<v8::Value> proto = v8g->ArangoErrorTempl->NewInstance();
 
   if (! proto.IsEmpty()) {
@@ -191,6 +191,11 @@ static bool LoadJavaScriptFile (char const* filename,
 
     length += strlen(prologue) + strlen(epilogue);
     content = contentWrapper;
+  }
+ 
+  if (content == nullptr) {
+    LOG_TRACE("cannot load java script file '%s': %s", filename, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+    return false;
   }
 
   v8::Handle<v8::String> name = v8::String::New(filename);

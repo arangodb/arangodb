@@ -56,8 +56,24 @@ V8Job::V8Job (TRI_vocbase_t* vocbase,
     _vocbase(vocbase),
     _v8Dealer(v8Dealer),
     _command(command),
-    _parameters(parameters),
+    _parameters(nullptr),
     _canceled(0) {
+
+  if (parameters != nullptr) {
+    // create our own copy of the parameters
+    _parameters = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys a V8 job
+////////////////////////////////////////////////////////////////////////////////
+
+V8Job::~V8Job () {
+  if (_parameters != nullptr) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _parameters);
+    _parameters = nullptr;
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -76,7 +92,7 @@ Job::JobType V8Job::type () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-const string& V8Job::queue () {
+string const& V8Job::queue () {
   static const string queue = "STANDARD";
   return queue;
 }
@@ -90,11 +106,10 @@ Job::status_t V8Job::work () {
     return status_t(JOB_DONE);
   }
 
-  ApplicationV8::V8Context* context
-    = _v8Dealer->enterContext(_vocbase, 0, true, false);
+  ApplicationV8::V8Context* context = _v8Dealer->enterContext(_vocbase, nullptr, true, false);
 
   // note: the context might be 0 in case of shut-down
-  if (context == 0) {
+  if (context == nullptr) {
     return status_t(JOB_DONE);
   }
 
@@ -119,7 +134,7 @@ Job::status_t V8Job::work () {
     }
 
     v8::Handle<v8::Value> fArgs;
-    if (_parameters != 0) {
+    if (_parameters != nullptr) {
       fArgs = TRI_ObjectJson(_parameters);
     }
     else {

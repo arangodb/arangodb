@@ -229,7 +229,7 @@ static void InitDatafile (TRI_datafile_t* datafile,
 
   // filename is a string for physical datafiles, and NULL for anonymous regions
   // fd is a positive value for physical datafiles, and -1 for anonymous regions
-  if (filename == NULL) {
+  if (filename == nullptr) {
     TRI_ASSERT(fd == -1);
   }
   else {
@@ -712,6 +712,33 @@ static uint64_t GetNumericFilenamePart (const char* filename) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create the initial datafile header marker
+////////////////////////////////////////////////////////////////////////////////
+
+static int WriteInitialHeaderMarker (TRI_datafile_t* datafile,
+                                     TRI_voc_fid_t fid,
+                                     TRI_voc_size_t maximalSize) {
+  // create the header
+  TRI_df_header_marker_t header;
+  TRI_InitMarkerDatafile((char*) &header, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t));
+  header.base._tick = (TRI_voc_tick_t) fid;
+
+  header._version     = TRI_DF_VERSION;
+  header._maximalSize = maximalSize;
+  header._fid         = fid;
+
+  // reserve space and write header to file
+  TRI_df_marker_t* position;
+  int res = TRI_ReserveElementDatafile(datafile, header.base._size, &position, 0);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    res = TRI_WriteCrcElementDatafile(datafile, position, &header.base, false);
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief opens a datafile
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -730,7 +757,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
   void* mmHandle;
 
   // this function must not be called for non-physical datafiles
-  TRI_ASSERT(filename != NULL);
+  TRI_ASSERT(filename != nullptr);
 
   fid = GetNumericFilenamePart(filename);
 
@@ -745,7 +772,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
 
     LOG_ERROR("cannot open datafile '%s': '%s'", filename, TRI_last_error());
 
-    return NULL;
+    return nullptr;
   }
 
   // compute the size of the file
@@ -757,7 +784,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
 
     LOG_ERROR("cannot get status of datafile '%s': %s", filename, TRI_last_error());
 
-    return NULL;
+    return nullptr;
   }
 
   // check that file is not too small
@@ -769,7 +796,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
 
     LOG_ERROR("datafile '%s' is corrupt, size is only %u", filename, (unsigned int) size);
 
-    return NULL;
+    return nullptr;
   }
 
   // read header from file
@@ -782,7 +809,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
     LOG_ERROR("cannot read datafile header from '%s': %s", filename, TRI_last_error());
 
     TRI_CLOSE(fd);
-    return NULL;
+    return nullptr;
   }
 
   // check CRC
@@ -795,7 +822,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
 
     if (! ignoreErrors) {
       TRI_CLOSE(fd);
-      return NULL;
+      return nullptr;
     }
   }
 
@@ -905,7 +932,7 @@ TRI_datafile_t* TRI_CreateDatafile (char const* filename,
   datafile->_state = TRI_DF_STATE_WRITE;
 
   if (withInitialMarkers) {
-    int res = TRI_WriteInitialHeaderMarkerDatafile(datafile, fid, maximalSize);
+    int res = WriteInitialHeaderMarker(datafile, fid, maximalSize);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_ERROR("cannot write header to datafile '%s'", datafile->getName(datafile));
@@ -1089,36 +1116,34 @@ void TRI_FreeDatafile (TRI_datafile_t* datafile) {
 
 char const* TRI_NameMarkerDatafile (TRI_df_marker_t const* marker) {
   switch (marker->_type) {
-    case TRI_DOC_MARKER_KEY_DOCUMENT:
-      return "document";
-    case TRI_DOC_MARKER_KEY_EDGE:
-      return "edge";
-    case TRI_DOC_MARKER_KEY_DELETION:
-      return "deletion";
-    case TRI_DOC_MARKER_BEGIN_TRANSACTION:
-      return "begin transaction";
-    case TRI_DOC_MARKER_COMMIT_TRANSACTION:
-      return "commit transaction";
-    case TRI_DOC_MARKER_ABORT_TRANSACTION:
-      return "abort transaction";
-    case TRI_DOC_MARKER_PREPARE_TRANSACTION:
-      return "prepare transaction";
-
+    // general markers
     case TRI_DF_MARKER_HEADER:
     case TRI_COL_MARKER_HEADER:
       return "header";
     case TRI_DF_MARKER_FOOTER:
       return "footer";
+
+    // datafile markers
+    case TRI_DOC_MARKER_KEY_DOCUMENT:
+      return "document (df)";
+    case TRI_DOC_MARKER_KEY_EDGE:
+      return "edge (df)";
+    case TRI_DOC_MARKER_KEY_DELETION:
+      return "deletion (df)";
+    case TRI_DOC_MARKER_BEGIN_TRANSACTION:
+      return "begin transaction (df)";
+    case TRI_DOC_MARKER_COMMIT_TRANSACTION:
+      return "commit transaction (df)";
+    case TRI_DOC_MARKER_ABORT_TRANSACTION:
+      return "abort transaction (df)";
+    case TRI_DOC_MARKER_PREPARE_TRANSACTION:
+      return "prepare transaction (df)";
     case TRI_DF_MARKER_ATTRIBUTE:
-      return "attribute";
+      return "attribute (df)";
     case TRI_DF_MARKER_SHAPE:
-      return "shape";
+      return "shape (df)";
 
-    case TRI_DOC_MARKER_DOCUMENT:
-    case TRI_DOC_MARKER_EDGE:
-    case TRI_DOC_MARKER_DELETION:
-      return "deprecated";
-
+    // wal markers
     case TRI_WAL_MARKER_ATTRIBUTE:
       return "attribute (wal)";
     case TRI_WAL_MARKER_SHAPE:
@@ -1135,6 +1160,12 @@ char const* TRI_NameMarkerDatafile (TRI_df_marker_t const* marker) {
       return "commit transaction (wal)";
     case TRI_WAL_MARKER_ABORT_TRANSACTION:
       return "abort transaction (wal)";
+    case TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION:
+      return "begin remote transaction (wal)";
+    case TRI_WAL_MARKER_COMMIT_REMOTE_TRANSACTION:
+      return "commit remote transaction (wal)";
+    case TRI_WAL_MARKER_ABORT_REMOTE_TRANSACTION:
+      return "abort remote transaction (wal)";
     case TRI_WAL_MARKER_CREATE_COLLECTION:
       return "create collection (wal)";
     case TRI_WAL_MARKER_DROP_COLLECTION:
@@ -1165,49 +1196,19 @@ void TRI_InitMarkerDatafile (char* marker,
                              TRI_df_marker_type_e type,
                              TRI_voc_size_t size) {
 
-  TRI_df_marker_t* df = (TRI_df_marker_t*) marker;
-
-  TRI_ASSERT(marker != NULL);
+  TRI_ASSERT(marker != nullptr);
   TRI_ASSERT(type > TRI_MARKER_MIN && type < TRI_MARKER_MAX);
   TRI_ASSERT(size > 0);
 
   // initialise the basic bytes
   memset(marker, 0, size);
 
+  TRI_df_marker_t* df = reinterpret_cast<TRI_df_marker_t*>(marker);
   df->_size = size;
   df->_type = type;
   // not needed because of memset above
   // marker->_crc  = 0;
   // marker->_tick = 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the initial datafile header marker
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_WriteInitialHeaderMarkerDatafile (TRI_datafile_t* datafile,
-                                          TRI_voc_fid_t fid,
-                                          TRI_voc_size_t maximalSize) {
-  TRI_df_marker_t* position;
-  TRI_df_header_marker_t header;
-  int res;
-
-  // create the header
-  TRI_InitMarkerDatafile((char*) &header, TRI_DF_MARKER_HEADER, sizeof(TRI_df_header_marker_t));
-  header.base._tick = (TRI_voc_tick_t) fid;
-
-  header._version     = TRI_DF_VERSION;
-  header._maximalSize = maximalSize;
-  header._fid         = fid;
-
-  // reserve space and write header to file
-  res = TRI_ReserveElementDatafile(datafile, header.base._size, &position, 0);
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    res = TRI_WriteCrcElementDatafile(datafile, position, &header.base, false);
-  }
-
-  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1631,7 +1632,7 @@ bool TRI_CloseDatafile (TRI_datafile_t* datafile) {
     }
   }
   else if (datafile->_state == TRI_DF_STATE_CLOSED) {
-    LOG_WARNING("closing a already closed datafile '%s'", datafile->getName(datafile));
+    LOG_WARNING("closing an already closed datafile '%s'", datafile->getName(datafile));
     return true;
   }
   else {
@@ -1645,11 +1646,9 @@ bool TRI_CloseDatafile (TRI_datafile_t* datafile) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_RenameDatafile (TRI_datafile_t* datafile, char const* filename) {
-  int res;
-
   // this function must not be called for non-physical datafiles
   TRI_ASSERT(datafile->isPhysical(datafile));
-  TRI_ASSERT(filename != NULL);
+  TRI_ASSERT(filename != nullptr);
 
   if (TRI_ExistsFile(filename)) {
     LOG_ERROR("cannot overwrite datafile '%s'", filename);
@@ -1658,7 +1657,7 @@ bool TRI_RenameDatafile (TRI_datafile_t* datafile, char const* filename) {
     return false;
   }
 
-  res = TRI_RenameFile(datafile->_filename, filename);
+  int res = TRI_RenameFile(datafile->_filename, filename);
 
   if (res != TRI_ERROR_NO_ERROR) {
     datafile->_state = TRI_DF_STATE_RENAME_ERROR;

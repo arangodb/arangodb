@@ -48,34 +48,9 @@ namespace triagens {
 
     class AllocatorThread;
     class CollectorThread;
+    struct RecoverState;
     class Slot;
     class SynchroniserThread;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      RecoverState
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief state that is built up when scanning a WAL logfile during recovery
-////////////////////////////////////////////////////////////////////////////////
-
-    struct RecoverState {
-      RecoverState ()
-        : collections(),
-          failedTransactions(),
-          droppedCollections(),
-          droppedDatabases(),
-          lastTick(0),
-          logfilesToCollect(0) {
-      }
-
-      std::unordered_map<TRI_voc_cid_t, TRI_voc_tick_t> collections;
-      std::unordered_map<TRI_voc_tid_t, std::pair<TRI_voc_tick_t, bool>> failedTransactions;
-      std::unordered_set<TRI_voc_cid_t>                 droppedCollections;
-      std::unordered_set<TRI_voc_tick_t>                droppedDatabases;
-      TRI_voc_tick_t                                    lastTick;
-      int                                               logfilesToCollect;
-    };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               LogfileManagerState
@@ -359,14 +334,6 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not we are in the recovery mode
-////////////////////////////////////////////////////////////////////////////////
-
-        inline bool isInRecovery () const {
-          return _inRecovery;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief registers a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -619,12 +586,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void waitForCollector (Logfile::IdType);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief scan a single logfile
-////////////////////////////////////////////////////////////////////////////////
-
-        bool scanLogfile (Logfile const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write abort markers for all open transactions

@@ -4341,9 +4341,9 @@ function GRAPH_PATHS (vertices, edgeCollection, direction, followCycles, minLeng
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_ahuacatl_general_graph_paths
+/// The GRAPH\_PATHS function returns all paths of a graph.
 ///
 /// `GRAPH_PATHS (graphName, options)`
-/// *The GRAPH\_PATHS function returns all paths of a graph.*
 ///
 /// The complexity of this method is **O(n\*n\*m)** with *n* being the amount of vertices in
 /// the graph and *m* the average amount of connected edges;
@@ -4361,7 +4361,7 @@ function GRAPH_PATHS (vertices, edgeCollection, direction, followCycles, minLeng
 ///   * *maxLength* (optional)     : Defines the maximal length a path must
 /// have to be returned (default is 10).
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Return all paths of the graph "social":
 ///
@@ -4384,7 +4384,6 @@ function GRAPH_PATHS (vertices, edgeCollection, direction, followCycles, minLeng
 ///   ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
-//
 ////////////////////////////////////////////////////////////////////////////////
 
 function GENERAL_GRAPH_PATHS (graphName, options) {
@@ -5237,9 +5236,9 @@ function IS_EXAMPLE_SET (example) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_ahuacatl_general_graph_shortest_paths
+/// The GRAPH\_SHORTEST\_PATH function returns all shortest paths of a graph.
 ///
 /// `GRAPH_SHORTEST_PATH (graphName, startVertexExample, endVertexExample, options)`
-/// *The GRAPH\_SHORTEST\_PATH function returns all shortest paths of a graph.*
 ///
 /// This function determines all shortest paths in a graph identified by *graphName*.
 /// If one wants to call this function to receive nearly all shortest paths for a
@@ -5289,7 +5288,7 @@ function IS_EXAMPLE_SET (example) {
 ///   If no default is supplied the default would be positive Infinity so the path could
 ///   not be calculated.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// A route planner example, shortest distance from all german to all french cities:
 ///
@@ -5319,7 +5318,6 @@ function IS_EXAMPLE_SET (example) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-//
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_SHORTEST_PATH (graphName,
                                       startVertexExample,
@@ -5378,9 +5376,9 @@ function GRAPH_TRAVERSAL (vertexCollection,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_ahuacatl_general_graph_traversal
+/// The GRAPH\_TRAVERSAL function traverses through the graph.
 ///
 /// `GRAPH_TRAVERSAL (graphName, startVertexExample, direction, options)`
-/// *The GRAPH\_TRAVERSAL function traverses through the graph.*
 ///
 /// This function performs traversals on the given graph.
 /// For a more detailed documentation on the optional parameters see
@@ -5390,13 +5388,14 @@ function GRAPH_TRAVERSAL (vertexCollection,
 ///
 /// *Parameters*
 /// * *graphName*          : The name of the graph as a string.
-/// * *startVertex*        : The ID of the start vertex of the traversal as a string.
+/// * *startVertexExample*        : An example for the desired
+/// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
 /// * *direction*          : The direction of the edges as a string. Possible values
 /// are *outbound*, *inbound* and *any* (default).
 /// * *options* (optional) : Object containing optional options, see
 ///   [Traversals](../Traversals/README.md):
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// A route planner example, start a traversal from Hamburg :
 ///
@@ -5422,22 +5421,30 @@ function GRAPH_TRAVERSAL (vertexCollection,
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-//
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_TRAVERSAL (graphName,
-                          startVertex,
+                                  startVertexExample,
                           direction,
                           options) {
   "use strict";
 
+  var result = [];
   options = TRAVERSAL_PARAMS(options);
+  options.fromVertexExample = startVertexExample;
+  options.direction =  direction;
 
-  return TRAVERSAL_FUNC("GRAPH_TRAVERSAL",
-    TRAVERSAL.generalGraphDatasourceFactory(graphName),
-    TO_ID(startVertex),
-    undefined,
-    direction,
-    options);
+  var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
+  var factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
+
+  graph.fromVertices.forEach(function (f) {
+    result.push(TRAVERSAL_FUNC("GRAPH_TRAVERSAL",
+      factory,
+      TO_ID(f),
+      undefined,
+      direction,
+      options));
+  });
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5494,14 +5501,14 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_ahuacatl_general_graph_distance
+/// The GRAPH\_DISTANCE\_TO function returns all paths and there distance within a graph.
 ///
 /// `GRAPH_DISTANCE_TO (graphName, startVertexExample, endVertexExample, options)`
-/// *The GRAPH\_DISTANCE\_TO function returns all paths and there distance within a graph.*
 ///
 /// This function is a wrapper of [GRAPH\_SHORTEST\_PATH](#graph_shortest_path).
 /// It does not return the actual path but only the distance between two vertices.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// A route planner example, distance from all french to all german cities:
 ///
@@ -5531,7 +5538,6 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-///
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_DISTANCE_TO (graphName,
                                       startVertexExample,
@@ -5558,9 +5564,9 @@ function GENERAL_GRAPH_DISTANCE_TO (graphName,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_ahuacatl_general_graph_traversal_tree
+/// The GRAPH\_TRAVERSAL\_TREE function traverses through the graph.
 ///
 /// `GRAPH_TRAVERSAL_TREE (graphName, startVertexExample, direction, connectName, options)`
-/// *The GRAPH\_TRAVERSAL\_TREE function traverses through the graph.*
 /// This function creates a tree format from the result for a better visualization of
 /// the path.
 /// This function performs traversals on the given graph.
@@ -5572,8 +5578,8 @@ function GENERAL_GRAPH_DISTANCE_TO (graphName,
 /// *Parameters*
 ///
 /// * *graphName*          : The name of the graph as a string.
-/// * *startVertex*         : The ID of the start vertex
-/// of the traversal as a string.
+/// * *startVertexExample*         : An example for the desired
+/// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
 /// * *direction*          : The direction of the edges as a string.
 ///  Possible values are *outbound*, *inbound* and *any* (default).
 /// * *connectName*        : The result attribute which
@@ -5581,7 +5587,7 @@ function GENERAL_GRAPH_DISTANCE_TO (graphName,
 /// * *options* (optional) : An object containing options, see
 ///  [Traversals](../Traversals/README.md):
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// A route planner example, start a traversal from Hamburg :
 ///
@@ -5607,29 +5613,35 @@ function GENERAL_GRAPH_DISTANCE_TO (graphName,
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-//
 ////////////////////////////////////////////////////////////////////////////////
 
 function GENERAL_GRAPH_TRAVERSAL_TREE (graphName,
-                                       startVertex,
+                                       startVertexExample,
                                        direction,
                                        connectName,
                                        options) {
   "use strict";
 
+  var result = [];
   options = TRAVERSAL_TREE_PARAMS(options, connectName, "GRAPH_TRAVERSAL_TREE");
+  options.fromVertexExample = startVertexExample;
+  options.direction =  direction;
 
-  var result = TRAVERSAL_FUNC("GRAPH_TRAVERSAL_TREE",
-    TRAVERSAL.generalGraphDatasourceFactory(graphName),
-    TO_ID(startVertex),
-    undefined,
-    direction,
-    options);
+  var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
+  var factory = TRAVERSAL.generalGraphDatasourceFactory(graphName), r;
 
-  if (result.length === 0) {
-    return [ ];
-  }
-  return [ result[0][options.connect] ];
+  graph.fromVertices.forEach(function (f) {
+    r = TRAVERSAL_FUNC("GRAPH_TRAVERSAL_TREE",
+      factory,
+      TO_ID(f),
+      undefined,
+      direction,
+      options);
+    if (r.length > 0) {
+      result.push([ r[0][options.connect] ]);
+    }
+  });
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5721,9 +5733,9 @@ function GRAPH_NEIGHBORS (vertexCollection,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_ahuacatl_general_graph_neighbors
+/// The GRAPH\_NEIGHBORS function returns all neighbors of vertices.
 ///
 /// `GRAPH_NEIGHBORS (graphName, vertexExample, options)`
-/// *The GRAPH\_NEIGHBORS function returns all neighbors of vertices.*
 ///
 /// By default only the direct neighbors (path length equals 1) are returned, but one can define
 /// the range of the path length to the neighbors with the options *minDepth* and *maxDepth*.
@@ -5753,7 +5765,7 @@ function GRAPH_NEIGHBORS (vertexCollection,
 ///   * *maxDepth*                         : Defines the maximal
 ///      depth a path to a neighbor must have to be returned (default is 1).
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// A route planner example, all neighbors of locations with a distance of either
 /// 700 or 600.:
@@ -5779,7 +5791,6 @@ function GRAPH_NEIGHBORS (vertexCollection,
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-//
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_NEIGHBORS (graphName,
                                   vertexExample,
@@ -5841,8 +5852,10 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 /// @startDocuBlock JSF_ahuacatl_general_graph_edges
 ///
 /// `GRAPH_EDGES (graphName, vertexExample, options)`
-/// *The GRAPH\_EDGES function returns all edges of the graph connected to the vertices
-/// defined by the example.*
+///
+/// The GRAPH\_EDGES function returns all edges of the graph connected to the vertices
+/// defined by the example.
+/// 
 /// The complexity of this method is **O(n\*m^x)** with *n* being the vertices defined by the
 /// parameter vertexExamplex, *m* the average amount of edges of a vertex and *x* the maximal
 /// depths.
@@ -5875,7 +5888,7 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 ///  to a vertex (default is 1, which means only the edges directly connected to a vertex would
 ///  be returned).
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// A route planner example, all edges to locations with a distance of either 700 or 600.:
 ///
@@ -5900,7 +5913,6 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-//
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_EDGES (
   graphName,
@@ -5923,9 +5935,9 @@ function GENERAL_GRAPH_EDGES (
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_ahuacatl_general_graph_vertices
+/// The GRAPH\_VERTICES function returns all vertices. 
 ///
 /// `GRAPH_VERTICES (graphName, vertexExample, options)`
-/// *The GRAPH\_VERTICES function returns all vertices.*
 ///
 /// According to the optional filters it will only return vertices that have
 /// outbound, inbound or any (default) edges.
@@ -5941,7 +5953,7 @@ function GENERAL_GRAPH_EDGES (
 ///   * *vertexCollectionRestriction*      : One or multiple
 /// vertex collections that should be considered.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// A route planner example, all vertices of the graph
 ///
@@ -6014,11 +6026,11 @@ function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_ahuacatl_general_graph_common_neighbors
+/// *The GRAPH\_COMMON\_NEIGHBORS function returns all common neighbors of the vertices
+/// defined by the examples.*
 ///
 /// `GRAPH_COMMON_NEIGHBORS (graphName, vertex1Example, vertex2Examples,
 /// optionsVertex1, optionsVertex2)`
-/// *The GRAPH\_COMMON\_NEIGHBORS function returns all common neighbors of the vertices
-/// defined by the examples.*
 ///
 /// This function returns the intersection of *GRAPH_NEIGHBORS(vertex1Example, optionsVertex1)*
 /// and *GRAPH_NEIGHBORS(vertex2Example, optionsVertex2)*.
@@ -6030,7 +6042,7 @@ function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
 /// For parameter documentation read the documentation of
 /// [GRAPH_NEIGHBORS](#graph_neighbors).
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// A route planner example, all common neighbors of capitals.
 ///
@@ -6057,7 +6069,6 @@ function TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT (result)  {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-//
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_COMMON_NEIGHBORS (
   graphName,
@@ -6119,7 +6130,8 @@ function GENERAL_GRAPH_COMMON_NEIGHBORS (
 /// @startDocuBlock JSF_ahuacatl_general_graph_common_properties
 ///
 /// `GRAPH_COMMON_PROPERTIES (graphName, vertex1Example, vertex2Examples, options)`
-/// *The GRAPH\_COMMON\_PROPERTIES function returns a list of objects which have the id of
+/// 
+/// The GRAPH\_COMMON\_PROPERTIES function returns a list of objects which have the id of
 /// the vertices defined by *vertex1Example* as keys and a list of vertices defined by
 /// *vertex21Example*, that share common properties as value. Notice that only the
 /// vertex id and the matching attributes are returned in the result.
@@ -6142,7 +6154,7 @@ function GENERAL_GRAPH_COMMON_NEIGHBORS (
 ///   * *ignoreProperties* : One or multiple
 ///  attributes of a document that should be ignored, either a string or an array..
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// A route planner example, all locations with the same properties:
 ///
@@ -6167,7 +6179,6 @@ function GENERAL_GRAPH_COMMON_NEIGHBORS (
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-//
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_COMMON_PROPERTIES (
   graphName,
@@ -6259,9 +6270,10 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 /// @startDocuBlock JSF_ahuacatl_general_graph_absolute_eccentricity
 ///
 /// `GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)`
-/// *The GRAPH\_ABSOLUTE\_ECCENTRICITY function returns the
+///
+///  The GRAPH\_ABSOLUTE\_ECCENTRICITY function returns the
 /// [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
-/// of the vertices defined by the examples.*
+/// of the vertices defined by the examples.
 ///
 /// The complexity of the function is described
 /// [here](#the_complexity_of_the_shortest_path_algorithms).
@@ -6297,7 +6309,7 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 /// If no default is supplied the default would be positive Infinity so the path and
 /// hence the eccentricity can not be calculated.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// A route planner example, the absolute eccentricity of all locations.
 ///
@@ -6332,7 +6344,6 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-//
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options) {
 
@@ -6363,9 +6374,10 @@ function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)
 /// @startDocuBlock JSF_ahuacatl_general_graph_eccentricity
 ///
 /// `GRAPH_ECCENTRICITY (graphName, options)`
-/// *The GRAPH\_ECCENTRICITY function returns the normalized
+///
+/// The GRAPH\_ECCENTRICITY function returns the normalized
 /// [eccentricity](http://en.wikipedia.org/wiki/Distance_%28graph_theory%29)
-/// of the graphs vertices*
+/// of the graphs vertices
 ///
 /// The complexity of the function is described
 /// [here](#the_complexity_of_the_shortest_path_algorithms).
@@ -6386,7 +6398,7 @@ function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)
 /// If no default is supplied the default would be positive Infinity so the path and
 /// hence the eccentricity can not be calculated.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// A route planner example, the eccentricity of all locations.
 ///
@@ -6409,7 +6421,6 @@ function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-//
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
 
@@ -6441,9 +6452,10 @@ function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
 /// @startDocuBlock JSF_ahuacatl_general_graph_absolute_closeness
 ///
 /// `GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options)`
-/// *The GRAPH\_ABSOLUTE\_CLOSENESS function returns the
+///
+/// The GRAPH\_ABSOLUTE\_CLOSENESS function returns the
 /// [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness_centrality)
-/// of the vertices defined by the examples.*
+/// of the vertices defined by the examples.
 ///
 /// The complexity of the function is described
 /// [here](#the_complexity_of_the_shortest_path_algorithms).
@@ -6479,7 +6491,7 @@ function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
 /// If no default is supplied the default would be positive Infinity so the path and
 /// hence the eccentricity can not be calculated.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// A route planner example, the absolute closeness of all locations.
 ///
@@ -6514,7 +6526,6 @@ function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-//
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
 
@@ -6545,9 +6556,10 @@ function GENERAL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
 /// @startDocuBlock JSF_ahuacatl_general_graph_closeness
 ///
 /// `GRAPH_CLOSENESS (graphName, options)`
-/// *The GRAPH\_CLOSENESS function returns the normalized
+///
+/// The GRAPH\_CLOSENESS function returns the normalized
 /// [closeness](http://en.wikipedia.org/wiki/Centrality#Closeness_centrality)
-/// of graphs vertices.*
+/// of graphs vertices.
 ///
 /// The complexity of the function is described
 /// [here](#the_complexity_of_the_shortest_path_algorithms).
@@ -6570,7 +6582,7 @@ function GENERAL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
 /// If no default is supplied the default would be positive Infinity so the path and
 /// hence the eccentricity can not be calculated.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// A route planner example, the closeness of all locations.
 ///
@@ -6605,7 +6617,6 @@ function GENERAL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-//
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_CLOSENESS (graphName, options) {
 
@@ -6642,9 +6653,10 @@ function GENERAL_GRAPH_CLOSENESS (graphName, options) {
 /// @startDocuBlock JSF_ahuacatl_general_graph_absolute_betweenness
 ///
 /// `GRAPH_ABSOLUTE_BETWEENNESS (graphName, vertexExample, options)`
-/// *The GRAPH\_ABSOLUTE\_BETWEENNESS function returns the
+/// 
+/// The GRAPH\_ABSOLUTE\_BETWEENNESS function returns the
 /// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
-/// of all vertices in the graph.*
+/// of all vertices in the graph.
 ///
 /// The complexity of the function is described
 /// [here](#the_complexity_of_the_shortest_path_algorithms).
@@ -6662,7 +6674,7 @@ function GENERAL_GRAPH_CLOSENESS (graphName, options) {
 /// If no default is supplied the default would be positive Infinity so the path and
 /// hence the betweenness can not be calculated.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// A route planner example, the absolute betweenness of all locations.
 ///
@@ -6697,7 +6709,6 @@ function GENERAL_GRAPH_CLOSENESS (graphName, options) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-//
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 
@@ -6749,9 +6760,10 @@ function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 /// @startDocuBlock JSF_ahuacatl_general_graph_betweenness
 ///
 /// `GRAPH_BETWEENNESS (graphName, options)`
-/// *The GRAPH\_BETWEENNESS function returns the
+/// 
+/// The GRAPH\_BETWEENNESS function returns the
 /// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
-/// of graphs vertices.*
+/// of graphs vertices.
 ///
 /// The complexity of the function is described
 /// [here](#the_complexity_of_the_shortest_path_algorithms).
@@ -6770,7 +6782,7 @@ function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 /// If no default is supplied the default would be positive Infinity so the path and
 /// hence the eccentricity can not be calculated.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// A route planner example, the betweenness of all locations.
 ///
@@ -6803,7 +6815,6 @@ function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-//
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_BETWEENNESS (graphName, options) {
 
@@ -6832,6 +6843,7 @@ function GENERAL_GRAPH_BETWEENNESS (graphName, options) {
 /// @startDocuBlock JSF_ahuacatl_general_graph_radius
 ///
 /// `GRAPH_RADIUS (graphName, options)`
+/// 
 /// *The GRAPH\_RADIUS function returns the
 /// [radius](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
 /// of a graph.*
@@ -6854,7 +6866,7 @@ function GENERAL_GRAPH_BETWEENNESS (graphName, options) {
 /// If no default is supplied the default would be positive Infinity so the path and
 /// hence the eccentricity can not be calculated.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// A route planner example, the radius of the graph.
 ///
@@ -6888,7 +6900,6 @@ function GENERAL_GRAPH_BETWEENNESS (graphName, options) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-//
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_RADIUS (graphName, options) {
 
@@ -6922,9 +6933,10 @@ function GENERAL_GRAPH_RADIUS (graphName, options) {
 /// @startDocuBlock JSF_ahuacatl_general_graph_diameter
 ///
 /// `GRAPH_DIAMETER (graphName, options)`
-/// *The GRAPH\_DIAMETER function returns the
+///
+/// The GRAPH\_DIAMETER function returns the
 /// [diameter](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
-/// of a graph.*
+/// of a graph.
 ///
 /// The complexity of the function is described
 /// [here](#the_complexity_of_the_shortest_path_algorithms).
@@ -6946,7 +6958,7 @@ function GENERAL_GRAPH_RADIUS (graphName, options) {
 /// If no default is supplied the default would be positive Infinity so the path and
 /// hence the eccentricity can not be calculated.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// A route planner example, the diameter of the graph.
 ///
@@ -6980,7 +6992,6 @@ function GENERAL_GRAPH_RADIUS (graphName, options) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
-//
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_DIAMETER (graphName, options) {
 

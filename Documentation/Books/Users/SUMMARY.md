@@ -18,7 +18,6 @@
   * [Collections](FirstSteps/CollectionsAndDocuments.md)
 <!-- 3 -->
 * [ArangoDB Web Interface](WebInterface/README.md)
-  * [Some Features](WebInterface/Features.md)
 <!-- 4 -->
 * [Handling Databases](Databases/README.md)
   * [Working with Databases](Databases/WorkingWith.md)
@@ -51,23 +50,22 @@
 <!-- 10 -->
 * [AQL](Aql/README.md)
   * [How to invoke AQL](Aql/Invoke.md)
-  * [Query Results](Aql/QueryResults.md)
   * [Language Basics](Aql/Basics.md)
+  * [Functions](Aql/Functions.md)
+  * [Query Results](Aql/QueryResults.md)
   * [Operators](Aql/Operators.md)
   * [High level Operations](Aql/Operations.md)
   * [Graph Operations](Aql/GraphOperations.md)
   * [Advanced Features](Aql/Advanced.md)
-<!-- 11 -->
-* [Extending AQL](AqlExtending/README.md)
-  * [Conventions](AqlExtending/Conventions.md)
-  * [Registering Functions](AqlExtending/Functions.md)
-<!-- 12 -->
-* [AQL Examples](AqlExamples/README.md)
-  * [Examples](AqlExamples/Examples.md)
-  * [Collection based queries](AqlExamples/CollectionQueries.md)
-  * [Projections and filters](AqlExamples/ProjectionsAndFilters.md)
-  * [Joins](AqlExamples/Join.md)
-  * [Grouping](AqlExamples/Grouping.md)
+  * [Extending AQL](AqlExtending/README.md)
+    * [Conventions](AqlExtending/Conventions.md)
+    * [Registering Functions](AqlExtending/Functions.md)
+  * [AQL Examples](AqlExamples/README.md)
+    * [Examples](AqlExamples/Examples.md)
+    * [Collection based queries](AqlExamples/CollectionQueries.md)
+    * [Projections and filters](AqlExamples/ProjectionsAndFilters.md)
+    * [Joins](AqlExamples/Join.md)
+    * [Grouping](AqlExamples/Grouping.md)
 <!-- 13 -->
 * [General Graphs](General-Graphs/README.md)
   * [Graph Management](General-Graphs/Management.md)

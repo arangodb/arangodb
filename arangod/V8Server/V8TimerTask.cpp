@@ -65,7 +65,7 @@ V8TimerTask::V8TimerTask (string const& id,
     _parameters(parameters),
     _created(TRI_microtime()) {
 
-  TRI_ASSERT(vocbase != 0);
+  TRI_ASSERT(vocbase != nullptr);
 
   // increase reference counter for the database used
   TRI_UseVocBase(_vocbase);
@@ -79,7 +79,7 @@ V8TimerTask::~V8TimerTask () {
   // decrease reference counter for the database used
   TRI_ReleaseVocBase(_vocbase);
 
-  if (_parameters != 0) {
+  if (_parameters != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _parameters);
   }
 }

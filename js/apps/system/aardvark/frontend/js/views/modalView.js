@@ -14,7 +14,7 @@
   };
 
   var createTextStub = function(type, label, value, info, placeholder, mandatory, regexp,
-                                addDelete, addAdd, maxEntrySize) {
+                                addDelete, addAdd, maxEntrySize, tags) {
     var obj = {
       type: type,
       label: label
@@ -40,6 +40,9 @@
     if (maxEntrySize !== undefined) {
       obj.maxEntrySize = maxEntrySize;
     }
+    if (tags !== undefined) {
+      obj.tags = tags;
+    }
     if (regexp){
       // returns true if the string contains the match
       obj.validateInput = function(el){
@@ -61,8 +64,8 @@
       yes: "#modal-confirm-delete",
       no: "#modal-abort-delete"
     },
-    disableSubmitOnEnter : false,
     enabledHotkey: false,
+    enableHotKeys : true,
 
     buttons: {
       SUCCESS: "success",
@@ -186,9 +189,9 @@
     },
 
     createSelect2Entry: function(
-      id, label, value, info, placeholder, mandatory, addDelete, addAdd, maxEntrySize) {
+      id, label, value, info, placeholder, mandatory, addDelete, addAdd, maxEntrySize, tags) {
       var obj = createTextStub(this.tables.SELECT2, label, value, info, placeholder,
-        mandatory, undefined, addDelete, addAdd, maxEntrySize);
+        mandatory, undefined, addDelete, addAdd, maxEntrySize, tags);
       obj.id = id;
       return obj;
     },
@@ -269,7 +272,6 @@
 
       var template = templateEngine.createTemplate(templateName),
         model = {};
-      model.disableSubmitOnEnter = this.disableSubmitOnEnter;
       model.content = tableContent || [];
       model.advancedContent = advancedContent || false;
       $(".modal-body").html(template.render(model));
@@ -283,7 +285,7 @@
       _.each(tableContent, function(r) {
         if (r.type === self.tables.SELECT2) {
           $('#'+r.id).select2({
-            tags: [],
+            tags: r.tags || [],
             showSearchBox: false,
             minimumResultsForSearch: -1,
             width: "336px",
@@ -317,7 +319,9 @@
         this.createInitModalHotkeys();
         this.enabledHotkey = true;
       }
-      this.createModalHotkeys();
+      if (this.enableHotKeys) {
+        this.createModalHotkeys();
+      }
     },
 
     hide: function() {

@@ -1,2 +1,0 @@
-arango> db.five.all().limit(2).count(true);
-2
