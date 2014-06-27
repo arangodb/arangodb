@@ -49,6 +49,27 @@
       );
     },
 
+    addVertexCollection: function(vertexCollectionName) {
+      $.ajax(
+        {
+          async: false,
+          type: "POST",
+          url: this.urlRoot + "/" + this.get("_key") + "/vertex",
+          data: JSON.stringify({collection: vertexCollectionName})
+        }
+      );
+    },
+
+    deleteVertexCollection: function(vertexCollectionName) {
+      $.ajax(
+        {
+          async: false,
+          type: "DELETE",
+          url: this.urlRoot + "/" + this.get("_key") + "/vertex/" + vertexCollectionName
+        }
+      );
+    },
+
 
     defaults: {
       name: "",

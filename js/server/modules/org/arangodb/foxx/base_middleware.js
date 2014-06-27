@@ -51,13 +51,13 @@ BaseMiddleware = function () {
     requestFunctions = {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_BaseMiddleware_request_body
-/// @brief Get the JSON parsed body of the request
+/// @startDocuBlock JSF_foxx_BaseMiddleware_request_body
 ///
-/// @FUN{request.body()}
+/// `request.body()`
 ///
 /// Get the JSON parsed body of the request. If you need the raw version, please
-/// refer to the `rawBody` function.
+/// refer to the *rawBody* function.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
       body: function () {
@@ -66,12 +66,12 @@ BaseMiddleware = function () {
       },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_BaseMiddleware_request_rawBody
-/// @brief Get the raw body of the request
+/// @startDocuBlock JSF_foxx_BaseMiddleware_request_rawBody
 ///
-/// @FUN{request.rawBody()}
+/// `request.rawBody()`
 ///
 /// The raw request body, not parsed. Just a String.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
       rawBody: function () {
@@ -79,18 +79,18 @@ BaseMiddleware = function () {
       },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_BaseMiddleware_request_params
-/// @brief The jinxed `params` function
+/// @startDocuBlock JSF_foxx_BaseMiddleware_request_params
 ///
-/// @FUN{request.params(@FA{key})}
+/// `request.params(key)`
 ///
 /// Get the parameters of the request. This process is two-fold:
 ///
-/// - If you have defined an URL like `/test/:id` and the user requested
-///   `/test/1`, the call `params("id")` will return `1`.
-/// - If you have defined an URL like `/test` and the user gives a query
+/// * If you have defined an URL like */test/:id* and the user requested
+///   */test/1*, the call *params("id")* will return *1*.
+/// * If you have defined an URL like */test* and the user gives a query
 ///   component, the query parameters will also be returned.  So for example if
-///   the user requested `/test?a=2`, the call `params("a")` will return `2`.
+///   the user requested */test?a=2*, the call *params("a")* will return *2*.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
       params: function (key) {
@@ -104,18 +104,18 @@ BaseMiddleware = function () {
     responseFunctions = {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_BaseMiddleware_response_status
-/// @brief The straightforward `status` function
+/// @startDocuBlock JSF_foxx_BaseMiddleware_response_status
 ///
-/// @FUN{response.status(@FA{code})}
+/// `response.status(code)`
 ///
-/// Set the status @FA{code} of your response, for example:
+/// Set the status *code* of your response, for example:
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///    response.status(404);
-/// @endcode
+/// ```
+/// response.status(404);
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
       status: function (code) {
@@ -123,26 +123,29 @@ BaseMiddleware = function () {
       },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_BaseMiddleware_response_set
-/// @brief The radical `set` function
+/// @startDocuBlock JSF_foxx_BaseMiddleware_response_set
 ///
-/// @FUN{response.set(@FA{key}, @FA{value})}
+/// `response.set(key, value)`
 ///
 /// Set a header attribute, for example:
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     response.set("Content-Length", 123);
-///     response.set("Content-Type", "text/plain");
+/// ```js
+/// response.set("Content-Length", 123);
+/// response.set("Content-Type", "text/plain");
+/// ```
 ///
-///     // or alternatively:
+/// or alternatively:
 ///
-///     response.set({
-///       "Content-Length": "123",
-///       "Content-Type": "text/plain"
-///     });
+/// ```js
+/// response.set({
+///   "Content-Length": "123",
+///   "Content-Type": "text/plain"
+/// });
+/// ```
 /// @endcode
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
       set: function (key, value) {
@@ -165,19 +168,19 @@ BaseMiddleware = function () {
       },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_BaseMiddleware_response_json
-/// @brief The magical `json` function
+/// @startDocuBlock JSF_foxx_BaseMiddleware_response_json
 ///
-/// @FUN{response.json(@FA{object})}
+/// `response.json(object)`
 ///
-/// Set the content type to JSON and the body to the JSON encoded @FA{object}
+/// Set the content type to JSON and the body to the JSON encoded *object*
 /// you provided.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     response.json({'born': 'December 12, 1915'});
-/// @endcode
+/// ```js
+/// response.json({'born': 'December 12, 1915'});
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
       json: function (obj) {

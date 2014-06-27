@@ -48,16 +48,16 @@ To turn on the replication logger for a database once, the following command can
 
     require("org/arangodb/replication").logger.start();
 
-Note that starting the replication logger does not necessarily mean it will be started
+**Note**: Starting the replication logger does not necessarily mean it will be started
 automatically on all following server startups. This can be configured separately (keep on
 reading for this).
 
-Please note that the above command turns on the replication logger for the current database 
+**Note**: The above command turns on the replication logger for the current database 
 only, but not for all databases. To turn on the replication logger for multiple databases,
 the above command must be executed separately for each database.
 
 To turn the replication logger off for the current database, execute the *stop* command:
-    
+  
     require("org/arangodb/replication").logger.stop();
 
 This has turned off the logger, but still the logger may be started again automatically
@@ -66,24 +66,26 @@ keep on reading).
 
 To determine the current state of the replication logger in the current database (including 
 whether it is currently running or not), use the *state* command:
-    
+  
     require("org/arangodb/replication").logger.state();
 
 The result might look like this:
 
-    { 
-      "state" : { 
-        "running" : false, 
-        "lastLogTick" : "255376126918573", 
-        "totalEvents" : 0, 
-        "time" : "2013-08-02T11:01:28Z" 
-      }, 
-      "server" : { 
-        "version" : "1.4.devel", 
-        "serverId" : "53904504772335" 
-      }, 
-      "clients" : [ ] 
-    }
+```js
+{ 
+  "state" : { 
+    "running" : false, 
+    "lastLogTick" : "255376126918573", 
+    "totalEvents" : 0, 
+    "time" : "2013-08-02T11:01:28Z" 
+  }, 
+  "server" : { 
+    "version" : "1.4.devel", 
+    "serverId" : "53904504772335" 
+  }, 
+  "clients" : [ ] 
+}
+```
 
 The *running* attribute indicates whether the logger is currently enabled and will
 log any events. The *totalEvents* attribute will indicate how many log events have been
@@ -93,7 +95,7 @@ the id of the last event that was logged. It can be used to determine whether ne
 events were logged, and is also used by the replication applier for incremental 
 fetching of data.
 
-Note: the replication logger state can also be queried via the HTTP API (see @ref HttpReplication).
+**Note**: Replication logger state can also be queried via the [HTTP API](../HttpReplications/README.md).
 
 !SUBSUBSECTION Configuration
 
@@ -105,26 +107,32 @@ directory. If it does not exist, ArangoDB will use default values.
 To check and adjust the configuration of the replication logger for the current database, 
 use the *properties* command. To view the current configuration, use *properties* without 
 any arguments:
-    
-    require("org/arangodb/replication").logger.properties();
+
+```js
+require("org/arangodb/replication").logger.properties();
+```
 
 The result might look like this:
 
-    { 
-      "autoStart" : false, 
-      "logRemoteChanges" : false, 
-      "maxEvents" : 1048576, 
-      "maxEventsSize" : 134217728 
-    }
+```
+{ 
+  "autoStart" : false, 
+  "logRemoteChanges" : false, 
+  "maxEvents" : 1048576, 
+  "maxEventsSize" : 134217728 
+}
+```
 
 The *autoStart* attribute indicates whether the current database's replication logger is 
 automatically started whenever the ArangoDB server is started. You may want to set it to 
 *true* for a proper master setup. To do so, supply the updated attributes to the *properties* 
 command, e.g.:
-    
-    require("org/arangodb/replication").logger.properties({ 
-      autoStart: true 
-    });
+
+```js
+require("org/arangodb/replication").logger.properties({ 
+  autoStart: true 
+});
+```
 
 This will ensure the replication logger for the current database is automatically started 
 on all following ArangoDB starts unless *autoStart* is set to *false* again.
@@ -149,12 +157,13 @@ and if either of the restrictions is hit, the deletion will be triggered.
 
 The following command will set the threshold to 5000 events to keep, irrespective of the
 cumulated event data sizes:
-    
-    require("org/arangodb/replication").logger.properties({ 
-      maxEvents: 5000, 
-      maxEventsSize: 0 
-    });
 
+```js
+require("org/arangodb/replication").logger.properties({ 
+  maxEvents: 5000, 
+  maxEventsSize: 0 
+});
+```
 
 !SUBSECTION Replication Applier
 
@@ -183,35 +192,39 @@ attempts.
 The replication applier state is queryable at any time by using the *state* command of the
 applier. This will return the state of the applier of the current database:
 
-    require("org/arangodb/replication").applier.state();
+```js
+require("org/arangodb/replication").applier.state();
+```
 
 The result might look like this:
 
-    { 
-      "state" : { 
-        "running" : false, 
-        "lastAppliedContinuousTick" : "231848832948633", 
-        "lastProcessedContinuousTick" : "231848832948633", 
-        "lastAvailableContinuousTick" : null, 
-        "progress" : { 
-          "time" : "2013-08-02T11:40:08Z", 
-          "message" : "applier created", 
-          "failedConnects" : 0 
-        }, 
-        "totalRequests" : 0, 
-        "totalFailedConnects" : 0, 
-        "totalEvents" : 0, 
-        "lastError" : { 
-          "errorNum" : 0 
-        }, 
-        "time" : "2013-08-02T11:40:22Z" 
-      }, 
-      "server" : { 
-        "version" : "1.4.devel", 
-        "serverId" : "53904504772335" 
-      }, 
-      "endpoint" : "tcp://master.domain.org:8529" 
-    }
+```js
+{ 
+  "state" : { 
+    "running" : false, 
+    "lastAppliedContinuousTick" : "231848832948633", 
+    "lastProcessedContinuousTick" : "231848832948633", 
+    "lastAvailableContinuousTick" : null, 
+    "progress" : { 
+      "time" : "2013-08-02T11:40:08Z", 
+      "message" : "applier created", 
+      "failedConnects" : 0 
+    }, 
+    "totalRequests" : 0, 
+    "totalFailedConnects" : 0, 
+    "totalEvents" : 0, 
+    "lastError" : { 
+      "errorNum" : 0 
+    }, 
+    "time" : "2013-08-02T11:40:22Z" 
+  }, 
+  "server" : { 
+    "version" : "1.4.devel", 
+    "serverId" : "53904504772335" 
+  }, 
+  "endpoint" : "tcp://master.domain.org:8529" 
+}
+```
 
 The *running* attribute indicates whether the replication applier of the current database
 is currently running and polling the server at *endpoint* for new events.
@@ -233,38 +246,42 @@ a problem.
 Here is an example of the state after the replication applier terminated itself due to 
 (repeated) connection problems:
 
-    { 
-      "state" : { 
-        "running" : false, 
-        "progress" : { 
-          "time" : "2013-08-02T12:40:25Z", 
-          "message" : "applier stopped", 
-          "failedConnects" : 6 
-        }, 
-        "totalRequests" : 18, 
-        "totalFailedConnects" : 11, 
-        "totalEvents" : 0, 
-        "lastError" : { 
-          "time" : "2013-08-02T12:40:25Z", 
-          "errorMessage" : "could not connect to master at tcp://master.example.org:8529: Could not connect to 'tcp:/...", 
-          "errorNum" : 1400 
-        },
-        ...
-      }
-    }
+```js
+{ 
+  "state" : { 
+    "running" : false, 
+    "progress" : { 
+      "time" : "2013-08-02T12:40:25Z", 
+      "message" : "applier stopped", 
+      "failedConnects" : 6 
+    }, 
+    "totalRequests" : 18, 
+    "totalFailedConnects" : 11, 
+    "totalEvents" : 0, 
+    "lastError" : { 
+      "time" : "2013-08-02T12:40:25Z", 
+      "errorMessage" : "could not connect to master at tcp://master.example.org:8529: Could not connect to 'tcp:/...", 
+      "errorNum" : 1400 
+    },
+    ...
+  }
+}
+```
 
-Note: the state of a database's replication applier is queryable via the HTTP API, too. 
+**Note**: the state of a database's replication applier is queryable via the HTTP API, too. 
 Please refer to [HTTP Interface for Replication](../HttpReplications/README.md) for more details.
 
 !SUBSUBSECTION Starting and Stopping
 
 To start and stop the applier in the current database, the *start* and *stop* commands can 
 be used:
-    
-    require("org/arangodb/replication").applier.start(<tick>);
-    require("org/arangodb/replication").applier.stop();
 
-Note that starting a replication applier without setting up an initial configuration will 
+```js
+require("org/arangodb/replication").applier.start(<tick>);
+require("org/arangodb/replication").applier.stop();
+```
+
+**Note**: Starting a replication applier without setting up an initial configuration will 
 fail. The replication applier will look for its configuration in a file named 
 *REPLICATION-APPLIER-CONFIG* in the current database's directory. If the file is not present, 
 ArangoDB will use some default configuration, but it cannot guess the endpoint (the address 
@@ -274,18 +291,20 @@ configuration will fail.
 Note that the first time you start the applier, you should pass *1* as value for tick. Otherwise
 you might see the message
 
-    "lastError" : { 
-      "time" : "2014-04-16T16:59:16Z", 
-      "errorMessage" : "no start tick", 
-      "errorNum" : 1413 
-    }
+```js
+"lastError" : { 
+  "time" : "2014-04-16T16:59:16Z", 
+  "errorMessage" : "no start tick", 
+  "errorNum" : 1413 
+}
+```
 
-Note that starting a database's replication applier via the *start* command will not necessarily 
+**Note**: Starting a database's replication applier via the *start* command will not necessarily 
 start the applier on the next and following ArangoDB server restarts. Additionally, stopping a
 database's replication applier manually will not necessarily prevent the applier from being 
 started again on the next server start. All of this is configurable separately (hang on reading).
 
-Please note that when starting the replication applier of database, it will resume where it stopped. 
+**Note**: that when starting the replication applier of database, it will resume where it stopped. 
 This is sensible because replication log events should be applied incrementally. If the
 replication applier of a database has never been started before, it needs some *tick* value from the
 master database's event log from which to start fetching events.
@@ -294,30 +313,36 @@ master database's event log from which to start fetching events.
 
 To configure the replication applier of a specific database, use the *properties* command. Using 
 it without any arguments will return the current configuration:
-    
-    require("org/arangodb/replication").applier.properties();
+
+```js
+require("org/arangodb/replication").applier.properties();
+```
 
 The result might look like this:
 
-    { 
-      "requestTimeout" : 300, 
-      "connectTimeout" : 10, 
-      "ignoreErrors" : 0, 
-      "maxConnectRetries" : 10, 
-      "chunkSize" : 0, 
-      "autoStart" : false, 
-      "adaptivePolling" : true 
-    }
+```js
+{ 
+  "requestTimeout" : 300, 
+  "connectTimeout" : 10, 
+  "ignoreErrors" : 0, 
+  "maxConnectRetries" : 10, 
+  "chunkSize" : 0, 
+  "autoStart" : false, 
+  "adaptivePolling" : true 
+}
+```
 
-Note that there is no *endpoint* attribute configured yet. The *endpoint* attribute is required
+**Note**: There is no *endpoint* attribute configured yet. The *endpoint* attribute is required
 for the replication applier to be startable. You may also want to configure a username and password
 for the connection via the *username* and *password* attributes. 
 
-    require("org/arangodb/replication").applier.properties({ 
-      endpoint: "tcp://master.domain.org:8529", 
-      username:  "root", 
-      password: "secret"
-    });
+```js
+require("org/arangodb/replication").applier.properties({ 
+  endpoint: "tcp://master.domain.org:8529", 
+  username:  "root", 
+  password: "secret"
+});
+```
 
 This will re-configure the replication applier for the current database. The configuration will be 
 used from the next start of the replication applier. The replication applier cannot be re-configured 
@@ -345,20 +370,22 @@ assembled before the master sends the response), but may require more request-re
 Set it to *0* to use ArangoDB's built-in default value.
 
 The following example will set most of the discussed properties for the current database's applier:
-    
-    require("org/arangodb/replication").applier.properties({ 
-      endpoint: "tcp://master.domain.org:8529", 
-      username:  "root", 
-      password: "secret",
-      adaptivePolling: true,
-      connectTimeout: 15,
-      maxConnectRetries: 100,
-      chunkSize: 262144,
-      autoStart: true 
-    });
+
+```js
+require("org/arangodb/replication").applier.properties({ 
+  endpoint: "tcp://master.domain.org:8529", 
+  username:  "root", 
+  password: "secret",
+  adaptivePolling: true,
+  connectTimeout: 15,
+  maxConnectRetries: 100,
+  chunkSize: 262144,
+  autoStart: true 
+});
+```
 
 After the applier is now fully configured, it could theoretically be started. However, we
-may first need an initial sychronization of all collections and their data from the master before
+may first need an initial synchronization of all collections and their data from the master before
 we start the replication applier. The reason is that the replication logger of the master database
 may not contain all data we need for a full synchronization. 
 
@@ -370,14 +397,16 @@ The only safe method for doing a full synchronization is thus to
 * start the continuous replication applier using this tick value.
 
 The initial synchronization for the current database is executed with the *sync* command:
-    
-    require("org/arangodb/replication").sync({
-      endpoint: "tcp://master.domain.org:8529",
-      username: "root",
-      password: "secret
-    });
 
-Warning: *sync* will do a full synchronization of the collections in the current database with
+```js
+require("org/arangodb/replication").sync({
+  endpoint: "tcp://master.domain.org:8529",
+  username: "root",
+  password: "secret
+});
+```
+
+**Warning**: *sync* will do a full synchronization of the collections in the current database with
 collections present in the master database.
 Any local instances of the collections and all their data are removed! Only execute this
 command when you are sure you want to remove the local data!
@@ -388,17 +417,20 @@ When *sync* completes successfully, it show a list of collections it has synchro
 at the time the *sync* was started on the master. The tick value is contained in the *lastLogTick*
 attribute of the *sync* command: 
 
-    { 
-      "lastLogTick" : "231848833079705", 
-      "collections" : [ ... ]
-    }
-
+```js
+{ 
+  "lastLogTick" : "231848833079705", 
+  "collections" : [ ... ]
+}
+```
 If the master database's replication logger is turned on, you can now start the continuous 
 synchronization for the current database with the command
 
-    require("org/arangodb/replication").applier.start("231848833079705");
+```js
+require("org/arangodb/replication").applier.start("231848833079705");
+```
 
-Note that the tick values should be handled as strings. Using numeric data types for tick
+**Note**: The tick values should be handled as strings. Using numeric data types for tick
 values is unsafe because they might exceed the 32 bit value and the IEEE754 double accuracy
 ranges.
 

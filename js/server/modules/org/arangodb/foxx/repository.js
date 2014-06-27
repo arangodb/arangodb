@@ -48,7 +48,7 @@ var Repository,
 /// 2. Prefix: You can provide the prefix of the application if you need it in
 /// your Repository (for some AQL queries probably)
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// ```javascript
 /// instance = new Repository(appContext.collection("my_collection"));
@@ -112,7 +112,7 @@ _.extend(Repository.prototype, {
 /// Expects a model. Will set the ID and Rev on the model.
 /// Returns the model.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// ```javascript
 /// repository.save(my_model);
@@ -136,7 +136,7 @@ _.extend(Repository.prototype, {
 ///
 /// Returns the model for the given ID.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// ```javascript
 /// var myModel = repository.byId('test/12411');
@@ -156,7 +156,7 @@ _.extend(Repository.prototype, {
 ///
 /// Returns an array of models for the given ID.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// ```javascript
 /// var myModel = repository.byExample({ amazing: true });
@@ -178,7 +178,7 @@ _.extend(Repository.prototype, {
 ///
 /// Returns the first model that matches the given example.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// ```javascript
 /// var myModel = repository.firstExample({ amazing: true });
@@ -202,7 +202,7 @@ _.extend(Repository.prototype, {
 /// **Warning:** ArangoDB doesn't guarantee a specific order in this case, to make
 /// this really useful we have to explicitly provide something to order by.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// ```javascript
 /// var myModel = repository.all({ skip: 4, limit: 2 });
@@ -229,7 +229,7 @@ _.extend(Repository.prototype, {
 /// Remove the model from the repository.
 /// Expects a model.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// ```javascript
 /// repository.remove(myModel);
@@ -249,7 +249,7 @@ _.extend(Repository.prototype, {
 /// Remove the document with the given ID.
 /// Expects an ID of an existing document.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// ```javascript
 /// repository.removeById('test/12121');
@@ -267,7 +267,7 @@ _.extend(Repository.prototype, {
 ///
 /// Find all documents that fit this example and remove them.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// ```javascript
 /// repository.removeByExample({ toBeDeleted: true });
@@ -287,11 +287,11 @@ _.extend(Repository.prototype, {
 /// @startDocuBlock JSF_foxx_repository_replace
 /// `replace(model)`
 ///
-/// Find the model in the database by its `_id` and replace it with this version.
+/// Find the model in the database by its *_id* and replace it with this version.
 /// Expects a model. Sets the Revision of the model.
 /// Returns the model.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// ```javascript
 /// myModel.set('name', 'Jan Steemann');
@@ -316,7 +316,7 @@ _.extend(Repository.prototype, {
 /// model.
 /// Sets the ID and Revision of the model and also returns it.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// ```javascript
 /// repository.replaceById('test/123345', myNewModel);
@@ -339,7 +339,7 @@ _.extend(Repository.prototype, {
 /// model.
 /// Sets the ID and Revision of the model and also returns it.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// ```javascript
 /// repository.replaceByExample({ replaceMe: true }, myNewModel);
@@ -365,7 +365,7 @@ _.extend(Repository.prototype, {
 /// Find an item by ID and update it with the attributes in the provided object.
 /// Returns the updated model.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// ```javascript
 /// repository.updateById('test/12131', { newAttribute: 'awesome' });
@@ -384,7 +384,7 @@ _.extend(Repository.prototype, {
 /// Find an item by example and update it with the attributes in the provided object.
 /// Returns the updated model.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// ```javascript
 /// repository.updateByExample({ findMe: true }, { newAttribute: 'awesome' });
@@ -406,7 +406,7 @@ _.extend(Repository.prototype, {
 ///
 /// Returns the number of entries in this collection.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// ```javascript
 /// repository.count();
