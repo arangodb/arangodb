@@ -1479,13 +1479,10 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
-  TRI_vector_pointer_t collections;
-  int res;
-  size_t i;
-
   // stop replication
   TRI_StopReplicationApplier(vocbase->_replicationApplier, false);
 
+  TRI_vector_pointer_t collections;
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
 
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -1497,7 +1494,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   // from here on, the vocbase is unusable, i.e. no collections can be created/loaded etc.
 
   // starts unloading of collections
-  for (i = 0;  i < collections._length;  ++i) {
+  for (size_t i = 0;  i < collections._length;  ++i) {
     TRI_vocbase_col_t* collection;
 
     collection = (TRI_vocbase_col_t*) vocbase->_collections._buffer[i];
@@ -1515,7 +1512,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   TRI_UnlockCondition(&vocbase->_compactorCondition);
 
   TRI_ASSERT(vocbase->_hasCompactor);
-  res = TRI_JoinThread(&vocbase->_compactor);
+  int res = TRI_JoinThread(&vocbase->_compactor);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("unable to join compactor thread: %s", TRI_errno_string(res));
@@ -1535,17 +1532,15 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   }
 
   // free dead collections (already dropped but pointers still around)
-  for (i = 0;  i < vocbase->_deadCollections._length;  ++i) {
-    TRI_vocbase_col_t* collection;
-
-    collection = (TRI_vocbase_col_t*) vocbase->_deadCollections._buffer[i];
+  for (size_t i = 0;  i < vocbase->_deadCollections._length;  ++i) {
+    TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(vocbase->_deadCollections._buffer[i]);
 
     TRI_FreeCollectionVocBase(collection);
   }
 
   // free collections
-  for (i = 0;  i < vocbase->_collections._length;  ++i) {
-    TRI_vocbase_col_t* collection = (TRI_vocbase_col_t*) vocbase->_collections._buffer[i];
+  for (size_t i = 0;  i < vocbase->_collections._length;  ++i) {
+    TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(vocbase->_collections._buffer[i]);
 
     TRI_FreeCollectionVocBase(collection);
   }
@@ -1656,8 +1651,8 @@ TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vocbase,
 
   json = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
 
-  if (json == NULL) {
-    return NULL;
+  if (json == nullptr) {
+    return nullptr;
   }
 
   TRI_InitVectorPointer(&collections, TRI_CORE_MEM_ZONE);
