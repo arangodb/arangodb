@@ -13,13 +13,13 @@ provides a few mechanisms for this:
 * using *console.log*:
   ArangoDB provides the *console* module, which you can use from within your
   Foxx application like this:
-        
+
       require("console").log(value);
 
   The *console* module will log all output to ArangoDB's logfile. If you are
   not redirecting to log output to stdout, it is recommended that you follow
   ArangoDB's logfile using a *tail -f* command or something similar.
-  Please refer to @ref JSModuleConsole for details.
+  Please refer to [JSModuleConsole](../ModuleConsole/README.md) for details.
 
 * using *internal.print*:
   The *print* method of the *internal* module writes data to the standard
@@ -39,7 +39,7 @@ provides a few mechanisms for this:
 
   Of course you can also use *console.log* or any other means of logging output.
 
-!SUBSECTION Development Mode
+!SECTION Development Mode
 
 If you start ArangoDB with the option *--javascript.dev-app-path* followed by 
 the path to an app directory (see below) and then the path to the database,
@@ -73,7 +73,7 @@ The app directory has to be structured as follows:
 In this case you would have four foxx apps booted, three in the *_system* database
 and one in the *my_db* database.
 
-!SUBSECTION Production Mode
+!SECTION Production Mode
 
 To run a Foxx app in production first copy your app code to the directory given in 
 the config variable *--javascript.app-path*. After that use Foxx manager to mount the app.
