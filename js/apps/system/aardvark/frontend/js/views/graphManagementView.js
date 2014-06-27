@@ -320,6 +320,12 @@
         index,
         edgeDefinitionElements;
 
+      if (this.collection.findWhere({_key: name})) {
+        arangoHelper.arangoError(
+          "The graph '" + name + "' already exists."
+        );
+        return 0;
+      }
 
       edgeDefinitionElements = $('[id^=s2id_newEdgeDefinitions]').toArray();
       edgeDefinitionElements.forEach(
