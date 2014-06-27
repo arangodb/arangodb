@@ -87,6 +87,7 @@
         "frontend/js/graphViewer/graph/communityNode.js",
         "frontend/js/graphViewer/graph/abstractAdapter.js",
         "frontend/js/graphViewer/graph/arangoAdapter.js",
+        "frontend/js/graphViewer/graph/gharialAdapter.js",
         "frontend/js/graphViewer/graph/zoomManager.js",
         "frontend/js/graphViewer/graph/modularityJoiner.js",
         "frontend/js/graphViewer/graph/nodeReducer.js",

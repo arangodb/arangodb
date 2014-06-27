@@ -42,6 +42,7 @@
 #include "VocBase/server.h"
 #include "Wal/AllocatorThread.h"
 #include "Wal/CollectorThread.h"
+#include "Wal/RecoverState.h"
 #include "Wal/Slots.h"
 #include "Wal/SynchroniserThread.h"
 
@@ -730,6 +731,10 @@ SlotInfo LogfileManager::allocate (void const* src,
                                    uint32_t size) {
   if (! _allowWrites) {
     // no writes allowed
+#ifdef TRI_ENABLE_MAINTAINER_MODE    
+    TRI_ASSERT(false);
+#endif
+     
     return SlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
   }
 
@@ -1381,18 +1386,6 @@ void LogfileManager::waitForCollector (Logfile::IdType logfileId) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief scan a single logfile
-////////////////////////////////////////////////////////////////////////////////
-
-bool LogfileManager::scanLogfile (Logfile const* logfile) {
-  TRI_ASSERT(logfile != nullptr);
-
-  LOG_TRACE("scanning logfile %llu (%s)", (unsigned long long) logfile->id(), logfile->statusText().c_str());
-
-  return TRI_IterateDatafile(logfile->df(), &ScanMarker, static_cast<void*>(_recoverState));
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief write abort markers for all open transactions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1799,7 +1792,9 @@ int LogfileManager::inspectLogfiles () {
           ++_recoverState->logfilesToCollect;
         }
 
-        if (! scanLogfile(logfile)) {
+        LOG_TRACE("scanning logfile %llu (%s)", (unsigned long long) logfile->id(), logfile->statusText().c_str());
+
+        if (! TRI_IterateDatafile(logfile->df(), &ScanMarker, static_cast<void*>(_recoverState))) {
           LOG_TRACE("WAL inspection failed when scanning logfile '%s'", logfile->filename().c_str());
           return TRI_ERROR_INTERNAL;
         }

@@ -1406,6 +1406,10 @@ static TRI_aql_node_t* OptimiseNode (TRI_aql_statement_walker_t* const walker,
                                      TRI_aql_node_t* node) {
   TRI_aql_context_t* context = ((aql_optimiser_t*) walker->_data)->_context;
 
+  if (context->_error._code != TRI_ERROR_NO_ERROR) {
+    return node;
+  }
+
   TRI_ASSERT(node);
 
   // node optimisations
@@ -1648,6 +1652,11 @@ static void NoteLimit (TRI_aql_statement_walker_t* const walker,
 
 static TRI_aql_node_t* ProcessStatement (TRI_aql_statement_walker_t* const walker,
                                          TRI_aql_node_t* node) {
+  TRI_aql_context_t* context = ((aql_optimiser_t*) walker->_data)->_context;
+  if (context->_error._code != TRI_ERROR_NO_ERROR) {
+    return node;
+  }
+
   if (node) {
     if (node->_type == TRI_AQL_NODE_SORT) {
       // SORT means we must not push a following LIMIT clause up

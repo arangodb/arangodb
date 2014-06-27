@@ -29,6 +29,7 @@ var internal = require("internal");
 var db = require("org/arangodb").db;
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
+var cluster = require("org/arangodb/cluster");
 var getModifyQueryResults = helper.getModifyQueryResults;
 var assertQueryError = helper.assertQueryError;
 
@@ -248,6 +249,11 @@ function ahuacatlRemoveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoveInvalid4 : function () {
+      if (cluster.isCluster()) {
+        // skip test in cluster as there are no distributed transactions yet
+        return;
+      }
+
       assertQueryError(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, "FOR i iN 0..100 REMOVE CONCAT('test', TO_STRING(i)) IN @@cn", { "@cn": cn1 });
       assertEqual(100, c1.count());
     },
