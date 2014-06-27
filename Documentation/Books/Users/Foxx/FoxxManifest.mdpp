@@ -31,35 +31,37 @@ get informed about potential errors in the manifest.
 
 A more complete example for a Manifest file:
 
-    {
-      "name": "my_website",
-      "version": "1.2.1",
-      "description": "My Website with a blog and a shop",
-      "thumnail": "images/website-logo.png",
+```js
+{
+  "name": "my_website",
+  "version": "1.2.1",
+  "description": "My Website with a blog and a shop",
+  "thumnail": "images/website-logo.png",
 
-      "controllers": {
-        "/blog": "apps/blog.js",
-        "/shop": "apps/shop.js"
-      },
+  "controllers": {
+    "/blog": "apps/blog.js",
+    "/shop": "apps/shop.js"
+  },
 
-      "lib": "lib",
+  "lib": "lib",
 
-      "files": {
-        "/images": "images"
-      },
+  "files": {
+    "/images": "images"
+  },
 
-      "assets": {
-        "application.js": {
-          "files": [
-            "vendor/jquery.js",
-            "assets/javascripts/*"
-          ]
-        }
-      },
-
-      "setup": "scripts/setup.js",
-      "teardown": "scripts/teardown.js"
+  "assets": {
+    "application.js": {
+      "files": [
+        "vendor/jquery.js",
+        "assets/javascripts/*"
+      ]
     }
+  },
+
+  "setup": "scripts/setup.js",
+  "teardown": "scripts/teardown.js"
+}
+```
 
 !SUBSECTION The setup and teardown scripts
 
@@ -87,28 +89,32 @@ data even after removing an application. It's up to you to decide what to do.
 
 You can add multiple controllers in one manifest this way.
 
-!SUBSECTIONThe files
+!SUBSECTION The files
 
 Deliver all files in a certain folder without modifying them. You can deliver 
 text files as well as binaries:
 
-    "files": {
-      "/images": "images"
-    }
+```js
+"files": {
+  "/images": "images"
+}
+```
 
 !SUBSECTION The assets
 
 The value for the asset key is an object consisting of paths that are matched 
 to the files they are composed of. Let's take the following example:
 
-  "assets": {
-    "application.js": {
-      "files": [
-        "vendor/jquery.js",
-        "assets/javascripts/*"
-      ]
-    }
+```js
+"assets": {
+  "application.js": {
+    "files": [
+      "vendor/jquery.js",
+      "assets/javascripts/*"
+    ]
   }
+}
+```
 
 If a request is made to */application.js* (in development mode), the file 
 array provided will be processed one element at a time. The elements are 
@@ -121,17 +127,19 @@ extension in the asset name (*application.js* in the above example).
 If the asset does not have a filename extension, the content-type is 
 determined by looking at the filename extension of the first file in the 
 *files* list. If no file extension can be determined, the asset will be
-deliverd with a content-type of *text/plain*.
+delivered with a content-type of *text/plain*.
 
 It is possible to explicitly override the content-type for an asset by
 setting the optional *contentType* attribute of an asset as follows:
 
-  "assets": {
-    "myincludes": {
-      "files": [
-        "vendor/jquery.js",
-        "assets/javascripts/*"
-      ],
-      "contentType": "text/javascript"
-    }
+```js
+"assets": {
+  "myincludes": {
+    "files": [
+      "vendor/jquery.js",
+      "assets/javascripts/*"
+    ],
+    "contentType": "text/javascript"
   }
+}
+```

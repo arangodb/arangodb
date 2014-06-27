@@ -61,7 +61,6 @@
     * [Conventions](AqlExtending/Conventions.md)
     * [Registering Functions](AqlExtending/Functions.md)
   * [AQL Examples](AqlExamples/README.md)
-    * [Examples](AqlExamples/Examples.md)
     * [Collection based queries](AqlExamples/CollectionQueries.md)
     * [Projections and filters](AqlExamples/ProjectionsAndFilters.md)
     * [Joins](AqlExamples/Join.md)
@@ -78,7 +77,6 @@
   * [Edge Methods](Blueprint-Graphs/EdgeMethods.md)
 <!-- 15 -->
 * [Traversals](Traversals/README.md)
-  * [Starting from Scratch](Traversals/StartingFromScratch.md)
   * [Using Traversal Objects](Traversals/UsingTraversalObjects.md)
   * [Example Data](Traversals/ExampleData.md)
 <!-- 16 -->
@@ -97,11 +95,13 @@
   * [First Steps](FoxxManager/FirstSteps.md)
   * [Behind the scenes](FoxxManager/BehindTheScenes.md)
   * [Multiple Databases](FoxxManager/MultipleDatabases.md)
-  * [Foxx Applications](FoxxManager/ApplicationsAndReplications.md)
   * [Manager Commands](FoxxManager/ManagerCommands.md)
   * [Frequently Used Options](FoxxManager/FrequentlyUsedOptions.md)
 <!-- 18 -->
 * [ArangoDB's Actions](ArangoActions/README.md)
+  * [Delivering HTML Pages](ArangoActions/HtmlExample.md)
+  * [Json Objects](ArangoActions/JsonExample.md)
+  * [Modifying](ArangoActions/Modifying.md)
 <!-- 19 -->
 * [Replication](Replication/README.md)
   * [Components](Replication/Components.md)

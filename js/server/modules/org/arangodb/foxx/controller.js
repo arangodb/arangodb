@@ -43,24 +43,24 @@ var Controller,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_initializer
 /// @brief Create a new Controller
-///
-/// @FUN{new FoxxController(@FA{applicationContext}, @FA{options})}
+/// @startDocuBlock JSF_foxx_controller_initializer
+/// `new FoxxController(applicationContext, options)`
 ///
 /// This creates a new Controller. The first argument is the controller
-/// context available in the variable `applicationContext`. The second one is an
+/// context available in the variable *applicationContext*. The second one is an
 /// options array with the following attributes:
 ///
-/// * `urlPrefix`: All routes you define within will be prefixed with it.
+/// * *urlPrefix*: All routes you define within will be prefixed with it.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     app = new Controller(applicationContext, {
-///       urlPrefix: "/meadow"
-///     });
-/// @endcode
+/// ```js
+///   app = new Controller(applicationContext, {
+///     urlPrefix: "/meadow"
+///   });
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Controller = function (context, options) {
@@ -145,15 +145,15 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_handleRequest
-/// @brief Handle a request
+/// @startDocuBlock JSF_foxx_controller_handleRequest
 ///
-/// The `handleRequest` method is the raw way to create a new route. You
+/// The *handleRequest* method is the raw way to create a new route. You
 /// probably wont call it directly, but it is used in the other request methods:
 ///
 /// When defining a route you can also define a so called 'parameterized' route
-/// like `/goose/:barn`. In this case you can later get the value the user
-/// provided for `barn` via the `params` function (see the Request object).
+/// like */goose/:barn*. In this case you can later get the value the user
+/// provided for *barn* via the *params* function (see the Request object).
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   handleRequest: function (method, route, callback) {
@@ -184,14 +184,14 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_head
-/// @brief Handle a `head` request
+/// @startDocuBlock JSF_foxx_controller_head
 ///
-/// @FUN{FoxxController::head(@FA{path}, @FA{callback})}
+/// `FoxxController::head(path, callback)`
 ///
-/// This handles requests from the HTTP verb `head`.  You have to give a
-/// function as @FA{callback}. It will get a request and response object as its
+/// This handles requests from the HTTP verb *head*.  You have to give a
+/// function as *callback*. It will get a request and response object as its
 /// arguments
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   head: function (route, callback) {
@@ -200,25 +200,25 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_get
-/// @brief Manage a `get` request
+/// @startDocuBlock JSF_foxx_controller_get
 ///
-/// @FUN{FoxxController::get(@FA{path}, @FA{callback})}
+/// `FoxxController::get(path, callback)`
 ///
-/// This handles requests from the HTTP verb `get`.
+/// This handles requests from the HTTP verb *get*.
 ///
 /// When defining a route you can also define a so called 'parameterized'
-/// @FA{path} like `/goose/:barn`. In this case you can later get the value
-/// the user provided for `barn` via the `params` function (see the Request
+/// *path* like */goose/:barn*. In this case you can later get the value
+/// the user provided for *barn* via the *params* function (see the Request
 /// object).
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     app.get('/goose/barn', function (req, res) {
-///       // Take this request and deal with it!
-///     });
-/// @endcode
+/// ```js
+/// app.get('/goose/barn', function (req, res) {
+///   // Take this request and deal with it!
+/// });
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   get: function (route, callback) {
@@ -227,21 +227,21 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_post
-/// @brief Tackle a `post` request
+/// @startDocuBlock JSF_foxx_controller_post
 ///
-/// @FUN{FoxxController::post(@FA{path}, @FA{callback})}
+/// `FoxxController::post(path, callback)`
 ///
-/// This handles requests from the HTTP verb `post`.  See above for the
+/// This handles requests from the HTTP verb *post*.  See above for the
 /// arguments you can give.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     app.post('/goose/barn', function (req, res) {
-///       // Take this request and deal with it!
-///     });
-/// @endcode
+/// ```js
+/// app.post('/goose/barn', function (req, res) {
+///   // Take this request and deal with it!
+/// });
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   post: function (route, callback) {
@@ -250,21 +250,21 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_put
-/// @brief Sort out a `put` request
+/// @startDocuBlock JSF_foxx_controller_put
 ///
-/// @FUN{FoxxController::put(@FA{path}, @FA{callback})}
+/// `FoxxController::put(path, callback)`
 ///
-/// This handles requests from the HTTP verb `put`.  See above for the arguments
+/// This handles requests from the HTTP verb *put*.  See above for the arguments
 /// you can give.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     app.put('/goose/barn', function (req, res) {
-///       // Take this request and deal with it!
-///     });
-/// @endcode
+/// ```js
+/// app.put('/goose/barn', function (req, res) {
+///   // Take this request and deal with it!
+/// });
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   put: function (route, callback) {
@@ -273,21 +273,21 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_patch
-/// @brief Take charge of a `patch` request
+/// @startDocuBlock JSF_foxx_controller_patch
 ///
-/// @FUN{FoxxController::patch(@FA{path}, @FA{callback})}
+/// `FoxxController::patch(path, callback)`
 ///
-/// This handles requests from the HTTP verb `patch`.  See above for the
+/// This handles requests from the HTTP verb *patch*.  See above for the
 /// arguments you can give.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     app.patch('/goose/barn', function (req, res) {
-///       // Take this request and deal with it!
-///     });
-/// @endcode
+/// ```js
+/// app.patch('/goose/barn', function (req, res) {
+///   // Take this request and deal with it!
+/// });
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   patch: function (route, callback) {
@@ -296,29 +296,29 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_delete
-/// @brief Respond to a `delete` request
+/// @startDocuBlock JSF_foxx_controller_delete
 ///
-/// @FUN{FoxxController::delete(@FA{path}, @FA{callback})}
+/// `FoxxController::delete(path, callback)`
 ///
-/// This handles requests from the HTTP verb `delete`.  See above for the
+/// This handles requests from the HTTP verb *delete*.  See above for the
 /// arguments you can give.
 ///
-/// @warning Do not forget that `delete` is a reserved word in JavaScript and
-/// therefore needs to be called as app['delete']. There is also an alias `del`
+/// **Warning**: Do not forget that *delete* is a reserved word in JavaScript and
+/// therefore needs to be called as app['delete']. There is also an alias *del*
 /// for this very reason.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     app['delete']('/goose/barn', function (req, res) {
-///       // Take this request and deal with it!
-///     });
+/// ```js
+/// app['delete']('/goose/barn', function (req, res) {
+///   // Take this request and deal with it!
+/// });
 ///
-///     app.del('/goose/barn', function (req, res) {
-///       // Take this request and deal with it!
-///     });
-/// @endcode
+/// app.del('/goose/barn', function (req, res) {
+///   // Take this request and deal with it!
+/// });
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   'delete': function (route, callback) {
@@ -332,23 +332,23 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_before
-/// @brief Before
+/// @startDocuBlock JSF_foxx_controller_before
 ///
-/// @FUN{FoxxController::before(@FA{path}, @FA{callback})}
+/// `FoxxController::before(path, callback)`
 ///
-/// The before function takes a @FA{path} on which it should watch and a
+/// The before function takes a *path* on which it should watch and a
 /// function that it should execute before the routing takes place. If you do
 /// omit the path, the function will be executed before each request, no matter
 /// the path.  Your function gets a Request and a Response object.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     app.before('/high/way', function(req, res) {
-///       //Do some crazy request logging
-///     });
-/// @endcode
+/// ```js
+/// app.before('/high/way', function(req, res) {
+///   //Do some crazy request logging
+/// });
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   before: function (path, func) {
@@ -371,21 +371,21 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_after
-/// @brief After
+/// @startDocuBlock JSF_foxx_controller_after
 ///
-/// @FUN{FoxxController::after(@FA{path}, @FA{callback})}
+/// `FoxxController::after(path, callback)`
 ///
 /// This works pretty similar to the before function.  But it acts after the
 /// execution of the handlers (Big surprise, I suppose).
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     app.after('/high/way', function(req, res) {
-///       //Do some crazy response logging
-///     });
-/// @endcode
+/// ```js
+/// app.after('/high/way', function(req, res) {
+///   //Do some crazy response logging
+/// });
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   after: function (path, func) {
@@ -430,30 +430,29 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_activateAuthentication
-/// @brief Activate authentication for this app
+/// @startDocuBlock JSF_foxx_controller_activateAuthentication
 ///
-/// @FUN{FoxxController::activateAuthentication(@FA{opts})}
+/// `FoxxController::activateAuthentication(opts)`
 ///
 /// To activate authentication for this authentication, first call this function.
 /// Provide the following arguments:
 ///
-/// * `type`: Currently we only support `cookie`, but this will change in the future.
-/// * `cookieLifetime`: An integer. Lifetime of cookies in seconds.
-/// * `cookieName`: A string used as the name of the cookie.
-/// * `sessionLifetime`: An integer. Lifetime of sessions in seconds.
+/// * *type*: Currently we only support *cookie*, but this will change in the future
+/// * *cookieLifetime*: An integer. Lifetime of cookies in seconds
+/// * *cookieName*: A string used as the name of the cookie
+/// * *sessionLifetime*: An integer. Lifetime of sessions in seconds
 ///
+/// @EXAMPLES
 ///
-/// *Examples*
-///
-/// @code
-///     app.activateAuthentication({
-///       type: "cookie",
-///       cookieLifetime: 360000,
-///       cookieName: "my_cookie",
-///       sessionLifetime: 400,
-///     });
-/// @endcode
+/// ```js
+/// app.activateAuthentication({
+///   type: "cookie",
+///   cookieLifetime: 360000,
+///   cookieName: "my_cookie",
+///   sessionLifetime: 400,
+/// });
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   activateAuthentication: function (opts) {
     'use strict';
@@ -465,35 +464,36 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_login
-/// @brief Add a login handler
+/// @startDocuBlock JSF_foxx_controller_login
 ///
-/// @FUN{FoxxController::login(@FA{path}, @FA{opts})}
+/// `FoxxController::login(path, opts)`
 ///
 /// Add a route for the login. You can provide further customizations via the
 /// the options:
 ///
-/// `usernameField` and `passwordField` can be used to adjust the expected attributes
-/// in the `post` request. They default to `username` and `password`.
-/// `onSuccess` is a function that you can define to do something if the login was
-/// successful. This includes sending a response to the user. This defaults to a
-/// function that returns a JSON with `user` set to the identifier of the user and
-/// `key` set to the session key.
-/// `onError` is a function that you can define to do something if the login did not
-/// work. This includes sending a response to the user. This defaults to a function
-/// that sets the response to 401 and returns a JSON with `error` set to
-/// "Username or Password was wrong".
-/// Both `onSuccess` and `onError` should take request and result as arguments.
+/// * *usernameField* and *passwordField* can be used to adjust the expected attributes
+///   in the *post* request. They default to *username* and *password*.
+/// * *onSuccess* is a function that you can define to do something if the login was
+///   successful. This includes sending a response to the user. This defaults to a
+///   function that returns a JSON with *user* set to the identifier of the user and
+/// * *key* set to the session key.
+/// * *onError* is a function that you can define to do something if the login did not
+///   work. This includes sending a response to the user. This defaults to a function
+///   that sets the response to 401 and returns a JSON with *error* set to
+///   "Username or Password was wrong".
+/// 
+/// Both *onSuccess* and *onError* should take request and result as arguments.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     app.login('/login', {
-///       onSuccess: function (req, res) {
-///         res.json({"success": true});
-///       }
-///     });
-/// @endcode
+/// ```js
+/// app.login('/login', {
+///   onSuccess: function (req, res) {
+///     res.json({"success": true});
+///   }
+/// });
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   login: function (route, opts) {
     'use strict';
@@ -502,33 +502,35 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_logout
-/// @brief Add a logout handler
+/// @startDocuBlock JSF_foxx_controller_logout
 ///
-/// @FUN{FoxxController::logout(@FA{path}, @FA{opts})}
+/// `FoxxController::logout(path, opts)`
 ///
 /// This works pretty similar to the logout function and adds a path to your
-/// app for the logout functionality. You can customize it with a custom `onSuccess`
-/// and `onError` function:
-/// `onSuccess` is a function that you can define to do something if the logout was
-/// successful. This includes sending a response to the user. This defaults to a
-/// function that returns a JSON with `message` set to "logged out".
-/// `onError` is a function that you can define to do something if the logout did not
-/// work. This includes sending a response to the user. This defaults to a function
-/// that sets the response to 401 and returns a JSON with `error` set to
-/// "No session was found".
-/// Both `onSuccess` and `onError` should take request and result as arguments.
+/// app for the logout functionality. You can customize it with a custom *onSuccess*
+/// and *onError* function:
+/// 
+/// * *onSuccess* is a function that you can define to do something if the logout was
+///   successful. This includes sending a response to the user. This defaults to a
+///   function that returns a JSON with *message* set to "logged out".
+/// * *onError* is a function that you can define to do something if the logout did not
+///   work. This includes sending a response to the user. This defaults to a function
+///   that sets the response to 401 and returns a JSON with *error* set to
+///   "No session was found".
+/// 
+/// Both *onSuccess* and *onError* should take request and result as arguments.
 ///
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     app.logout('/logout', {
-///       onSuccess: function (req, res) {
-///         res.json({"message": "Bye, Bye"});
-///       }
-///     });
-/// @endcode
+/// ```js
+/// app.logout('/logout', {
+///   onSuccess: function (req, res) {
+///     res.json({"message": "Bye, Bye"});
+///   }
+/// });
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   logout: function (route, opts) {
     'use strict';
@@ -537,42 +539,46 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_register
-/// @brief Add a register handler
+/// @startDocuBlock JSF_foxx_controller_register
 ///
-/// @FUN{FoxxController::register(@FA{path}, @FA{opts})}
+/// `FoxxController::register(path, opts)`
 ///
 /// This works pretty similar to the logout function and adds a path to your
-/// app for the register functionality. You can customize it with a custom `onSuccess`
-/// and `onError` function:
-/// `onSuccess` is a function that you can define to do something if the registration was
-/// successful. This includes sending a response to the user. This defaults to a
-/// function that returns a JSON with `user` set to the created user document.
-/// `onError` is a function that you can define to do something if the registration did not
-/// work. This includes sending a response to the user. This defaults to a function
-/// that sets the response to 401 and returns a JSON with `error` set to
-/// "Registration failed".
-/// Both `onSuccess` and `onError` should take request and result as arguments.
-/// You can also set the fields containing the username and password via `usernameField`
-/// (defaults to `username`) and `passwordField` (defaults to `password`).
+/// app for the register functionality. You can customize it with a custom `*nSuccess*
+/// and *onError* function:
+///
+/// * *onSuccess* is a function that you can define to do something if the registration was
+///   successful. This includes sending a response to the user. This defaults to a
+///   function that returns a JSON with *user* set to the created user document.
+/// * *onError* is a function that you can define to do something if the registration did not
+///   work. This includes sending a response to the user. This defaults to a function
+///   that sets the response to 401 and returns a JSON with *error* set to
+///   "Registration failed".
+/// 
+/// Both *onSuccess* and *onError* should take request and result as arguments.
+/// 
+/// You can also set the fields containing the username and password via *usernameField*
+/// (defaults to *username*) and *passwordField* (defaults to *password*).
 /// If you want to accept additional attributes for the user document, use the option
-/// `acceptedAttributes` and set it to an array containing strings with the names of
+/// *acceptedAttributes* and set it to an array containing strings with the names of
 /// the additional attributes you want to accept. All other attributes in the request
 /// will be ignored.
+///
 /// If you want default attributes for the accepted attributes or set additional fields
-/// (for example `admin`) use the option `defaultAttributes` which should be a hash
+/// (for example *admin*) use the option *defaultAttributes* which should be a hash
 /// mapping attribute names to default values.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     app.register('/logout', {
-///       acceptedAttributes: ['name'],
-///       defaultAttributes: {
-///         admin: false
-///       }
-///     });
-/// @endcode
+/// ```js
+/// app.register('/logout', {
+///   acceptedAttributes: ['name'],
+///   defaultAttributes: {
+///     admin: false
+///   }
+/// });
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   register: function (route, opts) {
     'use strict';
@@ -584,35 +590,36 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_changePassword
-/// @brief Add a change password handler
+/// @startDocuBlock JSF_foxx_controller_changePassword
 ///
-/// @FUN{FoxxController::changePassword(@FA{route}, @FA{opts})}
+/// FoxxController::changePassword(route, opts)`
 ///
 /// Add a route for the logged in user to change the password.
 /// You can provide further customizations via the
 /// the options:
 ///
-/// `passwordField` can be used to adjust the expected attribute
-/// in the `post` request. It defaults to `password`.
-/// `onSuccess` is a function that you can define to do something if the change was
-/// successful. This includes sending a response to the user. This defaults to a
-/// function that returns a JSON with `notice` set to "Changed password!".
-/// `onError` is a function that you can define to do something if the login did not
-/// work. This includes sending a response to the user. This defaults to a function
-/// that sets the response to 401 and returns a JSON with `error` set to
-/// "No session was found".
-/// Both `onSuccess` and `onError` should take request and result as arguments.
+/// * *passwordField* can be used to adjust the expected attribute
+///   in the *post* request. It defaults to *password*.
+/// * *onSuccess* is a function that you can define to do something if the change was
+///   successful. This includes sending a response to the user. This defaults to a
+///   function that returns a JSON with *notice* set to "Changed password!".
+/// * *onError* is a function that you can define to do something if the login did not
+///   work. This includes sending a response to the user. This defaults to a function
+///   that sets the response to 401 and returns a JSON with *error* set to
+///   "No session was found".
+/// 
+/// Both *onSuccess* and *onError* should take request and result as arguments.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     app.changePassword('/changePassword', {
-///       onSuccess: function (req, res) {
-///         res.json({"success": true});
-///       }
-///     });
-/// @endcode
+/// ```js
+/// app.changePassword('/changePassword', {
+///   onSuccess: function (req, res) {
+///     res.json({"success": true});
+///   }
+/// });
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   changePassword: function (route, opts) {
     'use strict';

@@ -15,7 +15,7 @@ exports.repository = TodosRepository;
 
 @startDocuBlock JSF_foxx_repository_initializer
 
-!SUBSECTION Attributes of a Repository
+!SECTION Attributes of a Repository
 
 !SUBSECTION Collection
 
@@ -29,7 +29,7 @@ exports.repository = TodosRepository;
 
 @startDocuBlock JSF_foxx_repository_prefix
 
-!SUBSECTION Methods of a Repository
+!SECTION Methods of a Repository
 
 !SUBSECTION Adding entries to the repository
 
