@@ -251,7 +251,7 @@ int64_t TRI_Int64String (char const* str) {
 #elif defined(TRI_HAVE_STRTOLL)
   result = strtoll(str, &endptr, 10);
 #else
-#warning cannot convert string to int64
+#error cannot convert string to int64
 #endif
 
   while (isspace(*endptr)) {
@@ -313,7 +313,7 @@ uint64_t TRI_UInt64String (char const* str) {
 #elif defined(TRI_HAVE_STRTOULL)
   result = strtoull(str, &endptr, 10);
 #else
-#warning cannot convert string to int64
+#error cannot convert string to int64
 #endif
 
   while (isspace(*endptr)) {

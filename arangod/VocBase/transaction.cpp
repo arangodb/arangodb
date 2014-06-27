@@ -48,7 +48,7 @@
 
 #else
 
-#define LOG_TRX(trx, level, format, ...) (static_cast<void>(0)) 
+#define LOG_TRX(...) while (0)
 
 #endif
 
