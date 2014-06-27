@@ -41,20 +41,20 @@ var Model,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_model_initializer
-/// @brief Create a new instance of Model
+/// @startDocuBlock JSF_foxx_model_initializer
 ///
-/// @FUN{new FoxxModel(@FA{data})}
+/// `new FoxxModel(data)`
 ///
-/// If you initialize a model, you can give it initial @FA{data} as an object.
+/// If you initialize a model, you can give it initial *data* as an object.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     instance = new Model({
-///       a: 1
-///     });
-/// @endcode
+/// ```js
+/// instance = new Model({
+///   a: 1
+/// });
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 var whitelistProperties = function (properties, constructorProperties, whitelistMetadata) {
@@ -166,22 +166,22 @@ _.extend(Model, {
 // Instance Properties
 _.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_model_get
-/// @brief Get the value of an attribute
+/// @startDocuBlock JSF_foxx_model_get
 ///
-/// @FUN{FoxxModel::get(@FA{name})}
+/// `FoxxModel::get(name)`
 ///
 /// Get the value of an attribute
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     instance = new Model({
-///       a: 1
-///     });
+/// ```js
+/// instance = new Model({
+///   a: 1
+/// });
 ///
-///     instance.get("a");
-/// @endcode
+/// instance.get("a");
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   get: function (attributeName) {
@@ -190,25 +190,25 @@ _.extend(Model.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_model_set
-/// @brief Set the value of an attribute
+/// @startDocuBlock JSF_foxx_model_set
 ///
-/// @FUN{FoxxModel::set(@FA{name}, @FA{value})}
+/// `FoxxModel::set(name, value)`
 ///
 /// Set the value of an attribute or multiple attributes at once
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     instance = new Model({
-///       a: 1
-///     });
+/// ```js
+/// instance = new Model({
+///   a: 1
+/// });
 ///
-///     instance.set("a", 2);
-///     instance.set({
-///       b: 2
-///     });
-/// @endcode
+/// instance.set("a", 2);
+/// instance.set({
+///   b: 2
+/// });
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   set: function (attributeName, value) {
@@ -222,23 +222,23 @@ _.extend(Model.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_model_has
-/// @brief Returns true if attribute is set to a non-null or non-undefined value
+/// @startDocuBlock JSF_foxx_model_has
 ///
-/// @FUN{FoxxModel::has(@FA{name})}
+/// `FoxxModel::has(name)`
 ///
 /// Returns true if the attribute is set to a non-null or non-undefined value.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     instance = new Model({
-///       a: 1
-///     });
+/// ```js
+/// instance = new Model({
+///   a: 1
+/// });
 ///
-///     instance.has("a"); //=> true
-///     instance.has("b"); //=> false
-/// @endcode
+/// instance.has("a"); //=> true
+/// instance.has("b"); //=> false
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   has: function (attributeName) {
@@ -248,12 +248,12 @@ _.extend(Model.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_model_forDB
-/// @brief Return a copy of the model which can be saved into ArangoDB
+/// @startDocuBlock JSF_foxx_model_forDB
 ///
-/// @FUN{FoxxModel::forDB()}
+/// `FoxxModel::forDB()`
 ///
 /// Return a copy of the model which can be saved into ArangoDB
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   forDB: function () {
@@ -262,12 +262,12 @@ _.extend(Model.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_model_forClient
-/// @brief Return a copy of the model which can be returned to the client
+/// @startDocuBlock JSF_foxx_model_forClient
 ///
-/// @FUN{FoxxModel::forClient()}
+/// `FoxxModel::forClient()`
 ///
 /// Return a copy of the model which you can send to the client.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   forClient: function () {
@@ -277,14 +277,14 @@ _.extend(Model.prototype, {
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_model_extend
-/// @brief Extend the Model prototype to add or overwrite methods.
+/// @startDocuBlock JSF_foxx_model_extend
 ///
-/// @FUN{FoxxModel::extend(@FA{instanceProperties}, @FA{classProperties})}
+/// `FoxxModel::extend(instanceProperties, classProperties)`
 ///
 /// Extend the Model prototype to add or overwrite methods.
 /// The first object contains the properties to be defined on the instance,
 /// the second object those to be defined on the prototype.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Model.extend = extend;
