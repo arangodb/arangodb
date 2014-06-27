@@ -8,6 +8,8 @@
     el: '#content',
     template: templateEngine.createTemplate("graphManagementView.ejs"),
     edgeDefintionTemplate: templateEngine.createTemplate("edgeDefinitionTable.ejs"),
+    eCollList : [],
+    removedECollList : [],
 
     events: {
       "click #deleteGraph"                  : "deleteGraph",
@@ -73,14 +75,33 @@
         searchString : ''
       }));
       this.events["click .tableRow"] = this.showHideDefinition.bind(this);
-      this.events['change [id*="newEdgeDefinitions"]'] = this.setFromAndTo.bind(this);
+      this.events['change tr[id*="newEdgeDefinitions"]'] = this.setFromAndTo.bind(this);
       this.events["click .graphViewer-icon-button"] = this.addRemoveDefinition.bind(this);
 
       return this;
     },
 
     setFromAndTo : function (e) {
-      var map = this.calculateEdgeDefinitionMap(), id;
+      e.stopPropagation();
+      var map = this.calculateEdgeDefinitionMap(), id, i, tmp;
+
+      if (e.added) {
+        if (this.eCollList.indexOf(e.added.id) === -1 &&
+          this.removedECollList.indexOf(e.added.id) !== -1) {
+          id = e.currentTarget.id.split("row_newEdgeDefinitions")[1];
+          $('input[id*="newEdgeDefinitions' + id  + '"]').select2("val", null);
+          $('input[id*="newEdgeDefinitions' + id  + '"]').attr(
+            "placeholder","The collection "+ e.added.id + " is already used."
+          );
+          return;
+        }
+        this.removedECollList.push(e.added.id);
+        this.eCollList.splice(this.eCollList.indexOf(e.added.id),1);
+      } else {
+        this.eCollList.push(e.removed.id);
+        this.removedECollList.splice(this.removedECollList.indexOf(e.removed.id),1);
+      }
+
       if (map[e.val]) {
         id = e.currentTarget.id.split("row_newEdgeDefinitions")[1];
         $('#s2id_fromCollections'+id).select2("val", map[e.val].from);
@@ -94,6 +115,18 @@
         $('#s2id_toCollections'+id).select2("val", null);
         $('#toCollections'+id).attr('disabled', false);
       }
+      tmp = $('input[id*="newEdgeDefinitions"]');
+      for (i = 0; i < tmp.length ; i++) {
+        id = tmp[i].id;
+        $('#' + id).select2({
+          tags : this.eCollList,
+          showSearchBox: false,
+          minimumResultsForSearch: -1,
+          width: "336px",
+          maximumSelectionSize: 1
+        });
+      }
+
     },
 
     editGraph : function(e) {
@@ -280,12 +313,11 @@
           }
         }
       );
-
       if (!name) {
-        arangoHelper.arangoNotification(
+        arangoHelper.arangoError(
           "A name for the graph has to be provided."
         );
-        return;
+        return 0;
       }
       this.collection.create({
         name: name,
@@ -458,8 +490,7 @@
     },
 
     addRemoveDefinition : function(e) {
-
-      var collList = [], eCollList = [],
+      var collList = [],
         collections = this.options.collectionCollection.models;
 
       collections.forEach(function (c) {
@@ -467,9 +498,6 @@
           return;
         }
         collList.push(c.id);
-        if (c.get('type') === "edge") {
-          eCollList.push(c.id);
-        }
       });
       e.stopPropagation();
       var id = $(e.currentTarget).attr("id"), number;
@@ -481,7 +509,7 @@
           })
         );
         $('#newEdgeDefinitions'+this.counter).select2({
-          tags: eCollList,
+          tags: this.eCollList,
           showSearchBox: false,
           minimumResultsForSearch: -1,
           width: "336px",
@@ -527,8 +555,10 @@
     },
 
     createNewGraphModal: function() {
-      var buttons = [], collList = [], eCollList = [],
-        tableContent = [], collections = this.options.collectionCollection.models;
+      var buttons = [], collList = [],
+        tableContent = [], collections = this.options.collectionCollection.models, self = this;
+      this.eCollList = [];
+      this.removedECollList = [];
 
       collections.forEach(function (c) {
         if (c.get("isSystem")) {
@@ -536,8 +566,7 @@
         }
         collList.push(c.id);
         if (c.get('type') === "edge") {
-
-          eCollList.push(c.id);
+          self.eCollList.push(c.id);
         }
       });
       this.counter = 0;
@@ -565,7 +594,7 @@
           false,
           true,
           1,
-          eCollList
+          this.eCollList
         )
       );
       tableContent.push(
