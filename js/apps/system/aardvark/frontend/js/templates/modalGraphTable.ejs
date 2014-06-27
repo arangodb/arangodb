@@ -24,7 +24,7 @@
               break;
             case "readonly":
           %>
-          <div class="modal-text" id="<%=row.id%>"><%=row.value||''%></div>
+          <input type="text" id="<%=row.id%>" value="<%=row.value||''%>" placeholder="<%=row.placeholder||''%>" disabled></input>
           <%
               break;
               case "checkbox":

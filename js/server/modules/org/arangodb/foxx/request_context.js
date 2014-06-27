@@ -199,11 +199,10 @@ RequestContext = function (executionBuffer, models, route, rootElement) {
 extend(RequestContext.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_RequestContext_pathParam
-/// @brief Describe a path parameter
+/// @startDocuBlock JSF_foxx_RequestContext_pathParam
 ///
 /// If you defined a route "/foxx/:id", you can constrain which format a path
-/// parameter (`/foxx/12`) can have by giving it a type.  We currently support
+/// parameter (*/foxx/12*) can have by giving it a type.  We currently support
 /// the following types:
 ///
 /// * int
@@ -211,16 +210,17 @@ extend(RequestContext.prototype, {
 ///
 /// You can also provide a description of this parameter.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     app.get("/foxx/:id", function {
-///       // Do something
-///     }).pathParam("id", {
-///       description: "Id of the Foxx",
-///       type: "int"
-///     });
-/// @endcode
+/// ```js
+/// app.get("/foxx/:id", function {
+///   // Do something
+/// }).pathParam("id", {
+///   description: "Id of the Foxx",
+///   type: "int"
+/// });
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   pathParam: function (paramName, attributes) {
@@ -238,15 +238,14 @@ extend(RequestContext.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_RequestContext_queryParam
-/// @brief Describe a Query Parameter
+/// @startDocuBlock JSF_foxx_RequestContext_queryParam
 ///
-/// @FUN{FoxxController::queryParam(@FA{id}, @FA{options})}
+/// `FoxxController::queryParam(id, options)`
 ///
 /// Describe a query parameter:
 ///
 /// If you defined a route "/foxx", you can constrain which format a query
-/// parameter (`/foxx?a=12`) can have by giving it a type.  We currently support
+/// parameter (*/foxx?a=12*) can have by giving it a type.  We currently support
 /// the following types:
 ///
 /// * int
@@ -255,18 +254,19 @@ extend(RequestContext.prototype, {
 /// You can also provide a description of this parameter, if it is required and
 /// if you can provide the parameter multiple times.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     app.get("/foxx", function {
-///       // Do something
-///     }).queryParam("id", {
-///       description: "Id of the Foxx",
-///       type: "int",
-///       required: true,
-///       allowMultiple: false
-///     });
-/// @endcode
+/// ```js
+/// app.get("/foxx", function {
+///   // Do something
+/// }).queryParam("id", {
+///   description: "Id of the Foxx",
+///   type: "int",
+///   required: true,
+///   allowMultiple: false
+/// });
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   queryParam: function (paramName, attributes) {
@@ -282,29 +282,30 @@ extend(RequestContext.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_RequestContext_bodyParam
-/// @brief Define a parameter for the body of the request
+/// @startDocuBlock JSF_foxx_RequestContext_bodyParam
 ///
-/// @FUN{FoxxController::bodyParam(@FA{paramName}, @FA{description}, @FA{Model})}
+/// `FoxxController::bodyParam(paramName, description, Model)`
 ///
 /// Expect the body of the request to be a JSON with the attributes you annotated
 /// in your model. It will appear alongside the provided description in your
 /// Documentation.
-/// This will initialize a `Model` with the data and provide it to you via the
-/// params as `paramName`.
+/// This will initialize a *Model* with the data and provide it to you via the
+/// params as *paramName*.
 /// For information about how to annotate your models, see the Model section.
 /// If you provide the Model in an array, the response will take multiple models
 /// instead of one.
 ///
 /// If you wrap the provided model in an array, the body param is always an array
-/// and accordingly the return value of the `params` for the body call will also
+/// and accordingly the return value of the *params* for the body call will also
 /// return an array of models.
 ///
-/// The behavior of `bodyParam` changes depending on the `rootElement` option
-/// set in the manifest. If it is set to true, it is expected that the body is an
-/// object with a key of the same name as the `paramName` argument.
+/// The behavior of *bodyParam* changes depending on the *rootElement* option
+/// set in the [manifest](../Foxx/Manifest.md). If it is set to true, it is 
+/// expected that the body is an
+/// object with a key of the same name as the *paramName* argument.
 /// The value of this object is either a single object or in the case of a multi
 /// element an array of objects.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   bodyParam: function (paramName, description, Proto) {
@@ -322,13 +323,13 @@ extend(RequestContext.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_RequestContext_summary
-/// @brief Set the summary for this route in the documentation
+/// @startDocuBlock JSF_foxx_RequestContext_summary
 ///
-/// @FUN{FoxxController::summary(@FA{description})}
+/// `FoxxController::summary(description)`
 ///
 /// Set the summary for this route in the documentation. Can't be longer than 60.
 /// characters
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   summary: function (summary) {
@@ -341,12 +342,12 @@ extend(RequestContext.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_RequestContext_notes
-/// @brief Set the notes for this route in the documentation
+/// @startDocuBlock JSF_foxx_RequestContext_notes
 ///
-/// @FUN{FoxxController::notes(@FA{description})}
+/// `FoxxController::notes(description)`
 ///
 /// Set the notes for this route in the documentation
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   notes: function (notes) {
@@ -356,10 +357,9 @@ extend(RequestContext.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_RequestContext_errorResponse
-/// @brief Define an error response
+/// @startDocuBlock JSF_foxx_RequestContext_errorResponse
 ///
-/// @FUN{FoxxController::errorResponse(@FA{errorClass}, @FA{code}, @FA{description})}
+/// `FoxxController::errorResponse(errorClass, code, description)`
 ///
 /// Define a reaction to a thrown error for this route: If your handler throws an error
 /// of the defined errorClass, it will be caught and the response will have the given
@@ -373,31 +373,30 @@ extend(RequestContext.prototype, {
 ///
 /// It also adds documentation for this error response to the generated documentation.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
+/// ```js
+/// /* define our own error type, FoxxyError */
+/// var FoxxyError = function (message) {
+///   this.message = "the following FoxxyError occurred: ' + message;
+/// };
+/// FoxxyError.prototype = new Error();
 ///
+/// app.get("/foxx", function {
+///   /* throws a FoxxyError */
+///   throw new FoxxyError();
+/// }).errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!");
 ///
-///     /* define our own error type, FoxxyError */
-///     var FoxxyError = function (message) {
-///       this.message = "the following FoxxyError occurred: ' + message;
-///     };
-///     FoxxyError.prototype = new Error();
-///
-///     app.get("/foxx", function {
-///       /* throws a FoxxyError */
-///       throw new FoxxyError();
-///     }).errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!");
-///
-///     app.get("/foxx", function {
-///       throw new FoxxyError("oops!");
-///     }).errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!", function (e) {
-///       return {
-///         code: 123,
-///         desc: e.message
-///       };
-///     });
-/// @endcode
+/// app.get("/foxx", function {
+///   throw new FoxxyError("oops!");
+/// }).errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!", function (e) {
+///   return {
+///     code: 123,
+///     desc: e.message
+///   };
+/// });
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   errorResponse: function (errorClass, code, reason, errorHandler) {
     'use strict';
@@ -408,22 +407,22 @@ extend(RequestContext.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_RequestContext_onlyIf
-/// @brief Only let the request get through if a condition holds
+/// @startDocuBlock JSF_foxx_RequestContext_onlyIf
 ///
-/// @FUN{FoxxController::onlyIf(@FA{check})}
+/// `FoxxController::onlyIf(check)`
 ///
 /// Provide it with a function that throws an exception if the normal processing should
 /// not be executed. Provide an `errorResponse` to define the behavior in this case.
 /// This can be used for authentication or authorization for example.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     app.get("/foxx", function {
-///       // Do something
-///     }).onlyIf(aFunction).errorResponse(ErrorClass, 303, "This went completely wrong. Sorry!");
-/// @endcode
+/// ```js
+/// app.get("/foxx", function {
+///   // Do something
+/// }).onlyIf(aFunction).errorResponse(ErrorClass, 303, "This went completely wrong. Sorry!");
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   onlyIf: function (check, ErrorClass) {
     'use strict';
@@ -433,23 +432,23 @@ extend(RequestContext.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_RequestContext_onlyIfAuthenticated
-/// @brief Only let the request get through if the user is logged in
+/// @startDocuBlock JSF_foxx_RequestContext_onlyIfAuthenticated
 ///
-/// @FUN{FoxxController::onlyIf(@FA{code}, @FA{reason})}
+/// `FoxxController::onlyIf(code, reason)`
 ///
 /// Please activate authentification for this app if you want to use this function.
 /// If the user is logged in, it will do nothing. Otherwise it will respond with
 /// the status code and the reason you provided (the route handler won't be called).
 /// This will also add the according documentation for this route.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     app.get("/foxx", function {
-///       // Do something
-///     }).onlyIfAuthenticated(401, "You need to be authenticated");
-/// @endcode
+/// ```js
+/// app.get("/foxx", function {
+///   // Do something
+/// }).onlyIfAuthenticated(401, "You need to be authenticated");
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   onlyIfAuthenticated: function (code, reason) {
     'use strict';
@@ -491,65 +490,65 @@ extend(RequestContextBuffer.prototype, {
 
 _.each([
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_RequestContextBuffer_errorResponse
-/// @brief Defines a controller-wide error response
+/// @startDocuBlock JSF_foxx_RequestContextBuffer_errorResponse
 ///
-/// @FUN{RequestContextBuffer::errorResponse(@FA{errorClass}, @FA{code}, @FA{description})}
+/// `RequestContextBuffer::errorResponse(errorClass, code, description)`
 ///
-/// Defines an `errorResponse` for all routes of this controller. For details on
-/// `errorResponse` see the according method on routes.
+/// Defines an *errorResponse* for all routes of this controller. For details on
+/// *errorResponse* see the according method on routes.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     app.allroutes.errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!");
+/// ```js
+/// app.allroutes.errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!");
 ///
-///     app.get("/foxx", function {
-///       // Do something
-///     });
-/// @endcode
+/// app.get("/foxx", function {
+///   // Do something
+/// });
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   "errorResponse",
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_RequestContextBuffer_onlyIf
-/// @brief Defines a controller-wide onlyIf
+/// @startDocuBlock JSF_foxx_RequestContextBuffer_onlyIf
 ///
-/// @FUN{RequestContextBuffer::onlyIf(@FA{code}, @FA{reason})}
+/// `RequestContextBuffer::onlyIf(code, reason)`
 ///
-/// Defines an `onlyIf` for all routes of this controller. For details on
-/// `onlyIf` see the according method on routes.
+/// Defines an *onlyIf* for all routes of this controller. For details on
+/// *onlyIf* see the according method on routes.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     app.allroutes.onlyIf(myPersonalCheck);
+/// ```js
+/// app.allroutes.onlyIf(myPersonalCheck);
 ///
-///     app.get("/foxx", function {
-///       // Do something
-///     });
-/// @endcode
+/// app.get("/foxx", function {
+///   // Do something
+/// });
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   "onlyIf",
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_RequestContextBuffer_onlyIfAuthenticated
-/// @brief Defines a controller-wide onlyIfAuthenticated
+/// @startDocuBlock JSF_foxx_RequestContextBuffer_onlyIfAuthenticated
 ///
-/// @FUN{RequestContextBuffer::errorResponse(@FA{errorClass}, @FA{code}, @FA{description})}
+/// `RequestContextBuffer::errorResponse(errorClass, code, description)`
 ///
-/// Defines an `onlyIfAuthenticated` for all routes of this controller. For details on
-/// `onlyIfAuthenticated` see the according method on routes.
+/// Defines an *onlyIfAuthenticated* for all routes of this controller. For details on
+/// *onlyIfAuthenticated* see the according method on routes.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-///     app.allroutes.onlyIfAuthenticated(401, "You need to be authenticated");
+/// ```js
+/// app.allroutes.onlyIfAuthenticated(401, "You need to be authenticated");
 ///
-///     app.get("/foxx", function {
-///       // Do something
-///     });
-/// @endcode
+/// app.get("/foxx", function {
+///   // Do something
+/// });
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   "onlyIfAuthenticated"
 ], function (functionName) {
