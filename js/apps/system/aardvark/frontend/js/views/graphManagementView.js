@@ -226,6 +226,7 @@
       );
 
       this.updateGraphManagementView();
+      window.modalView.hide();
     },
 
     evaluateGraphName : function(str, substr) {
