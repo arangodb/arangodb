@@ -29,9 +29,10 @@ apply it locally. This will happen at some point in time after t0, let's say t1.
 The difference between t1 and t0 is called the *replication lag*, and it is unavoidable 
 in asynchronous replication. The amount of replication lag depends on many factors, a 
 few of which are:
-- the network capacity between the slaves and the master
-- the load of the master and the slaves
-- the frequency in which slaves poll the master for updates
+
+* the network capacity between the slaves and the master
+* the load of the master and the slaves
+* the frequency in which slaves poll the master for updates
 
 Between t0 and t1, the state of data on the master is newer than the state of data
 on the slave(s). At point in time t1, the state of data on the master and slave(s)

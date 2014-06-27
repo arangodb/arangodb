@@ -95,11 +95,13 @@
   * [First Steps](FoxxManager/FirstSteps.md)
   * [Behind the scenes](FoxxManager/BehindTheScenes.md)
   * [Multiple Databases](FoxxManager/MultipleDatabases.md)
-  * [Foxx Applications](FoxxManager/ApplicationsAndReplications.md)
   * [Manager Commands](FoxxManager/ManagerCommands.md)
   * [Frequently Used Options](FoxxManager/FrequentlyUsedOptions.md)
 <!-- 18 -->
 * [ArangoDB's Actions](ArangoActions/README.md)
+  * [Delivering HTML Pages](ArangoActions/HtmlExample.md)
+  * [Json Objects](ArangoActions/JsonExample.md)
+  * [Modifying](ArangoActions/Modifying.md)
 <!-- 19 -->
 * [Replication](Replication/README.md)
   * [Components](Replication/Components.md)
