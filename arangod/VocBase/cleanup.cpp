@@ -122,10 +122,10 @@ static void CleanupDocumentCollection (TRI_vocbase_col_t* collection,
         // we must release the lock temporarily to check if the collection is fully collected
         TRI_UnlockSpin(&container->_lock);
 
-        bool isDeleted = false;
-
         // must not hold the spin lock while querying the collection
         if (! TRI_IsFullyCollectedDocumentCollection(document)) {
+          bool isDeleted = false;
+
           // if there is still some collection to perform, check if the collection was deleted already
           if (TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
             isDeleted = (collection->_status == TRI_VOC_COL_STATUS_DELETED);

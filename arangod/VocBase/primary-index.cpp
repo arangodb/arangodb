@@ -275,7 +275,7 @@ void* TRI_RemoveKeyPrimaryIndex (TRI_primary_index_t* idx,
   k = TRI_IncModU64(i, n);
 
   while (idx->_table[k] != nullptr) {
-    uint64_t j = (((TRI_doc_mptr_t const*) idx->_table[k])->_hash) % n;
+    uint64_t j = (static_cast<TRI_doc_mptr_t const*>(idx->_table[k])->_hash) % n;
 
     if ((i < k && ! (i < j && j <= k)) || (k < i && ! (i < j || j <= k))) {
       idx->_table[i] = idx->_table[k];

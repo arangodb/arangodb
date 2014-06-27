@@ -103,7 +103,7 @@ namespace triagens {
             size_t bodyLength,
             const map<string, string>& headerFields) {
 
-      TRI_ASSERT(_result == 0);
+      TRI_ASSERT(_result == nullptr);
 
       _result = new SimpleHttpResult;
       _errorMessage = "";
@@ -198,7 +198,7 @@ namespace triagens {
       // set result type in getResult()
       SimpleHttpResult* result = getResult();
 
-      _result = 0;
+      _result = nullptr;
 
       return result;
     }
@@ -398,9 +398,9 @@ namespace triagens {
       char* pos = (char*) memchr(_readBuffer.c_str(), '\n', _readBuffer.length());
 
       while (pos) {
-        // size_t is unsigned, should never get < 0
         TRI_ASSERT(pos >= _readBuffer.c_str());
 
+        // size_t is unsigned, can never get < 0
         size_t len = pos - _readBuffer.c_str();
         string line(_readBuffer.c_str(), len);
         _readBuffer.move_front(len + 1);
@@ -503,7 +503,17 @@ namespace triagens {
         }
 
         uint32_t contentLength;
-        sscanf(trimmed.c_str(), "%x", &contentLength);
+        try {
+          contentLength = static_cast<uint32_t>(std::stol(trimmed, nullptr, 16)); // C++11
+        }
+        catch (...) {
+          setErrorMessage("found invalid content-length", true);
+          // reset connection
+          this->close();
+          _state = DEAD;
+
+          return false;
+        }
 
         if (contentLength == 0) {
           // OK: last content length found
