@@ -133,7 +133,7 @@ LogfileManager::LogfileManager (TRI_server_t* server,
     _server(server),
     _databasePath(databasePath),
     _directory(),
-    _recoverState(new RecoverState(server)),
+    _recoverState(nullptr),
     _filesize(32 * 1024 * 1024),
     _reserveLogfiles(4),
     _historicLogfiles(10),
@@ -144,6 +144,7 @@ LogfileManager::LogfileManager (TRI_server_t* server,
     _throttleWhenPending(0),
     _allowOversizeEntries(true),
     _ignoreLogfileErrors(false),
+    _ignoreRecoveryErrors(false),
     _allowWrites(false), // start in read-only mode
     _hasFoundLastTick(false),
     _recoverRemote(true),
@@ -234,7 +235,8 @@ void LogfileManager::setupOptions (std::map<std::string, triagens::basics::Progr
     ("wal.allow-oversize-entries", &_allowOversizeEntries, "allow entries that are bigger than --wal.logfile-size")
     ("wal.directory", &_directory, "logfile directory")
     ("wal.historic-logfiles", &_historicLogfiles, "maximum number of historic logfiles to keep after collection")
-    ("wal.ignore-logfile-errors", &_ignoreLogfileErrors, "ignore logfile errors on startup")
+    ("wal.ignore-logfile-errors", &_ignoreLogfileErrors, "ignore logfile errors. this will read recoverable data from corrupted logfiles but ignore any unrecoverable data")
+    ("wal.ignore-recovery-errors", &_ignoreRecoveryErrors, "continue recovery even if re-applying operations fails")
     ("wal.logfile-size", &_filesize, "size of each logfile")
     ("wal.open-logfiles", &_maxOpenLogfiles, "maximum number of parallel open logfiles")
     ("wal.recover-remote", &_recoverRemote, "recover remotely started transactions on startup (use on a slave only)")
@@ -312,7 +314,9 @@ bool LogfileManager::prepare () {
   // we use microseconds
   _syncInterval = _syncInterval * 1000;
 
+  // initialise some objects
   _slots = new Slots(this, _numberOfSlots, 0);
+  _recoverState = new RecoverState(_server, _ignoreRecoveryErrors);
 
   return true;
 }

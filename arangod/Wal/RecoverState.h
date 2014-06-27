@@ -80,7 +80,8 @@ namespace triagens {
 /// @brief creates the recover state
 ////////////////////////////////////////////////////////////////////////////////
 
-      RecoverState (TRI_server_t*);
+      RecoverState (TRI_server_t*,
+                    bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys the recover state
@@ -91,6 +92,14 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not to abort recovery on first error
+////////////////////////////////////////////////////////////////////////////////
+
+      inline bool shouldAbort () const {
+        return ! ignoreRecoveryErrors;
+      }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not there are remote transactions
@@ -253,7 +262,6 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       TRI_server_t*                                                               server;
-      std::unordered_map<TRI_voc_cid_t, TRI_voc_tick_t>                           collections;
       std::unordered_map<TRI_voc_tid_t, std::pair<TRI_voc_tick_t, bool>>          failedTransactions;
       std::unordered_map<TRI_voc_tid_t, std::pair<TRI_voc_tick_t, TRI_voc_tid_t>> remoteTransactions;
       std::unordered_set<TRI_voc_cid_t>                                           remoteTransactionCollections;
@@ -268,6 +276,7 @@ namespace triagens {
       std::vector<std::string>                                                    emptyLogfiles;
 
       TRI_doc_update_policy_t                                                     policy;
+      bool                                                                        ignoreRecoveryErrors;
     };
 
   }

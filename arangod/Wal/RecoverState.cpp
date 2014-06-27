@@ -45,9 +45,9 @@ using namespace triagens::wal;
 /// @brief creates the recover state
 ////////////////////////////////////////////////////////////////////////////////
 
-RecoverState::RecoverState (TRI_server_t* server)
+RecoverState::RecoverState (TRI_server_t* server,
+                            bool ignoreRecoveryErrors)
   : server(server),
-    collections(),
     failedTransactions(),
     remoteTransactions(),
     remoteTransactionCollections(),
@@ -60,7 +60,8 @@ RecoverState::RecoverState (TRI_server_t* server)
     openedDatabases(),
     runningRemoteTransactions(),
     emptyLogfiles(),
-    policy(TRI_DOC_UPDATE_ONLY_IF_NEWER, 0, nullptr) {
+    policy(TRI_DOC_UPDATE_ONLY_IF_NEWER, 0, nullptr),
+    ignoreRecoveryErrors(ignoreRecoveryErrors) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -355,42 +356,10 @@ bool RecoverState::InitialScanMarker (TRI_df_marker_t const* marker,
   state->lastTick = marker->_tick;
 
   switch (marker->_type) {
-    case TRI_WAL_MARKER_ATTRIBUTE: {
-      attribute_marker_t const* m = reinterpret_cast<attribute_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
-      TRI_voc_tick_t databaseId = m->_databaseId;
-      state->collections[collectionId] = databaseId;
-      break;
-    }
 
-    case TRI_WAL_MARKER_SHAPE: {
-      shape_marker_t const* m = reinterpret_cast<shape_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
-      TRI_voc_tick_t databaseId = m->_databaseId;
-      state->collections[collectionId] = databaseId;
-      break;
-    }
-
-    case TRI_WAL_MARKER_DOCUMENT: {
-      document_marker_t const* m = reinterpret_cast<document_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
-      state->collections[collectionId] = m->_databaseId;
-      break;
-    }
-
-    case TRI_WAL_MARKER_EDGE: {
-      edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
-      state->collections[collectionId] = m->_databaseId;
-      break;
-    }
-
-    case TRI_WAL_MARKER_REMOVE: {
-      remove_marker_t const* m = reinterpret_cast<remove_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
-      state->collections[collectionId] = m->_databaseId;
-      break;
-    }
+    // -----------------------------------------------------------------------------
+    // transactions
+    // -----------------------------------------------------------------------------
 
     case TRI_WAL_MARKER_BEGIN_TRANSACTION: {
       transaction_begin_marker_t const* m = reinterpret_cast<transaction_begin_marker_t const*>(marker);
@@ -452,6 +421,10 @@ bool RecoverState::InitialScanMarker (TRI_df_marker_t const* marker,
       break;
     }
 
+    // -----------------------------------------------------------------------------
+    // drop markers 
+    // -----------------------------------------------------------------------------
+
     case TRI_WAL_MARKER_DROP_COLLECTION: {
       collection_drop_marker_t const* m = reinterpret_cast<collection_drop_marker_t const*>(marker);
       // note that the collection was dropped and doesn't need to be recovered
@@ -510,7 +483,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
 
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_WARNING("could not apply attribute marker: %s", TRI_errno_string(res));
-        return false;
+        return state->shouldAbort();
       }
       break;
     }
@@ -536,7 +509,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
 
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_WARNING("could not apply shape marker: %s", TRI_errno_string(res));
-        return false;
+        return state->shouldAbort();
       }
       break;
     }
@@ -606,7 +579,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
                     (unsigned long long) collectionId,
                     (unsigned long long) databaseId,
                     TRI_errno_string(res));
-        return false;
+        return state->shouldAbort();
       }
       break;
     }
@@ -677,7 +650,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
                     (unsigned long long) collectionId,
                     (unsigned long long) databaseId,
                     TRI_errno_string(res));
-        return false;
+        return state->shouldAbort();
       }
 
       break;
@@ -732,7 +705,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
                     (unsigned long long) collectionId,
                     (unsigned long long) databaseId,
                     TRI_errno_string(res));
-        return false;
+        return state->shouldAbort();
       }
       break;
     }
@@ -758,14 +731,14 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
 
       if (trx == nullptr) {
         LOG_WARNING("unable to start transaction: %s", TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
-        return false;
+        return state->shouldAbort();
       }
 
       int res = trx->begin();
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_WARNING("unable to start transaction: %s", TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
         delete trx;
-        return false;
+        return state->shouldAbort();
       }
 
       state->runningRemoteTransactions.insert(std::make_pair(m->_externalId, trx));
@@ -793,7 +766,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
                     (unsigned long long) collectionId,
                     (unsigned long long) databaseId,
                     TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND));
-        return false;
+        return state->shouldAbort();
       }
       
       char const* properties = reinterpret_cast<char const*>(m) + sizeof(index_create_marker_t);
@@ -804,7 +777,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
                     (unsigned long long) indexId, 
                     (unsigned long long) collectionId, 
                     (unsigned long long) databaseId);
-        return false;
+        return state->shouldAbort();
       }
 
       // fake transaction to satisfy assertions
@@ -824,7 +797,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
                     (unsigned long long) collectionId, 
                     (unsigned long long) databaseId,
                     TRI_errno_string(res));
-        return false;
+        return state->shouldAbort();
       }
       break;
     }
@@ -841,7 +814,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
       if (vocbase == nullptr) {
         LOG_WARNING("cannot open database %llu", (unsigned long long) databaseId);
-        return false;
+        return state->shouldAbort();
       }
 
       TRI_vocbase_col_t* collection = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
@@ -857,7 +830,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         LOG_WARNING("cannot unpack collection properties for collection %llu in database %llu", 
                     (unsigned long long) collectionId, 
                     (unsigned long long) databaseId);
-        return false;
+        return state->shouldAbort();
       }
       
       TRI_col_info_t info;
@@ -877,7 +850,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         LOG_WARNING("cannot create collection %llu in database %llu", 
                     (unsigned long long) collectionId, 
                     (unsigned long long) databaseId);
-        return false;
+        return state->shouldAbort();
       }
       break;
     }
@@ -900,7 +873,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         
       if (json == nullptr) {
         LOG_WARNING("cannot unpack database properties for database %llu", (unsigned long long) databaseId);
-        return false;
+        return state->shouldAbort();
       }
 
       TRI_json_t const* nameValue = TRI_LookupArrayJson(json, "name");
@@ -908,7 +881,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
 
       if (! TRI_IsStringJson(nameValue)) {
         LOG_WARNING("cannot unpack database properties for database %llu", (unsigned long long) databaseId);
-        return false;
+        return state->shouldAbort();
       }
       
       TRI_vocbase_defaults_t defaults;
@@ -922,7 +895,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
 
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_WARNING("cannot create database %llu: %s", (unsigned long long) databaseId, TRI_errno_string(res));
-        return false;
+        return state->shouldAbort();
       }
       break;
     }
@@ -944,7 +917,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
 
       TRI_document_collection_t* document = state->getCollection(databaseId, collectionId);
       if (document == nullptr) {
-        return false;
+        return state->shouldAbort();
       }
       
       // fake transaction to satisfy assertions
