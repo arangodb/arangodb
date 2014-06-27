@@ -140,7 +140,7 @@
           if (collection && collection !== "") {
             from = _.pluck($('#s2id_fromCollections' + index).select2("data"), "text");
             to = _.pluck($('#s2id_toCollections' + index).select2("data"), "text");
-            if (from !== 1 && to !== 1) {
+            if (from.length !== 0 && to.length !== 0) {
               var edgeDefinition = {
                 collection: collection,
                 from: from,
@@ -152,6 +152,13 @@
           }
         }
       );
+
+      //if no edge definition is left
+      if (edgeDefinitions.length === 0) {
+        $('#s2id_newEdgeDefinitions0 .select2-choices').css("border-color", "red");
+        return;
+      }
+
 
       //get current edgeDefs/orphanage
       var graph = this.collection.findWhere({_key: name});
@@ -359,7 +366,7 @@
           "editGraphName",
           "Name",
           name,
-          false
+          "The name to identify the graph. Has to be unique"
         )
       );
 
@@ -372,7 +379,7 @@
                 "newEdgeDefinitions" + index,
                 "Edge definitions",
                 edgeDefinition.collection,
-                "Some info for edge definitions",
+                "An Edge Definition defines a relations of the graph",
                 "Edge definitions",
                 true,
                 false,
@@ -387,9 +394,9 @@
                 "newEdgeDefinitions" + index,
                 "Edge definitions",
                 edgeDefinition.collection,
-                "Some info for edge definitions",
+                "An Edge Definition defines a relations of the graph",
                 "Edge definitions",
-                true,
+                false,
                 true,
                 false,
                 1,
@@ -433,7 +440,7 @@
           "newVertexCollections",
           "Vertex collections",
           orphanCollections,
-          "Some info for vertex collections",
+          "Collections, that are part of a graph, but not used in an edge definition",
           "Vertex Collections",
           false,
           false,
@@ -610,7 +617,7 @@
           "newEdgeDefinitions0",
           "Edge definitions",
           "",
-          "Some info for edge definitions",
+          "An Edge Definition defines a relations of the graph",
           "Edge definitions",
           true,
           false,
@@ -654,7 +661,7 @@
           "newVertexCollections",
           "Vertex collections",
           "",
-          "Some info for vertex collections",
+          "Collections, that are part of a graph, but not used in an edge definition",
           "Vertex Collections",
           false,
           false,
