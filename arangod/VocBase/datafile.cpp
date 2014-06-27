@@ -1116,36 +1116,34 @@ void TRI_FreeDatafile (TRI_datafile_t* datafile) {
 
 char const* TRI_NameMarkerDatafile (TRI_df_marker_t const* marker) {
   switch (marker->_type) {
-    case TRI_DOC_MARKER_KEY_DOCUMENT:
-      return "document";
-    case TRI_DOC_MARKER_KEY_EDGE:
-      return "edge";
-    case TRI_DOC_MARKER_KEY_DELETION:
-      return "deletion";
-    case TRI_DOC_MARKER_BEGIN_TRANSACTION:
-      return "begin transaction";
-    case TRI_DOC_MARKER_COMMIT_TRANSACTION:
-      return "commit transaction";
-    case TRI_DOC_MARKER_ABORT_TRANSACTION:
-      return "abort transaction";
-    case TRI_DOC_MARKER_PREPARE_TRANSACTION:
-      return "prepare transaction";
-
+    // general markers
     case TRI_DF_MARKER_HEADER:
     case TRI_COL_MARKER_HEADER:
       return "header";
     case TRI_DF_MARKER_FOOTER:
       return "footer";
+
+    // datafile markers
+    case TRI_DOC_MARKER_KEY_DOCUMENT:
+      return "document (df)";
+    case TRI_DOC_MARKER_KEY_EDGE:
+      return "edge (df)";
+    case TRI_DOC_MARKER_KEY_DELETION:
+      return "deletion (df)";
+    case TRI_DOC_MARKER_BEGIN_TRANSACTION:
+      return "begin transaction (df)";
+    case TRI_DOC_MARKER_COMMIT_TRANSACTION:
+      return "commit transaction (df)";
+    case TRI_DOC_MARKER_ABORT_TRANSACTION:
+      return "abort transaction (df)";
+    case TRI_DOC_MARKER_PREPARE_TRANSACTION:
+      return "prepare transaction (df)";
     case TRI_DF_MARKER_ATTRIBUTE:
-      return "attribute";
+      return "attribute (df)";
     case TRI_DF_MARKER_SHAPE:
-      return "shape";
+      return "shape (df)";
 
-    case TRI_DOC_MARKER_DOCUMENT:
-    case TRI_DOC_MARKER_EDGE:
-    case TRI_DOC_MARKER_DELETION:
-      return "deprecated";
-
+    // wal markers
     case TRI_WAL_MARKER_ATTRIBUTE:
       return "attribute (wal)";
     case TRI_WAL_MARKER_SHAPE:
@@ -1162,6 +1160,12 @@ char const* TRI_NameMarkerDatafile (TRI_df_marker_t const* marker) {
       return "commit transaction (wal)";
     case TRI_WAL_MARKER_ABORT_TRANSACTION:
       return "abort transaction (wal)";
+    case TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION:
+      return "begin remote transaction (wal)";
+    case TRI_WAL_MARKER_COMMIT_REMOTE_TRANSACTION:
+      return "commit remote transaction (wal)";
+    case TRI_WAL_MARKER_ABORT_REMOTE_TRANSACTION:
+      return "abort remote transaction (wal)";
     case TRI_WAL_MARKER_CREATE_COLLECTION:
       return "create collection (wal)";
     case TRI_WAL_MARKER_DROP_COLLECTION:
@@ -1192,15 +1196,14 @@ void TRI_InitMarkerDatafile (char* marker,
                              TRI_df_marker_type_e type,
                              TRI_voc_size_t size) {
 
-  TRI_df_marker_t* df = (TRI_df_marker_t*) marker;
-
-  TRI_ASSERT(marker != NULL);
+  TRI_ASSERT(marker != nullptr);
   TRI_ASSERT(type > TRI_MARKER_MIN && type < TRI_MARKER_MAX);
   TRI_ASSERT(size > 0);
 
   // initialise the basic bytes
   memset(marker, 0, size);
 
+  TRI_df_marker_t* df = reinterpret_cast<TRI_df_marker_t*>(marker);
   df->_size = size;
   df->_type = type;
   // not needed because of memset above

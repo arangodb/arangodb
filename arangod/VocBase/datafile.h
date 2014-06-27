@@ -136,48 +136,51 @@ TRI_df_state_e;
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef enum {
-  TRI_MARKER_MIN                     = 999,  // not a real marker type,
-                                             // but used for bounds checking
+  TRI_MARKER_MIN                           = 999,  // not a real marker type,
+                                                   // but used for bounds checking
 
-  TRI_DF_MARKER_HEADER               = 1000,
-  TRI_DF_MARKER_FOOTER               = 1001,
-  TRI_DF_MARKER_ATTRIBUTE            = 1003,
-  TRI_DF_MARKER_SHAPE                = 1004,
+  TRI_DF_MARKER_HEADER                     = 1000,
+  TRI_DF_MARKER_FOOTER                     = 1001,
+  TRI_DF_MARKER_ATTRIBUTE                  = 1003,
+  TRI_DF_MARKER_SHAPE                      = 1004,
 
-  TRI_COL_MARKER_HEADER              = 2000,
+  TRI_COL_MARKER_HEADER                    = 2000,
+/*
+  TRI_DOC_MARKER_HEADER                    = 3000, // deprecated. do not use
+  TRI_DOC_MARKER_DOCUMENT                  = 3001, // deprecated. do not use
+  TRI_DOC_MARKER_DELETION                  = 3002, // deprecated. do not use
+  TRI_DOC_MARKER_EDGE                      = 3006, // deprecated. do not use
+*/
+  TRI_DOC_MARKER_KEY_DOCUMENT              = 3007, // new marker with key values
+  TRI_DOC_MARKER_KEY_EDGE                  = 3008, // new marker with key values
+  TRI_DOC_MARKER_KEY_DELETION              = 3009, // new marker with key values
 
-  TRI_DOC_MARKER_HEADER              = 3000, // deprecated. do not use
-  TRI_DOC_MARKER_DOCUMENT            = 3001, // deprecated. do not use
-  TRI_DOC_MARKER_DELETION            = 3002, // deprecated. do not use
-  TRI_DOC_MARKER_EDGE                = 3006, // deprecated. do not use
+  TRI_DOC_MARKER_BEGIN_TRANSACTION         = 3100, // not created anymore in ArangoDB 2.2
+  TRI_DOC_MARKER_COMMIT_TRANSACTION        = 3101, // not created anymore in ArangoDB 2.2
+  TRI_DOC_MARKER_ABORT_TRANSACTION         = 3102, // not created anymore in ArangoDB 2.2
+  TRI_DOC_MARKER_PREPARE_TRANSACTION       = 3103, // not created anymore in ArangoDB 2.2
 
-  TRI_DOC_MARKER_KEY_DOCUMENT        = 3007, // new marker with key values
-  TRI_DOC_MARKER_KEY_EDGE            = 3008, // new marker with key values
-  TRI_DOC_MARKER_KEY_DELETION        = 3009, // new marker with key values
+  TRI_WAL_MARKER_ATTRIBUTE                 = 4000,
+  TRI_WAL_MARKER_SHAPE                     = 4001,
+  TRI_WAL_MARKER_DOCUMENT                  = 4010,
+  TRI_WAL_MARKER_EDGE                      = 4011,
+  TRI_WAL_MARKER_REMOVE                    = 4012,
+  TRI_WAL_MARKER_BEGIN_TRANSACTION         = 4020,
+  TRI_WAL_MARKER_COMMIT_TRANSACTION        = 4021,
+  TRI_WAL_MARKER_ABORT_TRANSACTION         = 4022,
+  TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION  = 4023,
+  TRI_WAL_MARKER_COMMIT_REMOTE_TRANSACTION = 4024,
+  TRI_WAL_MARKER_ABORT_REMOTE_TRANSACTION  = 4025,
 
-  TRI_DOC_MARKER_BEGIN_TRANSACTION   = 3100,
-  TRI_DOC_MARKER_COMMIT_TRANSACTION  = 3101,
-  TRI_DOC_MARKER_ABORT_TRANSACTION   = 3102,
-  TRI_DOC_MARKER_PREPARE_TRANSACTION = 3103,
+  TRI_WAL_MARKER_CREATE_COLLECTION         = 4030,
+  TRI_WAL_MARKER_DROP_COLLECTION           = 4031,
+  TRI_WAL_MARKER_RENAME_COLLECTION         = 4032,
+  TRI_WAL_MARKER_CHANGE_COLLECTION         = 4033,
+  TRI_WAL_MARKER_CREATE_INDEX              = 4035,
+  TRI_WAL_MARKER_DROP_INDEX                = 4036,
 
-  TRI_WAL_MARKER_ATTRIBUTE           = 4000,
-  TRI_WAL_MARKER_SHAPE               = 4001,
-  TRI_WAL_MARKER_DOCUMENT            = 4010,
-  TRI_WAL_MARKER_EDGE                = 4011,
-  TRI_WAL_MARKER_REMOVE              = 4012,
-  TRI_WAL_MARKER_BEGIN_TRANSACTION   = 4020,
-  TRI_WAL_MARKER_COMMIT_TRANSACTION  = 4021,
-  TRI_WAL_MARKER_ABORT_TRANSACTION   = 4022,
-
-  TRI_WAL_MARKER_CREATE_COLLECTION   = 4030,
-  TRI_WAL_MARKER_DROP_COLLECTION     = 4031,
-  TRI_WAL_MARKER_RENAME_COLLECTION   = 4032,
-  TRI_WAL_MARKER_CHANGE_COLLECTION   = 4033,
-  TRI_WAL_MARKER_CREATE_INDEX        = 4035,
-  TRI_WAL_MARKER_DROP_INDEX          = 4036,
-
-  TRI_WAL_MARKER_CREATE_DATABASE     = 4040,
-  TRI_WAL_MARKER_DROP_DATABASE       = 4041,
+  TRI_WAL_MARKER_CREATE_DATABASE           = 4040,
+  TRI_WAL_MARKER_DROP_DATABASE             = 4041,
 
   TRI_TEMP_MARKER_ATTRIBUTE          = 9000,
 
