@@ -1790,7 +1790,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-attributes.js \
                @top_srcdir@/js/common/tests/shell-base64.js \
                @top_srcdir@/js/common/tests/shell-collection.js \
-               @top_srcdir@/js/common/tests/shell-collection-volatile.js \
+               @top_srcdir@/js/common/tests/shell-collection-volatile-noncluster.js \
                @top_srcdir@/js/common/tests/shell-crypto.js \
                @top_srcdir@/js/common/tests/shell-collection-noncluster.js \
                @top_srcdir@/js/common/tests/shell-database.js \
@@ -1910,8 +1910,8 @@ UNITTESTS_SERVER_AHUACATL_EXTENDED = $(addprefix --javascript.unit-tests ,$(SHEL
 ################################################################################
 ### @brief SHELL CLIENT TESTS
 ################################################################################
-UNITTESTS_READONLY = $(addprefix --javascript.unit-tests ,@top_srcdir@/js/client/tests/shell-changeMode.js)
-UNITTESTS_NO_READONLY = $(addprefix --javascript.unit-tests ,@top_srcdir@/js/client/tests/shell-noChangeMode.js)
+UNITTESTS_READONLY = $(addprefix --javascript.unit-tests ,@top_srcdir@/js/client/tests/shell-changeMode-noncluster.js)
+UNITTESTS_NO_READONLY = $(addprefix --javascript.unit-tests ,@top_srcdir@/js/client/tests/shell-noChangeMode-noncluster.js)
 SHELL_CLIENT_ONLY = \
 	       @top_srcdir@/js/client/tests/shell-endpoints.js \
 	       @top_srcdir@/js/client/tests/shell-fm.js \
@@ -8039,6 +8039,7 @@ curl-request-get:
 @ENABLE_FAILURE_TESTS_TRUE@	@echo "================================================================================"
 @ENABLE_FAILURE_TESTS_TRUE@	@echo
 
+@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="no-journal"
 @ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="write-throttling"
 @ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="collector-oom"
 @ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="transaction-no-abort"
@@ -8844,28 +8845,28 @@ js/apps/system/aardvark/frontend/js/modules/underscore.js: @srcdir@/js/node/node
 ################################################################################
 
 @ENABLE_MAINTAINER_MODE_TRUE@%.c: %.l
-@ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/config/flex-c.sh $(LEX) $@ $<
+@ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/utils/flex-c.sh $(LEX) $@ $<
 
 ################################################################################
 ### @brief flex++
 ################################################################################
 
 @ENABLE_MAINTAINER_MODE_TRUE@%.cpp: %.ll
-@ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/config/flex-c++.sh $(LEX) $@ $<
+@ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/utils/flex-c++.sh $(LEX) $@ $<
 
 ################################################################################
 ### @brief BISON
 ################################################################################
 
 @ENABLE_MAINTAINER_MODE_TRUE@%.c: %.y
-@ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/config/bison-c.sh $(BISON) $@ $<
+@ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/utils/bison-c.sh $(BISON) $@ $<
 
 ################################################################################
 ### @brief BISON++
 ################################################################################
 
 @ENABLE_MAINTAINER_MODE_TRUE@%.cpp: %.yy
-@ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/config/bison-c++.sh $(BISON) $@ $<
+@ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/utils/bison-c++.sh $(BISON) $@ $<
 
 @ENABLE_ALL_IN_ONE_ICU_TRUE@@ICU_LIBS@: @srcdir@/.icu-build-@TRI_BITS@
 
