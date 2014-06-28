@@ -3106,7 +3106,6 @@ namespace triagens {
         string ret;
 
         int i = 0;
-        int j = 0;
 
         unsigned char const* bytesToEncode = reinterpret_cast<unsigned char const*>(in.c_str());
         size_t in_len = in.size();
@@ -3129,7 +3128,7 @@ namespace triagens {
         }
 
         if (i != 0) {
-          for(j = i; j < 3; j++) {
+          for(size_t j = i; j < 3; j++) {
             charArray3[j] = '\0';
           }
 
@@ -3138,7 +3137,7 @@ namespace triagens {
           charArray4[2] = ((charArray3[1] & 0x0f) << 2) + ((charArray3[2] & 0xc0) >> 6);
           charArray4[3] =   charArray3[2] & 0x3f;
 
-          for (j = 0; (j < i + 1); j++) {
+          for (size_t j = 0; (j < i + 1); j++) {
             ret += BASE64U_CHARS[charArray4[j]];
           }
 
@@ -3159,7 +3158,6 @@ namespace triagens {
         string ret;
 
         int i = 0;
-        int j = 0;
         int inp = 0;
 
         int in_len = (int) source.size();
@@ -3187,11 +3185,11 @@ namespace triagens {
         }
 
         if (i) {
-          for (j = i;  j < 4;  j++) {
+          for (size_t j = i;  j < 4;  j++) {
               charArray4[j] = 0;
           }
 
-          for (j = 0;  j < 4; j++) {
+          for (size_t j = 0;  j < 4; j++) {
             charArray4[j] = BASE64U_REVS[charArray4[j]];
           }
 
@@ -3199,7 +3197,7 @@ namespace triagens {
           charArray3[1] = ((charArray4[1] & 0xf) << 4) + ((charArray4[2] & 0x3c) >> 2);
           charArray3[2] = ((charArray4[2] & 0x3) << 6) + charArray4[3];
 
-          for (j = 0;  j < i - 1;  j++) {
+          for (size_t j = 0;  j < i - 1;  j++) {
             ret += charArray3[j];
           }
         }
@@ -3211,7 +3209,7 @@ namespace triagens {
       // ADDITIONAL STRING UTILITIES
       // .............................................................................
 
-      string correctPath(const string& incorrectPath) {
+      string correctPath (const string& incorrectPath) {
         #ifdef _WIN32
           return replace (incorrectPath, "/", "\\");
         #else

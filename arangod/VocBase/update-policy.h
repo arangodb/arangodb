@@ -44,6 +44,7 @@
 typedef enum {
   TRI_DOC_UPDATE_ERROR,
   TRI_DOC_UPDATE_LAST_WRITE,
+  TRI_DOC_UPDATE_ONLY_IF_NEWER,
   TRI_DOC_UPDATE_ILLEGAL
 }
 TRI_doc_update_policy_e;
@@ -56,6 +57,11 @@ class TRI_doc_update_policy_t {
 
   public:
 
+    TRI_doc_update_policy_t (TRI_doc_update_policy_t const&) = delete;
+    TRI_doc_update_policy_t& operator= (TRI_doc_update_policy_t const&) = delete;
+
+    TRI_doc_update_policy_t () = delete;
+
     TRI_doc_update_policy_t (TRI_doc_update_policy_e policy,
                              TRI_voc_rid_t expectedRid,
                              TRI_voc_rid_t* previousRid)
@@ -64,9 +70,15 @@ class TRI_doc_update_policy_t {
         _policy(policy) {
     }
 
-    TRI_doc_update_policy_t () = delete;
-
   public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update the expected revision id in an existing policy object
+////////////////////////////////////////////////////////////////////////////////
+
+    inline void setExpectedRevision (TRI_voc_rid_t rid) {
+      _expectedRid = rid;
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare revision of found document with revision specified in policy
@@ -86,6 +98,7 @@ class TRI_doc_update_policy_t {
           if (_expectedRid != 0 && _expectedRid != actualRid) {
             return TRI_ERROR_ARANGO_CONFLICT;
           }
+          // fallthrough
           break;
 
         case TRI_DOC_UPDATE_ILLEGAL:
@@ -93,6 +106,13 @@ class TRI_doc_update_policy_t {
 
         case TRI_DOC_UPDATE_LAST_WRITE:
           return TRI_ERROR_NO_ERROR;
+
+        case TRI_DOC_UPDATE_ONLY_IF_NEWER:
+          if (actualRid > _expectedRid) {
+            return TRI_ERROR_ARANGO_CONFLICT;
+          }
+          // fallthrough
+          break;
       }
 
       return TRI_ERROR_NO_ERROR;

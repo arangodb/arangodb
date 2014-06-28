@@ -330,7 +330,8 @@ bool TRI_RemoveIndexFile (struct TRI_document_collection_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_SaveIndex (struct TRI_document_collection_t*,
-                   TRI_index_t*);
+                   TRI_index_t*,
+                   bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an index identifier

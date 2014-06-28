@@ -212,10 +212,9 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
 
   // we need to remove the old entries
   if (temp) {
-    void* old;
-
     TRI_ASSERT(aid != 0);
 
+    void* old;
     old = TRI_RemoveKeyAssociativeSynced(&s->_attributeIds, &aid);
     TRI_ASSERT(old != nullptr);
 
@@ -801,18 +800,48 @@ int TRI_MoveMarkerVocShaper (TRI_shaper_t* s,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InsertShapeVocShaper (TRI_shaper_t* s,
-                              TRI_df_marker_t const* marker) {
-  char* p = ((char*) marker) + sizeof(TRI_df_shape_marker_t);
+                              TRI_df_marker_t const* marker,
+                              bool warnIfDuplicate) {
+  char const* p = reinterpret_cast<char const*>(marker);
+  if (marker->_type == TRI_DF_MARKER_SHAPE) {
+    p += sizeof(TRI_df_shape_marker_t);
+  }
+  else if (marker->_type == TRI_WAL_MARKER_SHAPE) {
+    p += sizeof(triagens::wal::shape_marker_t);
+  }
+  else {
+    return TRI_ERROR_INTERNAL;
+  }
+
   TRI_shape_t* l = (TRI_shape_t*) p;
 
   LOG_TRACE("found shape %lu", (unsigned long) l->_sid);
 
   voc_shaper_t* shaper = (voc_shaper_t*) s;
-  void* f = TRI_InsertElementAssociativeSynced(&shaper->_shapeDictionary, l, false);
-  TRI_ASSERT(f == nullptr);
+
+  void* f;
+  f = TRI_InsertElementAssociativeSynced(&shaper->_shapeDictionary, l, false);
+  if (warnIfDuplicate && f != nullptr) {
+    char const* name = shaper->_collection->_info._name;
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    LOG_ERROR("found duplicate shape in collection '%s'", name);
+    TRI_ASSERT(false);
+#else
+    LOG_TRACE("found duplicate shape in collection '%s'", name);
+#endif
+  }
 
   f = TRI_InsertKeyAssociativeSynced(&shaper->_shapeIds, &l->_sid, l, false);
-  TRI_ASSERT(f == nullptr);
+  if (warnIfDuplicate && f != nullptr) {
+    char const* name = shaper->_collection->_info._name;
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    LOG_ERROR("found duplicate shape in collection '%s'", name);
+    TRI_ASSERT(false);
+#else
+    LOG_TRACE("found duplicate shape in collection '%s'", name);
+#endif
+  }
 
   if (shaper->_nextSid <= l->_sid) {
     shaper->_nextSid = l->_sid + 1;
@@ -826,42 +855,64 @@ int TRI_InsertShapeVocShaper (TRI_shaper_t* s,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InsertAttributeVocShaper (TRI_shaper_t* s,
-                                  TRI_df_marker_t const* marker) {
-  TRI_df_attribute_marker_t* m = (TRI_df_attribute_marker_t*) marker;
-  char* p = ((char*) m) + sizeof(TRI_df_attribute_marker_t);
+                                  TRI_df_marker_t const* marker,
+                                  bool warnIfDuplicate) {
+  char* name = nullptr;
+  TRI_shape_aid_t aid = 0;
 
-  LOG_TRACE("found attribute '%s', aid: %lu", p, (unsigned long) m->_aid);
+  if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
+    name = ((char*) marker) + sizeof(TRI_df_attribute_marker_t);
+    aid = ((TRI_df_attribute_marker_t*) marker)->_aid;
+  }
+  else if (marker->_type == TRI_WAL_MARKER_ATTRIBUTE) {
+    name = ((char*) marker) + sizeof(triagens::wal::attribute_marker_t);
+    aid = ((triagens::wal::attribute_marker_t*) marker)->_attributeId;
+  }
+  else {
+    return TRI_ERROR_INTERNAL;
+  }
 
-  voc_shaper_t* shaper = (voc_shaper_t*) s;
-  void* f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeNames, p, m, false);
+  LOG_TRACE("found attribute '%s', aid: %lu", name, (unsigned long) aid);
+   
+  // remove an existing temporary attribute if present
+  voc_shaper_t* shaper = reinterpret_cast<voc_shaper_t*>(s);
+  bool temp;
+  TRI_shape_aid_t tempAid = LookupAttributeByName(s, name, &temp);
+  if (tempAid != 0 && temp) {
+    TRI_RemoveKeyAssociativeSynced(&shaper->_attributeIds, &tempAid);
+    TRI_RemoveKeyAssociativeSynced(&shaper->_attributeNames, name);
+  }
 
-  if (f != nullptr) {
-    char const* name = shaper->_collection->_info._name;
+  void* found;
+  found = TRI_InsertKeyAssociativeSynced(&shaper->_attributeNames, name, (void*) marker, false);
+
+  if (warnIfDuplicate && found != nullptr) {
+    char const* cname = shaper->_collection->_info._name;
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-    LOG_ERROR("found duplicate attribute name '%s' in collection '%s'", p, name);
+    LOG_ERROR("found duplicate attribute name '%s' in collection '%s'", name, cname);
     TRI_ASSERT(false);
 #else
-    LOG_TRACE("found duplicate attribute name '%s' in collection '%s'", p, name);
+    LOG_TRACE("found duplicate attribute name '%s' in collection '%s'", name, cname);
 #endif
   }
 
-  f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeIds, &m->_aid, m, false);
+  found = TRI_InsertKeyAssociativeSynced(&shaper->_attributeIds, &aid, (void*) marker, false);
 
-  if (f != nullptr) {
-    char const* name = shaper->_collection->_info._name;
+  if (warnIfDuplicate && found != nullptr) {
+    char const* cname = shaper->_collection->_info._name;
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-    LOG_ERROR("found duplicate attribute id '%llu' in collection '%s'", (unsigned long long) m->_aid, name);
+    LOG_ERROR("found duplicate attribute id '%llu' in collection '%s'", (unsigned long long) aid, cname);
     TRI_ASSERT(false);
 #else
-    LOG_TRACE("found duplicate attribute id '%llu' in collection '%s'", (unsigned long long) m->_aid, name);
+    LOG_TRACE("found duplicate attribute id '%llu' in collection '%s'", (unsigned long long) aid, cname);
 #endif
   }
 
   // no lock is necessary here as we are the only users of the shaper at this time
-  if (shaper->_nextAid <= m->_aid) {
-    shaper->_nextAid = m->_aid + 1;
+  if (shaper->_nextAid <= aid) {
+    shaper->_nextAid = aid + 1;
   }
 
   return TRI_ERROR_NO_ERROR;

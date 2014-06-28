@@ -14,26 +14,26 @@ application in the production ArangoDB instance and make it available.
 
 Here are the individual steps to carry out:
 
-- development: 
-  - cd into the directory that application code is in. Then create a tar.gz file with 
+* development: 
+  * cd into the directory that application code is in. Then create a tar.gz file with 
     the application code (replace *app* with the actual name):
 
         cd /path/to/development/apps/directory
         tar cvfz app.tar.gz app
 
-  - copy the tar.gz file to the production server:
+  * copy the tar.gz file to the production server:
 
         scp app.tar.gz production:/tmp/
 
-- production:
-  - create a temporary directory, e.g. */tmp/apps* and extract the tar archive into 
+* production:
+  * create a temporary directory, e.g. */tmp/apps* and extract the tar archive into 
     this directory:
 
         mkdir /tmp/apps
         cd /tmp/apps
         tar xvfz /tmp/app.tar.gz
 
-  - start the ArangoDB shell and run the following commands in it:
+  * start the ArangoDB shell and run the following commands in it:
 
         fm.fetch("directory", "/tmp/apps/app");
         fm.mount("app", "/app");

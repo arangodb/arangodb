@@ -172,7 +172,8 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool UnregisterCollection (TRI_vocbase_t* vocbase,
-                                  TRI_vocbase_col_t* collection) {
+                                  TRI_vocbase_col_t* collection,
+                                  bool writeMarker) {
   TRI_ASSERT(collection != nullptr);
   TRI_ASSERT(collection->_name != nullptr);
 
@@ -192,6 +193,10 @@ static bool UnregisterCollection (TRI_vocbase_t* vocbase,
   TRI_ASSERT_EXPENSIVE(vocbase->_collectionsByName._nrUsed == vocbase->_collectionsById._nrUsed);
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
+  if (! writeMarker) {
+    return true;
+  }
 
   int res = TRI_ERROR_NO_ERROR;
 
@@ -568,7 +573,8 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
 
 static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
                                             TRI_col_info_t* parameter,
-                                            TRI_voc_cid_t cid) {
+                                            TRI_voc_cid_t cid,
+                                            bool writeMarker) {
   char const* name = parameter->_name;
 
   TRI_WRITE_LOCK_COLLECTIONS_VOCBASE(vocbase);
@@ -632,10 +638,22 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
                  document->_directory,
                  sizeof(collection->_path) - 1);
 
-  TRI_json_t* json = TRI_CreateJsonCollectionInfo(&col->_info);
+  TRI_json_t* json = nullptr;
+
+  if (writeMarker) {
+    json = TRI_CreateJsonCollectionInfo(&col->_info);
+    if (json == nullptr) {
+      // TODO: revert the operation
+      return collection;
+    }
+  }
 
   // release the lock on the list of collections
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
+
+  if (! writeMarker) {
+    return collection;
+  }
 
   int res = TRI_ERROR_NO_ERROR;
 
@@ -853,20 +871,17 @@ static int ScanPath (TRI_vocbase_t* vocbase,
   }
 
   for (i = 0;  i < n;  ++i) {
-    char* name;
-    char* file;
-
-    name = files._buffer[i];
-    TRI_ASSERT(name != NULL);
+    char* name = files._buffer[i];
+    TRI_ASSERT(name != nullptr);
 
     if (regexec(&re, name, sizeof(matches) / sizeof(matches[0]), matches, 0) != 0) {
       // no match, ignore this file
       continue;
     }
 
-    file = TRI_Concatenate2File(path, name);
+    char* file = TRI_Concatenate2File(path, name);
 
-    if (file == NULL) {
+    if (file == nullptr) {
       LOG_FATAL_AND_EXIT("out of memory");
     }
 
@@ -955,7 +970,7 @@ static int ScanPath (TRI_vocbase_t* vocbase,
 
         c = AddCollection(vocbase, type, info._name, info._cid, file);
 
-        if (c == NULL) {
+        if (c == nullptr) {
           LOG_ERROR("failed to add document collection from '%s'", file);
 
           TRI_FreeString(TRI_CORE_MEM_ZONE, file);
@@ -972,7 +987,7 @@ static int ScanPath (TRI_vocbase_t* vocbase,
         if (iterateMarkers) {
           // iterating markers may be time-consuming. we'll only do it if
           // we have to
-          TRI_IterateTicksCollection(file, StartupTickIterator, NULL);
+          TRI_IterateTicksCollection(file, StartupTickIterator, nullptr);
         }
 
         LOG_DEBUG("added document collection from '%s'", file);
@@ -1150,21 +1165,19 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
 static int FilterCollectionIndex (TRI_vocbase_col_t* collection,
                                   char const* filename,
                                   void* data) {
-  TRI_json_t* indexJson;
-  TRI_json_t* id;
   index_json_helper_t* ij = (index_json_helper_t*) data;
 
-  indexJson = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, NULL);
+  TRI_json_t* indexJson = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, nullptr);
 
-  if (indexJson == NULL) {
+  if (indexJson == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   // compare index id with tick value
-  id = TRI_LookupArrayJson(indexJson, "id");
+  TRI_json_t* id = TRI_LookupArrayJson(indexJson, "id");
 
   // index id is numeric
-  if (id != NULL && id->_type == TRI_JSON_NUMBER) {
+  if (TRI_IsNumberJson(id)) {
     uint64_t iid = (uint64_t) id->_value._number;
 
     if (iid > (uint64_t) ij->_maxTick) {
@@ -1315,25 +1328,25 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_vocbase_type_e type,
   // init AQL functions
   vocbase->_functions = TRI_CreateFunctionsAql();
 
-  if (vocbase->_functions == NULL) {
+  if (vocbase->_functions == nullptr) {
     TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_name);
     TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
-    return NULL;
+    return nullptr;
   }
 
   vocbase->_cursors = TRI_CreateStoreGeneralCursor();
 
-  if (vocbase->_cursors == NULL) {
+  if (vocbase->_cursors == nullptr) {
     TRI_FreeFunctionsAql(vocbase->_functions);
     TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_name);
     TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
 
-    return NULL;
+    return nullptr;
   }
 
   // init usage info
@@ -1350,14 +1363,14 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_vocbase_type_e type,
                              HashKeyCid,
                              HashElementCid,
                              EqualKeyCid,
-                             NULL);
+                             nullptr);
 
   TRI_InitAssociativePointer(&vocbase->_collectionsByName,
                              TRI_UNKNOWN_MEM_ZONE,
                              HashKeyCollectionName,
                              HashElementCollectionName,
                              EqualKeyCollectionName,
-                             NULL);
+                             nullptr);
 
   TRI_InitAuthInfo(vocbase);
 
@@ -1420,17 +1433,14 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
                                 TRI_vocbase_defaults_t const* defaults,
                                 bool isUpgrade,
                                 bool iterateMarkers) {
-  TRI_vocbase_t* vocbase;
-  int res;
+  TRI_ASSERT(name != nullptr);
+  TRI_ASSERT(path != nullptr);
+  TRI_ASSERT(defaults != nullptr);
 
-  TRI_ASSERT(name != NULL);
-  TRI_ASSERT(path != NULL);
-  TRI_ASSERT(defaults != NULL);
+  TRI_vocbase_t* vocbase = TRI_CreateInitialVocBase(TRI_VOCBASE_TYPE_NORMAL, path, id, name, defaults);
 
-  vocbase = TRI_CreateInitialVocBase(TRI_VOCBASE_TYPE_NORMAL, path, id, name, defaults);
-
-  if (vocbase == NULL) {
-    return NULL;
+  if (vocbase == nullptr) {
+    return nullptr;
   }
 
   TRI_InitCompactorVocBase(vocbase);
@@ -1443,7 +1453,7 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
   // this will create the list of collections and their datafiles, and will also
   // determine the last tick values used (if iterateMarkers is true)
 
-  res = ScanPath(vocbase, vocbase->_path, isUpgrade, iterateMarkers);
+  int res = ScanPath(vocbase, vocbase->_path, isUpgrade, iterateMarkers);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_DestroyCompactorVocBase(vocbase);
@@ -1451,7 +1461,7 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
     TRI_set_errno(res);
 
-    return NULL;
+    return nullptr;
   }
 
   ScanTrxCollection(vocbase);
@@ -1468,7 +1478,7 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
 
   // start cleanup thread
   TRI_InitThread(&vocbase->_cleanup);
-  TRI_StartThread(&vocbase->_cleanup, NULL, "[cleanup]", TRI_CleanupVocBase, vocbase);
+  TRI_StartThread(&vocbase->_cleanup, nullptr, "[cleanup]", TRI_CleanupVocBase, vocbase);
 
   // we are done
   return vocbase;
@@ -1559,7 +1569,7 @@ void TRI_StartCompactorVocBase (TRI_vocbase_t* vocbase) {
   LOG_TRACE("starting compactor for database '%s'", vocbase->_name);
   // start compactor thread
   TRI_InitThread(&vocbase->_compactor);
-  TRI_StartThread(&vocbase->_compactor, NULL, "[compactor]", TRI_CompactorVocBase, vocbase);
+  TRI_StartThread(&vocbase->_compactor, nullptr, "[compactor]", TRI_CompactorVocBase, vocbase);
   vocbase->_hasCompactor = true;
 }
 
@@ -1596,7 +1606,7 @@ TRI_vector_pointer_t TRI_CollectionsVocBase (TRI_vocbase_t* vocbase) {
   for (size_t i = 0;  i < vocbase->_collectionsById._nrAlloc;  ++i) {
     TRI_vocbase_col_t* found = static_cast<TRI_vocbase_col_t*>(vocbase->_collectionsById._table[i]);
 
-    if (found != NULL) {
+    if (found != nullptr) {
       TRI_PushBackVectorPointer(&result, found);
     }
   }
@@ -1620,10 +1630,10 @@ TRI_vector_string_t TRI_CollectionNamesVocBase (TRI_vocbase_t* vocbase) {
   for (size_t i = 0;  i < vocbase->_collectionsById._nrAlloc;  ++i) {
     TRI_vocbase_col_t* found = static_cast<TRI_vocbase_col_t*>(vocbase->_collectionsById._table[i]);
 
-    if (found != NULL) {
+    if (found != nullptr) {
       char const* name = found->_name;
 
-      if (name != NULL) {
+      if (name != nullptr) {
         TRI_PushBackVectorString(&result, TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, name));
       }
     }
@@ -1688,25 +1698,22 @@ TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vocbase,
     }
 
     // check if we want this collection
-    if (filter != NULL && ! filter(collection, data)) {
+    if (filter != nullptr && ! filter(collection, data)) {
       TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
       continue;
     }
 
     TRI_json_t* result = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, 2);
 
-    if (result != NULL) {
-      TRI_json_t* collectionInfo;
-      TRI_json_t* indexesInfo;
+    if (result != nullptr) {
+      TRI_json_t* collectionInfo = TRI_ReadJsonCollectionInfo(collection);
 
-      collectionInfo = TRI_ReadJsonCollectionInfo(collection);
-
-      if (collectionInfo != NULL) {
+      if (collectionInfo != nullptr) {
         TRI_Insert3ArrayJson(TRI_CORE_MEM_ZONE, result, "parameters", collectionInfo);
 
-        indexesInfo = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
+        TRI_json_t* indexesInfo = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
 
-        if (indexesInfo != NULL) {
+        if (indexesInfo != nullptr) {
           index_json_helper_t ij;
           ij._list    = indexesInfo;
           ij._maxTick = maxTick;
@@ -1840,7 +1847,7 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase (TRI_vocbase_t* vocba
                            (TRI_col_type_e) type,
                            (TRI_voc_size_t) vocbase->_settings.defaultMaximalSize,
                            nullptr);
-    collection = TRI_CreateCollectionVocBase(vocbase, &parameter, 0);
+    collection = TRI_CreateCollectionVocBase(vocbase, &parameter, 0, true);
     TRI_FreeCollectionInfoOptions(&parameter);
 
     return collection;
@@ -1858,7 +1865,8 @@ TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase (TRI_vocbase_t* vocba
 
 TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
                                                 TRI_col_info_t* parameters,
-                                                TRI_voc_cid_t cid) {
+                                                TRI_voc_cid_t cid,
+                                                bool writeMarker) {
   TRI_ASSERT(parameters != nullptr);
 
   // check that the name does not contain any strange characters
@@ -1870,7 +1878,7 @@ TRI_vocbase_col_t* TRI_CreateCollectionVocBase (TRI_vocbase_t* vocbase,
 
   TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
 
-  TRI_vocbase_col_t* collection = CreateCollection(vocbase, parameters, cid);
+  TRI_vocbase_col_t* collection = CreateCollection(vocbase, parameters, cid, writeMarker);
 
   TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
 
@@ -1963,7 +1971,10 @@ int TRI_UnloadCollectionVocBase (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
-                               TRI_vocbase_col_t* collection) {
+                               TRI_vocbase_col_t* collection,
+                               bool writeMarker) {
+
+  TRI_ASSERT(collection != nullptr);
 
   if (! collection->_canDrop) {
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
@@ -1979,7 +1990,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
 
   if (collection->_status == TRI_VOC_COL_STATUS_DELETED) {
     // mark collection as deleted
-    UnregisterCollection(vocbase, collection);
+    UnregisterCollection(vocbase, collection, writeMarker);
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -2033,7 +2044,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
     }
 
     collection->_status = TRI_VOC_COL_STATUS_DELETED;
-    UnregisterCollection(vocbase, collection);
+    UnregisterCollection(vocbase, collection, writeMarker);
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -2066,7 +2077,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
     }
 
     // try again with changed status
-    return TRI_DropCollectionVocBase(vocbase, collection);
+    return TRI_DropCollectionVocBase(vocbase, collection, writeMarker);
   }
 
   // .............................................................................
@@ -2088,7 +2099,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
 
     collection->_status = TRI_VOC_COL_STATUS_DELETED;
 
-    UnregisterCollection(vocbase, collection);
+    UnregisterCollection(vocbase, collection, writeMarker);
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -2131,9 +2142,6 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
                                  TRI_vocbase_col_t* collection,
                                  char const* newName,
                                  bool doOverride) {
-  char* oldName;
-  int res;
-
   if (! collection->_canRename) {
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
@@ -2142,11 +2150,11 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
   TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
   // old name should be different
-  oldName = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, collection->_name);
+  char* oldName = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, collection->_name);
 
   TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
 
-  if (oldName == NULL) {
+  if (oldName == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -2183,7 +2191,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
 
   TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
 
-  res = RenameCollection(vocbase, collection, oldName, newName);
+  int res = RenameCollection(vocbase, collection, oldName, newName);
 
   TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
 

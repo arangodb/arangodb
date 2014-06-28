@@ -177,7 +177,8 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t*,
 int TRI_CreateDatabaseServer (TRI_server_t*,
                               char const*,
                               TRI_vocbase_defaults_t const*,
-                              struct TRI_vocbase_s**);
+                              struct TRI_vocbase_s**,
+                              bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the ids of all local coordinator databases
@@ -206,7 +207,16 @@ int TRI_DropCoordinatorDatabaseServer (TRI_server_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DropDatabaseServer (TRI_server_t*,
-                            char const*);
+                            char const*,
+                            bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops an existing database
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_DropByIdDatabaseServer (TRI_server_t*,
+                                TRI_voc_tick_t,
+                                bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a coordinator database by its id
@@ -247,6 +257,13 @@ struct TRI_vocbase_s* TRI_UseDatabaseByIdServer (TRI_server_t*,
 
 void TRI_ReleaseDatabaseServer (TRI_server_t*,
                                 struct TRI_vocbase_s*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether a database exists
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ExistsDatabaseByIdServer (TRI_server_t*,
+                                   TRI_voc_tick_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the list of all databases a user can see
