@@ -87,14 +87,16 @@ int TRI_MoveMarkerVocShaper (TRI_shaper_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InsertShapeVocShaper (TRI_shaper_t*,
-                              TRI_df_marker_t const*);
+                              TRI_df_marker_t const*,
+                              bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief insert an attribute, called when opening a collection
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InsertAttributeVocShaper (TRI_shaper_t*,
-                                  TRI_df_marker_t const*);
+                                  TRI_df_marker_t const*,
+                                  bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds an accessor

@@ -122,7 +122,6 @@ mrb_value MR_ObjectJson (mrb_state* mrb, TRI_json_t const* json) {
       size_t n;
       size_t i;
       mrb_value a;
-      TRI_json_t* sub;
       mrb_value key;
       mrb_value val;
 
@@ -130,7 +129,7 @@ mrb_value MR_ObjectJson (mrb_state* mrb, TRI_json_t const* json) {
       a = mrb_hash_new_capa(mrb, n);
 
       for (i = 0;  i < n;  i += 2) {
-        sub = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
+        TRI_json_t* sub = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
 
         if (! TRI_IsStringJson(sub)) {
           continue;
@@ -150,14 +149,13 @@ mrb_value MR_ObjectJson (mrb_state* mrb, TRI_json_t const* json) {
       size_t n;
       size_t i;
       mrb_value a;
-      TRI_json_t* elm;
       mrb_value val;
 
       n = json->_value._objects._length;
       a = mrb_ary_new_capa(mrb, n);
 
       for (i = 0;  i < n;  ++i) {
-        elm = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
+        TRI_json_t* elm = (TRI_json_t*) TRI_AtVector(&json->_value._objects, i);
         val = MR_ObjectJson(mrb, elm);
 
         mrb_ary_set(mrb, a, i, val);

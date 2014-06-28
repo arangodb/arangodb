@@ -271,6 +271,17 @@ namespace triagens {
         Marker (Marker&&) = delete;
         Marker (Marker const&) = delete;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a marker from a marker existing in memory
+////////////////////////////////////////////////////////////////////////////////
+
+        Marker (TRI_df_marker_t const*,
+                TRI_voc_fid_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a marker that manages its own memory
+////////////////////////////////////////////////////////////////////////////////
+
         Marker (TRI_df_marker_type_e,
                 size_t);
 
@@ -281,11 +292,25 @@ namespace triagens {
       public:
 
         virtual ~Marker ();
+        
+        inline void freeBuffer () {
+          if (_buffer != nullptr && _mustFree) {
+            delete[] _buffer;
+            
+            _buffer = nullptr;
+            _mustFree = false;
+          }
+        }
 
         inline char* steal () {
           char* buffer = _buffer;
           _buffer = nullptr;
+          _mustFree = false;
           return buffer;
+        }
+
+        inline TRI_voc_fid_t fid () const {
+          return _fid;
         }
 
         static inline size_t alignedSize (size_t size) {
@@ -330,7 +355,6 @@ namespace triagens {
 
         void dumpBinary () const;
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
@@ -369,6 +393,32 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         uint32_t const _size;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the destructor must free the memory
+////////////////////////////////////////////////////////////////////////////////
+
+        bool           _mustFree;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief id of the logfile the marker is stored in
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_voc_fid_t  _fid;
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    EnvelopeMarker
+// -----------------------------------------------------------------------------
+
+    class EnvelopeMarker : public Marker {
+
+      public:
+
+        explicit EnvelopeMarker (TRI_df_marker_t const*, 
+                                 TRI_voc_fid_t);
+
+        ~EnvelopeMarker ();
     };
 
 // -----------------------------------------------------------------------------

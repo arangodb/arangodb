@@ -220,9 +220,21 @@ static bool ScanMarker (TRI_df_marker_t const* marker,
     case TRI_WAL_MARKER_COMMIT_TRANSACTION: {
       break;
     }
-
+    
     case TRI_WAL_MARKER_ABORT_TRANSACTION: {
       transaction_abort_marker_t const* m = reinterpret_cast<transaction_abort_marker_t const*>(marker);
+      // note which abort markers we found
+      state->handledTransactions.insert(m->_transactionId);
+      break;
+    }
+    
+    case TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION:
+    case TRI_WAL_MARKER_COMMIT_REMOTE_TRANSACTION: {
+      break;
+    }
+    
+    case TRI_WAL_MARKER_ABORT_REMOTE_TRANSACTION: {
+      transaction_remote_abort_marker_t const* m = reinterpret_cast<transaction_remote_abort_marker_t const*>(marker);
       // note which abort markers we found
       state->handledTransactions.insert(m->_transactionId);
       break;
@@ -587,7 +599,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
           else {
             // update cap constraint info
             document->_headersPtr->adjustTotalSize(TRI_DF_ALIGN_BLOCK(walMarker->_size),
-                                                  TRI_DF_ALIGN_BLOCK(datafileMarkerSize));
+                                                   TRI_DF_ALIGN_BLOCK(datafileMarkerSize));
 
             // we can safely update the master pointer's dataptr value
             found->setDataPtr(static_cast<void*>(const_cast<char*>(operation.datafilePosition)));
@@ -611,7 +623,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
           else {
             // update cap constraint info
             document->_headersPtr->adjustTotalSize(TRI_DF_ALIGN_BLOCK(walMarker->_size),
-                                                  TRI_DF_ALIGN_BLOCK(datafileMarkerSize));
+                                                   TRI_DF_ALIGN_BLOCK(datafileMarkerSize));
 
             // we can safely update the master pointer's dataptr value
             found->setDataPtr(static_cast<void*>(const_cast<char*>(operation.datafilePosition)));

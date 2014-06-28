@@ -369,7 +369,8 @@ bool TRI_RemoveIndexFile (TRI_document_collection_t* collection, TRI_index_t* id
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_SaveIndex (TRI_document_collection_t* document,
-                   TRI_index_t* idx) {
+                   TRI_index_t* idx,
+                   bool writeMarker) {
   // convert into JSON
   TRI_json_t* json = idx->json(idx);
 
@@ -398,6 +399,10 @@ int TRI_SaveIndex (TRI_document_collection_t* document,
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
     return TRI_errno();
+  }
+
+  if (! writeMarker) {
+    return TRI_ERROR_NO_ERROR;
   }
 
   int res = TRI_ERROR_NO_ERROR;
@@ -1927,7 +1932,7 @@ static int FillLookupBitarrayOperator (TRI_index_operator_t* indexOperator, TRI_
     case TRI_LT_INDEX_OPERATOR: {
       TRI_relation_index_operator_t* relationOperator = (TRI_relation_index_operator_t*) indexOperator;
       relationOperator->_numFields  = relationOperator->_parameters->_value._objects._length;
-      relationOperator->_fields     = NULL; // bitarray indexes need only the json representation of values
+      relationOperator->_fields     = nullptr; // bitarray indexes need only the json representation of values
 
       // even tough we use the json representation of the values sent by the client
       // for a bitarray index, we still require the shaped_json values for later
@@ -1942,7 +1947,7 @@ static int FillLookupBitarrayOperator (TRI_index_operator_t* indexOperator, TRI_
       // when you are ready to use the shaped json values -- uncomment the follow
       /*
       relationOperator->_fields     = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_json_t) * relationOperator->_numFields, false);
-      if (relationOperator->_fields != NULL) {
+      if (relationOperator->_fields != nullptr) {
         int j;
         TRI_json_t* jsonObject;
         TRI_shaped_json_t* shapedObject;
@@ -2259,9 +2264,9 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t const* idx) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&baIndex->_paths,j)));
     const TRI_shape_path_t* path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
-    if (path == NULL) {
+    if (path == nullptr) {
       TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
-      return NULL;
+      return nullptr;
     }
 
     fieldList[j] = ((const char*) path) + sizeof(TRI_shape_path_t) + path->_aidLength * sizeof(TRI_shape_aid_t);
@@ -2298,11 +2303,11 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t const* idx) {
 
     keyValue = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
 
-    if (keyValue == NULL) {
+    if (keyValue == nullptr) {
       TRI_FreeJson(TRI_CORE_MEM_ZONE, keyValues);
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
       TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
-      return NULL;
+      return nullptr;
     }
 
     // ........................................................................
@@ -2311,12 +2316,12 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t const* idx) {
 
     key = TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, fieldList[j]);
 
-    if (key == NULL) {
+    if (key == nullptr) {
       TRI_FreeJson(TRI_CORE_MEM_ZONE, keyValues);
       TRI_FreeJson(TRI_CORE_MEM_ZONE, keyValue);
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
       TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
-      return NULL;
+      return nullptr;
     }
 
     // ........................................................................
@@ -2326,13 +2331,13 @@ static TRI_json_t* JsonBitarrayIndex (TRI_index_t const* idx) {
 
     value = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
 
-    if (value == NULL) {
+    if (value == nullptr) {
       TRI_FreeJson(TRI_CORE_MEM_ZONE, keyValues);
       TRI_FreeJson(TRI_CORE_MEM_ZONE, key);
       TRI_FreeJson(TRI_CORE_MEM_ZONE, keyValue);
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
       TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
-      return NULL;
+      return nullptr;
     }
 
     TRI_CopyToJson(TRI_CORE_MEM_ZONE, value, (TRI_json_t*)(TRI_AtVector(&baIndex->_values,j)));
@@ -2390,7 +2395,7 @@ static int RemoveBitarrayIndex (TRI_index_t* idx,
   // Fill the json field list with values from the document
   // ..........................................................................
 
-  result = BitarrayIndexHelper(baIndex, &element, doc, NULL);
+  result = BitarrayIndexHelper(baIndex, &element, doc, nullptr);
 
   // ..........................................................................
   // Error returned generally implies that the document never was part of the
@@ -2489,22 +2494,24 @@ TRI_index_t* TRI_CreateBitarrayIndex (TRI_document_collection_t* document,
   // ...........................................................................
 
   for (k = 0;  k < paths->_length;  ++k) {
-    TRI_json_t* valueList = (TRI_json_t*)(TRI_AtVectorPointer(values,k));
+    TRI_json_t* valueList = static_cast<TRI_json_t*>(TRI_AtVectorPointer(values,k));
 
-    if (valueList == NULL || valueList->_type != TRI_JSON_LIST) {
+    if (! TRI_IsListJson(valueList)) {
       *errorNum = TRI_ERROR_BAD_PARAMETER;
       *errorStr = TRI_DuplicateString("bitarray index creation failed - list of values for index undefined");
-      return NULL;
+      return nullptr;
     }
 
     for (j = 0; j < valueList->_value._objects._length; ++j) {
-      TRI_json_t* leftValue = (TRI_json_t*)(TRI_AtVector(&(valueList->_value._objects), j));
+      TRI_json_t* leftValue = static_cast<TRI_json_t*>(TRI_AtVector(&(valueList->_value._objects), j));
+
       for (i = j + 1; i < valueList->_value._objects._length; ++i) {
-        TRI_json_t* rightValue = (TRI_json_t*)(TRI_AtVector(&(valueList->_value._objects), i));
+        TRI_json_t* rightValue = static_cast<TRI_json_t*>(TRI_AtVector(&(valueList->_value._objects), i));
+
         if (TRI_EqualJsonJson(leftValue, rightValue)) {
           *errorNum = TRI_ERROR_ARANGO_INDEX_BITARRAY_CREATION_FAILURE_DUPLICATE_VALUES;
           *errorStr = TRI_DuplicateString("bitarray index creation failed - duplicate values in value list for an attribute");
-          return NULL;
+          return nullptr;
         }
       }
     }
@@ -2524,7 +2531,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (TRI_document_collection_t* document,
   idx->remove   = RemoveBitarrayIndex;
 
   baIndex->_supportUndef  = supportUndef;
-  baIndex->_bitarrayIndex = NULL;
+  baIndex->_bitarrayIndex = nullptr;
 
   // ...........................................................................
   // Copy the contents of the shape list vector into a new vector and store this
@@ -2560,7 +2567,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (TRI_document_collection_t* document,
   // Currently there is no creation context -- todo later
   // ...........................................................................
 
-  createContext = NULL;
+  createContext = nullptr;
 
   // ...........................................................................
   // Check that the attributes have not been repeated
@@ -2574,15 +2581,15 @@ TRI_index_t* TRI_CreateBitarrayIndex (TRI_document_collection_t* document,
   cardinality = 0;
 
   for (j = 0;  j < paths->_length;  ++j) {
-    TRI_json_t* value = (TRI_json_t*) TRI_AtVector(&baIndex->_values,j);
+    TRI_json_t* value = static_cast<TRI_json_t*>(TRI_AtVector(&baIndex->_values, j));
     size_t numValues;
 
-    if (value == NULL) {
+    if (value == nullptr) {
       TRI_DestroyVector(&baIndex->_paths);
       TRI_DestroyVector(&baIndex->_values);
       TRI_Free(TRI_CORE_MEM_ZONE, baIndex);
       LOG_WARNING("bitarray index creation failed -- list of values for index undefined");
-      return NULL;
+      return nullptr;
     }
 
     numValues = value->_value._objects._length;
@@ -2605,7 +2612,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (TRI_document_collection_t* document,
     TRI_DestroyVector(&baIndex->_values);
     TRI_Free(TRI_CORE_MEM_ZONE, baIndex);
     LOG_WARNING("bitarray index creation failed -- more than 64 possible values");
-    return NULL;
+    return nullptr;
   }
 
 
@@ -2614,7 +2621,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (TRI_document_collection_t* document,
     TRI_DestroyVector(&baIndex->_values);
     TRI_Free(TRI_CORE_MEM_ZONE, baIndex);
     LOG_WARNING("bitarray index creation failed -- no index values defined");
-    return NULL;
+    return nullptr;
   }
 
   // ...........................................................................
@@ -2630,7 +2637,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (TRI_document_collection_t* document,
     TRI_DestroyVector(&baIndex->_values);
     TRI_Free(TRI_CORE_MEM_ZONE, baIndex);
     LOG_WARNING("bitarray index creation failed -- internal error when assigning function calls");
-    return NULL;
+    return nullptr;
   }
 
   // ...........................................................................
@@ -2642,7 +2649,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (TRI_document_collection_t* document,
   if (result != TRI_ERROR_NO_ERROR) {
     TRI_FreeBitarrayIndex(idx);
     LOG_WARNING("bitarray index creation failed -- your guess as good as mine");
-    return NULL;
+    return nullptr;
   }
 
   return idx;

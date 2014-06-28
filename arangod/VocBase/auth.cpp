@@ -111,35 +111,32 @@ static bool EqualKeyAuthCache (TRI_associative_pointer_t* array,
 static char* ExtractStringShapedJson (TRI_shaper_t* shaper,
                                       TRI_shaped_json_t const* document,
                                       char const* path) {
-  TRI_json_t* json;
-  TRI_shape_pid_t pid;
   TRI_shape_t const* shape;
   TRI_shaped_json_t shaped;
-  bool ok;
   char* result;
 
-  pid = shaper->lookupAttributePathByName(shaper, path);
+  TRI_shape_pid_t pid = shaper->lookupAttributePathByName(shaper, path);
 
   if (pid == 0) {
-    return NULL;
+    return nullptr;
   }
 
-  ok = TRI_ExtractShapedJsonVocShaper(shaper, document, 0, pid, &shaped, &shape);
+  bool ok = TRI_ExtractShapedJsonVocShaper(shaper, document, 0, pid, &shaped, &shape);
 
-  if (! ok || shape == NULL) {
-    return NULL;
+  if (! ok || shape == nullptr) {
+    return nullptr;
   }
 
-  json = TRI_JsonShapedJson(shaper, &shaped);
+  TRI_json_t* json = TRI_JsonShapedJson(shaper, &shaped);
 
-  if (json == NULL) {
-    return NULL;
+  if (json == nullptr) {
+    return nullptr;
   }
 
   if (! TRI_IsStringJson(json)) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-    return NULL;
+    return nullptr;
   }
 
   result = TRI_DuplicateString2(json->_value._string.data,
@@ -158,32 +155,28 @@ static bool ExtractBooleanShapedJson (TRI_shaper_t* shaper,
                                       TRI_shaped_json_t const* document,
                                       char const* path,
                                       bool* found) {
-  TRI_json_t* json;
-  TRI_shape_pid_t pid;
   TRI_shape_t const* shape;
   TRI_shaped_json_t shaped;
-  bool result;
-  bool ok;
 
-  if (found != NULL) {
+  if (found != nullptr) {
     *found = false;
   }
 
-  pid = shaper->lookupAttributePathByName(shaper, path);
+  TRI_shape_pid_t pid = shaper->lookupAttributePathByName(shaper, path);
 
   if (pid == 0) {
     return false;
   }
 
-  ok = TRI_ExtractShapedJsonVocShaper(shaper, document, 0, pid, &shaped, &shape);
+  bool ok = TRI_ExtractShapedJsonVocShaper(shaper, document, 0, pid, &shaped, &shape);
 
-  if (! ok || shape == NULL) {
+  if (! ok || shape == nullptr) {
     return false;
   }
 
-  json = TRI_JsonShapedJson(shaper, &shaped);
+  TRI_json_t* json = TRI_JsonShapedJson(shaper, &shaped);
 
-  if (json == NULL) {
+  if (json == nullptr) {
     return false;
   }
 
@@ -193,11 +186,11 @@ static bool ExtractBooleanShapedJson (TRI_shaper_t* shaper,
     return false;
   }
 
-  if (found != NULL) {
+  if (found != nullptr) {
     *found = true;
   }
 
-  result = json->_value._boolean;
+  bool result = json->_value._boolean;
 
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
@@ -219,11 +212,11 @@ static void FreeAuthInfo (TRI_vocbase_auth_t* auth) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeAuthCacheInfo (TRI_vocbase_auth_cache_t* cached) {
-  if (cached->_hash != NULL) {
+  if (cached->_hash != nullptr) {
     TRI_Free(TRI_CORE_MEM_ZONE, cached->_hash);
   }
 
-  if (cached->_username == NULL) {
+  if (cached->_username == nullptr) {
     TRI_Free(TRI_CORE_MEM_ZONE, cached->_username);
   }
 
@@ -237,43 +230,38 @@ static void FreeAuthCacheInfo (TRI_vocbase_auth_cache_t* cached) {
 static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
                                             TRI_document_collection_t* document,
                                             TRI_shaped_json_t const* shapedJson) {
-  char* user;
-  char* password;
-  bool active;
-  bool found;
-  bool mustChange;
-
   TRI_shaper_t* shaper = document->getShaper();  // PROTECTED by trx in caller, checked by RUNTIME
 
   // extract username
-  user = ExtractStringShapedJson(shaper, shapedJson, "user");
+  char* user = ExtractStringShapedJson(shaper, shapedJson, "user");
 
-  if (user == NULL) {
+  if (user == nullptr) {
     LOG_DEBUG("cannot extract username");
-    return NULL;
+    return nullptr;
   }
 
   // extract password
-  password = ExtractStringShapedJson(shaper, shapedJson, "password");
+  char* password = ExtractStringShapedJson(shaper, shapedJson, "password");
 
-  if (password == NULL) {
+  if (password == nullptr) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, user);
     LOG_DEBUG("cannot extract password");
-    return NULL;
+    return nullptr;
   }
 
   // extract active flag
-  active = ExtractBooleanShapedJson(shaper, shapedJson, "active", &found);
+  bool found;
+  bool active = ExtractBooleanShapedJson(shaper, shapedJson, "active", &found);
 
   if (! found) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, user);
     TRI_FreeString(TRI_CORE_MEM_ZONE, password);
     LOG_DEBUG("cannot extract active flag");
-    return NULL;
+    return nullptr;
   }
 
   // extract must-change-password flag
-  mustChange = ExtractBooleanShapedJson(shaper, shapedJson, "changePassword", &found);
+  bool mustChange = ExtractBooleanShapedJson(shaper, shapedJson, "changePassword", &found);
 
   if (! found) {
     mustChange = false;
@@ -281,12 +269,12 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
 
   TRI_vocbase_auth_t* result = static_cast<TRI_vocbase_auth_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_auth_t), true));
 
-  if (result == NULL) {
+  if (result == nullptr) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, user);
     TRI_FreeString(TRI_CORE_MEM_ZONE, password);
     LOG_ERROR("couldn't load auth information - out of memory");
 
-    return NULL;
+    return nullptr;
   }
 
   result->_username = user;
@@ -304,21 +292,17 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ClearAuthInfo (TRI_vocbase_t* vocbase) {
-  void** beg;
-  void** end;
-  void** ptr;
-
   // clear auth info table
-  beg = vocbase->_authInfo._table;
-  end = vocbase->_authInfo._table + vocbase->_authInfo._nrAlloc;
-  ptr = beg;
+  void** beg = vocbase->_authInfo._table;
+  void** end = vocbase->_authInfo._table + vocbase->_authInfo._nrAlloc;
+  void** ptr = beg;
 
   for (;  ptr < end;  ++ptr) {
     if (*ptr) {
       TRI_vocbase_auth_t* auth = static_cast<TRI_vocbase_auth_t*>(*ptr);
 
       FreeAuthInfo(auth);
-      *ptr = NULL;
+      *ptr = nullptr;
     }
   }
 
@@ -334,7 +318,7 @@ static void ClearAuthInfo (TRI_vocbase_t* vocbase) {
       TRI_vocbase_auth_cache_t* auth = static_cast<TRI_vocbase_auth_cache_t*>(*ptr);
 
       FreeAuthCacheInfo(auth);
-      *ptr = NULL;
+      *ptr = nullptr;
     }
   }
 
@@ -355,14 +339,14 @@ int TRI_InitAuthInfo (TRI_vocbase_t* vocbase) {
                              HashKey,
                              HashElementAuthInfo,
                              EqualKeyAuthInfo,
-                             NULL);
+                             nullptr);
 
   TRI_InitAssociativePointer(&vocbase->_authCache,
                              TRI_CORE_MEM_ZONE,
                              HashKey,
                              HashElementAuthCache,
                              EqualKeyAuthCache,
-                             NULL);
+                             nullptr);
 
   TRI_InitReadWriteLock(&vocbase->_authInfoLock);
 
@@ -386,18 +370,15 @@ void TRI_DestroyAuthInfo (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_InsertInitialAuthInfo (TRI_vocbase_t* vocbase) {
-  TRI_json_t* json;
-  TRI_json_t* user;
+  TRI_json_t* json = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, 1);
 
-  json = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, 1);
-
-  if (json == NULL) {
+  if (json == nullptr) {
     return false;
   }
 
-  user = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* user = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
-  if (user == NULL) {
+  if (user == nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
   }
@@ -527,7 +508,7 @@ bool TRI_PopulateAuthInfo (TRI_vocbase_t* vocbase,
 
     TRI_vocbase_auth_t* auth = static_cast<TRI_vocbase_auth_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_auth_t), true));
 
-    if (auth == NULL) {
+    if (auth == nullptr) {
       continue;
     }
 
@@ -581,12 +562,12 @@ void TRI_ClearAuthInfo (TRI_vocbase_t* vocbase) {
 char* TRI_CheckCacheAuthInfo (TRI_vocbase_t* vocbase,
                               char const* hash,
                               bool* mustChange) {
-  char* username = NULL;
+  char* username = nullptr;
 
   TRI_ReadLockReadWriteLock(&vocbase->_authInfoLock);
   TRI_vocbase_auth_cache_t* cached = static_cast<TRI_vocbase_auth_cache_t*>(TRI_LookupByKeyAssociativePointer(&vocbase->_authCache, hash));
 
-  if (cached != NULL) {
+  if (cached != nullptr) {
     username = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, cached->_username);
     *mustChange = cached->_mustChange;
   }
@@ -613,13 +594,13 @@ bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
   size_t len;
   size_t sha256Len;
 
-  TRI_ASSERT(vocbase != NULL);
+  TRI_ASSERT(vocbase != nullptr);
 
   // look up username
   TRI_ReadLockReadWriteLock(&vocbase->_authInfoLock);
   TRI_vocbase_auth_t* auth = static_cast<TRI_vocbase_auth_t*>(TRI_LookupByKeyAssociativePointer(&vocbase->_authInfo, username));
 
-  if (auth == NULL || ! auth->_active) {
+  if (auth == nullptr || ! auth->_active) {
     TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
     return false;
   }
@@ -676,27 +657,25 @@ bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
 
   TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
 
-  if (res && hash != NULL) {
+  if (res && hash != nullptr) {
     // insert item into the cache
     TRI_vocbase_auth_cache_t* cached = static_cast<TRI_vocbase_auth_cache_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_vocbase_auth_cache_t), false));
 
-    if (cached != NULL) {
-      void* old;
-
+    if (cached != nullptr) {
       cached->_hash       = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, hash);
       cached->_username   = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, username);
       cached->_mustChange = auth->_mustChange;
 
-      if (cached->_hash == NULL || cached->_username == NULL) {
+      if (cached->_hash == nullptr || cached->_username == nullptr) {
         FreeAuthCacheInfo(cached);
         return res;
       }
 
       TRI_WriteLockReadWriteLock(&vocbase->_authInfoLock);
-      old = TRI_InsertKeyAssociativePointer(&vocbase->_authCache, cached->_hash, cached, false);
+      void* old = TRI_InsertKeyAssociativePointer(&vocbase->_authCache, cached->_hash, cached, false);
 
       // duplicate entry?
-      if (old != NULL) {
+      if (old != nullptr) {
         FreeAuthCacheInfo(cached);
       }
 

@@ -43,13 +43,13 @@
 /// @brief shortcut for read-only transaction class type
 ////////////////////////////////////////////////////////////////////////////////
 
-#define V8ReadTransaction SingleCollectionReadOnlyTransaction<V8TransactionContext<true>>
+#define V8ReadTransaction triagens::arango::SingleCollectionReadOnlyTransaction<triagens::arango::V8TransactionContext<true>>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief import transaction shortcut
 ////////////////////////////////////////////////////////////////////////////////
 
-#define RestImportTransaction SingleCollectionWriteTransaction<RestTransactionContext, UINT64_MAX>
+#define RestImportTransaction triagens::arango::SingleCollectionWriteTransaction<triagens::arango::RestTransactionContext, UINT64_MAX>
 
 
 #endif

@@ -114,104 +114,6 @@ static inline uint32_t MaxSlots () {
   return 1024 * 1024 * 16;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief callback to handle one marker during recovery
-////////////////////////////////////////////////////////////////////////////////
-
-static bool ScanMarker (TRI_df_marker_t const* marker,
-                        void* data,
-                        TRI_datafile_t* datafile) {
-  RecoverState* state = reinterpret_cast<RecoverState*>(data);
-
-  TRI_ASSERT(marker != nullptr);
-
-  // note the marker's tick
-  TRI_ASSERT(marker->_tick >= state->lastTick);
-  state->lastTick = marker->_tick;
-
-  switch (marker->_type) {
-    case TRI_WAL_MARKER_ATTRIBUTE: {
-      attribute_marker_t const* m = reinterpret_cast<attribute_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
-      TRI_voc_tick_t databaseId = m->_databaseId;
-      state->collections[collectionId] = databaseId;
-      break;
-    }
-
-    case TRI_WAL_MARKER_SHAPE: {
-      shape_marker_t const* m = reinterpret_cast<shape_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
-      TRI_voc_tick_t databaseId = m->_databaseId;
-      state->collections[collectionId] = databaseId;
-      break;
-    }
-
-    case TRI_WAL_MARKER_DOCUMENT: {
-      document_marker_t const* m = reinterpret_cast<document_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
-      state->collections[collectionId] = m->_databaseId;
-      break;
-    }
-
-    case TRI_WAL_MARKER_EDGE: {
-      edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
-      state->collections[collectionId] = m->_databaseId;
-      break;
-    }
-
-    case TRI_WAL_MARKER_REMOVE: {
-      remove_marker_t const* m = reinterpret_cast<remove_marker_t const*>(marker);
-      TRI_voc_cid_t collectionId = m->_collectionId;
-      state->collections[collectionId] = m->_databaseId;
-      break;
-    }
-
-    case TRI_WAL_MARKER_BEGIN_TRANSACTION: {
-      transaction_begin_marker_t const* m = reinterpret_cast<transaction_begin_marker_t const*>(marker);
-      // insert this transaction into the list of failed transactions
-      // we do this because if we don't find a commit marker for this transaction,
-      // we'll have it in the failed list at the end of the scan and can ignore it
-      state->failedTransactions.insert(std::make_pair(m->_transactionId, std::make_pair(m->_databaseId, false)));
-      break;
-    }
-    case TRI_WAL_MARKER_COMMIT_TRANSACTION: {
-      transaction_commit_marker_t const* m = reinterpret_cast<transaction_commit_marker_t const*>(marker);
-      // remove this transaction from the list of failed transactions
-      state->failedTransactions.erase(m->_transactionId);
-      break;
-    }
-
-    case TRI_WAL_MARKER_ABORT_TRANSACTION: {
-      // insert this transaction into the list of failed transactions
-      transaction_abort_marker_t const* m = reinterpret_cast<transaction_abort_marker_t const*>(marker);
-
-      auto it = state->failedTransactions.find(m->_transactionId);
-      if (it != state->failedTransactions.end()) {
-        // delete previous element if present
-        state->failedTransactions.erase(m->_transactionId);
-      }
-
-      // and (re-)insert
-      state->failedTransactions.insert(std::make_pair(m->_transactionId, std::make_pair(m->_databaseId, true)));
-      break;
-    }
-
-    case TRI_WAL_MARKER_DROP_COLLECTION: {
-      collection_drop_marker_t const* m = reinterpret_cast<collection_drop_marker_t const*>(marker);
-      // note that the collection was dropped and doesn't need to be recovered
-      state->droppedCollections.insert(m->_collectionId);
-    }
-
-    case TRI_WAL_MARKER_DROP_DATABASE: {
-      database_drop_marker_t const* m = reinterpret_cast<database_drop_marker_t const*>(marker);
-      // note that the database was dropped and doesn't need to be recovered
-      state->droppedDatabases.insert(m->_databaseId);
-    }
-  }
-
-  return true;
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class LogfileManager
@@ -231,7 +133,7 @@ LogfileManager::LogfileManager (TRI_server_t* server,
     _server(server),
     _databasePath(databasePath),
     _directory(),
-    _recoverState(new RecoverState()),
+    _recoverState(nullptr),
     _filesize(32 * 1024 * 1024),
     _reserveLogfiles(4),
     _historicLogfiles(10),
@@ -242,8 +144,10 @@ LogfileManager::LogfileManager (TRI_server_t* server,
     _throttleWhenPending(0),
     _allowOversizeEntries(true),
     _ignoreLogfileErrors(false),
+    _ignoreRecoveryErrors(false),
     _allowWrites(false), // start in read-only mode
     _hasFoundLastTick(false),
+    _recoverRemote(true),
     _inRecovery(true),
     _slots(nullptr),
     _synchroniserThread(nullptr),
@@ -331,9 +235,11 @@ void LogfileManager::setupOptions (std::map<std::string, triagens::basics::Progr
     ("wal.allow-oversize-entries", &_allowOversizeEntries, "allow entries that are bigger than --wal.logfile-size")
     ("wal.directory", &_directory, "logfile directory")
     ("wal.historic-logfiles", &_historicLogfiles, "maximum number of historic logfiles to keep after collection")
-    ("wal.ignore-logfile-errors", &_ignoreLogfileErrors, "ignore logfile errors on startup")
+    ("wal.ignore-logfile-errors", &_ignoreLogfileErrors, "ignore logfile errors. this will read recoverable data from corrupted logfiles but ignore any unrecoverable data")
+    ("wal.ignore-recovery-errors", &_ignoreRecoveryErrors, "continue recovery even if re-applying operations fails")
     ("wal.logfile-size", &_filesize, "size of each logfile")
     ("wal.open-logfiles", &_maxOpenLogfiles, "maximum number of parallel open logfiles")
+    ("wal.recover-remote", &_recoverRemote, "recover remotely started transactions on startup (use on a slave only)")
     ("wal.reserve-logfiles", &_reserveLogfiles, "maximum number of reserve logfiles to maintain")
     ("wal.slots", &_numberOfSlots, "number of logfile slots to use")
     ("wal.sync-interval", &_syncInterval, "interval for automatic, non-requested disk syncs (in milliseconds)")
@@ -408,7 +314,9 @@ bool LogfileManager::prepare () {
   // we use microseconds
   _syncInterval = _syncInterval * 1000;
 
+  // initialise some objects
   _slots = new Slots(this, _numberOfSlots, 0);
+  _recoverState = new RecoverState(_server, _ignoreRecoveryErrors);
 
   return true;
 }
@@ -453,31 +361,10 @@ bool LogfileManager::start () {
     LOG_TRACE("no shutdown file found");
   }
 
-  res = openLogfiles();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not open WAL logfiles: %s", TRI_errno_string(res));
-    return false;
-  }
-
   res = inspectLogfiles();
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("could not inspect WAL logfiles: %s", TRI_errno_string(res));
-    return false;
-  }
-
-  res = startAllocatorThread();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not start WAL allocator thread: %s", TRI_errno_string(res));
-    return false;
-  }
-
-  res = startSynchroniserThread();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not start WAL synchroniser thread: %s", TRI_errno_string(res));
     return false;
   }
 
@@ -504,11 +391,113 @@ bool LogfileManager::open () {
     return true;
   }
   
-  TRI_ASSERT(! _allowWrites);
-
   opened = true;
   
-  return runRecovery();
+  int res = runRecovery();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("unable to finish WAL recovery: %s", TRI_errno_string(res));
+    return false;
+  }
+  
+  // note all failed transactions that we found plus the list
+  // of collections and databases that we can ignore
+  {
+    WRITE_LOCKER(_logfilesLock);
+    for (auto it = _recoverState->failedTransactions.begin(); it != _recoverState->failedTransactions.end(); ++it) {
+      _failedTransactions.insert((*it).first);
+    }
+
+    _droppedDatabases   = _recoverState->droppedDatabases;
+    _droppedCollections = _recoverState->droppedCollections;
+  }
+  
+
+  // now start allocator and synchroniser
+  res = startAllocatorThread();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("could not start WAL allocator thread: %s", TRI_errno_string(res));
+    return false;
+  }
+
+  res = startSynchroniserThread();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("could not start WAL synchroniser thread: %s", TRI_errno_string(res));
+    return false;
+  }
+  
+  // from now on, we allow writes to the logfile
+  allowWrites(true);
+
+  // explicitly abort any open transactions found in the logs
+  res = _recoverState->abortOpenTransactions();
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("could not abort open transactions: %s", TRI_errno_string(res));
+    return false;
+  }
+
+  // "seal" any open logfiles so the collector can copy over everything
+  if (! _recoverState->hasRunningRemoteTransactions()) {
+    // this is only safe is there are no running transactions
+    // setAllSealed();
+  }
+
+  // remove all empty logfiles  
+  _recoverState->removeEmptyLogfiles();
+
+  // remove usage locks for databases and collections
+  _recoverState->releaseResources();
+
+
+  res = startCollectorThread();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("could not start WAL collector thread: %s", TRI_errno_string(res));
+    return false;
+  }
+
+  TRI_ASSERT(_collectorThread != nullptr);
+/*
+  if (! _recoverState->hasRunningRemoteTransactions()) {
+    // wait for the collector to copy over everything
+    // we can only do this if there are no pending remote transactions
+    LOG_TRACE("waiting for collector to catch up");
+    waitForCollector(_lastOpenedId);
+  }
+
+*/
+  // write the current state into the shutdown file
+  writeShutdownInfo(true);
+
+  {
+    // reset the list of failed transactions
+    WRITE_LOCKER(_logfilesLock);
+    _failedTransactions.clear();
+    _droppedDatabases.clear();
+    _droppedCollections.clear();
+  }
+
+
+  // finished recovery
+  _inRecovery = false;
+
+  // tell the collector that the recovery is over now
+  _collectorThread->recoveryDone();
+  _allocatorThread->recoveryDone();
+
+
+  // unload all collections to reset statistics, start compactor threads etc.
+  res = TRI_InitDatabasesServer(_server);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("could not initialise databases: %s", TRI_errno_string(res));
+    return false;
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -534,7 +523,8 @@ void LogfileManager::stop () {
   // set WAL to read-only mode
   allowWrites(false);
 
-  this->flush(true, true, false);
+  // TODO: decide whether we want to flush at shutdown
+  // this->flush(true, true, false);
 
   // stop threads
   LOG_TRACE("stopping collector thread");
@@ -807,7 +797,7 @@ SlotInfoCopy LogfileManager::allocateAndWrite (Marker const& marker,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set all open logfiles to status sealed
 ////////////////////////////////////////////////////////////////////////////////
-
+/*
 void LogfileManager::setAllSealed () {
   READ_LOCKER(_logfilesLock);
 
@@ -832,6 +822,7 @@ void LogfileManager::setAllSealed () {
     }
   }
 }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finalise and seal the currently open logfile
@@ -1386,120 +1377,37 @@ void LogfileManager::waitForCollector (Logfile::IdType logfileId) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief write abort markers for all open transactions
-////////////////////////////////////////////////////////////////////////////////
-
-void LogfileManager::abortOpenTransactions () {
-  TRI_ASSERT(_recoverState != nullptr);
-
-  if (! _recoverState->failedTransactions.empty()) {
-    LOG_TRACE("writing abort markers for previously failed transactions");
-
-    // write an abort marker for all transactions
-    for (auto it = _recoverState->failedTransactions.begin(); it != _recoverState->failedTransactions.end(); ++it) {
-      TRI_voc_tid_t transactionId = (*it).first;
-
-      if ((*it).second.second) {
-        // already handled
-        continue;
-      }
-
-      TRI_voc_tick_t databaseId = (*it).second.first;
-
-      // only write abort markers for databases that haven't been deleted yet
-      if (_recoverState->droppedDatabases.find(databaseId) == _recoverState->droppedDatabases.end()) {
-        AbortTransactionMarker marker(databaseId, transactionId);
-        SlotInfoCopy slotInfo = allocateAndWrite(marker.mem(), marker.size(), false);
-    
-        if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-          THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
-        }
-      }
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief run the recovery procedure
+/// this is called after the logfiles have been scanned completely and
+/// recovery state has been build. additionally, all databases have been
+/// opened already so we can use collections
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LogfileManager::runRecovery () {
-  LOG_TRACE("running WAL recovery");
+int LogfileManager::runRecovery () {
+  TRI_ASSERT(! _allowWrites);
 
-  // "seal" any open logfiles so the collector can copy over everything
-  this->setAllSealed();
-
-  int res = startCollectorThread();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not start WAL collector thread: %s", TRI_errno_string(res));
-    return false;
+  if (! _recoverState->mustRecover()) {
+    // nothing to do
+    return TRI_ERROR_NO_ERROR;
   }
+    
+  LOG_INFO("running WAL recovery");
+  
+  // now iterate over all logfiles that we found during recovery
+  // we can afford to iterate the files without _logfilesLock
+  // this is because all other threads competing for the lock are
+  // not active yet
+  { 
+    int res = _recoverState->replayLogfiles();
 
-  TRI_ASSERT(_collectorThread != nullptr);
-
-  LOG_TRACE("waiting for collector to catch up");
-  waitForCollector(_lastOpenedId);
-
-  // from now on, we allow writes to the logfile
-  allowWrites(true);
-
-  if (true /*isMaster*/) {
-    // we will now abort any non-finished transactions
-    try {
-      abortOpenTransactions();
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
     }
-    catch (triagens::arango::Exception const& ex) {
-      LOG_ERROR("could not abort previously open transactions: %s", TRI_errno_string(ex.code()));
-      return false;
-    }
-    catch (...) {
-      LOG_ERROR("could not abort previously open transactions");
-      return false;
-    }
-  }
-  else {
-    // we will now restart any non-finished transactions
-
   }
   
-  // write the current state into the shutdown file
-  writeShutdownInfo(true);
+  LOG_INFO("WAL recovery finished successfully");
 
-  {
-    // reset the list of failed transactions
-    WRITE_LOCKER(_logfilesLock);
-    _failedTransactions.clear();
-    _droppedDatabases.clear();
-    _droppedCollections.clear();
-  }
-
-
-  // finished recovery
-  _inRecovery = false;
-
-  // tell the collector that the recovery is over now
-  _collectorThread->recoveryDone();
-  _allocatorThread->recoveryDone();
-
-
-  // unload all collections to reset statistics, start compactor threads etc.
-  res = TRI_InitDatabasesServer(_server);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("could not initialise databases: %s", TRI_errno_string(res));
-    return false;
-  }
-
-  if (_recoverState->logfilesToCollect > 0) {
-    LOG_INFO("WAL recovery finished successfully");
-  }
-
-  // recover state is not needed anymore  
-  delete _recoverState;
-  _recoverState = nullptr;
-
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1767,66 +1675,12 @@ int LogfileManager::inventory () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inspect all found WAL logfiles
-/// this searches for the max tick in the logfiles
+/// @brief inspect the logfiles in the log directory
 ////////////////////////////////////////////////////////////////////////////////
 
 int LogfileManager::inspectLogfiles () {
   LOG_TRACE("inspecting WAL logfiles");
 
-  TRI_ASSERT(_recoverState != nullptr);
-
-  // we're the only ones that access the logfiles at this point
-  // nevertheless, get the read-lock
-  {
-    READ_LOCKER(_logfilesLock);
-
-    // first iterate the logfiles in order and track which collections are in use
-    // this also populates a list of failed transactions
-    for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
-      Logfile* logfile = (*it).second;
-
-      if (logfile != nullptr) {
-        if (logfile->status() == Logfile::StatusType::OPEN ||
-            logfile->status() == Logfile::StatusType::SEALED) {
-          ++_recoverState->logfilesToCollect;
-        }
-
-        LOG_TRACE("scanning logfile %llu (%s)", (unsigned long long) logfile->id(), logfile->statusText().c_str());
-
-        if (! TRI_IterateDatafile(logfile->df(), &ScanMarker, static_cast<void*>(_recoverState))) {
-          LOG_TRACE("WAL inspection failed when scanning logfile '%s'", logfile->filename().c_str());
-          return TRI_ERROR_INTERNAL;
-        }
-      }
-
-      _hasFoundLastTick = true;
-    }
-  }
-
-  // update the tick with the max tick we found in the WAL
-  TRI_UpdateTickServer(_recoverState->lastTick);
-    
-  // note all failed transactions that we found plus the list
-  // of collections and databases that we can ignore
-  {
-    WRITE_LOCKER(_logfilesLock);
-    for (auto it = _recoverState->failedTransactions.begin(); it != _recoverState->failedTransactions.end(); ++it) {
-      _failedTransactions.insert((*it).first);
-    }
-
-    _droppedDatabases   = _recoverState->droppedDatabases;
-    _droppedCollections = _recoverState->droppedCollections;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief open the logfiles in the log directory
-////////////////////////////////////////////////////////////////////////////////
-
-int LogfileManager::openLogfiles () {
   WRITE_LOCKER(_logfilesLock);
 
   for (auto it = _logfiles.begin(); it != _logfiles.end(); ) {
@@ -1838,13 +1692,10 @@ int LogfileManager::openLogfiles () {
     int res = Logfile::judge(filename);
 
     if (res == TRI_ERROR_ARANGO_DATAFILE_EMPTY) {
-      if (basics::FileUtils::remove(filename, 0)) {
-        LOG_TRACE("removing empty WAL logfile '%s'", filename.c_str());
-      }
+      _recoverState->emptyLogfiles.push_back(filename);
       _logfiles.erase(it++);
       continue;
     }
-
 
     bool const wasCollected = (id <= _lastCollectedId);
     Logfile* logfile = Logfile::openExisting(filename, id, wasCollected, _ignoreLogfileErrors);
@@ -1864,9 +1715,19 @@ int LogfileManager::openLogfiles () {
       _logfiles.erase(it++);
       continue;
     }
+        
+    if (logfile->status() == Logfile::StatusType::OPEN ||
+        logfile->status() == Logfile::StatusType::SEALED) {
+      _recoverState->logfilesToProcess.push_back(logfile);
+    }
+        
+    LOG_TRACE("inspecting logfile %llu (%s)", (unsigned long long) logfile->id(), logfile->statusText().c_str());
 
     // update the tick statistics  
-    TRI_IterateDatafile(logfile->df(), nullptr, nullptr);
+    if (! TRI_IterateDatafile(logfile->df(), &RecoverState::InitialScanMarker, static_cast<void*>(_recoverState))) {
+      LOG_WARNING("WAL inspection failed when scanning logfile '%s'", logfile->filename().c_str());
+      return TRI_ERROR_ARANGO_RECOVERY;
+    }
 
     if (logfile->status() == Logfile::StatusType::SEALED &&
         id > _lastSealedId) {
@@ -1882,7 +1743,11 @@ int LogfileManager::openLogfiles () {
     (*it).second = logfile;
     ++it;
   }
-
+ 
+  
+  // update the tick with the max tick we found in the WAL
+  TRI_UpdateTickServer(_recoverState->lastTick);
+  
   return TRI_ERROR_NO_ERROR;
 }
 
