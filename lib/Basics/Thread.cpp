@@ -291,7 +291,7 @@ void Thread::runMe () {
   catch (...) {
     _running = 0;
     if (! isSilent()) {
-      LOG_WARNING("exception caught in thread '%s'", _name.c_str());
+      LOG_ERROR("exception caught in thread '%s'", _name.c_str());
     }
     throw;
   }
