@@ -107,7 +107,8 @@ void TRI_doc_mptr_copy_t::setDataPtr (void const* d) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_document_collection_t::TRI_document_collection_t () 
-  : _keyGenerator(nullptr) {
+  : _useSecondaryIndexes(true),
+    _keyGenerator(nullptr) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -370,10 +371,15 @@ static int InsertPrimaryIndex (TRI_document_collection_t* document,
 static int InsertSecondaryIndexes (TRI_document_collection_t* document,
                                    TRI_doc_mptr_t const* header,
                                    bool isRollback) {
+  if (! document->useSecondaryIndexes()) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
   int result = TRI_ERROR_NO_ERROR;
   size_t const n = document->_allIndexes._length;
 
-  for (size_t i = 0;  i < n;  ++i) {
+  // we can start at index #1 here (index #0 is the primary index)
+  for (size_t i = 1;  i < n;  ++i) {
     TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
     int res = idx->insert(idx, header, isRollback);
 
@@ -420,10 +426,15 @@ static int DeletePrimaryIndex (TRI_document_collection_t* document,
 static int DeleteSecondaryIndexes (TRI_document_collection_t* document,
                                    TRI_doc_mptr_t const* header,
                                    bool isRollback) {
-  size_t const n = document->_allIndexes._length;
-  int result = TRI_ERROR_NO_ERROR;
+  if (! document->useSecondaryIndexes()) {
+    return TRI_ERROR_NO_ERROR;
+  }
 
-  for (size_t i = 0;  i < n;  ++i) {
+  int result = TRI_ERROR_NO_ERROR;
+  size_t const n = document->_allIndexes._length;
+
+  // we can start at index #1 here (index #0 is the primary index)
+  for (size_t i = 1;  i < n;  ++i) {
     TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
     int res = idx->remove(idx, header, isRollback);
 
@@ -602,9 +613,14 @@ static int PostInsertIndexes (TRI_transaction_collection_t* trxCollection,
                               TRI_doc_mptr_t* header) {
 
   TRI_document_collection_t* document = trxCollection->_collection->_collection;
+  if (! document->useSecondaryIndexes()) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
   size_t const n = document->_allIndexes._length;
 
-  for (size_t i = 0;  i < n;  ++i) {
+  // we can start at index #1 here (index #0 is the primary index)
+  for (size_t i = 1;  i < n;  ++i) {
     TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
 
     if (idx->postInsert != nullptr) {
@@ -1714,11 +1730,8 @@ static int FillInternalIndexes (TRI_document_collection_t* document) {
 
 static bool OpenIndexIterator (char const* filename,
                                void* data) {
-  TRI_json_t* json;
-  int res;
-
   // load json description of the index
-  json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, nullptr);
+  TRI_json_t* json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, nullptr);
 
   // json must be a index description
   if (! TRI_IsArrayJson(json)) {
@@ -1731,7 +1744,7 @@ static bool OpenIndexIterator (char const* filename,
     return false;
   }
 
-  res = TRI_FromJsonIndexDocumentCollection(static_cast<TRI_document_collection_t*>(data), json, nullptr);
+  int res = TRI_FromJsonIndexDocumentCollection(static_cast<TRI_document_collection_t*>(data), json, nullptr);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1967,9 +1980,7 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
 
   // create edges index
   if (document->_info._type == TRI_COL_TYPE_EDGE) {
-    TRI_index_t* edgesIndex;
-
-    edgesIndex = TRI_CreateEdgeIndex(document, document->_info._cid);
+    TRI_index_t* edgesIndex = TRI_CreateEdgeIndex(document, document->_info._cid);
 
     if (edgesIndex == nullptr) {
       TRI_FreeIndex(primaryIndex);
@@ -2019,7 +2030,6 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
 
 static int IterateMarkersCollection (TRI_collection_t* collection) {
   open_iterator_state_t openState;
-  int res;
 
   // initialise state for iteration
   openState._document       = reinterpret_cast<TRI_document_collection_t*>(collection);
@@ -2032,7 +2042,7 @@ static int IterateMarkersCollection (TRI_collection_t* collection) {
   openState._dfi            = nullptr;
   openState._vocbase        = collection->_vocbase;
 
-  res = TRI_InitVector2(&openState._operations, TRI_UNKNOWN_MEM_ZONE, sizeof(open_iterator_operation_t), OpenIteratorBufferSize);
+  int res = TRI_InitVector2(&openState._operations, TRI_UNKNOWN_MEM_ZONE, sizeof(open_iterator_operation_t), OpenIteratorBufferSize);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -2610,6 +2620,21 @@ bool TRI_CloseDatafileDocumentCollection (TRI_document_collection_t* document,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief fill the additional (non-primary) indexes
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_FillIndexesDocumentCollection (TRI_document_collection_t* document) {
+  // fill internal indexes (this is, the edges index at the moment)
+  FillInternalIndexes(document);
+
+  // fill user-defined secondary indexes
+  TRI_collection_t* collection = reinterpret_cast<TRI_collection_t*>(document);
+  TRI_IterateIndexCollection(collection, OpenIndexIterator, collection);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2697,11 +2722,9 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
 
   TRI_InitVocShaper(document->getShaper());  // ONLY in OPENCOLLECTION, PROTECTED by fake trx here
 
-  // fill internal indexes (this is, the edges index at the moment)
-  FillInternalIndexes(document);
-
-  // fill user-defined secondary indexes
-  TRI_IterateIndexCollection(collection, OpenIndexIterator, collection);
+  if (! triagens::wal::LogfileManager::instance()->isInRecovery()) {
+    TRI_FillIndexesDocumentCollection(document);
+  }
 
   return document;
 }
@@ -4146,21 +4169,19 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
                                                        TRI_idx_iid_t iid,
                                                        bool unique,
                                                        bool* created) {
-  TRI_index_t* idx;
   TRI_vector_pointer_t fields;
   TRI_vector_t paths;
-  int res;
 
-  idx = nullptr;
+  TRI_index_t* idx = nullptr;
 
   // determine the sorted shape ids for the attributes
-  res = PidNamesByAttributeNames(attributes,
-                                 document->getShaper(),  // ONLY IN INDEX, PROTECTED by RUNTIME
-                                 &paths,
-                                 &fields,
-                                 true,
-                                 true,
-                                 true);
+  int res = PidNamesByAttributeNames(attributes,
+                                     document->getShaper(),  // ONLY IN INDEX, PROTECTED by RUNTIME
+                                     &paths,
+                                     &fields,
+                                     true,
+                                     true,
+                                     true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (created != nullptr) {

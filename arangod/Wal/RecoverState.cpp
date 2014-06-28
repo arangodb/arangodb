@@ -38,6 +38,14 @@
 using namespace triagens::wal;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                  helper functions
+// -----------------------------------------------------------------------------
+
+static inline bool IsVolatile (TRI_transaction_collection_t const* trxCollection) {
+  return trxCollection->_collection->_collection->_info._isVolatile;
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
@@ -174,6 +182,11 @@ TRI_vocbase_col_t* RecoverState::useCollection (TRI_vocbase_t* vocbase,
   if (collection == nullptr) {
     return nullptr;
   }
+
+  TRI_document_collection_t* document = collection->_collection;
+  TRI_ASSERT(document != nullptr);
+
+  document->useSecondaryIndexes(false);
 
   openedCollections.insert(it, std::make_pair(collectionId, collection));
   return collection;
@@ -544,6 +557,10 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       if (state->isRemoteTransaction(transactionId)) {
         // remote operation
         res = state->executeRemoteOperation(databaseId, collectionId, transactionId, marker, datafile->_fid, [&](RemoteTransactionType* trx, Marker* envelope) -> int { 
+          if (IsVolatile(trx->trxCollection(collectionId))) {
+            return TRI_ERROR_NO_ERROR;
+          } 
+
           TRI_doc_mptr_copy_t mptr;
           int res = TRI_InsertShapedJsonDocumentCollection(trx->trxCollection(collectionId), (TRI_voc_key_t) key, m->_revisionId, envelope, &mptr, &shaped, nullptr, false, false, true);
 
@@ -558,6 +575,10 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       else if (! state->isUsedByRemoteTransaction(collectionId)) {
         // local operation
         res = state->executeSingleOperation(databaseId, collectionId, marker, datafile->_fid, [&](SingleWriteTransactionType* trx, Marker* envelope) -> int { 
+          if (IsVolatile(trx->trxCollection())) {
+            return TRI_ERROR_NO_ERROR;
+          } 
+
           TRI_doc_mptr_copy_t mptr;
           int res = TRI_InsertShapedJsonDocumentCollection(trx->trxCollection(), (TRI_voc_key_t) key, m->_revisionId, envelope, &mptr, &shaped, nullptr, false, false, true);
 
@@ -614,7 +635,11 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       
       if (state->isRemoteTransaction(transactionId)) {
         // remote operation
-        res = state->executeRemoteOperation(databaseId, collectionId, transactionId, marker, datafile->_fid, [&](RemoteTransactionType* trx, Marker* envelope) -> int { 
+        res = state->executeRemoteOperation(databaseId, collectionId, transactionId, marker, datafile->_fid, [&](RemoteTransactionType* trx, Marker* envelope) -> int {
+          if (IsVolatile(trx->trxCollection(collectionId))) {
+            return TRI_ERROR_NO_ERROR;
+          } 
+
           TRI_doc_mptr_copy_t mptr;
           int res = TRI_InsertShapedJsonDocumentCollection(trx->trxCollection(collectionId), (TRI_voc_key_t) key, m->_revisionId, envelope, &mptr, &shaped, &edge, false, false, true);
 
@@ -628,7 +653,11 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       }
       else if (! state->isUsedByRemoteTransaction(collectionId)) {
         // local operation
-        res = state->executeSingleOperation(databaseId, collectionId, marker, datafile->_fid, [&](SingleWriteTransactionType* trx, Marker* envelope) -> int { 
+        res = state->executeSingleOperation(databaseId, collectionId, marker, datafile->_fid, [&](SingleWriteTransactionType* trx, Marker* envelope) -> int {
+          if (IsVolatile(trx->trxCollection())) {
+            return TRI_ERROR_NO_ERROR;
+          } 
+ 
           TRI_doc_mptr_copy_t mptr;
           int res = TRI_InsertShapedJsonDocumentCollection(trx->trxCollection(), (TRI_voc_key_t) key, m->_revisionId, envelope, &mptr, &shaped, &edge, false, false, true);
 
@@ -678,6 +707,10 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       if (state->isRemoteTransaction(transactionId)) {
         // remote operation
         res = state->executeRemoteOperation(databaseId, collectionId, transactionId, marker, datafile->_fid, [&](RemoteTransactionType* trx, Marker* envelope) -> int { 
+          if (IsVolatile(trx->trxCollection(collectionId))) {
+            return TRI_ERROR_NO_ERROR;
+          } 
+
           // remove the document and ignore any potential errors
           state->policy.setExpectedRevision(m->_revisionId);
           TRI_RemoveShapedJsonDocumentCollection(trx->trxCollection(collectionId), (TRI_voc_key_t) key, m->_revisionId, envelope, &state->policy, false, false);
@@ -688,6 +721,10 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       else if (! state->isUsedByRemoteTransaction(collectionId)) {
         // local operation
         res = state->executeSingleOperation(databaseId, collectionId, marker, datafile->_fid, [&](SingleWriteTransactionType* trx, Marker* envelope) -> int { 
+          if (IsVolatile(trx->trxCollection())) {
+            return TRI_ERROR_NO_ERROR;
+          } 
+
           // remove the document and ignore any potential errors
           state->policy.setExpectedRevision(m->_revisionId);
           TRI_RemoveShapedJsonDocumentCollection(trx->trxCollection(), (TRI_voc_key_t) key, m->_revisionId, envelope, &state->policy, false, false);
@@ -780,6 +817,9 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         return state->shouldAbort();
       }
 
+      return true; 
+      // TODO: must handle indexes differently
+/*
       // fake transaction to satisfy assertions
       triagens::arango::TransactionBase trx(true); 
 
@@ -800,6 +840,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         return state->shouldAbort();
       }
       break;
+*/
     }
 
 
@@ -1082,6 +1123,32 @@ int RecoverState::removeEmptyLogfiles () {
   emptyLogfiles.clear();
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fill the secondary indexes of all collections used in recovery
+////////////////////////////////////////////////////////////////////////////////
+
+int RecoverState::fillIndexes () {
+  // fake transaction to allow populating the secondary indexes
+  triagens::arango::TransactionBase trx(true);
+
+  // release all collections
+  for (auto it = openedCollections.begin(); it != openedCollections.end(); ++it) {
+    TRI_vocbase_col_t* collection = (*it).second;
+
+    TRI_document_collection_t* document = collection->_collection;
+    TRI_ASSERT(document != nullptr);
+
+    document->useSecondaryIndexes(true);
+
+    int res = TRI_FillIndexesDocumentCollection(document);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  }
+ 
+  return TRI_ERROR_NO_ERROR; 
 }
 
 // -----------------------------------------------------------------------------
