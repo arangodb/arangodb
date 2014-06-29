@@ -1,4 +1,0 @@
-arango> var Graph = require("org/arangodb/graph-blueprint").Graph;
-
-arango> g2 = new Graph("graph", "vertices", "alternativeEdges");
-Graph("vertices", "alternativeEdges")
