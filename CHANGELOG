@@ -1,4 +1,4 @@
-v2.2.0-beta1 (XXXX-XX-XX)
+v2.2.0-beta2 (XXXX-XX-XX)
 -------------------
 
 * honor startup option `--server.disable-statistics` when deciding whether or not
