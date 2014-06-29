@@ -708,8 +708,8 @@
       if (activeTasks.hasOwnProperty(i)) {
         var task = activeTasks[i];
 
-        logger.log("Executing task #" + (++taskNumber) 
-                    + " (" + task.name + "): " + task.description);
+        ++taskNumber;
+        var taskName = "task #" + taskNumber + " (" + task.name + ": " + task.description + ")";
 
         // assume failure
         var result = false;
@@ -718,8 +718,9 @@
           // execute task
           result = task.func();
         }
-        catch (e) {
-          logger.error("caught exception: " + (e.stack || ""));
+        catch (err) {
+          logger.error("Executing " + taskName + " failed with exception: " + 
+                       String(err.stack || err));
         }
 
         if (result) {
@@ -733,17 +734,18 @@
               JSON.stringify({ version: currentVersion, tasks: lastTasks }));
           }
 
-          logger.log("Task successful");
+          // be less chatty
+          // logger.log("Task successful");
         }
         else {
-          logger.error("Task failed. Aborting " + procedure + " procedure.");
+          logger.error("Executing " + taskName + " failed. Aborting " + procedure + " procedure.");
           logger.error("Please fix the problem and try starting the server again.");
           return false;
         }
       }
     }
 
-    if (!cluster.isCoordinator()) {
+    if (! cluster.isCoordinator()) {
       // save file so version gets saved even if there are no tasks
       fs.write(
         versionFile,

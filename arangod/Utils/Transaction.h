@@ -89,7 +89,7 @@ namespace triagens {
               _timeout(0.0),
               _waitForSync(false),
               _isReal(true),
-              _trx(0),
+              _trx(nullptr),
               _vocbase(vocbase) {
 
             TRI_ASSERT(_vocbase != nullptr);

@@ -194,13 +194,11 @@ curl-request-get:
 
 if ENABLE_FAILURE_TESTS
 
-RECOVERY_TESTS = \
-               @top_srcdir@/js/server/tests/recovery/corrupt-wal-marker.js 
-
 execute-recovery-test:
 	@rm -rf "$(VOCDIR)"
 	@mkdir -p "$(VOCDIR)/databases"
 	@builddir@/bin/arangod "$(VOCDIR)" --no-server $(SERVER_OPT) --server.threads 1 --wal.reserve-logfiles 1 --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter setup || true # the server will crash with segfault intentionally in this test
+	@rm -f core
 	$(VALGRIND) @builddir@/bin/arangod --no-server "$(VOCDIR)" $(SERVER_OPT) --server.threads 1 --wal.ignore-logfile-errors true --wal.reserve-logfiles 1 --javascript.script "@top_srcdir@/js/server/tests/recovery/$(RECOVERY_SCRIPT).js" --javascript.script-parameter recover || test "x$(FORCE)" == "x1"
 
 unittests-recovery:
@@ -210,6 +208,24 @@ unittests-recovery:
 	@echo "================================================================================"
 	@echo
 
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="indexes-hash"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="indexes-skiplist"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="indexes-geo"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="indexes-bitarray"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="edges"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="cap-constraint"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="indexes"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="create-indexes"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="create-collections"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="create-databases"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="drop-single-collection"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="drop-collections"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="drop-databases"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="drop-indexes"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="many-inserts"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="many-updates"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="wait-for-sync"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="attributes"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="no-journal"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="write-throttling"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="collector-oom"

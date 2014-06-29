@@ -79,20 +79,14 @@ voc_shaper_t;
 /// @brief extracts an attribute id from a marker
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline TRI_shape_aid_t GetAttributeId (void const* marker, bool* isTemporary) {
+static inline TRI_shape_aid_t GetAttributeId (void const* marker) {
   TRI_df_marker_t const* p = static_cast<TRI_df_marker_t const*>(marker);
 
   if (p != nullptr) {
     if (p->_type == TRI_DF_MARKER_ATTRIBUTE) {
-      *isTemporary = false;
       return reinterpret_cast<TRI_df_attribute_marker_t const*>(p)->_aid;
     }
     else if (p->_type == TRI_WAL_MARKER_ATTRIBUTE) {
-      *isTemporary = false;
-      return reinterpret_cast<triagens::wal::attribute_marker_t const*>(p)->_attributeId;
-    }
-    else if (p->_type == TRI_TEMP_MARKER_ATTRIBUTE) {
-      *isTemporary = true;
       return reinterpret_cast<triagens::wal::attribute_marker_t const*>(p)->_attributeId;
     }
   }
@@ -112,9 +106,6 @@ static inline char const* GetAttributeName (void const* marker) {
       return reinterpret_cast<char const*>(p) + sizeof(TRI_df_attribute_marker_t);
     }
     else if (p->_type == TRI_WAL_MARKER_ATTRIBUTE) {
-      return reinterpret_cast<char const*>(p) + sizeof(triagens::wal::attribute_marker_t);
-    }
-    else if (p->_type == TRI_TEMP_MARKER_ATTRIBUTE) {
       return reinterpret_cast<char const*>(p) + sizeof(triagens::wal::attribute_marker_t);
     }
   }
@@ -162,30 +153,9 @@ static TRI_shape_aid_t LookupAttributeByName (TRI_shaper_t* shaper,
   void const* p = TRI_LookupByKeyAssociativeSynced(&s->_attributeNames, name);
 
   if (p != nullptr) {
-    bool isTemporary;
-    return GetAttributeId(p, &isTemporary);
+    return GetAttributeId(p);
   }
 
-  return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up an attribute identifier by name
-////////////////////////////////////////////////////////////////////////////////
-
-static TRI_shape_aid_t LookupAttributeByName (TRI_shaper_t* shaper,
-                                              char const* name,
-                                              bool* isTemporary) {
-  TRI_ASSERT(name != nullptr);
-
-  voc_shaper_t* s = reinterpret_cast<voc_shaper_t*>(shaper);
-  void const* p = TRI_LookupByKeyAssociativeSynced(&s->_attributeNames, name);
-
-  if (p != nullptr) {
-    return GetAttributeId(p, isTemporary);
-  }
-
-  *isTemporary = false;
   return 0;
 }
 
@@ -196,63 +166,39 @@ static TRI_shape_aid_t LookupAttributeByName (TRI_shaper_t* shaper,
 static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
                                                     char const* name,
                                                     bool isTemporary) {
-  voc_shaper_t* s = reinterpret_cast<voc_shaper_t*>(shaper);
-
-  // get a lock for the attributes (TODO: replace assoc sync be normal unordered_map, maybe use RW lock?)
-  MUTEX_LOCKER(s->_attributeLock);
-
   // check if the attribute exists
-  bool temp;
-  TRI_shape_aid_t aid = LookupAttributeByName(shaper, name, &temp);
+  TRI_shape_aid_t aid = LookupAttributeByName(shaper, name);
 
-  // yes, we found found - check the temporary flag
-  if (aid != 0 && ((temp && isTemporary) || ! temp)) {
+  if (aid != 0) {
+    // yes
     return aid;
   }
 
-  // we need to remove the old entries
-  if (temp) {
-    void* old;
+  // increase attribute id value
+  voc_shaper_t* s = reinterpret_cast<voc_shaper_t*>(shaper);
+  aid = s->_nextAid++;
 
-    TRI_ASSERT(aid != 0);
-
-    old = TRI_RemoveKeyAssociativeSynced(&s->_attributeIds, &aid);
-    TRI_ASSERT(old != nullptr);
-
-    old = TRI_RemoveKeyAssociativeSynced(&s->_attributeNames, name);
-    TRI_ASSERT(old != nullptr);
-
-    if (old != nullptr) {
-      delete[] static_cast<char*>(old);
-    }
-  }
-
-  // increase attribute id value, if we do not already know it
-  if (aid == 0) {
-    aid = s->_nextAid++;
-  }
-
-  // try to create an entry, either temporary or permanently
   int res = TRI_ERROR_NO_ERROR;
+  TRI_document_collection_t* document = s->_collection;
 
   try {
-    TRI_document_collection_t* document = s->_collection;
     triagens::wal::AttributeMarker marker(document->_vocbase->_id, document->_info._cid, aid, std::string(name));
 
-    TRI_IF_FAILURE("ShaperWriteAttributeMarker") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
+    // lock the index and check that the element is still missing
+    {
+      MUTEX_LOCKER(s->_attributeLock);
+      void const* p = TRI_LookupByKeyAssociativeSynced(&s->_attributeNames, name);
 
-    void* ptr;
+      // if the element appeared, return the aid
+      if (p != nullptr) {
+        return GetAttributeId(p);
+      }
 
-    // create a temporary entry
-    if (isTemporary) {
-      marker.setType(TRI_TEMP_MARKER_ATTRIBUTE);
-      ptr = marker.steal();
-    }
+      TRI_IF_FAILURE("ShaperWriteAttributeMarker") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
 
-    // create a permanent entry, write marker into wal
-    else {
+      // write marker into wal
       triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
 
       if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
@@ -260,15 +206,13 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
         THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
       }
 
-      ptr = const_cast<void*>(slotInfo.mem);
+      void* f TRI_UNUSED = TRI_InsertKeyAssociativeSynced(&s->_attributeIds, &aid, const_cast<void*>(slotInfo.mem), false);
+      TRI_ASSERT(f == nullptr);
+
+      // enter into the dictionaries
+      f = TRI_InsertKeyAssociativeSynced(&s->_attributeNames, name, const_cast<void*>(slotInfo.mem), false);
+      TRI_ASSERT(f == nullptr);
     }
-
-    void* f TRI_UNUSED = TRI_InsertKeyAssociativeSynced(&s->_attributeIds, &aid, ptr, false);
-    TRI_ASSERT(f == nullptr);
-
-    // enter into the dictionaries
-    f = TRI_InsertKeyAssociativeSynced(&s->_attributeNames, name, ptr, false);
-    TRI_ASSERT(f == nullptr);
 
     return aid;
   }
@@ -299,8 +243,7 @@ static uint64_t HashKeyAttributeId (TRI_associative_synced_t* array, void const*
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashElementAttributeId (TRI_associative_synced_t* array, void const* element) {
-  bool isTemporary;
-  TRI_shape_aid_t aid = GetAttributeId(element, &isTemporary);
+  TRI_shape_aid_t aid = GetAttributeId(element);
 
   return TRI_FnvHashPointer(&aid, sizeof(TRI_shape_aid_t));
 }
@@ -311,8 +254,7 @@ static uint64_t HashElementAttributeId (TRI_associative_synced_t* array, void co
 
 static bool EqualKeyAttributeId (TRI_associative_synced_t* array, void const* key, void const* element) {
   TRI_shape_aid_t const* k = static_cast<TRI_shape_aid_t const*>(key);
-  bool isTemporary;
-  TRI_shape_aid_t aid = GetAttributeId(element, &isTemporary);
+  TRI_shape_aid_t aid = GetAttributeId(element);
 
   return *k == aid;
 }
@@ -801,18 +743,48 @@ int TRI_MoveMarkerVocShaper (TRI_shaper_t* s,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InsertShapeVocShaper (TRI_shaper_t* s,
-                              TRI_df_marker_t const* marker) {
-  char* p = ((char*) marker) + sizeof(TRI_df_shape_marker_t);
+                              TRI_df_marker_t const* marker,
+                              bool warnIfDuplicate) {
+  char const* p = reinterpret_cast<char const*>(marker);
+  if (marker->_type == TRI_DF_MARKER_SHAPE) {
+    p += sizeof(TRI_df_shape_marker_t);
+  }
+  else if (marker->_type == TRI_WAL_MARKER_SHAPE) {
+    p += sizeof(triagens::wal::shape_marker_t);
+  }
+  else {
+    return TRI_ERROR_INTERNAL;
+  }
+
   TRI_shape_t* l = (TRI_shape_t*) p;
 
   LOG_TRACE("found shape %lu", (unsigned long) l->_sid);
 
   voc_shaper_t* shaper = (voc_shaper_t*) s;
-  void* f = TRI_InsertElementAssociativeSynced(&shaper->_shapeDictionary, l, false);
-  TRI_ASSERT(f == nullptr);
+
+  void* f;
+  f = TRI_InsertElementAssociativeSynced(&shaper->_shapeDictionary, l, false);
+  if (warnIfDuplicate && f != nullptr) {
+    char const* name = shaper->_collection->_info._name;
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    LOG_ERROR("found duplicate shape in collection '%s'", name);
+    TRI_ASSERT(false);
+#else
+    LOG_TRACE("found duplicate shape in collection '%s'", name);
+#endif
+  }
 
   f = TRI_InsertKeyAssociativeSynced(&shaper->_shapeIds, &l->_sid, l, false);
-  TRI_ASSERT(f == nullptr);
+  if (warnIfDuplicate && f != nullptr) {
+    char const* name = shaper->_collection->_info._name;
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    LOG_ERROR("found duplicate shape in collection '%s'", name);
+    TRI_ASSERT(false);
+#else
+    LOG_TRACE("found duplicate shape in collection '%s'", name);
+#endif
+  }
 
   if (shaper->_nextSid <= l->_sid) {
     shaper->_nextSid = l->_sid + 1;
@@ -826,42 +798,59 @@ int TRI_InsertShapeVocShaper (TRI_shaper_t* s,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InsertAttributeVocShaper (TRI_shaper_t* s,
-                                  TRI_df_marker_t const* marker) {
-  TRI_df_attribute_marker_t* m = (TRI_df_attribute_marker_t*) marker;
-  char* p = ((char*) m) + sizeof(TRI_df_attribute_marker_t);
+                                  TRI_df_marker_t const* marker,
+                                  bool warnIfDuplicate) {
+  char* name = nullptr;
+  TRI_shape_aid_t aid = 0;
 
-  LOG_TRACE("found attribute '%s', aid: %lu", p, (unsigned long) m->_aid);
+  if (marker->_type == TRI_DF_MARKER_ATTRIBUTE) {
+    name = ((char*) marker) + sizeof(TRI_df_attribute_marker_t);
+    aid = reinterpret_cast<TRI_df_attribute_marker_t const*>(marker)->_aid;
+  }
+  else if (marker->_type == TRI_WAL_MARKER_ATTRIBUTE) {
+    name = ((char*) marker) + sizeof(triagens::wal::attribute_marker_t);
+    aid = reinterpret_cast<triagens::wal::attribute_marker_t const*>(marker)->_attributeId;
+  }
+  else {
+    return TRI_ERROR_INTERNAL;
+  }
+  
+  TRI_ASSERT(aid != 0);
+  LOG_TRACE("found attribute '%s', aid: %lu", name, (unsigned long) aid);
+   
+  // remove an existing temporary attribute if present
+  voc_shaper_t* shaper = reinterpret_cast<voc_shaper_t*>(s);
 
-  voc_shaper_t* shaper = (voc_shaper_t*) s;
-  void* f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeNames, p, m, false);
+  void* found;
+  found = TRI_InsertKeyAssociativeSynced(&shaper->_attributeNames, name, (void*) marker, false);
 
-  if (f != nullptr) {
-    char const* name = shaper->_collection->_info._name;
+  if (warnIfDuplicate && found != nullptr) {
+    char const* cname = shaper->_collection->_info._name;
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-    LOG_ERROR("found duplicate attribute name '%s' in collection '%s'", p, name);
+    LOG_ERROR("found duplicate attribute name '%s' in collection '%s'", name, cname);
     TRI_ASSERT(false);
 #else
-    LOG_TRACE("found duplicate attribute name '%s' in collection '%s'", p, name);
+    LOG_TRACE("found duplicate attribute name '%s' in collection '%s'", name, cname);
 #endif
   }
 
-  f = TRI_InsertKeyAssociativeSynced(&shaper->_attributeIds, &m->_aid, m, false);
+  found = TRI_InsertKeyAssociativeSynced(&shaper->_attributeIds, &aid, (void*) marker, false);
 
-  if (f != nullptr) {
-    char const* name = shaper->_collection->_info._name;
+  if (warnIfDuplicate && found != nullptr) {
+    char const* cname = shaper->_collection->_info._name;
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-    LOG_ERROR("found duplicate attribute id '%llu' in collection '%s'", (unsigned long long) m->_aid, name);
+    LOG_ERROR("found duplicate attribute id '%llu' in collection '%s'", (unsigned long long) aid, cname);
     TRI_ASSERT(false);
 #else
-    LOG_TRACE("found duplicate attribute id '%llu' in collection '%s'", (unsigned long long) m->_aid, name);
+    LOG_TRACE("found duplicate attribute id '%llu' in collection '%s'", (unsigned long long) aid, cname);
 #endif
   }
 
   // no lock is necessary here as we are the only users of the shaper at this time
-  if (shaper->_nextAid <= m->_aid) {
-    shaper->_nextAid = m->_aid + 1;
+  if (shaper->_nextAid <= aid) {
+    shaper->_nextAid = aid + 1;
   }
 
   return TRI_ERROR_NO_ERROR;

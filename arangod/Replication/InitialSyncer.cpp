@@ -670,7 +670,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
       string const progress = "dropping " + collectionMsg;
       setProgress(progress.c_str());
 
-      int res = TRI_DropCollectionVocBase(_vocbase, col);
+      int res = TRI_DropCollectionVocBase(_vocbase, col, true);
 
       if (res != TRI_ERROR_NO_ERROR) {
         errorMsg = "unable to drop " + collectionMsg + ": " + TRI_errno_string(res);
@@ -775,7 +775,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
               else {
                 TRI_ASSERT(idx != nullptr);
 
-                res = TRI_SaveIndex(document, idx);
+                res = TRI_SaveIndex(document, idx, true);
 
                 if (res != TRI_ERROR_NO_ERROR) {
                   errorMsg = "could not save index: " + string(TRI_errno_string(res));

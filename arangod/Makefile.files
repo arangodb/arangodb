@@ -116,6 +116,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Wal/LogfileManager.cpp \
 	arangod/Wal/Logfile.cpp \
 	arangod/Wal/Marker.cpp \
+	arangod/Wal/RecoverState.cpp \
 	arangod/Wal/Slot.cpp \
 	arangod/Wal/Slots.cpp \
 	arangod/Wal/SynchroniserThread.cpp 

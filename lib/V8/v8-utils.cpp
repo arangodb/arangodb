@@ -2785,18 +2785,16 @@ static v8::Handle<v8::Value> JS_ExecuteExternal (v8::Arguments const& argv) {
   }
 #else
   size_t readPipe_len, writePipe_len;
-  char* readPipe  = NULL;
-  char* writePipe = NULL;
   if (0 != external._readPipe) {
-    readPipe = TRI_EncodeHexString((const char *)external._readPipe,
-                                   sizeof(HANDLE), &readPipe_len);
+    char* readPipe = TRI_EncodeHexString((const char *)external._readPipe,
+                                         sizeof(HANDLE), &readPipe_len);
     result->Set(v8::String::New("readPipe"),
                 v8::String::New(readPipe, (int) readPipe_len));
     TRI_FreeString(TRI_CORE_MEM_ZONE, readPipe);
   }
   if (0 != external._writePipe) {
-    writePipe = TRI_EncodeHexString((const char *)external._writePipe,
-                                    sizeof(HANDLE), &writePipe_len);
+    char* writePipe = TRI_EncodeHexString((const char *)external._writePipe,
+                                          sizeof(HANDLE), &writePipe_len);
     result->Set(v8::String::New("writePipe"),
                 v8::String::New(writePipe, (int) writePipe_len));
     TRI_FreeString(TRI_CORE_MEM_ZONE, writePipe);

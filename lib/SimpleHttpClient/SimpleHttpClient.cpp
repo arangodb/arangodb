@@ -103,7 +103,7 @@ namespace triagens {
             size_t bodyLength,
             const map<string, string>& headerFields) {
 
-      TRI_ASSERT(_result == 0);
+      TRI_ASSERT(_result == nullptr);
 
       _result = new SimpleHttpResult;
       _errorMessage = "";
@@ -198,7 +198,7 @@ namespace triagens {
       // set result type in getResult()
       SimpleHttpResult* result = getResult();
 
-      _result = 0;
+      _result = nullptr;
 
       return result;
     }
@@ -395,20 +395,17 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     bool SimpleHttpClient::readHeader () {
-      char* pos = (char*) memchr(_readBuffer.c_str(), '\n', _readBuffer.length());
+      size_t remain = _readBuffer.length();
+      char const* ptr = _readBuffer.c_str();
+      char const* pos = (char*) memchr(ptr, '\n', remain);
 
       while (pos) {
-        // size_t is unsigned, should never get < 0
-        TRI_ASSERT(pos >= _readBuffer.c_str());
 
-        size_t len = pos - _readBuffer.c_str();
-        string line(_readBuffer.c_str(), len);
-        _readBuffer.move_front(len + 1);
-
-        //printf("found header line %s\n", line.c_str());
-
-        if (line == "\r" || line == "") {
+        if (*ptr == '\r' || *ptr == '\0') {
           // end of header found
+          size_t len = pos - _readBuffer.c_str();
+          _readBuffer.move_front(len + 1);
+
           if (_result->isChunked()) {
             _state = IN_READ_CHUNKED_HEADER;
             return readChunkedHeader();
@@ -444,13 +441,24 @@ namespace triagens {
           break;
         }
         else {
-          _result->addHeaderField(line);
-        }
+          size_t len = pos - ptr;
+          _result->addHeaderField(ptr, len);
+          ptr += len + 1;
+        
+          TRI_ASSERT(remain >= (len + 1));
+          remain -= (len + 1);
 
-        pos = (char*) memchr(_readBuffer.c_str(), '\n', _readBuffer.length());
+          pos = (char*) memchr(ptr, '\n', remain);
+          if (pos == nullptr) {
+            // reached the end
+            _readBuffer.move_front((ptr - _readBuffer.c_str()) + 1);
+          } 
+        }
       }
+
       return true;
     }
+
 
     bool SimpleHttpClient::readBody () {
       if (_method == HttpRequest::HTTP_REQUEST_HEAD) {
@@ -503,7 +511,17 @@ namespace triagens {
         }
 
         uint32_t contentLength;
-        sscanf(trimmed.c_str(), "%x", &contentLength);
+        try {
+          contentLength = static_cast<uint32_t>(std::stol(trimmed, nullptr, 16)); // C++11
+        }
+        catch (...) {
+          setErrorMessage("found invalid content-length", true);
+          // reset connection
+          this->close();
+          _state = DEAD;
+
+          return false;
+        }
 
         if (contentLength == 0) {
           // OK: last content length found
