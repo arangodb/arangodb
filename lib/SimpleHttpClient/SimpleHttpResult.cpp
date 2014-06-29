@@ -83,32 +83,36 @@ namespace triagens {
         return "Unknown error.";
       }
     }
+    
+    void SimpleHttpResult::addHeaderField (char const* line, size_t length) {
+      addHeaderField(std::string(line, length));
+    }
 
     void SimpleHttpResult::addHeaderField (std::string const& line) {
-      string key;
-      string value;
-
        size_t find = line.find(": ");
 
        if (find != string::npos) {
-         key = line.substr(0, find);
-         value = StringUtils::trim(line.substr(find + 2));
+         string&& key = line.substr(0, find);
+         string&& value = StringUtils::trim(line.substr(find + 2));
          addHeaderField(key, value);
          return;
        }
 
        find = line.find(" ");
        if (find != string::npos) {
-         key = line.substr(0, find);
+         string&& key = line.substr(0, find);
          if (find + 1 < line.length()) {
-           value = StringUtils::trim(line.substr(find + 1));
+           string&& value = StringUtils::trim(line.substr(find + 1));
+           addHeaderField(key, value);
          }
-         addHeaderField(key, value);
+         else {
+           addHeaderField(key, "");
+         }
        }
     }
 
     void SimpleHttpResult::addHeaderField (std::string const& key, std::string const& value) {
-      string k = StringUtils::trim(StringUtils::tolower(key));
+      string&& k = StringUtils::trim(StringUtils::tolower(key));
 
       if (k == "http/1.1" || k == "http/1.0") {
         if (value.length() > 2) {

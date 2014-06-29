@@ -326,6 +326,9 @@ struct TRI_document_collection_t : public TRI_collection_t {
 private:
   TRI_shaper_t*                _shaper;
 
+  // whether or not secondary indexes are filled
+  bool                         _useSecondaryIndexes;
+
 public:
   // We do some assertions with barriers and transactions in maintainer mode:
 #ifndef TRI_ENABLE_MAINTAINER_MODE
@@ -335,6 +338,14 @@ public:
 #else
   TRI_shaper_t* getShaper () const;
 #endif
+
+  inline bool useSecondaryIndexes () const {
+    return _useSecondaryIndexes;
+  }
+
+  void useSecondaryIndexes (bool value) {
+    _useSecondaryIndexes = value;
+  }
 
   void setShaper (TRI_shaper_t* s) {
     _shaper = s;
@@ -360,13 +371,13 @@ public:
   // this condition variable protects the _journalsCondition
   // ...........................................................................
 
-  TRI_condition_t          _journalsCondition;
+  TRI_condition_t              _journalsCondition;
 
   // whether or not any of the indexes may need to be garbage-collected
   // this flag may be modifying when an index is added to a collection
   // if true, the cleanup thread will periodically call the cleanup functions of
   // the collection's indexes that support cleanup
-  bool                     _cleanupIndexes;
+  bool                         _cleanupIndexes;
 
   int (*beginRead) (struct TRI_document_collection_t*);
   int (*endRead) (struct TRI_document_collection_t*);
@@ -615,6 +626,12 @@ bool TRI_CloseDatafileDocumentCollection (TRI_document_collection_t*,
                                           bool);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief fill the additional (non-primary) indexes
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_FillIndexesDocumentCollection (TRI_document_collection_t*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -648,7 +665,8 @@ TRI_vector_pointer_t* TRI_IndexesDocumentCollection (TRI_document_collection_t*)
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_DropIndexDocumentCollection (TRI_document_collection_t*,
-                                      TRI_idx_iid_t);
+                                      TRI_idx_iid_t,
+                                      bool);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    CAP CONSTRAINT

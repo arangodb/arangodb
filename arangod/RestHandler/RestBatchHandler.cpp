@@ -333,7 +333,7 @@ Handler::status_t RestBatchHandler::execute() {
 
     HttpResponse* partResponse = handler->getResponse();
 
-    if (partResponse == 0) {
+    if (partResponse == nullptr) {
       delete handler;
       generateError(HttpResponse::BAD, TRI_ERROR_INTERNAL, "could not create a response for batch part request");
 
@@ -489,10 +489,10 @@ bool RestBatchHandler::getBoundary (string* result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestBatchHandler::extractPart (SearchHelper* helper) {
-  TRI_ASSERT(helper->searchStart != NULL);
+  TRI_ASSERT(helper->searchStart != nullptr);
 
   // init the response
-  helper->foundStart = NULL;
+  helper->foundStart = nullptr;
   helper->foundLength = 0;
   helper->containsMore = false;
   helper->contentId = 0;
@@ -508,7 +508,7 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
   // search for boundary
   char* found = strstr(helper->searchStart, helper->message->boundary);
 
-  if (found == NULL) {
+  if (found == nullptr) {
     // not contained. this is an error
     return false;
   }
@@ -635,7 +635,7 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
   // search for the end of the boundary
   found = strstr(helper->foundStart, helper->message->boundary);
 
-  if (found == NULL || found >= searchEnd) {
+  if (found == nullptr || found >= searchEnd) {
     // did not find the end. this is an error
     return false;
   }

@@ -22,6 +22,7 @@ namespace triagens {
       };
 
       DocumentOperation (Marker* marker,
+                         bool freeMarker,
                          struct TRI_transaction_collection_s* trxCollection,
                          TRI_voc_document_operation_e type,
                          TRI_voc_rid_t rid)
@@ -30,7 +31,8 @@ namespace triagens {
           header(nullptr),
           rid(rid),
           type(type),
-          status(StatusType::CREATED) {
+          status(StatusType::CREATED),
+          freeMarker(freeMarker) {
 
         TRI_ASSERT(marker != nullptr);
       }
@@ -46,18 +48,19 @@ namespace triagens {
           revert();
         }
 
-        if (marker != nullptr) {
+        if (marker != nullptr && freeMarker) {
           delete marker;
         }
       }
 
       DocumentOperation* swap () {
-        DocumentOperation* copy = new DocumentOperation(marker, trxCollection, type, rid);
+        DocumentOperation* copy = new DocumentOperation(marker, freeMarker, trxCollection, type, rid);
         copy->header = header;
         copy->oldHeader = oldHeader;
         copy->status = status;
 
         type = TRI_VOC_DOCUMENT_OPERATION_UNKNOWN;
+        freeMarker = false;
         marker = nullptr;
         header = nullptr;
         status = StatusType::SWAPPED;
@@ -91,7 +94,8 @@ namespace triagens {
         }
 
         // free the local marker buffer
-        delete[] marker->steal();
+        marker->freeBuffer();
+
         status = StatusType::HANDLED;
       }
 
@@ -127,6 +131,7 @@ namespace triagens {
       TRI_voc_rid_t const                   rid;
       TRI_voc_document_operation_e          type;
       StatusType                            status;
+      bool                                  freeMarker;
     };
   }
 }

@@ -8,11 +8,12 @@
     el: '#content',
     template: templateEngine.createTemplate("graphManagementView.ejs"),
     edgeDefintionTemplate: templateEngine.createTemplate("edgeDefinitionTable.ejs"),
+    eCollList : [],
+    removedECollList : [],
 
     events: {
       "click #deleteGraph"                  : "deleteGraph",
       "click .icon_arangodb_settings2"      : "editGraph",
-      "click .icon_arangodb_info"           : "info",
       "click #createGraph"                  : "addNewGraph",
       "keyup #graphManagementSearchInput"   : "search",
       "click #graphManagementSearchSubmit"  : "search",
@@ -43,12 +44,12 @@
 
     addNewGraph: function(e) {
       e.preventDefault();
-      this.createNewGraphModal();
+      this.createEditGraphModal();
     },
 
     deleteGraph: function(e) {
       var self = this;
-      var name = $('#editGraphName').html();
+      var name = $("#editGraphName")[0].value;
       this.collection.get(name).destroy({
         success: function() {
           self.updateGraphManagementView();
@@ -73,14 +74,33 @@
         searchString : ''
       }));
       this.events["click .tableRow"] = this.showHideDefinition.bind(this);
-      this.events['change [id*="newEdgeDefinitions"]'] = this.setFromAndTo.bind(this);
+      this.events['change tr[id*="newEdgeDefinitions"]'] = this.setFromAndTo.bind(this);
       this.events["click .graphViewer-icon-button"] = this.addRemoveDefinition.bind(this);
 
       return this;
     },
 
     setFromAndTo : function (e) {
-      var map = this.calculateEdgeDefinitionMap(), id;
+      e.stopPropagation();
+      var map = this.calculateEdgeDefinitionMap(), id, i, tmp;
+
+      if (e.added) {
+        if (this.eCollList.indexOf(e.added.id) === -1 &&
+          this.removedECollList.indexOf(e.added.id) !== -1) {
+          id = e.currentTarget.id.split("row_newEdgeDefinitions")[1];
+          $('input[id*="newEdgeDefinitions' + id  + '"]').select2("val", null);
+          $('input[id*="newEdgeDefinitions' + id  + '"]').attr(
+            "placeholder","The collection "+ e.added.id + " is already used."
+          );
+          return;
+        }
+        this.removedECollList.push(e.added.id);
+        this.eCollList.splice(this.eCollList.indexOf(e.added.id),1);
+      } else {
+        this.eCollList.push(e.removed.id);
+        this.removedECollList.splice(this.removedECollList.indexOf(e.removed.id),1);
+      }
+
       if (map[e.val]) {
         id = e.currentTarget.id.split("row_newEdgeDefinitions")[1];
         $('#s2id_fromCollections'+id).select2("val", map[e.val].from);
@@ -94,6 +114,18 @@
         $('#s2id_toCollections'+id).select2("val", null);
         $('#toCollections'+id).attr('disabled', false);
       }
+      tmp = $('input[id*="newEdgeDefinitions"]');
+      for (i = 0; i < tmp.length ; i++) {
+        id = tmp[i].id;
+        $('#' + id).select2({
+          tags : this.eCollList,
+          showSearchBox: false,
+          minimumResultsForSearch: -1,
+          width: "336px",
+          maximumSelectionSize: 1
+        });
+      }
+
     },
 
     editGraph : function(e) {
@@ -102,25 +134,13 @@
       this.graphToEdit = this.evaluateGraphName($(e.currentTarget).attr("id"), '_settings');
       var graph = this.collection.findWhere({_key: this.graphToEdit});
       this.createEditGraphModal(
-        this.graphToEdit, graph.get("edgeDefinitions"), graph.get("orphanCollections")
+        graph
       );
     },
 
-    info : function(e) {
-      e.stopPropagation();
-      this.collection.fetch();
-      var graph = this.collection.findWhere(
-        {_key: this.evaluateGraphName($(e.currentTarget).attr("id"), '_info')}
-      );
-      this.createInfoGraphModal(
-        graph.get('_key'),
-        graph.get('vertices'),
-        graph.get('edges')
-      );
-    },
 
     saveEditedGraph: function() {
-      var name = $("#editGraphName").html(),
+      var name = $("#editGraphName")[0].value,
         editedVertexCollections = _.pluck($('#newVertexCollections').select2("data"), "text"),
         edgeDefinitions = [],
         newEdgeDefinitions = {},
@@ -287,6 +307,12 @@
         index,
         edgeDefinitionElements;
 
+      if (this.collection.findWhere({_key: name})) {
+        arangoHelper.arangoError(
+          "The graph '" + name + "' already exists."
+        );
+        return 0;
+      }
 
       edgeDefinitionElements = $('[id^=s2id_newEdgeDefinitions]').toArray();
       edgeDefinitionElements.forEach(
@@ -309,12 +335,11 @@
           }
         }
       );
-
       if (!name) {
-        arangoHelper.arangoNotification(
+        arangoHelper.arangoError(
           "A name for the graph has to be provided."
         );
-        return;
+        return 0;
       }
       this.collection.create({
         name: name,
@@ -336,13 +361,19 @@
       });
     },
 
-    createEditGraphModal: function(name, edgeDefinitions, orphanCollections) {
+    createEditGraphModal: function(graph) {
       var buttons = [],
-        collList = [],
-        eCollList = [],
-        tableContent = [],
-        collections = this.options.collectionCollection.models,
-        maxIndex;
+          collList = [],
+          tableContent = [],
+          collections = this.options.collectionCollection.models,
+          self = this,
+          name = "",
+          edgeDefinitions = [{collection : "", from : "", to :""}],
+          orphanCollections = "",
+          title;
+
+      this.eCollList = [];
+      this.removedECollList = [];
 
       collections.forEach(function (c) {
         if (c.get("isSystem")) {
@@ -350,33 +381,64 @@
         }
         collList.push(c.id);
         if (c.get('type') === "edge") {
-
-          eCollList.push(c.id);
+          self.eCollList.push(c.id);
         }
       });
-      this.counter = 0;
       window.modalView.enableHotKeys = false;
-
-
       this.counter = 0;
-      window.modalView.disableSubmitOnEnter = true;
 
-      tableContent.push(
-        window.modalView.createReadOnlyEntry(
-          "editGraphName",
-          "Name",
-          name,
-          "The name to identify the graph. Has to be unique"
-        )
-      );
+      if (graph) {
+        title = "Edit Graph";
+
+        name = graph.get("_key");
+        edgeDefinitions = graph.get("edgeDefinitions");
+        orphanCollections = graph.get("orphanCollections");
+
+        tableContent.push(
+          window.modalView.createReadOnlyEntry(
+            "editGraphName",
+            "Name",
+            name,
+            "The name to identify the graph. Has to be unique"
+          )
+        );
+
+        buttons.push(
+          window.modalView.createDeleteButton("Delete", this.deleteGraph.bind(this))
+        );
+        buttons.push(
+          window.modalView.createSuccessButton("Save", this.saveEditedGraph.bind(this))
+        );
+
+      } else {
+        title = "Create Graph";
+
+        tableContent.push(
+          window.modalView.createTextEntry(
+            "createNewGraphName",
+            "Name",
+            "",
+            "The name to identify the graph. Has to be unique.",
+            "graphName",
+            true
+          )
+        );
+
+        buttons.push(
+          window.modalView.createSuccessButton("Create", this.createNewGraph.bind(this))
+        );
+      }
 
       edgeDefinitions.forEach(
-        function(edgeDefinition, index) {
-          maxIndex = index;
-          if (index === 0) {
+        function(edgeDefinition) {
+          if (self.counter  === 0) {
+            if (edgeDefinition.collection) {
+              self.removedECollList.push(edgeDefinition.collection);
+              self.eCollList.splice(self.eCollList.indexOf(edgeDefinition.collection),1);
+            }
             tableContent.push(
               window.modalView.createSelect2Entry(
-                "newEdgeDefinitions" + index,
+                "newEdgeDefinitions" + self.counter,
                 "Edge definitions",
                 edgeDefinition.collection,
                 "An Edge Definition defines a relations of the graph",
@@ -385,13 +447,13 @@
                 false,
                 true,
                 1,
-                eCollList
+                self.eCollList
               )
             );
           } else {
             tableContent.push(
               window.modalView.createSelect2Entry(
-                "newEdgeDefinitions" + index,
+                "newEdgeDefinitions" + self.counter,
                 "Edge definitions",
                 edgeDefinition.collection,
                 "An Edge Definition defines a relations of the graph",
@@ -400,13 +462,13 @@
                 true,
                 false,
                 1,
-                eCollList
+                self.eCollList
               )
             );
           }
           tableContent.push(
             window.modalView.createSelect2Entry(
-              "fromCollections" + index,
+              "fromCollections" + self.counter,
               "fromCollections",
               edgeDefinition.from,
               "The collection that contain the start vertices of the relation.",
@@ -420,7 +482,7 @@
           );
           tableContent.push(
             window.modalView.createSelect2Entry(
-              "toCollections" + index,
+              "toCollections" + self.counter,
               "toCollections",
               edgeDefinition.to,
               "The collection that contain the end vertices of the relation.",
@@ -432,6 +494,7 @@
               collList
             )
           );
+          self.counter++;
         }
       );
 
@@ -449,56 +512,16 @@
           collList
         )
       );
-      buttons.push(
-        window.modalView.createDeleteButton("Delete", this.deleteGraph.bind(this))
-      );
-      buttons.push(
-        window.modalView.createSuccessButton("Save", this.saveEditedGraph.bind(this))
-      );
-
 
       window.modalView.show(
-        "modalGraphTable.ejs", "Edit Graph", buttons, tableContent, null, this.events
+        "modalGraphTable.ejs", title, buttons, tableContent, null, this.events
       );
 
       var i;
-      for (i = 0; i <= maxIndex; i++) {
+      for (i = 0; i <= this.counter; i++) {
         $('#row_fromCollections' + i).hide();
         $('#row_toCollections' + i).hide();
       }
-
-    },
-
-    createInfoGraphModal: function(name, vertices, edges) {
-      var buttons = [],
-        tableContent = [];
-
-      tableContent.push(
-        window.modalView.createReadOnlyEntry(
-          "infoGraphName",
-          "Name",
-          name,
-          false
-        )
-      );
-      tableContent.push(
-        window.modalView.createReadOnlyEntry(
-          "infoVertices",
-          "Vertices",
-          vertices,
-          false
-        )
-      );
-      tableContent.push(
-        window.modalView.createReadOnlyEntry(
-          "infoEdges",
-          "Edges",
-          edges,
-          false
-        )
-      );
-
-      window.modalView.show("modalTable.ejs", "Graph Properties", buttons, tableContent);
 
     },
 
@@ -513,8 +536,7 @@
     },
 
     addRemoveDefinition : function(e) {
-
-      var collList = [], eCollList = [],
+      var collList = [],
         collections = this.options.collectionCollection.models;
 
       collections.forEach(function (c) {
@@ -522,9 +544,6 @@
           return;
         }
         collList.push(c.id);
-        if (c.get('type') === "edge") {
-          eCollList.push(c.id);
-        }
       });
       e.stopPropagation();
       var id = $(e.currentTarget).attr("id"), number;
@@ -536,7 +555,7 @@
           })
         );
         $('#newEdgeDefinitions'+this.counter).select2({
-          tags: eCollList,
+          tags: this.eCollList,
           showSearchBox: false,
           minimumResultsForSearch: -1,
           width: "336px",
@@ -579,108 +598,6 @@
         });
       });
       return edgeDefinitionMap;
-    },
-
-    createNewGraphModal: function() {
-      var buttons = [],
-        collList = [],
-        eCollList = [],
-        tableContent = [],
-        collections = this.options.collectionCollection.models;
-
-      collections.forEach(function (c) {
-        if (c.get("isSystem")) {
-          return;
-        }
-        collList.push(c.id);
-        if (c.get('type') === "edge") {
-
-          eCollList.push(c.id);
-        }
-      });
-      this.counter = 0;
-      window.modalView.enableHotKeys = false;
-
-      tableContent.push(
-        window.modalView.createTextEntry(
-          "createNewGraphName",
-          "Name",
-          "",
-          "The name to identify the graph. Has to be unique.",
-          "graphName",
-          true
-        )
-      );
-
-      tableContent.push(
-        window.modalView.createSelect2Entry(
-          "newEdgeDefinitions0",
-          "Edge definitions",
-          "",
-          "An Edge Definition defines a relations of the graph",
-          "Edge definitions",
-          true,
-          false,
-          true,
-          1,
-          eCollList
-        )
-      );
-      tableContent.push(
-        window.modalView.createSelect2Entry(
-          "fromCollections0",
-          "fromCollections",
-          "",
-          "The collection that contain the start vertices of the relation.",
-          "fromCollections",
-          true,
-          false,
-          false,
-          10,
-          collList
-        )
-      );
-      tableContent.push(
-        window.modalView.createSelect2Entry(
-          "toCollections0",
-          "toCollections",
-          "",
-          "The collection that contain the end vertices of the relation.",
-          "toCollections",
-          true,
-          false,
-          false,
-          10,
-          collList
-        )
-      );
-
-
-      tableContent.push(
-        window.modalView.createSelect2Entry(
-          "newVertexCollections",
-          "Vertex collections",
-          "",
-          "Collections, that are part of a graph, but not used in an edge definition",
-          "Vertex Collections",
-          false,
-          false,
-          false,
-          10,
-          collList
-        )
-      );
-      buttons.push(
-        window.modalView.createSuccessButton("Create", this.createNewGraph.bind(this))
-      );
-
-
-      window.modalView.show(
-        "modalGraphTable.ejs", "Add new Graph", buttons, tableContent, null, this.events
-      );
-      $('#row_fromCollections1').hide();
-      $('#row_toCollections1').hide();
     }
-
   });
 }());

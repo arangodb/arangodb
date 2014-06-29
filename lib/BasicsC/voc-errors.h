@@ -102,6 +102,8 @@ extern "C" {
 ///   Internal error that will be raised when a datafile is unreadable.
 /// - 1007: @LIT{datafile empty}
 ///   Internal error that will be raised when a datafile is empty.
+/// - 1008: @LIT{logfile recovery error}
+///   Will be raised when an error occurred during WAL logfile recovery.
 /// - 1100: @LIT{corrupted datafile}
 ///   Will be raised when a corruption is detected in a datafile.
 /// - 1101: @LIT{illegal parameter file}
@@ -1017,6 +1019,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_DATAFILE_EMPTY                                   (1007)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1008: ERROR_ARANGO_RECOVERY
+///
+/// logfile recovery error
+///
+/// Will be raised when an error occurred during WAL logfile recovery.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_RECOVERY                                         (1008)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1100: ERROR_ARANGO_CORRUPTED_DATAFILE

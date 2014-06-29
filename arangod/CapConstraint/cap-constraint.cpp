@@ -118,6 +118,9 @@ static int InitialiseCap (TRI_cap_constraint_t* cap,
 
     triagens::arango::SingleCollectionWriteTransaction<triagens::arango::RestTransactionContext, UINT64_MAX> trx(vocbase, cid);
     trx.addHint(TRI_TRANSACTION_HINT_LOCK_NEVER);
+    trx.addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER);
+    trx.addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER);
+    trx.addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION); // this is actually not true, but necessary to create trx id 0
 
     int res = trx.begin();
 

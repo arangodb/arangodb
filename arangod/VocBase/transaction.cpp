@@ -41,8 +41,16 @@
 #include "Wal/DocumentOperation.h"
 #include "Wal/LogfileManager.h"
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+
 #define LOG_TRX(trx, level, format, ...) \
   LOG_TRACE("trx #%llu.%d (%s): " format, (unsigned long long) trx->_id, (int) level, StatusTransaction(trx->_status), __VA_ARGS__)
+
+#else
+
+#define LOG_TRX(...) while (0)
+
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       TRANSACTION
@@ -69,11 +77,20 @@ static inline bool IsReadOnlyTransaction (TRI_transaction_t const* trx) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a specific hint is set for the transaction
+////////////////////////////////////////////////////////////////////////////////
+
+static inline bool HasHint (TRI_transaction_t const* trx,
+                            TRI_transaction_hint_e hint) {
+  return ((trx->_hints & (TRI_transaction_hint_t) hint) != 0);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a transaction consists of a single operation
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline bool IsSingleOperationTransaction (TRI_transaction_t const* trx) {
-  return ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION) != 0);
+  return HasHint(trx, TRI_TRANSACTION_HINT_SINGLE_OPERATION);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -298,7 +315,7 @@ static int LockCollection (TRI_transaction_collection_t* trxCollection,
 
   TRI_transaction_t* trx = trxCollection->_transaction;
 
-  if ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_NEVER) != 0) {
+  if (HasHint(trx, TRI_TRANSACTION_HINT_LOCK_NEVER)) {
     // never lock
     return TRI_ERROR_NO_ERROR;
   }
@@ -351,7 +368,7 @@ static int UnlockCollection (TRI_transaction_collection_t* trxCollection,
 
   TRI_ASSERT(trxCollection != nullptr);
 
-  if ((trxCollection->_transaction->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_NEVER) != 0) {
+  if (HasHint(trxCollection->_transaction, TRI_TRANSACTION_HINT_LOCK_NEVER)) {
     // never unlock
     return TRI_ERROR_NO_ERROR;
   }
@@ -397,10 +414,7 @@ static int UseCollections (TRI_transaction_t* trx,
 
   // process collections in forward order
   for (size_t i = 0; i < n; ++i) {
-    TRI_transaction_collection_t* trxCollection;
-    bool shouldLock;
-
-    trxCollection = (TRI_transaction_collection_t*) TRI_AtVectorPointer(&trx->_collections, i);
+    TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
 
     if (trxCollection->_nestingLevel != nestingLevel) {
       // only process our own collections
@@ -409,7 +423,7 @@ static int UseCollections (TRI_transaction_t* trx,
 
     if (trxCollection->_collection == nullptr) {
       // open the collection
-      if ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_NEVER) == 0) {
+      if (! HasHint(trx, TRI_TRANSACTION_HINT_LOCK_NEVER)) {
         // use and usage-lock
         TRI_vocbase_col_status_e status;
         LOG_TRX(trx, nestingLevel, "using collection %llu", (unsigned long long) trxCollection->_cid);
@@ -426,9 +440,9 @@ static int UseCollections (TRI_transaction_t* trx,
         return TRI_errno();
       }
 
-      if (trxCollection->_accessType == TRI_TRANSACTION_WRITE
-          && TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE
-          && ! TRI_IsSystemNameCollection(trxCollection->_collection->_collection->_info._name)) {
+      if (trxCollection->_accessType == TRI_TRANSACTION_WRITE &&
+          TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE &&
+          ! TRI_IsSystemNameCollection(trxCollection->_collection->_collection->_info._name)) {
         return TRI_ERROR_ARANGO_READ_ONLY;
       }
 
@@ -452,11 +466,10 @@ static int UseCollections (TRI_transaction_t* trx,
       trxCollection->_originalRevision = trxCollection->_collection->_collection->_info._revision;
     }
 
-    shouldLock = ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_ENTIRELY) != 0);
+    bool shouldLock = HasHint(trx, TRI_TRANSACTION_HINT_LOCK_ENTIRELY);
 
     if (! shouldLock) {
-      shouldLock = (trxCollection->_accessType == TRI_TRANSACTION_WRITE) &&
-                   ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_SINGLE_OPERATION) == 0);
+      shouldLock = (trxCollection->_accessType == TRI_TRANSACTION_WRITE) && (! IsSingleOperationTransaction(trx));
     }
 
     if (shouldLock && ! trxCollection->_locked) {
@@ -502,7 +515,7 @@ static int ReleaseCollections (TRI_transaction_t* trx,
         trxCollection->_compactionLocked = false;
       }
 
-      if ((trx->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_NEVER) == 0) {
+      if (! HasHint(trx, TRI_TRANSACTION_HINT_LOCK_NEVER)) {
         // unuse collection, remove usage-lock
         LOG_TRX(trx, nestingLevel, "unusing collection %llu", (unsigned long long) trxCollection->_cid);
 
@@ -523,6 +536,10 @@ static int ReleaseCollections (TRI_transaction_t* trx,
 
 static int WriteBeginMarker (TRI_transaction_t* trx) {
   if (! NeedWriteMarker(trx)) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  if (HasHint(trx, TRI_TRANSACTION_HINT_NO_BEGIN_MARKER)) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -556,6 +573,10 @@ static int WriteBeginMarker (TRI_transaction_t* trx) {
 
 static int WriteAbortMarker (TRI_transaction_t* trx) {
   if (! NeedWriteMarker(trx)) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  if (HasHint(trx, TRI_TRANSACTION_HINT_NO_ABORT_MARKER)) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -632,14 +653,6 @@ static void UpdateTransactionStatus (TRI_transaction_t* const trx,
   }
 
   trx->_status = status;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a marker of the specified type
-////////////////////////////////////////////////////////////////////////////////
-
-template<typename T> static T* CreateMarker () {
-  return static_cast<T*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(T), false));
 }
 
 // -----------------------------------------------------------------------------
@@ -740,12 +753,10 @@ TRI_transaction_collection_t* TRI_GetCollectionTransaction (TRI_transaction_t co
                                                             TRI_voc_cid_t cid,
                                                             TRI_transaction_type_e accessType) {
 
-  TRI_transaction_collection_t* trxCollection;
-
   TRI_ASSERT(trx->_status == TRI_TRANSACTION_CREATED ||
              trx->_status == TRI_TRANSACTION_RUNNING);
 
-  trxCollection = FindCollection(trx, cid, nullptr);
+  TRI_transaction_collection_t* trxCollection = FindCollection(trx, cid, nullptr);
 
   if (trxCollection == nullptr) {
     // not found
@@ -753,7 +764,7 @@ TRI_transaction_collection_t* TRI_GetCollectionTransaction (TRI_transaction_t co
   }
 
   if (trxCollection->_collection == nullptr) {
-    if ((trxCollection->_transaction->_hints & (TRI_transaction_hint_t) TRI_TRANSACTION_HINT_LOCK_NEVER) == 0) {
+    if (! HasHint(trx, TRI_TRANSACTION_HINT_LOCK_NEVER)) {
       // not opened. probably a mistake made by the caller
       return nullptr;
     }
@@ -781,9 +792,6 @@ int TRI_AddCollectionTransaction (TRI_transaction_t* trx,
                                   int nestingLevel,
                                   bool force) {
 
-  TRI_transaction_collection_t* trxCollection;
-  size_t position;
-
   LOG_TRX(trx, nestingLevel, "adding collection %llu", (unsigned long long) cid);
 
   // upgrade transaction type if required
@@ -800,7 +808,8 @@ int TRI_AddCollectionTransaction (TRI_transaction_t* trx,
   }
 
   // check if we already have got this collection in the _collections vector
-  trxCollection = FindCollection(trx, cid, &position);
+  size_t position;
+  TRI_transaction_collection_t* trxCollection = FindCollection(trx, cid, &position);
 
   if (trxCollection != nullptr) {
     // collection is already contained in vector
@@ -944,21 +953,39 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(operation.marker->mem(), operation.marker->size(), waitForSync);
+  TRI_voc_fid_t fid = 0;
+  void const* position = nullptr;
 
-  if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-    // some error occurred
-    return slotInfo.errorCode;
+  if (operation.marker->fid() == 0) {
+    // this is a "real" marker that must be written into the logfiles
+    triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(operation.marker->mem(), operation.marker->size(), waitForSync);
+
+    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+      // some error occurred
+      return slotInfo.errorCode;
+    }
+
+    fid = slotInfo.logfileId;
+    position = slotInfo.mem; 
   }
+  else {
+    // this is an envelope marker that has been written to the logfiles before
+    // avoid writing it again!
+    fid = operation.marker->fid();
+    position = operation.marker->mem();
+  }
+
+  TRI_ASSERT(fid > 0);
+  TRI_ASSERT(position != nullptr);
 
   if (operation.type == TRI_VOC_DOCUMENT_OPERATION_INSERT ||
       operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
     // adjust the data position in the header
-    operation.header->setDataPtr(slotInfo.mem);  // PROTECTED by ongoing trx from operation
+    operation.header->setDataPtr(position);  // PROTECTED by ongoing trx from operation
   }
 
   // set header file id
-  operation.header->_fid = slotInfo.logfileId;
+  operation.header->_fid = fid;
 
   TRI_ASSERT(operation.header->_fid > 0);
 
@@ -1016,7 +1043,8 @@ int TRI_BeginTransaction (TRI_transaction_t* trx,
   if (nestingLevel == 0) {
     TRI_ASSERT(trx->_status == TRI_TRANSACTION_CREATED);
  
-    if (trx->_type == TRI_TRANSACTION_WRITE &&
+    if (! HasHint(trx, TRI_TRANSACTION_HINT_NO_THROTTLING) &&
+        trx->_type == TRI_TRANSACTION_WRITE &&
         triagens::wal::LogfileManager::instance()->canBeThrottled()) {
       // write-throttling?
       static uint64_t const WaitTime = 50000;

@@ -75,7 +75,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static HttpHandler* create (HttpRequest* request, void* data) {
-          Options* options = (Options*) data;
+          Options* options = static_cast<Options*>(data);
 
           return new PathHandler(request, options);
         }

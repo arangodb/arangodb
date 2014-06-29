@@ -1820,7 +1820,7 @@ int RestReplicationHandler::createCollection (TRI_json_t const* json,
     }
   }
 
-  col = TRI_CreateCollectionVocBase(_vocbase, &params, cid);
+  col = TRI_CreateCollectionVocBase(_vocbase, &params, cid, true);
   TRI_FreeCollectionInfoOptions(&params);
 
   if (col == NULL) {
@@ -2011,7 +2011,7 @@ int RestReplicationHandler::processRestoreCollection (TRI_json_t const* collecti
   // drop an existing collection if it exists
   if (col != nullptr) {
     if (dropExisting) {
-      int res = TRI_DropCollectionVocBase(_vocbase, col);
+      int res = TRI_DropCollectionVocBase(_vocbase, col, true);
 
       if (res == TRI_ERROR_FORBIDDEN) {
         // some collections must not be dropped
@@ -2290,7 +2290,7 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
       else {
         TRI_ASSERT(idx != nullptr);
 
-        res = TRI_SaveIndex(document, idx);
+        res = TRI_SaveIndex(document, idx, true);
 
         if (res != TRI_ERROR_NO_ERROR) {
           errorMsg = "could not save index: " + string(TRI_errno_string(res));

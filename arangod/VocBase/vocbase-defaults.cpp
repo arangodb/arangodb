@@ -55,12 +55,10 @@ void TRI_ApplyVocBaseDefaults (TRI_vocbase_t* vocbase,
 
 TRI_json_t* TRI_JsonVocBaseDefaults (TRI_memory_zone_t* zone,
                                      TRI_vocbase_defaults_t const* defaults) {
-  TRI_json_t* json;
+  TRI_json_t* json = TRI_CreateArrayJson(zone);
 
-  json = TRI_CreateArrayJson(zone);
-
-  if (json == NULL) {
-    return NULL;
+  if (json == nullptr) {
+    return nullptr;
   }
 
   TRI_Insert3ArrayJson(zone, json, "waitForSync", TRI_CreateBooleanJson(zone, defaults->defaultWaitForSync));

@@ -44,13 +44,27 @@ using namespace triagens::wal;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a marker from a marker existing in memory
+////////////////////////////////////////////////////////////////////////////////
+
+Marker::Marker (TRI_df_marker_t const* existing,
+                TRI_voc_fid_t fid)
+  : _buffer(reinterpret_cast<char*>(const_cast<TRI_df_marker_t*>(existing))),
+    _size(existing->_size),
+    _mustFree(false),
+    _fid(fid) {
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create marker with a sized buffer
 ////////////////////////////////////////////////////////////////////////////////
 
 Marker::Marker (TRI_df_marker_type_e type,
                 size_t size)
   : _buffer(new char[size]),
-    _size(static_cast<uint32_t>(size)) {
+    _size(static_cast<uint32_t>(size)),
+    _mustFree(true),
+    _fid(0) {
 
   TRI_df_marker_t* m = reinterpret_cast<TRI_df_marker_t*>(begin());
   memset(m, 0, size);
@@ -66,7 +80,7 @@ Marker::Marker (TRI_df_marker_type_e type,
 ////////////////////////////////////////////////////////////////////////////////
 
 Marker::~Marker () {
-  if (_buffer != nullptr) {
+  if (_buffer != nullptr && _mustFree) {
     delete[] _buffer;
   }
 }
@@ -147,6 +161,33 @@ void Marker::dumpBinary () const {
   std::cout << "BINARY:     '" << stringifyPart(begin(), size()) << "'\n\n";
 }
 #endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    EnvelopeMarker
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create marker
+////////////////////////////////////////////////////////////////////////////////
+
+EnvelopeMarker::EnvelopeMarker (TRI_df_marker_t const* existing,
+                                TRI_voc_fid_t fid) 
+  : Marker(existing, fid) {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy marker
+////////////////////////////////////////////////////////////////////////////////
+
+EnvelopeMarker::~EnvelopeMarker () {
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   AttributeMarker

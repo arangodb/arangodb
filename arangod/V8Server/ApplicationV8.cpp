@@ -246,13 +246,14 @@ ApplicationV8::ApplicationV8 (TRI_server_t* server,
     _dirtyContexts(),
     _busyContexts(),
     _stopping(0),
-    _gcThread(0),
+    _gcThread(nullptr),
     _scheduler(scheduler),
     _dispatcher(dispatcher),
     _definedBooleans(),
-    _startupFile("server/server.js") {
+    _startupFile("server/server.js"),
+    _gcFinished(false) {
 
-  TRI_ASSERT(_server != 0);
+  TRI_ASSERT(_server != nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -307,7 +308,7 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase,
 
   V8Context* context = _freeContexts.back();
 
-  TRI_ASSERT(context != 0);
+  TRI_ASSERT(context != nullptr);
   TRI_ASSERT(context->_isolate != 0);
 
   _freeContexts.pop_back();
@@ -319,7 +320,7 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase,
 
   // set the current database
   v8::HandleScope scope;
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(context->_isolate->GetData());
   v8g->_vocbase = vocbase;
   v8g->_allowUseDatabase = allowUseDatabase;
 
@@ -344,7 +345,7 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase,
 
 void ApplicationV8::exitContext (V8Context* context) {
   V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
-  TRI_ASSERT(gc != 0);
+  TRI_ASSERT(gc != nullptr);
 
   LOG_TRACE("leaving V8 context %d", (int) context->_id);
   double lastGc = gc->getLastGcStamp();
@@ -352,7 +353,7 @@ void ApplicationV8::exitContext (V8Context* context) {
   CONDITION_LOCKER(guard, _contextCondition);
 
   // update data for later garbage collection
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(context->_isolate->GetData());
   context->_hasDeadObjects = v8g->_hasDeadObjects;
   ++context->_numExecutions;
 
@@ -442,9 +443,9 @@ ApplicationV8::V8Context* ApplicationV8::pickFreeContextForGc () {
   }
 
   V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
-  TRI_ASSERT(gc != 0);
+  TRI_ASSERT(gc != nullptr);
 
-  V8Context* context = 0;
+  V8Context* context = nullptr;
 
   // we got more than 1 context to clean up, pick the one with the "oldest" GC stamp
   int pickedContextNr = -1; // index of context with lowest GC stamp, -1 means "none"
@@ -496,7 +497,7 @@ ApplicationV8::V8Context* ApplicationV8::pickFreeContextForGc () {
 
 void ApplicationV8::collectGarbage () {
   V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
-  TRI_ASSERT(gc != 0);
+  TRI_ASSERT(gc != nullptr);
 
   // this flag will be set to true if we timed out waiting for a GC signal
   // if set to true, the next cycle will use a reduced wait time so the GC
@@ -506,13 +507,13 @@ void ApplicationV8::collectGarbage () {
   bool useReducedWait = false;
 
   // the time we'll wait for a signal
-  const uint64_t regularWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 1000.0);
+  uint64_t const regularWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 1000.0);
 
   // the time we'll wait for a signal when the previous wait timed out
-  const uint64_t reducedWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 100.0);
+  uint64_t const reducedWaitTime = (uint64_t) (_gcFrequency * 1000.0 * 100.0);
 
   while (_stopping == 0) {
-    V8Context* context = 0;
+    V8Context* context = nullptr;
 
     {
       bool gotSignal = false;
@@ -551,7 +552,7 @@ void ApplicationV8::collectGarbage () {
     double lastGc = TRI_microtime();
     gc->updateGcStamp(lastGc);
 
-    if (context != 0) {
+    if (context != nullptr) {
       LOG_TRACE("collecting V8 garbage");
 
       context->_locker = new v8::Locker(context->_isolate);
@@ -579,6 +580,8 @@ void ApplicationV8::collectGarbage () {
       }
     }
   }
+
+  _gcFinished = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -922,6 +925,7 @@ bool ApplicationV8::start () {
   _gcThread = new V8GcThread(this);
   _gcThread->start();
 
+  _gcFinished = false;
   return true;
 }
 
@@ -980,7 +984,13 @@ void ApplicationV8::stop () {
     guard.wait(100000);
   }
 
-  // stop GC
+
+  // wait until garbage collector thread is done
+  while (! _gcFinished) {
+    usleep(10000);
+  }
+
+  // stop GC thread
   _gcThread->shutdown();
 
   // shutdown all action threads
@@ -1169,7 +1179,7 @@ void ApplicationV8::shutdownV8Instance (size_t i) {
   while (! v8::V8::IdleNotification()) {
   }
 
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) context->_isolate->GetData();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(context->_isolate->GetData());
 
   if (v8g) {
     delete v8g;
