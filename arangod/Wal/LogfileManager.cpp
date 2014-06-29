@@ -448,6 +448,9 @@ bool LogfileManager::open () {
   // remove all empty logfiles  
   _recoverState->removeEmptyLogfiles();
 
+  // now fill secondary indexes of all collections used in the recovery
+  _recoverState->fillIndexes();
+
   // remove usage locks for databases and collections
   _recoverState->releaseResources();
 

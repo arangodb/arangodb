@@ -62,11 +62,11 @@ function recoverySuite () {
       assertEqual("primary", idx[0].type);
       assertEqual("hash", idx[1].type);
       assertEqual([ "value1" ], idx[1].fields);
-      var hash = idx[1].id;
+      var hash = idx[1];
       
       assertEqual("skiplist", idx[2].type);
       assertEqual([ "value2" ], idx[2].fields);
-      var skip = idx[2].id;
+      var skip = idx[2];
       
       assertEqual("cap", idx[3].type);
       assertEqual(5000, idx[3].size);
