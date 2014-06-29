@@ -378,7 +378,6 @@ int MultiHashIndex_remove (TRI_hash_index_t* hashIndex,
 
 static TRI_index_result_t MultiHashIndex_find (TRI_hash_index_t* hashIndex,
                                                TRI_index_search_value_t* key) {
-  TRI_vector_pointer_t result;
   TRI_index_result_t results;
 
   // .............................................................................
@@ -386,15 +385,13 @@ static TRI_index_result_t MultiHashIndex_find (TRI_hash_index_t* hashIndex,
   // we want more than one result returned!
   // .............................................................................
 
-  result = TRI_LookupByKeyHashArrayMulti(&hashIndex->_hashArray, key);
+  TRI_vector_pointer_t result = TRI_LookupByKeyHashArrayMulti(&hashIndex->_hashArray, key);
 
   if (result._length == 0) {
     results._length    = 0;
     results._documents = nullptr;
   }
   else {
-    size_t j;
-
     results._length    = result._length;
     results._documents = static_cast<TRI_doc_mptr_t**>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, result._length* sizeof(TRI_doc_mptr_t*), false));
 
@@ -406,7 +403,7 @@ static TRI_index_result_t MultiHashIndex_find (TRI_hash_index_t* hashIndex,
       return results;
     }
 
-    for (j = 0;  j < result._length;  ++j) {
+    for (size_t j = 0;  j < result._length;  ++j) {
       results._documents[j] = ((TRI_hash_index_element_t*)(result._buffer[j]))->_document;
     }
   }
@@ -648,9 +645,7 @@ void TRI_FreeHashIndex (TRI_index_t* idx) {
 
 TRI_index_result_t TRI_LookupHashIndex (TRI_index_t* idx,
                                         TRI_index_search_value_t* searchValue) {
-  TRI_hash_index_t* hashIndex;
-
-  hashIndex = (TRI_hash_index_t*) idx;
+  TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
 
   if (hashIndex->base._unique) {
     return HashIndex_find(hashIndex, searchValue);

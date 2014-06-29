@@ -133,8 +133,8 @@ namespace triagens {
 
     class ApplicationV8 : public rest::ApplicationFeature {
       private:
-        ApplicationV8 (ApplicationV8 const&);
-        ApplicationV8& operator= (ApplicationV8 const&);
+        ApplicationV8 (ApplicationV8 const&) = delete;
+        ApplicationV8& operator= (ApplicationV8 const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -641,6 +641,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string _startupFile;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief indicates whether gc thread is done
+////////////////////////////////////////////////////////////////////////////////
+          
+        volatile bool _gcFinished;
     };
   }
 }
