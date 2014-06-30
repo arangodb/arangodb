@@ -21,7 +21,6 @@
             "applications": "applications",
             "application/documentation/:key": "appDocumentation",
             "graph": "graphManagement",
-            "graphManagement": "graphManagement",
             "userManagement": "userManagement",
             "userProfile": "userProfile",
             "logs": "logs"
@@ -209,22 +208,6 @@
                 });
             }
             this.dashboardView.render();
-        },
-
-        graph: function () {
-            var self = this;
-            if (!this.graphView) {
-                this.graphView = new window.GraphView({
-                    graphs: new window.GraphCollection(),
-                    collection: this.arangoCollectionsStore
-                });
-            }
-            this.arangoCollectionsStore.fetch({
-                success: function () {
-                    self.graphView.render();
-                    self.naviView.selectMenuItem('graphviewer-menu');
-                }
-            });
         },
 
         graphManagement: function () {
