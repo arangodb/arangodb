@@ -261,7 +261,7 @@
 
   if (typeof REPLICATION_APPLIER_SHUTDOWN !== "undefined") {
     internal.shutdownReplicationApplier = REPLICATION_APPLIER_SHUTDOWN;
-    delete REPLICATION_APPLIER_SHUTODWN;
+    delete REPLICATION_APPLIER_SHUTDOWN;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
