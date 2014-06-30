@@ -21,7 +21,6 @@
             "applications": "applications",
             "application/documentation/:key": "appDocumentation",
             "graph": "graphManagement",
-            "graphManagement": "graphManagement",
             "userManagement": "userManagement",
             "userProfile": "userProfile",
             "logs": "logs"
@@ -211,22 +210,6 @@
             this.dashboardView.render();
         },
 
-        graph: function () {
-            var self = this;
-            if (!this.graphView) {
-                this.graphView = new window.GraphView({
-                    graphs: new window.GraphCollection(),
-                    collection: this.arangoCollectionsStore
-                });
-            }
-            this.arangoCollectionsStore.fetch({
-                success: function () {
-                    self.graphView.render();
-                    self.naviView.selectMenuItem('graphviewer-menu');
-                }
-            });
-        },
-
         graphManagement: function () {
             if (!this.graphManagementView) {
                 this.graphManagementView =
@@ -265,20 +248,9 @@
             if (this.dashboardView) {
                 this.dashboardView.resize();
             }
-            if (this.graphView) {
-                this.graphView.handleResize($("#content").width());
+            if (this.graphManagementView) {
+                this.graphManagementView.handleResize($("#content").width());
             }
-            /*
-            var oldWidth = $('#content').width();
-            var containerWidth = $(window).width() - 70;
-            var spanWidth = 240;
-            var divider = containerWidth / spanWidth;
-            var roundDiv = parseInt(divider, 10);
-            var newWidth = roundDiv * spanWidth - 2;
-            if (newWidth !== oldWidth && this.graphView) {
-              this.graphView.handleResize(newWidth);
-            }
-            */
         },
 
         userManagement: function () {

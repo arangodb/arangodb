@@ -31,6 +31,7 @@ div.resizecontainer {
 }
 
 @for $i from 1 through 11 {
+  $white-space: 10px;
   $min: $tile-width * $i;
   $content-size: $min - 12px;
 
@@ -138,7 +139,7 @@ div.resizecontainer {
     $dashboard-height: 400px;
   }
 
-  @media (min-width: $min) and (max-width: $min + $tile-width - 1) {
+  @media (min-width: $min + $white-space) and (max-width: $min + $tile-width - 1 + $white-space) {
     div.resizecontainer {
       width: $content-size;
     }

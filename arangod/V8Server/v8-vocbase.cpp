@@ -6519,7 +6519,7 @@ static v8::Handle<v8::Value> JS_PlanIdVocbaseCol (v8::Arguments const& argv) {
 /// created journals. Also note that you cannot lower the journal size to less
 /// then size of the largest document already stored in the collection.
 ///
-/// *Note*: some other collection properties, such as *type*, *isVolatile*,
+/// **Note**: some other collection properties, such as *type*, *isVolatile*,
 /// or *keyOptions* cannot be changed once the collection is created.
 ///
 /// @EXAMPLES
