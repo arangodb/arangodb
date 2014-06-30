@@ -373,7 +373,8 @@ function performTests(options, testList) {
     te = testList[i];
     print("\nTrying",te,"...");
     if ((te.indexOf("-cluster") === -1 || options.cluster) &&
-        (te.indexOf("-noncluster") === -1 || options.cluster === false)) {
+        (te.indexOf("-noncluster") === -1 || options.cluster === false) &&
+        (te.indexOf("-disabled") === -1)) {
       var r = runThere(options, instanceInfo, te);
       results[te] = r;
       if (r !== true && !options.force) {
@@ -381,7 +382,7 @@ function performTests(options, testList) {
       }
     }
     else {
-      print("Skipped because of cluster/non-cluster.");
+      print("Skipped because of cluster/non-cluster or disabled.");
     }
   }
   print("Shutting down...");
