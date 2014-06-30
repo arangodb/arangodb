@@ -49,7 +49,7 @@ function ReplicationLoggerSuite () {
   var cn2 = "UnitTestsReplication2";
   
   var waitForSync = function () {
-    internal.wait(0.75, false);
+    internal.wait(1, false);
   };
   
   var getLogEntries = function (tick, type) {
@@ -122,7 +122,6 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      replication.logger.stop();
       replication.logger.properties({ maxEvents: 1048576 });
       db._drop(cn);
       db._drop(cn2);
@@ -1701,7 +1700,7 @@ function ReplicationApplierSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      replication.applier.stop();
+      replication.applier.shutdown();
       replication.applier.forget();
     },
 
@@ -1710,7 +1709,7 @@ function ReplicationApplierSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      replication.applier.stop();
+      replication.applier.shutdown();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1856,14 +1855,14 @@ function ReplicationApplierSuite () {
       assertTrue(state.state.running);
 
       // stop
-      replication.applier.stop();
+      replication.applier.shutdown();
       
       state = replication.applier.state();
       assertFalse(state.state.running);
       
       // stop again
-      replication.applier.stop();
-            
+      replication.applier.shutdown();
+                  
       state = replication.applier.state();
       assertFalse(state.state.running);
     },
@@ -1987,9 +1986,8 @@ function ReplicationSyncSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      replication.applier.stop();
+      replication.applier.shutdown();
       replication.applier.forget();
-      replication.logger.stop();
     },
 
 ////////////////////////////////////////////////////////////////////////////////

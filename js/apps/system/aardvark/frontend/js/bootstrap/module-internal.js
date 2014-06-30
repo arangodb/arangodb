@@ -1,9 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
 /*jslint sloppy: true, regexp: true */
 /*global require, module, Module, ArangoError, SleepAndRequeue,
-  REPLICATION_LOGGER_STATE, REPLICATION_LOGGER_CONFIGURE, REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START,
-  REPLICATION_APPLIER_STOP, REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE,
-  REPLICATION_SYNCHRONISE, REPLICATION_SERVER_ID, CONFIGURE_ENDPOINT, REMOVE_ENDPOINT, LIST_ENDPOINTS,
+  CONFIGURE_ENDPOINT, REMOVE_ENDPOINT, LIST_ENDPOINTS,
   SYS_BASE64DECODE, SYS_BASE64ENCODE, SYS_DEBUG_SEGFAULT,
   SYS_DEBUG_CAN_USE_FAILAT, SYS_DEBUG_SET_FAILAT, SYS_DEBUG_REMOVE_FAILAT, SYS_DEBUG_CLEAR_FAILAT,
   SYS_DOWNLOAD, SYS_EXECUTE, SYS_GET_CURRENT_REQUEST, SYS_GET_CURRENT_RESPONSE,
@@ -263,87 +261,6 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getStateReplicationLogger
-////////////////////////////////////////////////////////////////////////////////
-
-  if (typeof REPLICATION_LOGGER_STATE !== "undefined") {
-    exports.getStateReplicationLogger = REPLICATION_LOGGER_STATE;
-    delete REPLICATION_LOGGER_STATE;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief configureReplicationLogger
-////////////////////////////////////////////////////////////////////////////////
-
-  if (typeof REPLICATION_LOGGER_CONFIGURE !== "undefined") {
-    exports.configureReplicationLogger = REPLICATION_LOGGER_CONFIGURE;
-    delete REPLICATION_LOGGER_CONFIGURE;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief configureReplicationApplier
-////////////////////////////////////////////////////////////////////////////////
-
-  if (typeof REPLICATION_APPLIER_CONFIGURE !== "undefined") {
-    exports.configureReplicationApplier = REPLICATION_APPLIER_CONFIGURE;
-    delete REPLICATION_APPLIER_CONFIGURE;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief startReplicationApplier
-////////////////////////////////////////////////////////////////////////////////
-
-  if (typeof REPLICATION_APPLIER_START !== "undefined") {
-    exports.startReplicationApplier = REPLICATION_APPLIER_START;
-    delete REPLICATION_APPLIER_START;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stopReplicationApplier
-////////////////////////////////////////////////////////////////////////////////
-
-  if (typeof REPLICATION_APPLIER_STOP !== "undefined") {
-    exports.stopReplicationApplier = REPLICATION_APPLIER_STOP;
-    delete REPLICATION_APPLIER_STOP;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getStateReplicationApplier
-////////////////////////////////////////////////////////////////////////////////
-
-  if (typeof REPLICATION_APPLIER_STATE !== "undefined") {
-    exports.getStateReplicationApplier = REPLICATION_APPLIER_STATE;
-    delete REPLICATION_APPLIER_STATE;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief forgetStateReplicationApplier
-////////////////////////////////////////////////////////////////////////////////
-
-  if (typeof REPLICATION_APPLIER_FORGET !== "undefined") {
-    exports.forgetStateReplicationApplier = REPLICATION_APPLIER_FORGET;
-    delete REPLICATION_APPLIER_FORGET;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sychroniseReplication
-////////////////////////////////////////////////////////////////////////////////
-
-  if (typeof REPLICATION_SYNCHRONISE !== "undefined") {
-    exports.synchroniseReplication = REPLICATION_SYNCHRONISE;
-    delete REPLICATION_SYNCHRONISE;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief serverId
-////////////////////////////////////////////////////////////////////////////////
-
-  if (typeof REPLICATION_SERVER_ID !== "undefined") {
-    exports.serverId = REPLICATION_SERVER_ID;
-    delete REPLICATION_SERVER_ID;
-  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief configureEndpoint
