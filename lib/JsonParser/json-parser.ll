@@ -77,7 +77,10 @@ struct jsonData {
 };
 
 #define YY_FATAL_ERROR(a) \
-  LOG_DEBUG("json-paser: %s", (a))
+  LOG_DEBUG("json-parser: %s", (a)); \
+  if (false) { \
+    yy_fatal_error(a, NULL); \
+  }
 %}
 
 %%
