@@ -84,7 +84,106 @@
                 expect($(list[2]).html()).toEqual(g1._key);
             });
 
-            describe("creating a new graph", function () {
+
+            it("should loadGraphViewer", function () {
+              var e = {
+                  currentTarget: {
+                    id: "blabalblub"
+                  }
+                },
+                a = {
+                  attr: function (x) {
+                    return "blabalblub";
+                  },
+                  width : function () {
+                    return 100
+                  },
+                  html : function () {
+
+                  }
+                };
+              spyOn(window, "GraphViewerUI");
+
+              spyOn(window, "$").andReturn(a);
+
+
+              view.loadGraphViewer(e);
+
+              expect(window.GraphViewerUI).toHaveBeenCalledWith(
+                undefined,
+                {
+                  type : 'gharial',
+                  graphName : 'blaba',
+                  baseUrl : '/_db/_system/'
+                }, 25, 680,
+                {
+                  nodeShaper :
+                  {
+                    label : '_key',
+                    color : { type : 'attribute', key : '_key' }
+                  }
+                }, true
+              );
+            });
+
+          it("should delete graph", function () {
+            var e = {
+                currentTarget: {
+                  id: "blabalblub"
+                }
+              },
+              a = [{
+                value: "blabalblub"
+              }],collReturn = {
+                destroy : function (a) {
+                  a.success();
+                }
+              };
+
+            spyOn(graphs, "get").andReturn(collReturn);
+
+            spyOn(window, "$").andReturn(a);
+
+            spyOn(window.modalView, "hide").andReturn(a);
+
+            view.deleteGraph(e);
+
+            expect(graphs.get).toHaveBeenCalledWith("blabalblub");
+            expect(window.modalView.hide).toHaveBeenCalled();
+          });
+
+          it("should NOT delete graph", function () {
+            var e = {
+                currentTarget: {
+                  id: "blabalblub"
+                }
+              },
+              a = [{
+                value: "blabalblub"
+              }],collReturn = {
+                destroy : function (a) {
+                  a.error("", {responseText : '{"errorMessage" : "errorMessage"}'});
+                }
+              };
+
+            spyOn(graphs, "get").andReturn(collReturn);
+
+            spyOn(window, "$").andReturn(a);
+            spyOn(arangoHelper, "arangoError");
+
+            spyOn(window.modalView, "hide").andReturn(a);
+
+            view.deleteGraph(e);
+
+            expect(graphs.get).toHaveBeenCalledWith("blabalblub");
+            expect(arangoHelper.arangoError).toHaveBeenCalledWith("errorMessage");
+            expect(window.modalView.hide).toHaveBeenCalled();
+
+
+          });
+
+
+          describe("creating a new graph", function () {
 
                 it("should create a new graph", function () {
                     runs(function () {
