@@ -754,25 +754,29 @@ testFuncs.foxx_manager = function (options) {
 };
 
 testFuncs.dump = function (options) {
+  var cluster;
+
   if (options.cluster) {
-    print("Skipped because of cluster.");
-    return {"ok":true, "skipped":0};
+    cluster = "-cluster";
+  }
+  else {
+    cluster = "";
   }
   print("dump tests...");
   var instanceInfo = startInstance("tcp",options);
   var results = {};
   results.setup = runInArangosh(options, instanceInfo, 
-                                makePath("js/server/tests/dump-setup.js"));
+       makePath("js/server/tests/dump-setup"+cluster+".js"));
   if (results.setup === 0) {
     results.dump = runArangoDumpRestore(options, instanceInfo, "dump",
                                         "UnitTestsDumpSrc");
     results.restore = runArangoDumpRestore(options, instanceInfo, "restore",
                                            "UnitTestsDumpDst");
     results.test = runInArangosh(options, instanceInfo,
-                                 makePath("js/server/tests/dump.js"),
-                                 [ "--server.database", "UnitTestsDumpDst" ]);
+       makePath("js/server/tests/dump"+cluster+".js"),
+       [ "--server.database", "UnitTestsDumpDst" ]);
     results.tearDown = runInArangosh(options, instanceInfo,
-                               makePath("js/server/tests/dump-teardown.js"));
+       makePath("js/server/tests/dump-teardown"+cluster+".js"));
   }
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
