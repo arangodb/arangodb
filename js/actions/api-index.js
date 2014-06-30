@@ -43,9 +43,10 @@ var API = "_api/index";
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_get_api_index
 /// @brief returns all indexes of a collection
 ///
-/// @RESTHEADER{GET /_api/index,reads all indexes of a collection}
+/// @RESTHEADER{GET /_api/index, Read all indexes of a collection}
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -54,12 +55,12 @@ var API = "_api/index";
 ///
 /// @RESTDESCRIPTION
 ///
-/// Returns an object with an attribute `indexes` containing a list of all
+/// Returns an object with an attribute *indexes* containing a list of all
 /// index descriptions for the given collection. The same information is also
-/// available in the `identifiers` as hash map with the index handle as
+/// available in the *identifiers* as hash map with the index handle as
 /// keys.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Return information about all indexes:
 ///
@@ -76,6 +77,7 @@ var API = "_api/index";
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_api_indexes (req, res) {
@@ -102,9 +104,10 @@ function get_api_indexes (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_get_api_reads_index
 /// @brief returns an index
 ///
-/// @RESTHEADER{GET /_api/index/{index-handle},reads an index}
+/// @RESTHEADER{GET /_api/index/{index-handle},Read index}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -116,21 +119,21 @@ function get_api_indexes (req, res) {
 /// The result is an objects describing the index. It has at least the following
 /// attributes:
 ///
-/// - `id`: The identifier of the index.
+/// - *id*: The identifier of the index.
 ///
 /// All other attributes are type-dependent.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// If the index exists, then a `HTTP 200` is
+/// If the index exists, then a *HTTP 200* is
 /// returned.
 ///
 /// @RESTRETURNCODE{404}
-/// If the index does not exist, then a `HTTP 404`
+/// If the index does not exist, then a *HTTP 404*
 /// is returned.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexPrimaryIndex}
 ///     var cn = "products";
@@ -144,6 +147,7 @@ function get_api_indexes (req, res) {
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_api_index (req, res) {
@@ -193,10 +197,10 @@ function get_api_index (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_post_api_index_cap
+/// @startDocuBlock JSF_post_api_index_cap
 /// @brief creates a cap constraint
 ///
-/// @RESTHEADER{POST /_api/index,creates a cap constraint}
+/// @RESTHEADER{POST /_api/index, Create cap constraint}
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -207,44 +211,44 @@ function get_api_index (req, res) {
 ///
 /// @RESTDESCRIPTION
 ///
-/// Creates a cap constraint for the collection `collection-name`,
+/// Creates a cap constraint for the collection *collection-name*,
 /// if it does not already exist. Expects an object containing the index details.
 ///
-/// - `type`: must be equal to `"cap"`.
+/// - *type*: must be equal to *"cap"*.
 ///
-/// - `size`: The maximal number of documents for the collection. If specified,
+/// - *size*: The maximal number of documents for the collection. If specified,
 ///   the value must be greater than zero.
 /// 
-/// - `byteSize`: The maximal size of the active document data in the collection
+/// - *byteSize*: The maximal size of the active document data in the collection
 ///   (in bytes). If specified, the value must be at least 16384.
 ///
-/// Note that the cap constraint does not index particular attributes of the
+/// **Note**: The cap constraint does not index particular attributes of the
 /// documents in a collection, but limits the number of documents in the
 /// collection to a maximum value. The cap constraint thus does not support
-/// attribute names specified in the `fields` attribute nor uniqueness of
-/// any kind via the `unique` attribute.
+/// attribute names specified in the *fields* attribute nor uniqueness of
+/// any kind via the *unique* attribute.
 ///
-/// It is allowed to specify either `size` or `byteSize`, or both at
+/// It is allowed to specify either *size* or *byteSize*, or both at
 /// the same time. If both are specified, then the automatic document removal
 /// will be triggered by the first non-met constraint.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// If the index already exists, then an `HTTP 200` is returned.
+/// If the index already exists, then an *HTTP 200* is returned.
 ///
 /// @RESTRETURNCODE{201}
-/// If the index does not already exist and could be created, then an `HTTP 201`
+/// If the index does not already exist and could be created, then an *HTTP 201*
 /// is returned.
 ///
 /// @RESTRETURNCODE{400}
-/// If either `size` or `byteSize` contain invalid values, then an `HTTP 400`
+/// If either *size* or *byteSize* contain invalid values, then an *HTTP 400*
 /// is returned.
 ///
 /// @RESTRETURNCODE{404}
-/// If the `collection-name` is unknown, then a `HTTP 404` is returned.
+/// If the *collection-name* is unknown, then a *HTTP 404* is returned.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Creating a cap constraint
 ///
@@ -265,13 +269,14 @@ function get_api_index (req, res) {
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_post_api_index_geo
+/// @startDocuBlock JSF_post_api_index_geo
 /// @brief creates a geo index
 ///
-/// @RESTHEADER{POST /_api/index,creates a geo-spatial index}
+/// @RESTHEADER{POST /_api/index, Create geo-spatial index}
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -282,57 +287,57 @@ function get_api_index (req, res) {
 ///
 /// @RESTDESCRIPTION
 ///
-/// Creates a geo-spatial index in the collection `collection-name`, if
+/// Creates a geo-spatial index in the collection *collection-name*, if
 /// it does not already exist. Expects an object containing the index details.
 ///
-/// - `type`: must be equal to `"geo"`.
+/// - *type*: must be equal to *"geo"*.
 ///
-/// - `fields`: A list with one or two attribute paths. 
+/// - *fields*: A list with one or two attribute paths. 
 ///
-///   If it is a list with one attribute path `location`, then a geo-spatial
-///   index on all documents is created using `location` as path to the
+///   If it is a list with one attribute path *location*, then a geo-spatial
+///   index on all documents is created using *location* as path to the
 ///   coordinates. The value of the attribute must be a list with at least two
 ///   double values. The list must contain the latitude (first value) and the
 ///   longitude (second value). All documents, which do not have the attribute
 ///   path or with value that are not suitable, are ignored.
 ///
-///   If it is a list with two attribute paths `latitude` and `longitude`,
-///   then a geo-spatial index on all documents is created using `latitude`
-///   and `longitude` as paths the latitude and the longitude. The value of
-///   the attribute `latitude` and of the attribute `longitude` must a
+///   If it is a list with two attribute paths *latitude* and *longitude*,
+///   then a geo-spatial index on all documents is created using *latitude*
+///   and *longitude* as paths the latitude and the longitude. The value of
+///   the attribute *latitude* and of the attribute *longitude* must a
 ///   double. All documents, which do not have the attribute paths or which
 ///   values are not suitable, are ignored.
 ///
-/// - `geoJson`: If a geo-spatial index on a `location` is constructed
-///   and `geoJson` is `true`, then the order within the list is longitude
+/// - *geoJson*: If a geo-spatial index on a *location* is constructed
+///   and *geoJson* is *true*, then the order within the list is longitude
 ///   followed by latitude. This corresponds to the format described in 
 ///   http://geojson.org/geojson-spec.html#positions
 ///
-/// - `constraint`: If `constraint` is `true`, then a geo-spatial
+/// - *constraint*: If *constraint* is *true*, then a geo-spatial
 ///   constraint is created. The constraint is a non-unique variant of the index. 
-///   Note that it is also possible to set the `unique` attribute instead of 
-///   the `constraint` attribute.
+///   **Note**: It is also possible to set the *unique* attribute instead of 
+///   the *constraint* attribute.
 ///
-/// - `ignoreNull`: If a geo-spatial constraint is created and
-///   `ignoreNull` is true, then documents with a null in `location` or at
-///   least one null in `latitude` or `longitude` are ignored.
+/// - *ignoreNull*: If a geo-spatial constraint is created and
+///   *ignoreNull* is true, then documents with a null in *location* or at
+///   least one null in *latitude* or *longitude* are ignored.
 ///
-/// Note: unique indexes on non-shard keys are not supported in a cluster.
+/// **Note**: Unique indexes on non-shard keys are not supported in a cluster.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// If the index already exists, then a `HTTP 200` is
+/// If the index already exists, then a *HTTP 200* is
 /// returned.
 ///
 /// @RESTRETURNCODE{201}
-/// If the index does not already exist and could be created, then a `HTTP 201`
+/// If the index does not already exist and could be created, then a *HTTP 201*
 /// is returned.  
 ///
 /// @RESTRETURNCODE{404}
-/// If the `collection-name` is unknown, then a `HTTP 404` is returned.
+/// If the *collection-name* is unknown, then a *HTTP 404* is returned.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Creating a geo index with a location attribute:
 ///
@@ -367,13 +372,14 @@ function get_api_index (req, res) {
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_post_api_index_hash
+/// @startDocuBlock JSF_post_api_index_hash
 /// @brief creates a hash index
 ///
-/// @RESTHEADER{POST /_api/index,creates a hash index}
+/// @RESTHEADER{POST /_api/index, Create hash index}
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -384,37 +390,37 @@ function get_api_index (req, res) {
 ///
 /// @RESTDESCRIPTION
 ///
-/// Creates a hash index for the collection `collection-name`, if it
+/// Creates a hash index for the collection *collection-name*, if it
 /// does not already exist. The call expects an object containing the index
 /// details.
 ///
-/// - `type`: must be equal to `"hash"`.
+/// - *type*: must be equal to *"hash"*.
 ///
-/// - `fields`: A list of attribute paths.
+/// - *fields*: A list of attribute paths.
 ///
-/// - `unique`: If `true`, then create a unique index.
+/// - *unique*: If *true*, then create a unique index.
 ///
-/// Note: unique indexes on non-shard keys are not supported in a cluster.
+/// **Note**: unique indexes on non-shard keys are not supported in a cluster.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// If the index already exists, then a `HTTP 200` is
+/// If the index already exists, then a *HTTP 200* is
 /// returned.
 ///
 /// @RESTRETURNCODE{201}
-/// If the index does not already exist and could be created, then a `HTTP 201`
+/// If the index does not already exist and could be created, then a *HTTP 201*
 /// is returned.  
 ///
 /// @RESTRETURNCODE{400}
 /// If the collection already contains documents and you try to create a unique
 /// hash index in such a way that there are documents violating the uniqueness,
-/// then a `HTTP 400` is returned.
+/// then a *HTTP 400* is returned.
 ///
 /// @RESTRETURNCODE{404}
-/// If the `collection-name` is unknown, then a `HTTP 404` is returned.
+/// If the *collection-name* is unknown, then a *HTTP 404* is returned.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Creating an unique constraint:
 ///
@@ -449,13 +455,14 @@ function get_api_index (req, res) {
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_post_api_index_skiplist
+/// @startDocuBlock JSF_post_api_index_skiplist
 /// @brief creates a skip-list
 ///
-/// @RESTHEADER{POST /_api/index,creates a skip list}
+/// @RESTHEADER{POST /_api/index, Create skip list}
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -466,37 +473,37 @@ function get_api_index (req, res) {
 ///
 /// @RESTDESCRIPTION
 ///
-/// Creates a skip-list index for the collection `collection-name`, if
+/// Creates a skip-list index for the collection *collection-name*, if
 /// it does not already exist. The call expects an object containing the index
 /// details.
 ///
-/// - `type`: must be equal to `"skiplist"`.
+/// - *type*: must be equal to *"skiplist"*.
 ///
-/// - `fields`: A list of attribute paths.
+/// - *fields*: A list of attribute paths.
 ///
-/// - `unique`: If `true`, then create a unique index.
+/// - *unique*: If *true*, then create a unique index.
 ///
-/// Note: unique indexes on non-shard keys are not supported in a cluster.
+/// **Note**: unique indexes on non-shard keys are not supported in a cluster.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// If the index already exists, then a `HTTP 200` is
+/// If the index already exists, then a *HTTP 200* is
 /// returned.
 ///
 /// @RESTRETURNCODE{201}
-/// If the index does not already exist and could be created, then a `HTTP 201`
+/// If the index does not already exist and could be created, then a *HTTP 201*
 /// is returned.
 ///
 /// @RESTRETURNCODE{400}
 /// If the collection already contains documents and you try to create a unique
 /// skip-list index in such a way that there are documents violating the
-/// uniqueness, then a `HTTP 400` is returned.
+/// uniqueness, then a *HTTP 400* is returned.
 ///
 /// @RESTRETURNCODE{404}
-/// If the `collection-name` is unknown, then a `HTTP 404` is returned.
+/// If the *collection-name* is unknown, then a *HTTP 404* is returned.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Creating a skiplist:
 ///
@@ -514,13 +521,14 @@ function get_api_index (req, res) {
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_post_api_index_fulltext
+/// @startDocuBlock JSF_post_api_index_fulltext
 /// @brief creates a fulltext index
 ///
-/// @RESTHEADER{POST /_api/index,creates a fulltext index}
+/// @RESTHEADER{POST /_api/index, Create fulltext index}
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -531,34 +539,34 @@ function get_api_index (req, res) {
 ///
 /// @RESTDESCRIPTION
 ///
-/// Creates a fulltext index for the collection `collection-name`, if
+/// Creates a fulltext index for the collection *collection-name*, if
 /// it does not already exist. The call expects an object containing the index
 /// details.
 ///
-/// - `type`: must be equal to `"fulltext"`.
+/// - *type*: must be equal to *"fulltext"*.
 ///
-/// - `fields`: A list of attribute names. Currently, the list is limited 
-///   to exactly one attribute, so the value of `fields` should look like
-///   this for example: `[ "text" ]`.
+/// - *fields*: A list of attribute names. Currently, the list is limited 
+///   to exactly one attribute, so the value of *fields* should look like
+///   this for example: *[ "text" ]*.
 ///
-/// - `minLength`: Minimum character length of words to index. Will default
+/// - *minLength*: Minimum character length of words to index. Will default
 ///   to a server-defined value if unspecified. It is thus recommended to set
 ///   this value explicitly when creating the index.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// If the index already exists, then a `HTTP 200` is
+/// If the index already exists, then a *HTTP 200* is
 /// returned.
 ///
 /// @RESTRETURNCODE{201}
-/// If the index does not already exist and could be created, then a `HTTP 201`
+/// If the index does not already exist and could be created, then a *HTTP 201*
 /// is returned.
 ///
 /// @RESTRETURNCODE{404}
-/// If the `collection-name` is unknown, then a `HTTP 404` is returned.
+/// If the *collection-name* is unknown, then a *HTTP 404* is returned.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Creating a fulltext index:
 ///
@@ -576,13 +584,14 @@ function get_api_index (req, res) {
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_post_api_index_bitarray
+/// @startDocuBlock JSF_post_api_index_bitarray
 /// @brief creates a bitarray
 ///
-/// @RESTHEADER{POST /_api/index,creates a bitarray index}
+/// @RESTHEADER{POST /_api/index, Create bitarray index}
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -593,30 +602,30 @@ function get_api_index (req, res) {
 ///
 /// @RESTDESCRIPTION
 ///
-/// Creates a bitarray index for the collection `collection-name`, if
+/// Creates a bitarray index for the collection *collection-name*, if
 /// it does not already exist. The call expects an object containing the index
 /// details.
 ///
-/// - `type`: must be equal to `"bitarray"`.
+/// - *type*: must be equal to *"bitarray"*.
 ///
-/// - `fields`: A list of pairs. A pair consists of an attribute path followed by a list of values.
+/// - *fields*: A list of pairs. A pair consists of an attribute path followed by a list of values.
 ///
-/// - `unique`: Must always be set to `false`.
+/// - *unique*: Must always be set to *false*.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// If the index already exists, then a `HTTP 200` is
+/// If the index already exists, then a *HTTP 200* is
 /// returned.
 ///
 /// @RESTRETURNCODE{201}
-/// If the index does not already exist and could be created, then a `HTTP 201`
+/// If the index does not already exist and could be created, then a *HTTP 201*
 /// is returned.
 ///
 /// @RESTRETURNCODE{404}
-/// If the `collection-name` is unknown, then a `HTTP 404` is returned.
+/// If the *collection-name* is unknown, then a *HTTP 404* is returned.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Creating a bitarray index:
 ///
@@ -638,12 +647,14 @@ function get_api_index (req, res) {
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_post_api_index
 /// @brief creates an index
 ///
-/// @RESTHEADER{POST /_api/index,creates an index}
+/// @RESTHEADER{POST /_api/index, Create index}
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -654,56 +665,54 @@ function get_api_index (req, res) {
 ///
 /// @RESTDESCRIPTION
 ///
-/// Creates a new index in the collection `collection`. Expects
+/// Creates a new index in the collection *collection*. Expects
 /// an object containing the index details.
 ///
-/// The type of the index to be created must specified in the `type`
+/// The type of the index to be created must specified in the *type*
 /// attribute of the index details. Depending on the index type, additional
 /// other attributes may need to specified in the request in order to create
 /// the index.
 ///
-/// See @ref HttpIndexCap, @ref HttpIndexGeo, @ref HttpIndexHash, 
-/// @ref HttpIndexFulltext, and @ref HttpIndexSkiplist for details. 
-/// 
 /// Most indexes (a notable exception being the cap constraint) require the
-/// list of attributes to be indexed in the `fields` attribute of the index
+/// list of attributes to be indexed in the *fields* attribute of the index
 /// details. Depending on the index type, a single attribute or multiple 
 /// attributes may be indexed. 
 /// 
-/// Indexing system attributes such as `_id`, `_key`, `_from`, and `_to`
+/// Indexing system attributes such as *_id*, *_key*, *_from*, and *_to*
 /// is not supported by any index type. Manually creating an index that 
 /// relies on any of these attributes is unsupported.
 ///
 /// Some indexes can be created as unique or non-unique variants. Uniqueness
-/// can be controlled for most indexes by specifying the `unique` in the
-/// index details. Setting it to `true` will create a unique index. 
-/// Setting it to `false` or omitting the `unique` attribute will
+/// can be controlled for most indexes by specifying the *unique* in the
+/// index details. Setting it to *true* will create a unique index. 
+/// Setting it to *false* or omitting the *unique* attribute will
 /// create a non-unique index.
 ///
-/// Note that the following index types do not support uniqueness, and using 
-/// the `unique` attribute with these types may lead to an error:
+/// **Note**: The following index types do not support uniqueness, and using 
+/// the *unique* attribute with these types may lead to an error:
 /// - cap constraints
 /// - fulltext indexes
 /// - bitarray indexes
 ///
-/// Note also that unique indexes on non-shard keys are not supported in a 
+/// **Note**: Unique indexes on non-shard keys are not supported in a 
 /// cluster.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// If the index already exists, then an `HTTP 200` is returned.
+/// If the index already exists, then an *HTTP 200* is returned.
 ///
 /// @RESTRETURNCODE{201}
-/// If the index does not already exist and could be created, then an `HTTP 201`
+/// If the index does not already exist and could be created, then an *HTTP 201*
 /// is returned.
 ///
 /// @RESTRETURNCODE{400}
 /// If an invalid index description is posted or attributes are used that the
-/// target index will not support, then an `HTTP 400` is returned.
+/// target index will not support, then an *HTTP 400* is returned.
 ///
 /// @RESTRETURNCODE{404}
-/// If `collection` is unknown, then an `HTTP 404` is returned.
+/// If *collection* is unknown, then an *HTTP 404* is returned.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_api_index (req, res) {
@@ -764,9 +773,10 @@ function post_api_index (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_post_api_index_delete
 /// @brief deletes an index
 ///
-/// @RESTHEADER{DELETE /_api/index/{index-handle},deletes an index}
+/// @RESTHEADER{DELETE /_api/index/{index-handle}, Delete index}
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -775,17 +785,17 @@ function post_api_index (req, res) {
 ///
 /// @RESTDESCRIPTION
 ///
-/// Deletes an index with `index-handle`.
+/// Deletes an index with *index-handle*.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// If the index could be deleted, then an `HTTP 200` is
+/// If the index could be deleted, then an *HTTP 200* is
 /// returned.
 ///
 /// @RESTRETURNCODE{404}
-/// If the `index-handle` is unknown, then an `HTTP 404` is returned.
-/// *Examples*
+/// If the *index-handle* is unknown, then an *HTTP 404* is returned.
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexDeleteUniqueSkiplist}
 ///     var cn = "products";
@@ -800,6 +810,7 @@ function post_api_index (req, res) {
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function delete_api_index (req, res) {

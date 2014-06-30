@@ -168,13 +168,18 @@
    * well.
    */
   controller.del("/:graph", function(req, res) {
-    var name = req.params("graph");
-    Graph._drop(name);
+    var name = req.params("graph"),
+        drop = req.params("dropCollections") || false;
+    Graph._drop(name, Boolean(drop));
     setResponse(res);
   })
   .pathParam("graph", {
     type: "string",
     description: "Name of the graph."
+  })
+  .queryParam("dropCollections", {
+    type: "boolean",
+    description: "flag to drop collections as well"
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The graph does not exist.", function(e) {
@@ -316,7 +321,8 @@
     var name = req.params("graph");
     var def_name = req.params("collection");
     var g = Graph._graph(name);
-    g._removeVertexCollection(def_name);
+    var drop = req.params("dropCollections") || false;
+    g._removeVertexCollection(def_name, Boolean(drop));
     setGraphResponse(res, g);
   })
   .pathParam("graph", {
@@ -326,6 +332,10 @@
   .pathParam("collection", {
     type: "string",
     description: "Name of the vertex collection."
+  })
+  .queryParam("dropCollection", {
+    type: "boolean",
+    description: "flag to drop collection as well"
   })
   .errorResponse(
     ArangoError, actions.HTTP_BAD,
@@ -511,7 +521,8 @@
     var name = req.params("graph");
     var def_name = req.params("definition");
     var g = Graph._graph(name);
-    g._deleteEdgeDefinition(def_name);
+    var drop = req.params("dropCollections") || false;
+    g._deleteEdgeDefinition(def_name, Boolean(drop));
     setGraphResponse(res, g);
   })
   .pathParam("graph", {
@@ -521,6 +532,10 @@
   .pathParam("definition", {
     type: "string",
     description: "Name of the edge collection in the definition."
+  })
+  .queryParam("dropCollection", {
+    type: "boolean",
+    description: "flag to drop collection as well"
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The edge definition is invalid.", function(e) {

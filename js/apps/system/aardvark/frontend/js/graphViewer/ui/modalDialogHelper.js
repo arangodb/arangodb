@@ -292,6 +292,9 @@ var modalDialogHelper = modalDialogHelper || {};
       };
       addLineButton.id = id + "_addLine";
       addLineButton.className = "graphViewer-icon-button gv-icon-small add";
+      if (typeof list === "string" && list.length > 0) {
+        list = [list];
+      }
       if (list.length > 0) {
         input.value = list[0];
       }
@@ -444,8 +447,8 @@ var modalDialogHelper = modalDialogHelper || {};
     return content.bodyTable;
   };
   
-  modalDialogHelper.createModalDialog = function(title, idprefix, objects, callback) {
-    var table =  modalDialogHelper.modalDivTemplate(title, null, idprefix, callback);
+  modalDialogHelper.createModalDialog = function(title, idprefix, objects, callback, buttonTitle) {
+    var table =  modalDialogHelper.modalDivTemplate(title, buttonTitle, idprefix, callback);
     _.each(objects, function(o) {
       insertModalRow(table, idprefix, o);
     });
