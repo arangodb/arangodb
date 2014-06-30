@@ -397,6 +397,9 @@
 
         name = graph.get("_key");
         edgeDefinitions = graph.get("edgeDefinitions");
+        if (!edgeDefinitions || edgeDefinitions.length === 0 ) {
+          edgeDefinitions = [{collection : "", from : "", to :""}];
+        }
         orphanCollections = graph.get("orphanCollections");
 
         tableContent.push(
