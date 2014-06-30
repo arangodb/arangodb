@@ -562,7 +562,7 @@
       });
 
       it("should handle resizing", function () {
-        r.graphView =  graphDummy;
+        r.graphManagementView =  graphDummy;
         r.dashboardView = dashboardDummy;
         spyOn(graphDummy, "handleResize");
         spyOn(dashboardDummy, "resize");
@@ -654,15 +654,6 @@
         );
       });
 
-      it("should route to the graph management tab", function () {
-        simpleNavigationCheck(
-          "graphManagement",
-          "GraphManagementView",
-          "graphviewer-menu",
-          { collection: graphsDummy ,
-            collectionCollection : { id : 'store', fetch : jasmine.any(Function) } }
-        );
-      });
 
       it("should route to the applications tab", function () {
         simpleNavigationCheck(
