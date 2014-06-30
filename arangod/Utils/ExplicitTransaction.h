@@ -63,9 +63,9 @@ namespace triagens {
                              std::vector<std::string> const& writeCollections,
                              double lockTimeout,
                              bool waitForSync)
-          : Transaction<T>(vocbase) {
+          : Transaction<T>(vocbase, 0) {
 
-          this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY);
+          this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
 
           if (lockTimeout >= 0.0) {
             this->setTimeout(lockTimeout);
@@ -75,12 +75,12 @@ namespace triagens {
             this->setWaitForSync();
           }
 
-          for (size_t i = 0; i < readCollections.size(); ++i) {
-            this->addCollection(readCollections[i], TRI_TRANSACTION_READ);
+          for (auto it = readCollections.begin(); it != readCollections.end(); ++it) {
+            this->addCollection((*it), TRI_TRANSACTION_READ);
           }
 
-          for (size_t i = 0; i < writeCollections.size(); ++i) {
-            this->addCollection(writeCollections[i], TRI_TRANSACTION_WRITE);
+          for (auto it = writeCollections.begin(); it != writeCollections.end(); ++it) {
+            this->addCollection((*it), TRI_TRANSACTION_WRITE);
           }
         }
 

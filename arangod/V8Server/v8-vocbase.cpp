@@ -5054,14 +5054,14 @@ static v8::Handle<v8::Value> JS_StartApplierReplication (v8::Arguments const& ar
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stop the replication applier manually
+/// @brief shuts down the replication applier manually
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_StopApplierReplication (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_ShutdownApplierReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_STOP()");
+    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_SHUTDOWN()");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -5074,10 +5074,10 @@ static v8::Handle<v8::Value> JS_StopApplierReplication (v8::Arguments const& arg
     TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
 
-  int res = TRI_StopReplicationApplier(vocbase->_replicationApplier, true);
+  int res = TRI_ShutdownReplicationApplier(vocbase->_replicationApplier);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot stop replication applier");
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot shut down replication applier");
   }
 
   return scope.Close(v8::True());
@@ -6519,7 +6519,7 @@ static v8::Handle<v8::Value> JS_PlanIdVocbaseCol (v8::Arguments const& argv) {
 /// created journals. Also note that you cannot lower the journal size to less
 /// then size of the largest document already stored in the collection.
 ///
-/// *Note*: some other collection properties, such as *type*, *isVolatile*,
+/// **Note**: some other collection properties, such as *type*, *isVolatile*,
 /// or *keyOptions* cannot be changed once the collection is created.
 ///
 /// @EXAMPLES
@@ -10244,7 +10244,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_SERVER_ID", JS_ServerIdReplication, true);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_CONFIGURE", JS_ConfigureApplierReplication, true);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_START", JS_StartApplierReplication, true);
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_STOP", JS_StopApplierReplication, true);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_SHUTDOWN", JS_ShutdownApplierReplication, true);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_STATE", JS_StateApplierReplication, true);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_FORGET", JS_ForgetApplierReplication, true);
 

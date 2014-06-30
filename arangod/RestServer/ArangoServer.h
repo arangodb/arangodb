@@ -350,7 +350,7 @@ namespace triagens {
         string _databasePath;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief default journal size
+/// @startDocuBlock databaseMaximalJournalSize
 ///
 /// @CMDOPT{\--database.maximal-journal-size @CA{size}}
 ///

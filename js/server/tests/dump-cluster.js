@@ -267,20 +267,17 @@ function dumpTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test keygen
+/// @brief test shards
 ////////////////////////////////////////////////////////////////////////////////
     
-    testKeygen : function () {
-      var c = db._collection("UnitTestsDumpKeygen");
+    testShards : function () {
+      var c = db._collection("UnitTestsDumpShards");
       var p = c.properties();
 
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
       assertFalse(p.isVolatile);
-      assertEqual("autoincrement", p.keyOptions.type);
-      assertFalse(p.keyOptions.allowUserKeys);
-      assertEqual(7, p.keyOptions.offset);
-      assertEqual(42, p.keyOptions.increment);
+      assertEqual(9, p.numberOfShards);
 
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
@@ -328,59 +325,6 @@ function dumpTestSuite () {
         assertEqual(t, doc.value);
       });
 
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test committed trx
-////////////////////////////////////////////////////////////////////////////////
-    
-    testTransactionCommit : function () {
-      var c = db._collection("UnitTestsDumpTransactionCommit");
-
-      assertEqual(1000, c.count());
-  
-      for (var i = 0; i < 1000; ++i) {
-        var doc = c.document("test" + i);
-
-        assertEqual(i, doc.value1);
-        assertEqual("this is a test", doc.value2);
-        assertEqual("test" + i, doc.value3);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test committed trx
-////////////////////////////////////////////////////////////////////////////////
-    
-    testTransactionUpdate : function () {
-      var c = db._collection("UnitTestsDumpTransactionUpdate");
-
-      assertEqual(1000, c.count());
-  
-      for (var i = 0; i < 1000; ++i) {
-        var doc = c.document("test" + i);
-
-        assertEqual(i, doc.value1);
-        assertEqual("this is a test", doc.value2);
-        if (i % 2 == 0) {
-          assertEqual(i, doc.value3);
-        }
-        else {
-          assertEqual("test" + i, doc.value3);
-        }
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aborted trx
-////////////////////////////////////////////////////////////////////////////////
-    
-    testTransactionAbort : function () {
-      var c = db._collection("UnitTestsDumpTransactionAbort");
-
-      assertEqual(1, c.count());
-  
-      assertTrue(c.exists("foo"));
     }
 
   };
