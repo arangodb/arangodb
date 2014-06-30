@@ -1022,6 +1022,24 @@ function checkConfiguration (app, options) {
     return false;
   }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns collection prefix for system apps
+////////////////////////////////////////////////////////////////////////////////
+
+  function systemCollectionPrefix (appName) {
+    'use strict';
+
+    if (appName === "sessions") {
+      return "_";
+    }
+
+    if (appName === "users") {
+      return "_";
+    }
+
+    return false;
+  }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -1763,7 +1781,12 @@ exports.initializeFoxx = function () {
         var found = aal.firstExample({ type: "mount", mount: mount });
 
         if (found === null) {
-          exports.mount(appName, mount, {reload: false});
+          var opts = {reload: false};
+          var prefix = systemCollectionPrefix(appName);
+          if (prefix) {
+            opts.collectionPrefix = prefix;
+          }
+          exports.mount(appName, mount, opts);
 
           var doc = mountFromId(mount);
           var app = appFromAppId(doc.app);
