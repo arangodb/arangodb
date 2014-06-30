@@ -1,7 +1,10 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true */
 /*global require, db, ArangoCollection, ArangoDatabase, ArangoCursor, module,
          ShapedJson, RELOAD_AUTH, SYS_DEFINE_ACTION, SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION,
-         AHUACATL_RUN, AHUACATL_PARSE, AHUACATL_EXPLAIN, WAL_FLUSH, WAL_PROPERTIES */
+         AHUACATL_RUN, AHUACATL_PARSE, AHUACATL_EXPLAIN, WAL_FLUSH, WAL_PROPERTIES,
+         REPLICATION_LOGGER_STATE, REPLICATION_LOGGER_CONFIGURE, REPLICATION_SERVER_ID,
+         REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_SHUTDOWN, 
+         REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE, REPLICATION_SYNCHRONISE */ 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -214,6 +217,87 @@
   else {
     internal.executeGlobalContextFunction = SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
     delete SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getStateReplicationLogger
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof REPLICATION_LOGGER_STATE !== "undefined") {
+    internal.getStateReplicationLogger = REPLICATION_LOGGER_STATE;
+    delete REPLICATION_LOGGER_STATE;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief configureReplicationLogger
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof REPLICATION_LOGGER_CONFIGURE !== "undefined") {
+    internal.configureReplicationLogger = REPLICATION_LOGGER_CONFIGURE;
+    delete REPLICATION_LOGGER_CONFIGURE;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief configureReplicationApplier
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof REPLICATION_APPLIER_CONFIGURE !== "undefined") {
+    internal.configureReplicationApplier = REPLICATION_APPLIER_CONFIGURE;
+    delete REPLICATION_APPLIER_CONFIGURE;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief startReplicationApplier
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof REPLICATION_APPLIER_START !== "undefined") {
+    internal.startReplicationApplier = REPLICATION_APPLIER_START;
+    delete REPLICATION_APPLIER_START;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdownReplicationApplier
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof REPLICATION_APPLIER_SHUTDOWN !== "undefined") {
+    internal.shutdownReplicationApplier = REPLICATION_APPLIER_SHUTDOWN;
+    delete REPLICATION_APPLIER_SHUTODWN;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getStateReplicationApplier
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof REPLICATION_APPLIER_STATE !== "undefined") {
+    internal.getStateReplicationApplier = REPLICATION_APPLIER_STATE;
+    delete REPLICATION_APPLIER_STATE;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief forgetStateReplicationApplier
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof REPLICATION_APPLIER_FORGET !== "undefined") {
+    internal.forgetStateReplicationApplier = REPLICATION_APPLIER_FORGET;
+    delete REPLICATION_APPLIER_FORGET;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sychroniseReplication
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof REPLICATION_SYNCHRONISE !== "undefined") {
+    internal.synchroniseReplication = REPLICATION_SYNCHRONISE;
+    delete REPLICATION_SYNCHRONISE;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief serverId
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof REPLICATION_SERVER_ID !== "undefined") {
+    internal.serverId = REPLICATION_SERVER_ID;
+    delete REPLICATION_SERVER_ID;
   }
 
 }());

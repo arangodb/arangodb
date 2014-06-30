@@ -142,15 +142,16 @@ TRI_transaction_hint_e;
 
 typedef struct TRI_transaction_s {
   struct TRI_vocbase_s*                _vocbase;           // vocbase
-  TRI_voc_tid_t                        _id;                // trx id
+  TRI_voc_tid_t                        _id;                // local trx id
+  TRI_voc_tid_t                        _externalId;        // external trx id (used in replication)
   TRI_transaction_type_e               _type;              // access type (read|write)
   TRI_transaction_status_e             _status;            // current status
   TRI_vector_pointer_t                 _collections;       // list of participating collections
   TRI_transaction_hint_t               _hints;             // hints;
   int                                  _nestingLevel;
-  uint64_t                             _timeout;           // timeout for lock acquisition
   bool                                 _hasOperations;
   bool                                 _waitForSync;       // whether or not the collection had a synchronous op
+  uint64_t                             _timeout;           // timeout for lock acquisition
 }
 TRI_transaction_t;
 
@@ -182,6 +183,7 @@ TRI_transaction_collection_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_transaction_t* TRI_CreateTransaction (struct TRI_vocbase_s*,
+                                          TRI_voc_tid_t,
                                           double,
                                           bool);
 
@@ -238,6 +240,12 @@ int TRI_AddCollectionTransaction (TRI_transaction_t*,
                                   TRI_transaction_type_e,
                                   int,
                                   bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief make sure all declared collections are used & locked
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_EnsureCollectionsTransaction (TRI_transaction_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request a lock for a collection
