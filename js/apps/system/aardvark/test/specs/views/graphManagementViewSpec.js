@@ -101,6 +101,205 @@
         view.render();
       });
 
+      it("should set to and from for added definition", function () {
+        view.removedECollList = [];
+        var model = view.collection.create({
+          _key: "blub",
+          name: "blub",
+          edgeDefinitions: [{
+            collection: "blub",
+            from: ["bla"],
+            to: ["blob"]
+          }],
+          orphanCollections: []
+        });
+        var e = {
+            currentTarget: {
+              id: "blabalblub"
+            },
+            stopPropagation : function () {},
+            added : {
+              id : "moppel"
+
+            },
+            val : "newEdgeDefintion"
+          },
+          a = {
+            select2: function () {},
+            attr: function () {},
+            length : 2,
+            0 : {id : 1},
+            1 : {id : 2}
+          },collReturn = {
+            destroy : function (a) {
+              a.error("", {responseText : '{"errorMessage" : "errorMessage"}'});
+            }
+          };
+
+        spyOn(e, "stopPropagation");
+
+        spyOn(window, "$").andReturn(a);
+
+        spyOn(window.modalView, "hide").andReturn(a);
+
+        view.setFromAndTo(e);
+
+        expect(e.stopPropagation).toHaveBeenCalled();
+
+        model.destroy();
+
+
+      });
+
+
+      it("should set to and from for added definition for already known def", function () {
+        view.removedECollList = [];
+        var model = view.collection.create({
+          _key: "blub2",
+          name: "blub2",
+          edgeDefinitions: [{
+            collection: "blub",
+            from: ["bla"],
+            to: ["blob"]
+          }],
+          orphanCollections: []
+        });
+        var e = {
+            currentTarget: {
+              id: "blabalblub"
+            },
+            stopPropagation : function () {},
+            added : {
+              id : "moppel"
+
+            },
+            val : "blub"
+          },
+          a = {
+            select2: function () {},
+            attr: function () {},
+            length : 2,
+            0 : {id : 1},
+            1 : {id : 2}
+          },collReturn = {
+            destroy : function (a) {
+              a.error("", {responseText : '{"errorMessage" : "errorMessage"}'});
+            }
+          };
+
+        spyOn(e, "stopPropagation");
+
+        spyOn(window, "$").andReturn(a);
+
+        spyOn(window.modalView, "hide").andReturn(a);
+
+        view.setFromAndTo(e);
+
+        expect(e.stopPropagation).toHaveBeenCalled();
+
+        model.destroy();
+
+
+      });
+
+      it("should not set to and from for added definition as already in use and has been entered manually", function () {
+        view.removedECollList = ["moppel"];
+        var model = view.collection.create({
+          _key: "blub2",
+          name: "blub2",
+          edgeDefinitions: [{
+            collection: "blub",
+            from: ["bla"],
+            to: ["blob"]
+          }],
+          orphanCollections: []
+        });
+        var e = {
+            currentTarget: {
+              id: "blabalblub"
+            },
+            stopPropagation : function () {},
+            added : {
+              id : "moppel"
+
+            },
+            val : "blub"
+          },
+          a = {
+            select2: function () {},
+            attr: function () {},
+            length : 2,
+            0 : {id : 1},
+            1 : {id : 2}
+          },collReturn = {
+            destroy : function (a) {
+              a.error("", {responseText : '{"errorMessage" : "errorMessage"}'});
+            }
+          };
+
+        spyOn(e, "stopPropagation");
+
+        spyOn(window, "$").andReturn(a);
+
+        spyOn(window.modalView, "hide").andReturn(a);
+
+        view.setFromAndTo(e);
+
+        expect(e.stopPropagation).toHaveBeenCalled();
+
+        model.destroy();
+
+
+      });
+
+      it("should not set to and from for removed definition as already in use and has been entered manually", function () {
+        view.removedECollList = ["moppel"];
+        var model = view.collection.create({
+          _key: "blub2",
+          name: "blub2",
+          edgeDefinitions: [{
+            collection: "blub",
+            from: ["bla"],
+            to: ["blob"]
+          }],
+          orphanCollections: []
+        });
+        var e = {
+            currentTarget: {
+              id: "blabalblub"
+            },
+            stopPropagation : function () {},
+            val : "blub",
+            removed : {id : "moppel"}
+          },
+          a = {
+            select2: function () {},
+            attr: function () {},
+            length : 2,
+            0 : {id : 1},
+            1 : {id : 2}
+          },collReturn = {
+            destroy : function (a) {
+              a.error("", {responseText : '{"errorMessage" : "errorMessage"}'});
+            }
+          };
+
+        spyOn(e, "stopPropagation");
+
+        spyOn(window, "$").andReturn(a);
+
+        spyOn(window.modalView, "hide").andReturn(a);
+
+        view.setFromAndTo(e);
+
+        expect(e.stopPropagation).toHaveBeenCalled();
+        expect(view.removedECollList.indexOf("moppel")).toEqual(-1)
+        expect(view.eCollList.indexOf("moppel")).not.toEqual(-1)
+        model.destroy();
+
+
+      });
+
       it("should create a sorted list of all graphs", function () {
         var list = $("div.tile h5.collectionName", "#graphManagementThumbnailsIn");
         expect(list.length).toEqual(3);
@@ -154,4 +353,3 @@
   });
 
 }());
-
