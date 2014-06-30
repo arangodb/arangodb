@@ -654,15 +654,6 @@
         );
       });
 
-      it("should route to the graph management tab", function () {
-        simpleNavigationCheck(
-          "graphManagement",
-          "GraphManagementView",
-          "graphviewer-menu",
-          { collection: graphsDummy ,
-            collectionCollection : { id : 'store', fetch : jasmine.any(Function) } }
-        );
-      });
 
       it("should route to the applications tab", function () {
         simpleNavigationCheck(
