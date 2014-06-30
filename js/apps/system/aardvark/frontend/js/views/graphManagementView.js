@@ -180,13 +180,11 @@
           }
         }
       );
-
       //if no edge definition is left
       if (edgeDefinitions.length === 0) {
         $('#s2id_newEdgeDefinitions0 .select2-choices').css("border-color", "red");
         return;
       }
-
 
       //get current edgeDefs/orphanage
       var graph = this.collection.findWhere({_key: name});
@@ -202,7 +200,6 @@
           }
         }
       );
-
       //add new orphans
       editedVertexCollections.forEach(
         function(vC) {
@@ -211,7 +208,6 @@
           }
         }
       );
-
 
       //evaluate all new, edited and deleted edge definitions
       var newEDs = [];
@@ -259,7 +255,6 @@
           graph.deleteEdgeDefinition(eD);
         }
       );
-
       this.updateGraphManagementView();
       window.modalView.hide();
     },
@@ -315,6 +310,13 @@
         index,
         edgeDefinitionElements;
 
+      if (!name) {
+        arangoHelper.arangoError(
+          "A name for the graph has to be provided."
+        );
+        return 0;
+      }
+
       if (this.collection.findWhere({_key: name})) {
         arangoHelper.arangoError(
           "The graph '" + name + "' already exists."
@@ -343,12 +345,7 @@
           }
         }
       );
-      if (!name) {
-        arangoHelper.arangoError(
-          "A name for the graph has to be provided."
-        );
-        return 0;
-      }
+
       this.collection.create({
         name: name,
         edgeDefinitions: edgeDefinitions,
