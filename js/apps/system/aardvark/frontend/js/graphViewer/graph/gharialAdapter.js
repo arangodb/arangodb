@@ -123,7 +123,8 @@ function GharialAdapter(nodes, edges, viewer, config) {
       if (query !== queries.getAllGraphs) {
         bindVars.graph = graphName;
         if (query !== queries.connectedEdges
-            && query !== queries.childrenCentrality) {
+          && query !== queries.childrenCentrality
+          && query !== queries.randomVertices) {
             bindVars.dir = direction;
         }
       }
@@ -154,28 +155,11 @@ function GharialAdapter(nodes, edges, viewer, config) {
     },
   
     getNRandom = function(n, callback) {
-      var list = [],
-        i = 0,
-        rand,
-        onSuccess = function(data) {
-          list.push(data.document || {});
-          if (list.length === n) {
-            callback(list);
-          }
-        };
-      for (i = 0; i < n; i++) {
-        rand = Math.floor(Math.random() * nodeCollections.length);
-        $.ajax({
-          cache: false,
-          type: 'PUT',
-          url: api.any,
-          data: JSON.stringify({
-            collection: nodeCollections[rand]
-          }),
-          contentType: "application/json",
-          success: onSuccess
-        });
-      }
+      sendQuery(queries.randomVertices, {
+        limit: n
+      }, function(res) {
+        callback(res);
+      });
     },
     
     parseResultOfTraversal = function (result, callback) {
@@ -250,6 +234,7 @@ function GharialAdapter(nodes, edges, viewer, config) {
       + "})";
   queries.childrenCentrality = "RETURN LENGTH(GRAPH_EDGES(@graph, @id, {direction: any}))";
   queries.connectedEdges = "RETURN GRAPH_EDGES(@graph, @id)";
+  queries.randomVertices = "FOR x IN GRAPH_VERTICES(@graph, {}) SORT RAND() LIMIT @limit RETURN x";
   
   self.explore = absAdapter.explore;
   
@@ -259,12 +244,11 @@ function GharialAdapter(nodes, edges, viewer, config) {
 
   self.loadRandomNode = function(callback) {
     getNRandom(1, function(list) {
-      var r = list[0];
-      if (r._id) {
-        self.loadInitialNode(r._id, callback);
-        return; 
+      if (list.length === 0) {
+        callback({errorCode: 404}); 
+        return;
       }
-      return;
+      self.loadInitialNode(list[0]._id, callback);
     });
   };
   
