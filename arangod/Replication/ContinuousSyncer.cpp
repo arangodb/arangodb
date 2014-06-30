@@ -98,11 +98,13 @@ static inline void LocalGetline (char const*& p,
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ContinuousSyncer::ContinuousSyncer (TRI_vocbase_t* vocbase,
+ContinuousSyncer::ContinuousSyncer (TRI_server_t* server,
+                                    TRI_vocbase_t* vocbase,
                                     TRI_replication_applier_configuration_t const* configuration,
                                     TRI_voc_tick_t initialTick,
                                     bool useTick) 
   : Syncer(vocbase, configuration),
+    _server(server),
     _applier(vocbase->_replicationApplier),
     _chunkSize(),
     _initialTick(initialTick),
@@ -116,6 +118,11 @@ ContinuousSyncer::ContinuousSyncer (TRI_vocbase_t* vocbase,
   TRI_ASSERT(c > 0);
 
   _chunkSize = StringUtils::itoa(c);
+
+  // get number of running remote transactions so we can forge the transaction
+  // statistics
+  int const n = static_cast<int>(_applier->_runningRemoteTransactions.size());
+  triagens::arango::TransactionBase::setNumbers(n, n);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -123,7 +130,6 @@ ContinuousSyncer::ContinuousSyncer (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 ContinuousSyncer::~ContinuousSyncer () {
-  abortOngoingTransactions();
 }
 
 // -----------------------------------------------------------------------------
@@ -288,20 +294,6 @@ int ContinuousSyncer::getLocalState (string& errorMsg) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abort any ongoing transactions
-////////////////////////////////////////////////////////////////////////////////
-
-void ContinuousSyncer::abortOngoingTransactions () {
-  for (auto it = _transactions.begin(); it != _transactions.end(); ++it) {
-    auto trx = (*it).second;
-
-    delete trx;
-  }
-
-  _transactions.clear();
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a document, based on the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -351,9 +343,9 @@ int ContinuousSyncer::processDocument (TRI_replication_operation_e type,
   }
 
   if (tid > 0) {
-    auto it = _transactions.find(tid);
+    auto it = _applier->_runningRemoteTransactions.find(tid);
 
-    if (it == _transactions.end()) {
+    if (it == _applier->_runningRemoteTransactions.end()) {
       return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
     }
 
@@ -422,26 +414,38 @@ int ContinuousSyncer::startTransaction (TRI_json_t const* json) {
   }
 
   // transaction id
+  // note: this is the remote trasnaction id!
   TRI_voc_tid_t tid = static_cast<TRI_voc_tid_t>(StringUtils::uint64(id.c_str(), id.size()));
 
-  auto it = _transactions.find(tid);
-  if (it != _transactions.end()) {
+  auto it = _applier->_runningRemoteTransactions.find(tid);
+
+  if (it != _applier->_runningRemoteTransactions.end()) {
+    _applier->_runningRemoteTransactions.erase(tid);
+
     auto trx = (*it).second;
     // abort ongoing trx
     delete trx; 
-
-    _transactions.erase(tid);
   }
+  
+  TRI_ASSERT(tid > 0);
 
   LOG_TRACE("starting replication transaction %llu", (unsigned long long) tid);
  
-  auto trx = new ReplicationTransaction(_vocbase);
+  auto trx = new ReplicationTransaction(_server, _vocbase, tid);
 
   if (trx == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  _transactions.insert(it, std::make_pair(tid, trx));
+  int res = trx->begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    delete trx;
+    return res;
+  }
+
+  _applier->_runningRemoteTransactions.insert(it, std::make_pair(tid, trx));
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -458,22 +462,25 @@ int ContinuousSyncer::abortTransaction (TRI_json_t const* json) {
   }
 
   // transaction id
+  // note: this is the remote trasnaction id!
   TRI_voc_tid_t const tid = static_cast<TRI_voc_tid_t>(StringUtils::uint64(id.c_str(), id.size()));
 
-  auto it = _transactions.find(tid);
-  if (it == _transactions.end()) {
+  auto it = _applier->_runningRemoteTransactions.find(tid);
+
+  if (it == _applier->_runningRemoteTransactions.end()) {
     // invalid state, no transaction was started.
     return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
   }
+  
+  TRI_ASSERT(tid > 0);
 
   LOG_TRACE("abort replication transaction %llu", (unsigned long long) tid);
 
+  _applier->_runningRemoteTransactions.erase(tid);
   auto trx = (*it).second;
 
   int res = trx->abort();
   delete trx;
-
-  _transactions.erase(tid);
 
   return res;
 }
@@ -491,22 +498,25 @@ int ContinuousSyncer::commitTransaction (TRI_json_t const* json) {
   }
 
   // transaction id
+  // note: this is the remote trasnaction id!
   TRI_voc_tid_t const tid = static_cast<TRI_voc_tid_t>(StringUtils::uint64(id.c_str(), id.size()));
 
-  auto it = _transactions.find(tid);
-  if (it == _transactions.end()) {
+  auto it = _applier->_runningRemoteTransactions.find(tid);
+  if (it == _applier->_runningRemoteTransactions.end()) {
     // invalid state, no transaction was started.
     return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
   }
 
+  TRI_ASSERT(tid > 0);
+
   LOG_TRACE("committing replication transaction %llu", (unsigned long long) tid);
+  
+  _applier->_runningRemoteTransactions.erase(tid);
 
   auto trx = (*it).second;
 
   int res = trx->commit();
   delete trx;
-
-  _transactions.erase(tid);
 
   return res;
 }

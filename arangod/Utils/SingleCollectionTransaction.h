@@ -67,7 +67,7 @@ namespace triagens {
         SingleCollectionTransaction (TRI_vocbase_t* vocbase,
                                      TRI_voc_cid_t cid,
                                      TRI_transaction_type_e accessType) 
-          : Transaction<T>(vocbase),
+          : Transaction<T>(vocbase, 0),
             _cid(cid),
             _trxCollection(nullptr),
             _documentCollection(nullptr),
@@ -84,7 +84,7 @@ namespace triagens {
         SingleCollectionTransaction (TRI_vocbase_t* vocbase,
                                      std::string const& name,
                                      TRI_transaction_type_e accessType) 
-          : Transaction<T>(vocbase),
+          : Transaction<T>(vocbase, 0),
             _cid(this->resolver()->getCollectionId(name)),
             _trxCollection(nullptr),
             _documentCollection(nullptr),

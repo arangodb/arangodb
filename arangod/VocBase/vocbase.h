@@ -47,12 +47,11 @@ struct TRI_document_collection_t;
 struct TRI_col_info_s;
 struct TRI_general_cursor_store_s;
 struct TRI_json_s;
-struct TRI_replication_applier_s;
-struct TRI_replication_logger_s;
 struct TRI_server_s;
 struct TRI_vector_pointer_s;
 struct TRI_vector_string_s;
 struct TRI_vocbase_defaults_s;
+struct TRI_replication_applier_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros
@@ -310,7 +309,7 @@ typedef struct TRI_vocbase_s {
 
   std::set<TRI_voc_tid_t>*   _oldTransactions;
 
-  struct TRI_replication_applier_s* _replicationApplier;
+  struct TRI_replication_applier_t* _replicationApplier;
 
   // state of the database
   // 0 = inactive
