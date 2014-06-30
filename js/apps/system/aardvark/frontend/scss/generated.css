@@ -1449,9 +1449,9 @@ nav.navbar, footer.footer {
     background-color: #f87c0f; }
 
 .button-inactive {
-  background-color: lightgray; }
+  background-color: lightgrey; }
   .button-inactive:hover, .button-inactive:focus {
-    background-color: gray; }
+    background-color: grey; }
 
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   -moz-border-radius: 3px;
@@ -2111,7 +2111,7 @@ div.resizecontainer {
 @media (min-width: 1042px) and (max-width: 1284px) {
   #arangoCollectionUl a {
     font-size: 14px; } }
-@media (min-width: 240px) and (max-width: 479px) {
+@media (min-width: 250px) and (max-width: 489px) {
   div.resizecontainer {
     width: 228px; }
 
@@ -2292,7 +2292,7 @@ div.resizecontainer {
     font-size: 10px;
     height: 100px;
     width: 0; } }
-@media (min-width: 480px) and (max-width: 719px) {
+@media (min-width: 490px) and (max-width: 729px) {
   div.resizecontainer {
     width: 468px; }
 
@@ -2473,7 +2473,7 @@ div.resizecontainer {
     font-size: 10px;
     height: 100px;
     width: 0; } }
-@media (min-width: 720px) and (max-width: 959px) {
+@media (min-width: 730px) and (max-width: 969px) {
   div.resizecontainer {
     width: 708px; }
 
@@ -2654,7 +2654,7 @@ div.resizecontainer {
     font-size: 10px;
     height: 100px;
     width: 0; } }
-@media (min-width: 960px) and (max-width: 1199px) {
+@media (min-width: 970px) and (max-width: 1209px) {
   div.resizecontainer {
     width: 948px; }
 
@@ -2832,7 +2832,7 @@ div.resizecontainer {
     font-size: 11px;
     height: 117.5px;
     width: 60px; } }
-@media (min-width: 1200px) and (max-width: 1439px) {
+@media (min-width: 1210px) and (max-width: 1449px) {
   div.resizecontainer {
     width: 1188px; }
 
@@ -3010,7 +3010,7 @@ div.resizecontainer {
     font-size: 12px;
     height: 135px;
     width: 65px; } }
-@media (min-width: 1440px) and (max-width: 1679px) {
+@media (min-width: 1450px) and (max-width: 1689px) {
   div.resizecontainer {
     width: 1428px; }
 
@@ -3188,7 +3188,7 @@ div.resizecontainer {
     font-size: 13px;
     height: 150px;
     width: 70px; } }
-@media (min-width: 1680px) and (max-width: 1919px) {
+@media (min-width: 1690px) and (max-width: 1929px) {
   div.resizecontainer {
     width: 1668px; }
 
@@ -3366,7 +3366,7 @@ div.resizecontainer {
     font-size: 14px;
     height: 170px;
     width: 80px; } }
-@media (min-width: 1920px) and (max-width: 2159px) {
+@media (min-width: 1930px) and (max-width: 2169px) {
   div.resizecontainer {
     width: 1908px; }
 
@@ -3544,7 +3544,7 @@ div.resizecontainer {
     font-size: 15px;
     height: 200px;
     width: 85px; } }
-@media (min-width: 2160px) and (max-width: 2399px) {
+@media (min-width: 2170px) and (max-width: 2409px) {
   div.resizecontainer {
     width: 2148px; }
 
@@ -3722,7 +3722,7 @@ div.resizecontainer {
     font-size: 15px;
     height: 150px;
     width: 70px; } }
-@media (min-width: 2400px) and (max-width: 2639px) {
+@media (min-width: 2410px) and (max-width: 2649px) {
   div.resizecontainer {
     width: 2388px; }
 
@@ -3900,7 +3900,7 @@ div.resizecontainer {
     font-size: 15px;
     height: 150px;
     width: 70px; } }
-@media (min-width: 2640px) and (max-width: 2879px) {
+@media (min-width: 2650px) and (max-width: 2889px) {
   div.resizecontainer {
     width: 2628px; }
 
@@ -4672,7 +4672,7 @@ pre.gv-object-view {
     width: 5%; }
 
 .user-menu-img {
-  background-color: lightgray;
+  background-color: lightgrey;
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
   border-radius: 3px;
@@ -5359,7 +5359,7 @@ pre.gv-object-view {
   color: #66ff00; }
 
 .jqconsole-cursor {
-  background-color: gray; }
+  background-color: grey; }
 
 .jqconsole-blurred .jqconsole-header .jqconsole-cursor {
   color: #c4cccc; }

@@ -42,12 +42,21 @@
       }, true);
     },
 
+    handleResize: function(w) {
+      if (!this.width || this.width !== w) {
+        this.width = w;
+        if (this.ui) {
+          this.ui.changeWidth(w);
+        }
+      }
+    },
+
     addNewGraph: function(e) {
       e.preventDefault();
       this.createEditGraphModal();
     },
 
-    deleteGraph: function(e) {
+    deleteGraph: function() {
       var self = this;
       var name = $("#editGraphName")[0].value;
       this.collection.get(name).destroy({
@@ -144,7 +153,6 @@
         editedVertexCollections = _.pluck($('#newVertexCollections').select2("data"), "text"),
         edgeDefinitions = [],
         newEdgeDefinitions = {},
-        self = this,
         collection,
         from,
         to,

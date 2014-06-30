@@ -5,7 +5,7 @@ require 'json'
 require 'arangodb.rb'
 
 PREFIX = "api-general-graph"
-URLPREFIX = "/system/gharial"
+URLPREFIX = "/_api/gharial"
 
 def drop_graph(graph_name)
   cmd = URLPREFIX + "/" + graph_name
