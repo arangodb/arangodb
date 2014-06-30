@@ -40,7 +40,7 @@ def replaceText(text, pathOfFile, searchText):
 
   # HTTP API changing code
   replaced = replaced.replace("@brief","")
-  replaced = re.sub(r"@RESTHEADER{([\s\w\/\_-]*),([\s\w-]*)}", r"###\g<2>\n `\g<1>`", replaced)
+  replaced = re.sub(r"@RESTHEADER{([\s\w\/\_{}-]*),([\s\w-]*)}", r"###\g<2>\n `\g<1>`", replaced)
   replaced = replaced.replace("@RESTDESCRIPTION","")
   replaced = replaced.replace("@RESTURLPARAMETERS","**URL Parameters**\n")  
   replaced = replaced.replace("@RESTURLPARAMS","**URL Parameters**\n")
