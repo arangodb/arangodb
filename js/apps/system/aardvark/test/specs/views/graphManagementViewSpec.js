@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
 /*global describe, beforeEach, afterEach, it, */
-/*global spyOn, runs, expect, waitsFor*/
+/*global spyOn, runs, expect, waitsFor, arangoHelper*/
 /*global GraphManagementView, _, jasmine, $*/
 
 (function () {
@@ -128,7 +128,7 @@
               return "blabalblub";
             },
             width : function () {
-              return 100
+              return 100;
             },
             html : function () {
 
@@ -225,8 +225,8 @@
             to: ["blob"]
           }],
           orphanCollections: []
-        });
-        var e = {
+        }),
+        e = {
             currentTarget: {
               id: "blabalblub"
             },
@@ -276,8 +276,7 @@
             to: ["blob"]
           }],
           orphanCollections: []
-        });
-        var e = {
+        }), e = {
             currentTarget: {
               id: "blabalblub"
             },
@@ -315,7 +314,8 @@
 
       });
 
-      it("should not set to and from for added definition as already in use and has been entered manually", function () {
+      it("should not set to and from for added definition as already in " +
+        "use and has been entered manually", function () {
         view.removedECollList = ["moppel"];
         var model = view.collection.create({
           _key: "blub2",
@@ -326,8 +326,7 @@
             to: ["blob"]
           }],
           orphanCollections: []
-        });
-        var e = {
+        }), e = {
             currentTarget: {
               id: "blabalblub"
             },
@@ -365,7 +364,8 @@
 
       });
 
-      it("should not set to and from for removed definition as already in use and has been entered manually", function () {
+      it("should not set to and from for removed definition as " +
+        "already in use and has been entered manually", function () {
         view.removedECollList = ["moppel"];
         var model = view.collection.create({
           _key: "blub2",
@@ -376,8 +376,7 @@
             to: ["blob"]
           }],
           orphanCollections: []
-        });
-        var e = {
+        }), e = {
             currentTarget: {
               id: "blabalblub"
             },
@@ -406,8 +405,8 @@
         view.setFromAndTo(e);
 
         expect(e.stopPropagation).toHaveBeenCalled();
-        expect(view.removedECollList.indexOf("moppel")).toEqual(-1)
-        expect(view.eCollList.indexOf("moppel")).not.toEqual(-1)
+        expect(view.removedECollList.indexOf("moppel")).toEqual(-1);
+        expect(view.eCollList.indexOf("moppel")).not.toEqual(-1);
         model.destroy();
 
 
@@ -429,14 +428,16 @@
         spyOn(window.modalView, "show");
 
 
-        view.options.collectionCollection.add({name : "NONSYSTEM", isSystem : false, type : "edge"});
-        view.options.collectionCollection.add({name : "SYSTEM", isSystem : true, type : 'document'});
+        view.options.collectionCollection.add(
+          {name : "NONSYSTEM", isSystem : false, type : "edge"});
+        view.options.collectionCollection.add(
+          {name : "SYSTEM", isSystem : true, type : 'document'});
 
         view.editGraph(e);
 
         expect(e.stopPropagation).toHaveBeenCalled();
-        expect(view.removedECollList.length).toEqual(0)
-        expect(view.eCollList.length).not.toEqual(0)
+        expect(view.removedECollList.length).toEqual(0);
+        expect(view.eCollList.length).not.toEqual(0);
         expect(window.modalView.show).toHaveBeenCalled();
 
 
@@ -457,9 +458,7 @@
           0 : {setSelectionRange: function () {
             return "";
           }}
-        };
-
-        var g = {
+        }, g = {
           _key: "blub2",
           name: "blub2",
           edgeDefinitions: [{
@@ -473,7 +472,7 @@
           }],
           orphanCollections: [],
           get : function (a) {
-            return g[a]
+            return g[a];
           }
         };
 
@@ -513,15 +512,9 @@
           }],
           orphanCollections: [],
           get : function (a) {
-            return g[a]
+            return g[a];
           }
-        };
-
-        spyOn(view.collection, "findWhere").andReturn(
-          g
-        );
-
-        var e = {
+        }, e = {
           currentTarget: {
             id: "blabalblub"
           },
@@ -530,18 +523,24 @@
           removed : {id : "moppel"}
         };
 
+        spyOn(view.collection, "findWhere").andReturn(
+          g
+        );
+
         spyOn(e, "stopPropagation");
         spyOn(window.modalView, "show");
 
 
-        view.options.collectionCollection.add({name : "NONSYSTEM", isSystem : false, type : "edge"});
-        view.options.collectionCollection.add({name : "SYSTEM", isSystem : true, type : 'document'});
+        view.options.collectionCollection.add(
+          {name : "NONSYSTEM", isSystem : false, type : "edge"});
+        view.options.collectionCollection.add(
+          {name : "SYSTEM", isSystem : true, type : 'document'});
 
         view.editGraph(e);
 
         expect(e.stopPropagation).toHaveBeenCalled();
-        expect(view.removedECollList.length).toEqual(1)
-        expect(view.eCollList.length).toEqual(0)
+        expect(view.removedECollList.length).toEqual(1);
+        expect(view.eCollList.length).toEqual(0);
         expect(window.modalView.show).toHaveBeenCalled();
 
 
@@ -559,11 +558,14 @@
             select2: function () {
               if (a.p === "#newVertexCollections") {
                 return "newVertexCollections";
-              } else if (a.p === "#s2id_newEdgeDefinitions1") {
+              }
+              if (a.p === "#s2id_newEdgeDefinitions1") {
                 return "collection";
-              } else if (a.p === "#s2id_fromCollections1") {
+              }
+              if (a.p === "#s2id_fromCollections1") {
                 return "fromCollection";
-              } else if (a.p === "#s2id_toCollections1") {
+              }
+              if (a.p === "#s2id_toCollections1") {
                 return "toCollection";
               }
             },
@@ -586,11 +588,14 @@
         spyOn(_, "pluck").andCallFake(function (s, b) {
           if (s === "newVertexCollections") {
             return ["orphan1", "orphan2", "orphan3"];
-          } else if (s === "collection") {
+          }
+          if (s === "collection") {
             return [undefined];
-          } else if (s === "fromCollection") {
+          }
+          if (s === "fromCollection") {
             return ["fromCollection"];
-          } else if (s === "toCollection") {
+          }
+          if (s === "toCollection") {
             return ["toCollection"];
           }
         });
@@ -621,11 +626,14 @@
             select2: function () {
               if (a.p === "#newVertexCollections") {
                 return "newVertexCollections";
-              } else if (a.p.indexOf("#s2id_newEdgeDefinitions") !== -1) {
+              }
+              if (a.p.indexOf("#s2id_newEdgeDefinitions") !== -1) {
                 return a.p.split("#s2id_newEdgeDefinitions")[1];
-              } else if (a.p.indexOf("#s2id_fromCollections") !== -1) {
+              }
+              if (a.p.indexOf("#s2id_fromCollections") !== -1) {
                 return "fromCollection";
-              } else if (a.p.indexOf("#s2id_toCollections") !== -1) {
+              }
+              if (a.p.indexOf("#s2id_toCollections") !== -1) {
                 return "toCollection";
               }
             },
@@ -640,26 +648,7 @@
               }
             },
             0 : {value : "name"}
-          };
-
-        spyOn(_, "pluck").andCallFake(function (s, b) {
-          if (s === "newVertexCollections") {
-            return ["orphan1", "orphan2", "orphan3"];
-          } else if (s.indexOf("edgeD") !== -1) {
-            return ["collection" + s.split("edgeD")[1] ];
-          } else if (s === "fromCollection") {
-            return ["fromCollection"];
-          } else if (s === "toCollection") {
-            return ["toCollection"];
-          }
-        });
-
-        spyOn(window, "$").andCallFake(function (x) {
-          a.setParam(x);
-          return a;
-        });
-
-        var g = {
+          }, g = {
           _key: "blub2",
           name: "blub2",
           edgeDefinitions: [{
@@ -673,7 +662,7 @@
           }],
           orphanCollections: ["o1", "o2", "o3"],
           get : function (a) {
-            return g[a]
+            return g[a];
           },
           deleteVertexCollection : function (o) {
             g.orphanCollections.splice(g.orphanCollections.indexOf(o), 1);
@@ -689,12 +678,31 @@
           deleteEdgeDefinition : function (o) {
             g.edgeDefinitions.forEach(function (e) {
               if (e.collection === o.collection) {
-                delete edgeDefinitions(e);
+                delete g.edgeDefinitions[e];
               }
             });
           }
         };
 
+        spyOn(_, "pluck").andCallFake(function (s, b) {
+          if (s === "newVertexCollections") {
+            return ["orphan1", "orphan2", "orphan3"];
+          }
+          if (s.indexOf("edgeD") !== -1) {
+            return ["collection" + s.split("edgeD")[1] ];
+          }
+          if (s === "fromCollection") {
+            return ["fromCollection"];
+          }
+          if (s === "toCollection") {
+            return ["toCollection"];
+          }
+        });
+
+        spyOn(window, "$").andCallFake(function (x) {
+          a.setParam(x);
+          return a;
+        });
         spyOn(view.collection, "findWhere").andReturn(
           g
         );
@@ -731,11 +739,14 @@
             select2: function () {
               if (a.p === "#newVertexCollections") {
                 return "newVertexCollections";
-              } else if (a.p.indexOf("#s2id_newEdgeDefinitions") !== -1) {
+              }
+              if (a.p.indexOf("#s2id_newEdgeDefinitions") !== -1) {
                 return a.p.split("#s2id_newEdgeDefinitions")[1];
-              } else if (a.p.indexOf("#s2id_fromCollections") !== -1) {
+              }
+              if (a.p.indexOf("#s2id_fromCollections") !== -1) {
                 return "fromCollection";
-              } else if (a.p.indexOf("#s2id_toCollections") !== -1) {
+              }
+              if (a.p.indexOf("#s2id_toCollections") !== -1) {
                 return "toCollection";
               }
             },
@@ -752,26 +763,7 @@
             val :  function () {
               return "name";
             }
-          };
-
-        spyOn(_, "pluck").andCallFake(function (s, b) {
-          if (s === "newVertexCollections") {
-            return ["orphan1", "orphan2", "orphan3"];
-          } else if (s.indexOf("edgeD") !== -1) {
-            return ["collection" + s.split("edgeD")[1] ];
-          } else if (s === "fromCollection") {
-            return ["fromCollection"];
-          } else if (s === "toCollection") {
-            return ["toCollection"];
-          }
-        });
-
-        spyOn(window, "$").andCallFake(function (x) {
-          a.setParam(x);
-          return a;
-        });
-
-        var g = {
+          }, g = {
           _key: "name",
           name: "name",
           edgeDefinitions: [{
@@ -785,7 +777,7 @@
           }],
           orphanCollections: ["o1", "o2", "o3"],
           get : function (a) {
-            return g[a]
+            return g[a];
           },
           deleteVertexCollection : function (o) {
             g.orphanCollections.splice(g.orphanCollections.indexOf(o), 1);
@@ -801,11 +793,31 @@
           deleteEdgeDefinition : function (o) {
             g.edgeDefinitions.forEach(function (e) {
               if (e.collection === o.collection) {
-                delete edgeDefinitions(e);
+                delete g.edgeDefinitions[e];
               }
             });
           }
         };
+
+        spyOn(_, "pluck").andCallFake(function (s, b) {
+          if (s === "newVertexCollections") {
+            return ["orphan1", "orphan2", "orphan3"];
+          }
+          if (s.indexOf("edgeD") !== -1) {
+            return ["collection" + s.split("edgeD")[1] ];
+          }
+          if (s === "fromCollection") {
+            return ["fromCollection"];
+          }
+          if (s === "toCollection") {
+            return ["toCollection"];
+          }
+        });
+
+        spyOn(window, "$").andCallFake(function (x) {
+          a.setParam(x);
+          return a;
+        });
 
         spyOn(view.collection, "findWhere").andReturn(
           g
@@ -815,7 +827,8 @@
 
         view.createNewGraph();
 
-        expect(arangoHelper.arangoError).toHaveBeenCalledWith("The graph '" + "name" + "' already exists.");
+        expect(arangoHelper.arangoError).toHaveBeenCalledWith(
+          "The graph '" + "name" + "' already exists.");
 
 
 
@@ -833,11 +846,14 @@
             select2: function () {
               if (a.p === "#newVertexCollections") {
                 return "newVertexCollections";
-              } else if (a.p.indexOf("#s2id_newEdgeDefinitions") !== -1) {
+              }
+              if (a.p.indexOf("#s2id_newEdgeDefinitions") !== -1) {
                 return a.p.split("#s2id_newEdgeDefinitions")[1];
-              } else if (a.p.indexOf("#s2id_fromCollections") !== -1) {
+              }
+              if (a.p.indexOf("#s2id_fromCollections") !== -1) {
                 return "fromCollection";
-              } else if (a.p.indexOf("#s2id_toCollections") !== -1) {
+              }
+              if (a.p.indexOf("#s2id_toCollections") !== -1) {
                 return "toCollection";
               }
             },
@@ -854,26 +870,7 @@
             val :  function () {
               return undefined;
             }
-          };
-
-        spyOn(_, "pluck").andCallFake(function (s, b) {
-          if (s === "newVertexCollections") {
-            return ["orphan1", "orphan2", "orphan3"];
-          } else if (s.indexOf("edgeD") !== -1) {
-            return ["collection" + s.split("edgeD")[1] ];
-          } else if (s === "fromCollection") {
-            return ["fromCollection"];
-          } else if (s === "toCollection") {
-            return ["toCollection"];
-          }
-        });
-
-        spyOn(window, "$").andCallFake(function (x) {
-          a.setParam(x);
-          return a;
-        });
-
-        var g = {
+          }, g = {
           _key: "name",
           name: "name",
           edgeDefinitions: [{
@@ -887,7 +884,7 @@
           }],
           orphanCollections: ["o1", "o2", "o3"],
           get : function (a) {
-            return g[a]
+            return g[a];
           },
           deleteVertexCollection : function (o) {
             g.orphanCollections.splice(g.orphanCollections.indexOf(o), 1);
@@ -903,11 +900,32 @@
           deleteEdgeDefinition : function (o) {
             g.edgeDefinitions.forEach(function (e) {
               if (e.collection === o.collection) {
-                delete edgeDefinitions(e);
+                delete g.edgeDefinitions[e];
               }
             });
           }
         };
+
+        spyOn(_, "pluck").andCallFake(function (s, b) {
+          if (s === "newVertexCollections") {
+            return ["orphan1", "orphan2", "orphan3"];
+          }
+          if (s.indexOf("edgeD") !== -1) {
+            return ["collection" + s.split("edgeD")[1] ];
+          }
+          if (s === "fromCollection") {
+            return ["fromCollection"];
+          }
+          if (s === "toCollection") {
+            return ["toCollection"];
+          }
+        });
+
+        spyOn(window, "$").andCallFake(function (x) {
+          a.setParam(x);
+          return a;
+        });
+
 
         spyOn(view.collection, "findWhere").andReturn(
           g
@@ -917,7 +935,8 @@
 
         view.createNewGraph();
 
-        expect(arangoHelper.arangoError).toHaveBeenCalledWith("A name for the graph has to be provided.");
+        expect(arangoHelper.arangoError).toHaveBeenCalledWith(
+          "A name for the graph has to be provided.");
 
 
 
