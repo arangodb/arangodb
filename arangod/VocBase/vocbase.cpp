@@ -165,6 +165,36 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief write a drop collection marker into the log
+////////////////////////////////////////////////////////////////////////////////
+  
+static int WriteDropCollectionMarker (TRI_vocbase_t* vocbase,
+                                      TRI_voc_cid_t collectionId) {
+  int res = TRI_ERROR_NO_ERROR;
+
+  try {
+    triagens::wal::DropCollectionMarker marker(vocbase->_id, collectionId);
+    triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
+
+    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
+    }
+  }
+  catch (triagens::arango::Exception const& ex) {
+    res = ex.code();
+  }
+  catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_WARNING("could not save collection drop marker in log: %s", TRI_errno_string(res));
+  }
+
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a collection name from the global list of collections
 ///
 /// This function is called when a collection is dropped.
@@ -172,8 +202,7 @@ static bool EqualKeyCollectionName (TRI_associative_pointer_t* array, void const
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool UnregisterCollection (TRI_vocbase_t* vocbase,
-                                  TRI_vocbase_col_t* collection,
-                                  bool writeMarker) {
+                                  TRI_vocbase_col_t* collection) {
   TRI_ASSERT(collection != nullptr);
   TRI_ASSERT(collection->_name != nullptr);
 
@@ -194,32 +223,6 @@ static bool UnregisterCollection (TRI_vocbase_t* vocbase,
 
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
-  if (! writeMarker) {
-    return true;
-  }
-
-  int res = TRI_ERROR_NO_ERROR;
-
-  try {
-    triagens::wal::DropCollectionMarker marker(vocbase->_id, collection->_cid);
-    triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker, false);
-
-    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
-    }
-
-    return true;
-  }
-  catch (triagens::arango::Exception const& ex) {
-    res = ex.code();
-  }
-  catch (...) {
-    res = TRI_ERROR_INTERNAL;
-  }
-
-  LOG_WARNING("could not save collection drop marker in log: %s", TRI_errno_string(res));
-
-  // TODO: what to do here?
   return true;
 }
 
@@ -1479,6 +1482,14 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
   // start cleanup thread
   TRI_InitThread(&vocbase->_cleanup);
   TRI_StartThread(&vocbase->_cleanup, nullptr, "[cleanup]", TRI_CleanupVocBase, vocbase);
+      
+  vocbase->_replicationApplier = TRI_CreateReplicationApplier(server, vocbase);
+
+  if (vocbase->_replicationApplier == nullptr) {
+    // TODO
+    LOG_FATAL_AND_EXIT("initialising replication applier for database '%s' failed", vocbase->_name);
+  }
+
 
   // we are done
   return vocbase;
@@ -1990,7 +2001,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
 
   if (collection->_status == TRI_VOC_COL_STATUS_DELETED) {
     // mark collection as deleted
-    UnregisterCollection(vocbase, collection, writeMarker);
+    UnregisterCollection(vocbase, collection);
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -2044,7 +2055,10 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
     }
 
     collection->_status = TRI_VOC_COL_STATUS_DELETED;
-    UnregisterCollection(vocbase, collection, writeMarker);
+    UnregisterCollection(vocbase, collection);
+    if (writeMarker) {
+      WriteDropCollectionMarker(vocbase, collection->_cid);
+    }
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
@@ -2099,7 +2113,10 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
 
     collection->_status = TRI_VOC_COL_STATUS_DELETED;
 
-    UnregisterCollection(vocbase, collection, writeMarker);
+    UnregisterCollection(vocbase, collection);
+    if (writeMarker) {
+      WriteDropCollectionMarker(vocbase, collection->_cid);
+    }
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
