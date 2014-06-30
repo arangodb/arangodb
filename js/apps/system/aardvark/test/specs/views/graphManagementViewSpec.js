@@ -101,6 +101,391 @@
         view.render();
       });
 
+      it("should loadGraphViewer", function () {
+        var e = {
+            currentTarget: {
+              id: "blabalblub"
+            }
+          },
+          a = {
+            attr: function (x) {
+              return "blabalblub";
+            },
+            width : function () {
+              return 100
+            },
+            html : function () {
+
+            }
+          };
+        spyOn(window, "GraphViewerUI");
+
+        spyOn(window, "$").andReturn(a);
+
+
+        view.loadGraphViewer(e);
+
+        expect(window.GraphViewerUI).toHaveBeenCalledWith(
+          undefined,
+          {
+            type : 'gharial',
+            graphName : 'blaba',
+            baseUrl : '/_db/_system/'
+          }, 25, 680,
+          {
+            nodeShaper :
+            {
+              label : '_key',
+              color : { type : 'attribute', key : '_key' }
+            }
+          }, true
+        );
+      });
+
+      it("should delete graph", function () {
+        var e = {
+            currentTarget: {
+              id: "blabalblub"
+            }
+          },
+          a = [{
+            value: "blabalblub"
+          }],collReturn = {
+            destroy : function (a) {
+              a.success();
+            }
+          };
+
+        spyOn(graphs, "get").andReturn(collReturn);
+
+        spyOn(window, "$").andReturn(a);
+
+        spyOn(window.modalView, "hide").andReturn(a);
+
+        view.deleteGraph(e);
+
+        expect(graphs.get).toHaveBeenCalledWith("blabalblub");
+        expect(window.modalView.hide).toHaveBeenCalled();
+      });
+
+      it("should NOT delete graph", function () {
+        var e = {
+            currentTarget: {
+              id: "blabalblub"
+            }
+          },
+          a = [{
+            value: "blabalblub"
+          }],collReturn = {
+            destroy : function (a) {
+              a.error("", {responseText : '{"errorMessage" : "errorMessage"}'});
+            }
+          };
+
+        spyOn(graphs, "get").andReturn(collReturn);
+
+        spyOn(window, "$").andReturn(a);
+        spyOn(arangoHelper, "arangoError");
+
+        spyOn(window.modalView, "hide").andReturn(a);
+
+        view.deleteGraph(e);
+
+        expect(graphs.get).toHaveBeenCalledWith("blabalblub");
+        expect(arangoHelper.arangoError).toHaveBeenCalledWith("errorMessage");
+        expect(window.modalView.hide).toHaveBeenCalled();
+
+
+      });
+
+      it("should set to and from for added definition", function () {
+        view.removedECollList = [];
+        var model = view.collection.create({
+          _key: "blub",
+          name: "blub",
+          edgeDefinitions: [{
+            collection: "blub",
+            from: ["bla"],
+            to: ["blob"]
+          }],
+          orphanCollections: []
+        });
+        var e = {
+            currentTarget: {
+              id: "blabalblub"
+            },
+            stopPropagation : function () {},
+            added : {
+              id : "moppel"
+
+            },
+            val : "newEdgeDefintion"
+          },
+          a = {
+            select2: function () {},
+            attr: function () {},
+            length : 2,
+            0 : {id : 1},
+            1 : {id : 2}
+          },collReturn = {
+            destroy : function (a) {
+              a.error("", {responseText : '{"errorMessage" : "errorMessage"}'});
+            }
+          };
+
+        spyOn(e, "stopPropagation");
+
+        spyOn(window, "$").andReturn(a);
+
+        spyOn(window.modalView, "hide").andReturn(a);
+
+        view.setFromAndTo(e);
+
+        expect(e.stopPropagation).toHaveBeenCalled();
+
+        model.destroy();
+
+
+      });
+
+
+      it("should set to and from for added definition for already known def", function () {
+        view.removedECollList = [];
+        var model = view.collection.create({
+          _key: "blub2",
+          name: "blub2",
+          edgeDefinitions: [{
+            collection: "blub",
+            from: ["bla"],
+            to: ["blob"]
+          }],
+          orphanCollections: []
+        });
+        var e = {
+            currentTarget: {
+              id: "blabalblub"
+            },
+            stopPropagation : function () {},
+            added : {
+              id : "moppel"
+
+            },
+            val : "blub"
+          },
+          a = {
+            select2: function () {},
+            attr: function () {},
+            length : 2,
+            0 : {id : 1},
+            1 : {id : 2}
+          },collReturn = {
+            destroy : function (a) {
+              a.error("", {responseText : '{"errorMessage" : "errorMessage"}'});
+            }
+          };
+
+        spyOn(e, "stopPropagation");
+
+        spyOn(window, "$").andReturn(a);
+
+        spyOn(window.modalView, "hide").andReturn(a);
+
+        view.setFromAndTo(e);
+
+        expect(e.stopPropagation).toHaveBeenCalled();
+
+        model.destroy();
+
+
+      });
+
+      it("should not set to and from for added definition as already in use and has been entered manually", function () {
+        view.removedECollList = ["moppel"];
+        var model = view.collection.create({
+          _key: "blub2",
+          name: "blub2",
+          edgeDefinitions: [{
+            collection: "blub",
+            from: ["bla"],
+            to: ["blob"]
+          }],
+          orphanCollections: []
+        });
+        var e = {
+            currentTarget: {
+              id: "blabalblub"
+            },
+            stopPropagation : function () {},
+            added : {
+              id : "moppel"
+
+            },
+            val : "blub"
+          },
+          a = {
+            select2: function () {},
+            attr: function () {},
+            length : 2,
+            0 : {id : 1},
+            1 : {id : 2}
+          },collReturn = {
+            destroy : function (a) {
+              a.error("", {responseText : '{"errorMessage" : "errorMessage"}'});
+            }
+          };
+
+        spyOn(e, "stopPropagation");
+
+        spyOn(window, "$").andReturn(a);
+
+        spyOn(window.modalView, "hide").andReturn(a);
+
+        view.setFromAndTo(e);
+
+        expect(e.stopPropagation).toHaveBeenCalled();
+
+        model.destroy();
+
+
+      });
+
+      it("should not set to and from for removed definition as already in use and has been entered manually", function () {
+        view.removedECollList = ["moppel"];
+        var model = view.collection.create({
+          _key: "blub2",
+          name: "blub2",
+          edgeDefinitions: [{
+            collection: "blub",
+            from: ["bla"],
+            to: ["blob"]
+          }],
+          orphanCollections: []
+        });
+        var e = {
+            currentTarget: {
+              id: "blabalblub"
+            },
+            stopPropagation : function () {},
+            val : "blub",
+            removed : {id : "moppel"}
+          },
+          a = {
+            select2: function () {},
+            attr: function () {},
+            length : 2,
+            0 : {id : 1},
+            1 : {id : 2}
+          },collReturn = {
+            destroy : function (a) {
+              a.error("", {responseText : '{"errorMessage" : "errorMessage"}'});
+            }
+          };
+
+        spyOn(e, "stopPropagation");
+
+        spyOn(window, "$").andReturn(a);
+
+        spyOn(window.modalView, "hide").andReturn(a);
+
+        view.setFromAndTo(e);
+
+        expect(e.stopPropagation).toHaveBeenCalled();
+        expect(view.removedECollList.indexOf("moppel")).toEqual(-1)
+        expect(view.eCollList.indexOf("moppel")).not.toEqual(-1)
+        model.destroy();
+
+
+      });
+
+
+      it("should create edit graph modal in create mode", function () {
+
+        var e = {
+          currentTarget: {
+            id: "blabalblub"
+          },
+          stopPropagation : function () {},
+          val : "blub",
+          removed : {id : "moppel"}
+        };
+
+        spyOn(e, "stopPropagation");
+        spyOn(window.modalView, "show");
+
+
+        view.options.collectionCollection.add({name : "NONSYSTEM", isSystem : false, type : "edge"});
+        view.options.collectionCollection.add({name : "SYSTEM", isSystem : true, type : 'document'});
+
+        view.editGraph(e);
+
+        expect(e.stopPropagation).toHaveBeenCalled();
+        expect(view.removedECollList.length).toEqual(0)
+        expect(view.eCollList.length).not.toEqual(0)
+        expect(window.modalView.show).toHaveBeenCalled();
+
+
+      });
+
+      it("should create edit graph modal in edit mode", function () {
+
+        var g = {
+          _key: "blub2",
+          name: "blub2",
+          edgeDefinitions: [{
+            collection: "blub",
+            from: ["bla"],
+            to: ["blob"]
+          },{
+            collection: "blub2",
+            from: ["bla"],
+            to: ["blob"]
+          }],
+          orphanCollections: [],
+          get : function (a) {
+            return g[a]
+          }
+        };
+
+        spyOn(view.collection, "findWhere").andReturn(
+          g
+        );
+
+        var e = {
+          currentTarget: {
+            id: "blabalblub"
+          },
+          stopPropagation : function () {},
+          val : "blub",
+          removed : {id : "moppel"}
+        };
+
+        spyOn(e, "stopPropagation");
+        spyOn(window.modalView, "show");
+
+
+        view.options.collectionCollection.add({name : "NONSYSTEM", isSystem : false, type : "edge"});
+        view.options.collectionCollection.add({name : "SYSTEM", isSystem : true, type : 'document'});
+
+        view.editGraph(e);
+
+        expect(e.stopPropagation).toHaveBeenCalled();
+        expect(view.removedECollList.length).toEqual(1)
+        expect(view.eCollList.length).toEqual(0)
+        expect(window.modalView.show).toHaveBeenCalled();
+
+
+      });
+
+      /*editGraph : function(e) {
+        e.stopPropagation();
+        this.collection.fetch();
+        this.graphToEdit = this.evaluateGraphName($(e.currentTarget).attr("id"), '_settings');
+        var graph = this.collection.findWhere({_key: this.graphToEdit});
+        this.createEditGraphModal(
+          graph
+        );
+      },*/
+
       it("should create a sorted list of all graphs", function () {
         var list = $("div.tile h5.collectionName", "#graphManagementThumbnailsIn");
         expect(list.length).toEqual(3);
@@ -154,4 +539,3 @@
   });
 
 }());
-
