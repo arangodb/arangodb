@@ -55,10 +55,29 @@ collection is created. The default start value is 0 and the default increment
 is 1, meaning the key values it will create by default are:
 
 1, 2, 3, 4, 5, ...
+
 When creating a collection with the auto increment key generator and an increment of 5, the generated keys would be:
 
 1, 6, 11, 16, 21, ...
 
 The basic operations (create, read, update, delete) for documents are mapped
 to the standard HTTP methods (*POST*, *GET*, *PUT*, *DELETE*). 
+
+!SECTION Address of a Collection
+
+All collections in ArangoDB have an unique identifier and a unique
+name. ArangoDB internally uses the collection's unique identifier to
+look up collections. This identifier however is managed by ArangoDB
+and the user has no control over it. In order to allow users use their
+own names, each collection also has a unique name, which is specified
+by the user.  To access a collection from the user perspective, the
+collection name should be used, i.e.:
+
+    http://server:port/_api/collection/collection-name
+
+For example: Assume that the collection identifier is *7254820* and
+the collection name is *demo*, then the URL of that collection is:
+
+    http://localhost:8529/_api/collection/demo
+
 

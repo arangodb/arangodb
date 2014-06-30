@@ -12,12 +12,12 @@
     removedECollList : [],
 
     events: {
-      "click #deleteGraph"                  : "deleteGraph",
-      "click .icon_arangodb_settings2"      : "editGraph",
-      "click #createGraph"                  : "addNewGraph",
-      "keyup #graphManagementSearchInput"   : "search",
-      "click #graphManagementSearchSubmit"  : "search",
-      "click .tile-graph"                   : "loadGraphViewer"
+      "click #deleteGraph"                        : "deleteGraph",
+      "click .icon_arangodb_settings2.editGraph"  : "editGraph",
+      "click #createGraph"                        : "addNewGraph",
+      "keyup #graphManagementSearchInput"         : "search",
+      "click #graphManagementSearchSubmit"        : "search",
+      "click .tile-graph"                         : "loadGraphViewer"
     },
 
     loadGraphViewer: function(e) {

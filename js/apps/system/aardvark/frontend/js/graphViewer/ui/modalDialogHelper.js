@@ -444,8 +444,8 @@ var modalDialogHelper = modalDialogHelper || {};
     return content.bodyTable;
   };
   
-  modalDialogHelper.createModalDialog = function(title, idprefix, objects, callback) {
-    var table =  modalDialogHelper.modalDivTemplate(title, null, idprefix, callback);
+  modalDialogHelper.createModalDialog = function(title, idprefix, objects, callback, buttonTitle) {
+    var table =  modalDialogHelper.modalDivTemplate(title, buttonTitle, idprefix, callback);
     _.each(objects, function(o) {
       insertModalRow(table, idprefix, o);
     });

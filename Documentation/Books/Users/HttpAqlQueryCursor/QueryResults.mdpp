@@ -20,7 +20,7 @@ retrieved the complete result set by checking the *hasMore* attribute of the
 result set. If it is set to *false*, then the client has fetched the complete
 result set from the server. In this case no server side cursor will be created.
 
-```
+```js
 > curl --data @- -X POST --dump - http://localhost:8529/_api/cursor
 { "query" : "FOR u IN users LIMIT 2 RETURN u", "count" : true, "batchSize" : 2 }
 
@@ -49,12 +49,6 @@ content-type: application/json
 }
 ```
 
-<!--
-@EXAMPLES
-
-@verbinclude api-cursor-create-for-limit-return-single
--->
-
 !SUBSECTION Using a Cursor
 
 If the result set contains more documents than should be transferred in a single
@@ -65,11 +59,11 @@ in the *id* attribute of the response object. Furthermore, the *hasMore*
 attribute of the response object will be set to *true*. This is an indication
 for the client that there are additional results to fetch from the server.
 
-*Examples*
+*Examples*:
 
 Create and extract first batch:
 
-```
+```js 
 > curl --data @- -X POST --dump - http://localhost:8529/_api/cursor
 { "query" : "FOR u IN users LIMIT 5 RETURN u", "count" : true, "batchSize" : 2 }
 
@@ -101,7 +95,7 @@ content-type: application/json
 
 Extract next batch, still have more:
 
-```
+```js
 > curl -X PUT --dump - http://localhost:8529/_api/cursor/26011191
 
 HTTP/1.1 200 OK
@@ -132,7 +126,7 @@ content-type: application/json
 
 Extract next batch, done:
 
-```
+```js
 > curl -X PUT --dump - http://localhost:8529/_api/cursor/26011191
 
 HTTP/1.1 200 OK
@@ -156,7 +150,7 @@ content-type: application/json
 
 Do not do this:
 
-```
+``` js 
 > curl -X PUT --dump - http://localhost:8529/_api/cursor/26011191
 
 HTTP/1.1 404 Not Found
@@ -169,23 +163,3 @@ content-type: application/json
   "code": 404
 }
 ```
-
-<!--
-@EXAMPLES
-
-Create and extract first batch:
-
-@verbinclude api-cursor-create-for-limit-return
-
-Extract next batch, still have more:
-
-@verbinclude api-cursor-create-for-limit-return-cont
-
-Extract next batch, done:
-
-@verbinclude api-cursor-create-for-limit-return-cont2
-
-Do not do this:
-
-@verbinclude api-cursor-create-for-limit-return-cont3
--->

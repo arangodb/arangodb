@@ -152,7 +152,6 @@
   * [AQL User Functions Management](HttpAqlUserFunctions/README.md)
   * [Simple Queries](HttpSimpleQuery/README.md)
   * [Collections](HttpCollection/README.md)
-    * [Address](HttpCollection/Address.md)
     * [Creating](HttpCollection/Creating.md)
     * [Getting Information](HttpCollection/Getting.md)
     * [Modifying](HttpCollection/Modifying.md)
