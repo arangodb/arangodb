@@ -129,7 +129,8 @@ static const char* StatusTransaction (const TRI_transaction_status_e status) {
 
 static void FreeOperations (TRI_transaction_t* trx) {
   size_t const n = trx->_collections._length;
-  bool mustRollback = (trx->_status == TRI_TRANSACTION_ABORTED);
+  bool const mustRollback = (trx->_status == TRI_TRANSACTION_ABORTED);
+  bool const isSingleOperation = IsSingleOperationTransaction(trx);
 
   for (size_t i = 0; i < n; ++i) {
     TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
@@ -197,7 +198,7 @@ static void FreeOperations (TRI_transaction_t* trx) {
     if (mustRollback) {
       document->_info._revision = trxCollection->_originalRevision;
     }
-    else if (! document->_info._isVolatile) {
+    else if (! document->_info._isVolatile && ! isSingleOperation) {
       // only count logfileEntries if the collection is durable
       document->_uncollectedLogfileEntries += trxCollection->_operations->size();
     }
@@ -550,8 +551,16 @@ static int WriteBeginMarker (TRI_transaction_t* trx) {
   int res;
 
   try {
-    triagens::wal::BeginTransactionMarker marker(trx->_vocbase->_id, trx->_id);
-    res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
+    if (trx->_externalId > 0) {
+      // remotely started trx
+      triagens::wal::BeginRemoteTransactionMarker marker(trx->_vocbase->_id, trx->_id, trx->_externalId);
+      res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
+    }
+    else {
+      // local trx
+      triagens::wal::BeginTransactionMarker marker(trx->_vocbase->_id, trx->_id);
+      res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
+    }
   }
   catch (triagens::arango::Exception const& ex) {
     res = ex.code();
@@ -587,8 +596,16 @@ static int WriteAbortMarker (TRI_transaction_t* trx) {
   int res;
 
   try {
-    triagens::wal::AbortTransactionMarker marker(trx->_vocbase->_id, trx->_id);
-    res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
+    if (trx->_externalId > 0) {
+      // remotely started trx
+      triagens::wal::AbortRemoteTransactionMarker marker(trx->_vocbase->_id, trx->_id, trx->_externalId);
+      res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
+    }
+    else {
+      // local trx
+      triagens::wal::AbortTransactionMarker marker(trx->_vocbase->_id, trx->_id);
+      res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
+    }
   }
   catch (triagens::arango::Exception const& ex) {
     res = ex.code();
@@ -620,8 +637,16 @@ static int WriteCommitMarker (TRI_transaction_t* trx) {
   int res;
 
   try {
-    triagens::wal::CommitTransactionMarker marker(trx->_vocbase->_id, trx->_id);
-    res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
+    if (trx->_externalId > 0) {
+      // remotely started trx
+      triagens::wal::CommitRemoteTransactionMarker marker(trx->_vocbase->_id, trx->_id, trx->_externalId);
+      res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
+    }
+    else {
+      // local trx
+      triagens::wal::CommitTransactionMarker marker(trx->_vocbase->_id, trx->_id);
+      res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
+    }
   }
   catch (triagens::arango::Exception const& ex) {
     res = ex.code();
@@ -664,6 +689,7 @@ static void UpdateTransactionStatus (TRI_transaction_t* const trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_transaction_t* TRI_CreateTransaction (TRI_vocbase_t* vocbase,
+                                          TRI_voc_tid_t externalId,
                                           double timeout,
                                           bool waitForSync) {
   TRI_transaction_t* trx = static_cast<TRI_transaction_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_transaction_t), false));
@@ -676,8 +702,8 @@ TRI_transaction_t* TRI_CreateTransaction (TRI_vocbase_t* vocbase,
   trx->_vocbase           = vocbase;
 
   // note: the real transaction id will be acquired on transaction start
-  trx->_id                = 0;
-
+  trx->_id                = 0;           // local trx id
+  trx->_externalId        = externalId;  // remote trx id (used in replication)
   trx->_status            = TRI_TRANSACTION_CREATED;
   trx->_type              = TRI_TRANSACTION_READ;
   trx->_hints             = 0;
@@ -691,6 +717,11 @@ TRI_transaction_t* TRI_CreateTransaction (TRI_vocbase_t* vocbase,
   }
   else if (timeout == 0.0) {
     trx->_timeout         = (uint64_t) 0;
+  }
+
+  if (trx->_externalId != 0) {
+    // replication transaction is always a write transaction
+    trx->_type = TRI_TRANSACTION_WRITE;
   }
 
   TRI_InitVectorPointer2(&trx->_collections, TRI_UNKNOWN_MEM_ZONE, 2);
@@ -858,6 +889,14 @@ int TRI_AddCollectionTransaction (TRI_transaction_t* trx,
   }
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief make sure all declared collections are used & locked
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_EnsureCollectionsTransaction (TRI_transaction_t* trx) {
+  return UseCollections(trx, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

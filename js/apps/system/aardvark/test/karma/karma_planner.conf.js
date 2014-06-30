@@ -168,7 +168,6 @@ module.exports = function(karma) {
       'frontend/js/views/foxxEditView.js',
       'frontend/js/views/foxxMountView.js',
       'frontend/js/views/appDocumentationView.js',
-      'frontend/js/views/graphView.js',
       'frontend/js/views/graphManagementView.js',
       'frontend/js/views/addNewGraphView.js',
       'frontend/js/views/deleteGraphView.js',

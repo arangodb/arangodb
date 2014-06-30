@@ -80,8 +80,10 @@ namespace triagens {
 /// @brief create the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-          Transaction (TRI_vocbase_t* vocbase)
+          Transaction (TRI_vocbase_t* vocbase,
+                       TRI_voc_tid_t externalId)
             : T(),
+              _externalId(externalId),
               _setupState(TRI_ERROR_NO_ERROR),
               _nestingLevel(0),
               _errorData(),
@@ -131,12 +133,38 @@ namespace triagens {
         public:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return database of transaction
+////////////////////////////////////////////////////////////////////////////////
+
+          inline TRI_vocbase_t* vocbase () const {
+            return _vocbase;
+          }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add a transaction hint
 ////////////////////////////////////////////////////////////////////////////////
 
-        void inline addHint (TRI_transaction_hint_e hint) {
-          _hints |= (TRI_transaction_hint_t) hint;
-        }
+          void inline addHint (TRI_transaction_hint_e hint,
+                               bool passthrough) {
+            _hints |= (TRI_transaction_hint_t) hint;
+
+            if (passthrough && _trx != nullptr) {
+              _trx->_hints |= ((TRI_transaction_hint_t) hint);
+            }
+          }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a transaction hint
+////////////////////////////////////////////////////////////////////////////////
+
+          void inline removeHint (TRI_transaction_hint_e hint,
+                                  bool passthrough) {
+            _hints &= ~ ((TRI_transaction_hint_t) hint);
+
+            if (passthrough && _trx != nullptr) {
+              _trx->_hints &= ~ ((TRI_transaction_hint_t) hint);
+            }
+          }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the registered error data
@@ -252,6 +280,7 @@ namespace triagens {
               if (_nestingLevel == 0) {
                 _trx->_status = TRI_TRANSACTION_ABORTED;
               }
+
 #ifdef TRI_ENABLE_MAINTAINER_MODE
               TRI_ASSERT(_numberTrxActive == _numberTrxInScope);
               _numberTrxActive--;  // Every transaction gets here at most once
@@ -1161,6 +1190,7 @@ namespace triagens {
 
           // we are not embedded. now start our own transaction
           _trx = TRI_CreateTransaction(_vocbase,
+                                       _externalId,
                                        _timeout,
                                        _waitForSync);
 
@@ -1194,6 +1224,12 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief external transaction id. used in replication only
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_voc_tid_t _externalId;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief error that occurred on transaction initialisation (before begin())

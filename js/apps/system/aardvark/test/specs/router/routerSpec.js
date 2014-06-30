@@ -9,14 +9,12 @@
 
     var
     fakeDB,
-    graphDummy,
     storeDummy,
     naviDummy,
     footerDummy,
     documentDummy,
     documentsDummy,
     sessionDummy,
-    graphsDummy,
     foxxDummy,
     logsDummy,
     statisticBarDummy,
@@ -58,16 +56,6 @@
       };
       documentDummy = {id: "document"};
       documentsDummy = {id: "documents"};
-      graphDummy = {
-        id: "graph",
-        handleResize: function () {
-          //This should throw as well however resizinge fails now and then
-          return;
-        },
-        render: function () {
-          throw "should be a spy";
-        }
-      };
       storeDummy = {
         id: "store",
         fetch: function (a) {
@@ -76,7 +64,6 @@
           }
         }
       };
-      graphsDummy = {id: "graphs"};
       logsDummy = {
         all: {
           id: "logsAll",
@@ -203,7 +190,6 @@
       spyOn(window, "arangoDocuments").andReturn(documentsDummy);
       spyOn(window, "arangoDocument").andReturn(documentDummy);
       spyOn(window, "ArangoDatabase").andReturn(databaseDummy);
-      spyOn(window, "GraphCollection").andReturn(graphsDummy);
       spyOn(window, "FoxxCollection").andReturn(foxxDummy);
       spyOn(window, "StatisticsDescriptionCollection").andReturn(
         statisticsDescriptionCollectionDummy
@@ -221,7 +207,6 @@
       spyOn(window, "NavigationView").andReturn(naviDummy);
       spyOn(naviDummy, "render");
       spyOn(naviDummy, "selectMenuItem");
-      spyOn(window, "GraphView").andReturn(graphDummy);
       spyOn(window, "CurrentDatabase").andReturn(fakeDB);
       spyOn(fakeDB, "fetch").andCallFake(function (options) {
         expect(options.async).toBeFalsy();
@@ -371,7 +356,6 @@
           "application/available/:key",
           "applications",
           "application/documentation/:key",
-          "graph",
           "graphManagement",
           "userManagement",
           "userProfile" ,
@@ -500,21 +484,6 @@
         );
       });
 
-     /* it("should navigate to the graphView", function () {
-        spyOn(graphDummy, "render");
-        simpleNavigationCheck(
-          "graph",
-          "GraphView",
-          "graphviewer-menu",
-          {
-            graphs: { id: 'graphs' },
-            collection: storeDummy
-          },
-          {
-          },
-          true
-        );
-      });*/
 
       it("should navigate to the appDocumentation", function () {
         var key = 5;
@@ -561,18 +530,6 @@
         expect(naviDummy.handleSelectDatabase).toHaveBeenCalled();
       });
 
-      it("should handle resizing", function () {
-        r.graphManagementView =  graphDummy;
-        r.dashboardView = dashboardDummy;
-        spyOn(graphDummy, "handleResize");
-        spyOn(dashboardDummy, "resize");
-        spyOn($.fn, 'width').andReturn(500);
-
-        r.handleResize();
-        expect(graphDummy.handleResize).toHaveBeenCalledWith(500);
-        expect(dashboardDummy.resize).toHaveBeenCalled();
-        r.dashboardView = undefined;
-      });
 
 
       it("should navigate to the userManagement", function () {

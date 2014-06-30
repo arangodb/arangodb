@@ -49,12 +49,12 @@ exports.Helper = {
     });
   },
 
-  waitUnload: function (collection) {
+  waitUnload: function (collection, waitForCollector) {
     var arangodb = require("org/arangodb");
     var internal = require("internal");
 
     collection.unload();
-    internal.wal.flush();
+    internal.wal.flush(true, waitForCollector || false);
 
     var iterations = 0;
    
