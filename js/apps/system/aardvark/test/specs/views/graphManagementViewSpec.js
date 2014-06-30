@@ -40,6 +40,22 @@
       document.body.removeChild(modalDiv);
     });
 
+    it("should updateGraphManagementView", function () {
+
+      spyOn(view.collection, "fetch").andCallFake(function (a) {
+        a.success();
+      });
+
+      spyOn(view, "render");
+
+      view.updateGraphManagementView();
+
+      expect(view.render).toHaveBeenCalled();
+
+
+
+    });
+
     it("should fetch the graphs on render", function () {
       spyOn(graphs, "fetch");
       view.render();
@@ -426,6 +442,61 @@
 
       });
 
+      it("should search", function () {
+
+        var a = {
+          val : function () {
+            return "searchString";
+          },
+          html: function () {
+            return "";
+          },
+          focus: function () {
+            return "";
+          },
+          0 : {setSelectionRange: function () {
+            return "";
+          }}
+        };
+
+        var g = {
+          _key: "blub2",
+          name: "blub2",
+          edgeDefinitions: [{
+            collection: "blub",
+            from: ["bla"],
+            to: ["blob"]
+          },{
+            collection: "blub2",
+            from: ["bla"],
+            to: ["blob"]
+          }],
+          orphanCollections: [],
+          get : function (a) {
+            return g[a]
+          }
+        };
+
+        spyOn(view.collection, "filter").andCallFake(function (a) {
+          a(g);
+          return g;
+        });
+
+        spyOn(window, "$").andReturn(a);
+        spyOn(view.template, "render");
+
+        view.search();
+
+        expect(view.template.render).toHaveBeenCalledWith({
+          graphs        : g,
+          searchString  : "searchString"
+        });
+
+
+
+      });
+
+
       it("should create edit graph modal in edit mode", function () {
 
         var g = {
@@ -476,15 +547,169 @@
 
       });
 
-      /*editGraph : function(e) {
-        e.stopPropagation();
-        this.collection.fetch();
-        this.graphToEdit = this.evaluateGraphName($(e.currentTarget).attr("id"), '_settings');
-        var graph = this.collection.findWhere({_key: this.graphToEdit});
-        this.createEditGraphModal(
-          graph
+
+      it("should not saveEditedGraph as no defintions are supplied", function () {
+
+        var
+          a = {
+            p : "",
+            setParam : function (p) {
+              a.p = p;
+            },
+            select2: function () {
+              if (a.p === "#newVertexCollections") {
+                return "newVertexCollections";
+              } else if (a.p === "#s2id_newEdgeDefinitions1") {
+                return "collection";
+              } else if (a.p === "#s2id_fromCollections1") {
+                return "fromCollection";
+              } else if (a.p === "#s2id_toCollections1") {
+                return "toCollection";
+              }
+            },
+            attr : function () {
+              if (a.p.indexOf("edgeD") !== -1) {
+                return "1";
+              }
+            },
+            toArray: function () {
+              if (a.p === "[id^=s2id_newEdgeDefinitions]") {
+                return ["edgeD1", "edgeD2", "edgeD3"];
+              }
+            },
+            css : function () {
+
+            },
+            0 : {value : "name"}
+          };
+
+        spyOn(_, "pluck").andCallFake(function (s, b) {
+          if (s === "newVertexCollections") {
+            return ["orphan1", "orphan2", "orphan3"];
+          } else if (s === "collection") {
+            return [undefined];
+          } else if (s === "fromCollection") {
+            return ["fromCollection"];
+          } else if (s === "toCollection") {
+            return ["toCollection"];
+          }
+        });
+
+        spyOn(window, "$").andCallFake(function (x) {
+          a.setParam(x);
+          return a;
+        });
+
+        spyOn(view, "updateGraphManagementView");
+
+        view.saveEditedGraph();
+
+        expect(view.updateGraphManagementView).not.toHaveBeenCalled();
+
+
+
+      });
+
+      it("should saveEditedGraph", function () {
+
+        var
+          a = {
+            p : "",
+            setParam : function (p) {
+              a.p = p;
+            },
+            select2: function () {
+              if (a.p === "#newVertexCollections") {
+                return "newVertexCollections";
+              } else if (a.p.indexOf("#s2id_newEdgeDefinitions") !== -1) {
+                return a.p.split("#s2id_newEdgeDefinitions")[1];
+              } else if (a.p.indexOf("#s2id_fromCollections") !== -1) {
+                return "fromCollection";
+              } else if (a.p.indexOf("#s2id_toCollections") !== -1) {
+                return "toCollection";
+              }
+            },
+            attr : function () {
+              if (a.p.indexOf("edgeD") !== -1) {
+                return a.p;
+              }
+            },
+            toArray: function () {
+              if (a.p === "[id^=s2id_newEdgeDefinitions]") {
+                return ["edgeD1", "edgeD2", "edgeD3"];
+              }
+            },
+            0 : {value : "name"}
+          };
+
+        spyOn(_, "pluck").andCallFake(function (s, b) {
+          if (s === "newVertexCollections") {
+            return ["orphan1", "orphan2", "orphan3"];
+          } else if (s.indexOf("edgeD") !== -1) {
+            return ["collection" + s.split("edgeD")[1] ];
+          } else if (s === "fromCollection") {
+            return ["fromCollection"];
+          } else if (s === "toCollection") {
+            return ["toCollection"];
+          }
+        });
+
+        spyOn(window, "$").andCallFake(function (x) {
+          a.setParam(x);
+          return a;
+        });
+
+        var g = {
+          _key: "blub2",
+          name: "blub2",
+          edgeDefinitions: [{
+            collection: "blub",
+            from: ["bla"],
+            to: ["blob"]
+          },{
+            collection: "collection2",
+            from: ["bla"],
+            to: ["blob"]
+          }],
+          orphanCollections: ["o1", "o2", "o3"],
+          get : function (a) {
+            return g[a]
+          },
+          deleteVertexCollection : function (o) {
+            g.orphanCollections.splice(g.orphanCollections.indexOf(o), 1);
+          },
+          addVertexCollection : function (o) {
+            g.orphanCollections.push(o);
+          },
+          addEdgeDefinition : function (o) {
+            g.edgeDefinitions.push(o);
+          },
+          modifyEdgeDefinition : function (o) {
+          },
+          deleteEdgeDefinition : function (o) {
+            g.edgeDefinitions.forEach(function (e) {
+              if (e.collection === o.collection) {
+                delete edgeDefinitions(e);
+              }
+            });
+          }
+        };
+
+        spyOn(view.collection, "findWhere").andReturn(
+          g
         );
-      },*/
+
+        spyOn(view, "updateGraphManagementView");
+        spyOn(window.modalView, "hide");
+
+        view.saveEditedGraph();
+
+        expect(view.updateGraphManagementView).toHaveBeenCalled();
+        expect(window.modalView.hide).toHaveBeenCalled();
+
+
+
+      });
 
       it("should create a sorted list of all graphs", function () {
         var list = $("div.tile h5.collectionName", "#graphManagementThumbnailsIn");
@@ -493,6 +718,209 @@
         expect($(list[0]).html()).toEqual(g1._key);
         expect($(list[1]).html()).toEqual(g2._key);
         expect($(list[2]).html()).toEqual(g3._key);
+      });
+
+      it("should not saveCreatedGraph as name already exists", function () {
+
+        var
+          a = {
+            p : "",
+            setParam : function (p) {
+              a.p = p;
+            },
+            select2: function () {
+              if (a.p === "#newVertexCollections") {
+                return "newVertexCollections";
+              } else if (a.p.indexOf("#s2id_newEdgeDefinitions") !== -1) {
+                return a.p.split("#s2id_newEdgeDefinitions")[1];
+              } else if (a.p.indexOf("#s2id_fromCollections") !== -1) {
+                return "fromCollection";
+              } else if (a.p.indexOf("#s2id_toCollections") !== -1) {
+                return "toCollection";
+              }
+            },
+            attr : function () {
+              if (a.p.indexOf("edgeD") !== -1) {
+                return a.p;
+              }
+            },
+            toArray: function () {
+              if (a.p === "[id^=s2id_newEdgeDefinitions]") {
+                return ["edgeD1", "edgeD2", "edgeD3"];
+              }
+            },
+            val :  function () {
+              return "name";
+            }
+          };
+
+        spyOn(_, "pluck").andCallFake(function (s, b) {
+          if (s === "newVertexCollections") {
+            return ["orphan1", "orphan2", "orphan3"];
+          } else if (s.indexOf("edgeD") !== -1) {
+            return ["collection" + s.split("edgeD")[1] ];
+          } else if (s === "fromCollection") {
+            return ["fromCollection"];
+          } else if (s === "toCollection") {
+            return ["toCollection"];
+          }
+        });
+
+        spyOn(window, "$").andCallFake(function (x) {
+          a.setParam(x);
+          return a;
+        });
+
+        var g = {
+          _key: "name",
+          name: "name",
+          edgeDefinitions: [{
+            collection: "blub",
+            from: ["bla"],
+            to: ["blob"]
+          },{
+            collection: "collection2",
+            from: ["bla"],
+            to: ["blob"]
+          }],
+          orphanCollections: ["o1", "o2", "o3"],
+          get : function (a) {
+            return g[a]
+          },
+          deleteVertexCollection : function (o) {
+            g.orphanCollections.splice(g.orphanCollections.indexOf(o), 1);
+          },
+          addVertexCollection : function (o) {
+            g.orphanCollections.push(o);
+          },
+          addEdgeDefinition : function (o) {
+            g.edgeDefinitions.push(o);
+          },
+          modifyEdgeDefinition : function (o) {
+          },
+          deleteEdgeDefinition : function (o) {
+            g.edgeDefinitions.forEach(function (e) {
+              if (e.collection === o.collection) {
+                delete edgeDefinitions(e);
+              }
+            });
+          }
+        };
+
+        spyOn(view.collection, "findWhere").andReturn(
+          g
+        );
+
+        spyOn(arangoHelper, "arangoError");
+
+        view.createNewGraph();
+
+        expect(arangoHelper.arangoError).toHaveBeenCalledWith("The graph '" + "name" + "' already exists.");
+
+
+
+      });
+
+
+      it("should not saveCreatedGraph as name is missing", function () {
+
+        var
+          a = {
+            p : "",
+            setParam : function (p) {
+              a.p = p;
+            },
+            select2: function () {
+              if (a.p === "#newVertexCollections") {
+                return "newVertexCollections";
+              } else if (a.p.indexOf("#s2id_newEdgeDefinitions") !== -1) {
+                return a.p.split("#s2id_newEdgeDefinitions")[1];
+              } else if (a.p.indexOf("#s2id_fromCollections") !== -1) {
+                return "fromCollection";
+              } else if (a.p.indexOf("#s2id_toCollections") !== -1) {
+                return "toCollection";
+              }
+            },
+            attr : function () {
+              if (a.p.indexOf("edgeD") !== -1) {
+                return a.p;
+              }
+            },
+            toArray: function () {
+              if (a.p === "[id^=s2id_newEdgeDefinitions]") {
+                return ["edgeD1", "edgeD2", "edgeD3"];
+              }
+            },
+            val :  function () {
+              return undefined;
+            }
+          };
+
+        spyOn(_, "pluck").andCallFake(function (s, b) {
+          if (s === "newVertexCollections") {
+            return ["orphan1", "orphan2", "orphan3"];
+          } else if (s.indexOf("edgeD") !== -1) {
+            return ["collection" + s.split("edgeD")[1] ];
+          } else if (s === "fromCollection") {
+            return ["fromCollection"];
+          } else if (s === "toCollection") {
+            return ["toCollection"];
+          }
+        });
+
+        spyOn(window, "$").andCallFake(function (x) {
+          a.setParam(x);
+          return a;
+        });
+
+        var g = {
+          _key: "name",
+          name: "name",
+          edgeDefinitions: [{
+            collection: "blub",
+            from: ["bla"],
+            to: ["blob"]
+          },{
+            collection: "collection2",
+            from: ["bla"],
+            to: ["blob"]
+          }],
+          orphanCollections: ["o1", "o2", "o3"],
+          get : function (a) {
+            return g[a]
+          },
+          deleteVertexCollection : function (o) {
+            g.orphanCollections.splice(g.orphanCollections.indexOf(o), 1);
+          },
+          addVertexCollection : function (o) {
+            g.orphanCollections.push(o);
+          },
+          addEdgeDefinition : function (o) {
+            g.edgeDefinitions.push(o);
+          },
+          modifyEdgeDefinition : function (o) {
+          },
+          deleteEdgeDefinition : function (o) {
+            g.edgeDefinitions.forEach(function (e) {
+              if (e.collection === o.collection) {
+                delete edgeDefinitions(e);
+              }
+            });
+          }
+        };
+
+        spyOn(view.collection, "findWhere").andReturn(
+          g
+        );
+
+        spyOn(arangoHelper, "arangoError");
+
+        view.createNewGraph();
+
+        expect(arangoHelper.arangoError).toHaveBeenCalledWith("A name for the graph has to be provided.");
+
+
+
       });
 
       describe("creating a new graph", function () {
