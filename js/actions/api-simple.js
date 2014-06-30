@@ -44,11 +44,11 @@ var API = "_api/simple/";
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_put_api_simple_by_example_hash
+/// @startDocuBlock JSA_put_api_simple_by_example_hash
 /// @brief returns all documents of a collection matching a given example, 
 /// using a specific hash index
 ///
-/// @RESTHEADER{PUT /_api/simple/by-example-hash,executes query by-example using a hash index}
+/// @RESTHEADER{PUT /_api/simple/by-example-hash, Hash index}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query specification.
@@ -60,19 +60,19 @@ var API = "_api/simple/";
 ///
 /// The call expects a JSON object as body with the following attributes:
 ///
-/// - `collection`: The name of the collection to query.
+/// - *collection*: The name of the collection to query.
 ///
-/// - `index`: The id of the index to be used for the query. The index must exist
-///   and must be of type `hash`.
+/// - *index*: The id of the index to be used for the query. The index must exist
+///   and must be of type *hash*.
 ///
-/// - `example`: an example document. The example must contain a value for each
+/// - *example*: an example document. The example must contain a value for each
 ///   attribute in the index.
 ///
-/// - `skip`: The number of documents to skip in the query. (optional)
+/// - *skip*: The number of documents to skip in the query. (optional)
 ///
-/// - `limit`: The maximal number of documents to return. (optional)
+/// - *limit*: The maximal number of documents to return. (optional)
 ///
-/// Returns a cursor containing the result, see @ref HttpCursor for details.
+/// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
 ///
 /// @RESTRETURNCODES
 ///
@@ -84,18 +84,18 @@ var API = "_api/simple/";
 /// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the collection specified by `collection` is unknown.  The
+/// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 /// The same error code is also returned if an invalid index id or type is used.
-///
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_put_api_simple_by_example_skiplist
+/// @startDocuBlock JSA_put_api_simple_by_example_skiplist
 /// @brief returns all documents of a collection matching a given example, 
 /// using a specific skiplist index
 ///
-/// @RESTHEADER{PUT /_api/simple/by-example-skiplist,executes query by-example using a skiplist index}
+/// @RESTHEADER{PUT /_api/simple/by-example-skiplist, Skiplist index}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query specification.
@@ -107,19 +107,19 @@ var API = "_api/simple/";
 ///
 /// The call expects a JSON object as body with the following attributes:
 ///
-/// - `collection`: The name of the collection to query.
+/// - *collection*: The name of the collection to query.
 ///
-/// - `index`: The id of the index to be used for the query. The index must 
-///   exist and must be of type `skiplist`.
+/// - *index*: The id of the index to be used for the query. The index must 
+///   exist and must be of type *skiplist*.
 ///
-/// - `example`: an example document. The example must contain a value for each
+/// - *example*: an example document. The example must contain a value for each
 ///   attribute in the index.
 ///
-/// - `skip`: The number of documents to skip in the query. (optional)
+/// - *skip*: The number of documents to skip in the query. (optional)
 ///
-/// - `limit`: The maximal number of documents to return. (optional)
+/// - *limit*: The maximal number of documents to return. (optional)
 ///
-/// Returns a cursor containing the result, see @ref HttpCursor for details.
+/// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
 ///
 /// @RESTRETURNCODES
 ///
@@ -131,18 +131,18 @@ var API = "_api/simple/";
 /// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the collection specified by `collection` is unknown.  The
+/// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 /// The same error code is also returned if an invalid index id or type is used.
-///
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_put_api_simple_by_example_bitarray
+/// @startDocuBlock JSA_put_api_simple_by_example_bitarray
 /// @brief returns all documents of a collection matching a given example, 
 /// using a specific bitarray index
 ///
-/// @RESTHEADER{PUT /_api/simple/by-example-bitarray,executes query by-example using a bitarray index}
+/// @RESTHEADER{PUT /_api/simple/by-example-bitarray, Bitarray index}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query specification.
@@ -154,19 +154,19 @@ var API = "_api/simple/";
 ///
 /// The call expects a JSON object as body with the following attributes:
 ///
-/// - `collection`: The name of the collection to query.
+/// - *collection*: The name of the collection to query.
 ///
-/// - `index`: The id of the index to be used for the query. The index must 
-///   exist and must be of type `bitarray`.
+/// - *index*: The id of the index to be used for the query. The index must 
+///   exist and must be of type *bitarray*.
 ///
-/// - `example`: an example document. The example must contain a value for each
+/// - *example*: an example document. The example must contain a value for each
 ///   attribute in the index.
 ///
-/// - `skip`: The number of documents to skip in the query. (optional)
+/// - *skip*: The number of documents to skip in the query. (optional)
 ///
-/// - `limit`: The maximal number of documents to return. (optional)
+/// - *limit*: The maximal number of documents to return. (optional)
 ///
-/// Returns a cursor containing the result, see @ref HttpCursor for details.
+/// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
 ///
 /// @RESTRETURNCODES
 ///
@@ -178,18 +178,18 @@ var API = "_api/simple/";
 /// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the collection specified by `collection` is unknown.  The
+/// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 /// The same error code is also returned if an invalid index id or type is used.
-///
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_put_api_simple_by_condition_skiplist
+/// @startDocuBlock JSA_put_api_simple_by_condition_skiplist
 /// @brief returns all documents of a collection matching a given condition, 
 /// using a specific skiplist index
 ///
-/// @RESTHEADER{PUT /_api/simple/by-condition-skiplist,executes query by-condition using a skiplist index}
+/// @RESTHEADER{PUT /_api/simple/by-condition-skiplist,Query by-condition using Skiplist index}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query specification.
@@ -201,19 +201,19 @@ var API = "_api/simple/";
 ///
 /// The call expects a JSON object as body with the following attributes:
 ///
-/// - `collection`: The name of the collection to query.
+/// - *collection*: The name of the collection to query.
 ///
-/// - `index`: The id of the index to be used for the query. The index must 
-///   exist and must be of type `skiplist`.
+/// - *index*: The id of the index to be used for the query. The index must 
+///   exist and must be of type *skiplist*.
 ///
-/// - `condition`: the condition which all returned documents shall satisfy. 
+/// - *condition*: the condition which all returned documents shall satisfy. 
 ///   Conditions must be specified for all indexed attributes. 
 ///
-/// - `skip`: The number of documents to skip in the query. (optional)
+/// - *skip*: The number of documents to skip in the query. (optional)
 ///
-/// - `limit`: The maximal number of documents to return. (optional)
+/// - *limit*: The maximal number of documents to return. (optional)
 ///
-/// Returns a cursor containing the result, see @ref HttpCursor for details.
+/// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
 ///
 /// @RESTRETURNCODES
 ///
@@ -225,18 +225,18 @@ var API = "_api/simple/";
 /// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the collection specified by `collection` is unknown.  The
+/// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 /// The same error code is also returned if an invalid index id or type is used.
-///
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_put_api_simple_by_condition_bitarray
+/// @startDocuBlock JSA_put_api_simple_by_condition_bitarray
 /// @brief returns all documents of a collection matching a given condition, 
 /// using a specific bitarray index
 ///
-/// @RESTHEADER{PUT /_api/simple/by-condition-bitarray,executes query by-condition using a bitarray index}
+/// @RESTHEADER{PUT /_api/simple/by-condition-bitarray, Query by-condition using bitarray index}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query specification.
@@ -248,19 +248,19 @@ var API = "_api/simple/";
 ///
 /// The call expects a JSON object as body with the following attributes:
 ///
-/// - `collection`: The name of the collection to query.
+/// - *collection*: The name of the collection to query.
 ///
-/// - `index`: The id of the index to be used for the query. The index must 
-///   exist and must be of type `bitarray`.
+/// - *index*: The id of the index to be used for the query. The index must 
+///   exist and must be of type *bitarray*.
 ///
-/// - `condition`: the condition which all returned documents shall satisfy. 
+/// - *condition*: the condition which all returned documents shall satisfy. 
 ///   Conditions must be specified for all indexed attributes. 
 ///
-/// - `skip`: The number of documents to skip in the query. (optional)
+/// - *skip*: The number of documents to skip in the query. (optional)
 ///
-/// - `limit`: The maximal number of documents to return. (optional)
+/// - *limit*: The maximal number of documents to return. (optional)
 ///
-/// Returns a cursor containing the result, see @ref HttpCursor for details.
+/// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
 ///
 /// @RESTRETURNCODES
 ///
@@ -272,10 +272,11 @@ var API = "_api/simple/";
 /// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the collection specified by `collection` is unknown.  The
+/// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 /// The same error code is also returned if an invalid index id or type is used.
 ///
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -382,10 +383,10 @@ setupIndexQueries();
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_put_api_simple_all
+/// @startDocuBlock JSA_put_api_simple_all
 /// @brief returns all documents of a collection
 ///
-/// @RESTHEADER{PUT /_api/simple/all,executes simple query ALL}
+/// @RESTHEADER{PUT /_api/simple/all, Return all}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query.
@@ -395,14 +396,14 @@ setupIndexQueries();
 /// Returns all documents of a collections. The call expects a JSON object
 /// as body with the following attributes:
 ///
-/// - `collection`: The name of the collection to query.
+/// - *collection*: The name of the collection to query.
 ///
-/// - `skip`: The number of documents to skip in the query (optional).
+/// - *skip*: The number of documents to skip in the query (optional).
 ///
-/// - `limit`: The maximal amount of documents to return. The `skip`
-///   is applied before the `limit` restriction. (optional)
+/// - *limit*: The maximal amount of documents to return. The *skip*
+///   is applied before the *limit* restriction. (optional)
 ///
-/// Returns a cursor containing the result, see @ref HttpCursor for details.
+/// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
 ///
 /// @RESTRETURNCODES
 ///
@@ -414,12 +415,12 @@ setupIndexQueries();
 /// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the collection specified by `collection` is unknown.  The
+/// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// Limit the amount of documents using `limit`
+/// Limit the amount of documents using *limit*
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleAllSkipLimit}
 ///     var cn = "products";
@@ -442,7 +443,7 @@ setupIndexQueries();
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// 
-/// Using a `batchSize` value
+/// Using a *batchSize* value
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleAllBatch}
 ///     var cn = "products";
@@ -464,6 +465,7 @@ setupIndexQueries();
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -512,10 +514,10 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_put_api_simple_any
+/// @startDocuBlock JSA_put_api_simple_any
 /// @brief returns a random document from a collection
 ///
-/// @RESTHEADER{PUT /_api/simple/any,returns a random document from a collection}
+/// @RESTHEADER{PUT /_api/simple/any, Random document}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query.
@@ -525,11 +527,11 @@ actions.defineHttp({
 /// Returns a random document from a collection. The call expects a JSON object
 /// as body with the following attributes:
 ///
-/// - `collection`: The identifier or name of the collection to query.
+/// - *collection*: The identifier or name of the collection to query.
 ///
 /// Returns a JSON object with the document stored in the attribute
-/// `document` if the collection contains at least one document. If
-/// the collection is empty, the `document` attrbute contains null.
+/// *document* if the collection contains at least one document. If
+/// the collection is empty, the *document* attrbute contains null.
 ///
 /// @RESTRETURNCODES
 ///
@@ -541,10 +543,10 @@ actions.defineHttp({
 /// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the collection specified by `collection` is unknown.  The
+/// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleAny}
 ///     var cn = "products";
@@ -566,6 +568,7 @@ actions.defineHttp({
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -605,10 +608,10 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_put_api_simple_near
+/// @startDocuBlock JSA_put_api_simple_near
 /// @brief returns all documents of a collection near a given location
 ///
-/// @RESTHEADER{PUT /_api/simple/near,executes a near query}
+/// @RESTHEADER{PUT /_api/simple/near, Near query}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query.
@@ -620,30 +623,30 @@ actions.defineHttp({
 /// being first in the list. If there are near documents of equal distance, documents 
 /// are chosen randomly from this set until the limit is reached.
 ///
-/// In order to use the `near` operator, a geo index must be defined for the
+/// In order to use the *near* operator, a geo index must be defined for the
 /// collection. This index also defines which attribute holds the coordinates
 /// for the document.  If you have more then one geo-spatial index, you can use
-/// the `geo` field to select a particular index.
+/// the *geo* field to select a particular index.
 ///
 /// The call expects a JSON object as body with the following attributes:
 ///
-/// - `collection`: The name of the collection to query.
+/// - *collection*: The name of the collection to query.
 ///
-/// - `latitude`: The latitude of the coordinate.
+/// - *latitude*: The latitude of the coordinate.
 ///
-/// - `longitude`: The longitude of the coordinate.
+/// - *longitude*: The longitude of the coordinate.
 ///
-/// - `distance`: If given, the attribute key used to return the distance to
+/// - *distance*: If given, the attribute key used to return the distance to
 ///   the given coordinate. (optional). If specified, distances are returned in meters.
 ///
-/// - `skip`: The number of documents to skip in the query. (optional)
+/// - *skip*: The number of documents to skip in the query. (optional)
 ///
-/// - `limit`: The maximal amount of documents to return. The `skip` is
-///   applied before the `limit` restriction. The default is 100. (optional)
+/// - *limit*: The maximal amount of documents to return. The *skip* is
+///   applied before the *limit* restriction. The default is 100. (optional)
 ///
-/// - `geo`: If given, the identifier of the geo-index to use. (optional)
+/// - *geo*: If given, the identifier of the geo-index to use. (optional)
 ///
-/// Returns a cursor containing the result, see @ref HttpCursor for details.
+/// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
 ///
 /// @RESTRETURNCODES
 ///
@@ -655,10 +658,10 @@ actions.defineHttp({
 /// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the collection specified by `collection` is unknown.  The
+/// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Without distance:
 ///
@@ -716,6 +719,7 @@ actions.defineHttp({
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -786,10 +790,10 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_put_api_simple_within
+/// @startDocuBlock JSA_put_api_simple_within
 /// @brief returns all documents of a collection within a given radius
 ///
-/// @RESTHEADER{PUT /_api/simple/within,executes a within query}
+/// @RESTHEADER{PUT /_api/simple/within, Within query}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query.
@@ -797,34 +801,34 @@ actions.defineHttp({
 /// @RESTDESCRIPTION
 ///
 /// This will find all documents within a given radius around the coordinate
-/// (`latitude`, `longitude`). The returned list is sorted by distance.
+/// (*latitude*, *longitude*). The returned list is sorted by distance.
 ///
-/// In order to use the `within` operator, a geo index must be defined for
+/// In order to use the *within* operator, a geo index must be defined for
 /// the collection. This index also defines which attribute holds the
 /// coordinates for the document.  If you have more then one geo-spatial index,
-/// you can use the `geo` field to select a particular index.
+/// you can use the *geo* field to select a particular index.
 ///
 /// The call expects a JSON object as body with the following attributes:
 ///
-/// - `collection`: The name of the collection to query.
+/// - *collection*: The name of the collection to query.
 ///
-/// - `latitude`: The latitude of the coordinate.
+/// - *latitude*: The latitude of the coordinate.
 ///
-/// - `longitude`: The longitude of the coordinate.
+/// - *longitude*: The longitude of the coordinate.
 ///
-/// - `radius`: The maximal radius (in meters).
+/// - *radius*: The maximal radius (in meters).
 ///
-/// - `distance`: If given, the attribute key used to return the distance to
+/// - *distance*: If given, the attribute key used to return the distance to
 ///   the given coordinate. (optional). If specified, distances are returned in meters.
 ///
-/// - `skip`: The number of documents to skip in the query. (optional)
+/// - *skip*: The number of documents to skip in the query. (optional)
 ///
-/// - `limit`: The maximal amount of documents to return. The `skip` is
-///   applied before the `limit` restriction. The default is 100. (optional)
+/// - *limit*: The maximal amount of documents to return. The *skip* is
+///   applied before the *limit* restriction. The default is 100. (optional)
 ///
-/// - `geo`: If given, the identifier of the geo-index to use. (optional)
+/// - *geo*: If given, the identifier of the geo-index to use. (optional)
 ///
-/// Returns a cursor containing the result, see @ref HttpCursor for details.
+/// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
 ///
 /// @RESTRETURNCODES
 ///
@@ -836,10 +840,10 @@ actions.defineHttp({
 /// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the collection specified by `collection` is unknown.  The
+/// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Without distance:
 ///
@@ -892,6 +896,7 @@ actions.defineHttp({
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -962,10 +967,10 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_put_api_simple_fulltext
+/// @startDocuBlock JSA_put_api_simple_fulltext
 /// @brief returns documents of a collection as a result of a fulltext query
 ///
-/// @RESTHEADER{PUT /_api/simple/fulltext,executes a fulltext index query}
+/// @RESTHEADER{PUT /_api/simple/fulltext, Fulltext index query}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query.
@@ -973,27 +978,27 @@ actions.defineHttp({
 /// @RESTDESCRIPTION
 ///
 /// This will find all documents from the collection that match the fulltext
-/// query specified in `query`.
+/// query specified in *query*.
 ///
-/// In order to use the `fulltext` operator, a fulltext index must be defined 
+/// In order to use the *fulltext* operator, a fulltext index must be defined 
 /// for the collection and the specified attribute.
 ///
 /// The call expects a JSON object as body with the following attributes:
 ///
-/// - `collection`: The name of the collection to query.
+/// - *collection*: The name of the collection to query.
 ///
-/// - `attribute`: The attribute that contains the texts.
+/// - *attribute*: The attribute that contains the texts.
 ///
-/// - `query`: The fulltext query.
+/// - *query*: The fulltext query.
 ///
-/// - `skip`: The number of documents to skip in the query (optional).
+/// - *skip*: The number of documents to skip in the query (optional).
 ///
-/// - `limit`: The maximal amount of documents to return. The `skip`
-///   is applied before the `limit` restriction. (optional)
+/// - *limit*: The maximal amount of documents to return. The *skip*
+///   is applied before the *limit* restriction. (optional)
 ///
-/// - `index`: The identifier of the fulltext-index to use.
+/// - *index*: The identifier of the fulltext-index to use.
 ///
-/// Returns a cursor containing the result, see @ref HttpCursor for details.
+/// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
 ///
 /// @RESTRETURNCODES
 ///
@@ -1005,10 +1010,10 @@ actions.defineHttp({
 /// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the collection specified by `collection` is unknown.  The
+/// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleFulltext}
 ///     var cn = "products";
@@ -1028,6 +1033,7 @@ actions.defineHttp({
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -1085,10 +1091,10 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_put_api_simple_by_example
+/// @startDocuBlock JSA_put_api_simple_by_example
 /// @brief returns all documents of a collection matching a given example
 ///
-/// @RESTHEADER{PUT /_api/simple/by-example,executes simple query by-example}
+/// @RESTHEADER{PUT /_api/simple/by-example, Simple query by-example}
 ///
 /// @RESTBODYPARAM{query,string,required}
 /// Contains the query.
@@ -1099,16 +1105,16 @@ actions.defineHttp({
 ///
 /// The call expects a JSON object as body with the following attributes:
 ///
-/// - `collection`: The name of the collection to query.
+/// - *collection*: The name of the collection to query.
 ///
-/// - `example`: The example document.
+/// - *example*: The example document.
 ///
-/// - `skip`: The number of documents to skip in the query (optional).
+/// - *skip*: The number of documents to skip in the query (optional).
 ///
-/// - `limit`: The maximal amount of documents to return. The `skip`
-///   is applied before the `limit` restriction. (optional)
+/// - *limit*: The maximal amount of documents to return. The *skip*
+///   is applied before the *limit* restriction. (optional)
 ///
-/// Returns a cursor containing the result, see @ref HttpCursor for details.
+/// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
 ///
 /// @RESTRETURNCODES
 ///
@@ -1120,10 +1126,10 @@ actions.defineHttp({
 /// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the collection specified by `collection` is unknown.  The
+/// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Matching an attribute:
 ///
@@ -1187,6 +1193,7 @@ actions.defineHttp({
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -1239,10 +1246,10 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_put_api_simple_first_example
+/// @startDocuBlock JSA_put_api_simple_first_example
 /// @brief returns one document of a collection matching a given example
 ///
-/// @RESTHEADER{PUT /_api/simple/first-example,returns a document matching an example}
+/// @RESTHEADER{PUT /_api/simple/first-example, Document matching an example}
 ///
 /// @RESTBODYPARAM{query,json,required}
 /// Contains the query.
@@ -1253,11 +1260,11 @@ actions.defineHttp({
 ///
 /// The call expects a JSON object as body with the following attributes:
 ///
-/// - `collection`: The name of the collection to query.
+/// - *collection*: The name of the collection to query.
 ///
-/// - `example`: The example document.
+/// - *example*: The example document.
 ///
-/// Returns a result containing the document or `HTTP 404` if no
+/// Returns a result containing the document or *HTTP 404* if no
 /// document matched the example. 
 ///
 /// If more than one document in the collection matches the specified example, only
@@ -1274,10 +1281,10 @@ actions.defineHttp({
 /// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the collection specified by `collection` is unknown.  The
+/// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// If a matching document was found:
 ///
@@ -1320,6 +1327,7 @@ actions.defineHttp({
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -1367,10 +1375,10 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_put_api_simple_first
+/// @startDocuBlock JSA_put_api_simple_first
 /// @brief returns the first document(s) of a collection
 ///
-/// @RESTHEADER{PUT /_api/simple/first,returns the first document(s) of a collection}
+/// @RESTHEADER{PUT /_api/simple/first, First document of a collection}
 ///
 /// @RESTBODYPARAM{query,json,required}
 /// Contains the query.
@@ -1378,16 +1386,16 @@ actions.defineHttp({
 /// @RESTDESCRIPTION
 ///
 /// This will return the first document(s) from the collection, in the order of
-/// insertion/update time. When the `count` argument is supplied, the result
+/// insertion/update time. When the *count* argument is supplied, the result
 /// will be a list of documents, with the "oldest" document being first in the
 /// result list.
-/// If the `count` argument is not supplied, the result is the "oldest" document
-/// of the collection, or `null` if the collection is empty.
+/// If the *count* argument is not supplied, the result is the "oldest" document
+/// of the collection, or *null* if the collection is empty.
 ///
 /// The request body must be a JSON object with the following attributes:
-/// - `collection`: the name of the collection
+/// - *collection*: the name of the collection
 /// 
-/// - `count`: the number of documents to return at most. Specifiying count is 
+/// - *count*: the number of documents to return at most. Specifiying count is 
 ///   optional. If it is not specified, it defaults to 1.
 ///
 /// Note: this method is not supported for sharded collections with more than 
@@ -1403,10 +1411,10 @@ actions.defineHttp({
 /// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the collection specified by `collection` is unknown.  The
+/// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Retrieving the first n documents:
 ///
@@ -1449,6 +1457,7 @@ actions.defineHttp({
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -1485,10 +1494,10 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_put_api_simple_last
+/// @startDocuBlock JSA_put_api_simple_last
 /// @brief returns the last document(s) of a collection
 ///
-/// @RESTHEADER{PUT /_api/simple/last,returns the last document(s) of a collection}
+/// @RESTHEADER{PUT /_api/simple/last, Last document of a collection}
 ///
 /// @RESTBODYPARAM{query,json,required}
 /// Contains the query.
@@ -1496,18 +1505,18 @@ actions.defineHttp({
 /// @RESTDESCRIPTION
 ///
 /// This will return the last documents from the collection, in the order of
-/// insertion/update time. When the `count` argument is supplied, the result
+/// insertion/update time. When the *count* argument is supplied, the result
 /// will be a list of documents, with the "latest" document being first in the
 /// result list.
 ///
 /// The request body must be a JSON object with the following attributes:
-/// - `collection`: the name of the collection
+/// - *collection*: the name of the collection
 /// 
-/// - `count`: the number of documents to return at most. Specifiying count is 
+/// - *count*: the number of documents to return at most. Specifiying count is 
 ///   optional. If it is not specified, it defaults to 1.
 ///
-/// If the `count` argument is not supplied, the result is the "latest" document
-/// of the collection, or `null` if the collection is empty.
+/// If the *count* argument is not supplied, the result is the "latest" document
+/// of the collection, or *null* if the collection is empty.
 ///
 /// Note: this method is not supported for sharded collections with more than
 /// one shard.
@@ -1522,10 +1531,10 @@ actions.defineHttp({
 /// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the collection specified by `collection` is unknown.  The
+/// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Retrieving the last n documents:
 ///
@@ -1568,6 +1577,7 @@ actions.defineHttp({
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -1604,10 +1614,10 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_put_api_simple_range
+/// @startDocuBlock JSA_put_api_simple_range
 /// @brief returns all documents of a collection within a range
 ///
-/// @RESTHEADER{PUT /_api/simple/range,executes simple range query}
+/// @RESTHEADER{PUT /_api/simple/range, Simple range query}
 ///
 /// @RESTBODYPARAM{query,json,required}
 /// Contains the query.
@@ -1619,23 +1629,23 @@ actions.defineHttp({
 ///
 /// The call expects a JSON object as body with the following attributes:
 ///
-/// - `collection`: The name of the collection to query.
+/// - *collection*: The name of the collection to query.
 ///
-/// - `attribute`: The attribute path to check.
+/// - *attribute*: The attribute path to check.
 ///
-/// - `left`: The lower bound.
+/// - *left*: The lower bound.
 ///
-/// - `right`: The upper bound.
+/// - *right*: The upper bound.
 ///
-/// - `closed`: If `true`, use interval including `left` and `right`,
-///   otherwise exclude `right`, but include `left`.
+/// - *closed*: If *true*, use interval including *left* and *right*,
+///   otherwise exclude *right*, but include *left*.
 ///
-/// - `skip`: The number of documents to skip in the query (optional).
+/// - *skip*: The number of documents to skip in the query (optional).
 ///
-/// - `limit`: The maximal amount of documents to return. The `skip`
-///   is applied before the `limit` restriction. (optional)
+/// - *limit*: The maximal amount of documents to return. The *skip*
+///   is applied before the *limit* restriction. (optional)
 ///
-/// Returns a cursor containing the result, see @ref HttpCursor for details.
+/// Returns a cursor containing the result, see [Http Cursor](../HttpAqlQueryCursor/README.md) for details.
 ///
 /// @RESTRETURNCODES
 ///
@@ -1647,10 +1657,10 @@ actions.defineHttp({
 /// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the collection specified by `collection` is unknown.  The
+/// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleRange}
 ///     var cn = "products";
@@ -1671,6 +1681,7 @@ actions.defineHttp({
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -1730,10 +1741,10 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_put_api_simple_remove_by_example
+/// @startDocuBlock JSA_put_api_simple_remove_by_example
 /// @brief removes all documents of a collection that match an example
 ///
-/// @RESTHEADER{PUT /_api/simple/remove-by-example,removes documents by example}
+/// @RESTHEADER{PUT /_api/simple/remove-by-example, Remove documents by example}
 ///
 /// @RESTBODYPARAM{query,json,required}
 /// Contains the query.
@@ -1745,23 +1756,23 @@ actions.defineHttp({
 ///
 /// The call expects a JSON object as body with the following attributes:
 ///
-/// - `collection`: The name of the collection to remove from.
+/// - *collection*: The name of the collection to remove from.
 ///
-/// - `example`: An example document that all collection documents are compared
+/// - *example*: An example document that all collection documents are compared
 ///   against.
 ///
 /// - options: an json object which can contains following attributes:
 ///
-/// - `waitForSync`: if set to true, then all removal operations will 
+/// - *waitForSync*: if set to true, then all removal operations will 
 ///   instantly be synchronised to disk. If this is not specified, then the
 ///   collection's default sync behavior will be applied.
 ///
-/// - `limit`: an optional value that determines how many documents to 
-///   delete at most. If `limit` is specified but is less than the number
+/// - *limit*: an optional value that determines how many documents to 
+///   delete at most. If *limit* is specified but is less than the number
 ///   of documents in the collection, it is undefined which of the documents 
 ///   will be deleted.
 ///
-/// Note: the `limit` attribute is not supported on sharded collections. 
+/// Note: the *limit* attribute is not supported on sharded collections. 
 /// Using it will result in an error.
 /// The options attributes waitForSync and limit can given yet without 
 /// an ecapsulation into a json object. but this may be deprecated in future 
@@ -1779,10 +1790,10 @@ actions.defineHttp({
 /// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the collection specified by `collection` is unknown.  The
+/// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleRemoveByExample}
 ///     var cn = "products";
@@ -1845,6 +1856,7 @@ actions.defineHttp({
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -1892,11 +1904,11 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_put_api_simple_replace_by_example
+/// @startDocuBlock JSA_put_api_simple_replace_by_example
 /// @brief replaces the body of all documents of a collection that match an 
 /// example
 ///
-/// @RESTHEADER{PUT /_api/simple/replace-by-example,replaces documents by example}
+/// @RESTHEADER{PUT /_api/simple/replace-by-example, Replace documents by example}
 ///
 /// @RESTBODYPARAM{query,json,required}
 /// Contains the query.
@@ -1905,31 +1917,31 @@ actions.defineHttp({
 ///
 /// This will find all documents in the collection that match the specified 
 /// example object, and replace the entire document body with the new value
-/// specified. Note that document meta-attributes such as `_id`, `_key`,
-/// `_from`, `_to` etc. cannot be replaced. 
+/// specified. Note that document meta-attributes such as *_id*, *_key*,
+/// *_from*, *_to* etc. cannot be replaced. 
 ///
 /// The call expects a JSON object as body with the following attributes:
 ///
-/// - `collection`: The name of the collection to replace within.
+/// - *collection*: The name of the collection to replace within.
 ///
-/// - `example`: An example document that all collection documents are compared
+/// - *example*: An example document that all collection documents are compared
 ///   against.
 ///
-/// - `newValue`: The replacement document that will get inserted in place
+/// - *newValue*: The replacement document that will get inserted in place
 ///   of the "old" documents.
 ///
-/// - `options`: an json object which can contain following attributes
+/// - *options*: an json object which can contain following attributes
 ///
-/// - `waitForSync`: if set to true, then all removal operations will 
+/// - *waitForSync*: if set to true, then all removal operations will 
 ///   instantly be synchronised to disk. If this is not specified, then the
 ///   collection's default sync behavior will be applied.
 ///
-/// - `limit`: an optional value that determines how many documents to 
-///   replace at most. If `limit` is specified but is less than the number
+/// - *limit*: an optional value that determines how many documents to 
+///   replace at most. If *limit* is specified but is less than the number
 ///   of documents in the collection, it is undefined which of the documents 
 ///   will be replaced.
 ///
-/// Note: the `limit` attribute is not supported on sharded collections. 
+/// Note: the *limit* attribute is not supported on sharded collections. 
 /// Using it will result in an error.
 /// The options attributes waitForSync and limit can given yet without 
 /// an ecapsulation into a json object. but this may be deprecated in future 
@@ -1947,10 +1959,10 @@ actions.defineHttp({
 /// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the collection specified by `collection` is unknown.  The
+/// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleReplaceByExample}
 ///     var cn = "products";
@@ -1999,6 +2011,7 @@ actions.defineHttp({
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -2050,11 +2063,11 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_put_api_simple_update_by_example
+/// @startDocuBlock JSA_put_api_simple_update_by_example
 /// @brief partially updates the body of all documents of a collection that
 /// match an example
 ///
-/// @RESTHEADER{PUT /_api/simple/update-by-example,updates documents by example}
+/// @RESTHEADER{PUT /_api/simple/update-by-example, Update documents by example}
 ///
 /// @RESTBODYPARAM{query,json,required}
 /// Contains the query.
@@ -2063,37 +2076,37 @@ actions.defineHttp({
 ///
 /// This will find all documents in the collection that match the specified 
 /// example object, and partially update the document body with the new value
-/// specified. Note that document meta-attributes such as `_id`, `_key`,
-/// `_from`, `_to` etc. cannot be replaced. 
+/// specified. Note that document meta-attributes such as *_id*, *_key*,
+/// *_from*, *_to* etc. cannot be replaced. 
 ///
 /// The call expects a JSON object as body with the following attributes:
 ///
-/// - `collection`: The name of the collection to update within.
+/// - *collection*: The name of the collection to update within.
 ///
-/// - `example`: An example document that all collection documents are compared
+/// - *example*: An example document that all collection documents are compared
 ///   against.
 ///
-/// - `newValue`: A document containing all the attributes to update in the
+/// - *newValue*: A document containing all the attributes to update in the
 ///   found documents.
 ///
-/// - `options`: a json object wich can contains following attributes:
+/// - *options*: a json object wich can contains following attributes:
 ///
-/// - `keepNull`: This parameter can be used to modify the behavior when
-///   handling `null` values. Normally, `null` values are stored in the
-///   database. By setting the `keepNull` parameter to `false`, this 
-///   behavior can be changed so that all attributes in `data` with `null` 
+/// - *keepNull*: This parameter can be used to modify the behavior when
+///   handling *null* values. Normally, *null* values are stored in the
+///   database. By setting the *keepNull* parameter to *false*, this 
+///   behavior can be changed so that all attributes in *data* with *null* 
 ///   values will be removed from the updated document.
 ///
-/// - `waitForSync`: if set to true, then all removal operations will 
+/// - *waitForSync*: if set to true, then all removal operations will 
 ///   instantly be synchronised to disk. If this is not specified, then the
 ///   collection's default sync behavior will be applied.
 ///
-/// - `limit`: an optional value that determines how many documents to 
-///   update at most. If `limit` is specified but is less than the number
+/// - *limit*: an optional value that determines how many documents to 
+///   update at most. If *limit* is specified but is less than the number
 ///   of documents in the collection, it is undefined which of the documents 
 ///   will be updated.
 ///
-/// Note: the `limit` attribute is not supported on sharded collections. 
+/// Note: the *limit* attribute is not supported on sharded collections. 
 /// Using it will result in an error.
 ///
 /// Returns the number of documents that were updated.
@@ -2102,18 +2115,18 @@ actions.defineHttp({
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// is returned if the collection was updated successfully and `waitForSync` was
-/// `true`.
+/// is returned if the collection was updated successfully and *waitForSync* was
+/// *true*.
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation of a
 /// query. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the collection specified by `collection` is unknown.  The
+/// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 ///
-/// *Examples*
+/// @EXAMPLES
 /// using old syntax for options
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleUpdateByExample}
 ///     var cn = "products";
@@ -2162,6 +2175,7 @@ actions.defineHttp({
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({

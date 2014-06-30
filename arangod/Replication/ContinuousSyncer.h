@@ -34,14 +34,14 @@
 
 #include "Replication/Syncer.h"
 #include "Utils/ReplicationTransaction.h"
+#include "VocBase/replication-applier.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
 struct TRI_json_s;
-struct TRI_replication_applier_s;
-struct TRI_replication_applier_configuration_s;
+struct TRI_server_s;
 struct TRI_vocbase_s;
 
 namespace triagens {
@@ -68,7 +68,8 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ContinuousSyncer (struct TRI_vocbase_s*,
+        ContinuousSyncer (struct TRI_server_s*,
+                          struct TRI_vocbase_s*,
                           struct TRI_replication_applier_configuration_s const*,
                           TRI_voc_tick_t,
                           bool);
@@ -114,12 +115,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int getLocalState (std::string&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief abort any ongoing transactions
-////////////////////////////////////////////////////////////////////////////////
-
-        void abortOngoingTransactions ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts a transaction, based on the JSON provided
@@ -199,16 +194,16 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief server
+////////////////////////////////////////////////////////////////////////////////
+
+        struct TRI_server_s* _server;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief pointer to the applier state
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_replication_applier_s* _applier;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief currently running transactions
-////////////////////////////////////////////////////////////////////////////////
-
-        std::unordered_map<TRI_voc_tid_t, ReplicationTransaction*> _transactions;
+        TRI_replication_applier_t* _applier;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stringified chunk size

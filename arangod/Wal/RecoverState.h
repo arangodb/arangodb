@@ -274,6 +274,7 @@ namespace triagens {
       std::unordered_set<TRI_voc_tick_t>                                          remoteTransactionDatabases;
       std::unordered_set<TRI_voc_cid_t>                                           droppedCollections;
       std::unordered_set<TRI_voc_tick_t>                                          droppedDatabases;
+      std::unordered_set<TRI_idx_iid_t>                                           droppedIndexes;
       TRI_voc_tick_t                                                              lastTick;
       std::vector<Logfile*>                                                       logfilesToProcess;
       std::unordered_map<TRI_voc_cid_t, TRI_vocbase_col_t*>                       openedCollections;

@@ -58,8 +58,14 @@ namespace triagens {
 /// @brief create the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        ReplicationTransaction (struct TRI_vocbase_s* vocbase)
-          : Transaction<RestTransactionContext>(vocbase) {
+        ReplicationTransaction (TRI_server_t* server,
+                                struct TRI_vocbase_s* vocbase,
+                                TRI_voc_tid_t externalId)
+          : Transaction<RestTransactionContext>(vocbase, externalId),
+            _server(server),
+            _externalId(externalId) {
+
+          TRI_UseDatabaseServer(_server, vocbase->_name);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,6 +73,21 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~ReplicationTransaction () {
+          TRI_ReleaseDatabaseServer(_server, vocbase());
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the remote (external) id of the transaction
+////////////////////////////////////////////////////////////////////////////////
+
+        inline TRI_voc_tid_t externalId () const {
+          return _externalId;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -83,7 +104,7 @@ namespace triagens {
             int res = TRI_AddCollectionTransaction(this->_trx, cid, TRI_TRANSACTION_WRITE, 0, true);
 
             if (res == TRI_ERROR_NO_ERROR) {
-              res = TRI_LockCollectionTransaction(trxCollection, TRI_TRANSACTION_WRITE, 0);
+              res = TRI_EnsureCollectionsTransaction(this->_trx);
             }
               
             if (res != TRI_ERROR_NO_ERROR) {
@@ -93,9 +114,18 @@ namespace triagens {
             trxCollection = TRI_GetCollectionTransaction(this->_trx, cid, TRI_TRANSACTION_WRITE);
           }
  
-          return nullptr;
+          return trxCollection;
         }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+ 
+      private:
+
+        TRI_server_t* _server;
+        
+        TRI_voc_tid_t _externalId;
     };
 
   }
