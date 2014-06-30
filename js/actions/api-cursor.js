@@ -47,9 +47,10 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_post_api_cursor
 /// @brief create a cursor and return the first results
 ///
-/// @RESTHEADER{POST /_api/cursor,creates a cursor}
+/// @RESTHEADER{POST /_api/cursor, Create cursor}
 ///
 /// @RESTBODYPARAM{query,json,required}
 /// A JSON object describing the query and query parameters.
@@ -61,74 +62,74 @@ var internal = require("internal");
 ///
 /// The following attributes can be used inside the JSON object:
 ///
-/// - `query`: contains the query string to be executed (mandatory)
+/// - *query*: contains the query string to be executed (mandatory)
 ///
-/// - `count`: boolean flag that indicates whether the number of documents
+/// - *count*: boolean flag that indicates whether the number of documents
 ///   in the result set should be returned in the "count" attribute of the result (optional).
 ///   Calculating the "count" attribute might in the future have a performance 
 ///   impact for some queries so this option is turned off by default, and "count" 
 ///   is only returned when requested.
 ///
-/// - `batchSize`: maximum number of result documents to be transferred from
+/// - *batchSize*: maximum number of result documents to be transferred from
 ///   the server to the client in one roundtrip (optional). If this attribute is
 ///   not set, a server-controlled default value will be used.
 ///
-/// - `bindVars`: key/value list of bind parameters (optional). 
+/// - *bindVars*: key/value list of bind parameters (optional). 
 ///
-/// - `options`: key/value list of extra options for the query (optional).
+/// - *options*: key/value list of extra options for the query (optional).
 ///
 /// The following options are supported at the moment:
 /// 
-/// - `fullCount`: if set to `true` and the query contains a `LIMIT` clause, then the
-///   result will contain an extra attribute `extra` with a sub-attribute `fullCount`. 
+/// - *fullCount*: if set to *true* and the query contains a *LIMIT* clause, then the
+///   result will contain an extra attribute *extra* with a sub-attribute *fullCount*. 
 ///   This sub-attribute will contain the number of documents in the result before the
 ///   last LIMIT in the query was applied. It can be used to count the number of documents that
 ///   match certain filter criteria, but only return a subset of them, in one go. 
-///   It is thus similar to MySQL's `SQL_CALC_FOUND_ROWS` hint. Note that setting the option 
-///   will disable a few LIMIT optimisations and may lead to more documents being processed,
-///   and thus make queries run longer. Note that the `fullCount` sub-attribute will only
+///   It is thus similar to MySQL's *SQL_CALC_FOUND_ROWS* hint. Note that setting the option 
+///   will disable a few LIMIT optimizations and may lead to more documents being processed,
+///   and thus make queries run longer. Note that the *fullCount* sub-attribute will only
 ///   be present in the result if the query has a LIMIT clause and the LIMIT clause is 
 ///   actually used in the query.
 ///
 /// If the result set can be created by the server, the server will respond with
-/// `HTTP 201`. The body of the response will contain a JSON object with the
+/// *HTTP 201*. The body of the response will contain a JSON object with the
 /// result set.
 ///
 /// The returned JSON object has the following properties:
 ///
-/// - `error`: boolean flag to indicate that an error occurred (`false`
+/// - *error*: boolean flag to indicate that an error occurred (*false*
 ///   in this case)
 ///
-/// - `code`: the HTTP status code
+/// - *code*: the HTTP status code
 ///
-/// - `result`: an array of result documents (might be empty if query has no results)
+/// - *result*: an array of result documents (might be empty if query has no results)
 ///
-/// - `hasMore`: a boolean indicator whether there are more results 
+/// - *hasMore*: a boolean indicator whether there are more results 
 ///   available for the cursor on the server
 ///
-/// - `count`: the total number of result documents available (only
-///   available if the query was executed with the `count` attribute set)
+/// - *count*: the total number of result documents available (only
+///   available if the query was executed with the *count* attribute set)
 ///
-/// - `id`: id of temporary cursor created on the server (optional, see above)
+/// - *id*: id of temporary cursor created on the server (optional, see above)
 ///
-/// - `extra`: an optional JSON object with extra information about the query result
+/// - *extra*: an optional JSON object with extra information about the query result
 ///
 /// If the JSON representation is malformed or the query specification is
-/// missing from the request, the server will respond with `HTTP 400`.
+/// missing from the request, the server will respond with *HTTP 400*.
 ///
 /// The body of the response will contain a JSON object with additional error
 /// details. The object has the following attributes:
 ///
-/// - `error`: boolean flag to indicate that an error occurred (`true` in this case)
+/// - *error*: boolean flag to indicate that an error occurred (*true* in this case)
 ///
-/// - `code`: the HTTP status code
+/// - *code*: the HTTP status code
 ///
-/// - `errorNum`: the server error number
+/// - *errorNum*: the server error number
 ///
-/// - `errorMessage`: a descriptive error message
+/// - *errorMessage*: a descriptive error message
 ///
 /// If the query specification is complete, the server will process the query. If an
-/// error occurs during query processing, the server will respond with `HTTP 400`.
+/// error occurs during query processing, the server will respond with *HTTP 400*.
 /// Again, the body of the response will contain details about the error.
 ///
 /// A list of query errors can be found @ref ArangoErrors here.
@@ -143,13 +144,13 @@ var internal = require("internal");
 /// missing from the request.
 ///
 /// @RESTRETURNCODE{404}
-/// The server will respond with `HTTP 404` in case a non-existing collection is
+/// The server will respond with *HTTP 404* in case a non-existing collection is
 /// accessed in the query.
 ///
 /// @RESTRETURNCODE{405}
-/// The server will respond with `HTTP 405` if an unsupported HTTP method is used.
+/// The server will respond with *HTTP 405* if an unsupported HTTP method is used.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Executes a query and extract the result in a single go:
 ///
@@ -251,6 +252,7 @@ var internal = require("internal");
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_api_cursor(req, res) {
@@ -299,9 +301,10 @@ function post_api_cursor(req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_post_api_cursor_identifier
 /// @brief return the next results from an existing cursor
 ///
-/// @RESTHEADER{PUT /_api/cursor/`cursor-identifier`,reads next batch from a cursor}
+/// @RESTHEADER{PUT /_api/cursor/cursor-identifier, Read next batch from cursor}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -313,29 +316,29 @@ function post_api_cursor(req, res) {
 /// If the cursor is still alive, returns an object with the following
 /// attributes.
 ///
-/// - `id`: the `cursor-identifier`
-/// - `result`: a list of documents for the current batch
-/// - `hasMore`: `false` if this was the last batch
-/// - `count`: if present the total number of elements
+/// - *id*: the *cursor-identifier*
+/// - *result*: a list of documents for the current batch
+/// - *hasMore*: *false* if this was the last batch
+/// - *count*: if present the total number of elements
 ///
-/// Note that even if `hasMore` returns `true`, the next call might
-/// still return no documents. If, however, `hasMore` is `false`, then
-/// the cursor is exhausted.  Once the `hasMore` attribute has a value of
-/// `false`, the client can stop.
+/// Note that even if *hasMore* returns *true*, the next call might
+/// still return no documents. If, however, *hasMore* is *false*, then
+/// the cursor is exhausted.  Once the *hasMore* attribute has a value of
+/// *false*, the client can stop.
 ///
 /// @RESTRETURNCODES
 /// 
 /// @RESTRETURNCODE{200}
-/// The server will respond with `HTTP 200` in case of success. 
+/// The server will respond with *HTTP 200* in case of success. 
 ///
 /// @RESTRETURNCODE{400}
-/// If the cursor identifier is ommitted, the server will respond with `HTTP 404`.
+/// If the cursor identifier is omitted, the server will respond with *HTTP 404*.
 ///
 /// @RESTRETURNCODE{404}
 /// If no cursor with the specified identifier can be found, the server will respond
-/// with `HTTP 404`.
+/// with *HTTP 404*.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Valid request for next batch:
 ///
@@ -390,6 +393,7 @@ function post_api_cursor(req, res) {
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function put_api_cursor (req, res) {
@@ -419,9 +423,10 @@ function put_api_cursor (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_post_api_cursor_delete
 /// @brief dispose an existing cursor
 ///
-/// @RESTHEADER{DELETE /_api/cursor/`cursor-identifier`,deletes a cursor}
+/// @RESTHEADER{DELETE /_api/cursor/cursor-identifier, Delete cursor}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -448,7 +453,7 @@ function put_api_cursor (req, res) {
 /// is returned if the server is not aware of the cursor. It is also
 /// returned if a cursor is used after it has been destroyed.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorDelete}
 ///     var url = "/_api/cursor";
@@ -476,6 +481,7 @@ function put_api_cursor (req, res) {
 /// 
 ///     assert(response.code === 202);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function delete_api_cursor(req, res) {
