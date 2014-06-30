@@ -415,10 +415,24 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
   
   this.addControlNewNode = function() {
     var icon = icons.add,
+      idprefix = "select_node_collection",
       callback = function() {
-        if (askForCollection) {
-          var nodeCollection = prompt("Which edge collection should be stored?");
-          adapter.useNodeCollection(nodeCollection);
+        if (askForCollection && adapter.getNodeCollections().length > 1) {
+          modalDialogHelper.createModalDialog("Select Vertex Collection",
+            idprefix, [{
+              type: "list",
+              id: "vertex",
+              objects: adapter.getNodeCollections(),
+              text: "Select collection",
+              selected: adapter.getSelectedNodeCollection()
+            }], function () {
+              var nodeCollection = $("#" + idprefix + "vertex")
+                  .children("option")
+                  .filter(":selected")
+                  .text();
+              adapter.useNodeCollection(nodeCollection);
+            }
+          );
         }
         self.rebindAll(self.newNodeRebinds());
       };
@@ -467,10 +481,24 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
   
   this.addControlConnect = function() {
     var icon = icons.edge,
+      idprefix = "select_edge_collection",
       callback = function() {
-        if (askForCollection) {
-          var edgeCollection = prompt("Which edge collection should be stored?");
-          adapter.useEdgeCollection(edgeCollection);
+        if (askForCollection && adapter.getEdgeCollections().length > 1) {
+          modalDialogHelper.createModalDialog("Select Edge Collection",
+            idprefix, [{
+              type: "list",
+              id: "edge",
+              objects: adapter.getEdgeCollections(),
+              text: "Select collection",
+              selected: adapter.getSelectedEdgeCollection()
+            }], function () {
+              var edgeCollection = $("#" + idprefix + "edge")
+                  .children("option")
+                  .filter(":selected")
+                  .text();
+              adapter.useEdgeCollection(edgeCollection);
+            }
+          );
         }
         self.rebindAll(self.connectNodesRebinds());
       };
