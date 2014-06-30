@@ -59,7 +59,6 @@ JAVASCRIPT_JSLINT = \
 	\
 	`find @srcdir@/js/apps/system/cerberus -name "*.js"` \
 	`find @srcdir@/js/apps/system/gharial -name "*.js"` \
-	`find @srcdir@/js/apps/system/oauth2 -name "*.js"` \
 	`find @srcdir@/js/apps/system/sessions -name "*.js"` \
 	`find @srcdir@/js/apps/system/simple-auth -name "*.js"` \
 	`find @srcdir@/js/apps/system/users -name "*.js"` \
