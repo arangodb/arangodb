@@ -158,6 +158,139 @@
         );
       });
 
+      it("should showHideDefinition", function () {
+        var e = {
+            currentTarget: {
+              id: "row_newEdgeDefinitions1"
+            },
+            stopPropagation : function () {
+
+            }
+          },
+          a = {
+            attr: function (x) {
+              return "row_newEdgeDefinitions1";
+            },
+            toggle : function () {
+
+            }
+          };
+        spyOn(a, "toggle");
+
+        spyOn(window, "$").andReturn(a);
+
+
+        view.showHideDefinition(e);
+
+        expect(a.toggle).toHaveBeenCalled();
+      });
+
+      it("should addDefinition", function () {
+        var e = {
+            currentTarget: {
+              id: "row_newEdgeDefinitions1"
+            },
+            stopPropagation : function () {
+
+            }
+          },
+          a = {
+            attr: function (x) {
+              return "addAfter_newEdgeDefinitions1";
+            },
+            toggle : function () {
+
+            },
+            before : function () {
+
+            },
+            select2 : function () {
+
+            }
+          };
+
+        spyOn(view.edgeDefintionTemplate, "render");
+
+        spyOn(window, "$").andReturn(a);
+
+        spyOn(window.modalView, "undelegateEvents");
+        spyOn(window.modalView, "delegateEvents");
+
+        view.options.collectionCollection.add(
+          {name : "NONSYSTEM", isSystem : false, type : "edge"});
+        view.options.collectionCollection.add(
+          {name : "SYSTEM", isSystem : true, type : 'document'});
+
+        view.counter = 0;
+
+        view.addRemoveDefinition(e);
+
+        expect(window.modalView.undelegateEvents).toHaveBeenCalled();
+        expect(window.modalView.delegateEvents).toHaveBeenCalled();
+        expect(view.edgeDefintionTemplate.render).toHaveBeenCalledWith({number : 1});
+      });
+
+      it("should removeDefinition", function () {
+        var e = {
+            currentTarget: {
+              id: "row_newEdgeDefinitions1"
+            },
+            stopPropagation : function () {
+
+            }
+          },
+          a = {
+            attr: function (x) {
+              return "remove_newEdgeDefinitions1";
+            },
+            remove : function () {
+
+            },
+            before : function () {
+
+            },
+            select2 : function () {
+
+            }
+          };
+
+        spyOn(view.edgeDefintionTemplate, "render");
+
+        spyOn(window, "$").andReturn(a);
+
+        spyOn(window.modalView, "undelegateEvents");
+        spyOn(window.modalView, "delegateEvents");
+
+        view.options.collectionCollection.add(
+          {name : "NONSYSTEM", isSystem : false, type : "edge"});
+        view.options.collectionCollection.add(
+          {name : "SYSTEM", isSystem : true, type : 'document'});
+
+        view.counter = 0;
+
+        view.addRemoveDefinition(e);
+
+        expect(window.modalView.undelegateEvents).not.toHaveBeenCalled();
+        expect(window.modalView.delegateEvents).not.toHaveBeenCalled();
+        expect(view.edgeDefintionTemplate.render).not.toHaveBeenCalled();
+      });
+
+
+      it("should handle resize", function () {
+
+        var ui = {
+          changeWidth : function () {
+
+          }
+        };
+        spyOn(ui, "changeWidth");
+        view.ui = ui;
+
+        view.handleResize(1);
+        expect(view.ui.changeWidth).toHaveBeenCalledWith(1);
+
+      });
+
       it("should delete graph", function () {
         var e = {
             currentTarget: {
@@ -546,6 +679,48 @@
 
       });
 
+
+      it("should create edit graph modal in edit mode without defintions", function () {
+
+        var g = {
+          _key: "blub2",
+          name: "blub2",
+          edgeDefinitions: [],
+          orphanCollections: [],
+          get : function (a) {
+            return g[a];
+          }
+        }, e = {
+          currentTarget: {
+            id: "blabalblub"
+          },
+          stopPropagation : function () {},
+          val : "blub",
+          removed : {id : "moppel"}
+        };
+
+        spyOn(view.collection, "findWhere").andReturn(
+          g
+        );
+
+        spyOn(e, "stopPropagation");
+        spyOn(window.modalView, "show");
+
+
+        view.options.collectionCollection.add(
+          {name : "NONSYSTEM", isSystem : false, type : "edge"});
+        view.options.collectionCollection.add(
+          {name : "SYSTEM", isSystem : true, type : 'document'});
+
+        view.editGraph(e);
+
+        expect(e.stopPropagation).toHaveBeenCalled();
+        expect(view.removedECollList.length).toEqual(0);
+        expect(view.eCollList.length).toEqual(1);
+        expect(window.modalView.show).toHaveBeenCalled();
+
+
+      });
 
       it("should not saveEditedGraph as no defintions are supplied", function () {
 
