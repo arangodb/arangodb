@@ -46,6 +46,7 @@
       expect(graphs.fetch).toHaveBeenCalledWith({async: false});
     });
 
+
     describe("after rendering", function () {
 
       var g1, g2, g3;

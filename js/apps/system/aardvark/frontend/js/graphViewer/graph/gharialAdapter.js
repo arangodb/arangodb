@@ -494,6 +494,10 @@ function GharialAdapter(nodes, edges, viewer, config) {
     return edgeCollections;
   };
 
+  self.getSelectedEdgeCollection = function() {
+    return selectedEdgeCol;
+  };
+
   self.useEdgeCollection = function(name) {
     if (!_.contains(edgeCollections, name)) {
       throw "Collection " + name + " is not available in the graph.";
@@ -503,6 +507,10 @@ function GharialAdapter(nodes, edges, viewer, config) {
 
   self.getNodeCollections = function() {
     return nodeCollections;
+  };
+
+  self.getSelectedNodeCollection = function() {
+    return selectedNodeCol;
   };
 
   self.useNodeCollection = function(name) {
