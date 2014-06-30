@@ -76,11 +76,14 @@ struct jsonData {
   char const* _message;
 };
 
-#define YY_FATAL_ERROR(a) \
-  LOG_DEBUG("json-parser: %s", (a)); \
-  if (false) { \
-    yy_fatal_error(a, NULL); \
-  }
+#define YY_FATAL_ERROR(a)              \
+  do {                                 \
+    LOG_DEBUG("json-parser: %s", (a)); \
+    if (false) {                       \
+      yy_fatal_error(a, NULL);         \
+    }                                  \
+  }                                    \
+  while (0)
 %}
 
 %%
