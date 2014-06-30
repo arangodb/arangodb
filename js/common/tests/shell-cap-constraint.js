@@ -438,7 +438,7 @@ function CapConstraintSuite() {
       collection.save({ n : 11 });
       assertEqual(5, collection.count());
       assertEqual([7, 8, 9, 10, 11], collection.toArray().map(fun).sort(nsort));
-      
+     
       testHelper.waitUnload(collection);
 
       assertEqual(5, collection.count());
@@ -467,26 +467,28 @@ function CapConstraintSuite() {
 
       assertEqual(0, collection.count());
 
-      testHelper.waitUnload(collection);
+      testHelper.waitUnload(collection, true);
 
       assertEqual(0, collection.count());
 
       for (var i = 0; i < 10; ++i) {
         collection.save({ n : i });
       }
-      
-      testHelper.waitUnload(collection);
-      
-      assertEqual(5, collection.count());
-      assertEqual([5, 6, 7, 8, 9], collection.toArray().map(fun).sort(nsort));
-      
-      testHelper.waitUnload(collection);
+     
+      testHelper.waitUnload(collection, true);
       
       assertEqual(5, collection.count());
       assertEqual([5, 6, 7, 8, 9], collection.toArray().map(fun).sort(nsort));
+      
+      collection.save({ n : 10 });
+
+      testHelper.waitUnload(collection);
+      
+      assertEqual(5, collection.count());
+      assertEqual([6, 7, 8, 9, 10], collection.toArray().map(fun).sort(nsort));
 
       collection.save({ n: 0 });
-      assertEqual([0, 6, 7, 8, 9], collection.toArray().map(fun).sort(nsort));
+      assertEqual([0, 7, 8, 9, 10], collection.toArray().map(fun).sort(nsort));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -87,7 +87,7 @@ exports.Swagger = function () {
       var result = {},
       apis = [],
       pathes,
-      regex = /(:)([^\/]*)/,
+      regex = /(:)([^\/]*)/g,
       i,
       url,
       api,
