@@ -431,7 +431,8 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
                   .filter(":selected")
                   .text();
               adapter.useNodeCollection(nodeCollection);
-            }
+            },
+            "Select"
           );
         }
         self.rebindAll(self.newNodeRebinds());
@@ -497,7 +498,8 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
                   .filter(":selected")
                   .text();
               adapter.useEdgeCollection(edgeCollection);
-            }
+            },
+            "Select"
           );
         }
         self.rebindAll(self.connectNodesRebinds());

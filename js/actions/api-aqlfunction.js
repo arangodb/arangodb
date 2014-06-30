@@ -42,14 +42,15 @@ var aqlfunctions = require("org/arangodb/aql/functions");
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_get_api_aqlfunction
 /// @brief gets all reqistered AQL user functions
 ///
-/// @RESTHEADER{GET /_api/aqlfunction,returns registered AQL user functions}
+/// @RESTHEADER{GET /_api/aqlfunction, Return registered AQL user functions}
 ///
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{namespace,string,optional}
-/// Returns all registered AQL user functions from namespace `namespace`.
+/// Returns all registered AQL user functions from namespace *namespace*.
 ///
 /// @RESTDESCRIPTION
 /// Returns all registered AQL user functions.
@@ -57,16 +58,16 @@ var aqlfunctions = require("org/arangodb/aql/functions");
 /// The call will return a JSON list with all user functions found. Each user
 /// function will at least have the following attributes:
 ///
-/// - `name`: The fully qualified name of the user function
+/// - *name*: The fully qualified name of the user function
 ///
-/// - `code`: A string representation of the function body
+/// - *code*: A string representation of the function body
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// if success `HTTP 200` is returned.
+/// if success *HTTP 200* is returned.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestAqlfunctionsGetAll}
 ///     var url = "/_api/aqlfunction";
@@ -77,6 +78,7 @@ var aqlfunctions = require("org/arangodb/aql/functions");
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_api_aqlfunction (req, res) {
@@ -95,9 +97,10 @@ function get_api_aqlfunction (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_post_api_aqlfunction
 /// @brief create a new AQL user function
 ///
-/// @RESTHEADER{POST /_api/aqlfunction,creates or replaces an AQL user function}
+/// @RESTHEADER{POST /_api/aqlfunction, Create AQL user function}
 ///
 /// @RESTBODYPARAM{body,json,required}
 /// the body with name and code of the aql user function.
@@ -107,49 +110,49 @@ function get_api_aqlfunction (req, res) {
 /// The following data need to be passed in a JSON representation in the body of
 /// the POST request:
 ///
-/// - `name`: the fully qualified name of the user functions.
+/// - *name*: the fully qualified name of the user functions.
 ///
-/// - `code`: a string representation of the function body.
+/// - *code*: a string representation of the function body.
 /// 
-/// - `isDeterministic`: an optional boolean value to indicate that the function
+/// - *isDeterministic*: an optional boolean value to indicate that the function
 ///   results are fully deterministic (function return value solely depends on 
 ///   the input value and return value is the same for repeated calls with same
-///   input). The `isDeterministic` attribute is currently not used but may be
+///   input). The *isDeterministic* attribute is currently not used but may be
 ///   used later for optimisations.
 ///
 /// In case of success, the returned JSON object has the following properties:
 ///
-/// - `error`: boolean flag to indicate that an error occurred (`false`
+/// - *error*: boolean flag to indicate that an error occurred (*false*
 ///   in this case)
 ///
-/// - `code`: the HTTP status code
+/// - *code*: the HTTP status code
 ///
 /// The body of the response will contain a JSON object with additional error
 /// details. The object has the following attributes:
 ///
-/// - `error`: boolean flag to indicate that an error occurred (`true` in this case)
+/// - *error*: boolean flag to indicate that an error occurred (*true* in this case)
 ///
-/// - `code`: the HTTP status code
+/// - *code*: the HTTP status code
 ///
-/// - `errorNum`: the server error number
+/// - *errorNum*: the server error number
 ///
-/// - `errorMessage`: a descriptive error message
+/// - *errorMessage*: a descriptive error message
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
 /// If the function already existed and was replaced by the
-/// call, the server will respond with `HTTP 200`.
+/// call, the server will respond with *HTTP 200*.
 ///
 /// @RESTRETURNCODE{201}
 /// If the function can be registered by the server, the server will respond with 
-/// `HTTP 201`.
+/// *HTTP 201*.
 ///
 /// @RESTRETURNCODE{400}
 /// If the JSON representation is malformed or mandatory data is missing from the
-/// request, the server will respond with `HTTP 400`.
+/// request, the server will respond with *HTTP 400*.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestAqlfunctionCreate}
 ///     var url = "/_api/aqlfunction";
@@ -164,6 +167,7 @@ function get_api_aqlfunction (req, res) {
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock 
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_api_aqlfunction (req, res) {
@@ -179,9 +183,10 @@ function post_api_aqlfunction (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_delete_api_aqlfunction
 /// @brief remove an existing AQL user function
 ///
-/// @RESTHEADER{DELETE /_api/aqlfunction/{name},remove an existing AQL user function}
+/// @RESTHEADER{DELETE /_api/aqlfunction/name, Remove existing AQL user function}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -191,46 +196,46 @@ function post_api_aqlfunction (req, res) {
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{group,string,optional}
-/// If set to `true`, then the function name provided in `name` is treated as
+/// If set to *true*, then the function name provided in *name* is treated as
 /// a namespace prefix, and all functions in the specified namespace will be deleted.
-/// If set to `false`, the function name provided in `name` must be fully 
+/// If set to *false*, the function name provided in *name* must be fully 
 /// qualified, including any namespaces.
 ///
 /// @RESTDESCRIPTION
 ///
-/// Removes an existing AQL user function, identified by `name`. 
+/// Removes an existing AQL user function, identified by *name*. 
 ///
 /// In case of success, the returned JSON object has the following properties:
 ///
-/// - `error`: boolean flag to indicate that an error occurred (`false`
+/// - *error*: boolean flag to indicate that an error occurred (*false*
 ///   in this case)
 ///
-/// - `code`: the HTTP status code
+/// - *code*: the HTTP status code
 ///
 /// The body of the response will contain a JSON object with additional error
 /// details. The object has the following attributes:
 ///
-/// - `error`: boolean flag to indicate that an error occurred (`true` in this case)
+/// - *error*: boolean flag to indicate that an error occurred (*true* in this case)
 ///
-/// - `code`: the HTTP status code
+/// - *code*: the HTTP status code
 ///
-/// - `errorNum`: the server error number
+/// - *errorNum*: the server error number
 ///
-/// - `errorMessage`: a descriptive error message
+/// - *errorMessage*: a descriptive error message
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
 /// If the function can be removed by the server, the server will respond with 
-/// `HTTP 200`.
+/// *HTTP 200*.
 ///
 /// @RESTRETURNCODE{400}
-/// If the user function name is malformed, the server will respond with `HTTP 400`.
+/// If the user function name is malformed, the server will respond with *HTTP 400*.
 ///
 /// @RESTRETURNCODE{404}
-/// If the specified user user function does not exist, the server will respond with `HTTP 404`.
+/// If the specified user user function does not exist, the server will respond with *HTTP 404*.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// deletes a function:
 ///
@@ -257,6 +262,7 @@ function post_api_aqlfunction (req, res) {
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function delete_api_aqlfunction (req, res) {
