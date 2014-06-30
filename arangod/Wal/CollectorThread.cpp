@@ -377,7 +377,7 @@ void CollectorThread::run () {
 
       if (! guard.wait(Interval)) {
         if (++counter > 10) {
-          LOG_TRACE("wal collector has queued operations: %d", (int) hasQueuedOperations());
+          LOG_TRACE("wal collector has queued operations: %d", (int) _operationsQueue.size());
           counter = 0;
         }
       }

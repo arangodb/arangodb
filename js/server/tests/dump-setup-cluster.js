@@ -46,6 +46,16 @@
 
   db._useDatabase("UnitTestsDumpSrc");
 
+  // clean up first
+  db._drop("UnitTestsDumpEmpty");
+  db._drop("UnitTestsDumpMany");
+  db._drop("UnitTestsDumpEdges");
+  db._drop("UnitTestsDumpOrder");
+  db._drop("UnitTestsDumpRemoved");
+  db._drop("UnitTestsDumpIndexes");
+  db._drop("UnitTestsDumpTruncated");
+  db._drop("UnitTestsDumpShards");
+  db._drop("UnitTestsDumpStrings");
 
   // this remains empty
   db._create("UnitTestsDumpEmpty", { waitForSync: true });
@@ -100,17 +110,10 @@
   }
   c.truncate();
 
-  // custom key options
-  c = db._create("UnitTestsDumpKeygen", { 
-    keyOptions: { 
-      type: "autoincrement", 
-      allowUserKeys: false, 
-      offset: 7, 
-      increment: 42 
-    }
-  });
+  // more than one shard:
+  c = db._create("UnitTestsDumpShards", { numberOfShards : 9 });
   for (i = 0; i < 1000; ++i) {
-    c.save({ value: i, more: { value: [ i, i ] } });
+    c.save({ _key : String(7 + (i*42)), value: i, more: { value: [ i, i ] } });
   }
   
   // strings
@@ -129,60 +132,6 @@
   texts.forEach(function (t, i) { 
     c.save({ _key: "text" + i, value: t });
   });
-
-
-  c = db._create("UnitTestsDumpTransactionCommit");
-  db._executeTransaction({
-    collections: { 
-      write: "UnitTestsDumpTransactionCommit"
-    },
-    action: function (params) {
-      var c = require("internal").db.UnitTestsDumpTransactionCommit;
-      for (var i = 0; i < 1000; ++i) {
-        c.save({ _key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i });
-      }
-    }
-  });
- 
-  
-  c = db._create("UnitTestsDumpTransactionUpdate");
-  for (i = 0; i < 1000; ++i) {
-    c.save({ _key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i });
-  }
-
-  db._executeTransaction({
-    collections: { 
-      write: "UnitTestsDumpTransactionUpdate"
-    },
-    action: function (params) {
-      var c = require("internal").db.UnitTestsDumpTransactionUpdate;
-      for (var i = 0; i < 1000; i += 2) {
-        c.update("test" + i, { value3 : i });
-      }
-    }
-  });
- 
-  
-  c = db._create("UnitTestsDumpTransactionAbort");
-  c.save({ _key: "foo" });
-  try {
-    db._executeTransaction({
-      collections: { 
-        write: "UnitTestsDumpTransactionAbort"
-      },
-      action: function (params) {
-        var c = require("internal").db.UnitTestsDumpTransactionAbort;
-        c.remove("foo");
-        for (i = 0; i < 1000; ++i) {
-          c.save({ _key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i });
-        }
-        throw "rollback!";
-      }
-    });
-    throw "unexpected!";
-  }
-  catch (err) {
-  }
 
 })();
 

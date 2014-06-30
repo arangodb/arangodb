@@ -973,45 +973,47 @@ function routeRequest (req, res) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines an http action handler
+/// @startDocuBlock actionsDefineHttp
 ///
-/// @FUN{actions.defineHttp(@FA{options})}
+/// `actions.defineHttp(options)`
 ///
-/// Defines a new action. The @FA{options} are as follows:
+/// Defines a new action. The *options* are as follows:
 ///
-/// @FA{options.url}
+/// `options.url`
 ///
 /// The URL, which can be used to access the action. This path might contain
 /// slashes. Note that this action will also be called, if a url is given such that
-/// @FA{options.url} is a prefix of the given url and no longer definition
+/// *options.url* is a prefix of the given url and no longer definition
 /// matches.
 ///
-/// @FA{options.prefix}
+/// *options.prefix}
 ///
-/// If @LIT{false}, then only use the action for exact matches. The default is
-/// @LIT{true}.
+/// If *false*, then only use the action for exact matches. The default is
+/// *true*.
 ///
-/// @FA{options.context}
+/// `options.context`
 ///
 /// The context to which this actions belongs. Possible values are "admin"
 /// and "user".
 ///
-/// @FA{options.callback}(@FA{request}, @FA{response})
+/// `options.callback(request, response)`
 ///
 /// The request argument contains a description of the request. A request
-/// parameter @LIT{foo} is accessible as @LIT{request.parametrs.foo}. A request
-/// header @LIT{bar} is accessible as @LIT{request.headers.bar}. Assume that
-/// the action is defined for the url @LIT{/foo/bar} and the request url is
-/// @LIT{/foo/bar/hugo/egon}. Then the suffix parts @LIT{[ "hugon"\, "egon" ]}
-/// are availible in @LIT{request.suffix}.
+/// parameter *foo* is accessible as *request.parametrs.foo*. A request
+/// header *bar* is accessible as *request.headers.bar*. Assume that
+/// the action is defined for the url */foo/bar* and the request url is
+/// */foo/bar/hugo/egon*. Then the suffix parts *[ "hugon"\, "egon" ]*
+/// are availible in *request.suffix*.
 ///
-/// The callback must define fill the @FA{response}.
+/// The callback must define fill the *response*.
 ///
-/// - @LIT{@FA{response}.responseCode}: the response code
-/// - @LIT{@FA{response}.contentType}: the content type of the response
-/// - @LIT{@FA{response}.body}: the body of the response
+/// * *response.responseCode*: the response code
+/// * *response.contentType*: the content type of the response
+/// * *response.body*: the body of the response
 ///
-/// You can use the functions @FN{ResultOk} and @FN{ResultError} to easily
+/// You can use the functions *ResultOk* and *ResultError* to easily
 /// generate a response.
+/// @endDocuBLock
 ////////////////////////////////////////////////////////////////////////////////
 
 function defineHttp (options) {
@@ -1050,11 +1052,12 @@ function defineHttp (options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get an error message string for an error code
+/// @startDocuBlock actionsGetErrorMessage
 ///
-/// @FUN{actions.getErrorMessage(@FA{code})}
+/// `actions.getErrorMessage(code)`
 ///
 /// Returns the error message for an error code.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function getErrorMessage (code) {
@@ -1108,17 +1111,18 @@ function getJsonBody (req, res, code) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates an error
+/// @startDocuBlock actionsResultError
 ///
-/// @FUN{actions.resultError(@FA{req}, @FA{res}, @FA{code}, @FA{errorNum},
-///                          @FA{errorMessage}, @FA{headers}, @FA{keyvals})}
+/// *actions.resultError(*req*, *res*, *code*, *errorNum*,
+///                          *errorMessage*, *headers*, *keyvals)*
 ///
 /// The function generates an error response. The response body is an array
-/// with an attribute @LIT{errorMessage} containing the error message
-/// @FA{errorMessage}, @LIT{error} containing @LIT{true}, @LIT{code} containing
-/// @FA{code}, @LIT{errorNum} containing @FA{errorNum}, and @LIT{errorMessage}
-/// containing the error message @FA{errorMessage}. @FA{keyvals} are mixed
+/// with an attribute *errorMessage* containing the error message
+/// *errorMessage*, *error* containing *true*, *code* containing
+/// *code*, *errorNum* containing *errorNum*, and *errorMessage*
+/// containing the error message *errorMessage*. *keyvals* are mixed
 /// into the result.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers, keyvals) {  
@@ -1453,15 +1457,16 @@ function badParameter (req, res, name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a result
+/// @startDocuBlock actionsResultOk
 ///
-/// @FUN{actions.resultOk(@FA{req}, @FA{res}, @FA{code}, @FA{result}, @FA{headers}})}
+/// `actions.resultOk(req, res, code, result, headers)`
 ///
-/// The function defines a response. @FA{code} is the status code to
-/// return. @FA{result} is the result object, which will be returned as JSON
-/// object in the body. @LIT{headers} is an array of headers to returned.
-/// The function adds the attribute @LIT{error} with value @LIT{false}
-/// and @LIT{code} with value @FA{code} to the @FA{result}.
+/// The function defines a response. *code* is the status code to
+/// return. *result* is the result object, which will be returned as JSON
+/// object in the body. *headers* is an array of headers to returned.
+/// The function adds the attribute *error* with value *false*
+/// and *code* with value *code* to the *result*.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultOk (req, res, httpReturnCode, result, headers) {  
@@ -1486,11 +1491,12 @@ function resultOk (req, res, httpReturnCode, result, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates an error for a bad request
+/// @startDocuBlock actionsResultBad
 ///
-/// @FUN{actions.resultBad(@FA{req}, @FA{res}, @FA{error-code}, @FA{msg}, @FA{headers})}
+/// `actions.resultBad(req, res, error-code, msg, headers)`
 ///
 /// The function generates an error response.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultBad (req, res, code, msg, headers) {
@@ -1500,11 +1506,12 @@ function resultBad (req, res, code, msg, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates an error for not found 
+/// @startDocuBlock actionsResultNotFound
 ///
-/// @FUN{actions.resultNotFound(@FA{req}, @FA{res}, @FA{code}, @FA{msg}, @FA{headers})}
+/// `actions.resultNotFound(req, res, code, msg, headers)`
 ///
 /// The function generates an error response.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultNotFound (req, res, code, msg, headers) {
@@ -1514,11 +1521,12 @@ function resultNotFound (req, res, code, msg, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates an error for not implemented
+/// @startDocuBlock actionsResultNotImplemented
 ///
-/// @FUN{actions.resultNotImplemented(@FA{req}, @FA{res}, @FA{msg}, @FA{headers})}
+/// `actions.resultNotImplemented(req, res, msg, headers)`
 ///
 /// The function generates an error response.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultNotImplemented (req, res, msg, headers) {
@@ -1533,11 +1541,12 @@ function resultNotImplemented (req, res, msg, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates an error for unsupported methods
+/// @startDocuBlock actionsResultUnsupported
 ///
-/// @FUN{actions.resultUnsupported(@FA{req}, @FA{res}, @FA{headers})}
+/// `actions.resultUnsupported(req, res, headers)`
 ///
 /// The function generates an error response.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultUnsupported (req, res, headers) {
@@ -1611,11 +1620,12 @@ function handleRedirect (req, res, options, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a permanently redirect
+/// @startDocuBlock actionsResultPermanentRedirect
 ///
-/// @FUN{actions.resultPermanentRedirect(@FA{req}, @FA{res}, @FA{options}, @FA{headers})}
+/// `actions.resultPermanentRedirect(req, res, options, headers)`
 ///
 /// The function generates a redirect response.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultPermanentRedirect (req, res, options, headers) {
@@ -1627,11 +1637,12 @@ function resultPermanentRedirect (req, res, options, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a temporary redirect
+/// @startDocuBlock actionsResultTemporaryRedirect 
 ///
-/// @FUN{actions.resultTemporaryRedirect(@FA{req}, @FA{res}, @FA{options}, @FA{headers})}
+/// `actions.resultTemporaryRedirect(req, res, options, headers)`
 ///
 /// The function generates a redirect response.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultTemporaryRedirect (req, res, options, headers) {
@@ -1727,11 +1738,12 @@ function resultCursor (req, res, cursor, code, options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates an error for unknown collection
+/// @startDocuBlock actionsCollectionNotFound
 ///
-/// @FUN{actions.collectionNotFound(@FA{req}, @FA{res}, @FA{collection}, @FA{headers})}
+/// `actions.collectionNotFound(req, res, collection, headers)`
 ///
 /// The function generates an error response.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function collectionNotFound (req, res, collection, headers) {
@@ -1751,11 +1763,12 @@ function collectionNotFound (req, res, collection, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates an error for an unknown index
+/// @startDocuBlock actionsIndexNotFound
 ///
-/// @FUN{actions.indexNotFound(@FA{req}, @FA{res}, @FA{collection}, @FA{index}, @FA{headers})}
+/// `actions.indexNotFound(req, res, collection, index, headers)`
 ///
 /// The function generates an error response.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function indexNotFound (req, res, collection, index, headers) {
@@ -1781,13 +1794,14 @@ function indexNotFound (req, res, collection, index, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates an error for an exception
+/// @startDocuBlock actionsResultException
 ///
-/// @FUN{actions.resultException(@FA{req}, @FA{res}, @FA{err}, @FA{headers}, @FA{verbose})}
+/// `actions.resultException(req, res, err, headers, verbose)`
 ///
 /// The function generates an error response. If @FA{verbose} is set to 
-/// @LIT{true} or not specified (the default), then the error stack trace will 
+/// *true* or not specified (the default), then the error stack trace will 
 /// be included in the error message if available.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function resultException (req, res, err, headers, verbose) {

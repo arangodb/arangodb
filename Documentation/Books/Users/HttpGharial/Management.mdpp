@@ -70,6 +70,12 @@ Removes a graph from the collection *\_graphs*.
 @RESTPARAM{graph-name, string, required}
 The name of the graph.
 
+@RESTQUERYPARAMS
+
+@RESTPARAM{dropCollections, boolean, optional}
+Drop collections of this graph as well.
+Collections will only be dropped if they are not used in other graphs.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
@@ -145,6 +151,12 @@ The name of the graph.
 
 @RESTPARAM{collection-name, string, required}
 The name of the vertex collection.
+
+@RESTQUERYPARAMS
+
+@RESTPARAM{dropCollection, boolean, optional}
+Drop the collection as well.
+Collection will only be dropped if it is not used in other graphs.
 
 @RESTRETURNCODES
 
@@ -284,6 +296,12 @@ The name of the graph.
 
 @RESTPARAM{definition-name, string, required}
 The name of the edge collection used in the definition.
+
+@RESTQUERYPARAMS
+
+@RESTPARAM{dropCollection, boolean, optional}
+Drop the collection as well.
+Collection will only be dropped if it is not used in other graphs.
 
 @RESTRETURNCODES
 

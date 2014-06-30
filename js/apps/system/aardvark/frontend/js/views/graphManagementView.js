@@ -12,12 +12,12 @@
     removedECollList : [],
 
     events: {
-      "click #deleteGraph"                  : "deleteGraph",
-      "click .icon_arangodb_settings2"      : "editGraph",
-      "click #createGraph"                  : "addNewGraph",
-      "keyup #graphManagementSearchInput"   : "search",
-      "click #graphManagementSearchSubmit"  : "search",
-      "click .tile-graph"                   : "loadGraphViewer"
+      "click #deleteGraph"                        : "deleteGraph",
+      "click .icon_arangodb_settings2.editGraph"  : "editGraph",
+      "click #createGraph"                        : "addNewGraph",
+      "keyup #graphManagementSearchInput"         : "search",
+      "click #graphManagementSearchSubmit"        : "search",
+      "click .tile-graph"                         : "loadGraphViewer"
     },
 
     loadGraphViewer: function(e) {
@@ -42,12 +42,21 @@
       }, true);
     },
 
+    handleResize: function(w) {
+      if (!this.width || this.width !== w) {
+        this.width = w;
+        if (this.ui) {
+          this.ui.changeWidth(w);
+        }
+      }
+    },
+
     addNewGraph: function(e) {
       e.preventDefault();
       this.createEditGraphModal();
     },
 
-    deleteGraph: function(e) {
+    deleteGraph: function() {
       var self = this;
       var name = $("#editGraphName")[0].value;
       this.collection.get(name).destroy({
@@ -144,7 +153,6 @@
         editedVertexCollections = _.pluck($('#newVertexCollections').select2("data"), "text"),
         edgeDefinitions = [],
         newEdgeDefinitions = {},
-        self = this,
         collection,
         from,
         to,
@@ -172,13 +180,11 @@
           }
         }
       );
-
       //if no edge definition is left
       if (edgeDefinitions.length === 0) {
         $('#s2id_newEdgeDefinitions0 .select2-choices').css("border-color", "red");
         return;
       }
-
 
       //get current edgeDefs/orphanage
       var graph = this.collection.findWhere({_key: name});
@@ -194,7 +200,6 @@
           }
         }
       );
-
       //add new orphans
       editedVertexCollections.forEach(
         function(vC) {
@@ -203,7 +208,6 @@
           }
         }
       );
-
 
       //evaluate all new, edited and deleted edge definitions
       var newEDs = [];
@@ -251,7 +255,6 @@
           graph.deleteEdgeDefinition(eD);
         }
       );
-
       this.updateGraphManagementView();
       window.modalView.hide();
     },
@@ -307,6 +310,13 @@
         index,
         edgeDefinitionElements;
 
+      if (!name) {
+        arangoHelper.arangoError(
+          "A name for the graph has to be provided."
+        );
+        return 0;
+      }
+
       if (this.collection.findWhere({_key: name})) {
         arangoHelper.arangoError(
           "The graph '" + name + "' already exists."
@@ -335,12 +345,7 @@
           }
         }
       );
-      if (!name) {
-        arangoHelper.arangoError(
-          "A name for the graph has to be provided."
-        );
-        return 0;
-      }
+
       this.collection.create({
         name: name,
         edgeDefinitions: edgeDefinitions,
@@ -392,6 +397,9 @@
 
         name = graph.get("_key");
         edgeDefinitions = graph.get("edgeDefinitions");
+        if (!edgeDefinitions || edgeDefinitions.length === 0 ) {
+          edgeDefinitions = [{collection : "", from : "", to :""}];
+        }
         orphanCollections = graph.get("orphanCollections");
 
         tableContent.push(

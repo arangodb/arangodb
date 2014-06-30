@@ -74,7 +74,7 @@ namespace triagens {
             _numWrites(0) {
 
           if (N == 1) {
-            this->addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION);
+            this->addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
           }
         }
 
@@ -88,7 +88,7 @@ namespace triagens {
             _numWrites(0) {
 
           if (N == 1) {
-            this->addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION);
+            this->addHint(TRI_TRANSACTION_HINT_SINGLE_OPERATION, false);
           }
         }
 

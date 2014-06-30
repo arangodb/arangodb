@@ -64,10 +64,10 @@ namespace triagens {
 
         AhuacatlTransaction (struct TRI_vocbase_s* vocbase,
                              TRI_aql_context_t* context)
-          : Transaction<T>(vocbase),
+          : Transaction<T>(vocbase, 0),
             _context(context) {
 
-          this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY);
+          this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
 
           TRI_vector_pointer_t* collections = &context->_collections;
 

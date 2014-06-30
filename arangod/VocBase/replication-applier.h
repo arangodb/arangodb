@@ -33,6 +33,7 @@
 #include "Basics/Common.h"
 #include "BasicsC/locks.h"
 #include "BasicsC/threads.h"
+#include "Utils/ReplicationTransaction.h"
 #include "VocBase/replication-common.h"
 #include "VocBase/voc-types.h"
 
@@ -41,7 +42,7 @@
 // -----------------------------------------------------------------------------
 
 struct TRI_json_s;
-struct TRI_transaction_s;
+struct TRI_server_s;
 struct TRI_vocbase_s;
 
 // -----------------------------------------------------------------------------
@@ -87,7 +88,7 @@ TRI_replication_applier_error_t;
 /// @brief state information about replication application
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_replication_applier_state_s {
+struct TRI_replication_applier_state_t {
   TRI_voc_tick_t                           _lastProcessedContinuousTick;
   TRI_voc_tick_t                           _lastAppliedContinuousTick;
   TRI_voc_tick_t                           _lastAvailableContinuousTick;
@@ -100,14 +101,57 @@ typedef struct TRI_replication_applier_state_s {
   uint64_t                                 _totalRequests;
   uint64_t                                 _totalFailedConnects;
   uint64_t                                 _totalEvents;
-}
-TRI_replication_applier_state_t;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_replication_applier_s {
+struct TRI_replication_applier_t {
+  TRI_replication_applier_t (TRI_server_t* server,
+                             TRI_vocbase_t* vocbase) 
+    : _server(server),
+      _vocbase(vocbase),
+      _databaseName(TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, vocbase->_name)) {
+  
+    TRI_InitCondition(&_runStateChangeCondition);
+    TRI_InitReadWriteLock(&_statusLock);
+    TRI_InitSpin(&_threadLock);
+  }
+
+  ~TRI_replication_applier_t () {
+    for (auto it = _runningRemoteTransactions.begin(); it != _runningRemoteTransactions.end(); ++it) {
+      auto trx = (*it).second;
+
+      // do NOT write abort markers so we can resume running transactions later
+      trx->addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
+      delete trx;
+    }
+
+    TRI_DestroySpin(&_threadLock);
+    TRI_DestroyReadWriteLock(&_statusLock);
+    TRI_DestroyCondition(&_runStateChangeCondition);
+
+    TRI_FreeString(TRI_CORE_MEM_ZONE, _databaseName);
+  }
+
+  void addRemoteTransaction (triagens::arango::ReplicationTransaction* trx) {
+    _runningRemoteTransactions.insert(std::make_pair(trx->externalId(), trx));
+  }
+
+  void abortRunningRemoteTransactions () {
+    for (auto it = _runningRemoteTransactions.begin(); it != _runningRemoteTransactions.end(); ++it) {
+      auto trx = (*it).second;
+
+      // do NOT write abort markers so we can resume running transactions later
+      trx->removeHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, true);
+      delete trx;
+    }
+
+    _runningRemoteTransactions.clear();
+  }
+
+  struct TRI_server_s*                     _server;
   struct TRI_vocbase_s*                    _vocbase;
   TRI_read_write_lock_t                    _statusLock;
   TRI_spin_t                               _threadLock;
@@ -117,8 +161,8 @@ typedef struct TRI_replication_applier_s {
   TRI_replication_applier_configuration_t  _configuration;
   char*                                    _databaseName;
   TRI_thread_t                             _thread;
-}
-TRI_replication_applier_t;
+  std::unordered_map<TRI_voc_tid_t, triagens::arango::ReplicationTransaction*> _runningRemoteTransactions;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -128,7 +172,8 @@ TRI_replication_applier_t;
 /// @brief create a replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_replication_applier_t* TRI_CreateReplicationApplier (struct TRI_vocbase_s*);
+TRI_replication_applier_t* TRI_CreateReplicationApplier (struct TRI_server_s*,
+                                                         struct TRI_vocbase_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a replication applier
@@ -173,6 +218,12 @@ int TRI_StartReplicationApplier (TRI_replication_applier_t*,
 
 int TRI_StopReplicationApplier (TRI_replication_applier_t*,
                                 bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shuts down the replication applier
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_ShutdownReplicationApplier (TRI_replication_applier_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief configure the replication applier

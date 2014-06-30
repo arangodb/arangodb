@@ -10,7 +10,8 @@ A graph data model always consists of two collections: the relations between the
 nodes in the graphs are stored in an "edges collection", the nodes in the graph
 are stored in documents in regular collections.
 
-Example:
+*Example*:
+
 - the "edge" collection stores the information that a company's reception is
   sub-unit to the services unit and the services unit is sub-unit to the
   CEO. You would express this relationship with the *to* and *_to* attributes
