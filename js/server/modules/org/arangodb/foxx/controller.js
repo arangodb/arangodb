@@ -43,8 +43,8 @@ var Controller,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Create a new Controller
 /// @startDocuBlock JSF_foxx_controller_initializer
+///
 /// `new FoxxController(applicationContext, options)`
 ///
 /// This creates a new Controller. The first argument is the controller
@@ -60,6 +60,7 @@ var Controller,
 ///     urlPrefix: "/meadow"
 ///   });
 /// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -221,6 +222,7 @@ extend(Controller.prototype, {
 ///   // Take this request and deal with it!
 /// });
 /// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -244,6 +246,7 @@ extend(Controller.prototype, {
 ///   // Take this request and deal with it!
 /// });
 /// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -267,6 +270,7 @@ extend(Controller.prototype, {
 ///   // Take this request and deal with it!
 /// });
 /// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -290,6 +294,7 @@ extend(Controller.prototype, {
 ///   // Take this request and deal with it!
 /// });
 /// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -321,6 +326,7 @@ extend(Controller.prototype, {
 ///   // Take this request and deal with it!
 /// });
 /// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -351,6 +357,7 @@ extend(Controller.prototype, {
 ///   //Do some crazy request logging
 /// });
 /// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -388,6 +395,7 @@ extend(Controller.prototype, {
 ///   //Do some crazy response logging
 /// });
 /// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -433,30 +441,30 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_activateAuthentication
-/// @brief Activate authentication for this app
+/// @startDocuBlock JSF_foxx_controller_activateAuthentication
 ///
 /// `FoxxController#activateAuthentication(opts)`
 ///
 /// To activate authentication for this authentication, first call this function.
 /// Provide the following arguments:
 ///
-/// * `type`: Currently we only support `cookie`, but this will change in the future.
-/// * `cookieLifetime`: An integer. Lifetime of cookies in seconds.
-/// * `cookieName`: A string used as the name of the cookie.
-/// * `sessionLifetime`: An integer. Lifetime of sessions in seconds.
+/// * *type*: Currently we only support *cookie*, but this will change in the future
+/// * *cookieLifetime*: An integer. Lifetime of cookies in seconds
+/// * *cookieName*: A string used as the name of the cookie
+/// * *sessionLifetime*: An integer. Lifetime of sessions in seconds
 ///
+/// @EXAMPLES
 ///
-/// *Examples*
-///
-/// @code
+/// ```js
 ///     app.activateAuthentication({
 ///       type: "cookie",
 ///       cookieLifetime: 360000,
 ///       cookieName: "my_cookie",
 ///       sessionLifetime: 400,
 ///     });
-/// @endcode
+/// ```
+///
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   activateAuthentication: function (opts) {
     'use strict';
@@ -468,8 +476,7 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_login
-/// @brief Add a login handler
+/// @startDocuBlock JSF_foxx_controller_login
 ///
 /// `FoxxController#login(path, opts)`
 ///
@@ -498,6 +505,7 @@ extend(Controller.prototype, {
 ///   }
 /// });
 /// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   login: function (route, opts) {
@@ -507,8 +515,7 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_logout
-/// @brief Add a logout handler
+/// @startDocuBlock JSF_foxx_controller_logout
 ///
 /// `FoxxController#logout(path, opts)`
 ///
@@ -536,6 +543,7 @@ extend(Controller.prototype, {
 ///   }
 /// });
 /// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   logout: function (route, opts) {
@@ -545,8 +553,7 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_register
-/// @brief Add a register handler
+/// @startDocuBlock JSF_foxx_controller_register
 ///
 /// `FoxxController#register(path, opts)`
 ///
@@ -570,8 +577,9 @@ extend(Controller.prototype, {
 /// *acceptedAttributes* and set it to an array containing strings with the names of
 /// the additional attributes you want to accept. All other attributes in the request
 /// will be ignored.
+///
 /// If you want default attributes for the accepted attributes or set additional fields
-/// (for example *admin*) use the option `defaultAttributes` which should be a hash
+/// (for example *admin*) use the option *defaultAttributes* which should be a hash
 /// mapping attribute names to default values.
 ///
 /// @EXAMPLES
@@ -584,6 +592,8 @@ extend(Controller.prototype, {
 ///   }
 /// });
 /// ```
+///
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   register: function (route, opts) {
     'use strict';
@@ -595,8 +605,7 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_controller_changePassword
-/// @brief Add a change password handler
+/// @startDocuBlock JSF_foxx_controller_changePassword
 ///
 /// FoxxController#changePassword(route, opts)`
 ///
@@ -625,6 +634,7 @@ extend(Controller.prototype, {
 ///   }
 /// });
 /// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   changePassword: function (route, opts) {
@@ -643,7 +653,7 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_controller_activateAuthentication
+/// @startDocuBlock JSF_foxx_controller_activateSessions
 ///
 /// `FoxxController#activateAuthentication(opts)`
 ///
@@ -667,6 +677,8 @@ extend(Controller.prototype, {
 ///   sessionStorageApp: "/my-sessions"
 /// });
 /// ```
+///
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   activateSessions: function (opts) {
     'use strict';
@@ -677,7 +689,7 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_controller_logout
+/// @startDocuBlock JSF_foxx_controller_destroySession
 ///
 /// `FoxxController#logout(path, opts)`
 ///
@@ -699,6 +711,8 @@ extend(Controller.prototype, {
 ///   res.json({"message": "Bye, Bye"});
 /// });
 /// ```
+///
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   destroySession: function (route, opts) {
     'use strict';
