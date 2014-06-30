@@ -138,7 +138,6 @@
   * [Databases](HttpDatabase/README.md)
     * [To-Endpoint](HttpDatabase/DatabaseEndpoint.md)
     * [Management](HttpDatabase/DatabaseManagement.md)
-    * [Managing (http)](HttpDatabase/ManagingDatabasesUsingHttp.md)
     * [Note on Databases](HttpDatabase/NotesOnDatabases.md)
   * [Documents](HttpDocument/README.md)
     * [Address and ETag](HttpDocument/AddressAndEtag.md)
