@@ -44,15 +44,15 @@ var API = "_api/database";
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_get_api_database_list
+/// @startDocuBlock JSF_get_api_database_list
 /// @brief retrieves a list of all existing databases
 ///
-/// @RESTHEADER{GET /_api/database,retrieves a list of all existing databases}
+/// @RESTHEADER{GET /_api/database, List of databases}
 ///
 /// @RESTDESCRIPTION
 /// Retrieves the list of all existing databases
 ///
-/// Note: retrieving the list of databases is only possible from within the `_system` database.
+/// **Note**: retrieving the list of databases is only possible from within the *_system* database.
 ///
 /// @RESTRETURNCODES
 /// 
@@ -63,9 +63,9 @@ var API = "_api/database";
 /// is returned if the request is invalid.
 ///
 /// @RESTRETURNCODE{403}
-/// is returned if the request was not executed in the `_system` database.
+/// is returned if the request was not executed in the *_system* database.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDatabaseGet}
 ///     var url = "/_api/database";
@@ -75,13 +75,14 @@ var API = "_api/database";
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_get_api_database_user
+/// @startDocuBlock JSF_get_api_database_user
 /// @brief retrieves a list of all databases the current user can access
 ///
-/// @RESTHEADER{GET /_api/database/user,retrieves a list of all databases the current user can access}
+/// @RESTHEADER{GET /_api/database/user, List of accessible databases }
 ///
 /// @RESTDESCRIPTION
 /// Retrieves the list of all databases the current user can access without 
@@ -95,7 +96,7 @@ var API = "_api/database";
 /// @RESTRETURNCODE{400}
 /// is returned if the request is invalid.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDatabaseGetUser}
 ///     var url = "/_api/database/user";
@@ -105,26 +106,27 @@ var API = "_api/database";
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_get_api_database_current
+/// @startDocuBlock JSF_get_api_database_current
 /// @brief retrieves information about the current database
 ///
-/// @RESTHEADER{GET /_api/database/current,retrieves information about the current database}
+/// @RESTHEADER{GET /_api/database/current, Information of the database}
 ///
 /// @RESTDESCRIPTION
 /// Retrieves information about the current database
 ///
 /// The response is a JSON object with the following attributes:
 /// 
-/// - `name`: the name of the current database
+/// - *name*: the name of the current database
 ///
-/// - `id`: the id of the current database
+/// - *id*: the id of the current database
 ///
-/// - `path`: the filesystem path of the current database
+/// - *path*: the filesystem path of the current database
 ///
-/// - `isSystem`: whether or not the current database is the `_system` database
+/// - *isSystem*: whether or not the current database is the *_system* database
 ///
 /// @RESTRETURNCODES
 /// 
@@ -137,7 +139,7 @@ var API = "_api/database";
 /// @RESTRETURNCODE{404}
 /// is returned if the database could not be found.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDatabaseGetInfo}
 ///     var url = "/_api/database/current";
@@ -147,6 +149,7 @@ var API = "_api/database";
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_api_database (req, res) {
@@ -211,9 +214,10 @@ function get_api_database (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_get_api_database_new
 /// @brief creates a new database
 ///
-/// @RESTHEADER{POST /_api/database,creates a new database}
+/// @RESTHEADER{POST /_api/database, Create database}
 ///
 /// @RESTBODYPARAM{body,json,required}
 /// the body with the name of the database.
@@ -221,32 +225,32 @@ function get_api_database (req, res) {
 /// @RESTDESCRIPTION
 /// Creates a new database
 ///
-/// The request body must be a JSON object with the attribute `name`. `name` must
+/// The request body must be a JSON object with the attribute *name*. *name* must
 /// contain a valid @ref DatabaseNames "database name".
 ///
-/// The request body can optionally contain an attribute `users`, which then 
+/// The request body can optionally contain an attribute *users*, which then 
 /// must be a list of user objects to initially create for the new database.
 /// Each user object can contain the following attributes:
 ///
-/// - `username`: the user name as a string. This attribute is mandatory.
+/// - *username*: the user name as a string. This attribute is mandatory.
 ///
-/// - `passwd`: the user password as a string. If not specified, then it defaults
+/// - *passwd*: the user password as a string. If not specified, then it defaults
 ///   to the empty string.
 ///
-/// - `active`: a boolean flag indicating whether the user accout should be
-///   actived or not. The default value is `true`.
+/// - *active*: a boolean flag indicating whether the user accout should be
+///   actived or not. The default value is *true*.
 ///
-/// - `extra`: an optional JSON object with extra user information. The data
-///   contained in `extra` will be stored for the user but not be interpreted
+/// - *extra*: an optional JSON object with extra user information. The data
+///   contained in *extra* will be stored for the user but not be interpreted
 ///   further by ArangoDB.
 ///
-/// If `users` is not specified or does not contain any users, a default user
-/// `root` will be created with an empty string password. This ensures that the
+/// If *users* is not specified or does not contain any users, a default user
+/// *root* will be created with an empty string password. This ensures that the
 /// new database will be accessible after it is created.
 ///
-/// The response is a JSON object with the attribute `result` set to `true`.
+/// The response is a JSON object with the attribute *result* set to *true*.
 ///
-/// Note: creating a new database is only possible from within the `_system` database.
+/// **Note**: creating a new database is only possible from within the *_system* database.
 ///
 /// @RESTRETURNCODES
 /// 
@@ -258,14 +262,14 @@ function get_api_database (req, res) {
 /// specified name already exists.
 ///
 /// @RESTRETURNCODE{403}
-/// is returned if the request was not executed in the `_system` database.
+/// is returned if the request was not executed in the *_system* database.
 ///
 /// @RESTRETURNCODE{409}
 /// is returned if a database with the specified name already exists.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// Creating a database named `example`.
+/// Creating a database named *example*.
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDatabaseCreate}
 ///     var url = "/_api/database";
@@ -287,7 +291,7 @@ function get_api_database (req, res) {
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Creating a database named `mydb` with two users.
+/// Creating a database named *mydb* with two users.
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDatabaseCreateUsers}
 ///     var url = "/_api/database";
@@ -320,6 +324,7 @@ function get_api_database (req, res) {
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_api_database (req, res) {
@@ -389,9 +394,10 @@ function post_api_database (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_get_api_database_delete
 /// @brief drop an existing database
 ///
-/// @RESTHEADER{DELETE /_api/database/`database-name`,drops an existing database}
+/// @RESTHEADER{DELETE /_api/database/database-name, Drop database}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -401,8 +407,8 @@ function post_api_database (req, res) {
 /// @RESTDESCRIPTION
 /// Deletes the database along with all data stored in it.
 ///
-/// Note: dropping a database is only possible from within the `_system` database.
-/// The `_system` database itself cannot be dropped.
+/// **Note**: dropping a database is only possible from within the *_system* database.
+/// The *_system* database itself cannot be dropped.
 ///
 /// @RESTRETURNCODES
 /// 
@@ -413,12 +419,12 @@ function post_api_database (req, res) {
 /// is returned if the request is malformed.
 ///
 /// @RESTRETURNCODE{403}
-/// is returned if the request was not executed in the `_system` database.
+/// is returned if the request was not executed in the *_system* database.
 ///
 /// @RESTRETURNCODE{404}
 /// is returned if the database could not be found.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDatabaseDrop}
 ///     var url = "/_api/database";
@@ -431,6 +437,7 @@ function post_api_database (req, res) {
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function delete_api_database (req, res) {

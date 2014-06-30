@@ -39,9 +39,10 @@ var API = "/_api/edges";
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock API_EDGE_READINOUTBOUND
 /// @brief get edges
 ///
-/// @RESTHEADER{GET /_api/edges/{collection-id},reads in- or outbound edges}
+/// @RESTHEADER{GET /_api/edges/collection-id, Read in- or outbound edges}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -54,14 +55,14 @@ var API = "/_api/edges";
 /// The id of the start vertex.
 ///
 /// @RESTQUERYPARAM{direction,string,optional}
-/// Selects `in` or `out` direction for edges. If not set, any edges are
+/// Selects *in* or *out* direction for edges. If not set, any edges are
 /// returned.
 ///
 /// @RESTDESCRIPTION
 /// Returns the list of edges starting or ending in the vertex identified by
-/// `vertex-handle`.
+/// *vertex-handle*.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Any direction
 ///
@@ -134,6 +135,7 @@ var API = "/_api/edges";
 ///     db._drop("vertices");
 ///     db._graphs.remove("graph");
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_edges (req, res) {

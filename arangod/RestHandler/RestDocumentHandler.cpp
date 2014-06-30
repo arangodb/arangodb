@@ -96,9 +96,10 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock REST_DOCUMENT_CREATE
 /// @brief creates a document
 ///
-/// @RESTHEADER{POST /_api/document,creates a document}
+/// @RESTHEADER{POST /_api/document,Create document}
 ///
 /// @RESTBODYPARAM{document,json,required}
 /// A JSON representation of the document.
@@ -109,18 +110,18 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 /// The collection name.
 ///
 /// @RESTQUERYPARAM{createCollection,boolean,optional}
-/// If this parameter has a value of `true` or `yes`, then the collection is
+/// If this parameter has a value of *true* or *yes*, then the collection is
 /// created if it does not yet exist. Other values will be ignored so the
 /// collection must be present for the operation to succeed.
 ///
-/// Note: this flag is not supported in a cluster. Using it will result in an
+/// **Note**: this flag is not supported in a cluster. Using it will result in an
 /// error.
 ///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until document has been synced to disk.
 ///
 /// @RESTDESCRIPTION
-/// Creates a new document in the collection named `collection`.  A JSON
+/// Creates a new document in the collection named *collection*.  A JSON
 /// representation of the document must be passed as the body of the POST
 /// request.
 ///
@@ -131,45 +132,45 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 /// The body of the response contains a JSON object with the following
 /// attributes:
 ///
-/// - `_id` contains the document handle of the newly created document
-/// - `_key` contains the document key
-/// - `_rev` contains the document revision
+/// - *_id* contains the document handle of the newly created document
+/// - *_key* contains the document key
+/// - *_rev* contains the document revision
 ///
-/// If the collection parameter `waitForSync` is `false`, then the call returns
+/// If the collection parameter *waitForSync* is *false*, then the call returns
 /// as soon as the document has been accepted. It will not wait until the
 /// document has been synced to disk.
 ///
-/// Optionally, the URL parameter `waitForSync` can be used to force
+/// Optionally, the URL parameter *waitForSync* can be used to force
 /// synchronisation of the document creation operation to disk even in case that
-/// the `waitForSync` flag had been disabled for the entire collection.  Thus,
-/// the `waitForSync` URL parameter can be used to force synchronisation of just
-/// this specific operations. To use this, set the `waitForSync` parameter to
-/// `true`. If the `waitForSync` parameter is not specified or set to `false`,
-/// then the collection's default `waitForSync` behavior is applied. The
-/// `waitForSync` URL parameter cannot be used to disable synchronisation for
-/// collections that have a default `waitForSync` value of `true`.
+/// the *waitForSync* flag had been disabled for the entire collection.  Thus,
+/// the *waitForSync* URL parameter can be used to force synchronisation of just
+/// this specific operations. To use this, set the *waitForSync* parameter to
+/// *true*. If the *waitForSync* parameter is not specified or set to *false*,
+/// then the collection's default *waitForSync* behavior is applied. The
+/// *waitForSync* URL parameter cannot be used to disable synchronisation for
+/// collections that have a default *waitForSync* value of *true*.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{201}
-/// is returned if the document was created successfully and `waitForSync` was
-/// `true`.
+/// is returned if the document was created successfully and *waitForSync* was
+/// *true*.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the document was created successfully and `waitForSync` was
-/// `false`.
+/// is returned if the document was created successfully and *waitForSync* was
+/// *false*.
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation of a
 /// document. The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{404}
-/// is returned if the collection specified by `collection` is unknown.  The
+/// is returned if the collection specified by *collection* is unknown.  The
 /// response body contains an error document in this case.
 ///
 /// @EXAMPLES
 ///
-/// Create a document given a collection named `products`. Note that the
+/// Create a document given a collection named *products*. Note that the
 /// revision identifier might or might not by equal to the auto-generated
 /// key.
 ///
@@ -188,8 +189,8 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Create a document in a collection named `products` with a collection-level
-/// `waitForSync` value of `false`.
+/// Create a document in a collection named *products* with a collection-level
+/// *waitForSync* value of *false*.
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostAccept1}
 ///     var cn = "products";
@@ -206,8 +207,8 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Create a document in a collection with a collection-level `waitForSync`
-/// value of `false`, but using the `waitForSync` URL parameter.
+/// Create a document in a collection with a collection-level *waitForSync*
+/// value of *false*, but using the *waitForSync* URL parameter.
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostWait1}
 ///     var cn = "products";
@@ -271,6 +272,7 @@ HttpHandler::status_t RestDocumentHandler::execute () {
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock 
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::createDocument () {
@@ -424,9 +426,10 @@ bool RestDocumentHandler::readDocument () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock REST_DOCUMENT_READ
 /// @brief reads a single document
 ///
-/// @RESTHEADER{GET /_api/document/`document-handle`,reads a document}
+/// @RESTHEADER{GET /_api/document/document-handle,Read document}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -438,18 +441,18 @@ bool RestDocumentHandler::readDocument () {
 /// @RESTHEADERPARAM{If-None-Match,string,optional}
 /// If the "If-None-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has a different revision than the
-/// given etag. Otherwise an `HTTP 304` is returned.
+/// given etag. Otherwise an *HTTP 304* is returned.
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
 /// If the "If-Match" header is given, then it must contain exactly one
 /// etag. The document is returned, if it has the same revision ad the
-/// given etag. Otherwise a `HTTP 412` is returned. As an alternative
-/// you can supply the etag in an attribute `rev` in the URL.
+/// given etag. Otherwise a *HTTP 412* is returned. As an alternative
+/// you can supply the etag in an attribute *rev* in the URL.
 ///
 /// @RESTDESCRIPTION
-/// Returns the document identified by `document-handle`. The returned
-/// document contains two special attributes: `_id` containing the document
-/// handle and `_rev` containing the revision.
+/// Returns the document identified by *document-handle*. The returned
+/// document contains two special attributes: *_id* containing the document
+/// handle and *_rev* containing the revision.
 ///
 /// @RESTRETURNCODES
 ///
@@ -464,10 +467,10 @@ bool RestDocumentHandler::readDocument () {
 /// is returned if the document or collection was not found
 ///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or `rev` is given and the found
+/// is returned if a "If-Match" header or *rev* is given and the found
 /// document has a different version. The response will also contain the found
-/// document's current revision in the `_rev` attribute. Additionally, the
-/// attributes `_id` and `_key` will be returned.
+/// document's current revision in the *_rev* attribute. Additionally, the
+/// attributes *_id* and *_key* will be returned.
 ///
 /// @EXAMPLES
 ///
@@ -515,6 +518,7 @@ bool RestDocumentHandler::readDocument () {
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readSingleDocument (bool generateBody) {
@@ -662,9 +666,10 @@ bool RestDocumentHandler::getDocumentCoordinator (
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock REST_DOCUMENT_READ_ALL
 /// @brief reads all documents from collection
 ///
-/// @RESTHEADER{GET /_api/document,reads all documents from collection}
+/// @RESTHEADER{GET /_api/document,Read all documents}
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -673,7 +678,7 @@ bool RestDocumentHandler::getDocumentCoordinator (
 ///
 /// @RESTDESCRIPTION
 /// Returns a list of all URI for all documents from the collection identified
-/// by `collection`.
+/// by *collection*.
 ///
 /// @RESTRETURNCODES
 ///
@@ -717,7 +722,7 @@ bool RestDocumentHandler::getDocumentCoordinator (
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
-///
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::readAllDocuments () {
@@ -821,9 +826,10 @@ bool RestDocumentHandler::getAllDocumentsCoordinator (
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock REST_DOCUMENT_READ_HEAD
 /// @brief reads a single document head
 ///
-/// @RESTHEADER{HEAD /_api/document/`document-handle`,reads a document header}
+/// @RESTHEADER{HEAD /_api/document/document-handle,Read document header}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -834,22 +840,22 @@ bool RestDocumentHandler::getAllDocumentsCoordinator (
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally fetch a document based on a target revision id by
-/// using the `rev` URL parameter.
+/// using the *rev* URL parameter.
 ///
 /// @RESTHEADERPARAMETERS
 ///
 /// @RESTHEADERPARAM{If-None-Match,string,optional}
 /// If the "If-None-Match" header is given, then it must contain exactly one
 /// etag. If the current document revision is different to the specified etag,
-/// an `HTTP 200` response is returned. If the current document revision is
-/// identical to the specified etag, then an `HTTP 304` is returned.
+/// an *HTTP 200* response is returned. If the current document revision is
+/// identical to the specified etag, then an *HTTP 304* is returned.
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
 /// You can conditionally fetch a document based on a target revision id by
-/// using the `if-match` HTTP header.
+/// using the *if-match* HTTP header.
 ///
 /// @RESTDESCRIPTION
-/// Like `GET`, but only returns the header fields and not the body. You
+/// Like *GET*, but only returns the header fields and not the body. You
 /// can use this call to get the current revision of a document or check if
 /// the document was deleted.
 ///
@@ -861,14 +867,14 @@ bool RestDocumentHandler::getAllDocumentsCoordinator (
 /// @RESTRETURNCODE{304}
 /// is returned if the "If-None-Match" header is given and the document has
 /// same version
-///
+///*
 /// @RESTRETURNCODE{404}
 /// is returned if the document or collection was not found
 ///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or `rev` is given and the found
+/// is returned if a "If-Match" header or *rev* is given and the found
 /// document has a different version. The response will also contain the found
-/// document's current revision in the `etag` header.
+/// document's current revision in the *etag* header.
 ///
 /// @EXAMPLES
 ///
@@ -884,6 +890,8 @@ bool RestDocumentHandler::getAllDocumentsCoordinator (
 ///
 ///     assert(response.code === 200);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::checkDocument () {
@@ -900,9 +908,10 @@ bool RestDocumentHandler::checkDocument () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock REST_DOCUMENT_REPLACE
 /// @brief replaces a document
 ///
-/// @RESTHEADER{PUT /_api/document/`document-handle`,replaces a document}
+/// @RESTHEADER{PUT /_api/document/document-handle,Replace document}
 ///
 /// @RESTBODYPARAM{document,json,required}
 /// A JSON representation of the new document.
@@ -919,94 +928,94 @@ bool RestDocumentHandler::checkDocument () {
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally replace a document based on a target revision id by
-/// using the `rev` URL parameter.
+/// using the *rev* URL parameter.
 ///
 /// @RESTQUERYPARAM{policy,string,optional}
 /// To control the update behavior in case there is a revision mismatch, you
-/// can use the `policy` parameter (see below).
+/// can use the *policy* parameter (see below).
 ///
 /// @RESTHEADERPARAMETERS
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
 /// You can conditionally replace a document based on a target revision id by
-/// using the `if-match` HTTP header.
+/// using the *if-match* HTTP header.
 ///
 /// @RESTDESCRIPTION
-/// Completely updates (i.e. replaces) the document identified by `document-handle`.
-/// If the document exists and can be updated, then a `HTTP 201` is returned
+/// Completely updates (i.e. replaces) the document identified by *document-handle*.
+/// If the document exists and can be updated, then a *HTTP 201* is returned
 /// and the "ETag" header field contains the new revision of the document.
 ///
 /// If the new document passed in the body of the request contains the
-/// `document-handle` in the attribute `_id` and the revision in `_rev`,
+/// *document-handle* in the attribute *_id* and the revision in *_rev*,
 /// these attributes will be ignored. Only the URI and the "ETag" header are
 /// relevant in order to avoid confusion when using proxies.
 ///
-/// Optionally, the URL parameter `waitForSync` can be used to force
+/// Optionally, the URL parameter *waitForSync* can be used to force
 /// synchronisation of the document replacement operation to disk even in case
-/// that the `waitForSync` flag had been disabled for the entire collection.
-/// Thus, the `waitForSync` URL parameter can be used to force synchronisation
-/// of just specific operations. To use this, set the `waitForSync` parameter
-/// to `true`. If the `waitForSync` parameter is not specified or set to
-/// `false`, then the collection's default `waitForSync` behavior is
-/// applied. The `waitForSync` URL parameter cannot be used to disable
-/// synchronisation for collections that have a default `waitForSync` value
-/// of `true`.
+/// that the *waitForSync* flag had been disabled for the entire collection.
+/// Thus, the *waitForSync* URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the *waitForSync* parameter
+/// to *true*. If the *waitForSync* parameter is not specified or set to
+/// *false*, then the collection's default *waitForSync* behavior is
+/// applied. The *waitForSync* URL parameter cannot be used to disable
+/// synchronisation for collections that have a default *waitForSync* value
+/// of *true*.
 ///
 /// The body of the response contains a JSON object with the information about
-/// the handle and the revision.  The attribute `_id` contains the known
-/// `document-handle` of the updated document, the attribute `_rev`
+/// the handle and the revision.  The attribute *_id* contains the known
+/// *document-handle* of the updated document, the attribute *_rev*
 /// contains the new document revision.
 ///
-/// If the document does not exist, then a `HTTP 404` is returned and the
+/// If the document does not exist, then a *HTTP 404* is returned and the
 /// body of the response contains an error document.
 ///
 /// There are two ways for specifying the targeted document revision id for
 /// conditional replacements (i.e. replacements that will only be executed if
 /// the revision id found in the database matches the document revision id specified
 /// in the request):
-/// - specifying the target revision in the `rev` URL query parameter
-/// - specifying the target revision in the `if-match` HTTP header
+/// - specifying the target revision in the *rev* URL query parameter
+/// - specifying the target revision in the *if-match* HTTP header
 ///
 /// Specifying a target revision is optional, however, if done, only one of the
-/// described mechanisms must be used (either the `rev` URL parameter or the
-/// `if-match` HTTP header).
+/// described mechanisms must be used (either the *rev* URL parameter or the
+/// *if-match* HTTP header).
 /// Regardless which mechanism is used, the parameter needs to contain the target
-/// document revision id as returned in the `_rev` attribute of a document or
-/// by an HTTP `etag` header.
+/// document revision id as returned in the *_rev* attribute of a document or
+/// by an HTTP *etag* header.
 ///
 /// For example, to conditionally replace a document based on a specific revision
 /// id, you can use the following request:
 ///
-/// - PUT /_api/document/`document-handle`?rev=`etag`
+/// `PUT /_api/document/document-handle?rev=etag`
 ///
-/// If a target revision id is provided in the request (e.g. via the `etag` value
-/// in the `rev` URL query parameter above), ArangoDB will check that
+/// If a target revision id is provided in the request (e.g. via the *etag* value
+/// in the *rev* URL query parameter above), ArangoDB will check that
 /// the revision id of the document found in the database is equal to the target
 /// revision id provided in the request. If there is a mismatch between the revision
-/// id, then by default a `HTTP 412` conflict is returned and no replacement is
+/// id, then by default a *HTTP 412* conflict is returned and no replacement is
 /// performed.
 ///
-/// The conditional update behavior can be overriden with the `policy` URL query parameter:
+/// The conditional update behavior can be overriden with the *policy* URL query parameter:
 ///
-/// - PUT /_api/document/`document-handle`?policy=`policy`
+/// `PUT /_api/document/document-handle?policy=policy`
 ///
-/// If `policy` is set to `error`, then the behavior is as before: replacements
+/// If *policy* is set to *error*, then the behavior is as before: replacements
 /// will fail if the revision id found in the database does not match the target
 /// revision id specified in the request.
 ///
-/// If `policy` is set to `last`, then the replacement will succeed, even if the
+/// If *policy* is set to *last*, then the replacement will succeed, even if the
 /// revision id found in the database does not match the target revision id specified
-/// in the request. You can use the `last` `policy` to force replacements.
+/// in the request. You can use the *last* *policy* to force replacements.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{201}
-/// is returned if the document was replaced successfully and `waitForSync` was
-/// `true`.
+/// is returned if the document was replaced successfully and *waitForSync* was
+/// *true*.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the document was replaced successfully and `waitForSync` was
-/// `false`.
+/// is returned if the document was replaced successfully and *waitForSync* was
+/// *false*.
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation of a
@@ -1016,10 +1025,10 @@ bool RestDocumentHandler::checkDocument () {
 /// is returned if the collection or the document was not found
 ///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or `rev` is given and the found
+/// is returned if a "If-Match" header or *rev* is given and the found
 /// document has a different version. The response will also contain the found
-/// document's current revision in the `_rev` attribute. Additionally, the
-/// attributes `_id` and `_key` will be returned.
+/// document's current revision in the *_rev* attribute. Additionally, the
+/// attributes *_id* and *_key* will be returned.
 ///
 /// @EXAMPLES
 ///
@@ -1112,6 +1121,7 @@ bool RestDocumentHandler::checkDocument () {
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock  
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::replaceDocument () {
@@ -1119,9 +1129,10 @@ bool RestDocumentHandler::replaceDocument () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock REST_DOCUMENT_UPDATE
 /// @brief updates a document
 ///
-/// @RESTHEADER{PATCH /_api/document/`document-handle`,patches a document}
+/// @RESTHEADER{PATCH /_api/document/document-handle, Patch document}
 ///
 /// @RESTBODYPARAM{document,json,required}
 /// A JSON representation of the document update.
@@ -1135,72 +1146,72 @@ bool RestDocumentHandler::replaceDocument () {
 ///
 /// @RESTQUERYPARAM{keepNull,boolean,optional}
 /// If the intention is to delete existing attributes with the patch command,
-/// the URL query parameter `keepNull` can be used with a value of `false`.
+/// the URL query parameter *keepNull* can be used with a value of *false*.
 /// This will modify the behavior of the patch command to remove any attributes
 /// from the existing document that are contained in the patch document with an
-/// attribute value of `null`.
+/// attribute value of *null*.
 ///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until document has been synced to disk.
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally patch a document based on a target revision id by
-/// using the `rev` URL parameter.
+/// using the *rev* URL parameter.
 ///
 /// @RESTQUERYPARAM{policy,string,optional}
 /// To control the update behavior in case there is a revision mismatch, you
-/// can use the `policy` parameter.
+/// can use the *policy* parameter.
 ///
 /// @RESTHEADERPARAMETERS
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
 /// You can conditionally patch a document based on a target revision id by
-/// using the `if-match` HTTP header.
+/// using the *if-match* HTTP header.
 ///
 /// @RESTDESCRIPTION
-/// Partially updates the document identified by `document-handle`.
+/// Partially updates the document identified by *document-handle*.
 /// The body of the request must contain a JSON document with the attributes
 /// to patch (the patch document). All attributes from the patch document will
 /// be added to the existing document if they do not yet exist, and overwritten
 /// in the existing document if they do exist there.
 ///
-/// Setting an attribute value to `null` in the patch document will cause a
-/// value of `null` be saved for the attribute by default.
+/// Setting an attribute value to *null* in the patch document will cause a
+/// value of *null* be saved for the attribute by default.
 ///
-/// Optionally, the URL parameter `waitForSync` can be used to force
+/// Optionally, the URL parameter *waitForSync* can be used to force
 /// synchronisation of the document update operation to disk even in case
-/// that the `waitForSync` flag had been disabled for the entire collection.
-/// Thus, the `waitForSync` URL parameter can be used to force synchronisation
-/// of just specific operations. To use this, set the `waitForSync` parameter
-/// to `true`. If the `waitForSync` parameter is not specified or set to
-/// `false`, then the collection's default `waitForSync` behavior is
-/// applied. The `waitForSync` URL parameter cannot be used to disable
-/// synchronisation for collections that have a default `waitForSync` value
-/// of `true`.
+/// that the *waitForSync* flag had been disabled for the entire collection.
+/// Thus, the *waitForSync* URL parameter can be used to force synchronisation
+/// of just specific operations. To use this, set the *waitForSync* parameter
+/// to *true*. If the *waitForSync* parameter is not specified or set to
+/// *false*, then the collection's default *waitForSync* behavior is
+/// applied. The *waitForSync* URL parameter cannot be used to disable
+/// synchronisation for collections that have a default *waitForSync* value
+/// of *true*.
 ///
 /// The body of the response contains a JSON object with the information about
-/// the handle and the revision. The attribute `_id` contains the known
-/// `document-handle` of the updated document, the attribute `_rev`
+/// the handle and the revision. The attribute *_id* contains the known
+/// *document-handle* of the updated document, the attribute *_rev*
 /// contains the new document revision.
 ///
-/// If the document does not exist, then a `HTTP 404` is returned and the
+/// If the document does not exist, then a *HTTP 404* is returned and the
 /// body of the response contains an error document.
 ///
 /// You can conditionally update a document based on a target revision id by
-/// using either the `rev` URL parameter or the `if-match` HTTP header.
+/// using either the *rev* URL parameter or the *if-match* HTTP header.
 /// To control the update behavior in case there is a revision mismatch, you
-/// can use the `policy` parameter. This is the same as when replacing
+/// can use the *policy* parameter. This is the same as when replacing
 /// documents (see replacing documents for details).
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{201}
-/// is returned if the document was created successfully and `waitForSync` was
-/// `true`.
+/// is returned if the document was created successfully and *waitForSync* was
+/// *true*.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the document was created successfully and `waitForSync` was
-/// `false`.
+/// is returned if the document was created successfully and *waitForSync* was
+/// *false*.
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if the body does not contain a valid JSON representation of a
@@ -1210,10 +1221,10 @@ bool RestDocumentHandler::replaceDocument () {
 /// is returned if the collection or the document was not found
 ///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or `rev` is given and the found
+/// is returned if a "If-Match" header or *rev* is given and the found
 /// document has a different version. The response will also contain the found
-/// document's current revision in the `_rev` attribute. Additionally, the
-/// attributes `_id` and `_key` will be returned.
+/// document's current revision in the *_rev* attribute. Additionally, the
+/// attributes *_id* and *_key* will be returned.
 ///
 /// @EXAMPLES
 ///
@@ -1245,6 +1256,7 @@ bool RestDocumentHandler::replaceDocument () {
 ///     assert(response5.code === 200);
 ///     logJsonResponse(response5);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::updateDocument () {
@@ -1526,24 +1538,25 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock REST_DOCUMENT_DELETE
 /// @brief deletes a document
 ///
-/// @RESTHEADER{DELETE /_api/document/`document-handle`,deletes a document}
+/// @RESTHEADER{DELETE /_api/document/document-handle, Deletes document}
 ///
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{document-handle,string,required}
-/// Deletes the document identified by `document-handle`.
+/// Deletes the document identified by *document-handle*.
 ///
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally delete a document based on a target revision id by
-/// using the `rev` URL parameter.
+/// using the *rev* URL parameter.
 ///
 /// @RESTQUERYPARAM{policy,string,optional}
 /// To control the update behavior in case there is a revision mismatch, you
-/// can use the `policy` parameter. This is the same as when replacing
+/// can use the *policy* parameter. This is the same as when replacing
 /// documents (see replacing documents for more details).
 ///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
@@ -1553,39 +1566,39 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
 /// You can conditionally delete a document based on a target revision id by
-/// using the `if-match` HTTP header.
+/// using the *if-match* HTTP header.
 ///
 /// @RESTDESCRIPTION
 /// The body of the response contains a JSON object with the information about
-/// the handle and the revision.  The attribute `_id` contains the known
-/// `document-handle` of the deleted document, the attribute `_rev`
+/// the handle and the revision.  The attribute *_id* contains the known
+/// *document-handle* of the deleted document, the attribute *_rev*
 /// contains the document revision.
 ///
-/// If the `waitForSync` parameter is not specified or set to
-/// `false`, then the collection's default `waitForSync` behavior is
-/// applied. The `waitForSync` URL parameter cannot be used to disable
-/// synchronisation for collections that have a default `waitForSync` value
-/// of `true`.
+/// If the *waitForSync* parameter is not specified or set to
+/// *false*, then the collection's default *waitForSync* behavior is
+/// applied. The *waitForSync* URL parameter cannot be used to disable
+/// synchronisation for collections that have a default *waitForSync* value
+/// of *true*.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// is returned if the document was deleted successfully and `waitForSync` was
-/// `true`.
+/// is returned if the document was deleted successfully and *waitForSync* was
+/// *true*.
 ///
 /// @RESTRETURNCODE{202}
-/// is returned if the document was deleted successfully and `waitForSync` was
-/// `false`.
+/// is returned if the document was deleted successfully and *waitForSync* was
+/// *false*.
 ///
 /// @RESTRETURNCODE{404}
 /// is returned if the collection or the document was not found.
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// is returned if a "If-Match" header or `rev` is given and the found
+/// is returned if a "If-Match" header or *rev* is given and the found
 /// document has a different version. The response will also contain the found
-/// document's current revision in the `_rev` attribute. Additionally, the
-/// attributes `_id` and `_key` will be returned.
+/// document's current revision in the *_rev* attribute. Additionally, the
+/// attributes *_id* and *_key* will be returned.
 ///
 /// @EXAMPLES
 ///
@@ -1642,6 +1655,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestDocumentHandler::deleteDocument () {
