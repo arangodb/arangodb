@@ -105,10 +105,17 @@
                 ]
               });
             } else if (req.url.match(/_api\/gharial\/myGraph\/edge/)) {
-              req.success({_id: "1-2"});
+              req.success({
+                error: false,
+                edge: {
+                  _id: "1-2"
+                }
+              });
             } else {
               req.success({
-                _id: 1,
+                vertex: {
+                  _id: 1
+                },
                 error: false
               });
             }
@@ -831,9 +838,11 @@
               } else {
                 request.success({
                   error: false, 
-                  _id: "TestNodes654/myNewNode",
-                  _key: "myNewNode",
-                  _rev: "1234"
+                  vertex: {
+                    _id: "TestNodes654/myNewNode",
+                    _key: "myNewNode",
+                    _rev: "1234"
+                  }
                 });
               }
             };
@@ -1290,7 +1299,12 @@
             var toPatch;
         
             runs(function() {
-              fakeResult = {hello: "world"};
+              fakeResult = {
+                error: false,
+                vertex: {
+                  hello: "world"
+                }
+              };
               toPatch = nodeWithID(c0);
               adapter.patchNode(toPatch, {hello: "world"}, checkCallbackFunction);
             });
@@ -1302,7 +1316,7 @@
             runs(function() {
               expect(toPatch._data.hello).toEqual("world");
               expect($.ajax).toHaveBeenCalledWith(
-                requests.node(graphName, nodesCollection).patch(c0, fakeResult)
+                requests.node(graphName, nodesCollection).patch(c0, fakeResult.vertex)
               );
               
             });
@@ -1313,7 +1327,10 @@
             var toPatch;
         
             runs(function() {
-              fakeResult = {hello: "world"};
+              fakeResult = {
+                error: false,
+                edge: {hello: "world"}
+              };
               toPatch = edgeWithSourceAndTargetId(c0, c1);
               adapter.patchEdge(toPatch, {hello: "world"}, checkCallbackFunction);
             });
@@ -1325,7 +1342,7 @@
             runs(function() {
               expect(toPatch._data.hello).toEqual("world");
               expect($.ajax).toHaveBeenCalledWith(
-                requests.edge(graphName, edgesCollection).patch(toPatch._id, fakeResult)
+                requests.edge(graphName, edgesCollection).patch(toPatch._id, fakeResult.edge)
               );
             });
           });
@@ -1361,9 +1378,11 @@
             runs(function() {
               fakeResult = {
                 error: false,
-                _id: "TestNodes123/MyNode",
-                _rev: "1234",
-                _key: "MyNode"
+                vertex: {
+                  _id: "TestNodes123/MyNode",
+                  _rev: "1234",
+                  _key: "MyNode"
+                }
               };
               adapter.createNode({}, function(node) {
                 insertedId = node._id;
@@ -1866,11 +1885,14 @@
                 source = nodeWithID(c0);
                 target = nodeWithID(c8);
                 fakeResult = {
-                  _id: edgesCollection + "/123",
-                  _key: "123",
-                  _rev: "123",
-                  _from: source._id,
-                  _to: target._id
+                  error: false,
+                  edge: {
+                    _id: edgesCollection + "/123",
+                    _key: "123",
+                    _rev: "123",
+                    _from: source._id,
+                    _to: target._id
+                  }
                 };
                 var edgeInfo = {source: source, target: target};
                 adapter.createEdge(edgeInfo, function(edge) {
