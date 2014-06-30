@@ -1074,8 +1074,7 @@ static int SaveDatabaseParameters (TRI_voc_tick_t id,
   TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
 
   if (! TRI_SaveJson(file, json, false)) {
-    LOG_ERROR("cannot save database information in file '%s'",
-              file);
+    LOG_ERROR("cannot save database information in file '%s'", file);
 
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     TRI_FreeString(TRI_CORE_MEM_ZONE, file);
@@ -1415,7 +1414,7 @@ static void DatabaseManager (void* data) {
         }
 
         // found a database to delete
-        database = (TRI_vocbase_t*) TRI_RemoveVectorPointer(&server->_droppedDatabases, i);
+        database = static_cast<TRI_vocbase_t*>(TRI_RemoveVectorPointer(&server->_droppedDatabases, i));
         break;
       }
     }
@@ -2062,6 +2061,7 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_CreateDatabaseServer (TRI_server_t* server,
+                              TRI_voc_tick_t databaseId,
                               char const* name,
                               TRI_vocbase_defaults_t const* defaults,
                               TRI_vocbase_t** database,
@@ -2096,11 +2096,14 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-
   // create the database directory
   char* file;
-  TRI_voc_tick_t tick = TRI_NewTickServer();
-  int res = CreateDatabaseDirectory(server, tick, name, defaults, &file);
+
+  if (databaseId == 0) {
+    databaseId = TRI_NewTickServer();
+  }
+
+  int res = CreateDatabaseDirectory(server, databaseId, name, defaults, &file);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -2116,7 +2119,7 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
            name,
            path);
 
-  TRI_vocbase_t* vocbase = TRI_OpenVocBase(server, path, tick, name, defaults, false, false);
+  TRI_vocbase_t* vocbase = TRI_OpenVocBase(server, path, databaseId, name, defaults, false, false);
   TRI_FreeString(TRI_CORE_MEM_ZONE, path);
 
   if (vocbase == nullptr) {
@@ -2139,33 +2142,40 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
   }
 
   TRI_ASSERT(vocbase != nullptr);
+  
+  char* tickString = TRI_StringUInt64(databaseId);
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, tickString));
+  TRI_FreeString(TRI_CORE_MEM_ZONE, tickString);
+  TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "name", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, name));
+
 
   // create application directories
   CreateApplicationDirectory(vocbase->_name, server->_appPath);
   CreateApplicationDirectory(vocbase->_name, server->_devAppPath);
 
-  TRI_ReloadAuthInfo(vocbase);
-  TRI_StartCompactorVocBase(vocbase);
+  if (! triagens::wal::LogfileManager::instance()->isInRecovery()) {
+    TRI_ReloadAuthInfo(vocbase);
+    TRI_StartCompactorVocBase(vocbase);
 
-  // start the replication applier
-  if (vocbase->_replicationApplier->_configuration._autoStart) {
-    if (server->_disableReplicationAppliers) {
-      LOG_INFO("replication applier explicitly deactivated for database '%s'", name);
-    }
-    else {
-      res = TRI_StartReplicationApplier(vocbase->_replicationApplier, 0, false);
+    // start the replication applier
+    if (vocbase->_replicationApplier->_configuration._autoStart) {
+      if (server->_disableReplicationAppliers) {
+        LOG_INFO("replication applier explicitly deactivated for database '%s'", name);
+      }
+      else {
+        res = TRI_StartReplicationApplier(vocbase->_replicationApplier, 0, false);
 
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG_WARNING("unable to start replication applier for database '%s': %s",
-                    name,
-                    TRI_errno_string(res));
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG_WARNING("unable to start replication applier for database '%s': %s",
+                      name,
+                      TRI_errno_string(res));
+        }
       }
     }
+
+    // increase reference counter
+    TRI_UseVocBase(vocbase);
   }
-
-
-  // increase reference counter
-  TRI_UseVocBase(vocbase);
 
   {
     DatabaseWriteLocker locker(&server->_databasesLock);
@@ -2457,6 +2467,46 @@ TRI_vocbase_t* TRI_UseDatabaseServer (TRI_server_t* server,
   }
 
   return vocbase;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup a database by its id
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vocbase_t* TRI_LookupDatabaseByIdServer (TRI_server_t* server,
+                                             TRI_voc_tick_t id) {
+  DatabaseReadLocker locker(&server->_databasesLock);
+  size_t const n = server->_databases._nrAlloc;
+
+  for (size_t i = 0; i < n; ++i) {
+    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
+
+    if (vocbase != nullptr && vocbase->_id == id) {
+      return vocbase;
+    }
+  }
+
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup a database by its name
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vocbase_t* TRI_LookupDatabaseByNameServer (TRI_server_t* server,
+                                               char const* name) {
+  DatabaseReadLocker locker(&server->_databasesLock);
+  size_t const n = server->_databases._nrAlloc;
+
+  for (size_t i = 0; i < n; ++i) {
+    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_databases._table[i]);
+
+    if (vocbase != nullptr && TRI_EqualString(vocbase->_name, name)) {
+      return vocbase;
+    }
+  }
+
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -2,7 +2,7 @@
 /*global document, $, _ */
 /*global EventDispatcherControls, NodeShaperControls, EdgeShaperControls */
 /*global LayouterControls, GharialAdapterControls*/
-/*global GraphViewer, d3, window, alert*/
+/*global GraphViewer, d3, window*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
 ///
@@ -453,7 +453,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     } else {
       graphViewer.loadGraphWithRandomStart(function(node) {
         if (node && node.errorCode) {
-          alertError("Sorry your graph seems to be empty");
+          window.alert("Sorry your graph seems to be empty");
         }
       });
     }

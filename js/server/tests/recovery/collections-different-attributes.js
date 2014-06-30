@@ -6,18 +6,22 @@ var jsunity = require("jsunity");
 
 function runSetup () {
   internal.debugClearFailAt();
-  
-  var i, j, c;
-  db._drop("footest");
-  c = db._create("footest", { id: 99999999 });
-  c.save({ foo: "bar" });
-  c.save({ foo: "bart" });
-  db._drop("footest");
 
-  internal.wait(2);
+  var c, i;
+  db._drop("UnitTestsRecovery");
+  c = db._create("UnitTestsRecovery", { "id" : 9999990 });
+  for (i = 0; i < 10; ++i) {
+    c.save({ _key: "test" + i, value1: i, value2: "test", value3: [ "foo", i ] });
+  }
 
-  c = db._create("footest", { id: 99999999 });
-  c.save({ foo: "baz" });
+  // drop the collection
+  c.drop();
+  internal.wait(5);
+
+  c = db._create("UnitTestsRecovery", { "id" : 9999990 });
+  for (i = 0; i < 10; ++i) {
+    c.save({ _key: "test" + i, value3: i, value1: "test", value2: [ "foo", i ] });
+  }
 
   db._drop("test");
   c = db._create("test");
@@ -43,12 +47,18 @@ function recoverySuite () {
 /// @brief test whether we can restore the trx data
 ////////////////////////////////////////////////////////////////////////////////
     
-    testCreateDatabase : function () {
-      var c = db._collection("footest");
-      assertEqual(1, c.count());
-      assertEqual("baz", c.toArray()[0].foo);
+    testCollectionsDifferentAttributes : function () {
+      var c, i, doc;
+      c = db._collection("UnitTestsRecovery");
+
+      for (i = 0; i < 10; ++i) {
+        doc = c.document("test" + i);
+        assertEqual(i, doc.value3);
+        assertEqual("test", doc.value1);
+        assertEqual([ "foo", i ], doc.value2);
+      }
     }
-  
+        
   };
 }
 

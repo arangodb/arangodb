@@ -3203,6 +3203,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
 
   // extract the parameters
   TRI_col_info_t parameter;
+  TRI_voc_cid_t cid = 0;
 
   if (2 <= argv.Length()) {
     if (! argv[1]->IsObject()) {
@@ -3270,10 +3271,15 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
       TRI_FreeCollectionInfoOptions(&parameter);
       TRI_V8_EXCEPTION_PARAMETER(scope, "volatile collections do not support the waitForSync option");
     }
+    
+    if (p->Has(v8g->IdKey)) {
+      // specify collection id - used for testing only
+      cid = TRI_ObjectToUInt64(p->Get(v8g->IdKey), true);
+    }
 
   }
   else {
-    TRI_InitCollectionInfo(vocbase, &parameter, name.c_str(), collectionType, effectiveSize, 0);
+    TRI_InitCollectionInfo(vocbase, &parameter, name.c_str(), collectionType, effectiveSize, nullptr);
   }
 
 
@@ -3286,7 +3292,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
 
   TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase,
                                                                     &parameter,
-                                                                    0, 
+                                                                    cid, 
                                                                     true);
 
   TRI_FreeCollectionInfoOptions(&parameter);
@@ -9088,7 +9094,8 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
   }
 
 
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+  TRI_voc_tick_t id = 0;
 
   // get database defaults from server
   TRI_vocbase_defaults_t defaults;
@@ -9128,12 +9135,17 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
     if (options->Has(keyAuthenticateSystemOnly)) {
       defaults.authenticateSystemOnly = options->Get(keyAuthenticateSystemOnly)->BooleanValue();
     }
+    
+    if (options->Has(v8g->IdKey)) {
+      // only used for testing to create database with a specific id
+      id = TRI_ObjectToUInt64(options->Get(v8g->IdKey), true);
+    }
   }
 
   string const name = TRI_ObjectToString(argv[0]);
 
   TRI_vocbase_t* database;
-  int res = TRI_CreateDatabaseServer(static_cast<TRI_server_t*>(v8g->_server), name.c_str(), &defaults, &database, true);
+  int res = TRI_CreateDatabaseServer(static_cast<TRI_server_t*>(v8g->_server), id, name.c_str(), &defaults, &database, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
