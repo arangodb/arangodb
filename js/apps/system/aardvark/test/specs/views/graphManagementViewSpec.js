@@ -9,11 +9,15 @@
     describe("Graph Management View", function () {
 
         var view,
-            div,
-            modalDiv,
-            graphs,
-            collections,
-            v1, v2, e1, e2, sys1, cols;
+          div,
+          modalDiv,
+          graphs,
+          collections,
+          e1, e2, e3,
+          f1, f2, f3,
+          t1, t2, t3,
+          o1, o2, o3,
+          sys1, cols;
 
         beforeEach(function () {
             modalDiv = document.createElement("div");
@@ -48,25 +52,49 @@
 
             beforeEach(function () {
                 g1 = {
-                    _id: "_graphs/x1",
-                    _key: "x1",
+                    _id: "_graphs/g1",
+                    _key: "g1",
                     _rev: "123",
-                    vertices: "v1",
-                    edges: "e2"
+                    edgeDefinitions:
+                      [
+                        {
+                          collection: e1,
+                          from: ["f1"],
+                          to: ["t1"]
+
+                        }
+                      ],
+                    orphanCollections: ["o1"]
                 };
                 g2 = {
-                    _id: "_graphs/c2",
-                    _key: "c2",
+                    _id: "_graphs/g2",
+                    _key: "g2",
                     _rev: "321",
-                    vertices: "v2",
-                    edges: "e1"
+                  edgeDefinitions:
+                    [
+                      {
+                        collection: e2,
+                        from: ["f2"],
+                        to: ["t2"]
+
+                      }
+                    ],
+                  orphanCollections: ["o2"]
                 };
                 g3 = {
                     _id: "_graphs/g3",
                     _key: "g3",
                     _rev: "111",
-                    vertices: "v3",
-                    edges: "e3"
+                  edgeDefinitions:
+                    [
+                      {
+                        collection: e3,
+                        from: ["f3"],
+                        to: ["t3"]
+
+                      }
+                    ],
+                  orphanCollections: ["o3"]
                 };
                 spyOn(graphs, "fetch");
                 graphs.add(g1);
@@ -79,14 +107,14 @@
                 var list = $("div.tile h5.collectionName", "#graphManagementThumbnailsIn");
                 expect(list.length).toEqual(3);
                 // Order would be g2, g3, g1
-                expect($(list[0]).html()).toEqual(g2._key);
-                expect($(list[1]).html()).toEqual(g3._key);
-                expect($(list[2]).html()).toEqual(g1._key);
+                expect($(list[0]).html()).toEqual(g1._key);
+                expect($(list[1]).html()).toEqual(g2._key);
+                expect($(list[2]).html()).toEqual(g3._key);
             });
 
             describe("creating a new graph", function () {
 
-                it("should create a new graph", function () {
+                it("should create a new empty graph", function () {
                     runs(function () {
                         $("#createGraph").click();
                     });
@@ -95,7 +123,7 @@
                     });
                     runs(function () {
                         $("#createNewGraphName").val("newGraph");
-                        $("#newGraphVertices").val("newVertices");
+                        $("#s2id_newEdgeDefinitions0").val(["newEdgeCol"]);
                         $("#newGraphEdges").val("newEdges");
                         spyOn($, "ajax").andCallFake(function (opts) {
                             expect(opts.type).toEqual("POST");
