@@ -591,8 +591,6 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
   if (found != nullptr) {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
-    LOG_DEBUG("collection named '%s' already exists", name);
-
     TRI_set_errno(TRI_ERROR_ARANGO_DUPLICATE_NAME);
     return nullptr;
   }
@@ -1501,7 +1499,9 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
 
 void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   // stop replication
-  TRI_StopReplicationApplier(vocbase->_replicationApplier, false);
+  if (vocbase->_replicationApplier != nullptr) {
+    TRI_StopReplicationApplier(vocbase->_replicationApplier, false);
+  }
 
   TRI_vector_pointer_t collections;
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
@@ -1532,11 +1532,12 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   TRI_SignalCondition(&vocbase->_compactorCondition);
   TRI_UnlockCondition(&vocbase->_compactorCondition);
 
-  TRI_ASSERT(vocbase->_hasCompactor);
-  int res = TRI_JoinThread(&vocbase->_compactor);
+  if (vocbase->_hasCompactor) {
+    int res = TRI_JoinThread(&vocbase->_compactor);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("unable to join compactor thread: %s", TRI_errno_string(res));
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_ERROR("unable to join compactor thread: %s", TRI_errno_string(res));
+    }
   }
 
   // this will signal the cleanup thread to do one last iteration
@@ -1546,7 +1547,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   TRI_SignalCondition(&vocbase->_cleanupCondition);
   TRI_UnlockCondition(&vocbase->_cleanupCondition);
 
-  res = TRI_JoinThread(&vocbase->_cleanup);
+  int res = TRI_JoinThread(&vocbase->_cleanup);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("unable to join cleanup thread: %s", TRI_errno_string(res));
@@ -1987,7 +1988,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
 
   TRI_ASSERT(collection != nullptr);
 
-  if (! collection->_canDrop) {
+  if (! collection->_canDrop &&  ! triagens::wal::LogfileManager::instance()->isInRecovery()) {
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
 
@@ -2062,7 +2063,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
 
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
-    DropCollectionCallback(0, collection);
+    DropCollectionCallback(nullptr, collection);
 
     TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
 
@@ -2121,17 +2122,22 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
     TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
+    
+    if (triagens::wal::LogfileManager::instance()->isInRecovery()) {
+      DropCollectionCallback(nullptr, collection);
+    }
+    else {
+      // added callback for dropping
+      TRI_CreateBarrierDropCollection(&collection->_collection->_barrierList,
+                                      collection->_collection,
+                                      DropCollectionCallback,
+                                      collection);
 
-    // added callback for dropping
-    TRI_CreateBarrierDropCollection(&collection->_collection->_barrierList,
-                                    collection->_collection,
-                                    DropCollectionCallback,
-                                    collection);
-
-    // wake up the cleanup thread
-    TRI_LockCondition(&vocbase->_cleanupCondition);
-    TRI_SignalCondition(&vocbase->_cleanupCondition);
-    TRI_UnlockCondition(&vocbase->_cleanupCondition);
+      // wake up the cleanup thread
+      TRI_LockCondition(&vocbase->_cleanupCondition);
+      TRI_SignalCondition(&vocbase->_cleanupCondition);
+      TRI_UnlockCondition(&vocbase->_cleanupCondition);
+    }
 
     return TRI_ERROR_NO_ERROR;
   }
@@ -2347,6 +2353,7 @@ bool TRI_DropVocBase (TRI_vocbase_t* vocbase) {
   else {
     vocbase->_usage._isDeleted = true;
     result = true;
+
   }
   TRI_UnlockSpin(&vocbase->_usage._lock);
 

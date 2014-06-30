@@ -1457,8 +1457,6 @@ int LogfileManager::readShutdownInfo () {
   // read if of last sealed logfile (maybe 0)
   uint64_t lastSealedId = basics::JsonHelper::stringUInt64(json, "lastSealed");
 
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
   if (lastSealedId < lastCollectedId) {
     // should not happen normally
     lastSealedId = lastCollectedId;
@@ -1471,6 +1469,8 @@ int LogfileManager::readShutdownInfo () {
   else {
     LOG_TRACE("previous shutdown was at '%s'", shutdownTime.c_str());
   }
+  
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   {
     WRITE_LOCKER(_logfilesLock);
