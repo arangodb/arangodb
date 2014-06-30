@@ -426,9 +426,10 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_put_api_replication_logger_start
 /// @brief starts the replication logger
 ///
-/// @RESTHEADER{PUT /_api/replication/logger-start,starts the replication logger}
+/// @RESTHEADER{PUT /_api/replication/logger-start, Start replication logger}
 ///
 /// @RESTDESCRIPTION
 /// Starts the server's replication logger. Will do nothing if the replication
@@ -437,9 +438,9 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 /// The body of the response contains a JSON object with the following
 /// attributes:
 ///
-/// - `running`: will contain `true`
+/// - *running*: will contain *true*
 ///
-/// Note: this method is not supported on a coordinator in a cluster.
+/// **Note**: this method is not supported on a coordinator in a cluster.
 ///
 /// @RESTRETURNCODES
 ///
@@ -468,6 +469,7 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerStart () {
@@ -483,9 +485,10 @@ void RestReplicationHandler::handleCommandLoggerStart () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_put_api_replication_logger_stop
 /// @brief stops the replication logger
 ///
-/// @RESTHEADER{PUT /_api/replication/logger-stop,stops the replication logger}
+/// @RESTHEADER{PUT /_api/replication/logger-stop, Stop replication logger}
 ///
 /// @RESTDESCRIPTION
 /// Stops the server's replication logger. Will do nothing if the replication
@@ -494,9 +497,9 @@ void RestReplicationHandler::handleCommandLoggerStart () {
 /// The body of the response contains a JSON object with the following
 /// attributes:
 ///
-/// - `running`: will contain `false`
+/// - *running*: will contain *false*
 ///
-/// Note: this method is not supported on a coordinator in a cluster.
+/// **Note**: this method is not supported on a coordinator in a cluster.
 ///
 /// @RESTRETURNCODES
 ///
@@ -526,6 +529,7 @@ void RestReplicationHandler::handleCommandLoggerStart () {
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerStop () {
@@ -541,9 +545,10 @@ void RestReplicationHandler::handleCommandLoggerStop () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_get_api_replication_logger_return_state
 /// @brief returns the state of the replication logger
 ///
-/// @RESTHEADER{GET /_api/replication/logger-state,returns the replication logger state}
+/// @RESTHEADER{GET /_api/replication/logger-state, Return replication logger state}
 ///
 /// @RESTDESCRIPTION
 /// Returns the current state of the server's replication logger. The state will
@@ -557,31 +562,31 @@ void RestReplicationHandler::handleCommandLoggerStop () {
 /// The body of the response contains a JSON object with the following
 /// attributes:
 ///
-/// - `state`: the current logger state as a JSON hash array with the following
+/// - *state*: the current logger state as a JSON hash array with the following
 ///   sub-attributes:
 ///
-///   - `running`: whether or not the logger is running
+///   - *running*: whether or not the logger is running
 ///
-///   - `lastLogTick`: the tick value of the latest tick the logger has logged.
+///   - *lastLogTick*: the tick value of the latest tick the logger has logged.
 ///     This value can be used for incremental fetching of log data.
 ///
-///   - `totalEvents`: total number of events logged since the server was started.
+///   - *totalEvents*: total number of events logged since the server was started.
 ///     The value is not reset between multiple stops and re-starts of the logger.
 ///
-///   - `time`: the current date and time on the logger server
+///   - *time*: the current date and time on the logger server
 ///
-/// - `server`: a JSON hash with the following sub-attributes:
+/// - *server*: a JSON hash with the following sub-attributes:
 ///
-///   - `version`: the logger server's version
+///   - *version*: the logger server's version
 ///
-///   - `serverId`: the logger server's id
+///   - *serverId*: the logger server's id
 ///
-/// - `clients`: a list of all replication clients that ever connected to
+/// - *clients*: a list of all replication clients that ever connected to
 ///   the logger since it was started. This list can be used to determine
 ///   approximately how much data the individual clients have already fetched
-///   from the logger server. Each entry in the list contains a `time` value
+///   from the logger server. Each entry in the list contains a *time* value
 ///   indicating the server time the client last fetched data from the
-///   replication logger. The `lastServedTick` value of each client indicates
+///   replication logger. The *lastServedTick* value of each client indicates
 ///   the latest tick value sent to the client upon a client request to the
 ///   replication logger.
 ///
@@ -628,6 +633,7 @@ void RestReplicationHandler::handleCommandLoggerStop () {
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerState () {
@@ -680,9 +686,10 @@ void RestReplicationHandler::handleCommandLoggerState () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_get_api_replication_logger_configuration
 /// @brief get the configuration of the replication logger
 ///
-/// @RESTHEADER{GET /_api/replication/logger-config,returns the configuration of the replication logger}
+/// @RESTHEADER{GET /_api/replication/logger-config,Configuration of the replication logger}
 ///
 /// @RESTDESCRIPTION
 /// Returns the configuration of the replication logger.
@@ -690,18 +697,18 @@ void RestReplicationHandler::handleCommandLoggerState () {
 /// The body of the response is a JSON hash with the configuration. The
 /// following attributes may be present in the configuration:
 ///
-/// - `autoStart`: whether or not to automatically start the replication logger
+/// - *autoStart*: whether or not to automatically start the replication logger
 ///    on server startup
 ///
-/// - `logRemoteChanges`: whether or not externally created changes should be
+/// - *logRemoteChanges*: whether or not externally created changes should be
 ///    logged by the local logger
 ///
-/// - `maxEvents`: the maximum number of log events kept by the replication
-///    logger before deleting oldest events. A value of `0` means that the
+/// - *maxEvents*: the maximum number of log events kept by the replication
+///    logger before deleting oldest events. A value of *0* means that the
 ///    number of events is not restricted.
 ///
-/// - `maxEventsSize`: the maximum cumulated size of log event data kept by the
-///    replication logger before deleting oldest events. A value of `0` means
+/// - *maxEventsSize*: the maximum cumulated size of log event data kept by the
+///    replication logger before deleting oldest events. A value of *0* means
 ///    that the cumulated size of events is not restricted.
 ///
 /// @RESTRETURNCODES
@@ -724,6 +731,7 @@ void RestReplicationHandler::handleCommandLoggerState () {
 ///     assert(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerGetConfig () {
@@ -744,34 +752,35 @@ void RestReplicationHandler::handleCommandLoggerGetConfig () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_put_api_replication_logger_configuration
 /// @brief set the configuration of the replication logger
 ///
-/// @RESTHEADER{PUT /_api/replication/logger-config,adjusts the configuration of the replication logger}
+/// @RESTHEADER{PUT /_api/replication/logger-config, Configuration of the replication logger}
 ///
 /// @RESTBODYPARAM{configuration,json,required}
 /// A JSON representation of the configuration.
 ///
 /// @RESTDESCRIPTION
-/// Sets the configuration of the replication logger.
+/// Synchronizationn logger.
 ///
 /// The body of the request must be JSON hash with the configuration. The
 /// following attributes are allowed for the configuration:
 ///
-/// - `autoStart`: whether or not to automatically start the replication logger
+/// - *autoStart*: whether or not to automatically start the replication logger
 ///    on server startup
 ///
-/// - `logRemoteChanges`: whether or not externally created changes should be
+/// - *logRemoteChanges*: whether or not externally created changes should be
 ///    logged by the local logger
 ///
-/// - `maxEvents`: the maximum number of log events kept by the replication
-///    logger before deleting oldest events. Use a value of `0` to not restrict
+/// - *maxEvents*: the maximum number of log events kept by the replication
+///    logger before deleting oldest events. Use a value of *0* to not restrict
 ///    the number of events.
 ///
-/// - `maxEventsSize`: the maximum cumulated size of log event data kept by the
-///    replication logger before deleting oldest events. Use a value of `0` to
+/// - *maxEventsSize*: the maximum cumulated size of log event data kept by the
+///    replication logger before deleting oldest events. Use a value of *0* to
 ///    not restrict the size.
 ///
-/// Note that when setting both `maxEvents` and `maxEventsSize`, reaching
+/// **Note**: When setting both *maxEvents* and *maxEventsSize*, reaching
 /// either limitation will trigger a deletion of the "oldest" log events from
 /// the replication log.
 ///
@@ -826,6 +835,7 @@ void RestReplicationHandler::handleCommandLoggerGetConfig () {
 ///     assert(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerSetConfig () {
@@ -833,9 +843,10 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_post_api_replication_batch
 /// @brief handle a dump batch command
 ///
-/// @RESTHEADER{POST /_api/replication/batch,creates a new dump batch}
+/// @RESTHEADER{POST /_api/replication/batch, Create new dump batch}
 ///
 /// @RESTBODYPARAM{body,json,required}
 /// A JSON object with the batch configuration.
@@ -845,14 +856,14 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 ///
 /// The body of the request must be a JSON hash with the following attributes:
 ///
-/// - `ttl`: the time-to-live for the new batch (in seconds)
+/// - *ttl*: the time-to-live for the new batch (in seconds)
 ///
 /// The response is a JSON hash with the following attributes:
 ///
-/// - `id`: the id of the batch
+/// - *id*: the id of the batch
 ///
-/// Note: on a coordinator, this request must have the URL parameter
-/// `DBserver` which must be an ID of a DBserver.
+/// **Note**: on a coordinator, this request must have the URL parameter
+/// *DBserver* which must be an ID of a DBserver.
 /// The very same request is forwarded synchronously to that DBserver.
 /// It is an error if this attribute is not bound in the coordinator case.
 ///
@@ -862,17 +873,19 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 /// is returned if the batch was created successfully.
 ///
 /// @RESTRETURNCODE{400}
-/// is returned if the ttl value is invalid or if `DBserver` attribute
+/// is returned if the ttl value is invalid or if *DBserver* attribute
 /// is not specified or illegal on a coordinator.
 ///
 /// @RESTRETURNCODE{405}
 /// is returned when an invalid HTTP method is used.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_put_api_replication_prolong
 /// @brief handle a dump batch command
 ///
-/// @RESTHEADER{PUT /_api/replication/batch/`id`,prolongs an existing dump batch}
+/// @RESTHEADER{PUT /_api/replication/batch/id, Prolong existing dump batch}
 ///
 /// @RESTBODYPARAM{body,json,required}
 /// A JSON object with the batch configration.
@@ -888,12 +901,12 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 ///
 /// The body of the request must be a JSON hash with the following attributes:
 ///
-/// - `ttl`: the time-to-live for the batch (in seconds)
+/// - *ttl*: the time-to-live for the batch (in seconds)
 ///
 /// If the batch's ttl can be extended successully, the response is empty.
 ///
-/// Note: on a coordinator, this request must have the URL parameter
-/// `DBserver` which must be an ID of a DBserver.
+/// **Note**: on a coordinator, this request must have the URL parameter
+/// *DBserver* which must be an ID of a DBserver.
 /// The very same request is forwarded synchronously to that DBserver.
 /// It is an error if this attribute is not bound in the coordinator case.
 ///
@@ -907,12 +920,14 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 ///
 /// @RESTRETURNCODE{405}
 /// is returned when an invalid HTTP method is used.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_api_replication_delete
 /// @brief handle a dump batch command
 ///
-/// @RESTHEADER{DELETE /_api/replication/batch/`id`,deletes an existing dump batch}
+/// @RESTHEADER{DELETE /_api/replication/batch/id, Deletes an existing dump batch}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -922,8 +937,8 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 /// @RESTDESCRIPTION
 /// Deletes the existing dump batch, allowing compaction and cleanup to resume.
 ///
-/// Note: on a coordinator, this request must have the URL parameter
-/// `DBserver` which must be an ID of a DBserver.
+/// **Note**: on a coordinator, this request must have the URL parameter
+/// *DBserver* which must be an ID of a DBserver.
 /// The very same request is forwarded synchronously to that DBserver.
 /// It is an error if this attribute is not bound in the coordinator case.
 ///
@@ -937,6 +952,7 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 ///
 /// @RESTRETURNCODE{405}
 /// is returned when an invalid HTTP method is used.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandBatch () {
@@ -1110,9 +1126,10 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_get_api_replication_logger_returns
 /// @brief returns ranged data from the replication log
 ///
-/// @RESTHEADER{GET /_api/replication/logger-follow,returns recent log entries from the replication log}
+/// @RESTHEADER{GET /_api/replication/logger-follow, Returns log entries}
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -1127,95 +1144,95 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ///
 /// @RESTDESCRIPTION
 /// Returns data from the server's replication log. This method can be called
-/// by replication clients after an initial synchronisation of data. The method
+/// by replication clients after an initial synchronization of data. The method
 /// will return all "recent" log entries from the logger server, and the clients
 /// can replay and apply these entries locally so they get to the same data
 /// state as the logger server.
 ///
 /// Clients can call this method repeatedly to incrementally fetch all changes
-/// from the logger server. In this case, they should provide the `from` value so
+/// from the logger server. In this case, they should provide the *from* value so
 /// they will only get returned the log events since their last fetch.
 ///
-/// When the `from` URL parameter is not used, the logger server will return log
-/// entries starting at the beginning of its replication log. When the `from`
+/// When the *from* URL parameter is not used, the logger server will return log
+/// entries starting at the beginning of its replication log. When the *from*
 /// parameter is used, the logger server will only return log entries which have
-/// higher tick values than the specified `from` value (note: the log entry with a
-/// tick value equal to `from` will be excluded). Use the `from` value when
+/// higher tick values than the specified *from* value (note: the log entry with a
+/// tick value equal to *from* will be excluded). Use the *from* value when
 /// incrementally fetching log data.
 ///
-/// The `to` URL parameter can be used to optionally restrict the upper bound of
+/// The *to* URL parameter can be used to optionally restrict the upper bound of
 /// the result to a certain tick value. If used, the result will contain only log events
-/// with tick values up to (including) `to`. In incremental fetching, there is no
-/// need to use the `to` parameter. It only makes sense in special situations,
+/// with tick values up to (including) *to*. In incremental fetching, there is no
+/// need to use the *to* parameter. It only makes sense in special situations,
 /// when only parts of the change log are required.
 ///
-/// The `chunkSize` URL parameter can be used to control the size of the result.
-/// It must be specified in bytes. The `chunkSize` value will only be honored
-/// approximately. Otherwise a too low `chunkSize` value could cause the server
+/// The *chunkSize* URL parameter can be used to control the size of the result.
+/// It must be specified in bytes. The *chunkSize* value will only be honored
+/// approximately. Otherwise a too low *chunkSize* value could cause the server
 /// to not be able to put just one log entry into the result and return it.
-/// Therefore, the `chunkSize` value will only be consulted after a log entry has
+/// Therefore, the *chunkSize* value will only be consulted after a log entry has
 /// been written into the result. If the result size is then bigger than
-/// `chunkSize`, the server will respond with as many log entries as there are
-/// in the response already. If the result size is still smaller than `chunkSize`,
+/// *chunkSize*, the server will respond with as many log entries as there are
+/// in the response already. If the result size is still smaller than *chunkSize*,
 /// the server will try to return more data if there's more data left to return.
 ///
-/// If `chunkSize` is not specified, some server-side default value will be used.
+/// If *chunkSize* is not specified, some server-side default value will be used.
 ///
-/// The `Content-Type` of the result is `application/x-arango-dump`. This is an
+/// The *Content-Type* of the result is *application/x-arango-dump*. This is an
 /// easy-to-process format, with all log events going onto separate lines in the
 /// response body. Each log event itself is a JSON hash, with at least the
 /// following attributes:
 ///
-/// - `tick`: the log event tick value
+/// - *tick*: the log event tick value
 ///
-/// - `type`: the log event type
+/// - *type*: the log event type
 ///
 /// Individual log events will also have additional attributes, depending on the
 /// event type. A few common attributes which are used for multiple events types
 /// are:
 ///
-/// - `cid`: id of the collection the event was for
+/// - *cid*: id of the collection the event was for
 ///
-/// - `tid`: id of the transaction the event was contained in
+/// - *tid*: id of the transaction the event was contained in
 ///
-/// - `key`: document key
+/// - *key*: document key
 ///
-/// - `rev`: document revision id
+/// - *rev*: document revision id
 ///
-/// - `data`: the original document data
+/// - *data*: the original document data
 ///
 /// A more detailed description of the individual replication event types and their
 /// data structures can be found in @ref RefManualReplicationEventTypes.
 ///
 /// The response will also contain the following HTTP headers:
 ///
-/// - `x-arango-replication-active`: whether or not the logger is active. Clients
+/// - *x-arango-replication-active*: whether or not the logger is active. Clients
 ///   can use this flag as an indication for their polling frequency. If the
 ///   logger is not active and there are no more replication events available, it
 ///   might be sensible for a client to abort, or to go to sleep for a long time
 ///   and try again later to check whether the logger has been activated.
 ///
-/// - `x-arango-replication-lastincluded`: the tick value of the last included
+/// - *x-arango-replication-lastincluded*: the tick value of the last included
 ///   value in the result. In incremental log fetching, this value can be used
-///   as the `from` value for the following request. Note that if the result is
-///   empty, the value will be `0`. This value should not be used as `from` value
+///   as the *from* value for the following request. **Note** that if the result is
+///   empty, the value will be *0*. This value should not be used as *from* value
 ///   by clients in the next request (otherwise the server would return the log
 ///   events from the start of the log again).
 ///
-/// - `x-arango-replication-lasttick`: the last tick value the logger server has
+/// - *x-arango-replication-lasttick*: the last tick value the logger server has
 ///   logged (not necessarily included in the result). By comparing the the last
 ///   tick and last included tick values, clients have an approximate indication of
 ///   how many events there are still left to fetch.
 ///
-/// - `x-arango-replication-checkmore`: whether or not there already exists more
+/// - *x-arango-replication-checkmore*: whether or not there already exists more
 ///   log data which the client could fetch immediately. If there is more log data
-///   available, the client could call `logger-follow` again with an adjusted `from`
+///   available, the client could call *logger-follow* again with an adjusted *from*
 ///   value to fetch remaining log entries until there are no more.
 ///
 ///   If there isn't any more log data to fetch, the client might decide to go
 ///   to sleep for a while before calling the logger again.
 ///
-/// Note: this method is not supported on a coordinator in a cluster.
+/// **Note**: this method is not supported on a coordinator in a cluster.
 ///
 /// @RESTRETURNCODES
 ///
@@ -1230,7 +1247,7 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 /// in this case.
 ///
 /// @RESTRETURNCODE{400}
-/// is returned if either the `from` or `to` values are invalid.
+/// is returned if either the *from* or *to* values are invalid.
 ///
 /// @RESTRETURNCODE{405}
 /// is returned when an invalid HTTP method is used.
@@ -1304,6 +1321,7 @@ void RestReplicationHandler::handleTrampolineCoordinator () {
 ///
 ///     logRawResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerFollow () {
@@ -1398,78 +1416,79 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_put_api_replication_inventory
 /// @brief returns the server inventory
 ///
-/// @RESTHEADER{GET /_api/replication/inventory,returns an inventory of collections and indexes}
+/// @RESTHEADER{GET /_api/replication/inventory, Return inventory of collections and indexes}
 ///
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{includeSystem,boolean,optional}
-/// Include system collections in the result. The default value is `false`.
+/// Include system collections in the result. The default value is *false*.
 ///
 /// @RESTDESCRIPTION
 /// Returns the list of collections and indexes available on the server. This
 /// list can be used by replication clients to initiate an initial sync with the
 /// server.
 ///
-/// The response will contain a JSON hash array with the `collection` and `state`
+/// The response will contain a JSON hash array with the *collection* and *state*
 /// attributes.
 ///
-/// `collections` is a list of collections with the following sub-attributes:
+/// *collections* is a list of collections with the following sub-attributes:
 ///
-/// - `parameters`: the collection properties
+/// - *parameters*: the collection properties
 ///
-/// - `indexes`: a list of the indexes of a the collection. Primary indexes and edges indexes
+/// - *indexes*: a list of the indexes of a the collection. Primary indexes and edges indexes
 ///    are not included in this list.
 ///
-/// `tick`: the system-wide tick value at the start of the dump
+/// *tick*: the system-wide tick value at the start of the dump
 ///
-/// The `state` attribute contains the current state of the replication logger. It
+/// The *state* attribute contains the current state of the replication logger. It
 /// contains the following sub-attributes:
 ///
-/// - `running`: whether or not the replication logger is currently active
+/// - *running*: whether or not the replication logger is currently active
 ///
-/// - `lastLogTick`: the value of the last tick the replication logger has written
+/// - *lastLogTick*: the value of the last tick the replication logger has written
 ///
-/// - `time`: the current time on the server
+/// - *time*: the current time on the server
 ///
-/// Replication clients should note the `lastLogTick` value returned. They can then
+/// Replication clients should note the *lastLogTick* value returned. They can then
 /// fetch collections' data using the dump method up to the value of lastLogTick, and
 /// query the continuous replication log for log events after this tick value.
 ///
 /// To create a full copy of the collections on the logger server, a replication client
 /// can execute these steps:
 ///
-/// - call the `/inventory` API method. This returns the `lastLogTick` value and the
+/// - call the */inventory* API method. This returns the *lastLogTick* value and the
 ///   list of collections and indexes from the logger server.
 ///
-/// - for each collection returned by `/inventory`, create the collection locally and
-///   call `/dump` to stream the collection data to the client, up to the value of
-///   `lastLogTick`.
+/// - for each collection returned by */inventory*, create the collection locally and
+///   call */dump* to stream the collection data to the client, up to the value of
+///   *lastLogTick*.
 ///   After that, the client can create the indexes on the collections as they were
-///   reported by `/inventory`.
+///   reported by */inventory*.
 ///
 /// If the clients wants to continuously stream replication log events from the logger
 /// server, the following additional steps need to be carried out:
 ///
-/// - the client should call `/logger-follow` initially to fetch the first batch of
-///   replication events that were logged after the client's call to `/inventory`.
+/// - the client should call */logger-follow* initially to fetch the first batch of
+///   replication events that were logged after the client's call to */inventory*.
 ///
-///   The call to `/logger-follow` should use a `from` parameter with the value of the
-///   `lastLogTick` as reported by `/inventory`. The call to `/logger-follow` will return the
-///   `x-arango-replication-lastincluded` which will contain the last tick value included
+///   The call to */logger-follow* should use a *from* parameter with the value of the
+///   *lastLogTick* as reported by */inventory*. The call to */logger-follow* will return the
+///   *x-arango-replication-lastincluded* which will contain the last tick value included
 ///   in the response.
 ///
-/// - the client can then continuously call `/logger-follow` to incrementally fetch new
+/// - the client can then continuously call */logger-follow* to incrementally fetch new
 ///   replication events that occurred after the last transfer.
 ///
-///   Calls should use a `from` parameter with the value of the `x-arango-replication-lastincluded`
+///   Calls should use a *from* parameter with the value of the *x-arango-replication-lastincluded*
 ///   header of the previous response. If there are no more replication events, the
 ///   response will be empty and clients can go to sleep for a while and try again
 ///   later.
 ///
-/// Note: on a coordinator, this request must have the URL parameter
-/// `DBserver` which must be an ID of a DBserver.
+/// **Note**: on a coordinator, this request must have the URL parameter
+/// *DBserver* which must be an ID of a DBserver.
 /// The very same request is forwarded synchronously to that DBserver.
 /// It is an error if this attribute is not bound in the coordinator case.
 ///
@@ -1520,6 +1539,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
 ///     db._drop("IndexedCollection1");
 ///     db._drop("IndexedCollection2");
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandInventory () {
@@ -1586,14 +1606,15 @@ void RestReplicationHandler::handleCommandInventory () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_get_api_replication_cluster_inventory
 /// @brief returns the cluster inventory, only on coordinator
 ///
-/// @RESTHEADER{GET /_api/replication/clusterInventory,returns an inventory of collections and indexes}
+/// @RESTHEADER{GET /_api/replication/clusterInventory, Return cluster inventory of collections and indexes}
 ///
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{includeSystem,boolean,optional}
-/// Include system collections in the result. The default value is `false`.
+/// Include system collections in the result. The default value is *false*.
 ///
 /// @RESTDESCRIPTION
 /// Returns the list of collections and indexes available on the cluster.
@@ -1601,7 +1622,7 @@ void RestReplicationHandler::handleCommandInventory () {
 /// The response will be a list of JSON hash array, one for each collection,
 /// which contains exactly two keys "parameters" and "indexes". This
 /// information comes from Plan/Collections/<DB-Name>/* in the agency,
-/// just that the `indexes` attribute there is relocated to adjust it to
+/// just that the *indexes* attribute there is relocated to adjust it to
 /// the data format of arangodump.
 ///
 /// @RESTRETURNCODES
@@ -1614,6 +1635,7 @@ void RestReplicationHandler::handleCommandInventory () {
 ///
 /// @RESTRETURNCODE{500}
 /// is returned if an error occurred while assembling the response.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandClusterInventory () {
@@ -2974,9 +2996,10 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_get_api_replication_dump
 /// @brief dumps the data of a collection
 ///
-/// @RESTHEADER{GET /_api/replication/dump,returns the data of a collection}
+/// @RESTHEADER{GET /_api/replication/dump, Return data of a collection}
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -2993,39 +3016,39 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 /// Approximate maximum size of the returned result.
 ///
 /// @RESTQUERYPARAM{ticks,boolean,optional}
-/// Whether or not to include tick values in the dump. Default value is `true`.
+/// Whether or not to include tick values in the dump. Default value is *true*.
 ///
 /// @RESTDESCRIPTION
 /// Returns the data from the collection for the requested range.
 ///
-/// When the `from` URL parameter is not used, collection events are returned from
-/// the beginning. When the `from` parameter is used, the result will only contain
-/// collection entries which have higher tick values than the specified `from` value
-/// (note: the log entry with a tick value equal to `from` will be excluded).
+/// When the *from* URL parameter is not used, collection events are returned from
+/// the beginning. When the *from* parameter is used, the result will only contain
+/// collection entries which have higher tick values than the specified *from* value
+/// (note: the log entry with a tick value equal to *from* will be excluded).
 ///
-/// The `to` URL parameter can be used to optionally restrict the upper bound of
+/// The *to* URL parameter can be used to optionally restrict the upper bound of
 /// the result to a certain tick value. If used, the result will only contain
-/// collection entries with tick values up to (including) `to`.
+/// collection entries with tick values up to (including) *to*.
 ///
-/// The `chunkSize` URL parameter can be used to control the size of the result.
-/// It must be specified in bytes. The `chunkSize` value will only be honored
-/// approximately. Otherwise a too low `chunkSize` value could cause the server
+/// The *chunkSize* URL parameter can be used to control the size of the result.
+/// It must be specified in bytes. The *chunkSize* value will only be honored
+/// approximately. Otherwise a too low *chunkSize* value could cause the server
 /// to not be able to put just one entry into the result and return it.
-/// Therefore, the `chunkSize` value will only be consulted after an entry has
+/// Therefore, the *chunkSize* value will only be consulted after an entry has
 /// been written into the result. If the result size is then bigger than
-/// `chunkSize`, the server will respond with as many entries as there are
-/// in the response already. If the result size is still smaller than `chunkSize`,
+/// *chunkSize*, the server will respond with as many entries as there are
+/// in the response already. If the result size is still smaller than *chunkSize*,
 /// the server will try to return more data if there's more data left to return.
 ///
-/// If `chunkSize` is not specified, some server-side default value will be used.
+/// If *chunkSize* is not specified, some server-side default value will be used.
 ///
-/// The `Content-Type` of the result is `application/x-arango-dump`. This is an
+/// The *Content-Type* of the result is *application/x-arango-dump*. This is an
 /// easy-to-process format, with all entries going onto separate lines in the
 /// response body.
 ///
 /// Each line itself is a JSON hash, with at least the following attributes:
 ///
-/// - `type`: the type of entry. Possible values for `type` are:
+/// - *type*: the type of entry. Possible values for *type* are:
 ///
 ///   - 2300: document insertion/update
 ///
@@ -3033,17 +3056,17 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 ///
 ///   - 2302: document/edge deletion
 ///
-/// - `key`: the key of the document/edge or the key used in the deletion operation
+/// - *key*: the key of the document/edge or the key used in the deletion operation
 ///
-/// - `rev`: the revision id of the document/edge or the deletion operation
+/// - *rev*: the revision id of the document/edge or the deletion operation
 ///
-/// - `data`: the actual document/edge data for types 2300 and 2301. The full
+/// - *data*: the actual document/edge data for types 2300 and 2301. The full
 ///   document/edge data will be returned even for updates.
 ///
 /// A more detailed description of the different entry types and their
 /// data structures can be found in @ref RefManualReplicationEventTypes.
 ///
-/// Note: there will be no distinction between inserts and updates when calling this method.
+/// **Note**: there will be no distinction between inserts and updates when calling this method.
 ///
 /// @RESTRETURNCODES
 ///
@@ -3051,7 +3074,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 /// is returned if the request was executed successfully.
 ///
 /// @RESTRETURNCODE{400}
-/// is returned if either the `from` or `to` values are invalid.
+/// is returned if either the *from* or *to* values are invalid.
 ///
 /// @RESTRETURNCODE{404}
 /// is returned when the collection could not be found.
@@ -3098,6 +3121,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 ///
 ///     c.drop();
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandDump () {
@@ -3233,45 +3257,46 @@ void RestReplicationHandler::handleCommandDump () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief synchronises data from a remote endpoint
+/// @startDocuBlock JSF_put_api_replication_synchronize
+/// @brief synchronizes data from a remote endpoint
 ///
-/// @RESTHEADER{PUT /_api/replication/sync,synchronises data from a remote endpoint}
+/// @RESTHEADER{PUT /_api/replication/sync, Synchronize data from a remote endpoint}
 ///
 /// @RESTBODYPARAM{configuration,json,required}
 /// A JSON representation of the configuration.
 ///
 /// @RESTDESCRIPTION
-/// Starts a full data synchronisation from a remote endpoint into the local
+/// Starts a full data synchronization from a remote endpoint into the local
 /// ArangoDB database.
 ///
 /// The body of the request must be JSON hash with the configuration. The
 /// following attributes are allowed for the configuration:
 ///
-/// - `endpoint`: the endpoint to connect to (e.g. "tcp://192.168.173.13:8529").
+/// - *endpoint*: the endpoint to connect to (e.g. "tcp://192.168.173.13:8529").
 ///
-/// - `database`: the database name on the master (if not specified, defaults to the
+/// - *database*: the database name on the master (if not specified, defaults to the
 ///   name of the local current database).
 ///
-/// - `username`: an optional ArangoDB username to use when connecting to the endpoint.
+/// - *username*: an optional ArangoDB username to use when connecting to the endpoint.
 ///
-/// - `password`: the password to use when connecting to the endpoint.
+/// - *password*: the password to use when connecting to the endpoint.
 ///
-/// - `restrictType`: an optional string value for collection filtering. When
-///    specified, the allowed values are `include` or `exclude`.
+/// - *restrictType*: an optional string value for collection filtering. When
+///    specified, the allowed values are *include* or *exclude*.
 ///
-/// - `restrictCollections`: an optional list of collections for use with
-///   `restrictType`. If `restrictType` is `include`, only the specified collections
-///    will be sychronised. If `restrictType` is `exclude`, all but the specified
-///    collections will be synchronised.
+/// - *restrictCollections*: an optional list of collections for use with
+///   *restrictType*. If *restrictType* is *include*, only the specified collections
+///    will be sychronised. If *restrictType* is *exclude*, all but the specified
+///    collections will be synchronized.
 ///
 /// In case of success, the body of the response is a JSON hash with the following
 /// attributes:
 ///
-/// - `collections`: a list of collections that were transferred from the endpoint
+/// - *collections*: a list of collections that were transferred from the endpoint
 ///
-/// - `lastLogTick`: the last log tick on the endpoint at the time the transfer
-///   was started. Use this value as the `from` value when starting the continuous
-///   synchronisation later.
+/// - *lastLogTick*: the last log tick on the endpoint at the time the transfer
+///   was started. Use this value as the *from* value when starting the continuous
+///   synchronization later.
 ///
 /// WARNING: calling this method will sychronise data from the collections found
 /// on the remote endpoint to the local ArangoDB database. All data in the local
@@ -3279,7 +3304,7 @@ void RestReplicationHandler::handleCommandDump () {
 ///
 /// Use with caution!
 ///
-/// Note: this method is not supported on a coordinator in a cluster.
+/// **Note**: this method is not supported on a coordinator in a cluster.
 ///
 /// @RESTRETURNCODES
 ///
@@ -3297,6 +3322,7 @@ void RestReplicationHandler::handleCommandDump () {
 ///
 /// @RESTRETURNCODE{501}
 /// is returned when this operation is called on a coordinator in a cluster.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandSync () {
@@ -3413,15 +3439,16 @@ void RestReplicationHandler::handleCommandSync () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_put_api_replication_serverID
 /// @brief get the server's id
 ///
-/// @RESTHEADER{GET /_api/replication/server-id,returns the servers id}
+/// @RESTHEADER{GET /_api/replication/server-id, Return server id}
 ///
 /// @RESTDESCRIPTION
 /// Returns the servers id. The id is also returned by other replication API
 /// methods, and this method is an easy means of determining a server's id.
 ///
-/// The body of the response is a JSON hash with the attribute `serverId`. The
+/// The body of the response is a JSON hash with the attribute *serverId*. The
 /// server id is returned as a string.
 ///
 /// @RESTRETURNCODES
@@ -3444,6 +3471,7 @@ void RestReplicationHandler::handleCommandSync () {
 ///     assert(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandServerId () {
@@ -3462,9 +3490,10 @@ void RestReplicationHandler::handleCommandServerId () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_put_api_replication_applier
 /// @brief get the configuration of the replication applier
 ///
-/// @RESTHEADER{GET /_api/replication/applier-config,returns the configuration of the replication applier}
+/// @RESTHEADER{GET /_api/replication/applier-config, Return configuration of replication applier}
 ///
 /// @RESTDESCRIPTION
 /// Returns the configuration of the replication applier.
@@ -3472,30 +3501,30 @@ void RestReplicationHandler::handleCommandServerId () {
 /// The body of the response is a JSON hash with the configuration. The
 /// following attributes may be present in the configuration:
 ///
-/// - `endpoint`: the logger server to connect to (e.g. "tcp://192.168.173.13:8529").
+/// - *endpoint*: the logger server to connect to (e.g. "tcp://192.168.173.13:8529").
 ///
-/// - `database`: the name of the database to connect to (e.g. "_system").
+/// - *database*: the name of the database to connect to (e.g. "_system").
 ///
-/// - `username`: an optional ArangoDB username to use when connecting to the endpoint.
+/// - *username*: an optional ArangoDB username to use when connecting to the endpoint.
 ///
-/// - `password`: the password to use when connecting to the endpoint.
+/// - *password*: the password to use when connecting to the endpoint.
 ///
-/// - `maxConnectRetries`: the maximum number of connection attempts the applier
+/// - *maxConnectRetries*: the maximum number of connection attempts the applier
 ///   will make in a row. If the applier cannot establish a connection to the
 ///   endpoint in this number of attempts, it will stop itself.
 ///
-/// - `connectTimeout`: the timeout (in seconds) when attempting to connect to the
+/// - *connectTimeout*: the timeout (in seconds) when attempting to connect to the
 ///   endpoint. This value is used for each connection attempt.
 ///
-/// - `requestTimeout`: the timeout (in seconds) for individual requests to the endpoint.
+/// - *requestTimeout*: the timeout (in seconds) for individual requests to the endpoint.
 ///
-/// - `chunkSize`: the requested maximum size for log transfer packets that
+/// - *chunkSize*: the requested maximum size for log transfer packets that
 ///   is used when the endpoint is contacted.
 ///
-/// - `autoStart`: whether or not to auto-start the replication applier on
+/// - *autoStart*: whether or not to auto-start the replication applier on
 ///   (next and following) server starts
 ///
-/// - `adaptivePolling`: whether or not the replication applier will use
+/// - *adaptivePolling*: whether or not the replication applier will use
 ///   adaptive polling.
 ///
 /// @RESTRETURNCODES
@@ -3518,6 +3547,7 @@ void RestReplicationHandler::handleCommandServerId () {
 ///     assert(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierGetConfig () {
@@ -3543,9 +3573,10 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_put_api_replication_applier_adjust
 /// @brief set the configuration of the replication applier
 ///
-/// @RESTHEADER{PUT /_api/replication/applier-config,adjusts the configuration of the replication applier}
+/// @RESTHEADER{PUT /_api/replication/applier-config, Adjust configuration of replication applier}
 ///
 /// @RESTBODYPARAM{configuration,json,required}
 /// A JSON representation of the configuration.
@@ -3559,32 +3590,32 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 /// The body of the request must be JSON hash with the configuration. The
 /// following attributes are allowed for the configuration:
 ///
-/// - `endpoint`: the logger server to connect to (e.g. "tcp://192.168.173.13:8529").
+/// - *endpoint*: the logger server to connect to (e.g. "tcp://192.168.173.13:8529").
 ///   The endpoint must be specified.
 ///
-/// - `database`: the name of the database on the endpoint. If not specified, defaults
+/// - *database*: the name of the database on the endpoint. If not specified, defaults
 ///   to the current local database name.
 ///
-/// - `username`: an optional ArangoDB username to use when connecting to the endpoint.
+/// - *username*: an optional ArangoDB username to use when connecting to the endpoint.
 ///
-/// - `password`: the password to use when connecting to the endpoint.
+/// - *password*: the password to use when connecting to the endpoint.
 ///
-/// - `maxConnectRetries`: the maximum number of connection attempts the applier
+/// - *maxConnectRetries*: the maximum number of connection attempts the applier
 ///   will make in a row. If the applier cannot establish a connection to the
 ///   endpoint in this number of attempts, it will stop itself.
 ///
-/// - `connectTimeout`: the timeout (in seconds) when attempting to connect to the
+/// - *connectTimeout*: the timeout (in seconds) when attempting to connect to the
 ///   endpoint. This value is used for each connection attempt.
 ///
-/// - `requestTimeout`: the timeout (in seconds) for individual requests to the endpoint.
+/// - *requestTimeout*: the timeout (in seconds) for individual requests to the endpoint.
 ///
-/// - `chunkSize`: the requested maximum size for log transfer packets that
+/// - *chunkSize*: the requested maximum size for log transfer packets that
 ///   is used when the endpoint is contacted.
 ///
-/// - `autoStart`: whether or not to auto-start the replication applier on
+/// - *autoStart*: whether or not to auto-start the replication applier on
 ///   (next and following) server starts
 ///
-/// - `adaptivePolling`: if set to `true`, the replication applier will fall
+/// - *adaptivePolling*: if set to *true*, the replication applier will fall
 ///   to sleep for an increasingly long period in case the logger server at the
 ///   endpoint does not have any more replication events to apply. Using
 ///   adaptive polling is thus useful to reduce the amount of work for both the
@@ -3593,7 +3624,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ///   longer for the replication applier to detect that there are new replication
 ///   events on the logger server.
 ///
-///   Setting `adaptivePolling` to false will make the replication applier
+///   Setting *adaptivePolling* to false will make the replication applier
 ///   contact the logger server in a constant interval, regardless of whether
 ///   the logger server provides updates frequently or seldomly.
 ///
@@ -3636,6 +3667,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ///     assert(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierSetConfig () {
@@ -3724,14 +3756,15 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_put_api_replication_applier_start
 /// @brief start the replication applier
 ///
-/// @RESTHEADER{PUT /_api/replication/applier-start,starts the replication applier}
+/// @RESTHEADER{PUT /_api/replication/applier-start, Start replication applier}
 ///
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{from,string,optional}
-/// The remote `lastLogTick` value from which to start applying. If not specified,
+/// The remote *lastLogTick* value from which to start applying. If not specified,
 /// the last saved tick from the previous applier run is used. If there is no
 /// previous applier state saved, the applier will start at the beginning of the
 /// logger server's log.
@@ -3747,7 +3780,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
 /// method.
 ///
 /// To detect replication applier errors after the applier was started, use the
-/// `/_api/replication/applier-state` API instead.
+/// */_api/replication/applier-state* API instead.
 ///
 /// @RESTRETURNCODES
 ///
@@ -3784,6 +3817,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
 ///     assert(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierStart () {
@@ -3817,9 +3851,10 @@ void RestReplicationHandler::handleCommandApplierStart () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_put_api_replication_applier_stop
 /// @brief stops the replication applier
 ///
-/// @RESTHEADER{PUT /_api/replication/applier-stop,stops the replication applier}
+/// @RESTHEADER{PUT /_api/replication/applier-stop, Stop replication applier}
 ///
 /// @RESTDESCRIPTION
 /// Stops the replication applier. This will return immediately if the
@@ -3857,6 +3892,7 @@ void RestReplicationHandler::handleCommandApplierStart () {
 ///     assert(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierStop () {
@@ -3873,9 +3909,10 @@ void RestReplicationHandler::handleCommandApplierStop () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_get_api_replication_applier_state
 /// @brief returns the state of the replication applier
 ///
-/// @RESTHEADER{GET /_api/replication/applier-state,returns the state of the replication applier}
+/// @RESTHEADER{GET /_api/replication/applier-state, State of the replication applier}
 ///
 /// @RESTDESCRIPTION
 /// Returns the state of the replication applier, regardless of whether the
@@ -3883,66 +3920,66 @@ void RestReplicationHandler::handleCommandApplierStop () {
 ///
 /// The response is a JSON hash with the following attributes:
 ///
-/// - `state`: a JSON hash with the following sub-attributes:
+/// - *state*: a JSON hash with the following sub-attributes:
 ///
-///   - `running`: whether or not the applier is active and running
+///   - *running*: whether or not the applier is active and running
 ///
-///   - `lastAppliedContinuousTick`: the last tick value from the continuous
+///   - *lastAppliedContinuousTick*: the last tick value from the continuous
 ///     replication log the applier has applied.
 ///
-///   - `lastProcessedContinuousTick`: the last tick value from the continuous
+///   - *lastProcessedContinuousTick*: the last tick value from the continuous
 ///     replication log the applier has processed.
 ///
 ///     Regularly, the last applied and last processed tick values should be
 ///     identical. For transactional operations, the replication applier will first
 ///     process incoming log events before applying them, so the processed tick
 ///     value might be higher than the applied tick value. This will be the case
-///     until the applier encounters the `transaction commit` log event for the
+///     until the applier encounters the *transaction commit* log event for the
 ///     transaction.
 ///
-///   - `lastAvailableContinuousTick`: the last tick value the logger server can
+///   - *lastAvailableContinuousTick*: the last tick value the logger server can
 ///     provide.
 ///
-///   - `time`: the time on the applier server.
+///   - *time*: the time on the applier server.
 ///
-///   - `totalRequests`: the total number of requests the applier has made to the
+///   - *totalRequests*: the total number of requests the applier has made to the
 ///     endpoint.
 ///
-///   - `totalFailedConnects`: the total number of failed connection attempts the
+///   - *totalFailedConnects*: the total number of failed connection attempts the
 ///     applier has made.
 ///
-///   - `totalEvents`: the total number of log events the applier has processed.
+///   - *totalEvents*: the total number of log events the applier has processed.
 ///
-///   - `progress`: a JSON hash with details about the replication applier progress.
+///   - *progress*: a JSON hash with details about the replication applier progress.
 ///     It contains the following sub-attributes if there is progress to report:
 ///
-///     - `message`: a textual description of the progress
+///     - *message*: a textual description of the progress
 ///
-///     - `time`: the date and time the progress was logged
+///     - *time*: the date and time the progress was logged
 ///
-///     - `failedConnects`: the current number of failed connection attempts
+///     - *failedConnects*: the current number of failed connection attempts
 ///
-///   - `lastError`: a JSON hash with details about the last error that happened on
+///   - *lastError*: a JSON hash with details about the last error that happened on
 ///     the applier. It contains the following sub-attributes if there was an error:
 ///
-///     - `errorNum`: a numerical error code
+///     - *errorNum*: a numerical error code
 ///
-///     - `errorMessage`: a textual error description
+///     - *errorMessage*: a textual error description
 ///
-///     - `time`: the date and time the error occurred
+///     - *time*: the date and time the error occurred
 ///
-///     In case no error has occurred, `lastError` will be empty.
+///     In case no error has occurred, *lastError* will be empty.
 ///
-/// - `server`: a JSON hash with the following sub-attributes:
+/// - *server*: a JSON hash with the following sub-attributes:
 ///
-///   - `version`: the applier server's version
+///   - *version*: the applier server's version
 ///
-///   - `serverId`: the applier server's id
+///   - *serverId*: the applier server's id
 ///
-/// - `endpoint`: the endpoint the applier is connected to (if applier is
+/// - *endpoint*: the endpoint the applier is connected to (if applier is
 ///   active) or will connect to (if applier is currently inactive)
 ///
-/// - `database`: the name of the database the applier is connected to (if applier is
+/// - *database*: the name of the database the applier is connected to (if applier is
 ///   active) or will connect to (if applier is currently inactive)
 ///
 /// @RESTRETURNCODES
@@ -3985,6 +4022,7 @@ void RestReplicationHandler::handleCommandApplierStop () {
 ///     assert(response.code === 200);
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierGetState () {
