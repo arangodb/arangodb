@@ -129,7 +129,8 @@ static const char* StatusTransaction (const TRI_transaction_status_e status) {
 
 static void FreeOperations (TRI_transaction_t* trx) {
   size_t const n = trx->_collections._length;
-  bool mustRollback = (trx->_status == TRI_TRANSACTION_ABORTED);
+  bool const mustRollback = (trx->_status == TRI_TRANSACTION_ABORTED);
+  bool const isSingleOperation = IsSingleOperationTransaction(trx);
 
   for (size_t i = 0; i < n; ++i) {
     TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
@@ -197,7 +198,7 @@ static void FreeOperations (TRI_transaction_t* trx) {
     if (mustRollback) {
       document->_info._revision = trxCollection->_originalRevision;
     }
-    else if (! document->_info._isVolatile) {
+    else if (! document->_info._isVolatile && ! isSingleOperation) {
       // only count logfileEntries if the collection is durable
       document->_uncollectedLogfileEntries += trxCollection->_operations->size();
     }

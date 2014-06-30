@@ -206,17 +206,6 @@ namespace triagens {
 #endif
         }
 
- 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set counters, used in replication client to transfer transactions
-/// between threads.
-////////////////////////////////////////////////////////////////////////////////
-
-        static void setNumbers (int numberInScope, int numberActive) {
-          _numberTrxInScope = numberInScope;
-          _numberTrxActive = numberActive;
-        }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set counters, used in replication client to transfer transactions
 /// between threads.
