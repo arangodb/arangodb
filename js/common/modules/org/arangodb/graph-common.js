@@ -258,15 +258,16 @@ Edge = function (graph, properties) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the identifier of an edge
+/// @startDocuBlock edgeGetId
 ///
-/// @FUN{@FA{edge}.getId()}
+/// `edge.getId()`
 ///
-/// Returns the identifier of the @FA{edge}.
+/// Returns the identifier of the *edge*.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-edge-get-id
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getId = function () {
@@ -274,15 +275,16 @@ Edge.prototype.getId = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief label of an edge
+/// @startDocuBlock edgeGetLabel
 ///
-/// @FUN{@FA{edge}.getLabel()}
+/// `edge.getLabel()`
 ///
-/// Returns the label of the @FA{edge}.
+/// Returns the label of the *edge*.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-edge-get-label
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getLabel = function () {
@@ -290,15 +292,16 @@ Edge.prototype.getLabel = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a property of an edge
+/// @startDocuBlock edgeGetProperty
 ///
-/// @FUN{@FA{edge}.getProperty(@FA{name})}
+/// `edge.getProperty(edge)`
 ///
-/// Returns the property @FA{name} an @FA{edge}.
+/// Returns the property *edge* an *edge*.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-edge-get-property
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getProperty = function (name) {
@@ -306,15 +309,16 @@ Edge.prototype.getProperty = function (name) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gets all property names of an edge
+/// @startDocuBlock edgeGetPropertyKeys
 ///
-/// @FUN{@FA{edge}.getPropertyKeys()}
+/// `edge.getPropertyKeys()`
 ///
-/// Returns all propety names an @FA{edge}.
+/// Returns all propety names an *edge*.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-edge-get-property-keys
+/// @endDocuBlock 
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getPropertyKeys = function () {
@@ -322,15 +326,16 @@ Edge.prototype.getPropertyKeys = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns all properties of an edge
+/// @startDocuBlock edgeProperties
 ///
-/// @FUN{@FA{edge}.properties()}
+/// `edge.properties()`
 ///
-/// Returns all properties and their values of an @FA{edge}
+/// Returns all properties and their values of an *edge*
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-edge-properties
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.properties = function () {
@@ -338,15 +343,16 @@ Edge.prototype.properties = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the to vertex
+/// @startDocuBlock edgeGetInVertex
 ///
-/// @FUN{@FA{edge}.getInVertex()}
+/// `edge.getInVertex()`
 ///
-/// Returns the vertex at the head of the @FA{edge}.
+/// Returns the vertex at the head of the *edge*.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-edge-get-in-vertex
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getInVertex = function () {
@@ -354,15 +360,16 @@ Edge.prototype.getInVertex = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the from vertex
+/// @startDocuBlock edgeGetOutVertex
 ///
-/// @FUN{@FA{edge}.getOutVertex()}
+/// `edge.getOutVertex()`
 ///
-/// Returns the vertex at the tail of the @FA{edge}.
+/// Returns the vertex at the tail of the *edge*.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-edge-get-out-vertex
+/// @startDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getOutVertex = function () {
@@ -370,27 +377,26 @@ Edge.prototype.getOutVertex = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the other vertex
+/// @startDocuBlock edgeGetPeerVertex
 ///
-/// @FUN{@FA{edge}.getPeerVertex(@FA{vertex})}
+/// `edge*.getPeerVertex(vertex)`
 ///
-/// Returns the peer vertex of the @FA{edge} and the @FA{vertex}.
+/// Returns the peer vertex of the *edge* and the *vertex*.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
-/// @code
-/// arango> v1 = g.addVertex("1");
-/// Vertex("1")
+/// @EXAMPLE_ARANGOSH_OUTPUT{edgeGetPeerVertex}
+/// ~ db._create("example");
+///   v1 = example.addVertex("1");
 ///
-/// arango> v2 = g.addVertex("2");
-/// Vertex("2")
+///   v2 = g.addVertex("2");
 ///
-/// arango> e = g.addEdge(v1, v2, "1->2", "knows");
-/// Edge("1->2")
+///    e = g.addEdge(v1, v2, "1->2", "knows");
 ///
-/// arango> e.getPeerVertex(v1);
-/// Vertex(2)
-/// @endcode
+///    e.getPeerVertex(v1);
+/// ~ db._drop("example");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getPeerVertex = function (vertex) {
@@ -463,28 +469,29 @@ Vertex = function (graph, properties) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an inbound edge
+/// @startDocuBlock vertexAddInEdge
 ///
-/// @FUN{@FA{vertex}.addInEdge(@FA{peer}, @FA{id})}
+/// `vertex.addInEdge(peer, id)`
 ///
-/// Creates a new edge from @FA{peer} to @FA{vertex} and returns the edge
-/// object. The identifier @FA{id} must be a unique identifier or null.
+/// Creates a new edge from *peer* to *peer* and returns the edge
+/// object. The identifier *peer* must be a unique identifier or null.
 ///
-/// @FUN{@FA{vertex}.addInEdge(@FA{peer}, @FA{id}, @FA{label})}
+/// `peer.addInEdge(peer, peer, label)`
 ///
-/// Creates a new edge from @FA{peer} to @FA{vertex} with given label and
+/// Creates a new edge from *peer* to *peer* with given label and
 /// returns the edge object.
 ///
-/// @FUN{@FA{vertex}.addInEdge(@FA{peer}, @FA{id}, @FA{label}, @FA{data})}
+/// `peer.addInEdge(peer, peer, label, peer)`
 ///
-/// Creates a new edge from @FA{peer} to @FA{vertex} with given label and
-/// properties defined in @FA{data}. Returns the edge object.
+/// Creates a new edge from *peer* to *peer* with given label and
+/// properties defined in *peer*. Returns the edge object.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-vertex-add-in-edge
 ///
 /// @verbinclude graph-vertex-add-in-edge2
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.addInEdge = function (out, id, label, data) {
@@ -492,30 +499,31 @@ Vertex.prototype.addInEdge = function (out, id, label, data) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an outbound edge
+/// @startDocuBlock peerAddOutEdge
 ///
-/// @FUN{@FA{vertex}.addOutEdge(@FA{peer})}
+/// `peer.addOutEdge(peer)`
 ///
-/// Creates a new edge from @FA{vertex} to @FA{peer} and returns the edge
+/// Creates a new edge from *peer* to *peer* and returns the edge
 /// object.
 ///
-/// @FUN{@FA{vertex}.addOutEdge(@FA{peer}, @FA{label})}
+/// `peer.addOutEdge(peer, label)`
 ///
-/// Creates a new edge from @FA{vertex} to @FA{peer} with given @FA{label} and
+/// Creates a new edge from *peer* to *peer* with given *label* and
 /// returns the edge object.
 ///
-/// @FUN{@FA{vertex}.addOutEdge(@FA{peer}, @FA{label}, @FA{data})}
+/// `peer.addOutEdge(peer, label, peer)`
 ///
-/// Creates a new edge from @FA{vertex} to @FA{peer} with given @FA{label} and
-/// properties defined in @FA{data}. Returns the edge object.
+/// Creates a new edge from *peer* to *peer* with given *label* and
+/// properties defined in *peer*. Returns the edge object.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-vertex-add-out-edge
 ///
 /// @verbinclude graph-vertex-add-out-edge2
 ///
 /// @verbinclude graph-vertex-add-out-edge3
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.addOutEdge = function (ine, id, label, data) {
@@ -547,16 +555,17 @@ Vertex.prototype.outDegree = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the identifier of a vertex
+/// @startDocuBlock peerGetId
 ///
-/// @FUN{@FA{vertex}.getId()}
+/// `peer.getId()`
 ///
-/// Returns the identifier of the @FA{vertex}. If the vertex was deleted, then
-/// @LIT{undefined} is returned.
+/// Returns the identifier of the *peer*. If the vertex was deleted, then
+/// *undefined* is returned.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-vertex-get-id
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getId = function () {
@@ -564,15 +573,16 @@ Vertex.prototype.getId = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a property of a vertex
+/// @startDocuBlock peerGetProperty
 ///
-/// @FUN{@FA{vertex}.getProperty(@FA{name})}
+/// `peer.getProperty(edge)`
 ///
-/// Returns the property @FA{name} a @FA{vertex}.
+/// Returns the property *edge* a *peer*.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-vertex-get-property
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getProperty = function (name) {
@@ -580,15 +590,16 @@ Vertex.prototype.getProperty = function (name) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gets all property names of a vertex
+/// @startDocuBlock peerGetPropertyKeys
 ///
-/// @FUN{@FA{vertex}.getPropertyKeys()}
+/// `peer.getPropertyKeys()`
 ///
-/// Returns all propety names a @FA{vertex}.
+/// Returns all propety names a *peer*.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-vertex-get-property-keys
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getPropertyKeys = function () {
@@ -596,15 +607,16 @@ Vertex.prototype.getPropertyKeys = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns all properties of a vertex
+/// @startDocuBlock peerproperties
 ///
-/// @FUN{@FA{vertex}.properties()}
+/// `peer.properties()`
 ///
-/// Returns all properties and their values of a @FA{vertex}
+/// Returns all properties and their values of a *peer*
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-vertex-properties
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.properties = function () {
@@ -721,37 +733,38 @@ Graph.prototype.getOrAddVertex = function (id) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds an edge to the graph
+/// @startDocuBlock graphAddEdge
 ///
-/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id})}
+/// `graph.addEdge(out, in, peer)`
 ///
-/// Creates a new edge from @FA{out} to @FA{in} and returns the edge object. The
-/// identifier @FA{id} must be a unique identifier or null.
+/// Creates a new edge from *out* to *out* and returns the edge object. The
+/// identifier *peer* must be a unique identifier or null.
 /// out and in can either be vertices or their IDs
 ///
-/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id}, @FA{label})}
+/// `graph.addEdge(out, out, peer, label)`
 ///
-/// Creates a new edge from @FA{out} to @FA{in} with @FA{label} and returns the
+/// Creates a new edge from *out* to *out* with *label* and returns the
 /// edge object.
 /// out and in can either be vertices or their IDs
 ///
-/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id}, @FA{data})}
+/// `graph.addEdge(out, out, peer, peer)`
 ///
 /// Creates a new edge and returns the edge object. The edge contains the
-/// properties defined in @FA{data}.
+/// properties defined in *peer*.
 /// out and in can either be vertices or their IDs
 ///
-/// @FUN{@FA{graph}.addEdge(@FA{out}, @FA{in}, @FA{id}, @FA{label}, @FA{data})}
+/// `graph.addEdge(out, out, peer, label, peer)`
 ///
 /// Creates a new edge and returns the edge object. The edge has the
-/// label @FA{label} and contains the properties defined in @FA{data}.
+/// label *label* and contains the properties defined in *peer*.
 /// out and in can either be vertices or their IDs
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-graph-add-edge
 ///
 /// @verbinclude graph-graph-add-edge2
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data, waitForSync) {
@@ -777,19 +790,19 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data, wait
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a vertex to the graph
+/// @startDocuBlock graphAddVertex
 ///
-/// @FUN{@FA{graph}.addVertex(@FA{id})}
+/// `graph.addVertex(peer)`
 ///
 /// Creates a new vertex and returns the vertex object. The identifier
-/// @FA{id} must be a unique identifier or null.
+/// *peer* must be a unique identifier or null.
 ///
-/// @FUN{@FA{graph}.addVertex(@FA{id}, @FA{data})}
+/// `graph.addVertex(peer, peer)`
 ///
 /// Creates a new vertex and returns the vertex object. The vertex contains
-/// the properties defined in @FA{data}.
+/// the properties defined in *peer*.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Without any properties:
 ///
@@ -798,6 +811,7 @@ Graph.prototype.addEdge = function (out_vertex, in_vertex, id, label, data, wait
 /// With given properties:
 ///
 /// @verbinclude graph-graph-add-vertex2
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.addVertex = function (id, data, waitForSync) {
@@ -807,7 +821,7 @@ Graph.prototype.addVertex = function (id, data, waitForSync) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces an existing vertex by ID
 ///
-/// @FUN{@FA{graph}.replaceVertex(@FA{id}, @FA{data})}
+/// @FUN{@FA{graph}.replaceVertex(*peer*, *peer*)}
 ///
 /// Replaces an existing vertex by ID
 ////////////////////////////////////////////////////////////////////////////////
@@ -817,11 +831,12 @@ Graph.prototype.replaceVertex = function (id, data) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief replaces an existing edge by ID
+/// @startDocuBlock graphReplaceEdge
 ///
-/// @FUN{@FA{graph}.replaceEdge(@FA{id}, @FA{data})}
+/// `graph.replaceEdge(peer, peer)`
 ///
 /// Replaces an existing edge by ID
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.replaceEdge = function (id, data) {
