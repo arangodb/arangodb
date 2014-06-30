@@ -211,7 +211,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
 
   this.loadGraphWithRandomStart = function(callback) {
     adapter.loadRandomNode(function (node) {
-      if (node.errorCode) {
+      if (node.errorCode && node.errorCode === 404) {
         callback(node);
         return;
       }

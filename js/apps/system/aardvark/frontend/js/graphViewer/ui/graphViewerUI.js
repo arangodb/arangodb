@@ -453,7 +453,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     } else {
       graphViewer.loadGraphWithRandomStart(function(node) {
         if (node && node.errorCode) {
-          alert("Sorry your graph seems to be empty");
+          alertError("Sorry your graph seems to be empty");
         }
       });
     }
