@@ -562,7 +562,7 @@
       });
 
       it("should handle resizing", function () {
-        r.graphView =  graphDummy;
+        r.graphManagementView =  graphDummy;
         r.dashboardView = dashboardDummy;
         spyOn(graphDummy, "handleResize");
         spyOn(dashboardDummy, "resize");
