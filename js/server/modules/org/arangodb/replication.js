@@ -108,7 +108,17 @@ applier.start = function (initialTick) {
 applier.stop = function () {
   'use strict';
 
-  return internal.stopReplicationApplier();
+  throw "stop is not supported anymore - please use shutdown";
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shuts down the replication applier
+////////////////////////////////////////////////////////////////////////////////
+  
+applier.shutdown = function () {
+  'use strict';
+
+  return internal.shutdownReplicationApplier();
 };
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1931,12 +1931,7 @@ int TRI_InitDatabasesServer (TRI_server_t* server) {
       TRI_StartCompactorVocBase(vocbase);
   
       // start the replication applier
-      vocbase->_replicationApplier = TRI_CreateReplicationApplier(vocbase);
-
-      if (vocbase->_replicationApplier == nullptr) {
-        // TODO
-        LOG_FATAL_AND_EXIT("initialising replication applier for database '%s' failed", vocbase->_name);
-      }
+      TRI_ASSERT(vocbase->_replicationApplier != nullptr);
 
       if (vocbase->_replicationApplier->_configuration._autoStart) {
         if (server->_disableReplicationAppliers) {
@@ -2032,7 +2027,7 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
 
   TRI_ASSERT(vocbase != nullptr);
 
-  vocbase->_replicationApplier = TRI_CreateReplicationApplier(vocbase);
+  vocbase->_replicationApplier = TRI_CreateReplicationApplier(server, vocbase);
 
   if (vocbase->_replicationApplier == nullptr) {
     TRI_DestroyInitialVocBase(vocbase);
@@ -2153,13 +2148,6 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
   TRI_StartCompactorVocBase(vocbase);
 
   // start the replication applier
-  vocbase->_replicationApplier = TRI_CreateReplicationApplier(vocbase);
-
-  if (vocbase->_replicationApplier == nullptr) {
-    // TODO
-    LOG_FATAL_AND_EXIT("initialising replication applier for database '%s' failed", name);
-  }
-
   if (vocbase->_replicationApplier->_configuration._autoStart) {
     if (server->_disableReplicationAppliers) {
       LOG_INFO("replication applier explicitly deactivated for database '%s'", name);

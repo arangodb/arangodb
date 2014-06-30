@@ -30,6 +30,7 @@
 #include "RecoverState.h"
 #include "Basics/FileUtils.h"
 #include "VocBase/collection.h"
+#include "VocBase/replication-applier.h"
 #include "VocBase/voc-shaper.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Slots.h"
@@ -62,6 +63,7 @@ RecoverState::RecoverState (TRI_server_t* server,
     remoteTransactionDatabases(),
     droppedCollections(),
     droppedDatabases(),
+    droppedIndexes(),
     lastTick(0),
     logfilesToProcess(),
     openedCollections(),
@@ -99,6 +101,25 @@ RecoverState::~RecoverState () {
 ////////////////////////////////////////////////////////////////////////////////
   
 void RecoverState::releaseResources () {
+  // hand over running remote transactions to the applier
+  for (auto it = runningRemoteTransactions.begin(); it != runningRemoteTransactions.end(); ++it) {
+    auto* trx = (*it).second;
+    
+    TRI_vocbase_t* vocbase = trx->vocbase();
+    TRI_ASSERT(vocbase != nullptr);
+
+    auto* applier = vocbase->_replicationApplier;
+    TRI_ASSERT(applier != nullptr);
+    
+    applier->addRemoteTransaction(trx);
+  }
+
+  // reset trx counter as we're moving transactions from this thread to a potential other
+  triagens::arango::TransactionBase::setNumbers(0, 0);
+
+  runningRemoteTransactions.clear();
+
+
   // release all collections
   for (auto it = openedCollections.begin(); it != openedCollections.end(); ++it) {
     TRI_vocbase_col_t* collection = (*it).second;
@@ -311,10 +332,10 @@ int RecoverState::executeSingleOperation (TRI_voc_tick_t databaseId,
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    trx->addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER);
-    trx->addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER);
-    trx->addHint(TRI_TRANSACTION_HINT_NO_THROTTLING);
-    trx->addHint(TRI_TRANSACTION_HINT_LOCK_NEVER);
+    trx->addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, false);
+    trx->addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, false);
+    trx->addHint(TRI_TRANSACTION_HINT_NO_THROTTLING, false);
+    trx->addHint(TRI_TRANSACTION_HINT_LOCK_NEVER, false);
 
     res = trx->begin();
 
@@ -433,6 +454,33 @@ bool RecoverState::InitialScanMarker (TRI_df_marker_t const* marker,
       state->remoteTransactions.erase(m->_transactionId);
       break;
     }
+    
+    
+    // -----------------------------------------------------------------------------
+    // create markers 
+    // -----------------------------------------------------------------------------
+
+    case TRI_WAL_MARKER_CREATE_COLLECTION: {
+      collection_create_marker_t const* m = reinterpret_cast<collection_create_marker_t const*>(marker);
+      // undo a potential drop marker discovered before for the same collection
+      state->droppedCollections.erase(m->_collectionId);
+      break;
+    }
+
+    case TRI_WAL_MARKER_CREATE_DATABASE: {
+      database_create_marker_t const* m = reinterpret_cast<database_create_marker_t const*>(marker);
+      // undo a potential drop marker discovered before for the same database
+      state->droppedDatabases.erase(m->_databaseId);
+      break;
+    }
+    
+    case TRI_WAL_MARKER_CREATE_INDEX: {
+      index_create_marker_t const* m = reinterpret_cast<index_create_marker_t const*>(marker);
+      // undo a potential drop marker discovered before for the same index
+      state->droppedIndexes.erase(m->_indexId);
+      break;
+    }
+
 
     // -----------------------------------------------------------------------------
     // drop markers 
@@ -449,6 +497,13 @@ bool RecoverState::InitialScanMarker (TRI_df_marker_t const* marker,
       database_drop_marker_t const* m = reinterpret_cast<database_drop_marker_t const*>(marker);
       // note that the database was dropped and doesn't need to be recovered
       state->droppedDatabases.insert(m->_databaseId);
+      break;
+    }
+    
+    case TRI_WAL_MARKER_DROP_INDEX: {
+      index_drop_marker_t const* m = reinterpret_cast<index_drop_marker_t const*>(marker);
+      // note that the index was dropped and doesn't need to be recovered
+      state->droppedIndexes.insert(m->_indexId);
       break;
     }
   }
@@ -755,6 +810,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
     case TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION: {
       transaction_remote_begin_marker_t const* m = reinterpret_cast<transaction_remote_begin_marker_t const*>(marker);
       TRI_voc_tick_t databaseId  = m->_databaseId;
+      TRI_voc_tid_t externalId   = m->_externalId;
       // start a remote transaction
       
       TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
@@ -764,14 +820,17 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
                     TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
       }
 
-      auto trx = new RemoteTransactionType(vocbase);
+      auto trx = new RemoteTransactionType(state->server, vocbase, externalId);
 
       if (trx == nullptr) {
         LOG_WARNING("unable to start transaction: %s", TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
         return state->shouldAbort();
       }
 
+      trx->addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, true);
+
       int res = trx->begin();
+
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_WARNING("unable to start transaction: %s", TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
         delete trx;
@@ -956,16 +1015,18 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         return true;
       }
 
-      TRI_document_collection_t* document = state->getCollection(databaseId, collectionId);
-      if (document == nullptr) {
-        return state->shouldAbort();
-      }
+      if (state->droppedIndexes.find(indexId) == state->droppedIndexes.end()) {
+        TRI_document_collection_t* document = state->getCollection(databaseId, collectionId);
+        if (document == nullptr) {
+          return state->shouldAbort();
+        }
       
-      // fake transaction to satisfy assertions
-      triagens::arango::TransactionBase trx(true); 
+        // fake transaction to satisfy assertions
+        triagens::arango::TransactionBase trx(true); 
 
-      // ignore any potential error returned by this call
-      TRI_DropIndexDocumentCollection(document, indexId, false);
+        // ignore any potential error returned by this call
+        TRI_DropIndexDocumentCollection(document, indexId, false);
+      }
       break;
     }
 
@@ -974,26 +1035,27 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       collection_drop_marker_t const* m = reinterpret_cast<collection_drop_marker_t const*>(marker);
       TRI_voc_cid_t collectionId = m->_collectionId;
       TRI_voc_tick_t databaseId  = m->_databaseId;
+     
+      if (state->isDropped(databaseId, collectionId)) { 
+        TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
+        if (vocbase == nullptr) {
+          // database already deleted - do nothing
+          return true;
+        }
+
+        TRI_vocbase_col_t* collection = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
+
+        if (collection == nullptr) {
+          // collection already deleted - do nothing
+          return true;
+        }
       
+        // fake transaction to satisfy assertions
+        triagens::arango::TransactionBase trx(true); 
 
-      TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
-      if (vocbase == nullptr) {
-        // database already deleted - do nothing
-        return true;
+        // ignore any potential error returned by this call
+        TRI_DropCollectionVocBase(vocbase, collection, false);
       }
-
-      TRI_vocbase_col_t* collection = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
-
-      if (collection == nullptr) {
-        // collection already deleted - do nothing
-        return true;
-      }
-      
-      // fake transaction to satisfy assertions
-      triagens::arango::TransactionBase trx(true); 
-
-      // ignore any potential error returned by this call
-      TRI_DropCollectionVocBase(vocbase, collection, false);
       break;
     }
 
@@ -1003,14 +1065,12 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       TRI_voc_tick_t databaseId = m->_databaseId;
 
       if (state->isDropped(databaseId)) {
-        return true;
-      }
-      
-      // fake transaction to satisfy assertions
-      triagens::arango::TransactionBase trx(true); 
+        // fake transaction to satisfy assertions
+        triagens::arango::TransactionBase trx(true); 
   
-      // ignore any potential error returned by this call
-      TRI_DropByIdDatabaseServer(state->server, databaseId, false);
+        // ignore any potential error returned by this call
+        TRI_DropByIdDatabaseServer(state->server, databaseId, false);
+      }
       break;
     }
     
