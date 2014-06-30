@@ -317,11 +317,13 @@ function GharialAdapter(nodes, edges, viewer, config) {
       contentType: "application/json",
       processData: false,
       success: function(data) {
-        data._from = edgeToAdd._from;
-        data._to = edgeToAdd._to;
-        delete data.error;
-        var edge = absAdapter.insertEdge(data);
-        callback(edge);
+        if (data.error === false) {
+          var toInsert = data.edge, edge;
+          toInsert._from = edgeToAdd._from;
+          toInsert._to = edgeToAdd._to;
+          edge = absAdapter.insertEdge(toInsert);
+          callback(edge);
+        }
       },
       error: function(data) {
         throw data.statusText;
@@ -380,9 +382,9 @@ function GharialAdapter(nodes, edges, viewer, config) {
       processData: false,
       success: function(data) {
         if (data.error === false) {
-          nodeToAdd._key = data._key;
-          nodeToAdd._id = data._id;
-          nodeToAdd._rev = data._rev;
+          nodeToAdd._key = data.vertex._key;
+          nodeToAdd._id = data.vertex._id;
+          nodeToAdd._rev = data.vertex._rev;
           absAdapter.insertNode(nodeToAdd);
           callback(nodeToAdd);
         }
