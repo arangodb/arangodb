@@ -10,6 +10,7 @@
 
   var User = Foxx.Model.extend({}, {
     attributes: {
+      user: {type: 'string', required: true},
       authData: {type: 'object', required: true},
       userData: {type: 'object', required: true}
     }
@@ -21,7 +22,7 @@
   );
 
   function resolve(username) {
-    var user = users.firstExample({'userData.username': username});
+    var user = users.firstExample({user: username});
     if (!user.get('_key')) {
       return null;
     }
@@ -30,15 +31,15 @@
 
   function listUsers() {
     return users.collection.all().toArray().map(function (user) {
-      return user.userData ? user.userData.username : null;
+      return user.user;
     }).filter(Boolean);
   }
 
-  function createUser(userData) {
+  function createUser(username, userData) {
     if (!userData) {
       userData = {};
     }
-    if (!userData.username) {
+    if (!username) {
       throw new Error('Must provide username!');
     }
     var user;
@@ -48,10 +49,11 @@
         write: [users.collection.name()]
       },
       action: function () {
-        if (resolve(userData.username)) {
-          throw new errors.UsernameNotAvailable(userData.username);
+        if (resolve(username)) {
+          throw new errors.UsernameNotAvailable(username);
         }
         user = new User({
+          user: username,
           userData: userData,
           authData: {}
         });
