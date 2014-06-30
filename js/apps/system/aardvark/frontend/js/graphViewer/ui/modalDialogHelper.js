@@ -292,6 +292,9 @@ var modalDialogHelper = modalDialogHelper || {};
       };
       addLineButton.id = id + "_addLine";
       addLineButton.className = "graphViewer-icon-button gv-icon-small add";
+      if (typeof list === "string" && list.length > 0) {
+        list = [list];
+      }
       if (list.length > 0) {
         input.value = list[0];
       }
