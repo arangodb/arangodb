@@ -70,6 +70,8 @@
 ///   - `skipClient`: flag for "single" test target to skip the client test
 ///   - `cleanup`: if set to true (the default), the cluster data files
 ///     and logs are removed after termination of the test.
+///   - `jasmineReportFormat`: this option is passed on to the `format`
+///     option of the Jasmin options object, only for Jasmin tests.
 ////////////////////////////////////////////////////////////////////////////////
 
 var _ = require("underscore");
@@ -316,8 +318,17 @@ function findTests () {
 function runThere (options, instanceInfo, file) {
   var r;
   try {
-    var t = 'var runTest = require("jsunity").runTest; '+
-            'return runTest('+JSON.stringify(file)+');';
+    var t;
+    if (file.indexOf("-spec") === -1) {
+      t = 'var runTest = require("jsunity").runTest; '+
+          'return runTest('+JSON.stringify(file)+');';
+    }
+    else {
+      var jasmineReportFormat = options.jasmineReportFormat || 'progress';
+      t = 'var executeTestSuite = require("jasmine").executeTestSuite; '+
+          'return executeTestSuite(['+JSON.stringify(file)+'],{"format": '+
+          JSON.stringify(jasmineReportFormat)+'});';
+    }
     var o = makeAuthorisationHeaders(options);
     o.method = "POST";
     o.timeout = 24*3600;
