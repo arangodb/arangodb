@@ -176,9 +176,10 @@ function parseBodyForCreateCollection (req, res) {
 }
   
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_post_api_collection
 /// @brief creates a collection
 ///
-/// @RESTHEADER{POST /_api/collection,creates a collection}
+/// @RESTHEADER{POST /_api/collection, Create collection}
 ///
 /// @RESTBODYPARAM{body,json,required}
 /// the body with name and options for a collection.
@@ -187,27 +188,28 @@ function parseBodyForCreateCollection (req, res) {
 /// Creates an new collection with a given name. The request must contain an
 /// object with the following attributes.
 ///
-/// - `name`: The name of the collection.
+/// - *name*: The name of the collection.
 ///
-/// - `waitForSync` (optional, default: false): If `true` then
+/// - *waitForSync* (optional, default: false): If *true* then
 ///   the data is synchronised to disk before returning from a create or
 ///   update of a document.
 ///
-/// - `doCompact` (optional, default is `true`): whether or not the collection
+/// - *doCompact* (optional, default is *true*): whether or not the collection
 ///   will be compacted.
 ///
-/// - `journalSize` (optional, default is a @ref
+/// - *journalSize* (optional, default is a @ref
 ///   CommandLineArangod "configuration parameter"): The maximal size of
-///   a journal or datafile.  Note that this also limits the maximal
+///   a journal or datafile.  
+/// **Note**: This also limits the maximal
 ///   size of a single object. Must be at least 1MB.
 ///
-/// - `isSystem` (optional, default is `false`): If `true`, create a
-///   system collection. In this case `collection-name` should start with
+/// - *isSystem* (optional, default is *false*): If *true*, create a
+///   system collection. In this case *collection-name* should start with
 ///   an underscore. End users should normally create non-system collections
 ///   only. API implementors may be required to create system collections in
 ///   very special occasions, but normally a regular collection will do.
 ///
-/// - `isVolatile` (optional, default is `false`): If `true` then the
+/// - *isVolatile* (optional, default is *false*): If *true* then the
 ///   collection data is kept in-memory only and not made persistent. Unloading
 ///   the collection will cause the collection data to be discarded. Stopping
 ///   or re-starting the server will also cause full loss of data in the
@@ -219,39 +221,39 @@ function parseBodyForCreateCollection (req, res) {
 ///   This option should threrefore be used for cache-type collections only, 
 ///   and not for data that cannot be re-created otherwise.
 ///
-/// - `keyOptions` (optional) additional options for key generation. If
-///   specified, then `keyOptions` should be a JSON array containing the
+/// - *keyOptions* (optional) additional options for key generation. If
+///   specified, then *keyOptions* should be a JSON array containing the
 ///   following attributes (note: some of them are optional):
-///   - `type`: specifies the type of the key generator. The currently 
-///     available generators are `traditional` and `autoincrement`.
-///   - `allowUserKeys`: if set to `true`, then it is allowed to supply
-///     own key values in the `_key` attribute of a document. If set to 
-///     `false`, then the key generator will solely be responsible for
-///     generating keys and supplying own key values in the `_key` attribute
+///   - *type*: specifies the type of the key generator. The currently 
+///     available generators are *traditional* and *autoincrement*.
+///   - *allowUserKeys*: if set to *true*, then it is allowed to supply
+///     own key values in the *_key* attribute of a document. If set to 
+///     *false*, then the key generator will solely be responsible for
+///     generating keys and supplying own key values in the *_key* attribute
 ///     of documents is considered an error.
-///   - `increment`: increment value for `autoincrement` key generator.
+///   - *increment*: increment value for *autoincrement* key generator.
 ///     Not used for other key generator types.
-///   - `offset`: initial offset value for `autoincrement` key generator.
+///   - *offset*: initial offset value for *autoincrement* key generator.
 ///     Not used for other key generator types.
 ///
-/// - `type` (optional, default is `2`): the type of the collection to
-///   create. The following values for `type` are valid:
-///   - `2`: document collection
-///   - `3`: edges collection
+/// - *type* (optional, default is *2*): the type of the collection to
+///   create. The following values for *type* are valid:
+///   - *2*: document collection
+///   - *3*: edges collection
 ///
-/// - `numberOfShards` (optional, default is `1`): in a cluster, this value
+/// - *numberOfShards* (optional, default is *1*): in a cluster, this value
 ///   determines the number of shards to create for the collection. In a single
 ///   server setup, this option is meaningless.
 ///
-/// - `shardKeys` (optional, default is `[ "_key" ]`): in a cluster, this
+/// - *shardKeys* (optional, default is *[ "_key" ]*): in a cluster, this
 ///   attribute determines which document attributes are used to determine the
 ///   target shard for documents. Documents are sent to shards based on the
 ///   values of their shard key attributes. The values of all shard
 ///   key attributes in a document are hashed, and the hash value is used to 
-///   determine the target shard. Note that values of shard key attributes cannot
-///   be changed once set.
+///   determine the target shard. 
+/// **Note**: Values of shard key attributes cannot be changed once set.
 ///   This option is meaningless in a single server setup.
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionCreateCollection}
 ///     var url = "/_api/collection";
@@ -298,6 +300,7 @@ function parseBodyForCreateCollection (req, res) {
 ///     db._flushCache();
 ///     db._drop("testCollectionUsers");
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_api_collection (req, res) {
@@ -355,6 +358,7 @@ function post_api_collection (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_get_api_collections
 /// @brief returns all collections
 ///
 /// @RESTHEADER{GET /_api/collection,reads all collections}
@@ -365,15 +369,15 @@ function post_api_collection (req, res) {
 /// Whether or not system collections should be excluded from the result.
 ///
 /// @RESTDESCRIPTION
-/// Returns an object with an attribute `collections` containing a 
+/// Returns an object with an attribute *collections* containing a 
 /// list of all collection descriptions. The same information is also
-/// available in the `names` as hash map with the collection names
+/// available in the *names* as hash map with the collection names
 /// as keys.
 ///
-/// By providing the optional URL parameter `excludeSystem` with a value of
-/// `true`, all system collections will be excluded from the response.
+/// By providing the optional URL parameter *excludeSystem* with a value of
+/// *true*, all system collections will be excluded from the response.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Return information about all collections:
 ///
@@ -386,6 +390,7 @@ function post_api_collection (req, res) {
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_api_collections (req, res) {
@@ -420,10 +425,10 @@ function get_api_collections (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_get_api_collection_name
+/// @startDocuBlock JSA_get_api_collection_name
 /// @brief returns a collection
 ///
-/// @RESTHEADER{GET /_api/collection/{collection-name},returns information about a collection}
+/// @RESTHEADER{GET /_api/collection/{collection-name}, Return information about a collection}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -434,11 +439,11 @@ function get_api_collections (req, res) {
 /// The result is an object describing the collection with the following
 /// attributes:
 ///
-/// - `id`: The identifier of the collection.
+/// - *id*: The identifier of the collection.
 ///
-/// - `name`: The name of the collection.
+/// - *name*: The name of the collection.
 ///
-/// - `status`: The status of the collection as number.
+/// - *status*: The status of the collection as number.
 ///  - 1: new born collection
 ///  - 2: unloaded
 ///  - 3: loaded
@@ -447,22 +452,22 @@ function get_api_collections (req, res) {
 ///
 /// Every other status indicates a corrupted collection.
 ///
-/// - `type`: The type of the collection as number.
+/// - *type*: The type of the collection as number.
 ///   - 2: document collection (normal case)
 ///   - 3: edges collection
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{404}
-/// If the `collection-name` is unknown, then a `HTTP 404` is
+/// If the *collection-name* is unknown, then a *HTTP 404* is
 /// returned.
-///
+/// @endDocuBlock
 /////////////////////////////////////////////////////////////////////////////
 
 /////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_get_api_collection_properties
+/// @startDocuBlock JSA_get_api_collection_properties
 ///
-/// @RESTHEADER{GET /_api/collection/{collection-name}/properties,reads the properties of a collection}
+/// @RESTHEADER{GET /_api/collection/{collection-name}/properties, Read properties of a collection}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -471,36 +476,36 @@ function get_api_collections (req, res) {
 ///
 /// @RESTDESCRIPTION
 /// In addition to the above, the result will always contain the
-/// `waitForSync`, `doCompact`, `journalSize`, and `isVolatile` attributes.
+/// *waitForSync*, *doCompact*, *journalSize*, and *isVolatile* attributes.
 /// This is achieved by forcing a load of the underlying collection.
 ///
-/// - `waitForSync`: If `true` then creating or changing a
+/// - *waitForSync*: If *true* then creating or changing a
 ///   document will wait until the data has been synchronised to disk.
 ///
-/// - `doCompact`: Whether or not the collection will be compacted.
+/// - *doCompact*: Whether or not the collection will be compacted.
 ///
-/// - `journalSize`: The maximal size setting for journals / datafiles.
+/// - *journalSize*: The maximal size setting for journals / datafiles.
 ///
-/// - `isVolatile`: If `true` then the collection data will be
+/// - *isVolatile*: If *true* then the collection data will be
 ///   kept in memory only and ArangoDB will not write or sync the data
 ///   to disk.
 ///
 /// In a cluster setup, the result will also contain the following attributes:
-/// - `numberOfShards`: the number of shards of the collection.
+/// - *numberOfShards*: the number of shards of the collection.
 ///
-/// - `shardKeys`: contains the names of document attributes that are used to 
+/// - *shardKeys*: contains the names of document attributes that are used to 
 ///   determine the target shard for documents. 
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{400}
-/// If the `collection-name` is missing, then a `HTTP 400` is
+/// If the *collection-name* is missing, then a *HTTP 400* is
 /// returned.
 ///
 /// @RESTRETURNCODE{404}
-/// If the `collection-name` is unknown, then a `HTTP 404`
+/// If the *collection-name* is unknown, then a *HTTP 404*
 /// is returned.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Using an identifier:
 ///
@@ -532,12 +537,13 @@ function get_api_collections (req, res) {
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_get_api_collection_count
+/// @startDocuBlock JSA_get_api_collection_count
 ///
-/// @RESTHEADER{GET /_api/collection/{collection-name}/count,returns the number of documents in a collection}
+/// @RESTHEADER{GET /_api/collection/{collection-name}/count, Return number of documents in a collection}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -546,21 +552,21 @@ function get_api_collections (req, res) {
 ///
 /// @RESTDESCRIPTION
 /// In addition to the above, the result also contains the number of documents.
-/// Note that this will always load the collection into memory.
+/// **Note** that this will always load the collection into memory.
 ///
-/// - `count`: The number of documents inside the collection.
+/// - *count*: The number of documents inside the collection.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{400}
-/// If the `collection-name` is missing, then a `HTTP 400` is
+/// If the *collection-name* is missing, then a *HTTP 400* is
 /// returned.
 ///
 /// @RESTRETURNCODE{404}
-/// If the `collection-name` is unknown, then a `HTTP 404`
+/// If the *collection-name* is unknown, then a *HTTP 404*
 /// is returned.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Using an identifier and requesting the number of documents:
 ///
@@ -580,12 +586,13 @@ function get_api_collections (req, res) {
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_get_api_collection_figures
+/// @startDocuBlock JSA_get_api_collection_figures
 ///
-/// @RESTHEADER{GET /_api/collection/{collection-name}/figures,returns the stats for a collection}
+/// @RESTHEADER{GET /_api/collection/{collection-name}/figures, Return stats for a collection}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -594,77 +601,77 @@ function get_api_collections (req, res) {
 ///
 /// @RESTDESCRIPTION
 /// In addition to the above, the result also contains the number of documents
-/// and additional statistical information about the collection.  Note that this
-/// will always load the collection into memory.
+/// and additional statistical information about the collection.  
+/// **Note** : This will always load the collection into memory.
 ///
-/// - `count`: The number of documents currently present in the collection.
+/// - *count*: The number of documents currently present in the collection.
 ///
-/// - `figures.alive.count`: The number of currently active documents.
+/// - *figures.alive.count*: The number of currently active documents.
 ///
-/// - `figures.alive.size`: The total size in bytes used by all
+/// - *figures.alive.size*: The total size in bytes used by all
 ///   active documents.
 ///
-/// - `figures.dead.count`: The number of dead documents. This includes document
+/// - *figures.dead.count*: The number of dead documents. This includes document
 ///   versions that have been deleted or replaced by a newer version.
 ///
-/// - `figures.dead.size`: The total size in bytes used by all dead documents.
+/// - *figures.dead.size*: The total size in bytes used by all dead documents.
 ///
-/// - `figures.dead.deletion`: The total number of deletion markers in the 
+/// - *figures.dead.deletion*: The total number of deletion markers in the 
 ///   collection.
 ///
-/// - `figures.datafiles.count`: The number of current datafiles.
-/// - `figures.datafiles.fileSize`: The total filesize of all datafiles.
+/// - *figures.datafiles.count*: The number of current datafiles.
+/// - *figures.datafiles.fileSize*: The total filesize of all datafiles.
 ///
-/// - `figures.journals.count`: The number of journal files.
-/// - `figures.journals.fileSize`: The total filesize of all journal files.
+/// - *figures.journals.count*: The number of journal files.
+/// - *figures.journals.fileSize*: The total filesize of all journal files.
 ///
-/// - `figures.compactors.count`: The number of compactor files.
-/// - `figures.compactors.fileSize`: The total filesize of all compactor files.
+/// - *figures.compactors.count*: The number of compactor files.
+/// - *figures.compactors.fileSize*: The total filesize of all compactor files.
 ///
-/// - `figures.shapefiles.count`: The number of shape files.
-/// - `figures.shapefiles.fileSize`: The total filesize of all shape files.
+/// - *figures.shapefiles.count*: The number of shape files.
+/// - *figures.shapefiles.fileSize*: The total filesize of all shape files.
 ///
-/// - `figures.shapes.count`: The total number of shapes in the 
+/// - *figures.shapes.count*: The total number of shapes in the 
 ///   collection (this includes shapes that are not in use anymore) 
 ///
-/// - `figures.attributes.count`: The total number of attributes in the 
+/// - *figures.attributes.count*: The total number of attributes in the 
 ///   collection (this includes attributes that are not in use anymore) 
 ///
-/// - `figures.attributes.size`: The total size used by all attribute
+/// - *figures.attributes.size*: The total size used by all attribute
 ///   names in the collection (this includes attributes that are not in use anymore) 
 ///
-/// - `figures.indexes.count`: The total number of indexes defined for the
+/// - *figures.indexes.count*: The total number of indexes defined for the
 ///   collection (this includes internal indexes such as the primary index)
 ///
-/// - `figures.indexes.size`: The total memory allocated by the indexes in bytes
+/// - *figures.indexes.size*: The total memory allocated by the indexes in bytes
 ///
-/// - `journalSize`: The maximal size of the journal in bytes.
+/// - *journalSize*: The maximal size of the journal in bytes.
 ///
-/// Note: the filesizes of collection and index parameter JSON files are
+/// **Note**: the filesizes of collection and index parameter JSON files are
 /// not reported. These files should normally have a size of a few bytes
-/// each. Please also note that the `fileSize` values are reported in bytes
+/// each. Please also note that the *fileSize* values are reported in bytes
 /// and reflect the logical file sizes. Some filesystems may use optimisations
 /// (e.g. sparse files) so that the actual physical file size is somewhat
 /// different. Directories and sub-directories may also require space in the
-/// file system, but this space is not reported in the `fileSize` results.
+/// file system, but this space is not reported in the *fileSize* results.
 ///
 /// That means that the figures reported do not reflect the actual disk
 /// usage of the collection with 100% accuracy. The actual disk usage of
 /// a collection is normally slightly higher than the sum of the reported 
-/// `fileSize` values. Still the sum of the `fileSize` values can still be 
+/// *fileSize* values. Still the sum of the *fileSize* values can still be 
 /// used as a lower bound approximation of the disk usage.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{400}
-/// If the `collection-name` is missing, then a `HTTP 400` is
+/// If the *collection-name* is missing, then a *HTTP 400* is
 /// returned.
 ///
 /// @RESTRETURNCODE{404}
-/// If the `collection-name` is unknown, then a `HTTP 404`
+/// If the *collection-name* is unknown, then a *HTTP 404*
 /// is returned.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Using an identifier and requesting the figures of the collection:
 ///
@@ -681,12 +688,13 @@ function get_api_collections (req, res) {
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ///////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_get_api_collection_revision
+/// @startDocuBlock JSA_get_api_collection_revision
 ///
-/// @RESTHEADER{GET /_api/collection/{collection-name}/revision,return a collection revision id}
+/// @RESTHEADER{GET /_api/collection/{collection-name}/revision, Return collection revision id}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -699,19 +707,19 @@ function get_api_collections (req, res) {
 /// string that clients can use to check whether data in a collection
 /// has changed since the last revision check.
 ///
-/// - `revision`: The collection revision id as a string.
+/// - *revision*: The collection revision id as a string.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{400}
-/// If the `collection-name` is missing, then a `HTTP 400` is
+/// If the *collection-name* is missing, then a *HTTP 400* is
 /// returned.
 ///
 /// @RESTRETURNCODE{404}
-/// If the `collection-name` is unknown, then a `HTTP 404`
+/// If the *collection-name* is unknown, then a *HTTP 404*
 /// is returned.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Retrieving the revision of a collection
 ///
@@ -728,12 +736,13 @@ function get_api_collections (req, res) {
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////
-/// @fn JSA_get_api_collection_checksum
+/// @startDocuBlock JSA_get_api_collection_checksum
 ///
-/// @RESTHEADER{GET /_api/collection/{collection-name}/checksum,returns a checksum for the collection}
+/// @RESTHEADER{GET /_api/collection/{collection-name}/checksum, Return checksum for the collection}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -757,36 +766,36 @@ function get_api_collections (req, res) {
 /// returned too so one can make sure the checksums are calculated for the same 
 /// state of data.
 ///
-/// By default, the checksum will only be calculated on the `_key` system attribute
+/// By default, the checksum will only be calculated on the *_key* system attribute
 /// of the documents contained in the collection. For edge collections, the system 
-/// attributes `_from` and `_to` will also be included in the calculation.
+/// attributes *_from* and *_to* will also be included in the calculation.
 ///
-/// By setting the optional URL parameter `withRevisions` to `true`, then revision
-/// ids (`_rev` system attributes) are included in the checksumming.
+/// By setting the optional URL parameter *withRevisions* to *true*, then revision
+/// ids (*_rev* system attributes) are included in the checksumming.
 ///
-/// By providing the optional URL parameter `withData` with a value of `true`, 
+/// By providing the optional URL parameter *withData* with a value of *true*, 
 /// the user-defined document attributes will be included in the calculation too. 
-/// Note that including user-defined attributes will make the checksumming slower.
+/// **Note**: Including user-defined attributes will make the checksumming slower.
 ///
 /// The response is a JSON object with the following attributes:
 ///
-/// - `checksum`: The calculated checksum as a number.
+/// - *checksum*: The calculated checksum as a number.
 ///
-/// - `revision`: The collection revision id as a string.
+/// - *revision*: The collection revision id as a string.
 ///
-/// Note: this method is not available in a cluster.
+/// **Note**: this method is not available in a cluster.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{400}
-/// If the `collection-name` is missing, then a `HTTP 400` is
+/// If the *collection-name* is missing, then a *HTTP 400* is
 /// returned.
 ///
 /// @RESTRETURNCODE{404}
-/// If the `collection-name` is unknown, then a `HTTP 404`
+/// If the *collection-name* is unknown, then a *HTTP 404*
 /// is returned.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Retrieving the checksum of a collection:
 ///
@@ -822,6 +831,7 @@ function get_api_collections (req, res) {
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function get_api_collection (req, res) {
@@ -957,9 +967,10 @@ function get_api_collection (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_put_api_collection_load
 /// @brief loads a collection
 ///
-/// @RESTHEADER{PUT /_api/collection/{collection-name}/load,loads a collection}
+/// @RESTHEADER{PUT /_api/collection/{collection-name}/load, Load collection}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -971,38 +982,38 @@ function get_api_collection (req, res) {
 ///
 /// The request might optionally contain the following attribute:
 ///
-/// - `count`: If set, this controls whether the return value should include
-///   the number of documents in the collection. Setting `count` to 
-///   `false` may speed up loading a collection. The default value for 
-///   `count` is `true`.
+/// - *count*: If set, this controls whether the return value should include
+///   the number of documents in the collection. Setting *count* to 
+///   *false* may speed up loading a collection. The default value for 
+///   *count* is *true*.
 ///
 /// On success an object with the following attributes is returned:
 ///
-/// - `id`: The identifier of the collection.
+/// - *id*: The identifier of the collection.
 ///
-/// - `name`: The name of the collection.
+/// - *name*: The name of the collection.
 ///
-/// - `count`: The number of documents inside the collection. This is only
-///   returned if the `count` input parameters is set to `true` or has
+/// - *count*: The number of documents inside the collection. This is only
+///   returned if the *count* input parameters is set to *true* or has
 ///   not been specified.
 ///
-/// - `status`: The status of the collection as number.
+/// - *status*: The status of the collection as number.
 ///
-/// - `type`: The collection type. Valid types are:
+/// - *type*: The collection type. Valid types are:
 ///   - 2: document collection
 ///   - 3: edges collection
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{400}
-/// If the `collection-name` is missing, then a `HTTP 400` is
+/// If the *collection-name* is missing, then a *HTTP 400* is
 /// returned.
 ///
 /// @RESTRETURNCODE{404}
-/// If the `collection-name` is unknown, then a `HTTP 404`
+/// If the *collection-name* is unknown, then a *HTTP 404*
 /// is returned.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierLoad}
 ///     var cn = "products";
@@ -1017,6 +1028,7 @@ function get_api_collection (req, res) {
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function put_api_collection_load (req, res, collection) {
@@ -1040,9 +1052,10 @@ function put_api_collection_load (req, res, collection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_put_api_collection_unload
 /// @brief unloads a collection
 ///
-/// @RESTHEADER{PUT /_api/collection/{collection-name}/unload,unloads a collection}
+/// @RESTHEADER{PUT /_api/collection/{collection-name}/unload, Unload collection}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1054,26 +1067,26 @@ function put_api_collection_load (req, res, collection) {
 /// memory, again. On success an object with the following attributes is
 /// returned:
 ///
-/// - `id`: The identifier of the collection.
+/// - *id*: The identifier of the collection.
 ///
-/// - `name`: The name of the collection.
+/// - *name*: The name of the collection.
 ///
-/// - `status`: The status of the collection as number.
+/// - *status*: The status of the collection as number.
 ///
-/// - `type`: The collection type. Valid types are:
+/// - *type*: The collection type. Valid types are:
 ///   - 2: document collection
 ///   - 3: edges collection
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{400}
-/// If the `collection-name` is missing, then a `HTTP 400` is
+/// If the *collection-name* is missing, then a *HTTP 400* is
 /// returned.
 ///
 /// @RESTRETURNCODE{404}
-/// If the `collection-name` is unknown, then a `HTTP 404` is returned.
+/// If the *collection-name* is unknown, then a *HTTP 404* is returned.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierUnload}
 ///     var cn = "products";
@@ -1088,6 +1101,7 @@ function put_api_collection_load (req, res, collection) {
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function put_api_collection_unload (req, res, collection) {
@@ -1104,9 +1118,10 @@ function put_api_collection_unload (req, res, collection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_put_api_collection_truncate
 /// @brief truncates a collection
 ///
-/// @RESTHEADER{PUT /_api/collection/{collection-name}/truncate,truncates a collection}
+/// @RESTHEADER{PUT /_api/collection/{collection-name}/truncate, Truncate collection}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1116,7 +1131,7 @@ function put_api_collection_unload (req, res, collection) {
 /// @RESTDESCRIPTION
 /// Removes all documents from the collection, but leaves the indexes intact.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierTruncate}
 ///     var cn = "products";
@@ -1131,6 +1146,7 @@ function put_api_collection_unload (req, res, collection) {
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function put_api_collection_truncate (req, res, collection) {
@@ -1147,9 +1163,10 @@ function put_api_collection_truncate (req, res, collection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_put_api_collection_properties
 /// @brief changes a collection
 ///
-/// @RESTHEADER{PUT /_api/collection/{collection-name}/properties,changes the properties of a collection}
+/// @RESTHEADER{PUT /_api/collection/{collection-name}/properties, Change properties of a collection}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1160,33 +1177,33 @@ function put_api_collection_truncate (req, res, collection) {
 /// Changes the properties of a collection. Expects an object with the
 /// attribute(s)
 ///
-/// - `waitForSync`: If `true` then creating or changing a
+/// - *waitForSync*: If *true* then creating or changing a
 ///   document will wait until the data has been synchronised to disk.
 ///
-/// - `journalSize`: Size (in bytes) for new journal files that are
+/// - *journalSize*: Size (in bytes) for new journal files that are
 ///   created for the collection.
 ///
 /// If returns an object with the attributes
 ///
-/// - `id`: The identifier of the collection.
+/// - *id*: The identifier of the collection.
 ///
-/// - `name`: The name of the collection.
+/// - *name*: The name of the collection.
 ///
-/// - `waitForSync`: The new value.
+/// - *waitForSync*: The new value.
 ///
-/// - `journalSize`: The new value.
+/// - *journalSize*: The new value.
 ///
-/// - `status`: The status of the collection as number.
+/// - *status*: The status of the collection as number.
 ///
-/// - `type`: The collection type. Valid types are:
+/// - *type*: The collection type. Valid types are:
 ///   - 2: document collection
 ///   - 3: edges collection
 ///
-/// Note: some other collection properties, such as `type`, `isVolatile`,
-/// `numberOfShards` or `shardKeys` cannot be changed once a collection is 
+/// **Note**: some other collection properties, such as *type*, *isVolatile*,
+/// *numberOfShards* or *shardKeys* cannot be changed once a collection is 
 /// created.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierPropertiesSync}
 ///     var cn = "products";
@@ -1201,6 +1218,7 @@ function put_api_collection_truncate (req, res, collection) {
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function put_api_collection_properties (req, res, collection) {
@@ -1223,9 +1241,10 @@ function put_api_collection_properties (req, res, collection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_put_api_collection_rename
 /// @brief renames a collection
 ///
-/// @RESTHEADER{PUT /_api/collection/{collection-name}/rename,renames a collection}
+/// @RESTHEADER{PUT /_api/collection/{collection-name}/rename, Rename collection}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1235,21 +1254,21 @@ function put_api_collection_properties (req, res, collection) {
 /// @RESTDESCRIPTION
 /// Renames a collection. Expects an object with the attribute(s)
 ///
-/// - `name`: The new name.
+/// - *name*: The new name.
 ///
 /// If returns an object with the attributes
 ///
-/// - `id`: The identifier of the collection.
+/// - *id*: The identifier of the collection.
 ///
-/// - `name`: The new name of the collection.
+/// - *name*: The new name of the collection.
 ///
-/// - `status`: The status of the collection as number.
+/// - *status*: The status of the collection as number.
 ///
-/// - `type`: The collection type. Valid types are:
+/// - *type*: The collection type. Valid types are:
 ///   - 2: document collection
 ///   - 3: edges collection
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierRename}
 ///     var cn = "products1";
@@ -1264,6 +1283,7 @@ function put_api_collection_properties (req, res, collection) {
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function put_api_collection_rename (req, res, collection) {
@@ -1294,9 +1314,10 @@ function put_api_collection_rename (req, res, collection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_put_api_collection_rotate
 /// @brief rotates the journal of a collection
 ///
-/// @RESTHEADER{PUT /_api/collection/{collection-name}/rotate,rotates the journal of a collection}
+/// @RESTHEADER{PUT /_api/collection/{collection-name}/rotate, Rotate journal of a collection}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1314,19 +1335,19 @@ function put_api_collection_rename (req, res, collection) {
 ///
 /// If returns an object with the attributes
 ///
-/// - `result`: will be `true` if rotation succeeded
+/// - *result*: will be *true* if rotation succeeded
 ///
-/// Note: this method is not available in a cluster.
+/// **Note**: This method is not available in a cluster.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{400}
-/// If the collection currently has no journal, `HTTP 500` is returned.
+/// If the collection currently has no journal, *HTTP 500* is returned.
 ///
 /// @RESTRETURNCODE{404}
-/// If the `collection-name` is unknown, then a `HTTP 404` is returned.
+/// If the *collection-name* is unknown, then a *HTTP 404* is returned.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Rotating a journal:
 ///
@@ -1363,6 +1384,7 @@ function put_api_collection_rename (req, res, collection) {
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function put_api_collection_rotate (req, res, collection) {
@@ -1423,9 +1445,10 @@ function put_api_collection (req, res) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_delete_api_collection
 /// @brief deletes a collection
 ///
-/// @RESTHEADER{DELETE /_api/collection/{collection-name},deletes a collection}
+/// @RESTHEADER{DELETE /_api/collection/{collection-name}, Delete collection}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -1433,25 +1456,25 @@ function put_api_collection (req, res) {
 /// The name of the collection to delete.
 ///
 /// @RESTDESCRIPTION
-/// Deletes a collection identified by `collection-name`.
+/// Deletes a collection identified by *collection-name*.
 ///
 /// If the collection was successfully deleted then, an object is returned with
 /// the following attributes:
 ///
-/// - `error`: `false`
+/// - *error*: *false*
 ///
-/// - `id`: The identifier of the deleted collection.
+/// - *id*: The identifier of the deleted collection.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{400}
-/// If the `collection-name` is missing, then a `HTTP 400` is
+/// If the *collection-name* is missing, then a *HTTP 400* is
 /// returned.
 ///
 /// @RESTRETURNCODE{404}
-/// If the `collection-name` is unknown, then a `HTTP 404` is returned.
+/// If the *collection-name* is unknown, then a *HTTP 404* is returned.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Using an identifier:
 ///
@@ -1483,6 +1506,7 @@ function put_api_collection (req, res) {
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function delete_api_collection (req, res) {
