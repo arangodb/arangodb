@@ -44,7 +44,7 @@ function DatabaseSuite () {
     setUp : function () {
       internal.db._useDatabase("_system");
     },
-    
+
     tearDown : function () {
       // always go back to system database
       internal.db._useDatabase("_system");
@@ -110,15 +110,15 @@ function DatabaseSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExecuteTransaction1 : function () {
-      var result = internal.db._executeTransaction({ 
-        collections: { }, 
+      var result = internal.db._executeTransaction({
+        collections: { },
         action: function (params) {
           return params.v1 + params.v2;
         },
-        params: { 
-          "v1": 1, 
+        params: {
+          "v1": 1,
           "v2": 2
-        } 
+        }
       });
 
       assertEqual(3, result);
@@ -129,12 +129,12 @@ function DatabaseSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExecuteTransaction2 : function () {
-      var result = internal.db._executeTransaction({ 
-        collections: { }, 
+      var result = internal.db._executeTransaction({
+        collections: { },
         action: "function () { return params.v1[0] - params.v1[1]; }",
-        params: { 
-          "v1": [ 10, 4 ], 
-        } 
+        params: {
+          "v1": [ 10, 4 ],
+        }
       });
 
       assertEqual(6, result);
@@ -146,16 +146,16 @@ function DatabaseSuite () {
 
     testListDatabases : function () {
       var actual, n;
-      
+
       assertEqual("_system", internal.db._name());
 
       actual = internal.db._listDatabases();
       assertTrue(Array.isArray(actual));
       n = actual.length;
       assertTrue(n > 0);
-      assertTrue(function () { 
-        for (var i = 0; i < actual.length; ++i) { 
-          if (actual[i] === "_system") { 
+      assertTrue(function () {
+        for (var i = 0; i < actual.length; ++i) {
+          if (actual[i] === "_system") {
             return true;
           }
         }
@@ -169,13 +169,13 @@ function DatabaseSuite () {
       }
 
       internal.db._createDatabase("UnitTestsDatabase0");
-      
+
       actual = internal.db._listDatabases();
       assertTrue(Array.isArray(actual));
       assertEqual(n + 1, actual.length);
-      assertTrue(function () { 
-        for (var i = 0; i < actual.length; ++i) { 
-          if (actual[i] === "UnitTestsDatabase0") { 
+      assertTrue(function () {
+        for (var i = 0; i < actual.length; ++i) {
+          if (actual[i] === "UnitTestsDatabase0") {
             return true;
           }
         }
@@ -197,7 +197,7 @@ function DatabaseSuite () {
       }
       catch (err1) {
       }
-      
+
       try {
         internal.db._dropDatabase("UnitTestsDatabase1");
       }
@@ -206,7 +206,7 @@ function DatabaseSuite () {
 
       assertTrue(internal.db._createDatabase("UnitTestsDatabase0"));
       assertTrue(internal.db._createDatabase("UnitTestsDatabase1"));
-      
+
       assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
       assertTrue(internal.db._dropDatabase("UnitTestsDatabase1"));
     },
@@ -226,7 +226,7 @@ function DatabaseSuite () {
 
       // empty users
       assertTrue(internal.db._createDatabase("UnitTestsDatabase0", { }, [ ]));
-      
+
       assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
     },
 
@@ -243,7 +243,7 @@ function DatabaseSuite () {
       catch (err1) {
       }
 
-      var users = [ 
+      var users = [
         { username: "admin", passwd: "secret", extra: { gender: "m" } },
         { username: "foo", active: false, extra: { gender: "f" } }
       ];
@@ -257,14 +257,14 @@ function DatabaseSuite () {
       assertEqual("admin", user.user);
       assertTrue(user.active);
       assertEqual("m", user.extra.gender);
-      
+
       user = m.document("foo");
       assertEqual("foo", user.user);
       assertFalse(user.active);
       assertEqual("f", user.extra.gender);
 
       internal.db._useDatabase("_system");
-      
+
       assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
     },
 
@@ -281,9 +281,9 @@ function DatabaseSuite () {
       catch (err1) {
       }
 
-      var users = [ 
-        { username: "admin", passwd: "secret", active: true, extra: { gender: "m" } }, 
-        { username: "admin", passwd: "", active: false, extra: { gender: "m" } }, 
+      var users = [
+        { username: "admin", passwd: "secret", active: true, extra: { gender: "m" } },
+        { username: "admin", passwd: "", active: false, extra: { gender: "m" } },
       ];
       assertTrue(internal.db._createDatabase("UnitTestsDatabase0", { }, users));
 
@@ -295,7 +295,7 @@ function DatabaseSuite () {
       assertEqual("m", user.extra.gender);
 
       internal.db._useDatabase("_system");
-      
+
       assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
     },
 
@@ -342,7 +342,7 @@ function DatabaseSuite () {
       catch (err2) {
         assertEqual(ERRORS.ERROR_ARANGO_USE_SYSTEM_DATABASE.code, err2.errorNum);
       }
-      
+
       // removing a database should fail here
       try {
         internal.db._dropDatabase("UnitTestsDatabase1");
@@ -351,7 +351,7 @@ function DatabaseSuite () {
       catch (err3) {
         assertEqual(ERRORS.ERROR_ARANGO_USE_SYSTEM_DATABASE.code, err3.errorNum);
       }
-      
+
       internal.db._useDatabase("_system");
       internal.db._dropDatabase("UnitTestsDatabase0");
     },
@@ -378,7 +378,7 @@ function DatabaseSuite () {
       catch (err2) {
         assertEqual(ERRORS.ERROR_ARANGO_DUPLICATE_NAME.code, err2.errorNum);
       }
-        
+
       internal.db._dropDatabase("UnitTestsDatabase0");
     },
 
@@ -393,7 +393,7 @@ function DatabaseSuite () {
         var result = [ ];
 
         internal.db._collections().forEach(function (c) {
-          if (c.name()[0] !== '_') {
+          if (c.name()[0] !== "_") {
             result.push(c.name());
           }
         });
@@ -407,7 +407,7 @@ function DatabaseSuite () {
       }
       catch (err1) {
       }
-      
+
       try {
         internal.db._dropDatabase("UNITTESTSDATABASE0");
       }
@@ -425,7 +425,7 @@ function DatabaseSuite () {
       assertEqual(1, internal.db._collection("test1").count());
       assertEqual(1, c1.count());
 
-      
+
       internal.db._useDatabase("UNITTESTSDATABASE0");
       assertEqual("UNITTESTSDATABASE0", internal.db._name());
       var c2 = internal.db._create("test1");
@@ -440,7 +440,7 @@ function DatabaseSuite () {
       assertEqual(0, c1.count());
       assertEqual(3, c2.count());
       assertEqual(3, internal.db._collection("test1").count());
-      
+
       internal.db._useDatabase("UnitTestsDatabase0");
       assertEqual(0, c1.count());
       assertEqual(3, c2.count());
@@ -472,36 +472,36 @@ function DatabaseSuite () {
       }
       catch (err1) {
       }
-      
+
       internal.db._createDatabase("UnitTestsDatabase0");
       internal.db._useDatabase("UnitTestsDatabase0");
       assertEqual("UnitTestsDatabase0", internal.db._name());
-      
+
       internal.db._useDatabase("UnitTestsDatabase0");
       assertEqual("UnitTestsDatabase0", internal.db._name());
-      
+
       internal.db._useDatabase("_system");
       assertEqual("_system", internal.db._name());
-      
+
       assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
-      
+
       try {
         internal.db._useDatabase("UnitTestsDatabase0");
         fail();
       }
       catch (err2) {
-        assertTrue(err2.errorNum === ERRORS.ERROR_ARANGO_DATABASE_NOT_FOUND.code || 
+        assertTrue(err2.errorNum === ERRORS.ERROR_ARANGO_DATABASE_NOT_FOUND.code ||
                    err2.errorNum === ERRORS.ERROR_HTTP_NOT_FOUND.code);
       }
-      
+
       assertEqual("_system", internal.db._name());
-      
+
       try {
         internal.db._useDatabase("THISDATABASEDOESNOTEXIST");
         fail();
       }
       catch (err3) {
-        assertTrue(err3.errorNum === ERRORS.ERROR_ARANGO_DATABASE_NOT_FOUND.code || 
+        assertTrue(err3.errorNum === ERRORS.ERROR_ARANGO_DATABASE_NOT_FOUND.code ||
                    err3.errorNum === ERRORS.ERROR_HTTP_NOT_FOUND.code);
       }
     },
@@ -518,7 +518,7 @@ function DatabaseSuite () {
       }
       catch (err1) {
       }
-      
+
       var isContained = function (name) {
         var l = internal.db._listDatabases();
         for (var i = 0; i < l.length; ++i) {
@@ -528,7 +528,7 @@ function DatabaseSuite () {
         }
         return false;
       };
-      
+
       internal.db._createDatabase("UnitTestsDatabase0");
       assertTrue(isContained("UnitTestsDatabase0"));
       assertTrue(isContained("_system"));
@@ -546,7 +546,7 @@ function DatabaseSuite () {
       var db = internal.db;
       var name = "UnitTestsCollectionCache";
 
-      db._drop(name); 
+      db._drop(name);
 
       db._create(name);
 
@@ -555,20 +555,20 @@ function DatabaseSuite () {
       assertEqual(name, db[name].name());
       assertEqual(1, db[name].count());
       assertEqual(1, db[name].document("test").value);
- 
+
       // remove the collection and re-create a new one with the same name
       db._drop(name);
 
       db._create(name);
       db[name].save({ _key: "foo", value: 1 });
       db[name].save({ _key: "test", value: 2 });
-      
+
       assertNotEqual(cid, db[name]._id);
       assertEqual(name, db[name].name());
       assertEqual(2, db[name].count());
       assertEqual(1, db[name].document("foo").value);
       assertEqual(2, db[name].document("test").value);
- 
+
       db._drop(name);
 
       try {
@@ -591,18 +591,18 @@ function DatabaseSuite () {
 
       assertTrue("_system", db._name());
 
-      db._drop(name); 
+      db._drop(name);
       db._create(name);
 
       db[name].save({ _key: "foo", value: 1 });
       var cid = db[name]._id;
       assertEqual(name, db[name].name());
       assertEqual(1, db[name].count());
- 
+
       // switch the database
       db._createDatabase("UnitTestsDatabase0");
       db._useDatabase("UnitTestsDatabase0");
-      
+
       // collection should not yet exist in other database
       try {
         db[name].save({ _key: "foo", value: 1 });
@@ -624,7 +624,7 @@ function DatabaseSuite () {
 
       db._useDatabase("_system");
       assertEqual(1, db[name].count());
-      
+
       db._dropDatabase("UnitTestsDatabase0");
     }
 
