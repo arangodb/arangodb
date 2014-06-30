@@ -194,8 +194,6 @@
   * [General Handling](GeneralHttp/README.md)
 <!-- 26 -->
 * [Javascript Modules](ModuleJavaScript/README.md)
-  * [Common JSModules](ModuleJavaScript/JSModules.md)
-    * [Path](ModuleJavaScript/ModulesPath.md)
   * ["console"](ModuleConsole/README.md)
   * ["fs"](ModuleFs/README.md)
   * ["graph"](ModuleGraph/README.md)
