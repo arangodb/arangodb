@@ -210,6 +210,254 @@
 
           });
 
+          it("should set to and from for added definition", function () {
+            view.removedECollList = [];
+            var model = view.collection.create({
+              _key: "blub",
+              name: "blub",
+              edgeDefinitions: [{
+                collection: "blub",
+                from: ["bla"],
+                to: ["blob"]
+              }],
+              orphanCollections: []
+            });
+            var e = {
+                currentTarget: {
+                  id: "blabalblub"
+                },
+                stopPropagation : function () {},
+                added : {
+                  id : "moppel"
+
+                },
+                val : "newEdgeDefintion"
+              },
+              a = {
+                select2: function () {},
+                attr: function () {},
+                length : 2,
+                0 : {id : 1},
+                1 : {id : 2}
+              },collReturn = {
+                destroy : function (a) {
+                  a.error("", {responseText : '{"errorMessage" : "errorMessage"}'});
+                }
+              };
+
+            spyOn(e, "stopPropagation");
+
+            spyOn(window, "$").andReturn(a);
+
+            spyOn(window.modalView, "hide").andReturn(a);
+
+            view.setFromAndTo(e);
+
+            expect(e.stopPropagation).toHaveBeenCalled();
+
+            model.destroy();
+
+
+          });
+
+
+          it("should set to and from for added definition for already known def", function () {
+            view.removedECollList = [];
+            var model = view.collection.create({
+              _key: "blub2",
+              name: "blub2",
+              edgeDefinitions: [{
+                collection: "blub",
+                from: ["bla"],
+                to: ["blob"]
+              }],
+              orphanCollections: []
+            });
+            var e = {
+                currentTarget: {
+                  id: "blabalblub"
+                },
+                stopPropagation : function () {},
+                added : {
+                  id : "moppel"
+
+                },
+                val : "blub"
+              },
+              a = {
+                select2: function () {},
+                attr: function () {},
+                length : 2,
+                0 : {id : 1},
+                1 : {id : 2}
+              },collReturn = {
+                destroy : function (a) {
+                  a.error("", {responseText : '{"errorMessage" : "errorMessage"}'});
+                }
+              };
+
+            spyOn(e, "stopPropagation");
+
+            spyOn(window, "$").andReturn(a);
+
+            spyOn(window.modalView, "hide").andReturn(a);
+
+            view.setFromAndTo(e);
+
+            expect(e.stopPropagation).toHaveBeenCalled();
+
+            model.destroy();
+
+
+          });
+
+          it("should not set to and from for added definition as already in use and has been entered manually", function () {
+            view.removedECollList = ["moppel"];
+            var model = view.collection.create({
+              _key: "blub2",
+              name: "blub2",
+              edgeDefinitions: [{
+                collection: "blub",
+                from: ["bla"],
+                to: ["blob"]
+              }],
+              orphanCollections: []
+            });
+            var e = {
+                currentTarget: {
+                  id: "blabalblub"
+                },
+                stopPropagation : function () {},
+                added : {
+                  id : "moppel"
+
+                },
+                val : "blub"
+              },
+              a = {
+                select2: function () {},
+                attr: function () {},
+                length : 2,
+                0 : {id : 1},
+                1 : {id : 2}
+              },collReturn = {
+                destroy : function (a) {
+                  a.error("", {responseText : '{"errorMessage" : "errorMessage"}'});
+                }
+              };
+
+            spyOn(e, "stopPropagation");
+
+            spyOn(window, "$").andReturn(a);
+
+            spyOn(window.modalView, "hide").andReturn(a);
+
+            view.setFromAndTo(e);
+
+            expect(e.stopPropagation).toHaveBeenCalled();
+
+            model.destroy();
+
+
+          });
+
+          it("should not set to and from for removed definition as already in use and has been entered manually", function () {
+            view.removedECollList = ["moppel"];
+            var model = view.collection.create({
+              _key: "blub2",
+              name: "blub2",
+              edgeDefinitions: [{
+                collection: "blub",
+                from: ["bla"],
+                to: ["blob"]
+              }],
+              orphanCollections: []
+            });
+            var e = {
+                currentTarget: {
+                  id: "blabalblub"
+                },
+                stopPropagation : function () {},
+                val : "blub",
+                removed : {id : "moppel"}
+              },
+              a = {
+                select2: function () {},
+                attr: function () {},
+                length : 2,
+                0 : {id : 1},
+                1 : {id : 2}
+              },collReturn = {
+                destroy : function (a) {
+                  a.error("", {responseText : '{"errorMessage" : "errorMessage"}'});
+                }
+              };
+
+            spyOn(e, "stopPropagation");
+
+            spyOn(window, "$").andReturn(a);
+
+            spyOn(window.modalView, "hide").andReturn(a);
+
+            view.setFromAndTo(e);
+
+            expect(e.stopPropagation).toHaveBeenCalled();
+            expect(view.removedECollList.indexOf("moppel")).toEqual(-1)
+            expect(view.eCollList.indexOf("moppel")).not.toEqual(-1)
+            model.destroy();
+
+
+          });
+
+
+
+          /*setFromAndTo : function (e) {
+            e.stopPropagation();
+            var map = this.calculateEdgeDefinitionMap(), id, i, tmp;
+
+            if (e.added) {
+              if (this.eCollList.indexOf(e.added.id) === -1 &&
+                this.removedECollList.indexOf(e.added.id) !== -1) {
+                id = e.currentTarget.id.split("row_newEdgeDefinitions")[1];
+                $('input[id*="newEdgeDefinitions' + id  + '"]').select2("val", null);
+                $('input[id*="newEdgeDefinitions' + id  + '"]').attr(
+                  "placeholder","The collection "+ e.added.id + " is already used."
+                );
+                return;
+              }
+              this.removedECollList.push(e.added.id);
+              this.eCollList.splice(this.eCollList.indexOf(e.added.id),1);
+            } else {
+              this.eCollList.push(e.removed.id);
+              this.removedECollList.splice(this.removedECollList.indexOf(e.removed.id),1);
+            }
+
+            if (map[e.val]) {
+              id = e.currentTarget.id.split("row_newEdgeDefinitions")[1];
+              $('#s2id_fromCollections'+id).select2("val", map[e.val].from);
+              $('#fromCollections'+id).attr('disabled', true);
+              $('#s2id_toCollections'+id).select2("val", map[e.val].to);
+              $('#toCollections'+id).attr('disabled', true);
+            } else {
+              id = e.currentTarget.id.split("row_newEdgeDefinitions")[1];
+              $('#s2id_fromCollections'+id).select2("val", null);
+              $('#fromCollections'+id).attr('disabled', false);
+              $('#s2id_toCollections'+id).select2("val", null);
+              $('#toCollections'+id).attr('disabled', false);
+            }
+            tmp = $('input[id*="newEdgeDefinitions"]');
+            for (i = 0; i < tmp.length ; i++) {
+              id = tmp[i].id;
+              $('#' + id).select2({
+                tags : this.eCollList,
+                showSearchBox: false,
+                minimumResultsForSearch: -1,
+                width: "336px",
+                maximumSelectionSize: 1
+              });
+            }
+
+          },*/
 
           describe("creating a new graph", function () {
 
