@@ -68,8 +68,14 @@ struct jsonData {
   TRI_memory_zone_t* _memoryZone;
 };
 
-#define YY_FATAL_ERROR(a) \
-  LOG_DEBUG("json-paser: %s", (a))
+#define YY_FATAL_ERROR(a)          \
+  do {                             \
+    LOG_DEBUG("v8-json: %s", (a)); \
+    if (false) {                   \
+      yy_fatal_error(a, NULL);     \
+    }                              \
+  }                                \
+  while (0)
 %}
 
 %%
