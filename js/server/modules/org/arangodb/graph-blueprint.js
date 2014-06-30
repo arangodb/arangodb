@@ -97,15 +97,16 @@ var findOrCreateEdgeCollectionByName = function (name) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief changes a property of an edge
+/// @startDocuBlock edgeSetProperty
 ///
-/// @FUN{@FA{edge}.setProperty(@FA{name}, @FA{value})}
+/// `edge.setProperty(name, value)`
 ///
-/// Changes or sets the property @FA{name} an @FA{edges} to @FA{value}.
+/// Changes or sets the property *name* an *edges* to *value*.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-edge-set-property
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.setProperty = function (name, value) {
@@ -134,15 +135,16 @@ Edge.prototype.setProperty = function (name, value) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inbound and outbound edges
+/// @startDocuBlock vertexEdges
 ///
-/// @FUN{@FA{vertex}.edges()}
+/// `vertex.edges()`
 ///
-/// Returns a list of in- or outbound edges of the @FA{vertex}.
+/// Returns a list of in- or outbound edges of the *vertex*.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-vertex-edges
+/// @endDocuBlock 
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.edges = function () {
@@ -154,15 +156,16 @@ Vertex.prototype.edges = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inbound edges with given label
+/// @startDocuBlock vertexGetInEdges
 ///
-/// @FUN{@FA{vertex}.getInEdges(@FA{label}, ...)}
+///`vertex.getInEdges(label, ...)`
 ///
-/// Returns a list of inbound edges of the @FA{vertex} with given label(s).
+/// Returns a list of inbound edges of the *vertex* with given label(s).
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-vertex-get-in-edges
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getInEdges = function () {
@@ -179,15 +182,16 @@ Vertex.prototype.getInEdges = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief outbound edges with given label
+/// @startDocuBlock vertexGetOutEdges
 ///
-/// @FUN{@FA{vertex}.getOutEdges(@FA{label}, ...)}
+/// `vertex.getOutEdges(label, ...)`
 ///
-/// Returns a list of outbound edges of the @FA{vertex} with given label(s).
+/// Returns a list of outbound edges of the *vertex* with given label(s).
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-vertex-get-out-edges
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getOutEdges = function () {
@@ -204,12 +208,13 @@ Vertex.prototype.getOutEdges = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief in- or outbound edges with given label
+/// @startDocuBlock vertexGetEdges
 ///
-/// @FUN{@FA{vertex}.getEdges(@FA{label}, ...)}
+/// `vertex.getEdges(label, ...)`
 ///
-/// Returns a list of in- or outbound edges of the @FA{vertex} with given
+/// Returns a list of in- or outbound edges of the *vertex* with given
 /// label(s).
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.getEdges = function () {
@@ -226,15 +231,16 @@ Vertex.prototype.getEdges = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inbound edges
+/// @startDocuBlock vertexInbound
 ///
-/// @FUN{@FA{vertex}.inbound()}
+/// `vertex.inbound()`
 ///
-/// Returns a list of inbound edges of the @FA{vertex}.
+/// Returns a list of inbound edges of the *vertex*.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-vertex-inbound
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.inbound = function () {
@@ -246,15 +252,16 @@ Vertex.prototype.inbound = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief outbound edges
+/// @startDocuBlock vertexOutbound
 ///
-/// @FUN{@FA{vertex}.outbound()}
+/// `vertex.outbound()`
 ///
-/// Returns a list of outbound edges of the @FA{vertex}.
+/// Returns a list of outbound edges of the *vertex*.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-vertex-outbound
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.outbound = function () {
@@ -266,15 +273,16 @@ Vertex.prototype.outbound = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief changes a property of a vertex
+/// @startDocuBlock vertexSetProperty
 ///
-/// @FUN{@FA{vertex}.setProperty(@FA{name}, @FA{value})}
+/// `vertex.setProperty(name, value)`
 ///
-/// Changes or sets the property @FA{name} a @FA{vertex} to @FA{value}.
+/// Changes or sets the property *name* a *vertex* to *value*.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-vertex-set-property
+/// @endDocuBLock
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.setProperty = function (name, value) {
@@ -299,22 +307,23 @@ Vertex.prototype.setProperty = function (name, value) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new graph object
+/// @startDocuBlock graphConstruct
 ///
-/// @FUN{Graph(@FA{name}, @FA{vertices}, @FA{edges})}
+/// `Graph(name, vertices, edges)`
 ///
-/// Constructs a new graph object using the collection @FA{vertices} for all
-/// vertices and the collection @FA{edges} for all edges. Note that it is
+/// Constructs a new graph object using the collection *vertices* for all
+/// vertices and the collection *edges* for all edges. Note that it is
 /// possible to construct two graphs with the same vertex set, but different
 /// edge sets.
 ///
-/// @FUN{Graph(@FA{name})}
+/// `Graph(name)`
 ///
 /// Returns a known graph.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-constructor
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
@@ -484,12 +493,12 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_graph_getAll
-/// @brief returns all available graphs
+/// @startDocuBlock JSF_graph_getAll
 ///
-/// @FUN{@FA{graph}.getAll()}
+/// `graph.getAll()`
 ///
 /// Returns all available graphs.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.getAll = function getAllGraphs () {
@@ -534,11 +543,12 @@ Graph.drop = function (name, waitForSync) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief drops the graph, the vertices, and the edges
+/// @startDocuBlock graphDrop
 ///
-/// @FUN{@FA{graph}.drop(@FA{waitForSync})}
+/// `graph.drop(waitForSync)`
 ///
 /// Drops the graph, the vertices, and the edges. Handle with care.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.drop = function (waitForSync) {
@@ -597,15 +607,16 @@ Graph.prototype._replaceEdge = function (edge_id, data) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a vertex given its id
+/// @startDocuBlock graphGetVertex
 ///
-/// @FUN{@FA{graph}.getVertex(@FA{id})}
+/// `graph.getVertex(id)`
 ///
-/// Returns the vertex identified by @FA{id} or @LIT{null}.
+/// Returns the vertex identified by *id* or *null*.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-graph-get-vertex
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getVertex = function (id) {
@@ -618,16 +629,17 @@ Graph.prototype.getVertex = function (id) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns an iterator for all vertices
+/// @startDocuBlock GraphGetVertices
 ///
-/// @FUN{@FA{graph}.getVertices()}
+/// `graph.getVertices()`
 ///
 /// Returns an iterator for all vertices of the graph. The iterator supports the
-/// methods @FN{hasNext} and @FN{next}.
+/// methods *hasNext* and *next*.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-graph-get-vertices
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getVertices = function () {
@@ -641,15 +653,16 @@ Graph.prototype.getVertices = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns an edge given its id
+/// @startDocuBlock graphGetEdge
 ///
-/// @FUN{@FA{graph}.getEdge(@FA{id})}
+/// `graph.getEdge(id)`
 ///
-/// Returns the edge identified by @FA{id} or @LIT{null}.
+/// Returns the edge identified by *id* or *null*.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-graph-get-edge
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getEdge = function (id) {
@@ -675,16 +688,17 @@ Graph.prototype.getEdge = function (id) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns an iterator for all edges
+/// @startDocuBLock graphGetEdges
 ///
-/// @FUN{@FA{graph}.getEdges()}
+/// `graph.getEdges()`
 ///
 /// Returns an iterator for all edges of the graph. The iterator supports the
-/// methods @FN{hasNext} and @FN{next}.
+/// methods *hasNext* and *next*.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-graph-get-edges
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.getEdges = function () {
@@ -697,15 +711,16 @@ Graph.prototype.getEdges = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a vertex and all in- or out-bound edges
+/// @startDocuBlock graphRemoveVertex
 ///
-/// @FUN{@FA{graph}.removeVertex(@FA{vertex},@FA{waitForSync})}
+/// `graph.removeVertex(vertex, waitForSync)`
 ///
-/// Deletes the @FA{vertex} and all its edges.
+/// Deletes the *vertex* and all its edges.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-graph-remove-vertex
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.removeVertex = function (vertex, waitForSync) {
@@ -729,15 +744,16 @@ Graph.prototype.removeVertex = function (vertex, waitForSync) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an edge
+/// @startDocuBlock graph RemoveEdge
 ///
-/// @FUN{@FA{graph}.removeEdge(@FA{vertex},@FA{waitForSync})}
+/// `graph.removeEdge(vertex, waitForSync)`
 ///
-/// Deletes the @FA{edge}. Note that the in and out vertices are left untouched.
+/// Deletes the *edge*. Note that the in and out vertices are left untouched.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @verbinclude graph-graph-remove-edge
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.prototype.removeEdge = function (edge, waitForSync) {

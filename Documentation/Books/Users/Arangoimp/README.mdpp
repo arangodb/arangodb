@@ -12,7 +12,6 @@ attribute. When importing into an edge collection, it is mandatory that all
 imported documents have the *_from* and *_to* attributes, and that they contain
 valid references.
 
-
 Let's assume for the following examples you want to import user records into an 
 existing collection named "users" on the server.
 
@@ -23,13 +22,11 @@ existing collection named "users" on the server.
 Let's further assume the import at hand is encoded in JSON. We'll be using these
 example user records to import:
 
-```
+``` js
 { "name" : { "first" : "John", "last" : "Connor" }, "active" : true, "age" : 25, "likes" : [ "swimming"] }
 { "name" : { "first" : "Jim", "last" : "O'Brady" }, "age" : 19, "likes" : [ "hiking", "singing" ] }
 { "name" : { "first" : "Lisa", "last" : "Jones" }, "dob" : "1981-04-09", "likes" : [ "running" ] }
 ```
-
-<!--@verbinclude arangoimp-data-json-->
 
 To import these records, all you need to do is to put them into a file (with one
 line for each record to import) and run the following command:
@@ -84,19 +81,24 @@ occurred on the server side, and the total number of input file lines/documents
 that it processed. Additionally, _arangoimp_ will print out details about errors 
 that happened on the server-side (if any).
 
-Example:
+*Examples*
 
-    created:          2
-    errors:           0
-    total:            2
-Please note that _arangoimp_ supports two formats when importing JSON data from 
+```js
+created:          2
+errors:           0
+total:            2
+```
+
+**Note**: *arangoimp* supports two formats when importing JSON data from 
 a file. The first format requires the input file to contain one JSON document
 in each line, e.g.
 
-    { "_key": "one", "value": 1 }
-    { "_key": "two", "value": 2 }
-    { "_key": "foo", "value": "bar" }
-    ...
+```js
+{ "_key": "one", "value": 1 }
+{ "_key": "two", "value": 2 }
+{ "_key": "foo", "value": "bar" }
+...
+```
 
 The above format can be imported sequentially by _arangoimp_. It will read data
 from the input file in chunks and send it in batches to the server. Each batch
@@ -104,12 +106,14 @@ will be about as big as specified in the command-line parameter *--batch-size*.
 
 An alternative is to put one big JSON document into the input file like this:
 
-    [
-      { "_key": "one", "value": 1 },
-      { "_key": "two", "value": 2 },
-      { "_key": "foo", "value": "bar" },
-      ...
-    ]
+```js
+[
+  { "_key": "one", "value": 1 },
+  { "_key": "two", "value": 2 },
+  { "_key": "foo", "value": "bar" },
+  ...
+]
+```
 
 This format allows line breaks within the input file as required. The downside 
 is that the whole input file will need to be read by _arangoimp_ before it can
@@ -148,7 +152,12 @@ or the null value, don't enclose the value into the quotes in your file.
 
 We'll be using the following import for the CSV import:
 
-@verbinclude arangoimp-data-csv
+```js
+"first","name","age","active","dob"
+"John","Connor",25,true,
+"Jim","O'Brady",19,,
+"Lisa","Jones",,,"1981-04-09"
+```
 
 The command line to execute the import then is:
 
@@ -183,11 +192,13 @@ The import data must, for each edge to import, contain at least the *_from* and
 It is necessary that these attributes are set for all records, and point to 
 valid document ids in existing collections.
 
-Example:
+*Examples*
 
-    { "_from" : "users/1234", "_to" : "users/4321", "desc" : "1234 is connected to 4321" }
+```js
+{ "_from" : "users/1234", "_to" : "users/4321", "desc" : "1234 is connected to 4321" }
+```
 
-Note that the edge collection must already exist when the import is started. Using 
+**Note**: The edge collection must already exist when the import is started. Using 
 the *--create-collection* flag will not work because arangoimp will always try to 
 create a regular document collection if the target collection does not exist.
 
@@ -202,10 +213,10 @@ ArangoDB:
   collection the import is run for.
 - *_from*: when importing into an edge collection, this attribute contains the id
   of one of the documents connected by the edge. The value of *_from* must be a
-  syntactially valid document id and the referred collection must exist.
+  syntactically valid document id and the referred collection must exist.
 - *_to*: when importing into an edge collection, this attribute contains the id
   of the other document connected by the edge. The value of *_to* must be a
-  syntactially valid document id and the referred collection must exist.
+  syntactically valid document id and the referred collection must exist.
 - *_rev*: this attribute contains the revision number of a document. However, the
   revision numbers are managed by ArangoDB and cannot be specified on import. Thus 
   any value in this attribute is ignored on import.
