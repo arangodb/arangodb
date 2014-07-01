@@ -188,7 +188,7 @@
       var self = this;
 
       this.data.forEach(function(m) {
-        pieData.push({key: m.get("name"), value :m.get("system").virtualSize,
+        pieData.push({key: m.get("name"), value: m.get("system").virtualSize,
           time: self.serverTime});
       });
 
