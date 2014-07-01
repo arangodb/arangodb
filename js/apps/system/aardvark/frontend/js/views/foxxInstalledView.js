@@ -206,8 +206,7 @@
         _.each(_.keys(configs), function(key) {
           var opt = configs[key];
           var prettyKey = opt.label || splitSnakeCase(key);
-          switch (opt.type) {
-          case "boolean":
+          if (opt.type === "boolean") {
             list.push(window.modalView.createCheckboxEntry(
               "foxx_configs_" + key,
               prettyKey,
@@ -215,11 +214,7 @@
               opt.description,
               opt.default
             ));
-            break;
-          // case "integer":
-          // case "number":
-          // case "string":
-          default:
+          } else {
             list.push(window.modalView.createTextEntry(
               "foxx_configs_" + key,
               prettyKey,
@@ -228,7 +223,6 @@
               splitSnakeCase(key).toLowerCase().replace(/\s+/g, "-"),
               opt.default === undefined
             ));
-            break;
           }
         });
       }
@@ -431,42 +425,36 @@
             var val = $el.val();
             if (opt.type === "boolean") {
               cfg[key] = $el.is(":checked");
+              return;
+            }
+            if (val === "" && !opt.hasOwnProperty("default")) {
+              throw new SyntaxError(
+                "Must specify value for field \"" +
+                  (opt.label || splitSnakeCase(key)) +
+                  "\"!"
+              );
+            }
+            if (opt.type === "number") {
+              cfg[key] = parseFloat(val);
+            } else if (opt.type === "integer") {
+              cfg[key] = parseInt(val, 10);
             } else {
-              if (val === "" && !opt.hasOwnProperty("default")) {
-                throw new SyntaxError(
-                  "Must specify value for field \"" +
-                    (opt.label || splitSnakeCase(key)) +
-                    "\"!"
-                );
-              }
-              if (opt.type === "number") {
-                cfg[key] = parseFloat(val);
-                if (_.isNaN(cfg[key])) {
-                  throw new SyntaxError(
-                    "Invalid value for field \"" +
-                      (opt.label || splitSnakeCase(key)) +
-                      "\"!"
-                  );
-                }
-              } else if (opt.type === "integer") {
-                cfg[key] = parseInt(val, 10);
-                if (_.isNaN(cfg[key])) {
-                  throw new SyntaxError(
-                    "Invalid value for field \"" +
-                      (opt.label || splitSnakeCase(key)) +
-                      "\"!"
-                  );
-                }
-                if (cfg[key] !== Math.floor(parseFloat(val))) {
-                  throw new SyntaxError(
-                    "Expected non-decimal value in field \"" +
-                      (opt.label || splitSnakeCase(key)) +
-                      "\"!"
-                  );
-                }
-              } else {
-                cfg[key] = val;
-              }
+              cfg[key] = val;
+              return;
+            }
+            if (_.isNaN(cfg[key])) {
+              throw new SyntaxError(
+                "Invalid value for field \"" +
+                  (opt.label || splitSnakeCase(key)) +
+                  "\"!"
+              );
+            }
+            if (opt.type === "integer" && cfg[key] !== Math.floor(parseFloat(val))) {
+              throw new SyntaxError(
+                "Expected non-decimal value in field \"" +
+                  (opt.label || splitSnakeCase(key)) +
+                  "\"!"
+              );
             }
           });
         } catch (err) {
