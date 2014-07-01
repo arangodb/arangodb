@@ -130,6 +130,9 @@ extern "C" {
 /// - 1110: @LIT{cannot lock database directory}
 ///   Will be raised when the server cannot lock the database directory on
 ///   startup.
+/// - 1111: @LIT{sync timeout}
+///   Will be raised when the server waited too long for a datafile to be
+///   synced to disk.
 /// - 1200: @LIT{conflict}
 ///   Will be raised when updating or deleting a document and a conflict has
 ///   been detected.
@@ -1142,6 +1145,17 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_DATADIR_UNLOCKABLE                               (1110)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1111: ERROR_ARANGO_SYNC_TIMEOUT
+///
+/// sync timeout
+///
+/// Will be raised when the server waited too long for a datafile to be synced
+/// to disk.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_ARANGO_SYNC_TIMEOUT                                     (1111)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1200: ERROR_ARANGO_CONFLICT

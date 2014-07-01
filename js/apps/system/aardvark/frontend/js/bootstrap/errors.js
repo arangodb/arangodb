@@ -69,6 +69,7 @@
     "ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS" : { "code" : 1108, "message" : "cannot create/rename collection because directory already exists" }, 
     "ERROR_ARANGO_MSYNC_FAILED"    : { "code" : 1109, "message" : "msync failed" }, 
     "ERROR_ARANGO_DATADIR_UNLOCKABLE" : { "code" : 1110, "message" : "cannot lock database directory" }, 
+    "ERROR_ARANGO_SYNC_TIMEOUT"    : { "code" : 1111, "message" : "sync timeout" }, 
     "ERROR_ARANGO_CONFLICT"        : { "code" : 1200, "message" : "conflict" }, 
     "ERROR_ARANGO_DATADIR_INVALID" : { "code" : 1201, "message" : "invalid database directory" }, 
     "ERROR_ARANGO_DOCUMENT_NOT_FOUND" : { "code" : 1202, "message" : "document not found" }, 
