@@ -96,8 +96,9 @@ controller.put("/foxxes/install", function (req, res) {
   var content = JSON.parse(req.requestBody),
     name = content.name,
     mount = content.mount,
-    version = content.version;
-    res.json(foxxes.install(name, mount, version));
+    version = content.version,
+    options = content.options;
+    res.json(foxxes.install(name, mount, version, options));
 }).summary("Installs a new foxx")
 .notes("This function is used to install a new foxx.");
 
