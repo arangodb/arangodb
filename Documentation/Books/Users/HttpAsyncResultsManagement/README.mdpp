@@ -105,7 +105,6 @@ then only the code running on the coordinator is stopped, there may
 remain tasks within the cluster which have already been distributed to
 the DBservers and it is currently not possible to cancel them as well.
 
-
 !SUBSUBSECTION Async Execution and Authentication
 
 If a request requires authentication, the authentication procedure is run before 
@@ -113,3 +112,28 @@ queueing. The request will only be queued if it valid credentials and the authen
 succeeds. If the request does not contain valid credentials, it will not be queued but
 rejected instantly in the same way as a "regular", non-queued request.
 
+!CHAPTER Managing Async Results via HTTP
+
+<!-- lib/HttpServer/AsyncJobManager.h -->
+
+@startDocuBlock JSF_put_api_async_return
+
+
+<!-- lib/HttpServer/AsyncJobManager.h -->
+
+@startDocuBlock JSF_put_api_async_cancel
+
+
+<!-- lib/HttpServer/AsyncJobManager.h -->
+
+@startDocuBlock JSF_get_api_async_delete
+
+
+<!-- lib/HttpServer/AsyncJobManager.h -->
+
+@startDocuBlock JSF_get_api_async_return
+
+
+<!-- lib/HttpServer/AsyncJobManager.h -->
+
+@startDocuBlock JSF_get_api_async_return_list
