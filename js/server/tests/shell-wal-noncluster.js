@@ -132,6 +132,7 @@ function walFailureSuite () {
       c = db._create(cn);
       
       internal.wal.flush(true, true);
+      internal.wait(5);
       
       internal.debugSetFailAt("CollectorThreadProcessQueuedOperations");
       internal.wal.properties({ throttleWait: 1000, throttleWhenPending: 1000 });
@@ -141,7 +142,7 @@ function walFailureSuite () {
         c.save({ _key: "test" + i, a: i });
       } 
       
-      internal.wal.flush(true, false);
+      internal.wal.flush(true, true);
 
       c.save({ _key: "foo" });
       assertEqual("foo", c.document("foo")._key);
@@ -170,10 +171,8 @@ function walFailureSuite () {
         c.save({ _key: "test" + i, a: i });
       } 
 
-      internal.wal.flush(true, false);
-
-      // let the collector build up its queue
-      internal.wait(7);
+      internal.wal.flush(true, true);
+      internal.wait(5);
 
       try {
         c.save({ _key: "foo" });

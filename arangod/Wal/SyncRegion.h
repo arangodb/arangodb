@@ -45,7 +45,8 @@ namespace triagens {
           size(0),
           firstSlotIndex(0),
           lastSlotIndex(0),
-          waitForSync(false) {
+          waitForSync(false),
+          checkMore(false) {
       }
 
       ~SyncRegion () {
@@ -58,6 +59,7 @@ namespace triagens {
       size_t          firstSlotIndex;
       size_t          lastSlotIndex;
       bool            waitForSync;
+      bool            checkMore;
     };
 
   }

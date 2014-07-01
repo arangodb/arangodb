@@ -5,7 +5,7 @@
 /// @brief version check at the start of the server
 ///
 /// @file
-/// 
+///
 /// Version check at the start of the server, will optionally perform necessary
 /// upgrades.
 ///
@@ -78,7 +78,7 @@
     var activeTasks = [];
     var lastVersion = null;
     var lastTasks = {};
-  
+
     function getCollection (name) {
       return db._collection(name);
     }
@@ -102,7 +102,7 @@
 
       return collectionExists(name);
     }
-  
+
     // helper function to define a task
     function addTask (name, description, fn, always) {
       // "description" is a textual description of the task that will be printed out on screen
@@ -164,12 +164,12 @@
       // we assume that we are initialising a new, empty database
       isInitialisation = true;
     }
-    
+
     var procedure = isInitialisation ? "initialisation" : "upgrade";
-   
+
     if (upgradeRun) {
-      if (! isInitialisation) { 
-        logger.log("starting upgrade from version " + (lastVersion || "unknown") 
+      if (! isInitialisation) {
+        logger.log("starting upgrade from version " + (lastVersion || "unknown")
                    + " to " + internal.db._version());
       }
     }
@@ -178,7 +178,7 @@
     // --------------------------------------------------------------------------
     // the actual upgrade tasks. all tasks defined here should be "re-entrant"
     // --------------------------------------------------------------------------
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief moveProductionApps
 ////////////////////////////////////////////////////////////////////////////////
@@ -197,7 +197,7 @@
       }
 
       if (! module.basePaths().appPath) {
-        logger.error("no app-path has been specified."); 
+        logger.error("no app-path has been specified.");
         return false;
       }
 
@@ -206,9 +206,9 @@
       for (i = 0; i < n; ++i) {
         var found = files[i];
 
-        if (found === '' || 
-            found === 'system' || 
-            found === 'databases' || 
+        if (found === '' ||
+            found === 'system' ||
+            found === 'databases' ||
             found === 'aardvark' ||
             found[0] === '.') {
           continue;
@@ -230,13 +230,13 @@
 
       return true;
     });
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief moveDevApps
 ////////////////////////////////////////////////////////////////////////////////
 
     if (internal.developmentMode) {
-      addUpgradeTask("moveDevApps", 
+      addUpgradeTask("moveDevApps",
                      "move Foxx development apps into per-database directory", function () {
         var dir = module.devAppPath();
 
@@ -244,14 +244,14 @@
           logger.error("dev apps directory '" + dir + "' does not exist.");
           return false;
         }
- 
+
         // we only need to move apps in the _system database
         if (db._name() !== '_system') {
           return true;
         }
 
         if (! module.basePaths().devAppPath) {
-          logger.error("no dev-app-path has been specified."); 
+          logger.error("no dev-app-path has been specified.");
           return false;
         }
 
@@ -259,10 +259,10 @@
         for (i = 0; i < n; ++i) {
           var found = files[i];
 
-          if (found === '' || 
-              found === 'system' || 
-              found === 'databases' || 
-              found === 'aardvark' || 
+          if (found === '' ||
+              found === 'system' ||
+              found === 'databases' ||
+              found === 'aardvark' ||
               found[0] === '.') {
             continue;
           }
@@ -330,9 +330,8 @@
           foundUser = true;
           try {
             userManager.save(user.username, user.passwd, user.active, user.extra || {});
-          }
-          catch (err) {
-            logger.warn("could not add database user '" + user.username + "': " + 
+          } catch (err) {
+            logger.warn("could not add database user '" + user.username + "': " +
                         String(err.stack || err));
           }
         });
@@ -352,12 +351,12 @@
 
     // set up the collection _graphs
     addTask("setupGraphs", "setup _graphs collection", function () {
-      return createSystemCollection("_graphs", { 
+      return createSystemCollection("_graphs", {
         waitForSync : true,
-        journalSize: 1024 * 1024 
+        journalSize: 1024 * 1024
       });
     });
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief addCollectionVersion
 ////////////////////////////////////////////////////////////////////////////////
@@ -420,7 +419,7 @@
         return true;
       }
     );
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief createModules
 ////////////////////////////////////////////////////////////////////////////////
@@ -428,10 +427,10 @@
     // create the _modules collection
     addTask("createModules", "setup _modules collection", function () {
       return createSystemCollection("_modules", {
-        journalSize: 1024 * 1024 
+        journalSize: 1024 * 1024
       });
     });
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _routing
 ////////////////////////////////////////////////////////////////////////////////
@@ -439,8 +438,8 @@
     // create the _routing collection
     addTask("createRouting", "setup _routing collection", function () {
       // needs to be big enough for assets
-      return createSystemCollection("_routing", { 
-        journalSize: 32 * 1024 * 1024 
+      return createSystemCollection("_routing", {
+        journalSize: 32 * 1024 * 1024
       });
     });
 
@@ -453,7 +452,7 @@
       "setup _cluster_kickstarter_plans collection", function () {
         //TODO add check if this is the main dispatcher
       return createSystemCollection("_cluster_kickstarter_plans", {
-        journalSize: 4 * 1024 * 1024 
+        journalSize: 4 * 1024 * 1024
       });
     });
 
@@ -473,7 +472,7 @@
       routing.toArray().forEach(function (doc) {
         // check for specific redirects
         if (doc.url && doc.action && doc.action.options && doc.action.options.destination) {
-          if (doc.url.match(/^\/(_admin\/(html|aardvark))?/) && 
+          if (doc.url.match(/^\/(_admin\/(html|aardvark))?/) &&
               doc.action.options.destination.match(/_admin\/(html|aardvark)/)) {
             // remove old, non-working redirect
             routing.remove(doc);
@@ -498,7 +497,7 @@
 
       return true;
     });
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief upgradeGraphs
 ////////////////////////////////////////////////////////////////////////////////
@@ -534,7 +533,7 @@
             );
           }
         );
-      } 
+      }
       catch (e) {
         logger.error("could not upgrade _graphs");
         return false;
@@ -548,12 +547,12 @@
 
     // set up the collection _aal
     addTask("setupAal", "setup _aal collection", function () {
-      return createSystemCollection("_aal", { 
-        waitForSync : true, 
-        shardKeys: [ "name", "version" ] 
+      return createSystemCollection("_aal", {
+        waitForSync : true,
+        shardKeys: [ "name", "version" ]
       });
     });
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief createAalIndex
 ////////////////////////////////////////////////////////////////////////////////
@@ -572,7 +571,7 @@
 
         return true;
     });
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setupAqlFunctions
 ////////////////////////////////////////////////////////////////////////////////
@@ -580,20 +579,9 @@
     // set up the collection _aqlfunctions
     addTask("setupAqlFunctions", "setup _aqlfunctions collection", function () {
       return createSystemCollection("_aqlfunctions", {
-        journalSize: 4 * 1024 * 1024 
+        journalSize: 4 * 1024 * 1024
       });
     });
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setupReplication
-////////////////////////////////////////////////////////////////////////////////
-
-    if (! cluster.isCoordinator()) {
-      // set up the collection _replication
-      addTask("setupReplication", "setup _replication collection", function () {
-        return createSystemCollection("_replication", { waitForSync : false });
-      });
-    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief migrateAqlFunctions
@@ -614,13 +602,13 @@
 
         if (oldKey !== newKey) {
           try {
-            var doc = { 
-              _key: newKey.toUpperCase(), 
-              name: newKey, 
-              code: f.code, 
-              isDeterministic: f.isDeterministic 
+            var doc = {
+              _key: newKey.toUpperCase(),
+              name: newKey,
+              code: f.code,
+              isDeterministic: f.isDeterministic
             };
-             
+
             funcs.save(doc);
             funcs.remove(oldKey);
           }
@@ -683,18 +671,41 @@
     // create the _statistics collection
     addTask("createConfiguration", "setup _configuration collection", function () {
       var name = "_configuration";
-      var result = createSystemCollection(name, { 
-        waitForSync: true, 
-        journalSize: 1024 * 1024 
+      var result = createSystemCollection(name, {
+        waitForSync: true,
+        journalSize: 1024 * 1024
       });
 
       return result;
     });
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief mount system apps on correct endpoints
+////////////////////////////////////////////////////////////////////////////////
+
+    // move all _api apps to _api and all system apps to system
+    addTask("systemAppEndpoints", "mount system apps on correct endpoints", function () {
+      var aal = db._collection("_aal");
+      var didWork = true;
+      aal.byExample(
+        {
+          type: "mount",
+          isSystem: true
+        }
+      ).toArray().forEach(function(app) {
+        try {
+          aal.remove(app._key);
+        } catch (e) {
+          didWork = false; 
+        }
+      });
+      return didWork;
+    });
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the upgrade tasks
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     // loop through all tasks and execute them
     if (upgradeRun || 0 < activeTasks.length) {
       logger.log("Found " + allTasks.length + " defined task(s), "
@@ -719,7 +730,7 @@
           result = task.func();
         }
         catch (err) {
-          logger.error("Executing " + taskName + " failed with exception: " + 
+          logger.error("Executing " + taskName + " failed with exception: " +
                        String(err.stack || err));
         }
 
@@ -768,9 +779,9 @@
     logger.error("Unexpected ArangoDB server version: " + internal.db._version());
     return false;
   }
-  
+
   var currentVersion = parseFloat(currentServerVersion[1]);
-  
+
   if (cluster.isCoordinator()) {
     var result = runUpgrade(currentVersion, true);
     internal.initializeFoxx();
@@ -792,7 +803,7 @@
       lastVersion = parseFloat(versionValues.version);
     }
   }
-  
+
   if (lastVersion === null) {
     logger.info("No VERSION file found in database directory.");
     return runUpgrade(currentVersion, true);
@@ -812,7 +823,7 @@
 
   // downgrade??
   if (lastVersion > currentVersion) {
-    logger.error("Database directory version (" + lastVersion 
+    logger.error("Database directory version (" + lastVersion
                   + ") is higher than server version (" + currentVersion + ").");
 
     logger.error("It seems like you are running ArangoDB on a database directory"

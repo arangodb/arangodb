@@ -43,14 +43,15 @@ var EXPLAIN = require("internal").AQL_EXPLAIN;
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_post_api_explain
 /// @brief explain a query and return information about it
 ///
-/// @RESTHEADER{POST /_api/explain,explains a query}
+/// @RESTHEADER{POST /_api/explain, Explain query}
 ///
 /// @RESTBODYPARAM{body,json,required}
-/// The query string needs to be passed in the attribute `query` of a JSON
+/// The query string needs to be passed in the attribute *query* of a JSON
 /// object as the body of the POST request. If the query references any bind 
-/// variables, these must also be passed in the attribute `bindVars`.
+/// variables, these must also be passed in the attribute *bindVars*.
 ///
 /// @RESTDESCRIPTION
 ///
@@ -66,28 +67,28 @@ var EXPLAIN = require("internal").AQL_EXPLAIN;
 /// The top-level statements will appear in the result in the same order in which
 /// they have been used in the original query. Each result element has at most the 
 /// following attributes:
-/// - `id`: the row number of the top-level statement, starting at 1
-/// - `type`: the type of the top-level statement (e.g. `for`, `return` ...)
-/// - `loopLevel`: the nesting level of the top-level statement, starting at 1
+/// - *id*: the row number of the top-level statement, starting at 1
+/// - *type*: the type of the top-level statement (e.g. *for*, *return* ...)
+/// - *loopLevel*: the nesting level of the top-level statement, starting at 1
 /// Depending on the type of top-level statement, there might be other attributes
 /// providing additional information, for example, if and which indexed will be
 /// used.
-/// Many top-level statements will provide an `expression` attribute that
-/// contains data about the expression they operate on. This is true for `FOR`,
-/// `FILTER`, `SORT`, `COLLECT`, and `RETURN` statements. The 
-/// `expression` attribute has the following sub-attributes:
-/// - `type`: the type of the expression. Some possible values are:
-///   - `collection`: an iteration over documents from a collection. The 
-///     `value` attribute will then contain the collection name. The `extra`
+/// Many top-level statements will provide an *expression* attribute that
+/// contains data about the expression they operate on. This is true for *FOR*,
+/// *FILTER*, *SORT*, *COLLECT*, and *RETURN* statements. The 
+/// *expression* attribute has the following sub-attributes:
+/// - *type*: the type of the expression. Some possible values are:
+///   - *collection*: an iteration over documents from a collection. The 
+///     *value* attribute will then contain the collection name. The *extra*
 ///     attribute will contain information about if and which index is used when
 ///     accessing the documents from the collection. If no index is used, the 
-///     `accessType` sub-attribute of the `extra` attribute will have the
-///     value `all`, otherwise it will be `index`.
-///   - `list`: a list of dynamic values. The `value` attribute will contain the
+///     *accessType* sub-attribute of the *extra* attribute will have the
+///     value *all*, otherwise it will be *index*.
+///   - *list*: a list of dynamic values. The *value* attribute will contain the
 ///     list elements.
-///   - `const list`: a list of constant values. The `value` attribute will contain the
+///   - *const list*: a list of constant values. The *value* attribute will contain the
 ///     list elements.
-///   - `reference`: a reference to another variable. The `value` attribute
+///   - *reference*: a reference to another variable. The *value* attribute
 ///     will contain the name of the variable that is referenced.
 ///
 /// Please note that the structure of the explain result data might change in future
@@ -97,22 +98,22 @@ var EXPLAIN = require("internal").AQL_EXPLAIN;
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// If the query is valid, the server will respond with `HTTP 200` and
-/// return a list of the individual query execution steps in the `"plan"`
+/// If the query is valid, the server will respond with *HTTP 200* and
+/// return a list of the individual query execution steps in the *"plan"*
 /// attribute of the response.
 ///
 /// @RESTRETURNCODE{400}
-/// The server will respond with `HTTP 400` in case of a malformed request,
+/// The server will respond with *HTTP 400* in case of a malformed request,
 /// or if the query contains a parse error. The body of the response will
 /// contain the error details embedded in a JSON object.
 /// Omitting bind variables if the query references any will result also result
-/// in an `HTTP 400` error.
+/// in an *HTTP 400* error.
 ///
 /// @RESTRETURNCODE{404}
-/// The server will respond with `HTTP 404` in case a non-existing collection is
+/// The server will respond with *HTTP 404* in case a non-existing collection is
 /// accessed in the query.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Valid query:
 ///
@@ -149,9 +150,9 @@ var EXPLAIN = require("internal").AQL_EXPLAIN;
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// The data returned in the `plan` attribute of the result contains one
-/// element per AQL top-level statement (i.e. `FOR`, `RETURN`, 
-/// `FILTER` etc.). If the query optimiser removed some unnecessary statements,
+/// The data returned in the *plan* attribute of the result contains one
+/// element per AQL top-level statement (i.e. *FOR*, *RETURN*, 
+/// *FILTER* etc.). If the query optimiser removed some unnecessary statements,
 /// the result might also contain less elements than there were top-level
 /// statements in the AQL query.
 /// The following example shows a query with a non-sensible filter condition that
@@ -170,6 +171,7 @@ var EXPLAIN = require("internal").AQL_EXPLAIN;
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_api_explain (req, res) {

@@ -21,7 +21,7 @@ Example:
 
     http://localhost:8529/_db/mydb/_api/document/demo/362549736
 
-Note that the following examples use the short URL format for brevity.
+**Note**: The following examples use the short URL format for brevity.
 
 Each document also has a document revision or etag with is returned in the
 "ETag" HTTP header when requesting a document.
