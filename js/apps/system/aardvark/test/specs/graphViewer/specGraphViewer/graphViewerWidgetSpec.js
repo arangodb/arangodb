@@ -79,8 +79,8 @@
           b.offsetWidth,
           b.offsetHeight,
           {
-          	type: "foxx",
-          	route: ".",
+            type: "foxx",
+            route: ".",
             width: width,
             height: height
           },
@@ -278,8 +278,8 @@
           b.offsetWidth - 43,
           b.offsetHeight,
           {
-          	type: "foxx",
-          	route: ".",
+            type: "foxx",
+            route: ".",
             width: width - 43,
             height: height
           },
