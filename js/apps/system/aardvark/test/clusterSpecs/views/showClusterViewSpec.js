@@ -832,9 +832,8 @@
         get : getServer3
       }
     ], clusterStatistics = [
-
       {
-        get : function (a) {
+        get: function (a) {
           if (a === "server") {return  {
             uptime : 100
           };}
@@ -845,11 +844,19 @@
             }
           };}
           if (a === "name") {return  "herbert";}
+          if (a === "http") {
+            return {
+              requestsTotal: 200
+            };
+          }
+          if (a === "time") {
+            return 20;
+          }
         }
       },
 
       {
-        get : function (a) {
+        get: function (a) {
           if (a === "server") {return  {
             uptime : 10
           };}
@@ -860,11 +867,17 @@
             }
           };}
           if (a === "name") {return  "heinz";}
+          if (a ==="http") {
+            return {
+              requestsTotal: 500
+            };
+          }
+          if (a === "time") {
+            return 30;
+          }
         }
       }
     ], foundUrls = [];
-
-
 
     spyOn(window, "ClusterStatisticsCollection").andReturn(
       clusterStatisticsCollectionDummy
@@ -883,22 +896,13 @@
 
     spyOn(serverDummy2, "first").andReturn({
       id : 1,
-      get : function (a) {
-        if (a === "protocol") {return  "http";}
-        if (a === "address") {return  "123.456.789";}
-        if (a === "status") {return  "ok";}
-        if (a === "name") {return  "heinz";}
-      }
+      get : getServer1
     });
     view.hist = {
 
     };
-    view.hist.heinz = {
-      lastTime : 10
-    };
-    view.hist.herbert = {
-      lastTime : view.serverTime
-    };
+    view.hist.heinz = [];
+    view.hist.herbert = [];
     view.dbservers = serverResult;
     view.getServerStatistics();
     expect(serverDummy2.first).toHaveBeenCalled();
@@ -916,7 +920,6 @@
     expect(foundUrls.indexOf("http://123.456.789/_admin/statistics")).not.toEqual(-1);
     expect(foundUrls.indexOf("https://123.456.799/_admin/statistics")).not.toEqual(-1);
     expect(foundUrls.indexOf("http://123.456.119/_admin/statistics")).toEqual(-1);
-
 
   });
 
@@ -963,7 +966,7 @@
         return d3Dummy;
       },
       remove : function () {
-
+        return undefined;
       },
       append : function () {
         return d3Dummy;
@@ -983,9 +986,9 @@
       enter: function () {
         return d3Dummy;
       },
-      style : function (a, b) {
+      style: function (a, b) {
         if (typeof b === 'function') {
-          expect(b("item", 1)).toEqual("white");
+          expect(b("item", 1)).toEqual(2);
         }
         return d3Dummy;
       },
@@ -995,9 +998,6 @@
           value : 2
         }});
       }
-
-
-
     };
 
     spyOn(d3.scale, "category20").andReturn(function (i) {
@@ -1007,18 +1007,12 @@
     spyOn(d3.svg, "arc").andReturn(d3Dummy.svg.arc());
     spyOn(d3.layout, "pie").andReturn(d3Dummy.layout.pie());
     spyOn(d3, "select").andReturn(d3Dummy.select());
-
     view.renderPieChart();
-
-
   });
-
-
 
   it("assert renderLineChart no remake", function () {
 
     spyOn(dyGraphConfigDummy, "getDefaultConfig").andCallThrough();
-    spyOn(dyGraphConfigDummy, "getColors");
 
     view.hist = {
       server1 : {
@@ -1026,73 +1020,36 @@
         2334500 : 1,
         2334600 : 2,
         2334700 : 3
-
-
-
       },
-
-
       server2 : {
         lastTime : 12345,
         2334500 : 2,
         2334800 : 2,
         2334900 : 5
-
-
-
       }
-
     };
 
     var dygraphDummy = {
-      setSelection : function () {
-
-      }
     };
 
     spyOn(window, "Dygraph").andReturn(dygraphDummy);
-    spyOn(dygraphDummy, "setSelection");
 
     view.renderLineChart(false);
 
-    expect(dygraphDummy.setSelection).toHaveBeenCalledWith(
-      false, 'ClusterAverage', true
-    );
-
     expect(window.Dygraph).toHaveBeenCalledWith(
       document.getElementById('lineGraph'),
-      view.graph.data,
+      [],
       {
         header : 'dummyheader',
-        div : '#clusterAverageRequestTime',
-        visibility : [ true, false, true ],
-        labels : [ 'Date', 'ClusterAverage (avg)', 'server1', 'server2 (max)' ],
-        colors : undefined
+        labels : [ 'datetime' ],
+        div: "#clusterRequestsPerSecond",
+        labelsDiv: undefined
       }
     );
 
     expect(dyGraphConfigDummy.getDefaultConfig).toHaveBeenCalledWith(
-      "clusterAverageRequestTime"
+      "clusterRequestsPerSecond"
     );
-    expect(dyGraphConfigDummy.getColors).toHaveBeenCalledWith(
-      ['Date', 'ClusterAverage (avg)', 'server1', 'server2 (max)']
-    );
-    expect(view.chartData.labelsNormal).toEqual(
-      ['Date', 'ClusterAverage (avg)', 'server1', 'server2 (max)']
-    );
-    expect(view.chartData.labelsShowAll).toEqual(
-      ['Date', 'ClusterAverage', 'server1', 'server2']
-    );
-    expect(view.chartData.visibilityNormal).toEqual(
-      [true, false, true]
-    );
-    expect(view.chartData.visibilityShowAll).toEqual(
-      [true, true, true]
-    );
-
-
-
-
   });
 
 
@@ -1108,76 +1065,43 @@
         2334500 : 1,
         2334600 : 2,
         2334700 : 3
-
-
-
       },
-
-
       server2 : {
         lastTime : 12345,
         2334500 : 2,
         2334800 : 2,
         2334900 : 5
-
-
-
       }
 
     };
 
     var dygraphDummy = {
       setSelection : function () {
-
+        return undefined;
       }
     };
 
     spyOn(window, "Dygraph").andReturn(dygraphDummy);
-    spyOn(dygraphDummy, "setSelection");
 
     view.renderLineChart(true);
 
-    expect(dygraphDummy.setSelection).toHaveBeenCalledWith(
-      false, 'ClusterAverage', true
-    );
-
     expect(window.Dygraph).toHaveBeenCalledWith(
       document.getElementById('lineGraph'),
-      view.graph.data,
+      [],
       {
         header : 'dummyheader',
-        labels : [ 'Date', 'ClusterAverage', 'server1', 'server2' ],
-        colors : undefined,
-        visibility : [ true, true, true ],
-        height : 0, width : 0, title : ''
+        labels : [ 'datetime' ],
+        div: "#clusterRequestsPerSecond",
+        labelsDiv: undefined
       }
     );
 
     expect(dyGraphConfigDummy.getDefaultConfig).toHaveBeenCalledWith(
-      "clusterAverageRequestTime"
+      "clusterRequestsPerSecond"
     );
-    expect(dyGraphConfigDummy.getColors).toHaveBeenCalledWith(
-      ['Date', 'ClusterAverage (avg)', 'server1', 'server2 (max)']
-    );
-    expect(view.chartData.labelsNormal).toEqual(
-      ['Date', 'ClusterAverage (avg)', 'server1', 'server2 (max)']
-    );
-    expect(view.chartData.labelsShowAll).toEqual(
-      ['Date', 'ClusterAverage', 'server1', 'server2']
-    );
-    expect(view.chartData.visibilityNormal).toEqual(
-      [true, false, true]
-    );
-    expect(view.chartData.visibilityShowAll).toEqual(
-      [true, true, true]
-    );
-
-
-
-
   });
 
-
+  /*
   it("assert renderLineChart with detailView", function () {
 
     spyOn(dyGraphConfigDummy, "getDefaultConfig").andCallThrough();
@@ -1189,30 +1113,22 @@
         2334500 : 1,
         2334600 : 2,
         2334700 : 3
-
-
-
       },
-
-
       server2 : {
         lastTime : 12345,
         2334500 : 2,
         2334800 : 2,
         2334900 : 5
-
-
-
       }
 
     };
 
     var dygraphDummy = {
       setSelection : function () {
-
+        return undefined;
       },
       updateOptions : function () {
-
+        return undefined;
       }
     };
 
@@ -1263,13 +1179,10 @@
     expect(view.chartData.visibilityShowAll).toEqual(
       [true, true, true]
     );
-
-
-
-
   });
+  */
 
-
+ /*
   it("assert renderLineChart with detailView and showAll", function () {
 
     spyOn(dyGraphConfigDummy, "getDefaultConfig").andCallThrough();
@@ -1281,30 +1194,22 @@
         2334500 : 1,
         2334600 : 2,
         2334700 : 3
-
-
-
       },
-
-
       server2 : {
         lastTime : 12345,
         2334500 : 2,
         2334800 : 2,
         2334900 : 5
-
-
-
       }
 
     };
 
     var dygraphDummy = {
       setSelection : function () {
-
+        return undefined;
       },
       updateOptions : function () {
-
+        return undefined;
       },
       dateWindow_ : [0, 1]
     };
@@ -1358,10 +1263,8 @@
       [true, true, true]
     );
 
-
-
-
   });
+  */
 
 
   it("assert stopUpdating", function () {
@@ -1388,7 +1291,7 @@
 
   it("assert startUpdating", function () {
 
-    spyOn(window, "setInterval").andCallFake(function (a, b) {
+    spyOn(window, "setInterval").andCallFake(function (a) {
       a();
     });
     spyOn(view, "rerender");
@@ -1400,12 +1303,10 @@
   });
 
   it("assert dashboard for dbserver", function () {
-
-
     spyOn(view, "stopUpdating");
     spyOn(window, "$").andReturn({
       remove : function () {
-
+        return undefined;
       },
       hasClass : function () {
         return true;
@@ -1445,7 +1346,6 @@
       isDBServer : true,
       endpoint : "http://localhost",
       target : "name"
-
     });
 
 
@@ -1457,7 +1357,7 @@
     spyOn(view, "stopUpdating");
     spyOn(window, "$").andReturn({
       remove : function () {
-
+        return undefined;
       },
       hasClass : function () {
         return false;
@@ -1500,19 +1400,16 @@
 
   });
 
+  /*
 
   it("assert showDetail", function () {
-
-
     window.modalView = {
-
       hide : function () {
-
+        return undefined;
       },
       show : function () {
-
+        return undefined;
       }
-
     };
 
     spyOn(window.modalView, "hide");
@@ -1520,10 +1417,10 @@
 
     jqueryDummy = {
       on : function () {
-
+        return undefined;
       },
       toggleClass : function () {
-
+        return undefined;
       }
     };
 
@@ -1560,24 +1457,23 @@
     expect(window.$).toHaveBeenCalledWith('#modal-dialog');
 
     expect(jqueryDummy.toggleClass).toHaveBeenCalledWith(
-      "modal-chart-detail", true);
-
-
+      "modal-chart-detail", true
+    );
 
   });
 
-
+  */
 
   it("assert getCurrentSize", function () {
     jqueryDummy = {
       attr : function () {
-
+        return undefined;
       },
       height : function () {
-
+        return undefined;
       },
       width : function () {
-
+        return undefined;
       }
     };
 
@@ -1603,31 +1499,24 @@
 
 
   it("assert resize", function () {
-
-
     view.graph = {
-      graph : {
-        maindiv_ : {
-          id : 1
-        },
-        resize : function () {
-
-        }
+      maindiv_ : {
+        id : 1
+      },
+      resize : function () {
+        return undefined;
       }
     };
 
-    spyOn(view.graph.graph, "resize");
+    spyOn(view.graph, "resize");
     spyOn(view, "getCurrentSize").andReturn({
       height: 1,
       width: 2
     });
 
-
     view.resize();
     expect(view.getCurrentSize).toHaveBeenCalledWith(1);
-    expect(view.graph.graph.resize).toHaveBeenCalledWith(2, 1);
-
-
+    expect(view.graph.resize).toHaveBeenCalledWith(2, 1);
   });
 
 });
