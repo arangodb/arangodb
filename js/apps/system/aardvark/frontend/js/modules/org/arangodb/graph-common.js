@@ -389,12 +389,9 @@ Edge.prototype.getOutVertex = function () {
 /// @EXAMPLE_ARANGOSH_OUTPUT{edgeGetPeerVertex}
 /// ~ db._create("example");
 ///   v1 = example.addVertex("1");
-///
 ///   v2 = g.addVertex("2");
-///
-///    e = g.addEdge(v1, v2, "1->2", "knows");
-///
-///    e.getPeerVertex(v1);
+///   e = g.addEdge(v1, v2, "1->2", "knows");
+///   e.getPeerVertex(v1);
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
