@@ -89,7 +89,6 @@ mockConstructor = function () {
 
 var jsunity = require("jsunity"),
   FoxxController = require("org/arangodb/foxx").Controller,
-  db = require("org/arangodb").db,
   fakeContext,
   fakeContextWithRootElement;
 
@@ -328,8 +327,6 @@ function SetRoutesFoxxControllerSpec () {
 }
 
 function ControllerInjectionSpec () {
-  var app, routes, models;
-
   return {
     testInjectFactoryFunction: function () {
       var app = new FoxxController(fakeContext),
