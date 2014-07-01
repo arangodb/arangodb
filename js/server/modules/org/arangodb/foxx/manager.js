@@ -983,7 +983,7 @@ function checkConfiguration (app, options) {
       else {
         throw new Error(
             "configuration for '" + app._manifest.name + "' is "
-          + "missing a value for attribute '" + att + "'"); 
+          + "missing a value for attribute '" + att + "'");
       }
     }
   }
@@ -992,8 +992,8 @@ function checkConfiguration (app, options) {
   for (att in configuration) {
     if (configuration.hasOwnProperty(att)) {
       if (! expected.hasOwnProperty(att)) {
-        console.warn("configuration for '%s' contains an unknown attribute '%s'", 
-                      app._manifest.name, 
+        console.warn("configuration for '%s' contains an unknown attribute '%s'",
+                      app._manifest.name,
                       att);
       }
     }
@@ -1729,14 +1729,14 @@ exports.initializeFoxx = function () {
   catch (err) {
     console.error("cannot initialize Foxx application: %s", String(err));
   }
-  
+
   var aal = getStorage();
 
   if (aal !== null) {
     var systemAppPath = module.systemAppPath();
 
     var fs = require("fs");
-    var apps = fs.list(systemAppPath); 
+    var apps = fs.list(systemAppPath);
 
     // make sure the aardvark app is always there
     if (apps.indexOf("aardvark") === -1) {
@@ -1750,7 +1750,7 @@ exports.initializeFoxx = function () {
       if (! mount && ! fs.isDirectory(fs.join(systemAppPath, appName))) {
         return;
       }
-      
+
       try {
         if (! mount) {
           mount = '/_system/' + appName;

@@ -12,20 +12,20 @@
     }).join(" ");
   }
   window.FoxxInstalledView = Backbone.View.extend({
-    tagName: 'div',
+    tagName: "div",
     className: "tile",
     template: templateEngine.createTemplate("foxxInstalledView.ejs"),
 
     events: {
-      //'click .install': 'installDialog',
-      //'click .purge': 'removeDialog',
-      'click .icon_arangodb_settings2': 'infoDialog'
+      //"click .install": "installDialog",
+      //"click .purge": "removeDialog",
+      "click .icon_arangodb_settings3": "infoDialog"
     },
 
     renderVersion: function(e) {
       var name = this.model.get("name"),
       selectOptions = this.model.get("selectOptions"),
-      versionToRender = $('#'+name+'Select').val();
+      versionToRender = $("#"+name+"Select").val();
       this.model.set("activeVersion", versionToRender);
 
       var toRender = this.model.collection.findWhere({
@@ -36,7 +36,7 @@
     },
 
     initialize: function(){
-      _.bindAll(this, 'render');
+      _.bindAll(this, "render");
       var buttonConfig = [
         window.modalView.createSuccessButton(
           "Install", this.install.bind(this)
@@ -371,7 +371,7 @@
 
     installDialog: function(event) {
 
-      var currentVersion = $('.modalSelect').val();
+      var currentVersion = $(".modalSelect").val();
 
       window.modalView.hide();
       event.stopPropagation();
@@ -382,11 +382,11 @@
 
     update: function() {
       var url = this.model.get("gitUrl"),
-      version = 'master',
-      name = '',
+      version = "master",
+      name = "",
       result;
 
-      if (url === undefined || url === '') {
+      if (url === undefined || url === "") {
         // if no git is defined
         return;
       }
@@ -489,8 +489,7 @@
         error: function(e, info) {
           if (info.responseText.indexOf("already used by") > -1) {
             alert("Mount-Path already in use.");
-          }
-          else if (info.responseText.indexOf("app is not defined") > -1) {
+          } else if (info.responseText.indexOf("app is not defined") > -1) {
             //temp ignore this message, fix needs to be server-side
             window.modalView.hide();
             self.appsView.reload();
@@ -502,7 +501,7 @@
     },
 
     selectSpecificVersion: function(version) {
-      $('.modalSelect').val(version);
+      $(".modalSelect").val(version);
     },
 
     selectHighestVersion: function() {
@@ -515,7 +514,7 @@
         }
       });
 
-      $('.modalSelect').val(toRender);
+      $(".modalSelect").val(toRender);
     },
 
     render: function(){
