@@ -966,6 +966,10 @@ function checkConfiguration (app, options) {
         var expectedType = expected[att].type;
         var actualType = Array.isArray(value) ? "array" : typeof(value);
 
+        if (expectedType === "integer" && actualType === "number") {
+          actualType = (value === Math.floor(value) ? "integer" : "number");
+        }
+
         if (actualType !== expectedType) {
           throw new Error(
               "configuration for '" + app._manifest.name + "' uses "
