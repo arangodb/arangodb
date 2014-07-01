@@ -382,7 +382,7 @@ static v8::Handle<v8::Value> JS_Base64Encode (v8::Arguments const& argv) {
 /// @FUN{internal.parse(@FA{script})}
 ///
 /// Parses the @FA{script} code, but does not execute it.
-/// Will return @LIT{true} if the code does not have a parse error, and throw
+/// Will return *true* if the code does not have a parse error, and throw
 /// an exception otherwise.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -446,7 +446,7 @@ static v8::Handle<v8::Value> JS_Parse (v8::Arguments const& argv) {
 /// - @LIT{followRedirects}: whether or not to follow redirects
 ///
 /// - @LIT{maxRedirects}: maximum number of redirects to follow, only useful
-///   if @LIT{followRedirects} is @LIT{true}.
+///   if @LIT{followRedirects} is *true*.
 ///
 /// - @LIT{returnBodyOnError}: whether or not to return / save body on HTTP
 ///   error
@@ -747,11 +747,11 @@ static v8::Handle<v8::Value> JS_Download (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a script
 ///
-/// @FUN{internal.execute(@FA{script}, @FA{sandbox}, @FA{filename})}
+/// @FUN{internal.execute(@FA{script}, @FA{sandbox}, *filename*)}
 ///
 /// Executes the @FA{script} with the @FA{sandbox} as context. Global variables
 /// assigned inside the @FA{script}, will be visible in the @FA{sandbox} object
-/// after execution. The @FA{filename} is used for displaying error
+/// after execution. The *filename* is used for displaying error
 /// messages.
 ///
 /// If @FA{sandbox} is undefined, then @FN{execute} uses the current context.
@@ -909,11 +909,12 @@ static v8::Handle<v8::Value> JS_RegisterExecuteFile (v8::Arguments const& argv) 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a file of any type or directory exists
-///
-/// @FUN{fs.exists(@FA{path})}
+/// @startDocuBlock JS_Exists
+/// `fs.exists(path)`
 ///
 /// Returns true if a file (of any type) or a directory exists at a given
 /// path. If the file is a broken symbolic link, returns false.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_Exists (v8::Arguments const& argv) {
@@ -935,10 +936,11 @@ static v8::Handle<v8::Value> JS_Exists (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the size of a file
+/// @startDocuBlock JS_Size
+/// `fs.size(path)`
 ///
-/// @FUN{fs.size(@FA{path})}
-///
-/// Returns the size of the file specified by @FA{path}.
+/// Returns the size of the file specified by *path*.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_SizeFile (v8::Arguments const& argv) {
@@ -983,10 +985,11 @@ static v8::Handle<v8::Value> JS_Getline (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the temporary directory
-///
-/// @FUN{fs.getTempPath()}
+/// @startDocuBlock JS_GetTempPath
+/// `fs.getTempPath()`
 ///
 /// Returns the absolute path of the temporary directory
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_GetTempPath (v8::Arguments const& argv) {
@@ -1010,14 +1013,15 @@ static v8::Handle<v8::Value> JS_GetTempPath (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the name for a (new) temporary file
+/// @startDocuBlock JS_GetTempFile
+/// `fs.getTempFile(directory, createFile)`
 ///
-/// @FUN{fs.getTempFile(@FA{directory}, @FA{createFile})}
-///
-/// Returns the name for a new temporary file in directory @FA{directory}.
-/// If @FA{createFile} is @LIT{true}, an empty file will be created so no other
+/// Returns the name for a new temporary file in directory *directory*.
+/// If *createFile* is *true*, an empty file will be created so no other
 /// process can create a file of the same name.
 ///
-/// Note that the directory @FA{directory} must exist.
+/// **Note**: The directory *directory* must exist.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_GetTempFile (v8::Arguments const& argv) {
@@ -1054,10 +1058,11 @@ static v8::Handle<v8::Value> JS_GetTempFile (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests if path is a directory
+/// @startDocuBlock JS_IsDirectory
+/// `fs.isDirectory(path)`
 ///
-/// @FUN{fs.isDirectory(@FA{path})}
-///
-/// Returns true if the @FA{path} points to a directory.
+/// Returns true if the *path* points to a directory.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_IsDirectory (v8::Arguments const& argv) {
@@ -1080,10 +1085,11 @@ static v8::Handle<v8::Value> JS_IsDirectory (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests if path is a file
+/// @startDocuBlock JS_IsFile
+/// `fs.isFile(path)`
 ///
-/// @FUN{fs.isFile(@FA{path})}
-///
-/// Returns true if the @FA{path} points to a file.
+/// Returns true if the *path* points to a file.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_IsFile (v8::Arguments const& argv) {
@@ -1106,11 +1112,12 @@ static v8::Handle<v8::Value> JS_IsFile (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief makes a given path absolute
-///
-/// @FUN{fs.makeAbsolute(@FA{path})}
+/// @startDocuBlock JS_MakeAbsolute
+/// `fs.makeAbsolute(path)`
 ///
 /// Returns the given string if it is an absolute path, otherwise an
 /// absolute path to the same location is returned.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_MakeAbsolute(v8::Arguments const& argv) {
@@ -1151,15 +1158,16 @@ static v8::Handle<v8::Value> JS_MakeAbsolute(v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the directory listing
-///
-/// @FUN{fs.list(@FA{path})}
+/// @startDocuBlock JS_List
+/// `fs.list(path`
 ///
 /// The functions returns the names of all the files in a directory, in
 /// lexically sorted order. Throws an exception if the directory cannot be
 /// traversed (or path is not a directory).
 ///
-/// Note: this means that list("x") of a directory containing "a" and "b" would
+/// **Note**: this means that list("x") of a directory containing "a" and "b" would
 /// return ["a", "b"], not ["x/a", "x/b"].
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_List (v8::Arguments const& argv) {
@@ -1195,14 +1203,15 @@ static v8::Handle<v8::Value> JS_List (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the directory tree
-///
-/// @FUN{fs.listTree(@FA{path})}
+/// @startDocuBlock JS_ListTree
+/// `fs.listTree(path)`
 ///
 /// The function returns an array that starts with the given path, and all of
 /// the paths relative to the given path, discovered by a depth first traversal
 /// of every directory in any visited directory, reporting but not traversing
-/// symbolic links to directories. The first path is always @LIT{""}, the path
+/// symbolic links to directories. The first path is always *""*, the path
 /// relative to itself.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ListTree (v8::Arguments const& argv) {
@@ -1238,10 +1247,11 @@ static v8::Handle<v8::Value> JS_ListTree (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a directory
+/// @startDocuBlock JS_MakeDirectory
+/// `fs.makeDirectory(path)`
 ///
-/// @FUN{fs.makeDirectory(@FA{path})}
-///
-/// Creates the directory specified by @FA{path}.
+/// Creates the directory specified by *path*.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_MakeDirectory (v8::Arguments const& argv) {
@@ -1271,14 +1281,15 @@ static v8::Handle<v8::Value> JS_MakeDirectory (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unzips a file
+/// @startDocuBlock JS_Unzip
+/// `fs.unzip(filename, outpath, skipPaths, overwrite, password)`
 ///
-/// @FUN{fs.unzip(@FA{filename}, @FA{outpath}, @FA{skipPaths}, @FA{overwrite}, @FA{password})}
+/// Unzips the zip file specified by *filename* into the path specified by
+/// * outpath*. Overwrites any existing target files if *overwrite* is set
+/// to *true*.
 ///
-/// Unzips the zip file specified by @FA{filename} into the path specified by
-/// @FA{outpath}. Overwrites any existing target files if @FA{overwrite} is set
-/// to @LIT{true}.
-///
-/// Returns @LIT{true} if the file was unzipped successfully.
+/// Returns *true* if the file was unzipped successfully.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_UnzipFile (v8::Arguments const& argv) {
@@ -1323,12 +1334,13 @@ static v8::Handle<v8::Value> JS_UnzipFile (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief zips a file
+/// @startDocuBlock JS_Zip
+/// `fs.zip(filename, files)`
 ///
-/// @FUN{fs.zip(@FA{filename}, @FA{files})}
+/// Stores the files specified by *files* in the zip file *filename*.
 ///
-/// Stores the files specified by @FA{files} in the zip file @FA{filename}.
-///
-/// Returns @LIT{true} if the file was zipped successfully.
+/// Returns *true* if the file was zipped successfully.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ZipFile (v8::Arguments const& argv) {
@@ -1393,7 +1405,7 @@ static v8::Handle<v8::Value> JS_ZipFile (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a file and executes it
 ///
-/// @FUN{internal.load(@FA{filename})}
+/// @FUN{internal.load(*filename*)}
 ///
 /// Reads in a files and executes the contents in the current context.
 ////////////////////////////////////////////////////////////////////////////////
@@ -1677,12 +1689,13 @@ static v8::Handle<v8::Value> JS_MarkNonce (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a file
+/// @startDocuBlock JS_Move
+/// `fs.move(source, destination)`
 ///
-/// @FUN{fs.move(@FA{source}, @FA{destination})}
-///
-/// Moves @FA{source} to @FA{destination}. Failure to move the file, or
+/// Moves *source to destination. Failure to move the file, or
 /// specifying a directory for target when source is a file will throw an
 /// exception.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_Move (v8::Arguments const& argv) {
@@ -1852,11 +1865,12 @@ static v8::Handle<v8::Value> JS_Rand (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads in a file
-///
-/// @FUN{fs.read(@FA{filename})}
+/// @startDocuBlock JS_Read
+/// `fs.read(filename)`
 ///
 /// Reads in a file and returns the content as string. Please note that the
 /// file content must be encoded in UTF-8.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
@@ -1888,11 +1902,12 @@ static v8::Handle<v8::Value> JS_Read (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads in a file as base64
-///
-/// @FUN{fs.read64(@FA{filename})}
+/// @startDocuBlock JS_Read64
+/// `fs.read64(filename)`
 ///
 /// Reads in a file and returns the content as string. The file content is
 /// Base64 encoded.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_Read64 (v8::Arguments const& argv) {
@@ -1924,7 +1939,7 @@ static v8::Handle<v8::Value> JS_Read64 (v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writes to a file
 ///
-/// @FUN{internal.save(@FA{filename})}
+/// @FUN{internal.save(*filename*)}
 ///
 /// Writes the content into a file.
 ////////////////////////////////////////////////////////////////////////////////
@@ -1963,12 +1978,13 @@ static v8::Handle<v8::Value> JS_Save (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a file
+/// @startDocuBlock JS_Remove
+/// `fs.remove(filename)`
 ///
-/// @FUN{fs.remove(@FA{filename})}
-///
-/// Removes the file @FA{filename} at the given path. Throws an exception if the
+/// Removes the file *filename* at the given path. Throws an exception if the
 /// path corresponds to anything that is not a file or a symbolic link. If
 /// "path" refers to a symbolic link, removes the symbolic link.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_Remove (v8::Arguments const& argv) {
@@ -1996,11 +2012,12 @@ static v8::Handle<v8::Value> JS_Remove (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an empty directory
-///
-/// @FUN{fs.removeDirectory(@FA{path})}
+/// @startDocuBlock JS_RemoveDirectory
+/// `fs.removeDirectory(path)`
 ///
 /// Removes a directory if it is empty. Throws an exception if the path is not
 /// an empty directory.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_RemoveDirectory (v8::Arguments const& argv) {
@@ -2032,11 +2049,12 @@ static v8::Handle<v8::Value> JS_RemoveDirectory (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a directory
-///
-/// @FUN{fs.removeDirectoryRecursive(@FA{path})}
+/// @startDocuBlock JS_RemoveDirectoryRecursive
+/// `fs.removeDirectoryRecursive(path)`
 ///
 /// Removes a directory with all subelements. Throws an exception if the path
 /// is not a directory.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_RemoveRecursiveDirectory (v8::Arguments const& argv) {

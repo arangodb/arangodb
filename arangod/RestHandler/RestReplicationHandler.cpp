@@ -805,7 +805,7 @@ void RestReplicationHandler::handleCommandLoggerGetConfig () {
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerSetConfig1}
 ///     var re = require("org/arangodb/replication");
-///     re.applier.stop();
+///     re.applier.shutdown();
 ///
 ///     var url = "/_api/replication/logger-config";
 ///     var body = {
@@ -821,7 +821,7 @@ void RestReplicationHandler::handleCommandLoggerGetConfig () {
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerSetConfig2}
 ///     var re = require("org/arangodb/replication");
-///     re.applier.stop();
+///     re.applier.shutdown();
 ///
 ///     var url = "/_api/replication/logger-config";
 ///     var body = {
@@ -3650,7 +3650,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig () {
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReplicationApplierSetConfig}
 ///     var re = require("org/arangodb/replication");
-///     re.applier.stop();
+///     re.applier.shutdown();
 ///
 ///     var url = "/_api/replication/applier-config";
 ///     var body = {
@@ -3801,7 +3801,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReplicationApplierStart}
 ///     var re = require("org/arangodb/replication");
-///     re.applier.stop();
+///     re.applier.shutdown();
 ///     re.applier.properties({
 ///       endpoint: "tcp://127.0.0.1:8529",
 ///       username: "replicationApplier",
@@ -3812,7 +3812,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig () {
 ///
 ///     var url = "/_api/replication/applier-start";
 ///     var response = logCurlRequest('PUT', url, "");
-///     re.applier.stop();
+///     re.applier.shutdown();
 ///
 ///     assert(response.code === 200);
 ///     logJsonResponse(response);
@@ -3875,7 +3875,7 @@ void RestReplicationHandler::handleCommandApplierStart () {
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReplicationApplierStop}
 ///     var re = require("org/arangodb/replication");
-///     re.applier.stop();
+///     re.applier.shutdown();
 ///     re.applier.properties({
 ///       endpoint: "tcp://127.0.0.1:8529",
 ///       username: "replicationApplier",
@@ -3887,7 +3887,7 @@ void RestReplicationHandler::handleCommandApplierStart () {
 ///     re.applier.start();
 ///     var url = "/_api/replication/applier-stop";
 ///     var response = logCurlRequest('PUT', url, "");
-///     re.applier.stop();
+///     re.applier.shutdown();
 ///
 ///     assert(response.code === 200);
 ///     logJsonResponse(response);
@@ -3999,7 +3999,7 @@ void RestReplicationHandler::handleCommandApplierStop () {
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReplicationApplierStateNotRunning}
 ///     var re = require("org/arangodb/replication");
-///     re.applier.stop();
+///     re.applier.shutdown();
 ///
 ///     var url = "/_api/replication/applier-state";
 ///     var response = logCurlRequest('GET', url);
@@ -4012,12 +4012,12 @@ void RestReplicationHandler::handleCommandApplierStop () {
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReplicationApplierStateRunning}
 ///     var re = require("org/arangodb/replication");
-///     re.applier.stop();
+///     re.applier.shutdown();
 ///     re.applier.start();
 ///
 ///     var url = "/_api/replication/applier-state";
 ///     var response = logCurlRequest('GET', url);
-///     re.applier.stop();
+///     re.applier.shutdown();
 ///
 ///     assert(response.code === 200);
 ///     logJsonResponse(response);

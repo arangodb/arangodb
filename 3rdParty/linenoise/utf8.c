@@ -53,9 +53,12 @@ int utf8_charlen(int c)
 size_t utf8_strlen(const char *str, size_t bytelen)
 {
     size_t charlen = 0;
+#if 0
+    // can never by true
     if (bytelen < 0) {
         bytelen = strlen(str);
     }
+#endif
     while (bytelen) {
         int c;
         int l = utf8_tounicode(str, &c);

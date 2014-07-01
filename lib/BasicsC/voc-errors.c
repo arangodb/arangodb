@@ -65,6 +65,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS, "cannot create/rename collection because directory already exists");
   REG_ERROR(ERROR_ARANGO_MSYNC_FAILED, "msync failed");
   REG_ERROR(ERROR_ARANGO_DATADIR_UNLOCKABLE, "cannot lock database directory");
+  REG_ERROR(ERROR_ARANGO_SYNC_TIMEOUT, "sync timeout");
   REG_ERROR(ERROR_ARANGO_CONFLICT, "conflict");
   REG_ERROR(ERROR_ARANGO_DATADIR_INVALID, "invalid database directory");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_NOT_FOUND, "document not found");

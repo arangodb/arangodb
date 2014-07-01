@@ -396,7 +396,7 @@ function createLocalCollections (plannedCollections) {
   var ourselves = ArangoServerState.id();
 
   var createCollectionAgency = function (database, shard, payload) { 
-    ArangoAgency.set("Current/Collections/" + database + "/" + payload.id + "/" + shard, 
+    ArangoAgency.set("Current/Collections/" + database + "/" + payload.planId + "/" + shard, 
                      payload);
   };
   
@@ -429,6 +429,9 @@ function createLocalCollections (plannedCollections) {
               var shards = payload.shards;
               var shard;
             
+              payload.planId = payload.id;
+              delete payload.id;  // must not actually set it here
+
               for (shard in shards) {
                 if (shards.hasOwnProperty(shard)) {
                   if (shards[shard] === ourselves) {
@@ -436,13 +439,11 @@ function createLocalCollections (plannedCollections) {
 
                     if (! localCollections.hasOwnProperty(shard)) {
                       // must create this shard
-                      payload.planId = payload.id;
-
                       console.info("creating local shard '%s/%s' for central '%s/%s'", 
                                    database, 
                                    shard, 
                                    database,
-                                   payload.id);
+                                   payload.planId);
            
                       try {
                         if (payload.type === ArangoCollection.TYPE_EDGE) {
@@ -464,7 +465,7 @@ function createLocalCollections (plannedCollections) {
                                       database, 
                                       shard, 
                                       database,
-                                      payload.id, 
+                                      payload.planId, 
                                       JSON.stringify(err2));
                       }
 
