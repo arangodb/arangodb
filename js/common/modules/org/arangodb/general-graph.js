@@ -123,22 +123,6 @@ var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCrea
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief find or create a collection by name
-////////////////////////////////////////////////////////////////////////////////
-
-var findOrCreateOrphanCollections = function (graphName, orphanCollections, noCreate) {
-  var returnVals = [];
-  if (!orphanCollections) {
-    orphanCollections = [];
-  }
-  orphanCollections.forEach(function (e) {
-    findOrCreateCollectionByName(e, ArangoCollection.TYPE_DOCUMENT, noCreate);
-    returnVals.push(db[e]);
-  });
-  return returnVals;
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief internal function to get graphs collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1855,7 +1839,6 @@ var bindVertexCollections = function(self, vertexCollections) {
     var obj = db._collection(key);
     var result;
     var wrap = wrapCollection(obj);
-    var old_remove = wrap.remove;
     wrap.remove = function(vertexId, options) {
       //delete all edges using the vertex in all graphs
       var graphs = getGraphCollection().toArray();

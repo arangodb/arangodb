@@ -28,7 +28,6 @@
 var jsunity = require("jsunity");
 var db = require("org/arangodb").db;
 var graph = require("org/arangodb/general-graph");
-var errors = require("internal").errors;
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 var getRawQueryResults = helper.getRawQueryResults
@@ -480,7 +479,7 @@ function ahuacatlQueryGeneralPathsTestSuite() {
       var v3 = vertex2.save({ _key: "v3" });
       var v4 = vertex2.save({ _key: "v4" });
       var v5 = vertex3.save({ _key: "v5" });
-      var v6 = vertex3.save({ _key: "v6" });
+      /*var v6 =*/ vertex3.save({ _key: "v6" }); // not used
       var v7 = vertex4.save({ _key: "v7" });
 
       try {

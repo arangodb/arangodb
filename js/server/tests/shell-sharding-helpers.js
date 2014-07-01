@@ -27,7 +27,6 @@
 
 var cluster = require("org/arangodb/cluster");
 var jsunity = require("jsunity");
-var _ = require("underscore");
 
 var compareStringIds = function (l, r) {
   if (l.length != r.length) {
