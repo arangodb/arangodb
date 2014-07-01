@@ -1648,8 +1648,6 @@ function require (path) {
     var prefix = fs.safeJoin(this._root, this._path);
 
     context.foxxFilename = function (path) {
-      console.log("XXXXXXXXXXXXXXXXX path %s", path);
-
       return fs.safeJoin(prefix, path);
     };
 
