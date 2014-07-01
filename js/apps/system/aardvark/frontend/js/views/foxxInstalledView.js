@@ -1,23 +1,31 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true regexp: true*/
+/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true regexp: true, es5: true*/
 /*global Backbone, $, window, _, templateEngine, alert*/
 
 (function() {
   "use strict";
+  function splitSnakeCase(snakeCase) {
+    var str = snakeCase.replace(/([a-z])([A-Z])/g, "$1 $3");
+    str = str.replace(/([a-z])([0-9])/gi, "$1 $3");
+    str = str.replace(/_+/, " ");
+    return _.map(str.split(/\s+/), function(s) {
+      return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+    }).join(" ");
+  }
   window.FoxxInstalledView = Backbone.View.extend({
-    tagName: 'div',
+    tagName: "div",
     className: "tile",
     template: templateEngine.createTemplate("foxxInstalledView.ejs"),
 
     events: {
-      //'click .install': 'installDialog',
-      //'click .purge': 'removeDialog',
-      'click .icon_arangodb_settings2': 'infoDialog'
+      //"click .install": "installDialog",
+      //"click .purge": "removeDialog",
+      "click .icon_arangodb_settings3": "infoDialog"
     },
 
     renderVersion: function(e) {
       var name = this.model.get("name"),
       selectOptions = this.model.get("selectOptions"),
-      versionToRender = $('#'+name+'Select').val();
+      versionToRender = $("#"+name+"Select").val();
       this.model.set("activeVersion", versionToRender);
 
       var toRender = this.model.collection.findWhere({
@@ -28,7 +36,7 @@
     },
 
     initialize: function(){
-      _.bindAll(this, 'render');
+      _.bindAll(this, "render");
       var buttonConfig = [
         window.modalView.createSuccessButton(
           "Install", this.install.bind(this)
@@ -192,6 +200,32 @@
         "mount-path",
         true
       ));
+
+      var configs = this.model.get("manifest").configuration;
+      if (configs && _.keys(configs).length) {
+        _.each(_.keys(configs), function(key) {
+          var opt = configs[key];
+          var prettyKey = opt.label || splitSnakeCase(key);
+          if (opt.type === "boolean") {
+            list.push(window.modalView.createCheckboxEntry(
+              "foxx_configs_" + key,
+              prettyKey,
+              true,
+              opt.description,
+              opt.default
+            ));
+          } else {
+            list.push(window.modalView.createTextEntry(
+              "foxx_configs_" + key,
+              prettyKey,
+              opt.default || "",
+              opt.description,
+              splitSnakeCase(key).toLowerCase().replace(/\s+/g, "-"),
+              opt.default === undefined
+            ));
+          }
+        });
+      }
       if (this.model.get("selectOptions")) {
         list.push(window.modalView.createSelectEntry(
           "foxx-version",
@@ -337,7 +371,7 @@
 
     installDialog: function(event) {
 
-      var currentVersion = $('.modalSelect').val();
+      var currentVersion = $(".modalSelect").val();
 
       window.modalView.hide();
       event.stopPropagation();
@@ -348,11 +382,11 @@
 
     update: function() {
       var url = this.model.get("gitUrl"),
-      version = 'master',
-      name = '',
+      version = "master",
+      name = "",
       result;
 
-      if (url === undefined || url === '') {
+      if (url === undefined || url === "") {
         // if no git is defined
         return;
       }
@@ -381,6 +415,57 @@
         version = this.model.get("version");
       }
 
+      var cfg = {};
+      var opts = this.model.get("manifest").configuration;
+      if (opts && _.keys(opts).length) {
+        try {
+          _.each(_.keys(opts), function(key) {
+            var opt = opts[key];
+            var $el = $("#foxx_configs_" + key);
+            var val = $el.val();
+            if (opt.type === "boolean") {
+              cfg[key] = $el.is(":checked");
+              return;
+            }
+            if (val === "" && !opt.hasOwnProperty("default")) {
+              throw new SyntaxError(
+                "Must specify value for field \"" +
+                  (opt.label || splitSnakeCase(key)) +
+                  "\"!"
+              );
+            }
+            if (opt.type === "number") {
+              cfg[key] = parseFloat(val);
+            } else if (opt.type === "integer") {
+              cfg[key] = parseInt(val, 10);
+            } else {
+              cfg[key] = val;
+              return;
+            }
+            if (_.isNaN(cfg[key])) {
+              throw new SyntaxError(
+                "Invalid value for field \"" +
+                  (opt.label || splitSnakeCase(key)) +
+                  "\"!"
+              );
+            }
+            if (opt.type === "integer" && cfg[key] !== Math.floor(parseFloat(val))) {
+              throw new SyntaxError(
+                "Expected non-decimal value in field \"" +
+                  (opt.label || splitSnakeCase(key)) +
+                  "\"!"
+              );
+            }
+          });
+        } catch (err) {
+          if (err instanceof SyntaxError) {
+            alert(err.message);
+            return false;
+          }
+          throw err;
+        }
+      }
+
       //find correct app install version
       var toCreate = this.model.collection.findWhere({
         name: self.model.get("name"),
@@ -391,7 +476,10 @@
       toCreate.collection.create({
         mount: mountPoint,
         name: toCreate.get("name"),
-        version: toCreate.get("version")
+        version: toCreate.get("version"),
+        options: {
+          configuration: cfg
+        }
       },
       {
         success: function() {
@@ -401,8 +489,7 @@
         error: function(e, info) {
           if (info.responseText.indexOf("already used by") > -1) {
             alert("Mount-Path already in use.");
-          }
-          else if (info.responseText.indexOf("app is not defined") > -1) {
+          } else if (info.responseText.indexOf("app is not defined") > -1) {
             //temp ignore this message, fix needs to be server-side
             window.modalView.hide();
             self.appsView.reload();
@@ -414,7 +501,7 @@
     },
 
     selectSpecificVersion: function(version) {
-      $('.modalSelect').val(version);
+      $(".modalSelect").val(version);
     },
 
     selectHighestVersion: function() {
@@ -427,7 +514,7 @@
         }
       });
 
-      $('.modalSelect').val(toRender);
+      $(".modalSelect").val(toRender);
     },
 
     render: function(){
