@@ -121,6 +121,68 @@ function ModelSpec () {
       assertEqual(clientData.a, raw.a);
     },
 
+    testDisallowUnknownAttributes: function () {
+      var Model = FoxxModel.extend({}, {
+        attributes: {
+          anInteger: {type: 'integer'}
+        }
+      });
+
+      instance = new Model({anInteger: 1, nonExistant: 2});
+      assertEqual(Object.keys(instance.attributes).length, 1);
+      assertEqual(instance.attributes.anInteger, 1);
+      instance.set("anInteger", 2);
+      assertEqual(instance.attributes.anInteger, 2);
+      try {
+        instance.set("nonExistant", 5);
+        fail();
+      } catch(err) {
+        assertTrue(err.message.indexOf("nonExistant") !== -1);
+        assertEqual(Object.keys(instance.attributes).indexOf("nonExistant"), -1);
+      }
+    },
+
+    testDisallowInvalidAttributes: function () {
+      var Model = FoxxModel.extend({}, {
+        attributes: {
+          anInteger: {type: 'integer'}
+        }
+      });
+
+      instance = new Model({anInteger: 1});
+      instance.set("anInteger", undefined);
+      assertEqual(instance.attributes.anInteger, undefined);
+      instance.set("anInteger", 2);
+      assertEqual(instance.attributes.anInteger, 2);
+      try {
+        instance.set("anInteger", 5.1);
+        fail();
+      } catch(err) {
+        assertTrue(err.message.indexOf("anInteger") !== -1);
+        assertTrue(err.message.indexOf("integer") !== -1);
+        assertTrue(err.message.indexOf("number") !== -1);
+        assertEqual(instance.attributes.anInteger, 2);
+      }
+      try {
+        instance.set("anInteger", false);
+        fail();
+      } catch(err) {
+        assertTrue(err.message.indexOf("anInteger") !== -1);
+        assertTrue(err.message.indexOf("integer") !== -1);
+        assertTrue(err.message.indexOf("boolean") !== -1);
+        assertEqual(instance.attributes.anInteger, 2);
+      }
+      try {
+        instance.set("anInteger", "");
+        fail();
+      } catch(err) {
+        assertTrue(err.message.indexOf("anInteger") !== -1);
+        assertTrue(err.message.indexOf("integer") !== -1);
+        assertTrue(err.message.indexOf("string") !== -1);
+        assertEqual(instance.attributes.anInteger, 2);
+      }
+    },
+
     testFilterMetadata: function () {
       var Model = FoxxModel.extend({}, {
         attributes: {
