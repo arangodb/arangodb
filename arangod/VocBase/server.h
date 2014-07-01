@@ -175,6 +175,7 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_CreateDatabaseServer (TRI_server_t*,
+                              TRI_voc_tick_t,
                               char const*,
                               TRI_vocbase_defaults_t const*,
                               struct TRI_vocbase_s**,
@@ -241,6 +242,20 @@ struct TRI_vocbase_s* TRI_UseCoordinatorDatabaseServer (TRI_server_t*,
 
 struct TRI_vocbase_s* TRI_UseDatabaseServer (TRI_server_t*,
                                              char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup a database by its id
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_vocbase_s* TRI_LookupDatabaseByIdServer (TRI_server_t*,
+                                                    TRI_voc_tick_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup a database by its name
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_vocbase_s* TRI_LookupDatabaseByNameServer (TRI_server_t*,
+                                                      char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief use a database by its id

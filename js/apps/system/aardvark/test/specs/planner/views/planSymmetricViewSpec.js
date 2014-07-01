@@ -12,7 +12,9 @@
       $('body').append('<div id="content" class="removeMe"></div>');
 
       ajaxFake = {
-        done: function(){}
+        done: function(){
+          return undefined;
+        }
       };
       myView = new window.PlanSymmetricView();
       myView.render(true);
@@ -97,7 +99,7 @@
       expect(window.alert).toHaveBeenCalledWith("Please provide at least one Host");
     });
 
-    it("should not start an asymmetrical cluster because no dbserver and coordinator ist provided", function() {
+    it("should not start an asymmetrical cluster without dbserver and coordinator", function() {
       myView.render(false);
       $(".add").click();
       $(".add").click();
@@ -106,7 +108,7 @@
         $(".port", d).val(i);
         if (i === 0) {
             $(".isDBServer", d).attr("checked",false);
-            $(".isCoordinator", d).val(false)
+            $(".isCoordinator", d).val(false);
         } else if (i === 1) {
             $(".isDBServer", d).attr("checked",false);
             $(".isCoordinator", d).attr("checked",false);

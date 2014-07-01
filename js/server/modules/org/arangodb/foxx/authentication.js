@@ -821,7 +821,7 @@ Sessions.prototype._toObject = function (session) {
 
       if (!this._changed) {
         oldExpires = this.expires;
-        newExpires = internal.time() + that._options.lifetime;
+        newExpires = internal.time() + that._options.sessionLifetime;
 
         if (newExpires - oldExpires > that._options.minUpdateResolution) {
           this.expires = newExpires;
@@ -917,8 +917,8 @@ Sessions.prototype.generate = function (identifier, data) {
     throw new TypeError("invalid type for 'identifier'");
   }
 
-  if (!this._options.hasOwnProperty("lifetime")) {
-    throw new Error("no value specified for 'lifetime'");
+  if (!this._options.hasOwnProperty("sessionLifetime")) {
+    throw new Error("no value specified for 'sessionLifetime'");
   }
 
   storage = this.storage();
@@ -934,7 +934,7 @@ Sessions.prototype.generate = function (identifier, data) {
     token = generateToken();
     session = {
       _key: token,
-      expires: internal.time() + this._options.lifetime,
+      expires: internal.time() + this._options.sessionLifetime,
       identifier: identifier,
       data: data || {}
     };
@@ -963,7 +963,7 @@ Sessions.prototype.update = function (token, data) {
   'use strict';
 
   this.storage().update(token, {
-    expires: internal.time() + this._options.lifetime,
+    expires: internal.time() + this._options.sessionLifetime,
     data: data
   }, true, false);
 };
@@ -990,7 +990,7 @@ Sessions.prototype.get = function (token) {
   'use strict';
   var storage = this.storage(),
     session,
-    lifetime;
+    sessionLifetime;
 
   try {
     session = storage.document(token);
@@ -998,7 +998,7 @@ Sessions.prototype.get = function (token) {
     if (session.expires >= internal.time()) {
       // session still valid
 
-      lifetime = this._options.lifetime;
+      sessionLifetime = this._options.sessionLifetime;
 
       return {
         errorNum: internal.errors.ERROR_NO_ERROR,
@@ -1049,7 +1049,7 @@ CookieAuthentication = function (applicationContext, options) {
 
   this._options = {
     name: options.name || this._applicationContext.name + "-session",
-    lifetime: options.lifetime || 3600,
+    cookieLifetime: options.cookieLifetime || 3600,
     path: options.path || "/",
     domain: options.path || undefined,
     secure: options.secure || false,
@@ -1105,7 +1105,7 @@ CookieAuthentication.prototype.setCookie = function (res, value) {
   cookie = {
     name: name,
     value: value,
-    lifeTime: (value === null || value === "") ? 0 : this._options.lifetime,
+    lifeTime: (value === null || value === "") ? 0 : this._options.cookieLifetime,
     path: this._options.path,
     secure: this._options.secure,
     domain: this._options.domain,

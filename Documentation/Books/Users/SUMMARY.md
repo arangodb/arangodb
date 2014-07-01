@@ -156,7 +156,6 @@
     * [Getting Information](HttpCollection/Getting.md)
     * [Modifying](HttpCollection/Modifying.md)
   * [Indexes](HttpIndexes/README.md)
-    * [Address of an Index](HttpIndexes/Address.md)
     * [Working with Indexes](HttpIndexes/WorkingWith.md)
     * [Cap Constraints](HttpIndexes/Cap.md)
     * [Hash](HttpIndexes/Hash.md)
