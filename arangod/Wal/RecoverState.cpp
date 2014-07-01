@@ -282,10 +282,11 @@ TRI_vocbase_col_t* RecoverState::useCollection (TRI_vocbase_t* vocbase,
   if (collection == nullptr) {
     return nullptr;
   }
-
+  
   TRI_document_collection_t* document = collection->_collection;
   TRI_ASSERT(document != nullptr);
 
+  // disable secondary indexes for the moment
   document->useSecondaryIndexes(false);
 
   openedCollections.insert(it, std::make_pair(collectionId, collection));
@@ -1376,9 +1377,11 @@ int RecoverState::fillIndexes () {
 
     TRI_ASSERT(document != nullptr);
 
+    // activate secondary indexes
     document->useSecondaryIndexes(true);
 
     int res = TRI_FillIndexesDocumentCollection(document);
+
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }

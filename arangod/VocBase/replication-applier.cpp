@@ -898,7 +898,6 @@ int TRI_ShutdownReplicationApplier (TRI_replication_applier_t* applier) {
 
 int TRI_ConfigureReplicationApplier (TRI_replication_applier_t* applier,
                                      TRI_replication_applier_configuration_t const* config) {
-  int res;
 
   if (applier->_vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
@@ -923,7 +922,7 @@ int TRI_ConfigureReplicationApplier (TRI_replication_applier_t* applier,
     return TRI_ERROR_REPLICATION_RUNNING;
   }
 
-  res = TRI_SaveConfigurationReplicationApplier(applier->_vocbase, config, true);
+  int res = TRI_SaveConfigurationReplicationApplier(applier->_vocbase, config, true);
 
   if (res == TRI_ERROR_NO_ERROR) {
     res = LoadConfiguration(applier->_vocbase, &applier->_configuration);
@@ -1106,11 +1105,11 @@ void TRI_InitStateReplicationApplier (TRI_replication_applier_state_t* state) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyStateReplicationApplier (TRI_replication_applier_state_t* state) {
-  if (state->_progressMsg != NULL) {
+  if (state->_progressMsg != nullptr) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, state->_progressMsg);
   }
 
-  if (state->_lastError._msg != NULL) {
+  if (state->_lastError._msg != nullptr) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, state->_lastError._msg);
   }
 }
@@ -1129,7 +1128,7 @@ int TRI_RemoveStateReplicationApplier (TRI_vocbase_t* vocbase) {
 
   filename = GetStateFilename(vocbase);
 
-  if (filename == NULL) {
+  if (filename == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -1163,7 +1162,7 @@ int TRI_SaveStateReplicationApplier (TRI_vocbase_t* vocbase,
 
   json = JsonApplyState(state);
 
-  if (json == NULL) {
+  if (json == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -1201,7 +1200,7 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
   TRI_InitStateReplicationApplier(state);
   filename = GetStateFilename(vocbase);
 
-  if (filename == NULL) {
+  if (filename == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -1215,11 +1214,11 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
 
   LOG_TRACE("replication state file '%s' found", filename);
 
-  json  = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, NULL);
+  json  = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, nullptr);
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   if (! TRI_IsArrayJson(json)) {
-    if (json != NULL) {
+    if (json != nullptr) {
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     }
 
@@ -1261,10 +1260,10 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
 void TRI_InitConfigurationReplicationApplier (TRI_replication_applier_configuration_t* config) {
   memset(config, 0, sizeof(TRI_replication_applier_configuration_t));
 
-  config->_endpoint          = NULL;
-  config->_database          = NULL;
-  config->_username          = NULL;
-  config->_password          = NULL;
+  config->_endpoint          = nullptr;
+  config->_database          = nullptr;
+  config->_username          = nullptr;
+  config->_password          = nullptr;
 
   config->_requestTimeout    = 300.0;
   config->_connectTimeout    = 10.0;
@@ -1280,24 +1279,24 @@ void TRI_InitConfigurationReplicationApplier (TRI_replication_applier_configurat
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyConfigurationReplicationApplier (TRI_replication_applier_configuration_t* config) {
-  if (config->_endpoint != NULL) {
+  if (config->_endpoint != nullptr) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, config->_endpoint);
-    config->_endpoint = NULL;
+    config->_endpoint = nullptr;
   }
 
-  if (config->_database != NULL) {
+  if (config->_database != nullptr) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, config->_database);
-    config->_database = NULL;
+    config->_database = nullptr;
   }
 
-  if (config->_username != NULL) {
+  if (config->_username != nullptr) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, config->_username);
-    config->_username = NULL;
+    config->_username = nullptr;
   }
 
-  if (config->_password != NULL) {
+  if (config->_password != nullptr) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, config->_password);
-    config->_password = NULL;
+    config->_password = nullptr;
   }
 }
 
