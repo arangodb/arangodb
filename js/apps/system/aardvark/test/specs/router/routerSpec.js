@@ -21,6 +21,7 @@
     collectionsViewDummy,
     databaseDummy,
     userBarDummy,
+    graphManagementView,
     documentViewDummy,
     statisticsDescriptionCollectionDummy,
     statisticsCollectionDummy,
@@ -171,6 +172,11 @@
           throw "should be a spy";
         }
       };
+      graphManagementView = {
+        render: function () {
+          throw "should be a spy";
+        }
+      };
       documentsViewDummy = {
         render: function () {
           throw "should be a spy";
@@ -184,6 +190,7 @@
       };
 
       spyOn(window, "DocumentsView").andReturn(documentsViewDummy);
+      spyOn(window, "GraphManagementView").andReturn(graphManagementView);
       spyOn(window, "DocumentView").andReturn(documentViewDummy);
       spyOn(window, "arangoCollections").andReturn(storeDummy);
       spyOn(window, "ArangoUsers").andReturn(sessionDummy);
@@ -262,6 +269,24 @@
       it("should fetch the current db", function () {
         expect(window.CurrentDatabase).toHaveBeenCalled();
         expect(fakeDB.fetch).toHaveBeenCalled();
+      });
+
+      it("should handle resize", function () {
+        r.dashboardView = {
+          resize : function () {
+
+          }
+        };
+        r.graphManagementView = {
+          handleResize : function () {
+
+          }
+        };
+        spyOn(r.dashboardView , "resize");
+        spyOn(r.graphManagementView , "handleResize");
+        r.handleResize();
+        expect(r.dashboardView.resize).toHaveBeenCalled();
+        expect(r.graphManagementView.handleResize).toHaveBeenCalled();
       });
     });
 
@@ -407,6 +432,25 @@
         );
         expect(documentsViewDummy.setCollectionId).toHaveBeenCalledWith(colid, pageid);
 
+
+      });
+
+      it("should route to graphManagement", function () {
+        spyOn(graphManagementView, "render");
+        simpleNavigationCheck(
+          {
+            url: "graph"
+          },
+          "GraphManagementView",
+          "graphviewer-menu",
+          {
+            collection: new window.GraphCollection(),
+            collectionCollection: storeDummy
+          },
+          {
+          },
+          true
+        );
 
       });
 
