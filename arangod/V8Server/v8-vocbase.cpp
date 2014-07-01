@@ -3867,7 +3867,17 @@ static v8::Handle<v8::Value> JS_FlushWal (v8::Arguments const& argv) {
     waitForCollector = TRI_ObjectToBoolean(argv[1]);
   }
 
-  int res = triagens::wal::LogfileManager::instance()->flush(waitForSync, waitForCollector, false);
+  int res;
+
+  if (ServerState::instance()->isCoordinator()) {
+    res = flushWalOnAllDBServers( waitForSync, waitForCollector );
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_EXCEPTION(scope, res);
+    }
+    return scope.Close(v8::True());
+  }
+
+  res = triagens::wal::LogfileManager::instance()->flush(waitForSync, waitForCollector, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);

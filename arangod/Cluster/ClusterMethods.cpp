@@ -27,6 +27,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterComm.h"
 
 #include "BasicsC/conversions.h"
 #include "BasicsC/json.h"
@@ -1393,6 +1395,51 @@ TRI_vector_pointer_t* getIndexesCoordinator (string const& databaseName,
   return result;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flush Wal on all DBservers
+////////////////////////////////////////////////////////////////////////////////
+
+int flushWalOnAllDBServers (bool waitForSync, bool waitForCollector) {
+  ClusterInfo* ci = ClusterInfo::instance();
+  ClusterComm* cc = ClusterComm::instance();
+  vector<ServerID> DBservers = ci->getCurrentDBServers();
+  CoordTransactionID coordTransactionID = TRI_NewTickServer();
+  string url = string("/_admin/wal/flush?waitForSync=") +
+               (waitForSync ? "true" : "false") +
+               "&waitForCollector=" +
+               (waitForCollector ? "true" : "false");
+  ClusterCommResult* res;
+  for (auto it = DBservers.begin(); it != DBservers.end(); ++it) {
+    map<string, string>* headers = new map<string, string>;
+
+    // set collection name (shard id)
+    string* body = new string;
+
+    res = cc->asyncRequest("", coordTransactionID, "server:" + *it,
+                           triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
+                           url, body, true, headers, NULL, 120.0);
+    delete res;
+  }
+
+  // Now listen to the results:
+  int count;
+  int nrok = 0;
+  for (count = (int) DBservers.size(); count > 0; count--) {
+    res = cc->wait( "", coordTransactionID, 0, "", 0.0);
+    if (res->status == CL_COMM_RECEIVED) {
+      if (res->answer_code == triagens::rest::HttpResponse::OK) {
+        nrok++;
+      }
+    }
+    delete res;
+  }
+
+  if (nrok != (int) DBservers.size()) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
 
   }  // namespace arango
 }  // namespace triagens
