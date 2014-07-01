@@ -1478,6 +1478,27 @@ bool TRI_IterateCollection (TRI_collection_t* collection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief removes an index file from the indexFiles vector
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_RemoveFileIndexCollection (TRI_collection_t* collection,
+                                   TRI_idx_iid_t iid) {
+  size_t const n = collection->_indexFiles._length;
+
+  for (size_t i = 0;  i < n;  ++i) {
+    char const* filename = collection->_indexFiles._buffer[i];
+
+    if (GetNumericFilenamePart(filename) == iid) {
+      // found
+      TRI_RemoveVectorString(&collection->_indexFiles, i);
+      return true;
+    }
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief iterates over all index files of a collection
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -10,10 +10,11 @@ The implementation follows the CommonJS specification
 Tests that an expression is *true*. If not, logs a message and throws
 an exception.
 
-Example usage:
+*Examples*
 
-    console.assert(value === "abc", "expected: value === abc, actual:", value);
-
+```js
+console.assert(value === "abc", "expected: value === abc, actual:", value);
+```
 
 !SUBSECTION console.debug
 
@@ -31,9 +32,11 @@ String substitution patterns, which can be used in *format*.
 * *%%f* floating point number
 * *%%o* object hyperlink
 
-Example usage:
+*Examples*
 
-    console.debug("%s", "this is a test");
+```js
+console.debug("%s", "this is a test");
+```
 
 !SUBSECTION console.dir
 
@@ -42,8 +45,9 @@ Example usage:
 Logs a listing of all properties of the object.
 
 Example usage:
-
-    console.dir(myObject);
+```js
+console.dir(myObject);
+```
 
 !SUBSECTION console.error
 
@@ -60,9 +64,9 @@ String substitution patterns, which can be used in *format*.
 * *%%o* object hyperlink
 
 Example usage:
-
-    console.error("error '%s': %s", type, message);
-
+```js
+console.error("error '%s': %s", type, message);
+```
 !SUBSECTION console.getline
 
 `console.getline()`
@@ -81,10 +85,12 @@ indented sub messages.
 
 Example usage:
 
-    console.group("user attributes");
-    console.log("name", user.name);
-    console.log("id", user.id);
-    console.groupEnd();
+```js
+console.group("user attributes");
+console.log("name", user.name);
+console.log("id", user.id);
+console.groupEnd();
+```
 
 !SUBSECTION console.groupCollapsed
 
@@ -113,9 +119,9 @@ String substitution patterns, which can be used in *format*.
 * *%%o* object hyperlink
 
 Example usage:
-
-    console.info("The %s jumped over %d fences", animal, count);
-
+```js
+console.info("The %s jumped over %d fences", animal, count);
+```
 !SUBSECTION console.log
 
 `console.log(format, argument1, ...)`
@@ -132,9 +138,11 @@ same name to stop the timer and log the time elapsed.
 
 Example usage:
 
-    console.time("mytimer");
-    ...
-    console.timeEnd("mytimer"); // this will print the elapsed time
+```js
+console.time("mytimer");
+...
+console.timeEnd("mytimer"); // this will print the elapsed time
+```
 
 !SUBSECTION console.timeEnd
 
@@ -162,4 +170,3 @@ String substitution patterns, which can be used in *format*.
 * *%%d*, *%%i* integer
 * *%%f* floating point number
 * *%%o* object hyperlink
-

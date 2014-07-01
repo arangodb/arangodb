@@ -29,7 +29,10 @@
 
 #include "RecoverState.h"
 #include "Basics/FileUtils.h"
+#include "BasicsC/conversions.h"
+#include "BasicsC/files.h"
 #include "VocBase/collection.h"
+#include "VocBase/replication-applier.h"
 #include "VocBase/voc-shaper.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Slots.h"
@@ -41,8 +44,79 @@ using namespace triagens::wal;
 // --SECTION--                                                  helper functions
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a collection is volatile
+////////////////////////////////////////////////////////////////////////////////
+
 static inline bool IsVolatile (TRI_transaction_collection_t const* trxCollection) {
   return trxCollection->_collection->_collection->_info._isVolatile;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the directory for a database
+////////////////////////////////////////////////////////////////////////////////
+
+static std::string GetDatabaseDirectory (TRI_server_t* server,
+                                         TRI_voc_tick_t databaseId) {
+  char* idString = TRI_StringUInt64(databaseId);
+  char* dname = TRI_Concatenate2String("database-", idString);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, idString);
+  char* filename = TRI_Concatenate2File(server->_databasePath, dname);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
+
+  std::string result(filename);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the directory for a collection
+////////////////////////////////////////////////////////////////////////////////
+  
+static std::string GetCollectionDirectory (TRI_vocbase_t* vocbase,
+                                           TRI_voc_cid_t collectionId) {
+  char* dirname = TRI_GetDirectoryCollection(vocbase->_path,
+                                             "empty", // does not matter
+                                             TRI_COL_TYPE_DOCUMENT, // does not matter 
+                                             collectionId);
+
+  std::string result(dirname);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, dirname);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wait until a database directory disappears
+////////////////////////////////////////////////////////////////////////////////
+
+static int WaitForDeletion (TRI_server_t* server,
+                            TRI_voc_tick_t databaseId) {
+  std::string result = GetDatabaseDirectory(server, databaseId);
+ 
+  int iterations = 0;
+  while (TRI_IsDirectory(result.c_str()) && iterations++ < 60 * 100) {
+    usleep(10000);
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wait until a collection directory disappears
+////////////////////////////////////////////////////////////////////////////////
+
+static int WaitForDeletion (TRI_vocbase_t* vocbase,
+                            TRI_voc_cid_t collectionId) {
+  std::string result = GetCollectionDirectory(vocbase, collectionId);
+
+  int iterations = 0;
+  while (TRI_IsDirectory(result.c_str()) && iterations++ < 60 * 100) {
+    usleep(10000);
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 // -----------------------------------------------------------------------------
@@ -60,8 +134,6 @@ RecoverState::RecoverState (TRI_server_t* server,
     remoteTransactions(),
     remoteTransactionCollections(),
     remoteTransactionDatabases(),
-    droppedCollections(),
-    droppedDatabases(),
     lastTick(0),
     logfilesToProcess(),
     openedCollections(),
@@ -99,6 +171,25 @@ RecoverState::~RecoverState () {
 ////////////////////////////////////////////////////////////////////////////////
   
 void RecoverState::releaseResources () {
+  // hand over running remote transactions to the applier
+  for (auto it = runningRemoteTransactions.begin(); it != runningRemoteTransactions.end(); ++it) {
+    auto* trx = (*it).second;
+    
+    TRI_vocbase_t* vocbase = trx->vocbase();
+    TRI_ASSERT(vocbase != nullptr);
+
+    auto* applier = vocbase->_replicationApplier;
+    TRI_ASSERT(applier != nullptr);
+    
+    applier->addRemoteTransaction(trx);
+  }
+
+  // reset trx counter as we're moving transactions from this thread to a potential other
+  triagens::arango::TransactionBase::setNumbers(0, 0);
+
+  runningRemoteTransactions.clear();
+
+
   // release all collections
   for (auto it = openedCollections.begin(); it != openedCollections.end(); ++it) {
     TRI_vocbase_col_t* collection = (*it).second;
@@ -117,33 +208,6 @@ void RecoverState::releaseResources () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a database is dropped already
-////////////////////////////////////////////////////////////////////////////////
-
-bool RecoverState::isDropped (TRI_voc_tick_t databaseId) const { 
-  return (droppedDatabases.find(databaseId) != droppedDatabases.end());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a database or collection is dropped already
-////////////////////////////////////////////////////////////////////////////////
-
-bool RecoverState::isDropped (TRI_voc_tick_t databaseId, 
-                              TRI_voc_cid_t collectionId) const {
-  if (isDropped(databaseId)) {
-    // database has been dropped
-    return true;
-  }
-
-  if (droppedCollections.find(collectionId) != droppedCollections.end()) {
-    // collection has been dropped
-    return true;
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a database (and inserts it into the cache if not in it)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -159,9 +223,45 @@ TRI_vocbase_t* RecoverState::useDatabase (TRI_voc_tick_t databaseId) {
   if (vocbase == nullptr) {
     return nullptr;
   }
-
+        
   openedDatabases.insert(it, std::make_pair(databaseId, vocbase));
   return vocbase;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief release a database (so it can be dropped)
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vocbase_t* RecoverState::releaseDatabase (TRI_voc_tick_t databaseId) {
+  auto it = openedDatabases.find(databaseId);
+
+  if (it == openedDatabases.end()) {
+    return nullptr;
+  }
+  
+  TRI_vocbase_t* vocbase = (*it).second;
+  TRI_ReleaseDatabaseServer(server, vocbase);
+  openedDatabases.erase(databaseId);
+        
+  return vocbase;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief release a collection (so it can be dropped)
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_vocbase_col_t* RecoverState::releaseCollection (TRI_voc_cid_t collectionId) {
+  auto it = openedCollections.find(collectionId);
+
+  if (it == openedCollections.end()) {
+    return nullptr;
+  }
+  
+  TRI_vocbase_col_t* collection = (*it).second;
+  TRI_ReleaseCollectionVocBase(collection->_vocbase, collection);
+  openedCollections.erase(collectionId);
+
+  return collection;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,10 +282,11 @@ TRI_vocbase_col_t* RecoverState::useCollection (TRI_vocbase_t* vocbase,
   if (collection == nullptr) {
     return nullptr;
   }
-
+  
   TRI_document_collection_t* document = collection->_collection;
   TRI_ASSERT(document != nullptr);
 
+  // disable secondary indexes for the moment
   document->useSecondaryIndexes(false);
 
   openedCollections.insert(it, std::make_pair(collectionId, collection));
@@ -203,14 +304,16 @@ TRI_document_collection_t* RecoverState::getCollection (TRI_voc_tick_t databaseI
                                                         TRI_voc_cid_t collectionId) {
 
   TRI_vocbase_t* vocbase = useDatabase(databaseId);
+
   if (vocbase == nullptr) {
-    LOG_WARNING("database %llu not found", (unsigned long long) databaseId);
+    LOG_TRACE("database %llu not found", (unsigned long long) databaseId);
     return nullptr;
   }
   
   TRI_vocbase_col_t* collection = useCollection(vocbase, collectionId);
+
   if (collection == nullptr) {
-    LOG_WARNING("collection %llu of database %llu not found", (unsigned long long) collectionId, (unsigned long long) databaseId);
+    LOG_TRACE("collection %llu of database %llu not found", (unsigned long long) collectionId, (unsigned long long) databaseId);
     return nullptr;
   }
 
@@ -296,7 +399,6 @@ int RecoverState::executeSingleOperation (TRI_voc_tick_t databaseId,
   TRI_vocbase_col_t* collection = useCollection(vocbase, collectionId);
 
   if (collection == nullptr) {
-    LOG_WARNING("collection %llu of database %llu not found", (unsigned long long) collectionId, (unsigned long long) databaseId);
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
@@ -311,10 +413,10 @@ int RecoverState::executeSingleOperation (TRI_voc_tick_t databaseId,
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    trx->addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER);
-    trx->addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER);
-    trx->addHint(TRI_TRANSACTION_HINT_NO_THROTTLING);
-    trx->addHint(TRI_TRANSACTION_HINT_LOCK_NEVER);
+    trx->addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, false);
+    trx->addHint(TRI_TRANSACTION_HINT_NO_ABORT_MARKER, false);
+    trx->addHint(TRI_TRANSACTION_HINT_NO_THROTTLING, false);
+    trx->addHint(TRI_TRANSACTION_HINT_LOCK_NEVER, false);
 
     res = trx->begin();
 
@@ -433,24 +535,53 @@ bool RecoverState::InitialScanMarker (TRI_df_marker_t const* marker,
       state->remoteTransactions.erase(m->_transactionId);
       break;
     }
+/*
+    // -----------------------------------------------------------------------------
+    // create markers 
+    // -----------------------------------------------------------------------------
 
+    case TRI_WAL_MARKER_CREATE_COLLECTION: {
+      collection_create_marker_t const* m = reinterpret_cast<collection_create_marker_t const*>(marker);
+      // undo a potential drop marker discovered before for the same collection
+      state->droppedCollections.erase(m->_collectionId);
+      break;
+    }
+  
+    case TRI_WAL_MARKER_CREATE_DATABASE: {
+      database_create_marker_t const* m = reinterpret_cast<database_create_marker_t const*>(marker);
+      // undo a potential drop marker discovered before for the same database
+      state->droppedDatabases.erase(m->_databaseId);
+      break;
+    }
+      
+    case TRI_WAL_MARKER_CREATE_INDEX: {
+      // ignored
+      break;
+    }
+   
     // -----------------------------------------------------------------------------
     // drop markers 
     // -----------------------------------------------------------------------------
-
+   
     case TRI_WAL_MARKER_DROP_COLLECTION: {
       collection_drop_marker_t const* m = reinterpret_cast<collection_drop_marker_t const*>(marker);
       // note that the collection was dropped and doesn't need to be recovered
       state->droppedCollections.insert(m->_collectionId);
       break;
     }
-
+    
     case TRI_WAL_MARKER_DROP_DATABASE: {
       database_drop_marker_t const* m = reinterpret_cast<database_drop_marker_t const*>(marker);
       // note that the database was dropped and doesn't need to be recovered
       state->droppedDatabases.insert(m->_databaseId);
       break;
     }
+       
+    case TRI_WAL_MARKER_DROP_INDEX: {
+      // ignored
+      break;
+    }
+   */ 
   }
 
   return true;
@@ -494,9 +625,9 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         return res;
       });
 
-      if (res != TRI_ERROR_NO_ERROR) {
+      if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND && res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
         LOG_WARNING("could not apply attribute marker: %s", TRI_errno_string(res));
-        return state->shouldAbort();
+        return state->canContinue();
       }
       break;
     }
@@ -507,7 +638,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       shape_marker_t const* m = reinterpret_cast<shape_marker_t const*>(marker);
       TRI_voc_cid_t collectionId = m->_collectionId;
       TRI_voc_tick_t databaseId  = m->_databaseId;
-      
+
       if (state->isDropped(databaseId, collectionId)) {
         return true;
       }
@@ -520,9 +651,9 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         return res;
       });
 
-      if (res != TRI_ERROR_NO_ERROR) {
+      if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND && res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
         LOG_WARNING("could not apply shape marker: %s", TRI_errno_string(res));
-        return state->shouldAbort();
+        return state->canContinue();
       }
       break;
     }
@@ -537,6 +668,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       document_marker_t const* m = reinterpret_cast<document_marker_t const*>(marker);
       TRI_voc_cid_t collectionId = m->_collectionId;
       TRI_voc_tick_t databaseId  = m->_databaseId;
+
       if (state->isDropped(databaseId, collectionId)) {
         return true;
       }
@@ -595,12 +727,15 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         res = TRI_ERROR_TRANSACTION_INTERNAL;
       }
       
-      if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_CONFLICT) {
+      if (res != TRI_ERROR_NO_ERROR && 
+          res != TRI_ERROR_ARANGO_CONFLICT &&
+          res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND && 
+          res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
         LOG_WARNING("unable to insert document in collection %llu of database %llu: %s", 
                     (unsigned long long) collectionId,
                     (unsigned long long) databaseId,
                     TRI_errno_string(res));
-        return state->shouldAbort();
+        return state->canContinue();
       }
       break;
     }
@@ -611,6 +746,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(marker);
       TRI_voc_cid_t collectionId = m->_collectionId;
       TRI_voc_tick_t databaseId  = m->_databaseId;
+      
       if (state->isDropped(databaseId, collectionId)) {
         return true;
       }
@@ -674,12 +810,15 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         res = TRI_ERROR_TRANSACTION_INTERNAL;
       }
 
-      if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_CONFLICT) {
+      if (res != TRI_ERROR_NO_ERROR && 
+          res != TRI_ERROR_ARANGO_CONFLICT &&
+          res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND && 
+          res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
         LOG_WARNING("unable to insert edge in collection %llu of database %llu: %s", 
                     (unsigned long long) collectionId,
                     (unsigned long long) databaseId,
                     TRI_errno_string(res));
-        return state->shouldAbort();
+        return state->canContinue();
       }
 
       break;
@@ -691,6 +830,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       remove_marker_t const* m = reinterpret_cast<remove_marker_t const*>(marker);
       TRI_voc_cid_t collectionId = m->_collectionId;
       TRI_voc_tick_t databaseId  = m->_databaseId;
+      
       if (state->isDropped(databaseId, collectionId)) {
         return true;
       }
@@ -737,12 +877,15 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         res = TRI_ERROR_TRANSACTION_INTERNAL;
       }
 
-      if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_CONFLICT) {
+      if (res != TRI_ERROR_NO_ERROR && 
+          res != TRI_ERROR_ARANGO_CONFLICT &&
+          res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND && 
+          res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
         LOG_WARNING("unable to remove document in collection %llu of database %llu: %s", 
                     (unsigned long long) collectionId,
                     (unsigned long long) databaseId,
                     TRI_errno_string(res));
-        return state->shouldAbort();
+        return state->canContinue();
       }
       break;
     }
@@ -755,7 +898,12 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
     case TRI_WAL_MARKER_BEGIN_REMOTE_TRANSACTION: {
       transaction_remote_begin_marker_t const* m = reinterpret_cast<transaction_remote_begin_marker_t const*>(marker);
       TRI_voc_tick_t databaseId  = m->_databaseId;
+      TRI_voc_tid_t externalId   = m->_externalId;
       // start a remote transaction
+      
+      if (state->isDropped(databaseId)) {
+        return true;
+      }
       
       TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
       if (vocbase == nullptr) {
@@ -764,18 +912,21 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
                     TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
       }
 
-      auto trx = new RemoteTransactionType(vocbase);
+      auto trx = new RemoteTransactionType(state->server, vocbase, externalId);
 
       if (trx == nullptr) {
         LOG_WARNING("unable to start transaction: %s", TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
-        return state->shouldAbort();
+        return state->canContinue();
       }
 
+      trx->addHint(TRI_TRANSACTION_HINT_NO_BEGIN_MARKER, true);
+
       int res = trx->begin();
+
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_WARNING("unable to start transaction: %s", TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
         delete trx;
-        return state->shouldAbort();
+        return state->canContinue();
       }
 
       state->runningRemoteTransactions.insert(std::make_pair(m->_externalId, trx));
@@ -792,18 +943,31 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       TRI_voc_cid_t collectionId = m->_collectionId;
       TRI_voc_tick_t databaseId  = m->_databaseId;
       TRI_idx_iid_t indexId      = m->_indexId;
+      
       if (state->isDropped(databaseId, collectionId)) {
+        return true;
+      }
+     
+      TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
+
+      if (vocbase == nullptr) {
+        // if the underlying database is gone, we can go on
+        LOG_TRACE("cannot create index for collection %llu in database %llu: %s", 
+                  (unsigned long long) collectionId,
+                  (unsigned long long) databaseId,
+                  TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
         return true;
       }
 
       TRI_document_collection_t* document = state->getCollection(databaseId, collectionId);
+
       if (document == nullptr) {
-        // collection not there anymore
-        LOG_WARNING("cannot create index for collection %llu in database %llu: %s", 
-                    (unsigned long long) collectionId,
-                    (unsigned long long) databaseId,
-                    TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND));
-        return state->shouldAbort();
+        // if the underlying collection is gone, we can go on
+        LOG_TRACE("cannot create index for collection %llu in database %llu: %s", 
+                  (unsigned long long) collectionId,
+                  (unsigned long long) databaseId,
+                  TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND));
+        return true;
       }
       
       char const* properties = reinterpret_cast<char const*>(m) + sizeof(index_create_marker_t);
@@ -814,33 +978,35 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
                     (unsigned long long) indexId, 
                     (unsigned long long) collectionId, 
                     (unsigned long long) databaseId);
-        return state->shouldAbort();
+        return state->canContinue();
       }
 
-      return true; 
-      // TODO: must handle indexes differently
-/*
       // fake transaction to satisfy assertions
       triagens::arango::TransactionBase trx(true); 
-
-      TRI_index_t* idx = nullptr;
-      int res = TRI_FromJsonIndexDocumentCollection(document, json, &idx);
+      
+      std::string collectionDirectory = GetCollectionDirectory(vocbase, collectionId);
+      char* idString = TRI_StringUInt64(indexId);
+      char* indexName = TRI_Concatenate3String("index-", idString, ".json");
+      TRI_FreeString(TRI_CORE_MEM_ZONE, idString);
+      char* filename = TRI_Concatenate2File(collectionDirectory.c_str(), indexName);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, indexName);
+      
+      bool ok = TRI_SaveJson(filename, json, false);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-      if (res == TRI_ERROR_NO_ERROR) {
-        res = TRI_SaveIndex(document, idx, false);
-      }
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG_WARNING("cannot create index %llu, collection %llu in database %llu: %s", 
+      if (! ok) {
+        TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+        LOG_WARNING("cannot create index %llu, collection %llu in database %llu", 
                     (unsigned long long) indexId, 
                     (unsigned long long) collectionId, 
-                    (unsigned long long) databaseId,
-                    TRI_errno_string(res));
-        return state->shouldAbort();
+                    (unsigned long long) databaseId);
+        return state->canContinue();
       }
+      else {
+        TRI_PushBackVectorString(&document->_indexFiles, filename);
+      }
+
       break;
-*/
     }
 
 
@@ -848,20 +1014,32 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       collection_create_marker_t const* m = reinterpret_cast<collection_create_marker_t const*>(marker);
       TRI_voc_cid_t collectionId = m->_collectionId;
       TRI_voc_tick_t databaseId  = m->_databaseId;
-      if (state->isDropped(databaseId, collectionId)) {
-        return true;
-      }
       
-      TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
-      if (vocbase == nullptr) {
-        LOG_WARNING("cannot open database %llu", (unsigned long long) databaseId);
-        return state->shouldAbort();
+      // remove the drop marker 
+      state->droppedCollections.erase(collectionId);
+      
+      if (state->isDropped(databaseId)) {
+        return true;
       }
 
-      TRI_vocbase_col_t* collection = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
-      if (collection != nullptr) {
-        // collection already exists - nothing to do
+      TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
+
+      if (vocbase == nullptr) {
+        // if the underlying database is gone, we can go on
+        LOG_TRACE("cannot open database %llu", (unsigned long long) databaseId);
         return true;
+      }
+
+      TRI_vocbase_col_t* collection = state->releaseCollection(collectionId);
+
+      if (collection == nullptr) {
+        collection = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
+      }
+
+      if (collection != nullptr) {
+        // drop an existing collection
+        TRI_DropCollectionVocBase(vocbase, collection, false);
+        WaitForDeletion(vocbase, collectionId);
       }
 
       char const* properties = reinterpret_cast<char const*>(m) + sizeof(collection_create_marker_t);
@@ -871,8 +1049,25 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         LOG_WARNING("cannot unpack collection properties for collection %llu in database %llu", 
                     (unsigned long long) collectionId, 
                     (unsigned long long) databaseId);
-        return state->shouldAbort();
+        return state->canContinue();
       }
+
+      // check if there is another collection with the same name as the one that we attempt to create
+      TRI_json_t const* name = TRI_LookupArrayJson(json, "name");
+
+      if (TRI_IsStringJson(name)) {
+        collection = TRI_LookupCollectionByNameVocBase(vocbase, name->_value._string.data);
+        
+        if (collection != nullptr && ! TRI_IsSystemNameCollection(name->_value._string.data)) {
+          // if yes, delete it
+          TRI_voc_cid_t otherCid = collection->_cid;
+
+          state->releaseCollection(otherCid);
+          TRI_DropCollectionVocBase(vocbase, collection, false);
+          WaitForDeletion(vocbase, otherCid);
+        }
+      }
+
       
       TRI_col_info_t info;
       memset(&info, 0, sizeof(TRI_col_info_t));
@@ -883,6 +1078,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       // fake transaction to satisfy assertions
       triagens::arango::TransactionBase trx(true); 
 
+      WaitForDeletion(vocbase, collectionId);
       collection = TRI_CreateCollectionVocBase(vocbase, &info, collectionId, false);
 
       TRI_FreeCollectionInfoOptions(&info);
@@ -891,7 +1087,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         LOG_WARNING("cannot create collection %llu in database %llu", 
                     (unsigned long long) collectionId, 
                     (unsigned long long) databaseId);
-        return state->shouldAbort();
+        return state->canContinue();
       }
       break;
     }
@@ -900,43 +1096,58 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
     case TRI_WAL_MARKER_CREATE_DATABASE: {
       database_create_marker_t const* m = reinterpret_cast<database_create_marker_t const*>(marker);
       TRI_voc_tick_t databaseId = m->_databaseId;
-      if (state->isDropped(databaseId)) {
-        return true;
+     
+      // remove the drop marker 
+      state->droppedDatabases.erase(databaseId);
+      TRI_vocbase_t* vocbase = state->releaseDatabase(databaseId);
+
+      if (vocbase != nullptr) {
+        // remove already existing database
+        TRI_DropByIdDatabaseServer(state->server, databaseId, false);
+        WaitForDeletion(state->server, databaseId);
       }
-      
-      if (TRI_ExistsDatabaseByIdServer(state->server, databaseId)) {
-        // database already exists - nothing to do
-        return true;
-      }
-      
+
       char const* properties = reinterpret_cast<char const*>(m) + sizeof(database_create_marker_t);
       TRI_json_t* json = triagens::basics::JsonHelper::fromString(properties);
         
       if (json == nullptr) {
         LOG_WARNING("cannot unpack database properties for database %llu", (unsigned long long) databaseId);
-        return state->shouldAbort();
+        return state->canContinue();
       }
 
       TRI_json_t const* nameValue = TRI_LookupArrayJson(json, "name");
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
       if (! TRI_IsStringJson(nameValue)) {
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         LOG_WARNING("cannot unpack database properties for database %llu", (unsigned long long) databaseId);
-        return state->shouldAbort();
+        return state->canContinue();
       }
-      
+
+      std::string nameString(nameValue->_value._string.data);
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+      // remove already existing database with same name
+      vocbase = TRI_LookupDatabaseByNameServer(state->server, nameString.c_str());
+
+      if (vocbase != nullptr) {
+        TRI_voc_tick_t otherId = vocbase->_id;
+        state->releaseDatabase(otherId);
+        TRI_DropDatabaseServer(state->server, nameString.c_str(), false);
+        WaitForDeletion(state->server, otherId);
+      }
+
       TRI_vocbase_defaults_t defaults;
       TRI_GetDatabaseDefaultsServer(state->server, &defaults);
-      TRI_vocbase_t* vocbase = nullptr;
       
       // fake transaction to satisfy assertions
       triagens::arango::TransactionBase trx(true); 
 
-      int res = TRI_CreateDatabaseServer(state->server, nameValue->_value._string.data, &defaults, &vocbase, false);
+      vocbase = nullptr;
+      int res = TRI_CreateDatabaseServer(state->server, databaseId, nameString.c_str(), &defaults, &vocbase, false);
 
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_WARNING("cannot create database %llu: %s", (unsigned long long) databaseId, TRI_errno_string(res));
-        return state->shouldAbort();
+        return state->canContinue();
       }
       break;
     }
@@ -951,14 +1162,23 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       TRI_voc_cid_t collectionId = m->_collectionId;
       TRI_voc_tick_t databaseId  = m->_databaseId;
       TRI_idx_iid_t indexId      = m->_indexId;
-      
+
       if (state->isDropped(databaseId, collectionId)) {
         return true;
       }
+      
+      TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
 
+      if (vocbase == nullptr) {
+        // if the underlying database is gone, we can go on
+        LOG_TRACE("cannot open database %llu", (unsigned long long) databaseId);
+        return true;
+      }
+            
       TRI_document_collection_t* document = state->getCollection(databaseId, collectionId);
       if (document == nullptr) {
-        return state->shouldAbort();
+        // if the underlying collection gone, we can go on
+        return true;
       }
       
       // fake transaction to satisfy assertions
@@ -966,6 +1186,18 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
 
       // ignore any potential error returned by this call
       TRI_DropIndexDocumentCollection(document, indexId, false);
+      TRI_RemoveFileIndexCollection(document, indexId);
+
+      // additionally remove the index file
+      std::string collectionDirectory = GetCollectionDirectory(vocbase, collectionId);
+      char* idString = TRI_StringUInt64(indexId);
+      char* indexName = TRI_Concatenate3String("index-", idString, ".json");
+      TRI_FreeString(TRI_CORE_MEM_ZONE, idString);
+      char* filename = TRI_Concatenate2File(collectionDirectory.c_str(), indexName);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, indexName);
+      
+      TRI_UnlinkFile(filename);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
       break;
     }
 
@@ -975,6 +1207,8 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       TRI_voc_cid_t collectionId = m->_collectionId;
       TRI_voc_tick_t databaseId  = m->_databaseId;
       
+      // insert the drop marker 
+      state->droppedCollections.insert(collectionId);
 
       TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
       if (vocbase == nullptr) {
@@ -982,18 +1216,20 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         return true;
       }
 
-      TRI_vocbase_col_t* collection = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
+      // ignore any potential error returned by this call
+      TRI_vocbase_col_t* collection = state->releaseCollection(collectionId);
 
       if (collection == nullptr) {
-        // collection already deleted - do nothing
-        return true;
+        collection = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
       }
-      
-      // fake transaction to satisfy assertions
-      triagens::arango::TransactionBase trx(true); 
 
-      // ignore any potential error returned by this call
-      TRI_DropCollectionVocBase(vocbase, collection, false);
+      if (collection != nullptr) {
+        // fake transaction to satisfy assertions
+        triagens::arango::TransactionBase trx(true); 
+
+        TRI_DropCollectionVocBase(vocbase, collection, false);
+        WaitForDeletion(vocbase, collectionId);
+      }
       break;
     }
 
@@ -1001,16 +1237,18 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
     case TRI_WAL_MARKER_DROP_DATABASE: {
       database_drop_marker_t const* m = reinterpret_cast<database_drop_marker_t const*>(marker);
       TRI_voc_tick_t databaseId = m->_databaseId;
-
-      if (state->isDropped(databaseId)) {
-        return true;
-      }
       
-      // fake transaction to satisfy assertions
-      triagens::arango::TransactionBase trx(true); 
+      // insert the drop marker 
+      state->droppedDatabases.insert(databaseId);
+      TRI_vocbase_t* vocbase = state->releaseDatabase(databaseId);
+
+      if (vocbase != nullptr) {
+        // fake transaction to satisfy assertions
+        triagens::arango::TransactionBase trx(true); 
   
-      // ignore any potential error returned by this call
-      TRI_DropByIdDatabaseServer(state->server, databaseId, false);
+        // ignore any potential error returned by this call
+        TRI_DropByIdDatabaseServer(state->server, databaseId, false);
+      }
       break;
     }
     
@@ -1039,6 +1277,9 @@ int RecoverState::replayLogfile (Logfile* logfile) {
 ////////////////////////////////////////////////////////////////////////////////
     
 int RecoverState::replayLogfiles () {
+  droppedCollections.clear();
+  droppedDatabases.clear();
+
   for (auto it = logfilesToProcess.begin(); it != logfilesToProcess.end(); ++it) {
     Logfile* logfile = (*it);
 
@@ -1077,11 +1318,6 @@ int RecoverState::abortOpenTransactions () {
       }
 
       TRI_voc_tick_t databaseId = (*it).second.first;
-
-      // only write abort markers for databases that haven't been deleted yet
-      if (isDropped(databaseId)) {
-        continue;
-      }
 
       AbortTransactionMarker marker(databaseId, transactionId);
       SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(marker.mem(), marker.size(), false);
@@ -1138,11 +1374,14 @@ int RecoverState::fillIndexes () {
     TRI_vocbase_col_t* collection = (*it).second;
 
     TRI_document_collection_t* document = collection->_collection;
+
     TRI_ASSERT(document != nullptr);
 
+    // activate secondary indexes
     document->useSecondaryIndexes(true);
 
     int res = TRI_FillIndexesDocumentCollection(document);
+
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }

@@ -339,6 +339,10 @@ namespace triagens {
 
         inline void throttleWhenPending (uint64_t value) {
           _throttleWhenPending = value;
+
+          if (_throttleWhenPending == 0) {
+            deactivateWriteThrottling();
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////

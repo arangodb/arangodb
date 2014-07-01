@@ -740,8 +740,8 @@ static bool IsIndexHandle (v8::Handle<v8::Value> const arg,
 static void WeakCollectionCallback (v8::Isolate* isolate,
                                     v8::Persistent<v8::Value> object,
                                     void* parameter) {
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-  TRI_vocbase_col_t* collection = (TRI_vocbase_col_t*) parameter;
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+  TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(parameter);
 
   v8g->_hasDeadObjects = true;
 
@@ -770,7 +770,7 @@ static void WeakCollectionCallback (v8::Isolate* isolate,
 static v8::Handle<v8::Object> WrapCollection (TRI_vocbase_col_t const* collection) {
   v8::HandleScope scope;
 
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
   v8::Handle<v8::Object> result = v8g->VocbaseColTempl->NewInstance();
 
   if (! result.IsEmpty()) {
@@ -3203,6 +3203,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
 
   // extract the parameters
   TRI_col_info_t parameter;
+  TRI_voc_cid_t cid = 0;
 
   if (2 <= argv.Length()) {
     if (! argv[1]->IsObject()) {
@@ -3270,10 +3271,15 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
       TRI_FreeCollectionInfoOptions(&parameter);
       TRI_V8_EXCEPTION_PARAMETER(scope, "volatile collections do not support the waitForSync option");
     }
+    
+    if (p->Has(v8g->IdKey)) {
+      // specify collection id - used for testing only
+      cid = TRI_ObjectToUInt64(p->Get(v8g->IdKey), true);
+    }
 
   }
   else {
-    TRI_InitCollectionInfo(vocbase, &parameter, name.c_str(), collectionType, effectiveSize, 0);
+    TRI_InitCollectionInfo(vocbase, &parameter, name.c_str(), collectionType, effectiveSize, nullptr);
   }
 
 
@@ -3286,7 +3292,7 @@ static v8::Handle<v8::Value> CreateVocBase (v8::Arguments const& argv,
 
   TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase,
                                                                     &parameter,
-                                                                    0, 
+                                                                    cid, 
                                                                     true);
 
   TRI_FreeCollectionInfoOptions(&parameter);
@@ -5054,14 +5060,14 @@ static v8::Handle<v8::Value> JS_StartApplierReplication (v8::Arguments const& ar
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stop the replication applier manually
+/// @brief shuts down the replication applier manually
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_StopApplierReplication (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_ShutdownApplierReplication (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   if (argv.Length() != 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_STOP()");
+    TRI_V8_EXCEPTION_USAGE(scope, "REPLICATION_APPLIER_SHUTDOWN()");
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
@@ -5074,10 +5080,10 @@ static v8::Handle<v8::Value> JS_StopApplierReplication (v8::Arguments const& arg
     TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
 
-  int res = TRI_StopReplicationApplier(vocbase->_replicationApplier, true);
+  int res = TRI_ShutdownReplicationApplier(vocbase->_replicationApplier);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot stop replication applier");
+    TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot shut down replication applier");
   }
 
   return scope.Close(v8::True());
@@ -6519,7 +6525,7 @@ static v8::Handle<v8::Value> JS_PlanIdVocbaseCol (v8::Arguments const& argv) {
 /// created journals. Also note that you cannot lower the journal size to less
 /// then size of the largest document already stored in the collection.
 ///
-/// *Note*: some other collection properties, such as *type*, *isVolatile*,
+/// **Note**: some other collection properties, such as *type*, *isVolatile*,
 /// or *keyOptions* cannot be changed once the collection is created.
 ///
 /// @EXAMPLES
@@ -7714,7 +7720,7 @@ static v8::Handle<v8::Value> JS_VersionVocbaseCol (v8::Arguments const& argv) {
 static v8::Handle<v8::Object> WrapVocBase (TRI_vocbase_t const* database) {
   v8::HandleScope scope;
 
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
   v8::Handle<v8::Object> result = WrapClass(v8g->VocbaseTempl,
                                             WRP_VOCBASE_TYPE,
                                             const_cast<TRI_vocbase_t*>(database));
@@ -7748,7 +7754,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
-  if (vocbase == 0) {
+  if (vocbase == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
@@ -7764,7 +7770,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
 
 
   // empty or null
-  if (key == 0 || *key == '\0') {
+  if (key == nullptr || *key == '\0') {
     return scope.Close(v8::Handle<v8::Value>());
   }
 
@@ -7774,7 +7780,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
     return scope.Close(v8::Handle<v8::Value>());
   }
 
-  TRI_vocbase_col_t* collection = 0;
+  TRI_vocbase_col_t* collection = nullptr;
 
   // generate a name under which the cached property is stored
   string cacheKey(key, keyLength);
@@ -7809,7 +7815,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
     collection = TRI_UnwrapClass<TRI_vocbase_col_t>(value, WRP_VOCBASE_COL_TYPE);
 
     // check if the collection is from the same database
-    if (collection != 0 && collection->_vocbase == vocbase) {
+    if (collection != nullptr && collection->_vocbase == vocbase) {
       TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
       TRI_vocbase_col_status_e status = collection->_status;
       TRI_voc_cid_t cid = collection->_cid;
@@ -7817,7 +7823,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
 
       // check if the collection is still alive
       if (status != TRI_VOC_COL_STATUS_DELETED && cid > 0 && collection->_isLocal) {
-        TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+        TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
         if (value->Has(v8g->_IdKey)) {
           TRI_voc_cid_t cachedCid = (TRI_voc_cid_t) TRI_ObjectToUInt64(value->Get(v8g->_IdKey), true);
@@ -7841,12 +7847,12 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
         = ClusterInfo::instance()->getCollection(vocbase->_name, std::string(key));
 
     if ((*ci).empty()) {
-      collection = 0;
+      collection = nullptr;
     }
     else {
       collection = CoordinatorCollection(vocbase, *ci);
 
-      if (collection != 0 && collection->_cid == 0) {
+      if (collection != nullptr && collection->_cid == 0) {
         FreeCoordinatorCollection(collection);
         return scope.Close(v8::Handle<v8::Value>());
       }
@@ -7856,7 +7862,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
     collection = TRI_LookupCollectionByNameVocBase(vocbase, key);
   }
 
-  if (collection == 0) {
+  if (collection == nullptr) {
     if (*key == '_') {
       return scope.Close(v8::Handle<v8::Value>());
     }
@@ -7870,6 +7876,8 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
     return scope.Close(v8::Undefined());
   }
 
+  // TODO: caching the result makes subsequent results much faster, but
+  // prevents physical removal of the collection or database
   holder->Set(cacheName, result, v8::DontEnum);
 
   return scope.Close(result);
@@ -8755,7 +8763,7 @@ static v8::Handle<v8::Value> JS_UseDatabase (v8::Arguments const& argv) {
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
-  if (vocbase == 0) {
+  if (vocbase == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
 
@@ -8769,18 +8777,18 @@ static v8::Handle<v8::Value> JS_UseDatabase (v8::Arguments const& argv) {
   }
   else {
     // check if the other database exists, and increase its refcount
-    vocbase = TRI_UseDatabaseServer((TRI_server_t*) v8g->_server, name.c_str());
+    vocbase = TRI_UseDatabaseServer(static_cast<TRI_server_t*>(v8g->_server), name.c_str());
   }
 
-  if (vocbase != 0) {
+  if (vocbase != nullptr) {
     // switch databases
     void* orig = v8g->_vocbase;
-    TRI_ASSERT(orig != 0);
+    TRI_ASSERT(orig != nullptr);
 
     v8g->_vocbase = vocbase;
 
     if (orig != vocbase) {
-      TRI_ReleaseDatabaseServer((TRI_server_t*) v8g->_server, (TRI_vocbase_t*) orig);
+      TRI_ReleaseDatabaseServer(static_cast<TRI_server_t*>(v8g->_server), (TRI_vocbase_t*) orig);
     }
 
     return scope.Close(WrapVocBase(vocbase));
@@ -9088,7 +9096,8 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
   }
 
 
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+  TRI_voc_tick_t id = 0;
 
   // get database defaults from server
   TRI_vocbase_defaults_t defaults;
@@ -9128,18 +9137,23 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
     if (options->Has(keyAuthenticateSystemOnly)) {
       defaults.authenticateSystemOnly = options->Get(keyAuthenticateSystemOnly)->BooleanValue();
     }
+    
+    if (options->Has(v8g->IdKey)) {
+      // only used for testing to create database with a specific id
+      id = TRI_ObjectToUInt64(options->Get(v8g->IdKey), true);
+    }
   }
 
   string const name = TRI_ObjectToString(argv[0]);
 
   TRI_vocbase_t* database;
-  int res = TRI_CreateDatabaseServer(static_cast<TRI_server_t*>(v8g->_server), name.c_str(), &defaults, &database, true);
+  int res = TRI_CreateDatabaseServer(static_cast<TRI_server_t*>(v8g->_server), id, name.c_str(), &defaults, &database, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  TRI_ASSERT(database != 0);
+  TRI_ASSERT(database != nullptr);
 
   // copy users into context
   if (argv.Length() >= 3 && argv[2]->IsArray()) {
@@ -9240,7 +9254,7 @@ static v8::Handle<v8::Value> JS_DropDatabase (v8::Arguments const& argv) {
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
-  if (vocbase == 0) {
+  if (vocbase == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
@@ -9254,9 +9268,9 @@ static v8::Handle<v8::Value> JS_DropDatabase (v8::Arguments const& argv) {
   }
 
   string const name = TRI_ObjectToString(argv[0]);
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
-  int res = TRI_DropDatabaseServer((TRI_server_t*) v8g->_server, name.c_str(), true);
+  int res = TRI_DropDatabaseServer(static_cast<TRI_server_t*>(v8g->_server), name.c_str(), true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
@@ -9974,7 +9988,7 @@ bool TRI_V8RunVersionCheck (void* vocbase,
   TRI_ASSERT(startupLoader != nullptr);
 
   v8::HandleScope scope;
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
   void* orig = v8g->_vocbase;
   v8g->_vocbase = vocbase;
 
@@ -10000,7 +10014,7 @@ int TRI_V8RunUpgradeCheck (void* vocbase,
   TRI_ASSERT(startupLoader != nullptr);
 
   v8::HandleScope scope;
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
   void* orig = v8g->_vocbase;
   v8g->_vocbase = vocbase;
 
@@ -10022,7 +10036,7 @@ void TRI_V8InitialiseFoxx (void* vocbase,
 
   {
     v8::HandleScope scope;
-    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+    TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
     orig = v8g->_vocbase;
     v8g->_vocbase = vocbase;
   }
@@ -10034,7 +10048,7 @@ void TRI_V8InitialiseFoxx (void* vocbase,
                               false);
   {
     v8::HandleScope scope;
-    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+    TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
     v8g->_vocbase = orig;
   }
 }
@@ -10244,7 +10258,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_SERVER_ID", JS_ServerIdReplication, true);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_CONFIGURE", JS_ConfigureApplierReplication, true);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_START", JS_StartApplierReplication, true);
-  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_STOP", JS_StopApplierReplication, true);
+  TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_SHUTDOWN", JS_ShutdownApplierReplication, true);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_STATE", JS_StateApplierReplication, true);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_FORGET", JS_ForgetApplierReplication, true);
 

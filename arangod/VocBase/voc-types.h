@@ -207,6 +207,30 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief set counters, used in replication client to transfer transactions
+/// between threads.
+////////////////////////////////////////////////////////////////////////////////
+
+        static void setNumbers (int numberInScope, int numberActive) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+          _numberTrxInScope = numberInScope;
+          _numberTrxActive = numberActive;
+#endif
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief increase counters, used in replication client in shutdown to
+/// kill transactions of other threads.
+////////////////////////////////////////////////////////////////////////////////
+
+        static void increaseNumbers (int numberInScope, int numberActive) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+          _numberTrxInScope += numberInScope;
+          _numberTrxActive += numberActive;
+#endif
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief assert that a transaction object is in scope in the current thread
 ////////////////////////////////////////////////////////////////////////////////
 

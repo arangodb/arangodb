@@ -2643,12 +2643,11 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   char const* path = col->_path;
 
   // first open the document collection
-  TRI_document_collection_t* document;
+  TRI_document_collection_t* document = nullptr;
   try {
     document = new TRI_document_collection_t();
   }
   catch (std::exception&) {
-    document = nullptr;
   }
 
   if (document == nullptr) {

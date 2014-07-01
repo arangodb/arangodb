@@ -9,20 +9,19 @@
 
     var
     fakeDB,
-    graphDummy,
     storeDummy,
     naviDummy,
     footerDummy,
     documentDummy,
     documentsDummy,
     sessionDummy,
-    graphsDummy,
     foxxDummy,
     logsDummy,
     statisticBarDummy,
     collectionsViewDummy,
     databaseDummy,
     userBarDummy,
+    graphManagementView,
     documentViewDummy,
     statisticsDescriptionCollectionDummy,
     statisticsCollectionDummy,
@@ -58,16 +57,6 @@
       };
       documentDummy = {id: "document"};
       documentsDummy = {id: "documents"};
-      graphDummy = {
-        id: "graph",
-        handleResize: function () {
-          //This should throw as well however resizinge fails now and then
-          return;
-        },
-        render: function () {
-          throw "should be a spy";
-        }
-      };
       storeDummy = {
         id: "store",
         fetch: function (a) {
@@ -76,7 +65,6 @@
           }
         }
       };
-      graphsDummy = {id: "graphs"};
       logsDummy = {
         all: {
           id: "logsAll",
@@ -184,6 +172,11 @@
           throw "should be a spy";
         }
       };
+      graphManagementView = {
+        render: function () {
+          throw "should be a spy";
+        }
+      };
       documentsViewDummy = {
         render: function () {
           throw "should be a spy";
@@ -197,13 +190,13 @@
       };
 
       spyOn(window, "DocumentsView").andReturn(documentsViewDummy);
+      spyOn(window, "GraphManagementView").andReturn(graphManagementView);
       spyOn(window, "DocumentView").andReturn(documentViewDummy);
       spyOn(window, "arangoCollections").andReturn(storeDummy);
       spyOn(window, "ArangoUsers").andReturn(sessionDummy);
       spyOn(window, "arangoDocuments").andReturn(documentsDummy);
       spyOn(window, "arangoDocument").andReturn(documentDummy);
       spyOn(window, "ArangoDatabase").andReturn(databaseDummy);
-      spyOn(window, "GraphCollection").andReturn(graphsDummy);
       spyOn(window, "FoxxCollection").andReturn(foxxDummy);
       spyOn(window, "StatisticsDescriptionCollection").andReturn(
         statisticsDescriptionCollectionDummy
@@ -221,7 +214,6 @@
       spyOn(window, "NavigationView").andReturn(naviDummy);
       spyOn(naviDummy, "render");
       spyOn(naviDummy, "selectMenuItem");
-      spyOn(window, "GraphView").andReturn(graphDummy);
       spyOn(window, "CurrentDatabase").andReturn(fakeDB);
       spyOn(fakeDB, "fetch").andCallFake(function (options) {
         expect(options.async).toBeFalsy();
@@ -277,6 +269,24 @@
       it("should fetch the current db", function () {
         expect(window.CurrentDatabase).toHaveBeenCalled();
         expect(fakeDB.fetch).toHaveBeenCalled();
+      });
+
+      it("should handle resize", function () {
+        r.dashboardView = {
+          resize : function () {
+
+          }
+        };
+        r.graphManagementView = {
+          handleResize : function () {
+
+          }
+        };
+        spyOn(r.dashboardView , "resize");
+        spyOn(r.graphManagementView , "handleResize");
+        r.handleResize();
+        expect(r.dashboardView.resize).toHaveBeenCalled();
+        expect(r.graphManagementView.handleResize).toHaveBeenCalled();
       });
     });
 
@@ -371,7 +381,6 @@
           "application/available/:key",
           "applications",
           "application/documentation/:key",
-          "graph",
           "graphManagement",
           "userManagement",
           "userProfile" ,
@@ -423,6 +432,25 @@
         );
         expect(documentsViewDummy.setCollectionId).toHaveBeenCalledWith(colid, pageid);
 
+
+      });
+
+      it("should route to graphManagement", function () {
+        spyOn(graphManagementView, "render");
+        simpleNavigationCheck(
+          {
+            url: "graph"
+          },
+          "GraphManagementView",
+          "graphviewer-menu",
+          {
+            collection: new window.GraphCollection(),
+            collectionCollection: storeDummy
+          },
+          {
+          },
+          true
+        );
 
       });
 
@@ -500,21 +528,6 @@
         );
       });
 
-     /* it("should navigate to the graphView", function () {
-        spyOn(graphDummy, "render");
-        simpleNavigationCheck(
-          "graph",
-          "GraphView",
-          "graphviewer-menu",
-          {
-            graphs: { id: 'graphs' },
-            collection: storeDummy
-          },
-          {
-          },
-          true
-        );
-      });*/
 
       it("should navigate to the appDocumentation", function () {
         var key = 5;
@@ -561,18 +574,6 @@
         expect(naviDummy.handleSelectDatabase).toHaveBeenCalled();
       });
 
-      it("should handle resizing", function () {
-        r.graphView =  graphDummy;
-        r.dashboardView = dashboardDummy;
-        spyOn(graphDummy, "handleResize");
-        spyOn(dashboardDummy, "resize");
-        spyOn($.fn, 'width').andReturn(500);
-
-        r.handleResize();
-        expect(graphDummy.handleResize).toHaveBeenCalledWith(500);
-        expect(dashboardDummy.resize).toHaveBeenCalled();
-        r.dashboardView = undefined;
-      });
 
 
       it("should navigate to the userManagement", function () {
@@ -654,15 +655,6 @@
         );
       });
 
-      it("should route to the graph management tab", function () {
-        simpleNavigationCheck(
-          "graphManagement",
-          "GraphManagementView",
-          "graphviewer-menu",
-          { collection: graphsDummy ,
-            collectionCollection : { id : 'store', fetch : jasmine.any(Function) } }
-        );
-      });
 
       it("should route to the applications tab", function () {
         simpleNavigationCheck(

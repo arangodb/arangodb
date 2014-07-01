@@ -54,6 +54,7 @@ function UsersSuite () {
         users.remove(username);
       }
       catch (e1) {
+        // nope
       }
     }
 
@@ -61,6 +62,7 @@ function UsersSuite () {
       users.remove("hackers@arangodb.org");
     }
     catch (e2) {
+      // nope
     }
   };
 
@@ -71,7 +73,7 @@ function UsersSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      clearGarbage(); 
+      clearGarbage();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -79,11 +81,11 @@ function UsersSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      clearGarbage(); 
+      clearGarbage();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test invalid names 
+/// @brief test invalid names
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidNames : function () {
@@ -92,7 +94,7 @@ function UsersSuite () {
       for (var i = 0; i < usernames.length; ++i) {
         var username = usernames[i];
         var passwd = "passwd-" + i;
-        
+
         try {
           users.save(username, passwd);
           fail();

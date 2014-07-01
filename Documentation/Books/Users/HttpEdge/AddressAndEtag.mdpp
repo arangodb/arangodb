@@ -21,9 +21,9 @@ the following URL schema:
 
     http://server:port/_db/<database-name>/_api/edge/<document-handle>
 
-Example:
+*Example*:
 
     http://localhost:8529/_db/mydb/_api/edge/demo/362549736
 
-Note that the following examples use the short URL format for brevity.
+**Note**: that the following examples use the short URL format for brevity.
 

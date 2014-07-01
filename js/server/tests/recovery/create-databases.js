@@ -7,30 +7,18 @@ var jsunity = require("jsunity");
 function runSetup () {
   internal.debugClearFailAt();
   
-  var i, j, k, c;
-  for (i = 0; i < 5; ++i) {
-    db._useDatabase("_system");
+  var i, j, c;
+  db._drop("footest");
+  c = db._create("footest", { id: 99999999 });
+  c.save({ foo: "bar" });
+  c.save({ foo: "bart" });
+  db._drop("footest");
 
-    try {
-      db._dropDatabase("UnitTestsRecovery" + i);
-    } 
-    catch (err) {
-      // ignore this error
-    }
+  internal.wait(2);
 
-    db._createDatabase("UnitTestsRecovery" + i);
-    db._useDatabase("UnitTestsRecovery" + i);
+  c = db._create("footest", { id: 99999999 });
+  c.save({ foo: "baz" });
 
-    for (j = 0; j < 10; ++j) {
-      c = db._create("test" + j);
-
-      for (k = 0; k < 10; ++k) {
-        c.save({ _key: i + "-" + j + "-" + k, value1: i, value2: j, value3: k });
-      }
-    }
-  }
-    
-  db._useDatabase("_system");
   db._drop("test");
   c = db._create("test");
   c.save({ _key: "crashme" }, true);
@@ -55,23 +43,10 @@ function recoverySuite () {
 /// @brief test whether we can restore the trx data
 ////////////////////////////////////////////////////////////////////////////////
     
-    testCreateDatabases : function () {
-      var i, j, k, c, doc;
-      for (i = 0; i < 5; ++i) {
-        db._useDatabase("UnitTestsRecovery" + i);
-
-        for (j = 0; j < 10; ++j) {
-          c = db._collection("test" + j);
-          assertEqual(10, c.count());
-
-          for (k = 0; k < 10; ++k) {
-            doc = c.document(i + "-" + j + "-" + k);
-            assertEqual(i, doc.value1);
-            assertEqual(j, doc.value2);
-            assertEqual(k, doc.value3);
-          }
-        }
-      }
+    testCreateDatabase : function () {
+      var c = db._collection("footest");
+      assertEqual(1, c.count());
+      assertEqual("baz", c.toArray()[0].foo);
     }
   
   };
