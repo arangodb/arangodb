@@ -1823,7 +1823,7 @@ SHELL_COMMON = \
 ### @brief SHELL SERVER TESTS (BASICS)
 ################################################################################
 SHELL_SERVER_ONLY = \
-               @top_srcdir@/js/server/tests/shell-readonly-noncluster.js\
+               @top_srcdir@/js/server/tests/shell-readonly-noncluster-disabled.js\
                @top_srcdir@/js/server/tests/shell-wal-noncluster.js \
                @top_srcdir@/js/server/tests/shell-sharding-helpers.js \
                @top_srcdir@/js/server/tests/shell-compaction-noncluster.js \
@@ -1979,6 +1979,8 @@ JAVASCRIPT_JSLINT = \
 	`find @srcdir@/js/apps/system/aardvark/frontend/js/routers -name "*.js"` \
 	`find @srcdir@/js/apps/system/aardvark/frontend/js/arango -name "*.js"` \
 	`find @srcdir@/js/apps/system/aardvark/frontend/js/shell -name "*.js"` \
+	`find @srcdir@/js/apps/system/aardvark/test/specs -name "*.js"` \
+	`find @srcdir@/js/apps/system/aardvark/test/clusterSpecs -name "*.js"` \
 	\
 	@srcdir@/js/client/client.js \
 	@srcdir@/js/server/server.js \
@@ -8057,6 +8059,18 @@ curl-request-get:
 @ENABLE_FAILURE_TESTS_TRUE@	@echo "================================================================================"
 @ENABLE_FAILURE_TESTS_TRUE@	@echo
 
+@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="many-logs"
+@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="multiple-logs"
+@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="collection-recreate"
+@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="drop-indexes"
+@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="create-indexes"
+@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="create-collections"
+@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="create-databases"
+@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="drop-single-collection"
+@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="drop-collections"
+@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="drop-databases"
+@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="collections-reuse"
+@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="collections-different-attributes"
 @ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="indexes-hash"
 @ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="indexes-skiplist"
 @ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="indexes-geo"
@@ -8064,13 +8078,6 @@ curl-request-get:
 @ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="edges"
 @ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="cap-constraint"
 @ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="indexes"
-@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="create-indexes"
-@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="create-collections"
-@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="create-databases"
-@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="drop-single-collection"
-@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="drop-collections"
-@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="drop-databases"
-@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="drop-indexes"
 @ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="many-inserts"
 @ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="many-updates"
 @ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="wait-for-sync"
