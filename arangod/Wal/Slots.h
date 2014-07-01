@@ -232,7 +232,7 @@ namespace triagens {
 /// @brief wait until all data has been synced up to a certain marker
 ////////////////////////////////////////////////////////////////////////////////
 
-        void waitForTick (Slot::TickType);
+        bool waitForTick (Slot::TickType);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request a new logfile which can satisfy a marker of the

@@ -3920,11 +3920,7 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
   //move unused collections to orphanage
   possibleOrphans.forEach(
     function(po) {
-      require("internal").print(po);
-      require("internal").print(graphCollections.indexOf(po));
-      require("internal").print(gotAHit);
       if (graphCollections.indexOf(po) === -1 && gotAHit) {
-        require("internal").print("B I N  D R I N ! ! !");
         delete graphObj.__vertexCollections[po];
         graphObj._addVertexCollection(po);
       }

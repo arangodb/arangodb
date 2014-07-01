@@ -10,7 +10,7 @@ The implementation follows the CommonJS specification
 Tests that an expression is *true*. If not, logs a message and throws
 an exception.
 
-Example usage:
+*Examples*
 
 ```js
 console.assert(value === "abc", "expected: value === abc, actual:", value);
@@ -32,7 +32,7 @@ String substitution patterns, which can be used in *format*.
 * *%%f* floating point number
 * *%%o* object hyperlink
 
-Example usage:
+*Examples*
 
 ```js
 console.debug("%s", "this is a test");

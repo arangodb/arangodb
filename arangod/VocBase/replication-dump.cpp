@@ -35,6 +35,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
 
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/collection.h"
 #include "VocBase/datafile.h"
 #include "VocBase/document-collection.h"
@@ -44,6 +45,7 @@
 #include "Wal/Logfile.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Marker.h"
+#include "Cluster/ServerState.h"
 
 using namespace triagens;
 
@@ -110,7 +112,7 @@ df_entry_t;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief translate a collection id into a collection name
+/// @brief translate a (local) collection id into a collection name
 ////////////////////////////////////////////////////////////////////////////////
     
 char const* NameFromCid (TRI_replication_dump_t* dump,
@@ -143,15 +145,19 @@ char const* NameFromCid (TRI_replication_dump_t* dump,
 
 static bool AppendCollection (TRI_replication_dump_t* dump,
                               TRI_voc_cid_t cid,
-                              bool translateCollectionIds) {
+                              bool translateCollectionIds,
+                              triagens::arango::CollectionNameResolver* resolver) {
   if (translateCollectionIds) {
     if (cid > 0) {
-      char const* name = NameFromCid(dump, cid);
-
-      if (name != nullptr) {
-        APPEND_STRING(dump->_buffer, name);
-        return true;
+      std::string name;
+      if (triagens::arango::ServerState::instance()->isDBserver()) {
+        name = resolver->getCollectionNameCluster(cid);
       }
+      else {
+        name = resolver->getCollectionName(cid);
+      }
+      APPEND_STRING(dump->_buffer, name.c_str());
+      return true;
     }
 
     APPEND_STRING(dump->_buffer, "_unknown");
@@ -272,7 +278,8 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
                                  TRI_document_collection_t* document,
                                  TRI_df_marker_t const* marker,
                                  bool withTicks,
-                                 bool translateCollectionIds) {
+                                 bool translateCollectionIds,
+                                 triagens::arango::CollectionNameResolver* resolver) {
   // This covers two cases:
   //   1. document is not nullptr and marker points into a data file
   //   2. document is a nullptr and marker points into a WAL file
@@ -401,13 +408,13 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
       }
 
       APPEND_STRING(buffer, ",\"" TRI_VOC_ATTRIBUTE_FROM "\":\"");
-      if (! AppendCollection(dump, fromCid, translateCollectionIds)) {
+      if (! AppendCollection(dump, fromCid, translateCollectionIds, resolver)) {
         return false;
       }
       APPEND_STRING(buffer, "\\/");
       APPEND_STRING(buffer, fromKey);
       APPEND_STRING(buffer, "\",\"" TRI_VOC_ATTRIBUTE_TO "\":\"");
-      if (! AppendCollection(dump, toCid, translateCollectionIds)) {
+      if (! AppendCollection(dump, toCid, translateCollectionIds, resolver)) {
         return false;
       }
       APPEND_STRING(buffer, "\\/");
@@ -962,7 +969,8 @@ static int DumpCollection (TRI_replication_dump_t* dump,
                            TRI_voc_tick_t dataMin,
                            TRI_voc_tick_t dataMax,
                            bool withTicks,
-                           bool translateCollectionIds) {
+                           bool translateCollectionIds,
+                           triagens::arango::CollectionNameResolver* resolver) {
   TRI_vector_t datafiles;
   TRI_string_buffer_t* buffer;
   TRI_voc_tick_t lastFoundTick;
@@ -1109,7 +1117,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
       }
 
 
-      if (! StringifyMarkerDump(dump, document, marker, withTicks, translateCollectionIds)) {
+      if (! StringifyMarkerDump(dump, document, marker, withTicks, translateCollectionIds, resolver)) {
         res = TRI_ERROR_INTERNAL;
 
         goto NEXT_DF;
@@ -1178,6 +1186,7 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
   TRI_ASSERT(col != nullptr);
   TRI_ASSERT(col->_collection != nullptr);
 
+  triagens::arango::CollectionNameResolver resolver(col->_vocbase);
   TRI_document_collection_t* document = col->_collection;
 
   // create a barrier so the underlying collection is not unloaded
@@ -1190,7 +1199,8 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
   // block compaction
   TRI_ReadLockReadWriteLock(&document->_compactionLock);
 
-  int res = DumpCollection(dump, document, dataMin, dataMax, withTicks, translateCollectionIds);
+  int res = DumpCollection(dump, document, dataMin, dataMax, withTicks, 
+                           translateCollectionIds, &resolver);
 
   TRI_ReadUnlockReadWriteLock(&document->_compactionLock);
 

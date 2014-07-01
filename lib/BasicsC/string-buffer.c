@@ -342,7 +342,7 @@ void TRI_InitStringBuffer (TRI_string_buffer_t * self, TRI_memory_zone_t* zone) 
   self->_current = 0;
   self->_len = 0;
 
-  Reserve(self, 100);
+  Reserve(self, 120);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

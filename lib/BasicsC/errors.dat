@@ -80,6 +80,7 @@ ERROR_ARANGO_DATADIR_LOCKED,1107,"database directory is locked","Will be raised 
 ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS,1108,"cannot create/rename collection because directory already exists","Will be raised when the collection cannot be created because a directory of the same name already exists."
 ERROR_ARANGO_MSYNC_FAILED,1109,"msync failed","Will be raised when the system call msync failed."
 ERROR_ARANGO_DATADIR_UNLOCKABLE,1110,"cannot lock database directory","Will be raised when the server cannot lock the database directory on startup."
+ERROR_ARANGO_SYNC_TIMEOUT,1111,"sync timeout","Will be raised when the server waited too long for a datafile to be synced to disk."
 
 ################################################################################
 ## ArangoDB storage errors

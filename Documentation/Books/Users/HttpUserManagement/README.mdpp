@@ -15,216 +15,27 @@ future for this interface.
 
 Please note that user operations are not included in ArangoDB's replication.
 
-`POST /_api/user`*(creates user)*
 
-!SUBSECTION Body parameters
+<!-- js/actions/api-user.js -->
 
-`body (json,required)`
+@startDocuBlock JSF_api_user_create
 
-!SUBSECTION Description
 
-The following data need to be passed in a JSON representation in the body of the POST request:
+<!-- js/actions/api-user.js -->
 
-* user: The name of the user as a string. This is mandatory.
-* passwd: The user password as a string. If no password is specified, the empty string will be used.
-* active: an optional flag that specifies whether the user is active. If not specified, this will default to true.
-* extra: an optional JSON object with arbitrary extra data about the user.
-* changePassword: an optional flag that specifies whethers the user must change the password or not. If not specified, this will default to false.
+@startDocuBlock JSF_api_user_replace
 
-If set to true, the only operations allowed are PUT /_api/user or PATCH /_api/user. All other operations will result in a HTTP 403.
-If the user can be added by the server, the server will respond with HTTP 201.
-In case of success, the returned JSON object has the following properties:
 
-* error: boolean flag to indicate that an error occurred (false in this case)
-* code: the HTTP status code
+<!-- js/actions/api-user.js -->
 
-If the JSON representation is malformed or mandatory data is missing from the request, the server will respond with HTTP 400.
+@startDocuBlock JSF_api_user_update
 
-The body of the response will contain a JSON object with additional error details. The object has the following attributes:
 
-* error: boolean flag to indicate that an error occurred (true in this case)
-* code: the HTTP status code
-* errorNum: the server error number
-* errorMessage: a descriptive error message
+<!-- js/actions/api-user.js -->
 
-!SUBSECTION Return codes
+@startDocuBlock JSF_api_user_delete
 
-`HTTP 201`
 
-returned if the user can be added by the server.
+<!-- js/actions/api-user.js -->
 
-`HTTP 400`
-
-If the JSON representation is malformed or mandatory data is missing from the request.
-
-`PUT /_api/user/{user}`*(replaces user)*
-
-!SUBSECTION URL parameters
-
-`user (string,required)`
-
-The name of the user.
-
-!SUBSECTION Body parameters
-
-`body (json,required)`
-
-!SUBSECTION Description
-
-Replaces the data of an existing user. The name of an existing user must be specified in user.
-
-The following data can to be passed in a JSON representation in the body of the POST request:
-
-* passwd: The user password as a string. Specifying a password is mandatory, but the empty string is allowed for passwords.
-* active: an optional flag that specifies whether the user is active. If not specified, this will default to true.
-* extra: an optional JSON object with arbitrary extra data about the user.
-* changePassword: an optional flag that specifies whether the user must change the password or not. If not specified, this will default to false.
-
-If the user can be replaced by the server, the server will respond with HTTP 200.
-
-In case of success, the returned JSON object has the following properties:
-
-* error: boolean flag to indicate that an error occurred (false in this case)
-* code: the HTTP status code
-
-If the JSON representation is malformed or mandatory data is missing from the request, the server will respond with HTTP 400. If the specified user does not exist, the server will respond with HTTP 404.
-
-The body of the response will contain a JSON object with additional error details. The object has the following attributes:
-
-* error: boolean flag to indicate that an error occurred (true in this case)
-* code: the HTTP status code
-* errorNum: the server error number
-* errorMessage: a descriptive error message
-
-!SUBSECTION Return codes
-
-`HTTP 200`
-
-Is returned if the user data can be replaced by the server.
-
-`HTTP 400`
-
-The JSON representation is malformed or mandatory data is missing from the request.
-
-`HTTP 404`
-
-The specified user does not exist.
-
-`PATCH /_api/user/{user}`*(updates user)*
-
-!SUBSECTION URL parameters
-
-`user (string,required)`
-
-The name of the user.
-
-!SUBSECTION Body parameters
-
-`body (json,required)`
-
-!SUBSECTION Description
-
-Partially updates the data of an existing user. The name of an existing user must be specified in user.
-
-The following data can be passed in a JSON representation in the body of the POST request:
-
-* passwd: The user password as a string. Specifying a password is optional. If not specified, the previously existing value will not be modified.
-* active: an optional flag that specifies whether the user is active. If not specified, the previously existing value will not be modified.
-* extra: an optional JSON object with arbitrary extra data about the user. If not specified, the previously existing value will not be modified.
-* changePassword: an optional flag that specifies whether the user must change the password or not. If not specified, the previously existing value will not be modified.
-
-If the user can be updated by the server, the server will respond with HTTP 200.
-
-In case of success, the returned JSON object has the following properties:
-
-* error: boolean flag to indicate that an error occurred (false in this case)
-* code: the HTTP status code
-
-If the JSON representation is malformed or mandatory data is missing from the request, the server will respond with HTTP 400. If the specified user does not exist, the server will respond with HTTP 404.
-
-The body of the response will contain a JSON object with additional error details. The object has the following attributes:
-
-* error: boolean flag to indicate that an error occurred (true in this case)
-* code: the HTTP status code
-* errorNum: the server error number
-* errorMessage: a descriptive error message
-
-!SUBSECTION Return codes
-
-`HTTP 200`
-
-Is returned if the user data can be replaced by the server.
-
-`HTTP 400`
-
-The JSON representation is malformed or mandatory data is missing from the request.
-
-`HTTP 404`
-
-The specified user does not exist.
-
-`DELETE /_api/user/{user}`*(removes a user)*
-
-!SUBSECTION URL parameters
-
-`user (string,required)`
-
-The name of the user.
-
-!SUBSECTION Description
-
-Removes an existing user, identified by user.
-
-If the user can be removed, the server will respond with HTTP 202.
-In case of success, the returned JSON object has the following properties:
-
-* error: boolean flag to indicate that an error occurred (false in this case)
-* code: the HTTP status code
-
-If the specified user does not exist, the server will respond with HTTP 404.
-
-The body of the response will contain a JSON object with additional error details. The object has the following attributes:
-
-* error: boolean flag to indicate that an error occurred (true in this case)
-* code: the HTTP status code
-* errorNum: the server error number
-* errorMessage: a descriptive error message
-
-!SUBSECTION Return codes
-
-`HTTP 202`
-
-Is returned if the user was removed by the server.
-
-`HTTP 404`
-
-The specified user does not exist.
-
-`GET /_api/user/{user}`*(fetches a user)*
-
-!SUBSECTION URL parameters
-
-`user (string,required)`
-
-The name of the user.
-
-!SUBSECTION Description
-
-Fetches data about the specified user.
-
-The call will return a JSON document with at least the following attributes on success:
-
-* user: The name of the user as a string.
-* active: an optional flag that specifies whether the user is active.
-* extra: an optional JSON object with arbitrary extra data about the user.
-* changePassword: an optional flag that specifies whether the user must change the password or not.
-
-!SUBSECTION Return codes
-
-`HTTP 200`
-
-The user was found.
-
-`HTTP 404`
-
-The user with user does not exist.
+@startDocuBlock JSF_api_user_fetch

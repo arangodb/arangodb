@@ -307,6 +307,7 @@
 ///   assert(response.code === 400);
 ///
 ///   logJsonResponse(response);
+///   db._drop("male");
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// @endDocuBlock
@@ -507,6 +508,7 @@
 ///   assert(response.code === 200);
 ///
 ///   logJsonResponse(response);
+///   db._drop("relation");
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////

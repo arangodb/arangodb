@@ -564,6 +564,12 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   }
 
   TRI_voc_cid_t const cid = trx.cid();
+  // If we are a DBserver, we want to use the cluster-wide collection
+  // name for error reporting:
+  string collectionName = collection;
+  if (ServerState::instance()->isDBserver()) {
+    collectionName = trx.getResolver()->getCollectionName(cid);
+  }
   TRI_doc_mptr_copy_t mptr;
 
   res = trx.read(&mptr, key);
@@ -581,7 +587,7 @@ bool RestDocumentHandler::readSingleDocument (bool generateBody) {
   TRI_ASSERT(trx.hasBarrier());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res, (TRI_voc_key_t) key.c_str());
+    generateTransactionError(collectionName, res, (TRI_voc_key_t) key.c_str());
     return false;
   }
 
@@ -1336,6 +1342,13 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   }
 
   TRI_voc_cid_t const cid = trx.cid();
+  // If we are a DBserver, we want to use the cluster-wide collection
+  // name for error reporting:
+  string collectionName = collection;
+  if (ServerState::instance()->isDBserver()) {
+    collectionName = trx.getResolver()->getCollectionName(cid);
+  }
+
   TRI_voc_rid_t rid = 0;
   TRI_document_collection_t* document = trx.documentCollection();
   TRI_ASSERT(document != nullptr);
@@ -1344,7 +1357,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   string const&& cidString = StringUtils::itoa(document->_info._planId);
 
   if (trx.orderBarrier(trx.trxCollection()) == nullptr) {
-    generateTransactionError(collection, TRI_ERROR_OUT_OF_MEMORY);
+    generateTransactionError(collectionName, TRI_ERROR_OUT_OF_MEMORY);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     return false;
   }
@@ -1374,7 +1387,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
     res = trx.read(&oldDocument, key);
     if (res != TRI_ERROR_NO_ERROR) {
       trx.abort();
-      generateTransactionError(collection, res, (TRI_voc_key_t) key.c_str(), rid);
+      generateTransactionError(collectionName, res, (TRI_voc_key_t) key.c_str(), rid);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
       return false;
@@ -1382,7 +1395,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
     if (oldDocument.getDataPtr() == nullptr) {  // PROTECTED by trx here
       trx.abort();
-      generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, (TRI_voc_key_t) key.c_str(), rid);
+      generateTransactionError(collectionName, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, (TRI_voc_key_t) key.c_str(), rid);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
       return false;
@@ -1394,7 +1407,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
     if (old == nullptr) {
       trx.abort();
-      generateTransactionError(collection, TRI_ERROR_OUT_OF_MEMORY);
+      generateTransactionError(collectionName, TRI_ERROR_OUT_OF_MEMORY);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
       return false;
@@ -1407,7 +1420,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         trx.abort();
-        generateTransactionError(collection, TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
+        generateTransactionError(collectionName, TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
 
         return false;
       }
@@ -1419,7 +1432,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
     if (patchedJson == nullptr) {
       trx.abort();
-      generateTransactionError(collection, TRI_ERROR_OUT_OF_MEMORY);
+      generateTransactionError(collectionName, TRI_ERROR_OUT_OF_MEMORY);
 
       return false;
     }
@@ -1443,7 +1456,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
       res = trx.read(&oldDocument, key);
       if (res != TRI_ERROR_NO_ERROR) {
         trx.abort();
-        generateTransactionError(collection, res, (TRI_voc_key_t) key.c_str(), rid);
+        generateTransactionError(collectionName, res, (TRI_voc_key_t) key.c_str(), rid);
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         return false;
@@ -1451,7 +1464,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
 
       if (oldDocument.getDataPtr() == nullptr) {  // PROTECTED by trx here
         trx.abort();
-        generateTransactionError(collection, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, (TRI_voc_key_t) key.c_str(), rid);
+        generateTransactionError(collectionName, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, (TRI_voc_key_t) key.c_str(), rid);
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         return false;
@@ -1466,7 +1479,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
         trx.abort();
-        generateTransactionError(collection, TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
+        generateTransactionError(collectionName, TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
 
         return false;
       }
@@ -1487,7 +1500,7 @@ bool RestDocumentHandler::modifyDocument (bool isPatch) {
   // .............................................................................
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res, (TRI_voc_key_t) key.c_str(), rid);
+    generateTransactionError(collectionName, res, (TRI_voc_key_t) key.c_str(), rid);
 
     return false;
   }
@@ -1711,6 +1724,12 @@ bool RestDocumentHandler::deleteDocument () {
   }
 
   TRI_voc_cid_t const cid = trx.cid();
+  // If we are a DBserver, we want to use the cluster-wide collection
+  // name for error reporting:
+  string collectionName = collection;
+  if (ServerState::instance()->isDBserver()) {
+    collectionName = trx.getResolver()->getCollectionName(cid);
+  }
 
   TRI_voc_rid_t rid = 0;
   res = trx.deleteDocument(key, policy, waitForSync, revision, &rid);
@@ -1727,7 +1746,7 @@ bool RestDocumentHandler::deleteDocument () {
   // .............................................................................
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateTransactionError(collection, res, (TRI_voc_key_t) key.c_str(), rid);
+    generateTransactionError(collectionName, res, (TRI_voc_key_t) key.c_str(), rid);
     return false;
   }
 
