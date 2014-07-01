@@ -32,7 +32,7 @@
         cache: false,
         type: "GET",
         url: "cluster/relaunch",
-        success: function(data) {
+        success: function() {
           $('.modal-backdrop.fade.in').removeClass('waitModalBackdrop');
           $('#waitModalLayer').modal('hide');
           window.App.navigate("showCluster", {trigger: true});
@@ -52,12 +52,6 @@
         window.App.navigate("planTest", {trigger : true});
         return;
       }
-/*
-      if (plan.isSymmetricSetup()) {
-        window.App.navigate("planSymmetrical", {trigger : true});
-        return;
-      }
-*/
       window.App.navigate("planAsymmetrical", {trigger : true});
     },
 
@@ -72,7 +66,6 @@
       window.App.clusterPlan = new window.ClusterPlan();
       window.App.planScenario();
     }
-
 
   });
 
