@@ -3137,7 +3137,7 @@ namespace triagens {
           charArray4[2] = ((charArray3[1] & 0x0f) << 2) + ((charArray3[2] & 0xc0) >> 6);
           charArray4[3] =   charArray3[2] & 0x3f;
 
-          for (size_t j = 0; (j < i + 1); j++) {
+          for (int j = 0; (j < i + 1); j++) {
             ret += BASE64U_CHARS[charArray4[j]];
           }
 
@@ -3197,7 +3197,7 @@ namespace triagens {
           charArray3[1] = ((charArray4[1] & 0xf) << 4) + ((charArray4[2] & 0x3c) >> 2);
           charArray3[2] = ((charArray4[2] & 0x3) << 6) + charArray4[3];
 
-          for (size_t j = 0;  j < i - 1;  j++) {
+          for (int j = 0;  j < i - 1;  j++) {
             ret += charArray3[j];
           }
         }

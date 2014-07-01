@@ -123,7 +123,15 @@ void SynchroniserThread::run () {
 
     if (waiting > 0) {
       try {
-        doSync();
+        // sync as much as we can in this loop
+        bool checkMore = false;
+        while (true) {
+          int res = doSync(checkMore);
+
+          if (res != TRI_ERROR_NO_ERROR || ! checkMore) {
+            break;
+          }
+        }
       }
       catch (triagens::arango::Exception const& ex) {
         int res = ex.code();
@@ -166,7 +174,9 @@ void SynchroniserThread::run () {
 /// @brief synchronise an unsynchronized region
 ////////////////////////////////////////////////////////////////////////////////
 
-int SynchroniserThread::doSync () {
+int SynchroniserThread::doSync (bool& checkMore) {
+  checkMore = false;
+
   // get region to sync
   SyncRegion region = _logfileManager->slots()->getSyncRegion();
   Logfile::IdType const id = region.logfileId;
@@ -205,6 +215,8 @@ int SynchroniserThread::doSync () {
     // additionally seal the logfile
     _logfileManager->setLogfileSealed(id);
   }
+  
+  checkMore = region.checkMore;
 
   _logfileManager->slots()->returnSyncRegion(region);
   return TRI_ERROR_NO_ERROR;

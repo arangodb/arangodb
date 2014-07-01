@@ -208,6 +208,9 @@ unittests-recovery:
 	@echo "================================================================================"
 	@echo
 
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="many-logs"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="multiple-logs"
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="collection-recreate"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="drop-indexes"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="create-indexes"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="create-collections"
