@@ -537,8 +537,7 @@ static HttpResponse* ResponseV8ToCpp (TRI_v8_global_t const* v8g,
   HttpResponse* response = new HttpResponse(code, compatibility);
 
   if (res->Has(v8g->ContentTypeKey)) {
-    response->setContentType(
-        TRI_ObjectToString(res->Get(v8g->ContentTypeKey)));
+    response->setContentType(TRI_ObjectToString(res->Get(v8g->ContentTypeKey)));
   }
 
   // .........................................................................
