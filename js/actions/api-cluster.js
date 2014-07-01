@@ -42,17 +42,17 @@ var console = require("console");
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_cluster_test_GET
+/// @startDocuBlock JSF_cluster_test_GET
 /// @brief executes a cluster roundtrip for sharding
 ///
-/// @RESTHEADER{GET /_admin/cluster-test,executes a cluster roundtrip}
+/// @RESTHEADER{GET /_admin/cluster-test, Execute cluster roundtrip}
 ///
 /// @RESTDESCRIPTION
 ///
 /// Executes a cluster roundtrip from a coordinator to a DB server and
 /// back. This call only works in a coordinator node in a cluster.
 /// One can and should append an arbitrary path to the URL and the
-/// part after `/_admin/cluster-test` is used as the path of the HTTP
+/// part after */_admin/cluster-test* is used as the path of the HTTP
 /// request which is sent from the coordinator to a DB node. Likewise,
 /// any form data appended to the URL is forwarded in the request to the
 /// DB node. This handler takes care of all request types (see below)
@@ -60,24 +60,24 @@ var console = require("console");
 ///
 /// The following HTTP headers are interpreted in a special way:
 ///
-///   - `X-Shard-ID`: This specifies the ID of the shard to which the
+///   - *X-Shard-ID*: This specifies the ID of the shard to which the
 ///     cluster request is sent and thus tells the system to which DB server
 ///     to send the cluster request. Note that the mapping from the
 ///     shard ID to the responsible server has to be defined in the
-///     agency under `Current/ShardLocation/<shardID>`. One has to give
+///     agency under *Current/ShardLocation/<shardID>*. One has to give
 ///     this header, otherwise the system does not know where to send
 ///     the request.
-///   - `X-Client-Transaction-ID`: the value of this header is taken
+///   - *X-Client-Transaction-ID*: the value of this header is taken
 ///     as the client transaction ID for the request
-///   - `X-Timeout`: specifies a timeout in seconds for the cluster
+///   - *X-Timeout*: specifies a timeout in seconds for the cluster
 ///     operation. If the answer does not arrive within the specified
 ///     timeout, an corresponding error is returned and any subsequent
 ///     real answer is ignored. The default if not given is 24 hours.
-///   - `X-Synchronous-Mode`: If set to `true` the test function uses
+///   - *X-Synchronous-Mode*: If set to *true* the test function uses
 ///     synchronous mode, otherwise the default asynchronous operation
 ///     mode is used. This is mainly for debugging purposes.
-///   - `Host`: This header is ignored and not forwarded to the DB server.
-///   - `User-Agent`: This header is ignored and not forwarded to the DB
+///   - *Host*: This header is ignored and not forwarded to the DB server.
+///   - *User-Agent*: This header is ignored and not forwarded to the DB
 ///     server.
 ///
 /// All other HTTP headers and the body of the request (if present, see
@@ -102,62 +102,68 @@ var console = require("console");
 ///
 /// @RESTRETURNCODE{404}
 /// is returned if ArangoDB was not compiled for cluster operation.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_cluster_test_POST
+/// @startDocuBlock JSF_cluster_test_POST
 /// @brief executes a cluster roundtrip for sharding
 ///
-/// @RESTHEADER{POST /_admin/cluster-test,executes a cluster roundtrip}
+/// @RESTHEADER{POST /_admin/cluster-test, Execute cluster roundtrip}
 ///
 /// @RESTBODYPARAM{body,anything,required}
 ///
 /// @RESTDESCRIPTION
 /// See GET method. The body can be any type and is simply forwarded.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_cluster_test_PUT
+/// @startDocuBlock JSF_cluster_test_PUT
 /// @brief executes a cluster roundtrip for sharding
 ///
-/// @RESTHEADER{PUT /_admin/cluster-test,executes a cluster roundtrip}
+/// @RESTHEADER{PUT /_admin/cluster-test, Execute cluster roundtrip}
 ///
 /// @RESTBODYPARAM{body,anything,required}
 ///
 /// @RESTDESCRIPTION
 /// See GET method. The body can be any type and is simply forwarded.
+// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_cluster_test_DELETE
+/// @startDocuBlock JSF_cluster_test_DELETE
 /// @brief executes a cluster roundtrip for sharding
 ///
-/// @RESTHEADER{DELETE /_admin/cluster-test,executes a cluster roundtrip}
+/// @RESTHEADER{DELETE /_admin/cluster-test, Delete cluster roundtrip}
 ///
 /// @RESTDESCRIPTION
 /// See GET method. The body can be any type and is simply forwarded.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_cluster_test_PATCH
+/// @startDocuBlock JSF_cluster_test_PATCH
 /// @brief executes a cluster roundtrip for sharding
 ///
-/// @RESTHEADER{PATCH /_admin/cluster-test,executes a cluster roundtrip}
+/// @RESTHEADER{PATCH /_admin/cluster-test, Update cluster roundtrip}
 ///
 /// @RESTBODYPARAM{body,anything,required}
 ///
 /// @RESTDESCRIPTION
 /// See GET method. The body can be any type and is simply forwarded.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_cluster_test_HEAD
+/// @startDocuBlock JSF_cluster_test_HEAD
 /// @brief executes a cluster roundtrip for sharding
 ///
-/// @RESTHEADER{HEAD /_admin/cluster-test,executes a cluster roundtrip}
+/// @RESTHEADER{HEAD /_admin/cluster-test, Execute cluster roundtrip}
 ///
 /// @RESTDESCRIPTION
 /// See GET method. The body can be any type and is simply forwarded.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -272,10 +278,10 @@ function parseAuthorization (authorization) {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_cluster_planner_POST
+/// @startDocuBlock JSF_cluster_planner_POST
 /// @brief exposes the cluster planning functionality
 ///
-/// @RESTHEADER{POST /_admin/clusterPlanner,produce a cluster startup plan}
+/// @RESTHEADER{POST /_admin/clusterPlanner, Produce cluster startup plan}
 ///
 /// @RESTBODYPARAM{body,json,required}
 ///
@@ -288,6 +294,7 @@ function parseAuthorization (authorization) {
 /// @RESTRETURNCODE{200} is returned when everything went well.
 ///
 /// @RESTRETURNCODE{400} the posted body was not valid JSON.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -328,7 +335,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_cluster_dispatcher_POST
+/// @startDocuBlock JSF_cluster_dispatcher_POST
 /// @brief exposes the dispatcher functionality to start up, shutdown,
 /// relaunch, upgrade or cleanup a cluster according to a cluster plan
 /// as for example provided by the kickstarter.
@@ -341,30 +348,30 @@ actions.defineHttp({
 ///
 /// @RESTDESCRIPTION The body must be an object with the following properties:
 ///
-///   - `clusterPlan`: is a cluster plan (see JSF_cluster_planner_POST),
-///   - `myname`: is the ID of this dispatcher, this is used to decide
+///   - *clusterPlan*: is a cluster plan (see JSF_cluster_planner_POST),
+///   - *myname*: is the ID of this dispatcher, this is used to decide
 ///     which commands are executed locally and which are forwarded
 ///     to other dispatchers
-///   - `action`: can be one of the following:
+///   - *action*: can be one of the following:
 ///
 ///       - "launch": the cluster is launched for the first time, all
 ///         data directories and log files are cleaned and created
 ///       - "shutdown": the cluster is shut down, the additional property
-///         `runInfo` (see below) must be bound as well
+///         *runInfo* (see below) must be bound as well
 ///       - "relaunch": the cluster is launched again, all data directories
 ///         and log files are untouched and need to be there already
 ///       - "cleanup": use this after a shutdown to remove all data in the
 ///         data directories and all log files, use with caution
 ///       - "isHealthy": checks whether or not the processes involved
 ///         in the cluster are running or not. The additional property
-///         `runInfo` (see above) must be bound as well
+///         *runInfo* (see above) must be bound as well
 ///       - "upgrade": performs an upgrade of a cluster, to this end,
 ///         the agency is started, and then every server is once started
 ///         with the "--upgrade" option, and then normally. Finally,
 ///         the script "verion-check.js" is run on one of the coordinators
 ///         for the cluster.
 ///
-///   - `runInfo": this is needed for the "shutdown" and "isHealthy" actions
+///   - *runInfo": this is needed for the "shutdown" and "isHealthy" actions
 ///     only and should be the structure that "launch", "relaunch" or
 ///     "upgrade" returned. It contains runtime information like process
 ///     IDs.
@@ -378,6 +385,7 @@ actions.defineHttp({
 ///
 /// @RESTRETURNCODE{400} the posted body was not valid JSON, or something
 /// went wrong with the startup.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -512,10 +520,10 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_cluster_check_port_GET
+/// @startDocuBlock JSF_cluster_check_port_GET
 /// @brief allows to check whether a given port is usable
 ///
-/// @RESTHEADER{GET /_admin/clusterCheckPort,check whether a given port is usable}
+/// @RESTHEADER{GET /_admin/clusterCheckPort, Check port}
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -528,6 +536,7 @@ actions.defineHttp({
 /// @RESTRETURNCODE{200} is returned when everything went well.
 ///
 /// @RESTRETURNCODE{400} the parameter port was not given or is no integer.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -574,10 +583,10 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_cluster_statistics_GET
+/// @startDocuBlock JSF_cluster_statistics_GET
 /// @brief allows to query the statistics of a DBserver in the cluster
 ///
-/// @RESTHEADER{GET /_admin/clusterStatistics,queries statistics of a DBserver}
+/// @RESTHEADER{GET /_admin/clusterStatistics, Queries statistics of DBserver}
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -593,6 +602,7 @@ actions.defineHttp({
 /// ID of a DBserver
 ///
 /// @RESTRETURNCODE{403} server is not a coordinator.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
