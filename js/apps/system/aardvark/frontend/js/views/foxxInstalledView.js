@@ -1,8 +1,16 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true regexp: true*/
+/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true regexp: true, es5: true*/
 /*global Backbone, $, window, _, templateEngine, alert*/
 
 (function() {
   "use strict";
+  function splitSnakeCase(snakeCase) {
+    var str = snakeCase.replace(/([a-z])([A-Z])/g, "$1 $3");
+    str = str.replace(/([a-z])([0-9])/gi, "$1 $3");
+    str = str.replace(/_+/, " ");
+    return _.map(str.split(/\s+/), function(s) {
+      return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+    }).join(" ");
+  }
   window.FoxxInstalledView = Backbone.View.extend({
     tagName: 'div',
     className: "tile",
@@ -192,6 +200,38 @@
         "mount-path",
         true
       ));
+
+      var configs = this.model.get("manifest").configuration;
+      if (configs && _.keys(configs).length) {
+        _.each(_.keys(configs), function(key) {
+          var opt = configs[key];
+          var prettyKey = opt.label || splitSnakeCase(key);
+          switch (opt.type) {
+          case "boolean":
+            list.push(window.modalView.createCheckboxEntry(
+              "foxx_configs_" + key,
+              prettyKey,
+              true,
+              opt.description,
+              opt.default
+            ));
+            break;
+          // case "integer":
+          // case "number":
+          // case "string":
+          default:
+            list.push(window.modalView.createTextEntry(
+              "foxx_configs_" + key,
+              prettyKey,
+              opt.default || "",
+              opt.description,
+              splitSnakeCase(key).toLowerCase().replace(/\s+/g, "-"),
+              opt.default === undefined
+            ));
+            break;
+          }
+        });
+      }
       if (this.model.get("selectOptions")) {
         list.push(window.modalView.createSelectEntry(
           "foxx-version",
@@ -381,6 +421,63 @@
         version = this.model.get("version");
       }
 
+      var cfg = {};
+      var opts = this.model.get("manifest").configuration;
+      if (opts && _.keys(opts).length) {
+        try {
+          _.each(_.keys(opts), function(key) {
+            var opt = opts[key];
+            var $el = $("#foxx_configs_" + key);
+            var val = $el.val();
+            if (opt.type === "boolean") {
+              cfg[key] = $el.is(":checked");
+            } else {
+              if (val === "" && !opt.hasOwnProperty("default")) {
+                throw new SyntaxError(
+                  "Must specify value for field \"" +
+                    (opt.label || splitSnakeCase(key)) +
+                    "\"!"
+                );
+              }
+              if (opt.type === "number") {
+                cfg[key] = parseFloat(val);
+                if (_.isNaN(cfg[key])) {
+                  throw new SyntaxError(
+                    "Invalid value for field \"" +
+                      (opt.label || splitSnakeCase(key)) +
+                      "\"!"
+                  );
+                }
+              } else if (opt.type === "integer") {
+                cfg[key] = parseInt(val, 10);
+                if (_.isNaN(cfg[key])) {
+                  throw new SyntaxError(
+                    "Invalid value for field \"" +
+                      (opt.label || splitSnakeCase(key)) +
+                      "\"!"
+                  );
+                }
+                if (cfg[key] !== Math.floor(parseFloat(val))) {
+                  throw new SyntaxError(
+                    "Expected non-decimal value in field \"" +
+                      (opt.label || splitSnakeCase(key)) +
+                      "\"!"
+                  );
+                }
+              } else {
+                cfg[key] = val;
+              }
+            }
+          });
+        } catch (err) {
+          if (err instanceof SyntaxError) {
+            alert(err.message);
+            return false;
+          }
+          throw err;
+        }
+      }
+
       //find correct app install version
       var toCreate = this.model.collection.findWhere({
         name: self.model.get("name"),
@@ -391,7 +488,10 @@
       toCreate.collection.create({
         mount: mountPoint,
         name: toCreate.get("name"),
-        version: toCreate.get("version")
+        version: toCreate.get("version"),
+        options: {
+          configuration: cfg
+        }
       },
       {
         success: function() {
