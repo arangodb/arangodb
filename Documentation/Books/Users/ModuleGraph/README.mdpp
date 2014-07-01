@@ -1,5 +1,7 @@
 !CHAPTER Module "graph"
 
+**Warning: Deprecated**
+
 !SUBSECTION First Steps with Graphs
 
 A Graph consists of vertices and edges. The vertex collection contains the
