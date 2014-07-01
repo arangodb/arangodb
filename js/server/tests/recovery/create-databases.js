@@ -7,7 +7,7 @@ var jsunity = require("jsunity");
 function runSetup () {
   internal.debugClearFailAt();
   
-  var i, j, c;
+  var c;
   db._drop("footest");
   c = db._create("footest", { id: 99999999 });
   c.save({ foo: "bar" });
