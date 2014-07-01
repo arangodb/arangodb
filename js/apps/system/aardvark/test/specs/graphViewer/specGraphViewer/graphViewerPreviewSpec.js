@@ -333,7 +333,7 @@
           cont.offsetWidth - 43,
           cont.offsetHeight,
           {
-          	type: "preview",
+            type: "preview",
             width: width - 43,
             height: height
           },
