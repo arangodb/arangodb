@@ -186,6 +186,11 @@ _.extend(Model.prototype, {
 
   get: function (attributeName) {
     'use strict';
+    var attrs = this.constructor.attributes;
+    if (attrs && Object.keys(attrs).indexOf(attributeName) === -1) {
+      throw new Error("Unknown attribute: " + attributeName);
+    }
+
     return this.attributes[attributeName];
   },
 
@@ -213,12 +218,43 @@ _.extend(Model.prototype, {
 
   set: function (attributeName, value) {
     'use strict';
-    if (is.object(attributeName)) {
-      _.extend(this.attributes, attributeName);
-    } else {
-      this.attributes[attributeName] = value;
+    var constructorAttributes = this.constructor.attributes;
+    var attributes = attributeName;
+
+    if (!is.object(attributeName)) {
+      attributes = {};
+      attributes[attributeName] = value;
     }
-    this.whitelistedAttributes = whitelistProperties(this.attributes, this.constructor.attributes);
+
+    if (constructorAttributes) {
+      Object.keys(attributes).forEach(function(key) {
+        if (!constructorAttributes.hasOwnProperty(key)) {
+          throw new Error("Unknown attribute: " + key);
+        }
+        var value = attributes[key];
+        if (value === undefined || value === null) {
+          return;
+        }
+        var actualType = typeof value;
+        var expectedType = constructorAttributes[key].type;
+        if (Array.isArray(value)) {
+          actualType = "array";
+        }
+        if (expectedType === "integer" && actualType === "number") {
+          actualType = (Math.floor(value) === value ? "integer" : "number");
+        }
+        if (actualType !== expectedType) {
+          throw new Error(
+            "Invalid value for \"" +
+              key + "\": Expected " + expectedType +
+              " instead of " + actualType + "!"
+          );
+        }
+      });
+    }
+
+    _.extend(this.attributes, attributes);
+    this.whitelistedAttributes = whitelistProperties(this.attributes, constructorAttributes);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
