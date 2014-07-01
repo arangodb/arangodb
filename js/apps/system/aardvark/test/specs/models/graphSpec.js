@@ -93,54 +93,54 @@
     });
 
     it("should addEdgeDefinition", function() {
-      ajaxVerify =function (opt) {
+      ajaxVerify = function (opt) {
         expect(opt.async).toEqual(false);
         expect(opt.type).toEqual("POST");
         expect(opt.url).toEqual("/_api/gharial/" + myKey+ "/edge");
         expect(opt.data).toEqual('{"bla":"blub"}');
-      }
+      };
       model.addEdgeDefinition({bla : "blub"});
       expect($.ajax).toHaveBeenCalled();
     });
 
     it("should deleteEdgeDefinition", function() {
-      ajaxVerify =function (opt) {
+      ajaxVerify = function (opt) {
         expect(opt.async).toEqual(false);
         expect(opt.type).toEqual("DELETE");
         expect(opt.url).toEqual("/_api/gharial/" + myKey+ "/edge/ec");
-      }
+      };
       model.deleteEdgeDefinition("ec");
       expect($.ajax).toHaveBeenCalled();
     });
 
     it("should modifyEdgeDefinition", function() {
-      ajaxVerify =function (opt) {
+      ajaxVerify = function (opt) {
         expect(opt.async).toEqual(false);
         expect(opt.type).toEqual("PUT");
         expect(opt.url).toEqual("/_api/gharial/" + myKey+ "/edge/ec");
         expect(opt.data).toEqual('{"bla":"blub","collection":"ec"}');
-      }
+      };
       model.modifyEdgeDefinition({bla : "blub", collection : "ec"});
       expect($.ajax).toHaveBeenCalled();
     });
 
     it("should addVertexCollection", function() {
-      ajaxVerify =function (opt) {
+      ajaxVerify = function (opt) {
         expect(opt.async).toEqual(false);
         expect(opt.type).toEqual("POST");
         expect(opt.url).toEqual("/_api/gharial/" + myKey+ "/vertex");
         expect(opt.data).toEqual('{"collection":"vertexCollectionName"}');
-      }
+      };
       model.addVertexCollection("vertexCollectionName");
       expect($.ajax).toHaveBeenCalled();
     });
 
     it("should deleteVertexCollection", function() {
-      ajaxVerify =function (opt) {
+      ajaxVerify = function (opt) {
         expect(opt.async).toEqual(false);
         expect(opt.type).toEqual("DELETE");
         expect(opt.url).toEqual("/_api/gharial/" + myKey+ "/vertex/ec");
-      }
+      };
       model.deleteVertexCollection("ec");
       expect($.ajax).toHaveBeenCalled();
     });
