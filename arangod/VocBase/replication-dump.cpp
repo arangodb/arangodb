@@ -34,6 +34,7 @@
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/tri-strings.h"
 
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/collection.h"
 #include "VocBase/datafile.h"
 #include "VocBase/document-collection.h"
@@ -215,19 +216,13 @@ static bool LookupCollectionName (TRI_replication_dump_t* dump,
 
 static bool AppendCollection (TRI_replication_dump_t* dump,
                               TRI_voc_cid_t cid,
-                              bool translateCollectionIds) {
+                              bool translateCollectionIds,
+                              triagens::arango::CollectionNameResolver* resolver) {
   if (translateCollectionIds) {
     if (cid > 0) {
-      char* name;
-
-      if (! LookupCollectionName(dump, cid, &name)) {
-        return false;
-      }
-
-      if (name != NULL) {
-        APPEND_STRING(dump->_buffer, name);
-        return true;
-      }
+      std::string name = resolver->getCollectionName(cid);
+      APPEND_STRING(dump->_buffer, name.c_str());
+      return true;
     }
     
     APPEND_STRING(dump->_buffer, "_unknown");
@@ -333,7 +328,8 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
                                  TRI_document_collection_t* document,
                                  TRI_df_marker_t const* marker,
                                  bool withTicks,
-                                 bool translateCollectionIds) {
+                                 bool translateCollectionIds,
+                                 triagens::arango::CollectionNameResolver* resolver) {
   TRI_string_buffer_t* buffer;
   TRI_replication_operation_e type;
   TRI_voc_key_t key;
@@ -404,13 +400,13 @@ static bool StringifyMarkerDump (TRI_replication_dump_t* dump,
       TRI_voc_key_t toKey = ((char*) e) + e->_offsetToKey;
 
       APPEND_STRING(buffer, ",\"" TRI_VOC_ATTRIBUTE_FROM "\":\"");
-      if (! AppendCollection(dump, e->_fromCid, translateCollectionIds)) {
+      if (! AppendCollection(dump, e->_fromCid, translateCollectionIds, resolver)) {
         return false;
       }
       APPEND_STRING(buffer, "\\/");
       APPEND_STRING(buffer, fromKey);
       APPEND_STRING(buffer, "\",\"" TRI_VOC_ATTRIBUTE_TO "\":\"");
-      if (! AppendCollection(dump, e->_toCid, translateCollectionIds)) {
+      if (! AppendCollection(dump, e->_toCid, translateCollectionIds, resolver)) {
         return false;
       }
       APPEND_STRING(buffer, "\\/");
@@ -665,7 +661,8 @@ static int DumpCollection (TRI_replication_dump_t* dump,
                            TRI_voc_tick_t dataMax,
                            uint64_t chunkSize,
                            bool withTicks,
-                           bool translateCollectionIds) {
+                           bool translateCollectionIds,
+                           triagens::arango::CollectionNameResolver* resolver) {
   TRI_vector_t datafiles;
   TRI_document_collection_t* document;
   TRI_string_buffer_t* buffer;
@@ -828,7 +825,7 @@ static int DumpCollection (TRI_replication_dump_t* dump,
       }
 
 
-      if (! StringifyMarkerDump(dump, document, marker, withTicks, translateCollectionIds)) {
+      if (! StringifyMarkerDump(dump, document, marker, withTicks, translateCollectionIds, resolver)) {
         res = TRI_ERROR_INTERNAL;
 
         goto NEXT_DF;
@@ -1069,6 +1066,7 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
   assert(col->_collection != NULL);
 
   primary = (TRI_primary_collection_t*) col->_collection;
+  triagens::arango::CollectionNameResolver resolver(col->_vocbase);
 
   // create a barrier so the underlying collection is not unloaded
   b = TRI_CreateBarrierReplication(&primary->_barrierList);
@@ -1080,7 +1078,7 @@ int TRI_DumpCollectionReplication (TRI_replication_dump_t* dump,
   // block compaction
   TRI_ReadLockReadWriteLock(&primary->_compactionLock);
 
-  res = DumpCollection(dump, primary, dataMin, dataMax, chunkSize, withTicks, translateCollectionIds);
+  res = DumpCollection(dump, primary, dataMin, dataMax, chunkSize, withTicks, translateCollectionIds, &resolver);
   
   TRI_ReadUnlockReadWriteLock(&primary->_compactionLock);
 
