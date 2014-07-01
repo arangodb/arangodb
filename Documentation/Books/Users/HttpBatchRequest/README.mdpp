@@ -57,7 +57,7 @@ creation operations. The boundary used in this example is
 
 *Examples*
 
-```
+```js
 > curl -X POST --data-binary @- --header "Content-Type: multipart/form-data; boundary=XXXsubpartXXX" http://localhost:8529/_api/batch
 --XXXsubpartXXX
 Content-Type: application/x-arango-batchpart
@@ -83,8 +83,6 @@ POST /_api/document?collection=xyz HTTP/1.1
 --XXXsubpartXXX--
 ```
 
-<!--@verbinclude api-batch-simple-->
-
 The server will then respond with one multipart message, containing
 the overall status and the individual results for the part
 operations. The overall status should be 200 except there was an error
@@ -102,7 +100,7 @@ operation might also return arbitrary HTTP headers and a body/payload:
 
 *Examples*
 
-```
+```js
 HTTP/1.1 200 OK
 connection: Keep-Alive
 content-type: multipart/form-data; boundary=XXXsubpartXXX
@@ -141,8 +139,6 @@ content-length: 53
 --XXXsubpartXXX--
 ```
 
-<!--@verbinclude api-batch-simple-response-->
-
 In the above example, the server returned an overall status code of
 200, and each part response contains its own status value (202 in the
 example):
@@ -155,7 +151,7 @@ requests that produced errors:
 
 *Examples*
 
-```
+```js
 > curl -X POST --data-binary @- --header "Content-Type: multipart/form-data; boundary=XXXsubpartXXX" http://localhost:8529/_api/batch
 --XXXsubpartXXX
 Content-Type: application/x-arango-batchpart
@@ -172,15 +168,13 @@ POST /_api/document?collection=xyz
 --XXXsubpartXXX--
 ```
 
-<!--@verbinclude api-batch-fail-->
-
 In this example, the overall response code is 200, but as some of the
 part request failed (with status code 404), the *x-arango-errors*
 header of the overall response is *1*:
 
 *Examples*
 
-```
+```js
 HTTP/1.1 200 OK
 x-arango-errors: 1
 content-type: multipart/form-data; boundary=XXXsubpartXXX
@@ -206,11 +200,8 @@ content-length: 53
 --XXXsubpartXXX--
 ```
 
-<!--@verbinclude api-batch-fail-response-->
-
 Please note that the database used for all part operations of a batch
 request is determined by scanning the original URL (the URL that contains
 */_api/batch*). It is not possible to override the database name in
 part operations of a batch. When doing so, any other database name used 
 in a batch part will be ignored.
-
