@@ -1048,7 +1048,8 @@ ArangoCollection.prototype.last = function (count) {
 /// save(<from>, <to>, <data>, <waitForSync>)
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.save = function (from, to, data, waitForSync) {
+ArangoCollection.prototype.save = 
+ArangoCollection.prototype.insert = function (from, to, data, waitForSync) {
   var type = this.type(), url;
 
   if (type === undefined) {

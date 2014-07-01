@@ -37,7 +37,7 @@ function recoverySuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testManyUpdates : function () {
-      var i, c = db._collection("UnitTestsRecovery");
+      var c = db._collection("UnitTestsRecovery");
         
       assertEqual(2, c.count());
       assertEqual(199999, c.document("value").value);

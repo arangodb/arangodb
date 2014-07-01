@@ -8,8 +8,8 @@ function runSetup () {
   internal.debugClearFailAt();
   
   db._drop("UnitTestsRecovery");
-  var c = db._create("UnitTestsRecovery"), i;
-  
+  db._create("UnitTestsRecovery");
+   
   internal.debugSetFailAt("LogfileManagerWriteShutdown");
 
   db._executeTransaction({

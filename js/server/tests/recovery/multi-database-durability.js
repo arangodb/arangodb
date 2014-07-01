@@ -18,8 +18,8 @@ function runSetup () {
     }
     db._createDatabase(d);
     db._useDatabase(d);
-  
-    var c = db._create("UnitTestsRecovery");
+
+    db._create("UnitTestsRecovery");  
 
     db._executeTransaction({
       collections: {

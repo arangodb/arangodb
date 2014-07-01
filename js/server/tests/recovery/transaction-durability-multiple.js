@@ -9,8 +9,8 @@ function runSetup () {
   
   db._drop("UnitTestsRecovery1");
   db._drop("UnitTestsRecovery2");
-  var c1 = db._create("UnitTestsRecovery1");
-  var c2 = db._create("UnitTestsRecovery2");
+  db._create("UnitTestsRecovery1");
+  db._create("UnitTestsRecovery2");
 
   db._executeTransaction({
     collections: {
