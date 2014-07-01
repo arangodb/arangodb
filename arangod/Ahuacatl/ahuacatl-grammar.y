@@ -70,8 +70,8 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 %token T_ASC "ASC keyword"
 %token T_DESC "DESC keyword"
 %token T_IN "IN keyword"
-%token T_INTO "INTO keyword"
 %token T_WITH "WITH keyword"
+%token T_INTO "INTO keyword"
 
 %token T_REMOVE "REMOVE command"
 %token T_INSERT "INSERT command"
@@ -131,7 +131,6 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 %left T_AND
 %left T_EQ T_NE 
 %left T_IN 
-%left T_INTO
 %left T_LT T_GT T_LE T_GE
 %left T_PLUS T_MINUS
 %left T_TIMES T_DIV T_MOD
@@ -178,6 +177,7 @@ void Ahuacatlerror (YYLTYPE* locp, TRI_aql_context_t* const context, const char*
 %type <node> atomic_value;
 %type <node> value_literal;
 %type <node> collection_name;
+%type <node> in_or_into_collection;
 %type <node> bind_parameter;
 %type <strval> variable_name;
 %type <node> numeric_value;
@@ -441,11 +441,20 @@ return_statement:
     }
   ;
 
+in_or_into_collection:
+    T_IN collection_name {
+      $$ = $2;
+    }
+  | T_INTO collection_name {
+      $$ = $2;
+    }
+  ; 
+
 remove_statement:
-    T_REMOVE expression T_IN collection_name query_options {
+    T_REMOVE expression in_or_into_collection query_options {
       TRI_aql_node_t* node;
 
-      node = TRI_CreateNodeRemoveAql(context, $2, $4, $5);
+      node = TRI_CreateNodeRemoveAql(context, $2, $3, $4);
       if (node == NULL) {
         ABORT_OOM
       }
@@ -461,10 +470,10 @@ remove_statement:
   ;
 
 insert_statement:
-    T_INSERT expression T_IN collection_name query_options {
+    T_INSERT expression in_or_into_collection query_options {
       TRI_aql_node_t* node;
 
-      node = TRI_CreateNodeInsertAql(context, $2, $4, $5);
+      node = TRI_CreateNodeInsertAql(context, $2, $3, $4);
       if (node == NULL) {
         ABORT_OOM
       }
@@ -480,10 +489,10 @@ insert_statement:
   ;
 
 update_statement:
-    T_UPDATE expression T_IN collection_name query_options {
+    T_UPDATE expression in_or_into_collection query_options {
       TRI_aql_node_t* node;
 
-      node = TRI_CreateNodeUpdateAql(context, NULL, $2, $4, $5);
+      node = TRI_CreateNodeUpdateAql(context, NULL, $2, $3, $4);
       if (node == NULL) {
         ABORT_OOM
       }
@@ -496,10 +505,10 @@ update_statement:
         ABORT_OOM
       }
     }
-  | T_UPDATE expression T_WITH expression T_IN collection_name query_options {
+  | T_UPDATE expression T_WITH expression in_or_into_collection query_options {
       TRI_aql_node_t* node;
 
-      node = TRI_CreateNodeUpdateAql(context, $2, $4, $6, $7);
+      node = TRI_CreateNodeUpdateAql(context, $2, $4, $5, $6);
       if (node == NULL) {
         ABORT_OOM
       }
@@ -515,10 +524,10 @@ update_statement:
   ;
 
 replace_statement:
-    T_REPLACE expression T_IN collection_name query_options {
+    T_REPLACE expression in_or_into_collection query_options {
       TRI_aql_node_t* node;
 
-      node = TRI_CreateNodeReplaceAql(context, NULL, $2, $4, $5);
+      node = TRI_CreateNodeReplaceAql(context, NULL, $2, $3, $4);
       if (node == NULL) {
         ABORT_OOM
       }
@@ -531,10 +540,10 @@ replace_statement:
         ABORT_OOM
       }
     }
-  | T_REPLACE expression T_WITH expression T_IN collection_name query_options {
+  | T_REPLACE expression T_WITH expression in_or_into_collection query_options {
       TRI_aql_node_t* node;
 
-      node = TRI_CreateNodeReplaceAql(context, $2, $4, $6, $7);
+      node = TRI_CreateNodeReplaceAql(context, $2, $4, $5, $6);
       if (node == NULL) {
         ABORT_OOM
       }
