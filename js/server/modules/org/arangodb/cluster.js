@@ -437,12 +437,13 @@ function createLocalCollections (plannedCollections) {
                     if (! localCollections.hasOwnProperty(shard)) {
                       // must create this shard
                       payload.planId = payload.id;
+                      delete payload.id;  // must not actually set it here
 
                       console.info("creating local shard '%s/%s' for central '%s/%s'", 
                                    database, 
                                    shard, 
                                    database,
-                                   payload.id);
+                                   payload.planId);
            
                       try {
                         if (payload.type === ArangoCollection.TYPE_EDGE) {
@@ -464,7 +465,7 @@ function createLocalCollections (plannedCollections) {
                                       database, 
                                       shard, 
                                       database,
-                                      payload.id, 
+                                      payload.planId, 
                                       JSON.stringify(err2));
                       }
 

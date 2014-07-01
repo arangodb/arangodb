@@ -67,6 +67,15 @@ describe("Arango Helper", function () {
           expect(window.scrollBy).toHaveBeenCalledWith(0, 180);
         });
 
+        it("check showHotkeysModal function", function() {
+          window.modalView = new window.ModalView();
+          spyOn(window.modalView, "show");
+          window.arangoHelper.allHotkeys = [1];
+          arangoHelper.hotkeysFunctions.showHotkeysModal();
+          expect(window.modalView.show).toHaveBeenCalledWith(
+            "modalHotkeys.ejs", "Keyboard Shortcuts", [], [1]);
+        });
+
         it("check enabling keyboard hotkeys scrollUp function", function() {
           spyOn(window, "scrollBy");
           arangoHelper.hotkeysFunctions.scrollUp();
