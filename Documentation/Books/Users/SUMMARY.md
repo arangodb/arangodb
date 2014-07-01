@@ -183,7 +183,6 @@
   * [Monitoring](HttpAdministrationAndMonitoring/README.md)
   * [User Management](HttpUserManagement/README.md)
   * [Async Result](HttpAsyncResultsManagement/README.md)
-    * [Management](HttpAsyncResultsManagement/ManagingAsyncResults.md)
   * [Endpoints](HttpEndpoints/README.md)
   * [Sharding](HttpShardingInterface/README.md)
   * [Miscellaneous functions](HttpMiscellaneousFunctions/README.md)
