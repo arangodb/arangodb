@@ -91,8 +91,6 @@
           "Install", this.installDialog.bind(this)
         )
       ];
-      var buttonSystemInfoConfig = [
-      ];
       this.showMod = window.modalView.show.bind(
         window.modalView,
         "modalTable.ejs",
@@ -122,12 +120,6 @@
         "modalTable.ejs",
         "Application Settings",
         buttonInfoMultipleVersionsConfigUpdate
-      );
-      this.showSystemInfoMod = window.modalView.show.bind(
-        window.modalView,
-        "modalTable.ejs",
-        "Application Settings",
-        buttonSystemInfoConfig
       );
       this.showPurgeMod = window.modalView.show.bind(
         window.modalView,
@@ -334,38 +326,23 @@
     infoDialog: function(event) {
       var name = this.model.get("name"),
       mountinfo = this.model.collection.gitInfo(name),
-      versions, isSystem = false, isGit;
+      isGit;
 
       if (mountinfo.git === true) {
         this.model.set("isGit", mountinfo.git);
         this.model.set("gitUrl", mountinfo.url);
       }
 
-      if (this.model.get("isSystem")) {
-        isSystem = true;
-      } else {
-        isSystem = false;
-      }
-
-      versions = this.model.get("versions");
       isGit = this.model.get("isGit");
 
       event.stopPropagation();
-      if (isSystem === false && !versions && !isGit) {
-        this.showInfoMod(this.fillInfoValues());
-      }
-      else if (isSystem === false && !versions && isGit) {
-        this.showInfoModUpdate(this.fillInfoValues());
-      }
-      else if (isSystem === false && versions && !isGit) {
-        this.showInfoMultipleVersionsMod(this.fillInfoValues());
-      }
-      else if (isSystem === false && versions && isGit) {
-        this.showInfoMultipleVersionsModUpdate(this.fillInfoValues());
-      }
-      else {
-        this.showSystemInfoMod(this.fillInfoValues());
-      }
+
+      this[
+        this.model.get("versions")
+        ? (isGit ? 'showInfoMultipleVersionsModUpdate' : 'showInfoMultipleVersionsMod')
+        : (isGit ? 'showInfoModUpdate' : 'showInfoMod')
+      ](this.fillInfoValues());
+
       this.selectHighestVersion();
     },
 
@@ -401,9 +378,12 @@
     install: function() {
       var mountPoint = $("#mount-point").val(),
         version = "",
-        regex = /^(\/[^\/\s]+)+$/,
         self = this;
-      if (!regex.test(mountPoint)){
+      if (/^\/_.+$/.test(mountPoint)) {
+        alert("Sorry, mount paths starting with an underscore are reserved for internal use.");
+        return false;
+      }
+      if (!/^(\/[^\/\s]+)+$/.test(mountPoint)){
         alert("Sorry, you have to give a valid mount point, e.g.: /myPath");
         return false;
       }
