@@ -39,7 +39,7 @@ function recoverySuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testIndexesBitarray : function () {
-      var c = db._collection("UnitTestsRecovery"), i;
+      var c = db._collection("UnitTestsRecovery");
       var idx = c.getIndexes()[1];
       assertEqual("bitarray", idx.type);
       assertFalse(idx.unique);
