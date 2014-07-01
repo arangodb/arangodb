@@ -42,10 +42,10 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_get_api_endpoint
+/// @startDocuBlock JSF_get_api_endpoint
 /// @brief returns a list of all endpoints
 ///
-/// @RESTHEADER{GET /_api/endpoint,returns a list of all endpoints}
+/// @RESTHEADER{GET /_api/endpoint, Return list of all endpoints}
 ///
 /// @RESTDESCRIPTION
 /// Returns a list of all configured endpoints the server is listening on. For
@@ -62,7 +62,7 @@ var internal = require("internal");
 /// when an incoming request does not specify a database name in the request 
 /// explicitly.
 ///
-/// Note: retrieving the list of all endpoints is allowed in the system database
+/// **Note**: retrieving the list of all endpoints is allowed in the system database
 /// only. Calling this action in any other database will make the server return
 /// an error.
 ///
@@ -75,9 +75,9 @@ var internal = require("internal");
 /// is returned if the action is not carried out in the system database.
 ///
 /// @RESTRETURNCODE{405}
-/// The server will respond with `HTTP 405` if an unsupported HTTP method is used.
+/// The server will respond with *HTTP 405* if an unsupported HTTP method is used.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestEndpointGet}
 ///     var url = "/_api/endpoint";
@@ -95,13 +95,14 @@ var internal = require("internal");
 ///     logJsonResponse(response);
 ///     curlRequest('DELETE', url + '/' + encodeURIComponent(endpoint));
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_post_api_endpoint
+/// @startDocuBlock JSF_post_api_endpoint
 /// @brief connects a new endpoint or reconfigures an existing endpoint
 ///
-/// @RESTHEADER{POST /_api/endpoint,adds a new endpoint or reconfigures an existing endpoint}
+/// @RESTHEADER{POST /_api/endpoint, Add new endpoint or reconfigures an existing endpoint}
 ///
 /// @RESTBODYPARAM{description,json,required}
 /// A JSON object describing the endpoint.
@@ -109,26 +110,26 @@ var internal = require("internal");
 /// @RESTDESCRIPTION
 /// The request body must be JSON hash with the following attributes:
 ///
-/// - `endpoint`: the endpoint specification, e.g. `tcp://127.0.0.1:8530`
+/// - *endpoint*: the endpoint specification, e.g. *tcp://127.0.0.1:8530*
 ///
-/// - `databases`: a list of database names the endpoint is responsible for.
+/// - *databases*: a list of database names the endpoint is responsible for.
 ///
-/// If `databases` is an empty list, all databases present in the server will
-/// become accessible via the endpoint, with the `_system` database being the
+/// If *databases* is an empty list, all databases present in the server will
+/// become accessible via the endpoint, with the *_system* database being the
 /// default database. 
 ///
-/// If `databases` is non-empty, only the specified databases will become 
-/// available via the endpoint. The first database name in the `databases` 
+/// If *databases* is non-empty, only the specified databases will become 
+/// available via the endpoint. The first database name in the *databases* 
 /// list will also become the default database for the endpoint. The default 
 /// database will always be used if a request coming in on the endpoint does 
 /// not specify the database name explicitly.
 ///
-/// Note: adding or reconfiguring endpoints is allowed in the system database 
+/// **Note**: adding or reconfiguring endpoints is allowed in the system database 
 /// only. Calling this action in any other database will make the server 
 /// return an error.
 ///
 /// Adding SSL endpoints at runtime is only supported if the server was started 
-/// with SSL properly configured (e.g. `--server.keyfile` must have been set).
+/// with SSL properly configured (e.g. *--server.keyfile* must have been set).
 ///
 /// @RESTRETURNCODES
 /// 
@@ -140,11 +141,11 @@ var internal = require("internal");
 /// in the system database.
 ///
 /// @RESTRETURNCODE{405}
-/// The server will respond with `HTTP 405` if an unsupported HTTP method is used.
+/// The server will respond with *HTTP 405* if an unsupported HTTP method is used.
 ///
-/// *Examples*
-/// Adding an endpoint `tcp://127.0.0.1:8532` with two mapped databases 
-/// (`mydb1` and `mydb2`). `mydb1` will become the default database for the
+/// @EXAMPLES
+/// Adding an endpoint *tcp://127.0.0.1:8532* with two mapped databases 
+/// (*mydb1* and *mydb2*). *mydb1* will become the default database for the
 /// endpoint.
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestEndpointPostOne}
@@ -162,8 +163,8 @@ var internal = require("internal");
 ///     curlRequest('DELETE', url + '/' + encodeURIComponent(endpoint));
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Adding an endpoint `tcp://127.0.0.1:8533` with no database names specified.
-/// This will allow access to all databases on this endpoint. The `_system`
+/// Adding an endpoint *tcp://127.0.0.1:8533* with no database names specified.
+/// This will allow access to all databases on this endpoint. The *_system*
 /// database will become the default database for requests that come in on this
 /// endpoint and do not specify the database name explicitly.
 ///
@@ -182,9 +183,9 @@ var internal = require("internal");
 ///     curlRequest('DELETE', url + '/' + encodeURIComponent(endpoint));
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Adding an endpoint `tcp://127.0.0.1:8533` without any databases first,
-/// and then updating the databases for the endpoint to `testdb1`, `testdb2`, and
-/// `testdb3`.
+/// Adding an endpoint *tcp://127.0.0.1:8533* without any databases first,
+/// and then updating the databases for the endpoint to *testdb1*, *testdb2*, and
+/// *testdb3*.
 /// 
 /// @EXAMPLE_ARANGOSH_RUN{RestEndpointPostChange}
 ///     var url = "/_api/endpoint";
@@ -207,24 +208,25 @@ var internal = require("internal");
 ///     logJsonResponse(response);
 ///     curlRequest('DELETE', url + '/' + encodeURIComponent(endpoint));
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_delete_api_endpoint
+/// @startDocuBlock JSF_delete_api_endpoint
 /// @brief disconnects an existing endpoint
 ///
-/// @RESTHEADER{DELETE /_api/endpoint/{endpoint},deletes and disconnects an existing endpoint}
+/// @RESTHEADER{DELETE /_api/endpoint/{endpoint}, Delete and disconnects an existing endpoint}
 ///
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{endpoint,string,required}
-/// The endpoint to delete, e.g. `tcp://127.0.0.1:8529`.
+/// The endpoint to delete, e.g. *tcp://127.0.0.1:8529*.
 ///
 /// @RESTDESCRIPTION
 /// This operation deletes an existing endpoint from the list of all endpoints,
 /// and makes the server stop listening on the endpoint.
 ///
-/// Note: deleting and disconnecting an endpoint is allowed in the system 
+/// **Note**: deleting and disconnecting an endpoint is allowed in the system 
 /// database only. Calling this action in any other database will make the server 
 /// return an error.
 ///
@@ -244,9 +246,9 @@ var internal = require("internal");
 /// is returned if the endpoint is not found.
 ///
 /// @RESTRETURNCODE{405}
-/// The server will respond with `HTTP 405` if an unsupported HTTP method is used.
+/// The server will respond with *HTTP 405* if an unsupported HTTP method is used.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// Deleting an existing endpoint
 ///
@@ -276,6 +278,7 @@ var internal = require("internal");
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
