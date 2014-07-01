@@ -134,7 +134,7 @@ applier.start = function (initialTick) {
 /// @brief stops the replication applier
 ////////////////////////////////////////////////////////////////////////////////
   
-applier.stop = function () {
+applier.stop = applier.shutdown = function () {
   'use strict';
 
   var db = internal.db;
