@@ -89,15 +89,17 @@ static char* MakeValue (char const* value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SegfaultDebugging (char const* message) {
-  LOG_WARNING("SUMMON BAAL: %s", message);
+  LOG_WARNING("%s: summon Baal!", message);
   // make sure the latest log messages are flushed
   TRI_ShutdownLogging(true);
 
   // and now crash
 #ifndef __APPLE__
+  // on MacOS, the following statement makes the server hang but not crash
   *((char*) -1) = '!';
 #endif
 
+  // ensure the process is terminated
   abort();
 }
 
@@ -157,7 +159,7 @@ void TRI_AddFailurePointDebugging (char const* value) {
     char* copy;
     size_t n;
 
-    LOG_WARNING("activating intentional failure point '%s'", value);
+    LOG_WARNING("activating intentional failure point '%s'. the server will misbehave!", value);
     n = strlen(checkValue);
 
     if (FailurePoints == NULL) {
