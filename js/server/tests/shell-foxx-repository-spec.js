@@ -2,8 +2,7 @@
 /*global require, describe, beforeEach, it, expect, spyOn, createSpy, createSpyObj */
 
 var FoxxRepository = require("org/arangodb/foxx/repository").Repository,
-  Model = require("org/arangodb/foxx/model").Model,
-  _ = require('underscore');
+  Model = require("org/arangodb/foxx/model").Model;
 
 describe('Repository', function () {
   'use strict';

@@ -45,12 +45,6 @@ var isCoordinator = require("org/arangodb/cluster").isCoordinator();
 var RegexCache = { };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief cache for resolved graphs
-////////////////////////////////////////////////////////////////////////////////
-
-var ResolvedGraphCache = { };
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief user functions cache
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4861,7 +4855,6 @@ function TRAVERSAL_DISTANCE_VISITOR (config, result, vertex, path) {
   "use strict";
 
   if (config.endVertex && config.endVertex === vertex._id) {
-    var subPaths = [];
     var dist = 0;
     path.edges.forEach(function (e) {
       if (config.weight) {
@@ -6198,11 +6191,7 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
   options.endVertexCollectionRestriction = options.vertex2CollectionRestriction;
 
   var g = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
-  var result = {}, res = [];
-  var removeDuplicates = function(elem, pos, self) {
-    return self.indexOf(elem) === pos;
-  };
-  var c = 0 ;
+  var res = [];
   var t = {};
   g.fromVertices.forEach(function (n1) {
     Object.keys(n1).forEach(function (key) {
@@ -6356,7 +6345,7 @@ function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)
   }
 
   var distanceMap = GENERAL_GRAPH_DISTANCE_TO(
-    graphName, vertexExample , {}, options), result = {}, max = 0;
+    graphName, vertexExample , {}, options), result = {};
   distanceMap.forEach(function(d) {
     if (!result[d.startVertex]) {
       result[d.startVertex] = d.distance;
