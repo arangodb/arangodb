@@ -1,14 +1,13 @@
 
 var db = require("org/arangodb").db;
 var internal = require("internal");
-var simple = require("org/arangodb/simple-query");
 var jsunity = require("jsunity");
 
 function runSetup () {
   internal.debugClearFailAt();
   
   db._drop("UnitTestsRecovery1");
-  var c = db._create("UnitTestsRecovery1"), i, j;
+  var c = db._create("UnitTestsRecovery1"), i;
   c.ensureHashIndex("value");
 
   for (i = 0; i < 1000; ++i) {
