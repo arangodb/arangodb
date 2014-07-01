@@ -105,6 +105,7 @@ static inline bool NeedWriteMarker (TRI_transaction_t const* trx) {
 /// @brief return the status of the transaction as a string
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
 static const char* StatusTransaction (const TRI_transaction_status_e status) {
   switch (status) {
     case TRI_TRANSACTION_UNDEFINED:
@@ -122,6 +123,7 @@ static const char* StatusTransaction (const TRI_transaction_status_e status) {
   TRI_ASSERT(false);
   return "unknown";
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free all operations for a transaction
