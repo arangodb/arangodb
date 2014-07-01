@@ -696,15 +696,16 @@
 
     // move all _api apps to _api and all system apps to system
     addTask("systemAppEndpoints", "mount system apps on correct endpoints", function () {
+      var aal = db._collection("_aal");
       var didWork = true;
-      db._aal.byExample(
+      aal.byExample(
         {
           type: "mount",
           isSystem: true
         }
       ).toArray().forEach(function(app) {
         try {
-          db._aal.remove(app._key);
+          aal.remove(app._key);
         } catch (e) {
           didWork = false; 
         }
