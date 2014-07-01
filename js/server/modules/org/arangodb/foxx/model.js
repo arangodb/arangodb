@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120 */
+/*jslint indent: 2, nomen: true, maxlen: 120, vars: true */
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -227,7 +227,7 @@ _.extend(Model.prototype, {
     }
 
     if (constructorAttributes) {
-      Object.keys(attributes).forEach(function(key) {
+      Object.keys(attributes).forEach(function (key) {
         if (!constructorAttributes.hasOwnProperty(key)) {
           throw new Error("Unknown attribute: " + key);
         }
