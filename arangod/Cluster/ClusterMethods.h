@@ -210,6 +210,12 @@ namespace triagens {
     int truncateCollectionOnCoordinator ( string const& dbname,
                                           string const& collname );
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flush Wal on all DBservers
+////////////////////////////////////////////////////////////////////////////////
+
+    int flushWalOnAllDBServers ( bool, bool );
+
   }  // namespace arango
 }   // namespace triagens
 
