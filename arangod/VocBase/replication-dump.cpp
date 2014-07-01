@@ -220,7 +220,13 @@ static bool AppendCollection (TRI_replication_dump_t* dump,
                               triagens::arango::CollectionNameResolver* resolver) {
   if (translateCollectionIds) {
     if (cid > 0) {
-      std::string name = resolver->getCollectionName(cid);
+      std::string name;
+      if (triagens::arango::ServerState::instance()->isDBserver()) {
+        name = resolver->getCollectionNameCluster(cid);
+      }
+      else {
+        name = resolver->getCollectionName(cid);
+      }
       APPEND_STRING(dump->_buffer, name.c_str());
       return true;
     }
