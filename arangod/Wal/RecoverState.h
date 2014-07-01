@@ -94,11 +94,38 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a database is dropped already
+////////////////////////////////////////////////////////////////////////////////
+ 
+       bool isDropped (TRI_voc_tick_t databaseId) const { 
+        return (droppedDatabases.find(databaseId) != droppedDatabases.end());
+       }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a database or collection is dropped already
+////////////////////////////////////////////////////////////////////////////////
+
+       bool isDropped (TRI_voc_tick_t databaseId, 
+                       TRI_voc_cid_t collectionId) const { 
+         if (isDropped(databaseId)) {
+           // database has been dropped
+           return true;
+        }
+
+        if (droppedCollections.find(collectionId) != droppedCollections.end()) {
+          // collection has been dropped
+          return true;
+        }
+
+        return false;
+      }
+ 
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not to abort recovery on first error
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline bool shouldAbort () const {
-        return ! ignoreRecoveryErrors;
+      inline bool canContinue () const {
+        return ignoreRecoveryErrors;
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,24 +186,23 @@ namespace triagens {
       void releaseResources ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a database is dropped already
-////////////////////////////////////////////////////////////////////////////////
-
-      bool isDropped (TRI_voc_tick_t) const; 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a database or collection is dropped already
-////////////////////////////////////////////////////////////////////////////////
-
-      bool isDropped (TRI_voc_tick_t, 
-                      TRI_voc_cid_t) const;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a database (and inserts it into the cache if not in it)
 ////////////////////////////////////////////////////////////////////////////////
 
       TRI_vocbase_t* useDatabase (TRI_voc_tick_t);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief releases a database
+////////////////////////////////////////////////////////////////////////////////
+
+      TRI_vocbase_t* releaseDatabase (TRI_voc_tick_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief release a collection (so it can be dropped)
+////////////////////////////////////////////////////////////////////////////////
+
+      TRI_vocbase_col_t* releaseCollection (TRI_voc_cid_t);
+ 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a collection (and inserts it into the cache if not in it)
 ////////////////////////////////////////////////////////////////////////////////
@@ -274,7 +300,7 @@ namespace triagens {
       std::unordered_set<TRI_voc_tick_t>                                          remoteTransactionDatabases;
       std::unordered_set<TRI_voc_cid_t>                                           droppedCollections;
       std::unordered_set<TRI_voc_tick_t>                                          droppedDatabases;
-      std::unordered_set<TRI_idx_iid_t>                                           droppedIndexes;
+
       TRI_voc_tick_t                                                              lastTick;
       std::vector<Logfile*>                                                       logfilesToProcess;
       std::unordered_map<TRI_voc_cid_t, TRI_vocbase_col_t*>                       openedCollections;

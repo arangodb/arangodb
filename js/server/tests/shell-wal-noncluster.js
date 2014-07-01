@@ -131,7 +131,8 @@ function walFailureSuite () {
       db._drop(cn);
       c = db._create(cn);
       
-      internal.wal.flush(true, true);
+      internal.wal.flush(true, false);
+      internal.wait(5);
       
       internal.debugSetFailAt("CollectorThreadProcessQueuedOperations");
       internal.wal.properties({ throttleWait: 1000, throttleWhenPending: 1000 });
@@ -149,7 +150,7 @@ function walFailureSuite () {
 
       internal.debugClearFailAt();
     },
-
+/*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test write throttling
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,7 +161,7 @@ function walFailureSuite () {
       db._drop(cn);
       c = db._create(cn);
 
-      internal.wal.flush(true, true);
+      internal.wal.flush(true, false);
       
       internal.debugSetFailAt("CollectorThreadProcessQueuedOperations");
       internal.wal.properties({ throttleWait: 1000, throttleWhenPending: 1000 });
@@ -171,9 +172,7 @@ function walFailureSuite () {
       } 
 
       internal.wal.flush(true, false);
-
-      // let the collector build up its queue
-      internal.wait(7);
+      internal.wait(5);
 
       try {
         c.save({ _key: "foo" });
@@ -186,7 +185,7 @@ function walFailureSuite () {
       internal.debugClearFailAt();
       assertEqual(1005, c.count());
     }
-
+*/
   };
 }
  

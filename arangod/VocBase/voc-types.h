@@ -212,8 +212,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static void setNumbers (int numberInScope, int numberActive) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
           _numberTrxInScope = numberInScope;
           _numberTrxActive = numberActive;
+#endif
         }
 
 ////////////////////////////////////////////////////////////////////////////////

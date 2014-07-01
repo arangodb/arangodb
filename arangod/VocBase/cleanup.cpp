@@ -167,18 +167,14 @@ static void CleanupDocumentCollection (TRI_vocbase_col_t* collection,
 
     // execute callback, sone of the callbacks might delete or free our collection
     if (element->_type == TRI_BARRIER_DATAFILE_DROP_CALLBACK) {
-      TRI_barrier_datafile_drop_cb_t* de;
-
-      de = (TRI_barrier_datafile_drop_cb_t*) element;
+      TRI_barrier_datafile_drop_cb_t* de = (TRI_barrier_datafile_drop_cb_t*) element;
 
       de->callback(de->_datafile, de->_data);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
       // next iteration
     }
     else if (element->_type == TRI_BARRIER_DATAFILE_RENAME_CALLBACK) {
-      TRI_barrier_datafile_rename_cb_t* de;
-
-      de = (TRI_barrier_datafile_rename_cb_t*) element;
+      TRI_barrier_datafile_rename_cb_t* de = (TRI_barrier_datafile_rename_cb_t*) element;
 
       de->callback(de->_datafile, de->_data);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
@@ -187,6 +183,7 @@ static void CleanupDocumentCollection (TRI_vocbase_col_t* collection,
     else if (element->_type == TRI_BARRIER_COLLECTION_UNLOAD_CALLBACK) {
       // collection is unloaded
       TRI_barrier_collection_cb_t* ce = (TRI_barrier_collection_cb_t*) element;
+
       bool hasUnloaded = ce->callback(ce->_collection, ce->_data);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
 
@@ -198,6 +195,7 @@ static void CleanupDocumentCollection (TRI_vocbase_col_t* collection,
     else if (element->_type == TRI_BARRIER_COLLECTION_DROP_CALLBACK) {
       // collection is dropped
       TRI_barrier_collection_cb_t* ce = (TRI_barrier_collection_cb_t*) element;
+
       bool hasUnloaded = ce->callback(ce->_collection, ce->_data);
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
 
