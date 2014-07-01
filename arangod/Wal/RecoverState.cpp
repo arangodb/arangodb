@@ -303,14 +303,16 @@ TRI_document_collection_t* RecoverState::getCollection (TRI_voc_tick_t databaseI
                                                         TRI_voc_cid_t collectionId) {
 
   TRI_vocbase_t* vocbase = useDatabase(databaseId);
+
   if (vocbase == nullptr) {
-    LOG_WARNING("database %llu not found", (unsigned long long) databaseId);
+    LOG_TRACE("database %llu not found", (unsigned long long) databaseId);
     return nullptr;
   }
   
   TRI_vocbase_col_t* collection = useCollection(vocbase, collectionId);
+
   if (collection == nullptr) {
-    LOG_WARNING("collection %llu of database %llu not found", (unsigned long long) collectionId, (unsigned long long) databaseId);
+    LOG_TRACE("collection %llu of database %llu not found", (unsigned long long) collectionId, (unsigned long long) databaseId);
     return nullptr;
   }
 
@@ -396,7 +398,6 @@ int RecoverState::executeSingleOperation (TRI_voc_tick_t databaseId,
   TRI_vocbase_col_t* collection = useCollection(vocbase, collectionId);
 
   if (collection == nullptr) {
-    LOG_WARNING("collection %llu of database %llu not found", (unsigned long long) collectionId, (unsigned long long) databaseId);
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
@@ -533,7 +534,7 @@ bool RecoverState::InitialScanMarker (TRI_df_marker_t const* marker,
       state->remoteTransactions.erase(m->_transactionId);
       break;
     }
-
+/*
     // -----------------------------------------------------------------------------
     // create markers 
     // -----------------------------------------------------------------------------
@@ -579,7 +580,7 @@ bool RecoverState::InitialScanMarker (TRI_df_marker_t const* marker,
       // ignored
       break;
     }
-    
+   */ 
   }
 
   return true;
@@ -623,7 +624,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         return res;
       });
 
-      if (res != TRI_ERROR_NO_ERROR) {
+      if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND && res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
         LOG_WARNING("could not apply attribute marker: %s", TRI_errno_string(res));
         return state->canContinue();
       }
@@ -649,7 +650,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         return res;
       });
 
-      if (res != TRI_ERROR_NO_ERROR) {
+      if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND && res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
         LOG_WARNING("could not apply shape marker: %s", TRI_errno_string(res));
         return state->canContinue();
       }
@@ -725,7 +726,10 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         res = TRI_ERROR_TRANSACTION_INTERNAL;
       }
       
-      if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_CONFLICT) {
+      if (res != TRI_ERROR_NO_ERROR && 
+          res != TRI_ERROR_ARANGO_CONFLICT &&
+          res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND && 
+          res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
         LOG_WARNING("unable to insert document in collection %llu of database %llu: %s", 
                     (unsigned long long) collectionId,
                     (unsigned long long) databaseId,
@@ -805,7 +809,10 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         res = TRI_ERROR_TRANSACTION_INTERNAL;
       }
 
-      if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_CONFLICT) {
+      if (res != TRI_ERROR_NO_ERROR && 
+          res != TRI_ERROR_ARANGO_CONFLICT &&
+          res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND && 
+          res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
         LOG_WARNING("unable to insert edge in collection %llu of database %llu: %s", 
                     (unsigned long long) collectionId,
                     (unsigned long long) databaseId,
@@ -869,7 +876,10 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         res = TRI_ERROR_TRANSACTION_INTERNAL;
       }
 
-      if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_CONFLICT) {
+      if (res != TRI_ERROR_NO_ERROR && 
+          res != TRI_ERROR_ARANGO_CONFLICT &&
+          res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND && 
+          res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
         LOG_WARNING("unable to remove document in collection %llu of database %llu: %s", 
                     (unsigned long long) collectionId,
                     (unsigned long long) databaseId,
@@ -938,22 +948,25 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       }
      
       TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
+
       if (vocbase == nullptr) {
-        LOG_WARNING("cannot create index for collection %llu in database %llu: %s", 
-                    (unsigned long long) collectionId,
-                    (unsigned long long) databaseId,
-                    TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
-        return state->canContinue();
+        // if the underlying database is gone, we can go on
+        LOG_TRACE("cannot create index for collection %llu in database %llu: %s", 
+                  (unsigned long long) collectionId,
+                  (unsigned long long) databaseId,
+                  TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
+        return true;
       }
 
       TRI_document_collection_t* document = state->getCollection(databaseId, collectionId);
+
       if (document == nullptr) {
-        // collection not there anymore
-        LOG_WARNING("cannot create index for collection %llu in database %llu: %s", 
-                    (unsigned long long) collectionId,
-                    (unsigned long long) databaseId,
-                    TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND));
-        return state->canContinue();
+        // if the underlying collection is gone, we can go on
+        LOG_TRACE("cannot create index for collection %llu in database %llu: %s", 
+                  (unsigned long long) collectionId,
+                  (unsigned long long) databaseId,
+                  TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND));
+        return true;
       }
       
       char const* properties = reinterpret_cast<char const*>(m) + sizeof(index_create_marker_t);
@@ -1011,8 +1024,9 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
 
       if (vocbase == nullptr) {
-        LOG_WARNING("cannot open database %llu", (unsigned long long) databaseId);
-        return state->canContinue();
+        // if the underlying database is gone, we can go on
+        LOG_TRACE("cannot open database %llu", (unsigned long long) databaseId);
+        return true;
       }
 
       TRI_vocbase_col_t* collection = state->releaseCollection(collectionId);
@@ -1155,13 +1169,15 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
 
       if (vocbase == nullptr) {
-        LOG_WARNING("cannot open database %llu", (unsigned long long) databaseId);
-        return state->canContinue();
+        // if the underlying database is gone, we can go on
+        LOG_TRACE("cannot open database %llu", (unsigned long long) databaseId);
+        return true;
       }
             
       TRI_document_collection_t* document = state->getCollection(databaseId, collectionId);
       if (document == nullptr) {
-        return state->canContinue();
+        // if the underlying collection gone, we can go on
+        return true;
       }
       
       // fake transaction to satisfy assertions
@@ -1247,9 +1263,6 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
 int RecoverState::replayLogfile (Logfile* logfile) {
   LOG_TRACE("replaying logfile '%s'", logfile->filename().c_str());
 
-  droppedCollections.clear();
-  droppedDatabases.clear();
-
   if (! TRI_IterateDatafile(logfile->df(), &RecoverState::ReplayMarker, static_cast<void*>(this))) {
     LOG_WARNING("WAL inspection failed when scanning logfile '%s'", logfile->filename().c_str());
     return TRI_ERROR_ARANGO_RECOVERY;
@@ -1263,6 +1276,9 @@ int RecoverState::replayLogfile (Logfile* logfile) {
 ////////////////////////////////////////////////////////////////////////////////
     
 int RecoverState::replayLogfiles () {
+  droppedCollections.clear();
+  droppedDatabases.clear();
+
   for (auto it = logfilesToProcess.begin(); it != logfilesToProcess.end(); ++it) {
     Logfile* logfile = (*it);
 

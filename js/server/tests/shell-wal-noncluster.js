@@ -131,7 +131,7 @@ function walFailureSuite () {
       db._drop(cn);
       c = db._create(cn);
       
-      internal.wal.flush(true, false);
+      internal.wal.flush(true, true);
       internal.wait(5);
       
       internal.debugSetFailAt("CollectorThreadProcessQueuedOperations");
@@ -142,7 +142,7 @@ function walFailureSuite () {
         c.save({ _key: "test" + i, a: i });
       } 
       
-      internal.wal.flush(true, false);
+      internal.wal.flush(true, true);
 
       c.save({ _key: "foo" });
       assertEqual("foo", c.document("foo")._key);
@@ -150,7 +150,7 @@ function walFailureSuite () {
 
       internal.debugClearFailAt();
     },
-/*
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test write throttling
 ////////////////////////////////////////////////////////////////////////////////
@@ -161,7 +161,7 @@ function walFailureSuite () {
       db._drop(cn);
       c = db._create(cn);
 
-      internal.wal.flush(true, false);
+      internal.wal.flush(true, true);
       
       internal.debugSetFailAt("CollectorThreadProcessQueuedOperations");
       internal.wal.properties({ throttleWait: 1000, throttleWhenPending: 1000 });
@@ -171,7 +171,7 @@ function walFailureSuite () {
         c.save({ _key: "test" + i, a: i });
       } 
 
-      internal.wal.flush(true, false);
+      internal.wal.flush(true, true);
       internal.wait(5);
 
       try {
@@ -185,7 +185,7 @@ function walFailureSuite () {
       internal.debugClearFailAt();
       assertEqual(1005, c.count());
     }
-*/
+
   };
 }
  

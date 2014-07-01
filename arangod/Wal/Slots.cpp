@@ -103,11 +103,13 @@ int Slots::flush (bool waitForSync) {
   int res = closeLogfile(lastTick, worked);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    if (worked && waitForSync) {
-      _logfileManager->signalSync();
+    _logfileManager->signalSync();
 
+    if (waitForSync) {
       // wait until data has been committed to disk
-      waitForTick(lastTick);
+      if (! waitForTick(lastTick)) {
+        res = TRI_ERROR_ARANGO_SYNC_TIMEOUT;
+      }
     }
     else if (! worked) {
       // logfile to flush was still empty and thus not flushed
@@ -249,6 +251,8 @@ void Slots::returnUsed (SlotInfo& slotInfo,
   TRI_ASSERT(slotInfo.slot != nullptr);
   Slot::TickType tick = slotInfo.slot->tick();
 
+  TRI_ASSERT(tick > 0);
+
   {
     MUTEX_LOCKER(_lock);
     slotInfo.slot->setReturned(waitForSync);
@@ -294,6 +298,7 @@ SyncRegion Slots::getSyncRegion () {
     else {
       if (slot->logfileId() != region.logfileId) {
         // got a different logfile
+        region.checkMore = true;
         break;
       }
 
@@ -581,17 +586,23 @@ Slot::TickType Slots::handout () {
 /// @brief wait until all data has been synced up to a certain marker
 ////////////////////////////////////////////////////////////////////////////////
 
-void Slots::waitForTick (Slot::TickType tick) {
+bool Slots::waitForTick (Slot::TickType tick) {
+  static uint64_t const SleepTime = 20 * 1000;
+  static int const MaxIterations = 15 * 1000 * 1000 / SleepTime;
+  int iterations = 0;
+
   // wait until data has been committed to disk
-  while (true) {
+  while (++iterations < MaxIterations) {
     CONDITION_LOCKER(guard, _condition);
 
     if (lastCommittedTick() >= tick) {
-      return;
+      return true;
     }
 
-    guard.wait(100 * 1000);
+    guard.wait(SleepTime);
   }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
