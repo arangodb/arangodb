@@ -104,7 +104,7 @@
     updateServerStatus: function() {
       this.dbservers.getStatuses(function(stat, serv) {
         var id = serv,
-          type;
+            type;
         id = id.replace(/\./g,'-');
         id = id.replace(/\:/g,'_');
         type = $("#id" + id).attr("class").split(/\s+/)[1];
@@ -112,7 +112,7 @@
       });
       this.coordinators.getStatuses(function(stat, serv) {
         var id = serv,
-          type;
+            type;
         id = id.replace(/\./g,'-');
         id = id.replace(/\:/g,'_');
         type = $("#id" + id).attr("class").split(/\s+/)[1];
@@ -195,52 +195,52 @@
       return pieData;
     },
 
-/*
-    loadHistory : function() {
-        this.hist = {};
+    /*
+     loadHistory : function() {
+       this.hist = {};
 
-        var self = this;
-        var coord = this.coordinators.findWhere({
-          status: "ok"
-        });
+       var self = this;
+       var coord = this.coordinators.findWhere({
+         status: "ok"
+       });
 
-        var endpoint = coord.get("protocol")
-          + "://"
-          + coord.get("address");
+       var endpoint = coord.get("protocol")
+       + "://"
+       + coord.get("address");
 
-        this.dbservers.forEach(function (dbserver) {
-          if (dbserver.get("status") !== "ok") {return;}
+       this.dbservers.forEach(function (dbserver) {
+         if (dbserver.get("status") !== "ok") {return;}
 
-          if (self.knownServers.indexOf(dbserver.id) === -1) {
-            self.knownServers.push(dbserver.id);
-          }
+         if (self.knownServers.indexOf(dbserver.id) === -1) {
+           self.knownServers.push(dbserver.id);
+         }
 
-          var server = {
-            raw: dbserver.get("address"),
-            isDBServer: true,
-            target: encodeURIComponent(dbserver.get("name")),
-            endpoint: endpoint,
-            addAuth: window.App.addAuth.bind(window.App)
-          };
-        });
+         var server = {
+           raw: dbserver.get("address"),
+           isDBServer: true,
+           target: encodeURIComponent(dbserver.get("name")),
+           endpoint: endpoint,
+           addAuth: window.App.addAuth.bind(window.App)
+         };
+       });
 
-        this.coordinators.forEach(function (coordinator) {
-          if (coordinator.get("status") !== "ok") {return;}
+       this.coordinators.forEach(function (coordinator) {
+         if (coordinator.get("status") !== "ok") {return;}
 
-          if (self.knownServers.indexOf(coordinator.id) === -1) {
-            self.knownServers.push(coordinator.id);
-          }
+         if (self.knownServers.indexOf(coordinator.id) === -1) {
+           self.knownServers.push(coordinator.id);
+         }
 
-          var server = {
-            raw: coordinator.get("address"),
-            isDBServer: false,
-            target: encodeURIComponent(coordinator.get("name")),
-            endpoint: coordinator.get("protocol") + "://" + coordinator.get("address"),
-            addAuth: window.App.addAuth.bind(window.App)
-          };
-        });
-    },
-*/
+         var server = {
+           raw: coordinator.get("address"),
+           isDBServer: false,
+           target: encodeURIComponent(coordinator.get("name")),
+           endpoint: coordinator.get("protocol") + "://" + coordinator.get("address"),
+           addAuth: window.App.addAuth.bind(window.App)
+         };
+       });
+     },
+     */
 
     addStatisticsItem: function(name, time, requests, snap) {
       var self = this;
@@ -314,9 +314,9 @@
         var stat = new window.Statistics({name: dbserver.id});
 
         stat.url = coord.get("protocol") + "://"
-          + coord.get("address")
-          + "/_admin/clusterStatistics?DBserver="
-          + dbserver.get("name");
+        + coord.get("address")
+        + "/_admin/clusterStatistics?DBserver="
+        + dbserver.get("name");
 
         statCollect.add(stat);
       });
@@ -332,8 +332,8 @@
         var stat = new window.Statistics({name: coordinator.id});
 
         stat.url = coordinator.get("protocol") + "://"
-          + coordinator.get("address")
-          + "/_admin/statistics";
+        + coordinator.get("address")
+        + "/_admin/statistics";
 
         statCollect.add(stat);
       });
@@ -353,201 +353,200 @@
     },
 
     renderPieChart: function(dataset) {
-        var w = $("#clusterGraphs svg").width();
-        var h = $("#clusterGraphs svg").height();
-        var radius = Math.min(w, h) / 2; //change 2 to 1.4. It's hilarious.
-        // var color = d3.scale.category20();
-        var color = this.dygraphConfig.colors;
+      var w = $("#clusterGraphs svg").width();
+      var h = $("#clusterGraphs svg").height();
+      var radius = Math.min(w, h) / 2; //change 2 to 1.4. It's hilarious.
+      // var color = d3.scale.category20();
+      var color = this.dygraphConfig.colors;
 
-        var arc = d3.svg.arc() //each datapoint will create one later.
-            .outerRadius(radius - 20)
-            .innerRadius(0);
-        var pie = d3.layout.pie()
-            .sort(function (d) {
-                return d.value;
-            })
-            .value(function (d) {
-                return d.value;
-            });
-        d3.select("#clusterGraphs").select("svg").remove();
-        var pieChartSvg = d3.select("#clusterGraphs").append("svg")
-            // .attr("width", w)
-            // .attr("height", h)
-            .attr("class", "clusterChart")
-            .append("g") //someone to transform. Groups data.
-            .attr("transform", "translate(" + w / 2 + "," + ((h / 2) - 10) + ")");
+      var arc = d3.svg.arc() //each datapoint will create one later.
+      .outerRadius(radius - 20)
+      .innerRadius(0);
+      var pie = d3.layout.pie()
+      .sort(function (d) {
+        return d.value;
+      })
+      .value(function (d) {
+        return d.value;
+      });
+      d3.select("#clusterGraphs").select("svg").remove();
+      var pieChartSvg = d3.select("#clusterGraphs").append("svg")
+      // .attr("width", w)
+      // .attr("height", h)
+      .attr("class", "clusterChart")
+      .append("g") //someone to transform. Groups data.
+      .attr("transform", "translate(" + w / 2 + "," + ((h / 2) - 10) + ")");
 
-        var arc2 = d3.svg.arc()
-            .outerRadius(radius-2)
-            .innerRadius(radius-2);
-        var slices = pieChartSvg.selectAll(".arc")
-            .data(pie(dataset))
-            .enter().append("g")
-            .attr("class", "slice");
-        /*jslint unparam: true*/
-        slices.append("path")
-            .attr("d", arc)
-            .style("fill", function (item, i) {
-              return color[i % color.length];
-            })
-            .style("stroke", function (item, i) {
-              return color[i % color.length];
-            });
-        /*jslint unparam: false*/
-        slices.append("text")
-            .attr("transform", function(d) { return "translate(" + arc.centroid(d) + ")"; })
-            // .attr("dy", "0.35em")
-            .style("text-anchor", "middle")
-            .text(function(d) {
-                var v = d.data.value / 1024 / 1024 / 1024;
-                return v.toFixed(2); });
-
-        slices.append("text")
-            .attr("transform", function(d) { return "translate(" + arc2.centroid(d) + ")"; })
-            // .attr("dy", "1em")
-            .style("text-anchor", "middle")
-            .text(function(d) { return d.data.key; });
-      },
-
-      renderLineChart: function() {
-        var self = this;
-
-        var interval = 60 * 20;
-        var data = [];
-        var hash = [];
-        var t = Math.round(new Date().getTime() / 1000) - interval;
-        var ks = self.knownServers;
-        var f = function(x) {return null;};
-
-        var i;
-        var j;
-
-        for (i = 0;  i < ks.length;  ++i) {
-          var h = self.hist[ks[i]];
-
-          if (h) {
-            for (j = 0;  j < h.length;  ++j) {
-              var snap = h[j].snap;
-
-              if (snap < t) {
-                continue;
-              }
-
-              var d;
-
-              if (! hash.hasOwnProperty(snap)) {
-                var tt = new Date(snap * 1000);
-
-                d = hash[snap] = [ tt ].concat(ks.map(f));
-              }
-              else {
-                d = hash[snap];
-              }
-
-              d[i + 1] = h[j].requestsPerSecond;
-            }
-          }
-        }
-
-        data = [];
-
-        Object.keys(hash).sort().forEach(function (m) {
-          data.push(hash[m]);
-        });
-
-        var options = this.dygraphConfig.getDefaultConfig('clusterRequestsPerSecond');
-        options.labelsDiv = $("#lineGraphLegend")[0];
-        options.labels = [ "datetime" ].concat(ks);
-        
-        self.graph = new Dygraph(
-          document.getElementById('lineGraph'),
-          data,
-          options
-        );
-      },
-
-      stopUpdating: function () {
-        window.clearTimeout(this.timer);
-        delete this.graph;
-        this.isUpdating = false;
-      },
-
-      startUpdating: function () {
-        if (this.isUpdating) {
-          return;
-        }
-
-        this.isUpdating = true;
-
-        var self = this;
-
-        this.timer = window.setInterval(function() {
-          self.rerender();
-        }, this.interval);
-      },
-
-
-      dashboard: function(e) {
-        this.stopUpdating();
-
-        var tar = $(e.currentTarget);
-        var serv = {};
-        var cur;
-        var coord;
-
-        var ip_port = tar.attr("id");
-        ip_port = ip_port.replace(/\-/g,'.');
-        ip_port = ip_port.replace(/\_/g,':');
-        ip_port = ip_port.substr(2);
-
-        serv.raw = ip_port;
-        serv.isDBServer = tar.hasClass("dbserver");
-
-        if (serv.isDBServer) {
-          cur = this.dbservers.findWhere({
-            address: serv.raw
-          });
-          coord = this.coordinators.findWhere({
-            status: "ok"
-          });
-          serv.endpoint = coord.get("protocol")
-          + "://"
-          + coord.get("address");
-        }
-        else {
-          cur = this.coordinators.findWhere({
-            address: serv.raw
-          });
-          serv.endpoint = cur.get("protocol")
-          + "://"
-          + cur.get("address");
-        }
-
-        serv.target = encodeURIComponent(cur.get("name"));
-        window.App.serverToShow = serv;
-        window.App.dashboard();
-      },
-
-      getCurrentSize: function (div) {
-          if (div.substr(0,1) !== "#") {
-              div = "#" + div;
-          }
-          var height, width;
-          $(div).attr("style", "");
-          height = $(div).height();
-          width = $(div).width();
-          return {
-              height: height,
-              width: width
-          };
-      },
-
-      resize: function () {
-          var dimensions;
-          if (this.graph) {
-              dimensions = this.getCurrentSize(this.graph.maindiv_.id);
-              this.graph.resize(dimensions.width, dimensions.height);
-          }
-      }
+    var arc2 = d3.svg.arc()
+    .outerRadius(radius-2)
+    .innerRadius(radius-2);
+    var slices = pieChartSvg.selectAll(".arc")
+    .data(pie(dataset))
+    .enter().append("g")
+    .attr("class", "slice");
+    /*jslint unparam: true*/
+    slices.append("path")
+    .attr("d", arc)
+    .style("fill", function (item, i) {
+      return color[i % color.length];
+    })
+    .style("stroke", function (item, i) {
+      return color[i % color.length];
     });
+    /*jslint unparam: false*/
+    slices.append("text")
+    .attr("transform", function(d) { return "translate(" + arc.centroid(d) + ")"; })
+    // .attr("dy", "0.35em")
+    .style("text-anchor", "middle")
+    .text(function(d) {
+      var v = d.data.value / 1024 / 1024 / 1024;
+      return v.toFixed(2); });
+
+    slices.append("text")
+    .attr("transform", function(d) { return "translate(" + arc2.centroid(d) + ")"; })
+    // .attr("dy", "1em")
+    .style("text-anchor", "middle")
+    .text(function(d) { return d.data.key; });
+  },
+
+  renderLineChart: function() {
+    var self = this;
+
+    var interval = 60 * 20;
+    var data = [];
+    var hash = [];
+    var t = Math.round(new Date().getTime() / 1000) - interval;
+    var ks = self.knownServers;
+    var f = function() {
+      return null;
+    };
+
+    var d, h, i, j, tt, snap;
+
+    for (i = 0;  i < ks.length;  ++i) {
+      h = self.hist[ks[i]];
+
+      if (h) {
+        for (j = 0;  j < h.length;  ++j) {
+          snap = h[j].snap;
+
+          if (snap < t) {
+            continue;
+          }
+
+          if (! hash.hasOwnProperty(snap)) {
+            tt = new Date(snap * 1000);
+
+            d = hash[snap] = [ tt ].concat(ks.map(f));
+          }
+          else {
+            d = hash[snap];
+          }
+
+          d[i + 1] = h[j].requestsPerSecond;
+        }
+      }
+    }
+
+    data = [];
+
+    Object.keys(hash).sort().forEach(function (m) {
+      data.push(hash[m]);
+    });
+
+    var options = this.dygraphConfig.getDefaultConfig('clusterRequestsPerSecond');
+    options.labelsDiv = $("#lineGraphLegend")[0];
+    options.labels = [ "datetime" ].concat(ks);
+
+    self.graph = new Dygraph(
+      document.getElementById('lineGraph'),
+      data,
+      options
+    );
+  },
+
+  stopUpdating: function () {
+    window.clearTimeout(this.timer);
+    delete this.graph;
+    this.isUpdating = false;
+  },
+
+  startUpdating: function () {
+    if (this.isUpdating) {
+      return;
+    }
+
+    this.isUpdating = true;
+
+    var self = this;
+
+    this.timer = window.setInterval(function() {
+      self.rerender();
+    }, this.interval);
+  },
+
+
+  dashboard: function(e) {
+    this.stopUpdating();
+
+    var tar = $(e.currentTarget);
+    var serv = {};
+    var cur;
+    var coord;
+
+    var ip_port = tar.attr("id");
+    ip_port = ip_port.replace(/\-/g,'.');
+    ip_port = ip_port.replace(/\_/g,':');
+    ip_port = ip_port.substr(2);
+
+    serv.raw = ip_port;
+    serv.isDBServer = tar.hasClass("dbserver");
+
+    if (serv.isDBServer) {
+      cur = this.dbservers.findWhere({
+        address: serv.raw
+      });
+      coord = this.coordinators.findWhere({
+        status: "ok"
+      });
+      serv.endpoint = coord.get("protocol")
+      + "://"
+      + coord.get("address");
+    }
+    else {
+      cur = this.coordinators.findWhere({
+        address: serv.raw
+      });
+      serv.endpoint = cur.get("protocol")
+      + "://"
+      + cur.get("address");
+    }
+
+    serv.target = encodeURIComponent(cur.get("name"));
+    window.App.serverToShow = serv;
+    window.App.dashboard();
+  },
+
+  getCurrentSize: function (div) {
+    if (div.substr(0,1) !== "#") {
+      div = "#" + div;
+    }
+    var height, width;
+    $(div).attr("style", "");
+    height = $(div).height();
+    width = $(div).width();
+    return {
+      height: height,
+      width: width
+    };
+  },
+
+  resize: function () {
+    var dimensions;
+    if (this.graph) {
+      dimensions = this.getCurrentSize(this.graph.maindiv_.id);
+      this.graph.resize(dimensions.width, dimensions.height);
+    }
+  }
+});
 }());

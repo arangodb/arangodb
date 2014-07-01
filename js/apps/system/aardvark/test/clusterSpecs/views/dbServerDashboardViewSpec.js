@@ -45,8 +45,8 @@
 
     it("assert render", function () {
       var jquerydummy = {
-        toggleClass : function () {
-          return undefined;
+        toggleClass: function () {
+          return this;
         },
         on: function (a, b) {
           expect(a).toEqual('hidden');
@@ -54,12 +54,15 @@
         },
         attr: function () {
           return jquerydummy;
+        },
+        append: function() {
+          return undefined;
         }
       };
       spyOn(view, "hide");
       spyOn(window, "$").andReturn(jquerydummy);
       spyOn(window.modalView, "show");
-      spyOn(jquerydummy, "toggleClass");
+      spyOn(jquerydummy, "toggleClass").andCallThrough();
       spyOn(jquerydummy, "on").andCallThrough();
       spyOn(jquerydummy, "attr").andCallThrough();
 
@@ -80,7 +83,7 @@
       expect(jquerydummy.attr).toHaveBeenCalledWith("type", "button");
     });
 
-    it("assert render", function () {
+    it("assert hide", function () {
       spyOn(window.App.showClusterView, "startUpdating");
       spyOn(view, "stopUpdating");
       view.hide();
