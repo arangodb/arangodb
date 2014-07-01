@@ -37,11 +37,11 @@ var FoxxController = require("org/arangodb/foxx").Controller,
   underscore = require("underscore"),
   notifications = require("org/arangodb/configuration").notifications,
   db = require("internal").db;
-  
+
 var foxxes = new (require("lib/foxxes").Foxxes)();
 var FoxxManager = require("org/arangodb/foxx/manager");
 var docus = new (require("lib/swagger").Swagger)();
-  
+
 controller.get("/whoAmI", function(req, res) {
   res.json({
     name: req.user
@@ -230,7 +230,7 @@ controller.del("/foxxes/:key", function (req, res) {
 /** Update a Foxx
  *
  * Update the Foxx with the given information.
- */ 
+ */
 
 controller.put("/foxxes/:key", function (req, res) {
   var content = JSON.parse(req.requestBody),
@@ -248,9 +248,9 @@ controller.put("/foxxes/:key", function (req, res) {
   allowMultiple: false
 }).summary("Update a foxx.")
   .notes("Used to either activate/deactivate a foxx, or change the mount point.");
-  
+
 /** Get the thubmail of a Foxx
- * 
+ *
  * Request the Thumbnail stored for a Foxx
  */
 
@@ -270,7 +270,7 @@ controller.get("/foxxes/thumbnail/:app", function (req, res) {
   allowMultiple: false
 }).summary("Get the thumbnail of a foxx.")
   .notes("Used to request the thumbnail of the given Foxx in order to display it on the screen.");
-  
+
 /** List all Foxxes
  *
  * Get a List of all Foxxes available and running
@@ -280,7 +280,7 @@ controller.get('/foxxes', function (req, res) {
   res.json(foxxes.viewAll());
 }).summary("List of all foxxes.")
   .notes("This function simply returns the list of all running foxxes");
-  
+
 /** List available Documentation
  *
  * Get the list of all running Foxxes with links to their documentation
@@ -304,7 +304,7 @@ controller.get("/docu/:key",function (req, res) {
 }).summary("List documentation of all foxxes.")
   .notes("This function simply returns one specific"
        + " foxx and supplies the paths for the swagger documentation");
-  
+
  /** Subroutes for API Documentation
   *
   * Get the Elements of the API Documentation subroutes
@@ -346,7 +346,7 @@ controller.put('/foxx/move/:key', function(req, res) {
 })
 .summary("Move one foxx to another moint point")
   .notes ("This function moves one installed foxx"
-    + " to a given mount point."); 
+    + " to a given mount point.");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
