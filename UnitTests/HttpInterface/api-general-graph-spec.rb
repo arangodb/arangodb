@@ -376,6 +376,15 @@ describe ArangoDB do
         doc.parsed_response['vertex']['_key'].should eq(key)
       end
 
+      it "can not get a non existing vertex" do
+        key = "unknownKey"
+
+        doc = get_vertex(graph_name, user_collection, key) 
+        doc.code.should eq(404)
+        doc.parsed_response['error'].should include("document not found")
+        doc.parsed_response['code'].should eq(404)
+      end
+
       it "can replace a vertex" do
         name = "Alice"
         doc = create_vertex(graph_name, user_collection, {"name" => name}) 
@@ -399,6 +408,15 @@ describe ArangoDB do
         doc.parsed_response['vertex']['_key'].should eq(key)
       end
 
+      it "can not replace a non existing vertex" do
+        key = "unknownKey"
+
+        doc = replace_vertex(graph_name, user_collection, key, {"name2" => "bob"}) 
+        doc.code.should eq(404)
+        doc.parsed_response['error'].should include("document not found")
+        doc.parsed_response['code'].should eq(404)
+      end
+
       it "can update a vertex" do
         name = "Alice"
         doc = create_vertex(graph_name, user_collection, {"name" => name}) 
@@ -419,6 +437,16 @@ describe ArangoDB do
         doc.parsed_response['vertex']['_key'].should eq(key)
       end
 
+      it "can not update a non existing vertex" do
+        key = "unknownKey"
+        name2 = "Bob"
+
+        doc = update_vertex(graph_name, user_collection, key, {"name2" => name2}, "") 
+        doc.code.should eq(404)
+        doc.parsed_response['error'].should include("document not found")
+        doc.parsed_response['code'].should eq(404)
+      end
+
       it "can delete a vertex" do
         name = "Alice"
         doc = create_vertex(graph_name, user_collection, {"name" => name}) 
@@ -430,6 +458,15 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(200)
 
         doc = get_vertex(graph_name, user_collection, key) 
+        doc.code.should eq(404)
+        doc.parsed_response['error'].should include("document not found")
+        doc.parsed_response['code'].should eq(404)
+      end
+
+      it "can not delete a non existing vertex" do
+        key = "unknownKey"
+
+        doc = delete_vertex(graph_name, user_collection, key) 
         doc.code.should eq(404)
         doc.parsed_response['error'].should include("document not found")
         doc.parsed_response['code'].should eq(404)
@@ -479,6 +516,15 @@ describe ArangoDB do
         doc.parsed_response['edge']['_key'].should eq(key)
       end
 
+      it "can not get a non existing edge" do
+        key = "unknownKey"
+
+        doc = get_edge(graph_name, friend_collection, key) 
+        doc.code.should eq(404)
+        doc.parsed_response['error'].should eq("document not found")
+        doc.parsed_response['code'].should eq(404)
+      end
+
       it "can replace an edge" do
         v1 = create_vertex(graph_name, user_collection, {}) 
         v1 = v1.parsed_response['vertex']['_id']
@@ -506,6 +552,15 @@ describe ArangoDB do
         doc.parsed_response['edge']['_key'].should eq(key)
       end
 
+      it "can not replace a non existing edge" do
+        key = "unknownKey"
+
+        doc = replace_edge(graph_name, friend_collection, key, {"type2" => "divorced"}) 
+        doc.code.should eq(404)
+        doc.parsed_response['error'].should eq("document not found")
+        doc.parsed_response['code'].should eq(404)
+      end
+
       it "can update an edge" do
         v1 = create_vertex(graph_name, user_collection, {}) 
         v1 = v1.parsed_response['vertex']['_id']
@@ -530,6 +585,15 @@ describe ArangoDB do
         doc.parsed_response['edge']['_key'].should eq(key)
       end
 
+      it "can not update a non existing edge" do
+        key = "unknownKey"
+
+        doc = update_edge(graph_name, friend_collection, key, {"type2" => "divorced"}, "") 
+        doc.code.should eq(404)
+        doc.parsed_response['error'].should eq("document not found")
+        doc.parsed_response['code'].should eq(404)
+      end
+
       it "can delete an edge" do
         v1 = create_vertex(graph_name, user_collection, {}) 
         v1 = v1.parsed_response['vertex']['_id']
@@ -547,6 +611,15 @@ describe ArangoDB do
         doc = get_edge(graph_name, friend_collection, key) 
         doc.code.should eq(404)
         doc.parsed_response['error'].should include("document not found")
+        doc.parsed_response['code'].should eq(404)
+      end
+
+      it "can not delete a non existing edge" do
+        key = "unknownKey"
+
+        doc = delete_edge(graph_name, friend_collection, key) 
+        doc.code.should eq(404)
+        doc.parsed_response['error'].should eq("document not found")
         doc.parsed_response['code'].should eq(404)
       end
 
