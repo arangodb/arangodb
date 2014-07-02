@@ -176,7 +176,7 @@ describe ArangoDB do
         drop_graph(graph_name)
       end
 
-      it "can create an emtpy graph" do
+      it "can create an empty graph" do
         edge_definition = []
         doc = create_graph( graph_name, edge_definition )
 
