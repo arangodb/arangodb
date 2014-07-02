@@ -590,7 +590,7 @@ unittests-shell-server-ahuacatl:
 ### @brief SHELL CLIENT TESTS
 ################################################################################
 
-UNITTESTS_READONLY = $(addprefix --javascript.unit-tests ,@top_srcdir@/js/client/tests/shell-changeMode-noncluster.js)
+UNITTESTS_READONLY = $(addprefix --javascript.unit-tests ,@top_srcdir@/js/client/tests/shell-changeMode-noncluster-disabled.js)
 UNITTESTS_NO_READONLY = $(addprefix --javascript.unit-tests ,@top_srcdir@/js/client/tests/shell-noChangeMode-noncluster.js)
 .PHONY: unittests-shell-client-readonly
 
