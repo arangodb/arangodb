@@ -70,6 +70,7 @@ static int Reserve (TRI_string_buffer_t * self, const size_t size) {
     off = self->_current - self->_buffer;
     len = (size_t) (1.2 * (self->_len + size));
     TRI_ASSERT(len > 0);
+
     ptr = TRI_Reallocate(self->_memoryZone, self->_buffer, len + 1);
 
     if (ptr == NULL) {
@@ -549,6 +550,7 @@ size_t TRI_LengthStringBuffer (TRI_string_buffer_t const * self) {
 
 void TRI_IncreaseLengthStringBuffer (TRI_string_buffer_t * self, size_t n) {
   self->_current += n;
+  *self->_current = '\0';
 }
 
 ////////////////////////////////////////////////////////////////////////////////
