@@ -932,6 +932,85 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       state->runningRemoteTransactions.insert(std::make_pair(m->_externalId, trx));
       break;
     }
+    
+    
+    case TRI_WAL_MARKER_RENAME_COLLECTION: {
+      break;
+    }
+    
+    case TRI_WAL_MARKER_CHANGE_COLLECTION: {
+      collection_change_marker_t const* m = reinterpret_cast<collection_change_marker_t const*>(marker);
+      TRI_voc_cid_t collectionId = m->_collectionId;
+      TRI_voc_tick_t databaseId  = m->_databaseId;
+      
+      if (state->isDropped(databaseId)) {
+        return true;
+      }
+
+      TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
+
+      if (vocbase == nullptr) {
+        // if the underlying database is gone, we can go on
+        LOG_TRACE("cannot open database %llu", (unsigned long long) databaseId);
+        return true;
+      }
+
+      TRI_document_collection_t* document = state->getCollection(databaseId, collectionId);
+
+      if (document == nullptr) {
+        // if the underlying collection is gone, we can go on
+        LOG_TRACE("cannot change properties of collection %llu in database %llu: %s", 
+                  (unsigned long long) collectionId,
+                  (unsigned long long) databaseId,
+                  TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND));
+        return true;
+      }
+      
+      char const* properties = reinterpret_cast<char const*>(m) + sizeof(collection_change_marker_t);
+      TRI_json_t* json = triagens::basics::JsonHelper::fromString(properties);
+
+      if (! TRI_IsArrayJson(json)) {
+        if (json != nullptr) {
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+        }
+        LOG_WARNING("cannot unpack collection properties for collection %llu in database %llu", 
+                    (unsigned long long) collectionId, 
+                    (unsigned long long) databaseId);
+        return state->canContinue();
+      }
+      
+      TRI_json_t const* value;
+      
+      TRI_col_info_t parameters;
+      parameters._doCompact = true;
+      parameters._waitForSync = vocbase->_settings.defaultWaitForSync;
+      parameters._maximalSize = vocbase->_settings.defaultMaximalSize; 
+
+      value = TRI_LookupArrayJson(json, "doCompact");
+      if (TRI_IsBooleanJson(value)) {
+        parameters._doCompact = value->_value._boolean;
+      }
+      
+      value = TRI_LookupArrayJson(json, "waitForSync");
+      if (TRI_IsBooleanJson(value)) {
+        parameters._waitForSync = value->_value._boolean;
+      }
+      
+      value = TRI_LookupArrayJson(json, "maximalSize");
+      if (TRI_IsNumberJson(value)) {
+        parameters._maximalSize = static_cast<TRI_voc_size_t>(value->_value._number);
+      }
+      
+      int res = TRI_UpdateCollectionInfo(vocbase, document, &parameters);
+      if (res != TRI_ERROR_NO_ERROR) {
+        LOG_WARNING("cannot change collection properties for collection %llu in database %llu: %s", 
+                    (unsigned long long) collectionId, 
+                    (unsigned long long) databaseId,
+                    TRI_errno_string(res));
+        return state->canContinue();
+      }
+      break;
+    }
 
 
     // -----------------------------------------------------------------------------
@@ -973,7 +1052,19 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       char const* properties = reinterpret_cast<char const*>(m) + sizeof(index_create_marker_t);
       TRI_json_t* json = triagens::basics::JsonHelper::fromString(properties);
       
-      if (json == nullptr) {
+      if (! TRI_IsArrayJson(json)) {
+        if (json != nullptr) {
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+        }
+        LOG_WARNING("cannot unpack index properties for index %llu, collection %llu in database %llu", 
+                    (unsigned long long) indexId, 
+                    (unsigned long long) collectionId, 
+                    (unsigned long long) databaseId);
+        return state->canContinue();
+      }
+
+      if (! TRI_IsArrayJson(json)) {
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         LOG_WARNING("cannot unpack index properties for index %llu, collection %llu in database %llu", 
                     (unsigned long long) indexId, 
                     (unsigned long long) collectionId, 
@@ -1045,7 +1136,10 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       char const* properties = reinterpret_cast<char const*>(m) + sizeof(collection_create_marker_t);
       TRI_json_t* json = triagens::basics::JsonHelper::fromString(properties);
         
-      if (json == nullptr) {
+      if (! TRI_IsArrayJson(json)) {
+        if (json != nullptr) {
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+        }
         LOG_WARNING("cannot unpack collection properties for collection %llu in database %llu", 
                     (unsigned long long) collectionId, 
                     (unsigned long long) databaseId);
@@ -1110,7 +1204,10 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       char const* properties = reinterpret_cast<char const*>(m) + sizeof(database_create_marker_t);
       TRI_json_t* json = triagens::basics::JsonHelper::fromString(properties);
         
-      if (json == nullptr) {
+      if (! TRI_IsArrayJson(json)) {
+        if (json != nullptr) {
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+        }
         LOG_WARNING("cannot unpack database properties for database %llu", (unsigned long long) databaseId);
         return state->canContinue();
       }
