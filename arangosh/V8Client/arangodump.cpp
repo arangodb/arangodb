@@ -466,7 +466,7 @@ static int StartBatch (string DBserver, string& errorMsg) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ExtendBatch (string DBserver) {
-  assert(BatchId > 0);
+  TRI_ASSERT(BatchId > 0);
 
   map<string, string> headers;
   const string url = "/_api/replication/batch/" + StringUtils::itoa(BatchId);
@@ -493,7 +493,7 @@ static void ExtendBatch (string DBserver) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void EndBatch (string DBserver) {
-  assert(BatchId > 0);
+  TRI_ASSERT(BatchId > 0);
 
   map<string, string> headers;
   const string url = "/_api/replication/batch/" + StringUtils::itoa(BatchId);
@@ -625,7 +625,7 @@ static int DumpCollection (int fd,
     }
   }
 
-  assert(false);
+  TRI_ASSERT(false);
   return TRI_ERROR_INTERNAL;
 }
 
@@ -982,7 +982,7 @@ static int DumpShard (int fd,
     }
   }
 
-  assert(false);
+  TRI_ASSERT(false);
   return TRI_ERROR_INTERNAL;
 }
 

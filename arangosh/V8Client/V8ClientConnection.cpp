@@ -66,23 +66,22 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
                                         size_t numRetries,
                                         uint32_t sslProtocol,
                                         bool warn)
-  : _connection(0),
+  : _connection(nullptr),
     _databaseName(databaseName),
     _lastHttpReturnCode(0),
     _lastErrorMessage(""),
-    _client(0),
-    _httpResult(0) {
-
+    _client(nullptr),
+    _httpResult(nullptr) {
 
   _connection = GeneralClientConnection::factory(endpoint, requestTimeout, connectTimeout, numRetries, sslProtocol);
 
-  if (_connection == 0) {
+  if (_connection == nullptr) {
     throw "out of memory";
   }
 
   _client = new SimpleHttpClient(_connection, requestTimeout, warn);
 
-  if (_client == 0) {
+  if (_client == nullptr) {
     LOG_FATAL_AND_EXIT("out of memory");
   }
 
@@ -168,7 +167,7 @@ string V8ClientConnection::rewriteLocation (void* data,
                                             const string& location) {
   V8ClientConnection* c = static_cast<V8ClientConnection*>(data);
 
-  assert(c != 0);
+  TRI_ASSERT(c != nullptr);
 
   if (c->_databaseName.empty()) {
     // no database name provided
