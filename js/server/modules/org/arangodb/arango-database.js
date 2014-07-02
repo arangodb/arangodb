@@ -444,7 +444,7 @@ ArangoDatabase.prototype._dropIndex = function (id) {
 ///
 /// Please note that managing endpoints can only be performed from out of the
 /// *_system* database. When not in the default database, you must first switch 
-/// to it using the @ref JS_UseDatabase "db._useDatabase" method.
+/// to it using the "db._useDatabase" method.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -474,7 +474,7 @@ ArangoDatabase.prototype._listEndpoints = function () {
 ///
 /// Please note that managing endpoints can only be performed from out of the
 /// *_system* database. When not in the default database, you must first switch 
-/// to it using the @ref JS_UseDatabase "db._useDatabase" method.
+/// to it using the "db._useDatabase" method.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -498,7 +498,7 @@ ArangoDatabase.prototype._configureEndpoint = function (endpoint, databases) {
 ///
 /// Please note that managing endpoints can only be performed from out of the
 /// *_system* database. When not in the default database, you must first switch 
-/// to it using the @ref JS_UseDatabase "db._useDatabase" method.
+/// to it using the "db._useDatabase" method.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
