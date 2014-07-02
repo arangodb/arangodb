@@ -431,7 +431,7 @@ describe ArangoDB do
 
         doc = get_vertex(graph_name, user_collection, key) 
         doc.code.should eq(404)
-        doc.parsed_response['error'].should eq("document not found")
+        doc.parsed_response['error'].should include("document not found")
         doc.parsed_response['code'].should eq(404)
       end
 
@@ -546,7 +546,7 @@ describe ArangoDB do
 
         doc = get_edge(graph_name, friend_collection, key) 
         doc.code.should eq(404)
-        doc.parsed_response['error'].should eq("document not found")
+        doc.parsed_response['error'].should include("document not found")
         doc.parsed_response['code'].should eq(404)
       end
 

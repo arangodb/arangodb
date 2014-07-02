@@ -41,7 +41,6 @@ var throwDownloadError = arangodb.throwDownloadError;
 var throwFileNotFound = arangodb.throwFileNotFound;
 var throwBadParameter = arangodb.throwBadParameter;
 var checkParameter = arangodb.checkParameter;
-var checkedFishBowl = false;
 
 var arango = require("internal").arango;
 var download = require("internal").download;

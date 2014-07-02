@@ -65,7 +65,6 @@ function CompactionSuite () {
       // now access the documents once, to build the shape accessors
       for (i = 0; i < 1000; ++i) {
         var doc = cn.document("old" + i);
-        var keys = Object.keys(doc);
 
         assertTrue(doc.hasOwnProperty("a"));
         assertEqual(i, doc.a);
@@ -100,7 +99,6 @@ function CompactionSuite () {
       // now access the "old" documents, which were probably moved
       for (i = 0; i < 1000; ++i) {
         var doc = cn.document("old" + i);
-        var keys = Object.keys(doc);
 
         assertTrue(doc.hasOwnProperty("a"));
         assertEqual(i, doc.a);

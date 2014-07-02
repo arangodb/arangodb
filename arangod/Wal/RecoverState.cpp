@@ -1281,9 +1281,7 @@ int RecoverState::replayLogfiles () {
   droppedDatabases.clear();
 
   for (auto it = logfilesToProcess.begin(); it != logfilesToProcess.end(); ++it) {
-    Logfile* logfile = (*it);
-
-    TRI_ASSERT(logfile != nullptr);
+    TRI_ASSERT((*it) != nullptr);
     int res = replayLogfile((*it));
 
     if (res != TRI_ERROR_NO_ERROR) {

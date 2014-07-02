@@ -391,8 +391,8 @@ static inline v8::Handle<v8::Value> V8DocumentId (string const& collectionName,
 /// must specify the argument index starting from 1
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool ExtractForceSync (v8::Arguments const& argv,
-                                     int index) {
+static inline bool ExtractWaitForSync (v8::Arguments const& argv,
+                                       int index) {
   TRI_ASSERT(index > 0);
 
   return (argv.Length() >= index && TRI_ObjectToBoolean(argv[index - 1]));
@@ -405,6 +405,38 @@ static inline bool ExtractForceSync (v8::Arguments const& argv,
 static inline TRI_doc_update_policy_e ExtractUpdatePolicy (bool overwrite) {
   return (overwrite ? TRI_DOC_UPDATE_LAST_WRITE : TRI_DOC_UPDATE_ERROR);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal struct which is used for reading the different option
+/// parameters for the save function
+////////////////////////////////////////////////////////////////////////////////
+
+struct InsertOptions {
+  bool waitForSync = false;
+  bool silent      = false;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal struct which is used for reading the different option
+/// parameters for the update and replace functions
+////////////////////////////////////////////////////////////////////////////////
+
+struct UpdateOptions {
+  bool overwrite   = false;
+  bool keepNull    = true;
+  bool waitForSync = false;
+  bool silent      = false;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal struct which is used for reading the different option
+/// parameters for the remove function
+////////////////////////////////////////////////////////////////////////////////
+
+struct RemoveOptions {
+  bool overwrite   = false;
+  bool waitForSync = false;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a C++ into a v8::Object
@@ -654,7 +686,7 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
     }
   }
 
-  TRI_ASSERT(collectionName != "");
+  TRI_ASSERT(! collectionName.empty());
 
   if (collection == nullptr) {
     // no collection object was passed, now check the user-supplied collection name
@@ -688,7 +720,7 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
   TRI_ASSERT(collection != nullptr);
 
   v8::Handle<v8::Value> empty;
-  return scope.Close(empty);
+  return scope.Close(v8::Handle<v8::Value>());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -699,7 +731,7 @@ static bool IsIndexHandle (v8::Handle<v8::Value> const arg,
                            string& collectionName,
                            TRI_idx_iid_t& iid) {
 
-  TRI_ASSERT(collectionName == "");
+  TRI_ASSERT(collectionName.empty());
   TRI_ASSERT(iid == 0);
 
   if (arg->IsNumber()) {
@@ -1014,7 +1046,7 @@ int ProcessIndexFields (v8::Handle<v8::Object> const obj,
 
   TRI_json_t* fieldJson = TRI_ObjectToJson(obj->Get(TRI_V8_SYMBOL("fields")));
 
-  if (fieldJson == 0) {
+  if (fieldJson == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -1247,7 +1279,7 @@ static int EnhanceIndexJson (v8::Arguments const& argv,
 
   json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
-  if (json == 0) {
+  if (json == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -1361,8 +1393,8 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
                                                bool create) {
   v8::HandleScope scope;
 
-  TRI_ASSERT(collection != 0);
-  TRI_ASSERT(json != 0);
+  TRI_ASSERT(collection != nullptr);
+  TRI_ASSERT(json != nullptr);
 
   // extract type
   TRI_json_t* value = TRI_LookupArrayJson(json, "type");
@@ -1419,7 +1451,7 @@ static v8::Handle<v8::Value> EnsureIndexLocal (TRI_vocbase_col_t const* collecti
     else {
       // copy all field names (attributes)
       for (size_t i = 0; i < value->_value._objects._length; ++i) {
-        TRI_json_t const* v = (TRI_json_t const*) TRI_AtVector(&value->_value._objects, i);
+        TRI_json_t const* v = static_cast<TRI_json_t const*>(TRI_AtVector(&value->_value._objects, i));
 
         TRI_ASSERT(TRI_IsStringJson(v));
         TRI_PushBackVectorPointer(&attributes, v->_value._string.data);
@@ -1694,7 +1726,7 @@ static v8::Handle<v8::Value> EnsureIndex (v8::Arguments const& argv,
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-  if (collection == 0) {
+  if (collection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
@@ -1704,7 +1736,7 @@ static v8::Handle<v8::Value> EnsureIndex (v8::Arguments const& argv,
     TRI_V8_EXCEPTION_USAGE(scope, name.c_str());
   }
 
-  TRI_json_t* json = 0;
+  TRI_json_t* json = nullptr;
   int res = EnhanceIndexJson(argv, json, create);
 
 
@@ -1756,13 +1788,13 @@ static v8::Handle<v8::Value> EnsureIndex (v8::Arguments const& argv,
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    if (json != 0) {
+    if (json != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  TRI_ASSERT(json != 0);
+  TRI_ASSERT(json != nullptr);
 
   v8::Handle<v8::Value> ret;
 
@@ -2099,6 +2131,7 @@ static v8::Handle<v8::Value> ModifyVocbaseColCoordinator (
                                   bool waitForSync,
                                   bool isPatch,
                                   bool keepNull, // only counts if isPatch==true
+                                  bool silent,
                                   v8::Arguments const& argv) {
   v8::HandleScope scope;
 
@@ -2116,8 +2149,10 @@ static v8::Handle<v8::Value> ModifyVocbaseColCoordinator (
   }
 
   TRI_json_t* json = TRI_ObjectToJson(argv[1]);
-  if (0 == json || json->_type != TRI_JSON_ARRAY) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  if (! TRI_IsArrayJson(json)) {
+    if (json != nullptr) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
@@ -2159,22 +2194,21 @@ static v8::Handle<v8::Value> ModifyVocbaseColCoordinator (
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_V8_EXCEPTION_MESSAGE(scope, errorNum, errorMessage);
   }
-  v8::Handle<v8::Value> ret = TRI_ObjectJson(json);
-  if (0 != json) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+ 
+  if (silent) {
+    if (json != nullptr) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
+    return scope.Close(v8::True());
   }
-  return scope.Close(ret);
+  else {
+    v8::Handle<v8::Value> ret = TRI_ObjectJson(json);
+    if (json != nullptr) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
+    return scope.Close(ret);
+  }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief internal struct which is used for reading the different option
-///        parameters for the replace function
-////////////////////////////////////////////////////////////////////////////////
-
-struct ReplaceOptions {
-  bool overwrite   = false;
-  bool waitForSync = false;
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces a document
@@ -2183,7 +2217,7 @@ struct ReplaceOptions {
 static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
                                                 v8::Arguments const& argv) {
   v8::HandleScope scope;
-  ReplaceOptions options;
+  UpdateOptions options;
   TRI_doc_update_policy_e policy = TRI_DOC_UPDATE_ERROR;
 
   // check the arguments
@@ -2207,6 +2241,9 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
       }
       if (optionsObject->Has(v8::String::New("waitForSync"))) {
         options.waitForSync = TRI_ObjectToBoolean(optionsObject->Get(v8::String::New("waitForSync")));
+      }
+      if (optionsObject->Has(v8::String::New("silent"))) {
+        options.silent = TRI_ObjectToBoolean(optionsObject->Get(v8::String::New("silent")));
       }
     }
     else {// old variant replace(<document>, <data>, <overwrite>, <waitForSync>)
@@ -2267,6 +2304,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
                                                    options.waitForSync,
                                                    false,  // isPatch
                                                    true,   // keepNull, does not matter
+                                                   options.silent,
                                                    argv));
   }
 
@@ -2352,24 +2390,29 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
   }
 
   TRI_ASSERT(mptr.getDataPtr() != nullptr);  // PROTECTED by trx here
-  char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);  // PROTECTED by trx here
 
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  if (options.silent) {
+    return scope.Close(v8::True());
+  }
+  else {
+    TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+    char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);  // PROTECTED by trx here
 
-  v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->_IdKey, V8DocumentId(trx.resolver()->getCollectionName(col->_cid), docKey));
-  result->Set(v8g->_RevKey, V8RevisionId(mptr._rid));
-  result->Set(v8g->_OldRevKey, V8RevisionId(actualRevision));
-  result->Set(v8g->_KeyKey, v8::String::New(docKey));
+    v8::Handle<v8::Object> result = v8::Object::New();
+    result->Set(v8g->_IdKey, V8DocumentId(trx.resolver()->getCollectionName(col->_cid), docKey));
+    result->Set(v8g->_RevKey, V8RevisionId(mptr._rid));
+    result->Set(v8g->_OldRevKey, V8RevisionId(actualRevision));
+    result->Set(v8g->_KeyKey, v8::String::New(docKey));
 
-  return scope.Close(result);
+    return scope.Close(result);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief saves a document
+/// @brief inserts a document
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> SaveVocbaseCol (
+static v8::Handle<v8::Value> InsertVocbaseCol (
     SingleCollectionWriteTransaction<V8TransactionContext<true>, 1>* trx,
     TRI_vocbase_col_t* col,
     v8::Arguments const& argv) {
@@ -2378,14 +2421,26 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
   uint32_t const argLength = argv.Length();
 
   if (argLength < 1 || argLength > 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "save(<data>, [<waitForSync>])");
+    TRI_V8_EXCEPTION_USAGE(scope, "insert(<data>, [<waitForSync>])");
   }
 
-  bool const forceSync = ExtractForceSync(argv, 2);
+  InsertOptions options;
+  if (argLength > 1 && argv[1]->IsObject()) {
+    v8::Handle<v8::Object> optionsObject = argv[1].As<v8::Object>();
+    if (optionsObject->Has(v8::String::New("waitForSync"))) {
+      options.waitForSync = TRI_ObjectToBoolean(optionsObject->Get(v8::String::New("waitForSync")));
+    }
+    if (optionsObject->Has(v8::String::New("silent"))) {
+      options.silent = TRI_ObjectToBoolean(optionsObject->Get(v8::String::New("silent")));
+    }
+  }
+  else {
+    options.waitForSync = ExtractWaitForSync(argv, 2);
+  }
 
   // set document key
   TRI_voc_key_t key = nullptr;
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
   int res;
 
   if (argv[0]->IsObject() && ! argv[0]->IsArray()) {
@@ -2412,7 +2467,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
   }
 
   TRI_doc_mptr_copy_t mptr;
-  res = trx->createDocument(key, &mptr, shaped, forceSync);
+  res = trx->createDocument(key, &mptr, shaped, options.waitForSync);
 
   res = trx->finish(res);
 
@@ -2425,14 +2480,20 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
   }
 
   TRI_ASSERT(mptr.getDataPtr() != nullptr);  // PROTECTED by trx here
-  char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);  // PROTECTED by trx here
 
-  v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->_IdKey, V8DocumentId(trx->resolver()->getCollectionName(col->_cid), docKey));
-  result->Set(v8g->_RevKey, V8RevisionId(mptr._rid));
-  result->Set(v8g->_KeyKey, v8::String::New(docKey));
+  if (options.silent) {
+    return scope.Close(v8::True());
+  }
+  else {
+    char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);  // PROTECTED by trx here
 
-  return scope.Close(result);
+    v8::Handle<v8::Object> result = v8::Object::New();
+    result->Set(v8g->_IdKey, V8DocumentId(trx->resolver()->getCollectionName(col->_cid), docKey));
+    result->Set(v8g->_RevKey, V8RevisionId(mptr._rid));
+    result->Set(v8g->_KeyKey, v8::String::New(docKey));
+
+    return scope.Close(result);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2470,19 +2531,22 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> SaveEdgeCol (
+static v8::Handle<v8::Value> InsertEdgeCol (
     SingleCollectionWriteTransaction<V8TransactionContext<true>, 1>* trx,
     TRI_vocbase_col_t* col,
     v8::Arguments const& argv) {
   v8::HandleScope scope;
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
   uint32_t const argLength = argv.Length();
   if (argLength < 3 || argLength > 4) {
     TRI_V8_EXCEPTION_USAGE(scope, "save(<from>, <to>, <data>, [<waitForSync>])");
   }
 
+  InsertOptions options;
   // set document key
+
   TRI_voc_key_t key = nullptr;
   int res;
 
@@ -2497,7 +2561,18 @@ static v8::Handle<v8::Value> SaveEdgeCol (
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  const bool forceSync = ExtractForceSync(argv, 4);
+  if (argLength > 3 && argv[3]->IsObject()) {
+    v8::Handle<v8::Object> optionsObject = argv[3].As<v8::Object>();
+    if (optionsObject->Has(v8::String::New("waitForSync"))) {
+      options.waitForSync = TRI_ObjectToBoolean(optionsObject->Get(v8::String::New("waitForSync")));
+    }
+    if (optionsObject->Has(v8::String::New("silent"))) {
+      options.silent = TRI_ObjectToBoolean(optionsObject->Get(v8::String::New("silent")));
+    }
+  }
+  else {
+    options.waitForSync = ExtractWaitForSync(argv, 4);
+  }
 
   TRI_document_edge_t edge;
   // the following values are defaults that will be overridden below
@@ -2538,7 +2613,7 @@ static v8::Handle<v8::Value> SaveEdgeCol (
   }
 
   TRI_doc_mptr_copy_t mptr;
-  res = trx->createEdge(key, &mptr, shaped, forceSync, &edge);
+  res = trx->createEdge(key, &mptr, shaped, options.waitForSync, &edge);
 
   res = trx->finish(res);
 
@@ -2553,26 +2628,20 @@ static v8::Handle<v8::Value> SaveEdgeCol (
 
   TRI_ASSERT(mptr.getDataPtr() != nullptr);  // PROTECTED by trx here
 
-  char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);  // PROTECTED by trx here
+  if (options.silent) {
+     return scope.Close(v8::True());
+  }
+  else {
+    char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);  // PROTECTED by trx here
 
-  v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->_IdKey, V8DocumentId(trx->resolver()->getCollectionName(col->_cid), docKey));
-  result->Set(v8g->_RevKey, V8RevisionId(mptr._rid));
-  result->Set(v8g->_KeyKey, v8::String::New(docKey));
+    v8::Handle<v8::Object> result = v8::Object::New();
+    result->Set(v8g->_IdKey, V8DocumentId(trx->resolver()->getCollectionName(col->_cid), docKey));
+    result->Set(v8g->_RevKey, V8RevisionId(mptr._rid));
+    result->Set(v8g->_KeyKey, v8::String::New(docKey));
 
-  return scope.Close(result);
+    return scope.Close(result); 
+  }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief internal struct which is used for reading the different option
-///        parameters for the update function
-////////////////////////////////////////////////////////////////////////////////
-
-struct UpdateOptions {
-  bool overwrite   = false;
-  bool keepNull    = true;
-  bool waitForSync = false;
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates (patches) a document
@@ -2603,6 +2672,9 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
       }
       if (optionsObject->Has(v8::String::New("waitForSync"))) {
         options.waitForSync = TRI_ObjectToBoolean(optionsObject->Get(v8::String::New("waitForSync")));
+      }
+      if (optionsObject->Has(v8::String::New("silent"))) {
+        options.silent = TRI_ObjectToBoolean(optionsObject->Get(v8::String::New("silent")));
       }
     }
     else { // old variant update(<document>, <data>, <overwrite>, <keepNull>, <waitForSync>)
@@ -2665,6 +2737,7 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
                                                    options.waitForSync,
                                                    true,  // isPatch
                                                    options.keepNull,
+                                                   options.silent,
                                                    argv));
   }
 
@@ -2757,18 +2830,24 @@ static v8::Handle<v8::Value> UpdateVocbaseCol (bool useCollection,
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
-
   TRI_ASSERT(mptr.getDataPtr() != nullptr);  // PROTECTED by trx here
-  char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);  // PROTECTED by trx here
 
-  v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(v8g->_IdKey, V8DocumentId(trx.resolver()->getCollectionName(col->_cid), docKey));
-  result->Set(v8g->_RevKey, V8RevisionId(mptr._rid));
-  result->Set(v8g->_OldRevKey, V8RevisionId(actualRevision));
-  result->Set(v8g->_KeyKey, v8::String::New(docKey));
+  if (options.silent) {
+    return scope.Close(v8::True());
+  }
+  else {
+    char const* docKey = TRI_EXTRACT_MARKER_KEY(&mptr);  // PROTECTED by trx here
 
-  return scope.Close(result);
+    TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+
+    v8::Handle<v8::Object> result = v8::Object::New();
+    result->Set(v8g->_IdKey, V8DocumentId(trx.resolver()->getCollectionName(col->_cid), docKey));
+    result->Set(v8g->_RevKey, V8RevisionId(mptr._rid));
+    result->Set(v8g->_OldRevKey, V8RevisionId(actualRevision));
+    result->Set(v8g->_KeyKey, v8::String::New(docKey));
+
+    return scope.Close(result);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2837,22 +2916,12 @@ static v8::Handle<v8::Value> RemoveVocbaseColCoordinator (TRI_vocbase_col_t cons
     TRI_V8_EXCEPTION_MESSAGE(scope, errorNum, errorMessage);
   }
 
-  if (0 != json) {
+  if (json != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   }
 
   return scope.Close(v8::True());
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief internal struct which is used for reading the different option
-///        parameters for the remove function
-////////////////////////////////////////////////////////////////////////////////
-
-struct RemoveOptions {
-  bool overwrite   = false;
-  bool waitForSync = false;
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a document
@@ -2861,7 +2930,7 @@ struct RemoveOptions {
 static v8::Handle<v8::Value> RemoveVocbaseCol (bool useCollection,
                                                v8::Arguments const& argv) {
   v8::HandleScope scope;
-  ReplaceOptions options;
+  RemoveOptions options;
   TRI_doc_update_policy_e policy = TRI_DOC_UPDATE_ERROR;
 
   // check the arguments
@@ -3867,7 +3936,17 @@ static v8::Handle<v8::Value> JS_FlushWal (v8::Arguments const& argv) {
     waitForCollector = TRI_ObjectToBoolean(argv[1]);
   }
 
-  int res = triagens::wal::LogfileManager::instance()->flush(waitForSync, waitForCollector, false);
+  int res;
+
+  if (ServerState::instance()->isCoordinator()) {
+    res = flushWalOnAllDBServers( waitForSync, waitForCollector );
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_EXCEPTION(scope, res);
+    }
+    return scope.Close(v8::True());
+  }
+
+  res = triagens::wal::LogfileManager::instance()->flush(waitForSync, waitForCollector, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
@@ -7232,8 +7311,8 @@ static v8::Handle<v8::Value> JS_UpdateVocbaseCol (v8::Arguments const& argv) {
 /// @brief saves a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> SaveVocbaseColCoordinator (TRI_vocbase_col_t* collection,
-                                                        v8::Arguments const& argv) {
+static v8::Handle<v8::Value> InsertVocbaseColCoordinator (TRI_vocbase_col_t* collection,
+                                                          v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // First get the initial data:
@@ -7242,15 +7321,29 @@ static v8::Handle<v8::Value> SaveVocbaseColCoordinator (TRI_vocbase_col_t* colle
   // TODO: someone might rename the collection while we're reading its name...
   string const collname(collection->_name);
 
-  // Now get the arguments:
-  if (argv.Length() < 1 || argv.Length() > 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "save(<data>, [<waitForSync>])");
+  // Now get the arguments
+  uint32_t const argLength = argv.Length();
+  if (argLength < 1 || argLength > 2) {
+    TRI_V8_EXCEPTION_USAGE(scope, "insert(<data>, [<waitForSync>])");
+  }
+
+  InsertOptions options;
+  if (argLength > 1 && argv[1]->IsObject()) {
+    v8::Handle<v8::Object> optionsObject = argv[1].As<v8::Object>();
+    if (optionsObject->Has(v8::String::New("waitForSync"))) {
+      options.waitForSync = TRI_ObjectToBoolean(optionsObject->Get(v8::String::New("waitForSync")));
+    }
+    if (optionsObject->Has(v8::String::New("silent"))) {
+      options.silent = TRI_ObjectToBoolean(optionsObject->Get(v8::String::New("silent")));
+    }
+  }
+  else {
+    options.waitForSync = ExtractWaitForSync(argv, 2);
   }
 
   TRI_json_t* json = TRI_ObjectToJson(argv[0]);
-  const bool waitForSync = ExtractForceSync(argv, 2);
-  if (!TRI_IsArrayJson(json)) {
-    if (0 != json) {
+  if (! TRI_IsArrayJson(json)) {
+    if (json != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
@@ -7262,7 +7355,7 @@ static v8::Handle<v8::Value> SaveVocbaseColCoordinator (TRI_vocbase_col_t* colle
   string resultBody;
 
   int error = triagens::arango::createDocumentOnCoordinator(
-            dbname, collname, waitForSync, json, headers,
+            dbname, collname, options.waitForSync, json, headers,
             responseCode, resultHeaders, resultBody);
   // Note that the json has been freed inside!
 
@@ -7273,8 +7366,8 @@ static v8::Handle<v8::Value> SaveVocbaseColCoordinator (TRI_vocbase_col_t* colle
   // 400/404
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
   if (responseCode >= triagens::rest::HttpResponse::BAD) {
-    if (!TRI_IsArrayJson(json)) {
-      if (0 != json) {
+    if (! TRI_IsArrayJson(json)) {
+      if (json != nullptr) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       }
       TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
@@ -7293,8 +7386,16 @@ static v8::Handle<v8::Value> SaveVocbaseColCoordinator (TRI_vocbase_col_t* colle
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_V8_EXCEPTION_MESSAGE(scope, errorNum, errorMessage);
   }
+
+  if (options.silent) {
+    if (json != nullptr) {
+      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    }
+    return scope.Close(v8::True());
+  }
+
   v8::Handle<v8::Value> ret = TRI_ObjectJson(json);
-  if (0 != json) {
+  if (json != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   }
   return scope.Close(ret);
@@ -7308,7 +7409,7 @@ static string GetId (v8::Handle<v8::Value> const arg) {
   if (arg->IsObject() && ! arg->IsArray()) {
     v8::Local<v8::Object> obj = arg->ToObject();
 
-    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+    TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
     if (obj->Has(v8g->_IdKey)) {
       return TRI_ObjectToString(obj->Get(v8g->_IdKey));
@@ -7322,8 +7423,8 @@ static string GetId (v8::Handle<v8::Value> const arg) {
 /// @brief saves an edge, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> SaveEdgeColCoordinator (TRI_vocbase_col_t* collection,
-                                                     v8::Arguments const& argv) {
+static v8::Handle<v8::Value> InsertEdgeColCoordinator (TRI_vocbase_col_t* collection,
+                                                       v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   // First get the initial data:
@@ -7332,9 +7433,9 @@ static v8::Handle<v8::Value> SaveEdgeColCoordinator (TRI_vocbase_col_t* collecti
   // TODO: someone might rename the collection while we're reading its name...
   string const collname(collection->_name);
 
-  // Now get the arguments:
-  if (argv.Length() < 3 || argv.Length() > 4) {
-    TRI_V8_EXCEPTION_USAGE(scope, "save(<from>, <to>, <data>, [<waitForSync>])");
+  uint32_t const argLength = argv.Length();
+  if (argLength < 3 || argLength > 4) {
+    TRI_V8_EXCEPTION_USAGE(scope, "insert(<from>, <to>, <data>, [<waitForSync>])");
   }
 
   string _from = GetId(argv[0]);
@@ -7342,12 +7443,25 @@ static v8::Handle<v8::Value> SaveEdgeColCoordinator (TRI_vocbase_col_t* collecti
 
   TRI_json_t* json = TRI_ObjectToJson(argv[2]);
 
-  const bool waitForSync = ExtractForceSync(argv, 3);
   if (! TRI_IsArrayJson(json)) {
-    if (0 != json) {
+    if (json != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
+  InsertOptions options;
+  if (argLength > 3 && argv[3]->IsObject()) {
+    v8::Handle<v8::Object> optionsObject = argv[3].As<v8::Object>();
+    if (optionsObject->Has(v8::String::New("waitForSync"))) {
+      options.waitForSync = TRI_ObjectToBoolean(optionsObject->Get(v8::String::New("waitForSync")));
+    }
+    if (optionsObject->Has(v8::String::New("silent"))) {
+      options.silent = TRI_ObjectToBoolean(optionsObject->Get(v8::String::New("silent")));
+    }
+  }
+  else {
+    options.waitForSync = ExtractWaitForSync(argv, 4);
   }
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
@@ -7355,7 +7469,7 @@ static v8::Handle<v8::Value> SaveEdgeColCoordinator (TRI_vocbase_col_t* collecti
   string resultBody;
 
   int error = triagens::arango::createEdgeOnCoordinator(
-            dbname, collname, waitForSync, json, _from.c_str(), _to.c_str(),
+            dbname, collname, options.waitForSync, json, _from.c_str(), _to.c_str(),
             responseCode, resultHeaders, resultBody);
   // Note that the json has been freed inside!
 
@@ -7432,7 +7546,7 @@ static v8::Handle<v8::Value> SaveEdgeColCoordinator (TRI_vocbase_col_t* collecti
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
+static v8::Handle<v8::Value> JS_InsertVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
@@ -7443,10 +7557,10 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
 
   if (ServerState::instance()->isCoordinator()) {
     if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_DOCUMENT) {
-      return scope.Close(SaveVocbaseColCoordinator(collection, argv));
+      return scope.Close(InsertVocbaseColCoordinator(collection, argv));
     }
     else {
-      return scope.Close(SaveEdgeColCoordinator(collection, argv));
+      return scope.Close(InsertEdgeColCoordinator(collection, argv));
     }
   }
 
@@ -7461,10 +7575,10 @@ static v8::Handle<v8::Value> JS_SaveVocbaseCol (v8::Arguments const& argv) {
   v8::Handle<v8::Value> result;
 
   if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_DOCUMENT) {
-    result = SaveVocbaseCol(&trx, collection, argv);
+    result = InsertVocbaseCol(&trx, collection, argv);
   }
   else if ((TRI_col_type_e) collection->_type == TRI_COL_TYPE_EDGE) {
-    result = SaveEdgeCol(&trx, collection, argv);
+    result = InsertEdgeCol(&trx, collection, argv);
   }
 
   return scope.Close(result);
@@ -7511,7 +7625,7 @@ static v8::Handle<v8::Value> JS_StatusVocbaseCol (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_TruncateVocbaseCol (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  bool const forceSync = ExtractForceSync(argv, 1);
+  bool const forceSync = ExtractWaitForSync(argv, 1);
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
@@ -10187,6 +10301,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "exists", JS_ExistsVocbaseCol);
   TRI_AddMethodVocbase(rt, "figures", JS_FiguresVocbaseCol);
   TRI_AddMethodVocbase(rt, "getIndexes", JS_GetIndexesVocbaseCol);
+  TRI_AddMethodVocbase(rt, "insert", JS_InsertVocbaseCol);
   TRI_AddMethodVocbase(rt, "load", JS_LoadVocbaseCol);
   TRI_AddMethodVocbase(rt, "name", JS_NameVocbaseCol);
   TRI_AddMethodVocbase(rt, "planId", JS_PlanIdVocbaseCol);
@@ -10203,7 +10318,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "version", JS_VersionVocbaseCol);
 
   TRI_AddMethodVocbase(rt, "replace", JS_ReplaceVocbaseCol);
-  TRI_AddMethodVocbase(rt, "save", JS_SaveVocbaseCol);
+  TRI_AddMethodVocbase(rt, "save", JS_InsertVocbaseCol); // note: save is now an alias for insert
   TRI_AddMethodVocbase(rt, "update", JS_UpdateVocbaseCol);
 
   v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
