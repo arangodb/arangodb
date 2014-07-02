@@ -58,7 +58,30 @@ This can occur either if a graph with this name is already stored, or if there i
 
 @startDocuBlock JSF_general_graph_create_http_examples
 
-@brief Remove a graph from the graph module. Optionally drop all collections.
+@brief Get a graph from the graph module.
+
+@RESTHEADER{GET /_api/gharial/graph-name, Get a graph}
+
+@RESTDESCRIPTION
+Gets a graph from the collection *\_graphs*.
+Returns the definition content of this graph.
+
+@RESTURLPARAMS
+
+@RESTPARAM{graph-name, string, required}
+The name of the graph.
+
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200}
+Returned if the graph could be found.
+
+@RESTRETURNCODE{404}
+Returned if no graph with this name could be found.
+
+@EXAMPLES
+
+@startDocuBlock JSF_general_graph_get_http_examples
 
 @RESTHEADER{DELETE /_api/gharial/graph-name, Drop a graph}
 

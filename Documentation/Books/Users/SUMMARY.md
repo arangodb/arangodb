@@ -117,10 +117,8 @@
   * [Firewall setup](Sharding/FirewallSetup.md)
 <!-- 19 -->
 * [Configure ArangoDB](ConfigureArango/README.md)
-  * [General options](ConfigureArango/GeneralOptions.md)
   * [Arangod options](ConfigureArango/Arangod.md)
   * [Endpoints options](ConfigureArango/Endpoint.md)
-  * [Development options](ConfigureArango/Development.md)
   * [Cluster options](ConfigureArango/Cluster.md)
   * [Logging options](ConfigureArango/Logging.md)
   * [Communication options](ConfigureArango/Communication.md)

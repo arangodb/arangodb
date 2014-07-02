@@ -37,7 +37,7 @@
     Model = require("org/arangodb/foxx").Model,
     Graph = require("org/arangodb/general-graph"),
     _ = require("underscore"),
-    errors = require("internal").errors,
+    errors = require("org/arangodb").errors,
     toId = function(c, k) {
       return c + "/" + k;
     },
@@ -142,6 +142,53 @@
       };
     }
   ).bodyParam("graph", "The required information for a graph", Model);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_get_http_examples
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialGetGraph}
+///   var graph = require("org/arangodb/general-graph");
+/// | if (graph._exists("myGraph")) {
+/// |    graph._drop("myGraph", true);
+///   }
+///   graph._create("myGraph", [{
+///     collection: "edges",
+///     from: [ "startVertices" ],
+///     to: [ "endVertices" ]
+///   }]);
+///   var url = "/_api/gharial/myGraph";
+///
+///   var response = logCurlRequest('GET', url);
+///
+///   assert(response.code === 200);
+///
+///   logJsonResponse(response);
+///
+///   graph._drop("myGraph", true);
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+  /** Get information of a graph
+   *
+   * Selects information for a given graph.
+   * Will return the edge definitions as well as the vertex collections.
+   * Or throws a 404 if the graph does not exist.
+   */
+  controller.get("/:graph", function(req, res) {
+    var name = req.params("graph");
+    var g = Graph._graph(name);
+    setGraphResponse(res, g, actions.HTTP_OK);
+  }).pathParam("graph", {
+    type: "string",
+    description: "Name of the graph."
+  }).errorResponse(
+    ArangoError, actions.HTTP_NOT_FOUND, "Graph could not be found.", function(e) {
+      return {
+        code: actions.HTTP_NOT_FOUND,
+        error: e.errorMessage
+      };
+    }
+  );
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_drop_http_examples
@@ -781,7 +828,15 @@
     var key = req.params("key");
     var id = toId(collection, key);
     var g = Graph._graph(name);
-    setResponse(res, "vertex", g[collection].remove(id));
+    var didRemove = g[collection].remove(id);
+    if (didRemove) {
+      setResponse(res, "removed", didRemove);
+    } else {
+      var err = new ArangoError();
+      err.errorNum = errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code;
+      err.errorMessage = errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.message;
+      throw err;
+    }
   })
   .pathParam("graph", {
     type: "string",
@@ -1055,7 +1110,15 @@
     var key = req.params("key");
     var id = toId(collection, key);
     var g = Graph._graph(name);
-    setResponse(res, "edge", g[collection].remove(id));
+    var didRemove = g[collection].remove(id);
+    if (didRemove) {
+      setResponse(res, "removed", didRemove);
+    } else {
+      var err = new ArangoError();
+      err.errorNum = errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code;
+      err.errorMessage = errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.message;
+      throw err;
+    }
   })
   .pathParam("graph", {
     type: "string",
