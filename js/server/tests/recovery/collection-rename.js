@@ -25,6 +25,13 @@ function runSetup () {
   c = db._create("UnitTestsRecovery5");
   c.rename("UnitTestsRecovery6");
   c.rename("UnitTestsRecovery5");
+  
+  db._drop("UnitTestsRecovery7");
+  db._drop("UnitTestsRecovery8");
+  c = db._create("UnitTestsRecovery7");
+  c.rename("UnitTestsRecovery8");
+  db._drop("UnitTestsRecovery8");
+  c = db._create("UnitTestsRecovery8");
 
   c.save({ _key: "foo" }, true);
 
@@ -67,6 +74,10 @@ function recoverySuite () {
   
       assertNull(db._collection("UnitTestsRecovery6")); 
       assertNotNull(db._collection("UnitTestsRecovery5")); 
+      
+      assertNull(db._collection("UnitTestsRecovery7")); 
+      c = db._collection("UnitTestsRecovery8");
+      assertEqual(1, c.count());
     }
         
   };
