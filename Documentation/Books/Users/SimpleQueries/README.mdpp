@@ -25,3 +25,5 @@ The initial *batchSize* value can be set using the *setBatchSize*
 method that is available for each type of simple query, or when the simple
 query is executed using its *execute* method. If no *batchSize* value
 is specified, the server will pick a reasonable default value.
+
+You can find a list of queries at [Collection Methods](../Documents/DocumentMethods.md).

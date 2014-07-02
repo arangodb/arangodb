@@ -1,19 +1,19 @@
 !CHAPTER Database Methods
 
 !SUBSECTION Collection
-<!-- arangod/V8-Server/v8-vocbase.cpp -->
+<!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock collectionDatabaseName
 
 !SUBSECTION Create
-<!-- arangod/V8-Server/v8-vocbase.cpp -->
+<!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock collectionDatabaseCreate
 
 !SUBSECTION All Collections
-<!-- arangod/V8-Server/v8-vocbase.cpp -->
+<!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock collectionDatabaseNameAll
 
 !SUBSECTION Collection Name
-<!-- arangod/V8-Server/v8-vocbase.cpp -->
+<!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock collectionDatabaseCollectionName
 
 !SUBSECTION Drop

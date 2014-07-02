@@ -1,5 +1,0 @@
-arango> v = g.addVertex("Emil", { age : 123 });
-Vertex("Emil")
-
-arango> v.getProperty("age");
-123

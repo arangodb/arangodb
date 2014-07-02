@@ -1,2 +1,0 @@
-arango> logLevel("debug");
-"debug"
