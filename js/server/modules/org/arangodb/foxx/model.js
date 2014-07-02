@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, vars: true */
+/*jslint indent: 2, nomen: true, maxlen: 120 */
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -218,8 +218,8 @@ _.extend(Model.prototype, {
 
   set: function (attributeName, value) {
     'use strict';
-    var constructorAttributes = this.constructor.attributes;
-    var attributes = attributeName;
+    var constructorAttributes = this.constructor.attributes,
+      attributes = attributeName;
 
     if (!is.object(attributeName)) {
       attributes = {};
@@ -231,12 +231,13 @@ _.extend(Model.prototype, {
         if (!constructorAttributes.hasOwnProperty(key)) {
           throw new Error("Unknown attribute: " + key);
         }
-        var value = attributes[key];
+        var value = attributes[key],
+          actualType = typeof value,
+          expectedType = constructorAttributes[key].type;
+
         if (value === undefined || value === null) {
           return;
         }
-        var actualType = typeof value;
-        var expectedType = constructorAttributes[key].type;
         if (Array.isArray(value)) {
           actualType = "array";
         }
