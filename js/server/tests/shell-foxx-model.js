@@ -1,6 +1,7 @@
 require("internal").flushModuleCache();
 
-var jsunity = require("jsunity");
+var _ = require("underscore"),
+  jsunity = require("jsunity");
 
 function ModelSpec () {
   var FoxxModel, TestModel, instance;
@@ -129,7 +130,7 @@ function ModelSpec () {
       });
 
       instance = new Model({anInteger: 1, nonExistant: 2});
-      assertEqual(Object.keys(instance.attributes).length, 1);
+      assertEqual(_.keys(instance.attributes).length, 1);
       assertEqual(instance.attributes.anInteger, 1);
       instance.set("anInteger", 2);
       assertEqual(instance.attributes.anInteger, 2);
@@ -138,7 +139,7 @@ function ModelSpec () {
         fail();
       } catch(err) {
         assertTrue(err.message.indexOf("nonExistant") !== -1);
-        assertEqual(Object.keys(instance.attributes).indexOf("nonExistant"), -1);
+        assertEqual(_.keys(instance.attributes).indexOf("nonExistant"), -1);
       }
     },
 
@@ -199,8 +200,8 @@ function ModelSpec () {
       var dbData = instance.forDB();
       var clientData = instance.forClient();
 
-      assertEqual(Object.keys(dbData).length, 2);
-      assertEqual(Object.keys(clientData).length, 1);
+      assertEqual(_.keys(dbData).length, 2);
+      assertEqual(_.keys(clientData).length, 1);
       assertEqual(dbData.a, raw.a);
       assertEqual(dbData._key, raw._key);
       assertEqual(clientData.a, raw.a);
