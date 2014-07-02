@@ -4,7 +4,7 @@
 (function () {
     "use strict";
 
-    describe("The ClusterDownView", function () {
+    describe("The Show Shards View", function () {
 
         var view, getListDummy;
 

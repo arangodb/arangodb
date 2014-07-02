@@ -8,7 +8,7 @@ function runSetup () {
   internal.debugClearFailAt();
   
   db._drop("UnitTestsRecovery");
-  var c = db._create("UnitTestsRecovery");
+  db._create("UnitTestsRecovery");
 
   db._executeTransaction({
     collections: {

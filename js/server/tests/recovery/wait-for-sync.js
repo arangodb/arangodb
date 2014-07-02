@@ -8,7 +8,7 @@ function runSetup () {
   internal.debugClearFailAt();
   
   db._drop("UnitTestsRecovery");
-  var c = db._create("UnitTestsRecovery"), i;
+  var c = db._create("UnitTestsRecovery");
     
   c.save({ _key: "crashme", thefoxx: "is quick and jumped over the lazy dog" }, true); // wait for sync
 

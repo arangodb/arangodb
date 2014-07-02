@@ -49,7 +49,7 @@ function recoverySuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testDropIndexes : function () {
-      var i, j, c, idx;
+      var i, c, idx;
 
       for (i = 0; i < 4; ++i) {
         c = db._collection("UnitTestsRecovery" + i);
