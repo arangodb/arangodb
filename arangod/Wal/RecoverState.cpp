@@ -96,7 +96,7 @@ static int WaitForDeletion (TRI_server_t* server,
   std::string result = GetDatabaseDirectory(server, databaseId);
  
   int iterations = 0;
-  while (TRI_IsDirectory(result.c_str()) && iterations++ < 60 * 100) {
+  while (TRI_IsDirectory(result.c_str()) && iterations++ < 90 * 100) {
     usleep(10000);
   }
 
@@ -112,7 +112,7 @@ static int WaitForDeletion (TRI_vocbase_t* vocbase,
   std::string result = GetCollectionDirectory(vocbase, collectionId);
 
   int iterations = 0;
-  while (TRI_IsDirectory(result.c_str()) && iterations++ < 60 * 100) {
+  while (TRI_IsDirectory(result.c_str()) && iterations++ < 90 * 100) {
     usleep(10000);
   }
 
@@ -964,6 +964,17 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       }
 
       char const* name = reinterpret_cast<char const*>(m) + sizeof(collection_rename_marker_t);
+
+    
+      // check if other collection exist with target name
+      TRI_vocbase_col_t* other = TRI_LookupCollectionByNameVocBase(vocbase, name); 
+
+      if (other != nullptr) {
+        TRI_voc_cid_t otherCid = other->_cid;
+        state->releaseCollection(otherCid);
+        TRI_DropCollectionVocBase(vocbase, other, false);
+        WaitForDeletion(vocbase, otherCid);
+      }
 
       int res = TRI_RenameCollectionVocBase(vocbase, collection, name, true, false);
 
