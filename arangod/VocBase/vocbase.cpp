@@ -690,7 +690,8 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
 static int RenameCollection (TRI_vocbase_t* vocbase,
                              TRI_vocbase_col_t* collection,
                              char const* oldName,
-                             char const* newName) {
+                             char const* newName,
+                             bool writeMarker) {
   TRI_col_info_t info;
   void const* found;
 
@@ -798,6 +799,10 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
   TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
   TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
+
+  if (! writeMarker) {
+    return TRI_ERROR_NO_ERROR;
+  }
 
   // now log the operation
   int res = TRI_ERROR_NO_ERROR;
@@ -2164,7 +2169,8 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
 int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
                                  TRI_vocbase_col_t* collection,
                                  char const* newName,
-                                 bool doOverride) {
+                                 bool doOverride,
+                                 bool writeMarker) {
   if (! collection->_canRename) {
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
@@ -2214,7 +2220,7 @@ int TRI_RenameCollectionVocBase (TRI_vocbase_t* vocbase,
 
   TRI_ReadLockReadWriteLock(&vocbase->_inventoryLock);
 
-  int res = RenameCollection(vocbase, collection, oldName, newName);
+  int res = RenameCollection(vocbase, collection, oldName, newName, writeMarker);
 
   TRI_ReadUnlockReadWriteLock(&vocbase->_inventoryLock);
 
