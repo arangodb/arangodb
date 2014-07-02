@@ -2458,7 +2458,7 @@ static v8::Handle<v8::Value> SaveVocbaseCol (
 ///
 /// @EXAMPLES
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{HIER_FEHLT_DER_NAME}
+/// @EXAMPLE_ARANGOSH_OUTPUT{SaveEdgeCol}
 /// ~ db._create("vertex");
 ///   v1 = db.vertex.save({ name : "vertex 1" });
 ///   v2 = db.vertex.save({ name : "vertex 2" });
