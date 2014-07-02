@@ -277,13 +277,14 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief program options
+/// @startDocuBlock generalHelp
+/// `--help`
 ///
-/// @CMDOPT{\--help}
-///
-/// @CMDOPT{-h}
+/// `-h`
 ///
 /// Prints a list of the most common options available and then
-/// exits. In order to see all options use @LIT{\-\-help-all}.
+/// exits. In order to see all options use *--help-all*.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         basics::ProgramOptions _options;
@@ -345,38 +346,39 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief version of the application
+/// @startDocuBlock generalVersion
+/// `--version`
 ///
-/// @CMDOPT{\--version}
-///
-/// @CMDOPT{-v}
+/// `-v`
 ///
 /// Prints the version of the server and exits.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string _version;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief config file
+/// @startDocuBlock configurationFilename
+/// `--configuration filename`
 ///
-/// @CMDOPT{\--configuration @CA{filename}}
-///
-/// @CMDOPT{-c @CA{filename}}
+/// `-c filename`
 ///
 /// Specifies the name of the configuration file to use.
 ///
 /// If this command is not passed to the server, then by default, the server
-/// will attempt to first locate a file named `~/.arango/arangod.conf` in the
+/// will attempt to first locate a file named *~/.arango/arangod.conf* in the
 /// user's home directory.
 ///
 /// If no such file is found, the server will proceed to look for a file
-/// `arangod.conf` in the system configuration directory. The system
+/// *arangod.conf* in the system configuration directory. The system
 /// configuration directory is platform-specific, and may be changed when
-/// compiling ArangoDB yourself. It may default to `/etc/arangodb` or
-/// `/usr/local/etc/arangodb`. This file is installed when using a package
+/// compiling ArangoDB yourself. It may default to */etc/arangodb* or
+/// */usr/local/etc/arangodb*. This file is installed when using a package
 /// manager like rpm or dpkg. If you modify this file and later upgrade to a new
 /// version of ArangoDB, then the package manager normally warns you about the
 /// conflict. In order to avoid these warning for small adjustments, you can put
-/// local overrides into a file `arangod.conf.local`.
+/// local overrides into a file *arangod.conf.local*.
 ///
 /// Only command line options with a value should be set within the
 /// configuration file. Command line options which act as flags should be
@@ -423,8 +425,9 @@ namespace triagens {
 /// --configuration none 
 /// ```
 ///
-/// when starting up the server. Note that, the word @LIT{none} is
+/// When starting up the server. Note that, the word *none* is
 /// case-insensitive.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string _configFile;
@@ -443,8 +446,8 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the user id to use for the process
-///
-/// @CMDOPT{\--uid @CA{uid}}
+/// @startDocuBlock configurationUid
+/// `--uid uid`
 ///
 /// The name (identity) of the user the server will run as. If this parameter is
 /// not specified, the server will not attempt to change its UID, so that the
@@ -459,6 +462,7 @@ namespace triagens {
 /// Observe that this parameter cannot be used to bypass operating system
 /// security. In general, this parameter (and its corresponding relative gid)
 /// can lower privileges but not raise them.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string _uid;
@@ -477,8 +481,8 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the group id to use for the process
-///
-/// @CMDOPT{\--gid @CA{gid}}
+/// @startDocuBlock configurationGid
+/// `--gid gid`
 ///
 /// The name (identity) of the group the server will run as. If this parameter
 /// is not specified, then the server will not attempt to change its GID, so
@@ -489,6 +493,7 @@ namespace triagens {
 /// files).
 ///
 /// This parameter is related to the parameter uid.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string _gid;
@@ -507,117 +512,139 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log application name
+/// @startDocuBlock logApplication
+/// `--log.application name`
 ///
-/// @CMDOPT{\--log.application @CA{name}}
-///
-/// Specifies the @CA{name} of the application which should be logged if this item of
+/// Specifies the *name* of the application which should be logged if this item of
 /// information is to be logged.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         string _logApplicationName;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log host name
+/// @startDocuBlock logHostname
+/// `--log.hostname name`
 ///
-/// @CMDOPT{\--log.hostname @CA{name}}
-///
-/// Specifies the @CA{name} of the operating environment (the "hostname") which
+/// Specifies the *name* of the operating environment (the "hostname") which
 /// should be logged if this item of information is to be logged. Note that
 /// there is no default hostname.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         string _logHostName;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log facility
-///
-/// @CMDOPT{\--log.facility @CA{name}}
+/// @startDocuBlock logFacility
+/// `--log.facility name`
 ///
 /// Specifies the name of the server instance which should be logged if this
 /// item of information is to be logged.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         string _logFacility;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log level
+/// @startDocuBlock logLevel
+/// `--log.level level`
 ///
-/// @CMDOPT{\--log.level @CA{level}}
-///
-/// @CMDOPT{\--log @CA{level}}
+/// `--log level`
 ///
 /// Allows the user to choose the level of information which is logged by the
-/// server. The argument @CA{level} is specified as a string and can be one of
+/// server. The argument *level* is specified as a string and can be one of
 /// the values listed below. Note that, fatal errors, that is, errors which
 /// cause the server to terminate, are always logged irrespective of the log
-/// level assigned by the user. The variant @c log.level can be used in
-/// configuration files, the variant @c log for command line options.
+/// level assigned by the user. The variant *c* log.level can be used in
+/// configuration files, the variant *c* log for command line options.
 ///
-/// - fatal: Logs errors which cause the server to terminate.
+/// **fatal**: 
+/// Logs errors which cause the server to terminate.
 ///
 /// Fatal errors generally indicate some inconsistency with the manner in which
 /// the server has been coded. Fatal errors may also indicate a problem with the
 /// platform on which the server is running. Fatal errors always cause the
 /// server to terminate. For example,
 ///
-/// @LIT{2010-09-20T07:32:12Z [4742] FATAL a http server has already been created}
+/// ```
+/// 2010-09-20T07:32:12Z [4742] FATAL a http server has already been created
+/// ```
 ///
-/// - error: Logs errors which the server has encountered.
+/// **error**: 
+/// Logs errors which the server has encountered.
 ///
 /// These errors may not necessarily result in the termination of the
 /// server. For example,
 ///
-/// @LIT{2010-09-17T13:10:22Z [13967] ERROR strange log level 'errors'\, going to 'warning'}
+/// ```
+/// 2010-09-17T13:10:22Z [13967] ERROR strange log level 'errors'\, going to 'warning'
+/// ```
 ///
-/// - warning: Provides information on errors encountered by the server,
+/// **warning**:
+/// Provides information on errors encountered by the server,
 /// which are not necessarily detrimental to it's continued operation.
 ///
 /// For example,
 ///
-/// @LIT{2010-09-20T08:15:26Z [5533] WARNING got corrupted HTTP request 'POS?'}
+/// ```
+/// 2010-09-20T08:15:26Z [5533] WARNING got corrupted HTTP request 'POS?'
+/// ```
 ///
-/// Note that, setting the log level to warning will also result in all errors
+/// **Note**: The setting the log level to warning will also result in all errors
 /// to be logged as well.
 ///
-/// - info: Logs information about the status of the server.
+/// **info**: 
+/// Logs information about the status of the server.
 ///
 /// For example,
 ///
-/// @LIT{2010-09-20T07:40:38Z [4998] INFO SimpleVOC ready for business}
+/// ```
+/// 2010-09-20T07:40:38Z [4998] INFO SimpleVOC ready for business
+/// ```
 ///
-/// Note that, setting the log level to info will also result in all errors and
+/// **Note**: The setting the log level to info will also result in all errors and
 /// warnings to be logged as well.
 ///
-/// - debug: Logs all errors, all warnings and debug information.
+/// **debug**: 
+/// Logs all errors, all warnings and debug information.
 ///
 /// Debug log information is generally useful to find out the state of the
 /// server in the case of an error. For example,
 ///
-/// @LIT{2010-09-17T13:02:53Z [13783] DEBUG opened port 7000 for any}
+/// ```
+/// 2010-09-17T13:02:53Z [13783] DEBUG opened port 7000 for any
+/// ```
 ///
-/// Note that, setting the log level to debug will also result in all errors,
+/// **Note**: The setting the log level to debug will also result in all errors,
 /// warnings and server status information to be logged as well.
 ///
-/// - trace: As the name suggests, logs information which may be useful to trace
+/// **trace**: 
+/// As the name suggests, logs information which may be useful to trace
 /// problems encountered with using the server.
 ///
 /// For example,
 ///
-/// @LIT{2010-09-20T08:23:12Z [5687] TRACE trying to open port 8000}
+/// ```
+/// 2010-09-20T08:23:12Z [5687] TRACE trying to open port 8000
+/// ```
 ///
-/// Note that, setting the log level to trace will also result in all errors,
+/// **Note**: The setting the log level to trace will also result in all errors,
 /// warnings, status information, and debug information to be logged as well.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         string _logLevel;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log severity
-///
-/// @CMDOPT{\--log.severity @CA{severity}}
+/// @startDocuBlock logSeverity
+/// `--log.severity severity`
 ///
 /// This parameter provides a set of standard log severities which can be
-/// used. The currently accepted @CA{severities} are:
+/// used. The currently accepted *severities* are:
 ///
 /// - exception
 /// - technical
@@ -628,144 +655,160 @@ namespace triagens {
 /// - non-human (exception, technical, functional, and development)
 ///
 /// The default is all.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         string _logSeverity;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log file
-///
-/// @CMDOPT{\--log.file @CA{filename}}
+/// @startDocuBlock logFile
+/// `--log.file filename`
 ///
 /// This option allows the user to specify the name of a file to which
 /// information is logged. By default, if no log file is specified, the standard
-/// output is used. Note that if the file named by @CA{filename} does not
+/// output is used. Note that if the file named by *filename* does not
 /// exist, it will be created. If the file cannot be created (e.g. due to
 /// missing file privileges), the server will refuse to start. If the specified
 /// file already exists, output is appended to that file.
 ///
-/// Use @LIT{+} to log to standard error. Use @LIT{-} to log to standard output.
-/// Use @LIT{""} to disable logging to file.
+/// Use *+* to log to standard error. Use *-* to log to standard output.
+/// Use *""* to disable logging to file.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         string _logFile;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log file for requests
-///
-/// @CMDOPT{\--log.requests-file @CA{filename}}
+/// @startDocuBlock logRequests
+/// `--log.requests-file filename`
 ///
 /// This option allows the user to specify the name of a file to which
 /// requests are logged. By default, no log file is used and requests are
-/// not logged. Note that if the file named by @CA{filename} does not
+/// not logged. Note that if the file named by *filename* does not
 /// exist, it will be created. If the file cannot be created (e.g. due to
 /// missing file privileges), the server will refuse to start. If the specified
 /// file already exists, output is appended to that file.
 ///
-/// Use @LIT{+} to log to standard error. Use @LIT{-} to log to standard output.
-/// Use @LIT{""} to disable request logging altogether.
+/// Use *+* to log to standard error. Use *-* to log to standard output.
+/// Use *""* to disable request logging altogether.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         string _logRequestsFile;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log prefix
-///
-/// @CMDOPT{\--log.prefix @CA{prefix}}
+/// @startDocuBlock logPrefix
+/// `--log.prefix prefix`
 ///
 /// This option is used specify an prefix to logged text.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         string _logPrefix;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log level
-///
-/// @CMDOPT{\--log.syslog @CA{arg}}
+/// @startDocuBlock logSyslog
+/// `--log.syslog arg`
 ///
 /// If this option is set, then in addition to output being directed to the
 /// standard output (or to a specified file, in the case that the command line
 /// log.file option was set), log output is also sent to the system logging
-/// facility. The @CA{arg} is the system log facility to use. See syslog for
+/// facility. The *arg* is the system log facility to use. See syslog for
 /// further details.
 ///
-/// The value of @CA{arg} depends on your syslog configuration. In general it
-/// will be @LIT{user}. Fatal messages are mapped to @LIT{crit}, so if @CA{arg}
-/// is @LIT{user}, these messages will be logged as @LIT{user.crit}.  Error
-/// messages are mapped to @LIT{err}.  Warnings are mapped to @LIT{warn}.  Info
-/// messages are mapped to @LIT{notice}.  Debug messages are mapped to
-/// @LIT{info}.  Trace messages are mapped to @LIT{debug}.
+/// The value of *arg* depends on your syslog configuration. In general it
+/// will be *user*. Fatal messages are mapped to *crit*, so if *arg*
+/// is *user*, these messages will be logged as *user.crit*.  Error
+/// messages are mapped to *err*.  Warnings are mapped to *warn*.  Info
+/// messages are mapped to *notice*.  Debug messages are mapped to
+/// *info*.  Trace messages are mapped to *debug*.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         string _logSyslog;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log thread identifier
-///
-/// @CMDOPT{\--log.thread}
+/// @startDocuBlock logThread
+/// `--log.thread`
 ///
 /// Whenever log output is generated, the process ID is written as part of the
 /// log information. Setting this option appends the thread id of the calling
 /// thread to the process id. For example,
 ///
-/// @LIT{2010-09-20T13:04:01Z [19355] INFO ready for business}
+/// ```
+/// 2010-09-20T13:04:01Z [19355] INFO ready for business
+/// ```
 ///
 /// when no thread is logged and
 ///
-/// @LIT{2010-09-20T13:04:17Z [19371-18446744072487317056] ready for business}
+/// ```
+/// 2010-09-20T13:04:17Z [19371-18446744072487317056] ready for business
+/// ```
 ///
 /// when this command line option is set.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _logThreadId;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log line number
-///
-/// @CMDOPT{\--log.line-number}
+/// @startDocuBlock logLineNumber
+/// `--log.line-number}`
 ///
 /// Normally, if an human readable fatal, error, warning or info message is
 /// logged, no information about the file and line number is provided. The file
 /// and line number is only logged for debug and trace message. This option can
 /// be use to always log these pieces of information.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _logLineNumber;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log source filter
-///
-/// @CMDOPT{\--log.source-filter @CA{arg}}
+/// @startDocuBlock logSourceFilter
+/// `--log.source-filter arg`
 ///
 /// For debug and trace messages, only log those messages originated from the
-/// C source file @CA{arg}. The argument can be used multiple times.
+/// C source file *arg*. The argument can be used multiple times.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         vector<string> _logSourceFilter;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log content filter
+/// @startDocuBlock logContentFilter
+/// `--log.content-filter arg`
 ///
-/// @CMDOPT{\--log.content-filter @CA{arg}}
-///
-/// Only log message containing the specified string @CA{arg}.
+/// Only log message containing the specified string *arg*.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         string _logContentFilter;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief random number generator to use
-///
-/// @CMDOPT{\--random.generator @CA{arg}}
+/// @startDocuBlock randomGenerator
+/// `--random.generator arg`
 ///
 /// The argument is an integer (1,2,3 or 4) which sets the manner in which
 /// random numbers are generated. The default method (3) is to use the a
 /// non-blocking random (or pseudorandom) number generator supplied by the
-/// operating system. Specifying an argument of 2, uses a blocking random (or
+/// operating system. 
+///
+/// Specifying an argument of 2, uses a blocking random (or
 /// pseudorandom) number generator. Specifying an argument 1 sets a pseudorandom
 /// number generator using an implication of the Mersenne Twister MT19937
 /// algorithm. Algorithm 4 is a combination of the blocking random number
 /// generator and the Mersenne Twister.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         uint32_t _randomGenerator;
