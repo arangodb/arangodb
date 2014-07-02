@@ -53,7 +53,7 @@
 
 int TRI_closesocket (TRI_socket_t s) {
   int res = 0;
-  #ifdef _WIN32
+#ifdef _WIN32
   if (s.fileHandle != TRI_INVALID_SOCKET) {
     res = shutdown(s.fileHandle, SD_SEND);
 
@@ -67,7 +67,8 @@ int TRI_closesocket (TRI_socket_t s) {
       int len;
       do {
         len = TRI_readsocket(s, buf, sizeof(buf), 0);
-      } while (len > 0);
+      } 
+      while (len > 0);
 
     }
     res = closesocket(s.fileHandle);
@@ -100,22 +101,22 @@ int TRI_closesocket (TRI_socket_t s) {
 
 int TRI_readsocket (TRI_socket_t s, void* buffer, size_t numBytesToRead, int flags) {
   int res;
-  #ifdef _WIN32
+#ifdef _WIN32
     res = recv(s.fileHandle, (char*)(buffer), (int)(numBytesToRead), flags);
-  #else
+#else
     res = read(s.fileDescriptor, buffer, numBytesToRead);
-  #endif
+#endif
   return res;
 }
 
 
 int TRI_writesocket (TRI_socket_t s, const void* buffer, size_t numBytesToWrite, int flags) {
   int res;
-  #ifdef _WIN32
+#ifdef _WIN32
     res = send(s.fileHandle, (const char*)(buffer), (int)(numBytesToWrite), flags);
-  #else
-    res = (int)(write(s.fileDescriptor, buffer, numBytesToWrite));
-  #endif
+#else
+    res = (int) write(s.fileDescriptor, buffer, numBytesToWrite);
+#endif
   return res;
 }
 
