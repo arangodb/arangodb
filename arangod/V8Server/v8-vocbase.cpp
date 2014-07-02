@@ -6965,7 +6965,7 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
 ///m
 /// `collection.replace(document-handle, data)`
 ///
-/// As before. Instead of document a @FA{document-handle} can be passed as
+/// As before. Instead of document a *document-handle* can be passed as
 /// first argument.
 ///
 /// @EXAMPLES
@@ -8005,12 +8005,10 @@ static TRI_vocbase_col_t* GetCollectionFromArgument (TRI_vocbase_t* vocbase,
 ///
 /// Get a collection by id:
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseNameId}
-/// ~ db._create("example");
-/// ~ var myid = db.example.save({_key: "12345"});
-///   db._collection(12345);
-/// ~ db._drop("example");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// ```
+/// arangosh> db._collection(123456);
+/// [ArangoCollection 123456, "demo" (type document, status loaded)]
+/// ```
 ///
 /// Unknown collection:
 ///

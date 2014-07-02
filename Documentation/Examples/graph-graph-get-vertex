@@ -1,5 +1,0 @@
-arango> g.addVertex(1);
-Vertex(1)
-
-arango> g.getVertex(1)
-Vertex(1)
