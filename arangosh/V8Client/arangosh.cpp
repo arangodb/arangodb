@@ -1411,11 +1411,11 @@ static void RunShell (v8::Handle<v8::Context> context, bool promptError) {
   while (true) {
     // set up prompts
     string dynamicPrompt;
-    if (ClientConnection != 0) {
+    if (ClientConnection != nullptr) {
       dynamicPrompt = BuildPrompt();
     }
     else {
-      dynamicPrompt = "-";
+      dynamicPrompt = "disconnected> ";
     }
 
     string goodPrompt;
