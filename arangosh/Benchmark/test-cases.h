@@ -134,7 +134,7 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
       return HttpRequest::HTTP_REQUEST_GET;
     }
     else {
-      assert(false);
+      TRI_ASSERT(false);
       return HttpRequest::HTTP_REQUEST_GET;
     }
   }
@@ -180,7 +180,7 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
       return (const char*) 0;
     }
     else {
-      assert(false);
+      TRI_ASSERT(false);
       return 0;
     }
   }
@@ -516,7 +516,7 @@ struct DocumentCrudTest : public BenchmarkOperation {
       return HttpRequest::HTTP_REQUEST_DELETE;
     }
     else {
-      assert(false);
+      TRI_ASSERT(false);
       return HttpRequest::HTTP_REQUEST_GET;
     }
   }
@@ -562,7 +562,7 @@ struct DocumentCrudTest : public BenchmarkOperation {
       return (const char*) 0;
     }
     else {
-      assert(false);
+      TRI_ASSERT(false);
       return 0;
     }
   }
@@ -624,7 +624,7 @@ struct EdgeCrudTest : public BenchmarkOperation {
     }
     */
     else {
-      assert(false);
+      TRI_ASSERT(false);
       return HttpRequest::HTTP_REQUEST_GET;
     }
   }
@@ -670,7 +670,7 @@ struct EdgeCrudTest : public BenchmarkOperation {
       return (const char*) 0;
     }
     else {
-      assert(false);
+      TRI_ASSERT(false);
       return 0;
     }
   }
@@ -728,7 +728,7 @@ struct SkiplistTest : public BenchmarkOperation {
       return HttpRequest::HTTP_REQUEST_GET;
     }
     else {
-      assert(false);
+      TRI_ASSERT(false);
       return HttpRequest::HTTP_REQUEST_GET;
     }
   }
@@ -764,7 +764,7 @@ struct SkiplistTest : public BenchmarkOperation {
       return (const char*) 0;
     }
     else {
-      assert(false);
+      TRI_ASSERT(false);
       return 0;
     }
   }
@@ -822,7 +822,7 @@ struct HashTest : public BenchmarkOperation {
       return HttpRequest::HTTP_REQUEST_GET;
     }
     else {
-      assert(false);
+      TRI_ASSERT(false);
       return HttpRequest::HTTP_REQUEST_GET;
     }
   }
@@ -858,7 +858,7 @@ struct HashTest : public BenchmarkOperation {
       return (const char*) 0;
     }
     else {
-      assert(false);
+      TRI_ASSERT(false);
       return 0;
     }
   }

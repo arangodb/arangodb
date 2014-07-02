@@ -212,7 +212,7 @@ namespace triagens {
         static std::string rewriteLocation (void* data, const std::string& location) {
           BenchmarkThread* t = static_cast<BenchmarkThread*>(data);
 
-          assert(t != 0);
+          TRI_ASSERT(t != nullptr);
 
           if (location.substr(0, 5) == "/_db/") {
             // location already contains /_db/
