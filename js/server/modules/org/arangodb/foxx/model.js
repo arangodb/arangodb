@@ -187,7 +187,7 @@ _.extend(Model.prototype, {
   get: function (attributeName) {
     'use strict';
     var attrs = this.constructor.attributes;
-    if (attrs && Object.keys(attrs).indexOf(attributeName) === -1) {
+    if (attrs && _.keys(attrs).indexOf(attributeName) === -1) {
       throw new Error("Unknown attribute: " + attributeName);
     }
 
@@ -227,7 +227,7 @@ _.extend(Model.prototype, {
     }
 
     if (constructorAttributes) {
-      Object.keys(attributes).forEach(function (key) {
+      _.each(_.keys(attributes), function (key) {
         if (!constructorAttributes.hasOwnProperty(key)) {
           throw new Error("Unknown attribute: " + key);
         }
@@ -238,7 +238,7 @@ _.extend(Model.prototype, {
         if (value === undefined || value === null) {
           return;
         }
-        if (Array.isArray(value)) {
+        if (_.isArray(value)) {
           actualType = "array";
         }
         if (expectedType === "integer" && actualType === "number") {
