@@ -465,10 +465,10 @@ static TRI_vocbase_col_t* AddCollection (TRI_vocbase_t* vocbase,
   // create the init object
   TRI_vocbase_col_t init;
 
-  init._vocbase = vocbase;
-  init._cid = cid;
-  init._planId = 0;
-  init._type = static_cast<TRI_col_type_t>(type);
+  init._vocbase     = vocbase;
+  init._cid         = cid;
+  init._planId      = 0;
+  init._type        = static_cast<TRI_col_type_t>(type);
 
   init._status      = TRI_VOC_COL_STATUS_CORRUPTED;
   init._collection  = nullptr;
@@ -1521,9 +1521,8 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
 
   // starts unloading of collections
   for (size_t i = 0;  i < collections._length;  ++i) {
-    TRI_vocbase_col_t* collection;
+    TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(vocbase->_collections._buffer[i]);
 
-    collection = (TRI_vocbase_col_t*) vocbase->_collections._buffer[i];
     TRI_UnloadCollectionVocBase(vocbase, collection, true);
   }
 
@@ -1531,8 +1530,7 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
 
   // this will signal the synchroniser and the compactor threads to do one last iteration
   vocbase->_state = (sig_atomic_t) TRI_VOCBASE_STATE_SHUTDOWN_COMPACTOR;
-
-
+  
   TRI_LockCondition(&vocbase->_compactorCondition);
   TRI_SignalCondition(&vocbase->_compactorCondition);
   TRI_UnlockCondition(&vocbase->_compactorCondition);
