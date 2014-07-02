@@ -935,6 +935,45 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
     
     
     case TRI_WAL_MARKER_RENAME_COLLECTION: {
+      collection_rename_marker_t const* m = reinterpret_cast<collection_rename_marker_t const*>(marker);
+      TRI_voc_cid_t collectionId = m->_collectionId;
+      TRI_voc_tick_t databaseId  = m->_databaseId;
+      
+      if (state->isDropped(databaseId)) {
+        return true;
+      }
+
+      TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
+
+      if (vocbase == nullptr) {
+        // if the underlying database is gone, we can go on
+        LOG_TRACE("cannot open database %llu", (unsigned long long) databaseId);
+        return true;
+      }
+
+      TRI_vocbase_col_t* collection = state->releaseCollection(collectionId);
+
+      if (collection == nullptr) {
+        collection = TRI_LookupCollectionByIdVocBase(vocbase, collectionId);
+      }
+
+      if (collection == nullptr) {
+        // if the underlying collection is gone, we can go on
+        LOG_TRACE("cannot open collection %llu", (unsigned long long) collectionId);
+        return true;
+      }
+
+      char const* name = reinterpret_cast<char const*>(m) + sizeof(collection_rename_marker_t);
+
+      int res = TRI_RenameCollectionVocBase(vocbase, collection, name, true, false);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        LOG_WARNING("cannot rename collection collection %llu in database %llu: %s", 
+                    (unsigned long long) collectionId, 
+                    (unsigned long long) databaseId,
+                    TRI_errno_string(res));
+        return state->canContinue();
+      }
       break;
     }
     
@@ -1002,6 +1041,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       }
       
       int res = TRI_UpdateCollectionInfo(vocbase, document, &parameters);
+
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_WARNING("cannot change collection properties for collection %llu in database %llu: %s", 
                     (unsigned long long) collectionId, 
