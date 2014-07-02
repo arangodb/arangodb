@@ -529,8 +529,10 @@ ArangoCollection.prototype.last = function (count) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionFirstExample}
 /// ~ db._create("users");
-/// ~ db.users.save("Foo");
-///   db.users.firstExample("name", 1237);
+/// ~ db.users.save({ name: "Gerhard" });
+/// ~ db.users.save({ name: "Helmut" });
+/// ~ db.users.save({ name: "Angela" });
+///   db.users.firstExample("name", "Angela");
 /// ~ db._drop("users");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
