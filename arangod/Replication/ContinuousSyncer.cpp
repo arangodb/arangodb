@@ -543,6 +543,7 @@ int ContinuousSyncer::renameCollection (TRI_json_t const* json) {
   return TRI_RenameCollectionVocBase(_vocbase,
                                      col,
                                      name.c_str(),
+                                     true,
                                      true);
 }
 
