@@ -385,16 +385,23 @@ namespace triagens {
 /// Whitespace in the configuration file is ignored. Each option is specified on
 /// a separate line in the form
 ///
-/// @verbinclude conf1
+/// ```js
+/// key = value 
+/// ```
 ///
 /// Alternatively, a header section can be specified and options pertaining to
 /// that section can be specified in a shorter form
 ///
-/// @verbinclude conf2
+/// ```js
+/// [log] 
+/// level = trace
+/// ```
 ///
 /// rather than specifying
 ///
-/// @verbinclude conf3
+/// ```js
+/// log.level = trace 
+/// ```
 ///
 /// Comments can be placed in the configuration file, only if the line begins
 /// with one or more hash symbols (#).
@@ -406,11 +413,15 @@ namespace triagens {
 /// configuration files without necessarily deleting the file (or files), then
 /// add the command line option
 ///
-/// @verbinclude conf4
+/// ```js
+/// -c none 
+/// ```
 ///
 /// or
 ///
-/// @verbinclude conf5
+/// ```js
+/// --configuration none 
+/// ```
 ///
 /// when starting up the server. Note that, the word @LIT{none} is
 /// case-insensitive.
