@@ -272,21 +272,27 @@
       });
 
       it("should handle resize", function () {
+        var width = 255;
         r.dashboardView = {
           resize : function () {
-
+            return undefined;
           }
         };
         r.graphManagementView = {
           handleResize : function () {
-
+            return undefined;
           }
         };
+        spyOn(window, "$").andReturn({
+          width: function() {
+            return width;
+          }
+        });
         spyOn(r.dashboardView , "resize");
         spyOn(r.graphManagementView , "handleResize");
         r.handleResize();
         expect(r.dashboardView.resize).toHaveBeenCalled();
-        expect(r.graphManagementView.handleResize).toHaveBeenCalled();
+        expect(r.graphManagementView.handleResize).toHaveBeenCalledWith(width);
       });
     });
 
