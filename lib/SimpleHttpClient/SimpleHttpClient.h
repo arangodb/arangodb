@@ -180,7 +180,7 @@ namespace triagens {
 /// @brief returns true if the request is in progress
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool isWorking () const {
+      inline bool isWorking () const {
         return _state < FINISHED;
       }
 
