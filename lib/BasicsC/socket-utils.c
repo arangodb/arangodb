@@ -93,7 +93,7 @@ int TRI_closesocket (TRI_socket_t s) {
     if (s.fileDescriptor != TRI_INVALID_SOCKET) {
       res = close(s.fileDescriptor);
     }
-  #endif
+#endif
   return res;
 }
 

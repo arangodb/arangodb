@@ -109,7 +109,7 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
   // ..........................................................................
   LOG_TRACE("attempting to convert socket handle to socket descriptor");
 
-  if (!TRI_isvalidsocket(_listenSocket)) {
+  if (! TRI_isvalidsocket(_listenSocket)) {
     LOG_ERROR("In ListenTask::setup could not convert socket handle to socket descriptor -- invalid socket handle");
     return false;
   }
@@ -178,7 +178,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     TRI_socket_t connectionSocket;
     connectionSocket = TRI_accept(_listenSocket, (sockaddr*) &addr, &len);
 
-    if (!TRI_isvalidsocket(connectionSocket)) {
+    if (! TRI_isvalidsocket(connectionSocket)) {
       ++acceptFailures;
 
       if (acceptFailures < MAX_ACCEPT_ERRORS) {
@@ -200,7 +200,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
 
     int res = TRI_getsockname(connectionSocket, (sockaddr*) &addr_out, &len_out);
 
-    if (res != 0) {
+    if (res != TRI_ERROR_NO_ERROR) {
       TRI_CLOSE_SOCKET(connectionSocket);
 
       LOG_WARNING("getsockname failed with %d (%s)", errno, strerror(errno));
