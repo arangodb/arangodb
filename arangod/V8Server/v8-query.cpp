@@ -2566,7 +2566,9 @@ static v8::Handle<v8::Value> FulltextQuery (V8ReadTransaction& trx,
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell-simple-fulltext
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionFulltext}
+///   db.emails.FULLTEXT("emails/1632537", "word");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 

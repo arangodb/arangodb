@@ -1,8 +1,0 @@
-arango> v = g.addVertex("v");
-Vertex("v")
-
-arango> e = g.addEdge(v, v, 1, "self");
-Edge(1)
-
-arango> e.getId();
-1
