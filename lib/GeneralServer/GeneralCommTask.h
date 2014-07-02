@@ -87,16 +87,16 @@ namespace triagens {
             _requestPending(false),
             _closeRequested(false),
             _readRequestBody(false),
-            _request(0),
+            _request(nullptr),
             _maximalHeaderSize(0),
             _maximalBodySize(0) {
+
           LOG_TRACE("connection established, client %d, server ip %s, server port %d, client ip %s, client port %d",
                     (int) TRI_get_fd_or_handle_of_socket(socket),
                     _connectionInfo.serverAddress.c_str(),
                     (int) _connectionInfo.serverPort,
                     _connectionInfo.clientAddress.c_str(),
                     (int) _connectionInfo.clientPort);
-
 
           pair<size_t, size_t> p = server->getHandlerFactory()->sizeRestrictions();
 
@@ -131,7 +131,7 @@ namespace triagens {
 #endif
 
           // free request
-          if (_request != 0) {
+          if (_request != nullptr) {
             delete _request;
           }
         }
@@ -226,7 +226,7 @@ namespace triagens {
           bool res = fillReadBuffer(closed);
 
           if (res) {
-            if (_request == 0 || _readRequestBody) {
+            if (_request == nullptr || _readRequestBody) {
               res = processRead();
             }
           }

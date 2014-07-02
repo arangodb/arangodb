@@ -146,7 +146,7 @@ ArangoClient::ArangoClient ()
     _serverOptions(false),
     _disableAuthentication(false),
     _endpointString(),
-    _endpointServer(0),
+    _endpointServer(nullptr),
     _databaseName("_system"),
     _username("root"),
     _password(""),
@@ -157,14 +157,14 @@ ArangoClient::ArangoClient ()
 
   char* p = TRI_GetTempPath();
 
-  if (p != NULL) {
+  if (p != nullptr) {
     _tempPath = string(p);
     TRI_Free(TRI_CORE_MEM_ZONE, p);
   }
 }
 
 ArangoClient::~ArangoClient () {
-  if (_endpointServer != 0) {
+  if (_endpointServer != nullptr) {
     delete _endpointServer;
   }
 }
