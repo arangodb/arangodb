@@ -113,7 +113,7 @@ bool ClientConnection::checkSocket () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ClientConnection::connectSocket () {
-  TRI_ASSERT(_endpoint != 0);
+  TRI_ASSERT(_endpoint != nullptr);
 
   if (_endpoint->isConnected()) {
     _endpoint->disconnect();
