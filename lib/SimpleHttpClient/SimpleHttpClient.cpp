@@ -113,6 +113,8 @@ namespace triagens {
 
       TRI_ASSERT(_state == IN_CONNECT || _state == IN_WRITE);
 
+      size_t const maxConnects = _connection->connectRetries();      
+      size_t connects = 0;
 
       double endTime = now() + _requestTimeout;
       double remainingTime = _requestTimeout;
@@ -120,6 +122,15 @@ namespace triagens {
       while (isWorking() && remainingTime > 0.0) {
         switch (_state) {
           case (IN_CONNECT): {
+            if (++connects > maxConnects) {
+              // too many connects
+              SimpleHttpResult* result = getResult();
+
+              _result = nullptr;
+              return result;
+            }
+
+
             handleConnect();
             break;
           }
@@ -191,7 +202,7 @@ namespace triagens {
         remainingTime = endTime - now();
       }
 
-      if (isWorking() && _errorMessage == "" ) {
+      if (isWorking() && _errorMessage.empty()) {
         setErrorMessage("Request timeout reached");
       }
 
@@ -248,29 +259,33 @@ namespace triagens {
       _pathToBasicAuth.push_back(make_pair(prefix, value));
     }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the result
+////////////////////////////////////////////////////////////////////////////////
+
     SimpleHttpResult* SimpleHttpClient::getResult () {
       switch (_state) {
-        case (IN_CONNECT):
-          _result->setResultType(SimpleHttpResult::COULD_NOT_CONNECT);
-          break;
-
-        case (IN_WRITE):
+        case IN_WRITE:
           _result->setResultType(SimpleHttpResult::WRITE_ERROR);
           break;
 
-        case (IN_READ_HEADER):
-        case (IN_READ_BODY):
-        case (IN_READ_CHUNKED_HEADER):
-        case (IN_READ_CHUNKED_BODY):
+        case IN_READ_HEADER:
+        case IN_READ_BODY:
+        case IN_READ_CHUNKED_HEADER:
+        case IN_READ_CHUNKED_BODY:
           _result->setResultType(SimpleHttpResult::READ_ERROR);
           break;
 
-        case (FINISHED):
+        case FINISHED:
           _result->setResultType(SimpleHttpResult::COMPLETE);
           break;
 
-        default :
+        case IN_CONNECT:
+        default: {
           _result->setResultType(SimpleHttpResult::COULD_NOT_CONNECT);
+          setErrorMessage("Could not connect");
+          break;
+        }
       }
 
       return _result;

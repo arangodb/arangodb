@@ -230,20 +230,20 @@ namespace triagens {
           LOG_DEBUG("trying to establish secure connection");
 
           // convert in a SSL BIO structure
-          BIO * sbio = BIO_new_socket((int) TRI_get_fd_or_handle_of_socket(socket), BIO_NOCLOSE);
+          BIO* sbio = BIO_new_socket((int) TRI_get_fd_or_handle_of_socket(socket), BIO_NOCLOSE);
 
-          if (sbio == 0) {
+          if (sbio == nullptr) {
             LOG_WARNING("cannot build new SSL BIO: %s", triagens::basics::lastSSLError().c_str());
             TRI_CLOSE_SOCKET(socket);
             return;
           }
 
           // build a new connection
-          SSL * ssl = SSL_new(ctx);
+          SSL* ssl = SSL_new(ctx);
 
           info.sslContext = ssl;
 
-          if (ssl == 0) {
+          if (ssl == nullptr) {
             BIO_free_all(sbio);
             LOG_WARNING("cannot build new SSL connection: %s", triagens::basics::lastSSLError().c_str());
             TRI_CLOSE_SOCKET(socket);
@@ -290,7 +290,7 @@ namespace triagens {
 /// @brief verification callback
 ////////////////////////////////////////////////////////////////////////////////
 
-        int (*verificationCallback)(int, X509_STORE_CTX *);
+        int (*verificationCallback)(int, X509_STORE_CTX*);
     };
   }
 }
