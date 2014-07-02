@@ -6985,7 +6985,8 @@ static v8::Handle<v8::Value> JS_RenameVocbaseCol (v8::Arguments const& argv) {
   int res = TRI_RenameCollectionVocBase(collection->_vocbase,
                                         collection,
                                         name.c_str(),
-                                        doOverride);
+                                        doOverride, 
+                                        true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_MESSAGE(scope, res, "cannot rename collection");
