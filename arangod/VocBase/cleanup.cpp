@@ -138,7 +138,6 @@ static void CleanupDocumentCollection (TRI_vocbase_col_t* collection,
           }
 
           if (! isDeleted) {
-std::cout << "CANNOT UNLOAD2, NOT COLLECTED " << document->_info._name << "\n";
             // collection is not fully collected and still undeleted - postpone the unload
             return;
           }
