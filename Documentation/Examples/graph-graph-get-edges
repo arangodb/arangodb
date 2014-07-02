@@ -1,8 +1,0 @@
-arango> f = g.getEdges();
-[edge iterator]
-
-arango> f.hasNext();
-true
-
-arango> e = f.next();
-Edge("4636053")
