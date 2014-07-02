@@ -178,12 +178,13 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief list of agency endpoints
-///
-/// @CMDOPT{\--cluster.agency-endpoint @CA{endpoint}}
+/// @startDocuBlock clusterAgencyEndpoint
+/// `--cluster.agency-endpoint endpoint`
 ///
 /// An agency endpoint the server can connect to. The option can be specified
 /// multiple times so the server can use a cluster of agency servers. Endpoints
 /// have the following pattern:
+///
 /// - tcp://ipv4-address:port - TCP/IP endpoint, using IPv4
 /// - tcp://[ipv6-address]:port - TCP/IP endpoint, using IPv6
 /// - ssl://ipv4-address:port - TCP/IP endpoint, using IPv4, SSL encryption
@@ -195,56 +196,59 @@ namespace triagens {
 ///
 /// @EXAMPLES
 ///
-/// @code
+/// ```
 /// --cluster.agency-endpoint tcp://192.168.1.1:4001 --cluster.agency-endpoint tcp://192.168.1.2:4002
-/// @endcode
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
          std::vector<std::string> _agencyEndpoints;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global agency prefix
-///
-/// @CMDOPT{\--cluster.agency-prefix @CA{prefix}}
+/// @startDocuBlock clusterAgencyPrefix
+/// `--cluster.agency-prefix prefix`
 ///
 /// The global key prefix used in all requests to the agency. The specified
 /// prefix will become part of each agency key. Specifying the key prefix
 /// allows managing multiple ArangoDB clusters with the same agency
 /// server(s).
 ///
-/// @CA{prefix} must consist of the letters `a-z`, `A-Z` and the digits `0-9`
+/// *prefix* must consist of the letters *a-z*, *A-Z* and the digits *0-9*
 /// only. Specifying a prefix is mandatory.
 ///
 /// @EXAMPLES
 ///
-/// @code
+/// ```
 /// --cluster.prefix mycluster
-/// @endcode
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
          std::string _agencyPrefix;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this server's id
+/// @startDocuBlock clusterMyId
+/// `--cluster.my-id id
 ///
-/// @CMDOPT{\--cluster.my-id @CA{id}}
-///
-/// The local server's id in the cluster. Specifying @CA{id} is mandatory on
+/// The local server's id in the cluster. Specifying *id* is mandatory on
 /// startup. Each server of the cluster must have a unique id.
 ///
 /// Specifying the id is very important because the server id is used for
 /// determining the server's role and tasks in the cluster.
 ///
-/// @CA{id} must be a string consisting of the letters `a-z`, `A-Z` or the
-/// digits `0-9` only.
+/// *id* must be a string consisting of the letters *a-z*, *A-Z* or the
+/// digits *0-9* only.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
          std::string _myId;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this server's address / endpoint
-///
-/// @CMDOPT{\--cluster.my-address @CA{endpoint}}
+/// @startDocuBlock clusterMyAddress
+/// `--cluster.my-address endpoint`
 ///
 /// The server's endpoint for cluster-internal communication. If specified, it
 /// must have the following pattern:
@@ -253,23 +257,24 @@ namespace triagens {
 /// - ssl://ipv4-address:port - TCP/IP endpoint, using IPv4, SSL encryption
 /// - ssl://[ipv6-address]:port - TCP/IP endpoint, using IPv6, SSL encryption
 ///
-/// If no @CA{endpoint} is specified, the server will look up its internal
+/// If no *endpoint* is specified, the server will look up its internal
 /// endpoint address in the agency. If no endpoint can be found in the agency
 /// for the server's id, ArangoDB will refuse to start.
 ///
 /// @EXAMPLES
 ///
-/// @code
+/// ```
 /// --cluster.my-address tcp://192.168.1.1:8530
-/// @endcode
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
          std::string _myAddress;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief username used for cluster-internal communication
-///
-/// @CMDOPT{\--cluster.username @CA{username}}
+/// @startDocuBlock clusterUsername
+/// `--cluster.username username`
 ///
 /// The username used for authorization of cluster-internal requests.
 /// This username will be used to authenticate all requests and responses in
@@ -277,20 +282,21 @@ namespace triagens {
 /// and individual database servers.
 ///
 /// This option is used for cluster-internal requests only. Regular requests to
-/// coordinators are authenticated normally using the data in the `_users`
+/// coordinators are authenticated normally using the data in the *_users*
 /// collection.
 ///
 /// If coordinators and database servers are run with authentication turned off,
-/// (e.g. by setting the `--server.disable-authentication` option to `true`),
+/// (e.g. by setting the *--server.disable-authentication* option to *true*),
 /// the cluster-internal communication will also be unauthenticated.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
          std::string _username;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief password used for cluster-internal communication
-///
-/// @CMDOPT{\--cluster.password @CA{password}}
+/// @startDocuBlock clusterPassword
+/// `--cluster.password password`
 ///
 /// The password used for authorization of cluster-internal requests.
 /// This password will be used to authenticate all requests and responses in
@@ -302,8 +308,9 @@ namespace triagens {
 /// collection.
 ///
 /// If coordinators and database servers are run with authentication turned off,
-/// (e.g. by setting the `--server.disable-authentication` option to `true`),
+/// (e.g. by setting the *--server.disable-authentication* option to *true*),
 /// the cluster-internal communication will also be unauthenticated.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
          std::string _password;
