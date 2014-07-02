@@ -37,7 +37,7 @@
     Model = require("org/arangodb/foxx").Model,
     Graph = require("org/arangodb/general-graph"),
     _ = require("underscore"),
-    errors = require("internal").errors,
+    errors = require("org/arangodb").errors,
     toId = function(c, k) {
       return c + "/" + k;
     },
@@ -828,7 +828,15 @@
     var key = req.params("key");
     var id = toId(collection, key);
     var g = Graph._graph(name);
-    setResponse(res, "vertex", g[collection].remove(id));
+    var didRemove = g[collection].remove(id);
+    if (didRemove) {
+      setResponse(res, "removed", didRemove);
+    } else {
+      var err = new ArangoError();
+      err.errorNum = errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code;
+      err.errorMessage = errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.message;
+      throw err;
+    }
   })
   .pathParam("graph", {
     type: "string",
@@ -1102,7 +1110,15 @@
     var key = req.params("key");
     var id = toId(collection, key);
     var g = Graph._graph(name);
-    setResponse(res, "edge", g[collection].remove(id));
+    var didRemove = g[collection].remove(id);
+    if (didRemove) {
+      setResponse(res, "removed", didRemove);
+    } else {
+      var err = new ArangoError();
+      err.errorNum = errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code;
+      err.errorMessage = errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.message;
+      throw err;
+    }
   })
   .pathParam("graph", {
     type: "string",
