@@ -234,31 +234,32 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not only requests to internal URLs need authentication
-///
-/// @CMDOPT{\--server.authenticate-system-only @CA{boolean}}
+/// @startDocuBlock serverAuthenticateSystemOnly
+/// `--server.authenticate-system-only boolean`
 ///
 /// Controls whether incoming requests need authentication only if they are
-/// directed to the ArangoDB's internal APIs and features, located at `/_api/`,
-/// `/_admin/` etc.
+/// directed to the ArangoDB's internal APIs and features, located at */_api/*,
+/// */_admin/* etc.
 ///
-/// IF the flag is set to @LIT{true}, then HTTP authentication is only
-/// required for requests going to URLs starting with `/_`, but not for other
+/// IF the flag is set to *true*, then HTTP authentication is only
+/// required for requests going to URLs starting with */_*, but not for other
 /// URLs. The flag can thus be used to expose a user-made API without HTTP
 /// authentication to the outside world, but to prevent the outside world from
 /// using the ArangoDB API and the admin interface without authentication.
 /// Note that checking the URL is performed after any database name prefix
 /// has been removed. That means when the actual URL called is
-/// `/_db/_system/myapp/myaction`, the URL `/myapp/myaction` will be used for
-/// `authenticate-system-only` check.
+/// */_db/_system/myapp/myaction*, the URL */myapp/myaction* will be used for
+/// *authenticate-system-only* check.
 ///
-/// The default is @LIT{false}.
+/// The default is *false*.
 ///
 /// Note that authentication still needs to be enabled for the server regularly
 /// in order for HTTP authentication to be forced for the ArangoDB API and the
 /// web interface.  Setting only this flag is not enough.
 ///
 /// You can control ArangoDB's general authentication feature with the
-/// `--server.disable-authentication` flag.
+/// *--server.disable-authentication* flag.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _authenticateSystemOnly;
@@ -280,56 +281,59 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disable authentication for requests via UNIX domain sockets
+/// @startDocuBlock serverAuthenticationDisable
+/// `--server.disable-authentication-unix-sockets value`
 ///
-/// @CMDOPT{\--server.disable-authentication-unix-sockets @CA{value}}
-///
-/// Setting @CA{value} to true will turn off authentication on the server side
+/// Setting *value* to true will turn off authentication on the server side
 /// for requests coming in via UNIX domain sockets. With this flag enabled,
 /// clients located on the same host as the ArangoDB server can use UNIX domain
 /// sockets to connect to the server without authentication.
 /// Requests coming in by other means (e.g. TCP/IP) are not affected by this
 /// option.
 ///
-/// The default value is @LIT{false}.
+/// The default value is *false*.
 ///
-/// Note: this option is only available on platforms that support UNIX domain
+/// **Note**: this option is only available on platforms that support UNIX domain
 /// sockets.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _disableAuthenticationUnixSockets;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of dispatcher threads for non-database worker
+/// @startDocuBlock serverThreads
+/// `--server.threads number`
 ///
-/// @CMDOPT{\--server.threads @CA{number}}
-///
-/// Specifies the @CA{number} of threads that are spawned to handle action
+/// Specifies the *number* of threads that are spawned to handle action
 /// requests using Rest, JavaScript, or Ruby.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         int _dispatcherThreads;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum size of the dispatcher queue for asynchronous requests
+/// @startDocuBlock serverAuthenticationDisable
+/// `--scheduler.maximal-queue-size size`
 ///
-/// @CMDOPT{\--scheduler.maximal-queue-size @CA{size}}
-///
-/// Specifies the maximum @CA{size} of the dispatcher queue for asynchronous
-/// task execution. If the queue already contains @CA{size} tasks, new tasks
+/// Specifies the maximum *size* of the dispatcher queue for asynchronous
+/// task execution. If the queue already contains *size* tasks, new tasks
 /// will be rejected until other tasks are popped from the queue. Setting this
 /// value may help preventing from running out of memory if the queue is filled
 /// up faster than the server can process requests.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         int _dispatcherQueueSize;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the database
-///
-/// @CMDOPT{\--database.directory @CA{directory}}
+/// @startDocuBlock DatabaseDirectory
+/// `--database.directory directory`
 ///
 /// The directory containing the collections and datafiles. Defaults
-/// to @LIT{/var/lib/arango}. When specifying the database directory, please
+/// to */var/lib/arango*. When specifying the database directory, please
 /// make sure the directory is actually writable by the arangod process.
 ///
 /// You should further not use a database directory which is provided by a
@@ -337,78 +341,102 @@ namespace triagens {
 /// might cause inconsistencies when there are multiple parallel readers or
 /// writers or they lack features required by arangod (e.g. flock()).
 ///
-/// @CMDOPT{@CA{directory}}
+/// `directory`
 ///
 /// When using the command line version, you can simply supply the database
 /// directory as argument.
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude option-database-directory
+/// ```
+/// > ./arangod --server.endpoint tcp://127.0.0.1:8529 --database.directory /tmp/vocbase
+/// ```
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         string _databasePath;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock databaseMaximalJournalSize
-///
-/// @CMDOPT{\--database.maximal-journal-size @CA{size}}
+/// 
+/// `--database.maximal-journal-size size`
 ///
 /// Maximal size of journal in bytes. Can be overwritten when creating a new
 /// collection. Note that this also limits the maximal size of a single
 /// document.
 ///
-/// The default is @LIT{32MB}.
+/// The default is *32MB*.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_voc_size_t _defaultMaximalSize;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default wait for sync behavior
-///
-/// @CMDOPT{\--database.wait-for-sync @CA{boolean}}
+/// @startDocuBlock databaseWaitForSync
+/// `--database.wait-for-sync boolean`
 ///
 /// Default wait-for-sync value. Can be overwritten when creating a new
 /// collection.
 ///
-/// The default is @LIT{false}.
+/// The default is *false*.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _defaultWaitForSync;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief force syncing of collection properties
-///
-/// @CMDOPT{\--database.force-sync-properties @CA{boolean}}
+/// @startDocuBlock databaseForceSync
+/// `--database.force-sync-properties boolean`
 ///
 /// Force syncing of collection properties to disk after creating a collection
 /// or updating its properties.
 ///
 /// If turned off, syncing will still happen for collection that have a
-/// waitForSync value of @LIT{true}. If turned on, syncing of properties will
+/// waitForSync value of *true*. If turned on, syncing of properties will
 /// always happen, regardless of the value of waitForSync.
 ///
-/// The default is @LIT{true}.
+/// The default is *true*.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _forceSyncProperties;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disable the replication applier on server startup
+/// @startDocuBlock serverDisableReplicationApplier
+/// `--server.disable-replication-applier flag`
 ///
-/// @CMDOPT{\--server.disable-replication-applier @CA{flag}}
-///
-/// If @LIT{true} the server will start with the replication applier turned off,
-/// even if the replication applier is configured with the `autoStart` option.
-/// Using the command-line option will not change the value of the `autoStart`
+/// If *true* the server will start with the replication applier turned off,
+/// even if the replication applier is configured with the *autoStart* option.
+/// Using the command-line option will not change the value of the *autoStart*
 /// option in the applier configuration, but will suppress auto-starting the
 /// replication applier just once.
 ///
 /// If the option is not used, ArangoDB will read the applier configuration from
-/// the file `REPLICATION-APPLIER-CONFIG` on startup, and use the value of the
-/// `autoStart` attribute from this file.
+/// the file *REPLICATION-APPLIER-CONFIG* on startup, and use the value of the
+/// *autoStart* attribute from this file.
 ///
-/// The default is @LIT{false}.
+/// The default is *false*.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock serverDisableReplicationLogger
+/// `--server.disable-replication-logger flag`
+///
+/// If *true* the server will start with the replication logger turned off, even 
+/// if the replication logger is configured with the autoStart option. Using this 
+/// option will not change the value of the autoStart option in the logger 
+///configuration, but will suppress auto-starting the replication logger just once.
+///
+/// If the option is not used, ArangoDB will read the logger configuration from 
+/// the file REPLICATION-LOGGER-CONFIG on startup, and use the value of the 
+/// autoStart attribute from this file.
+///
+/// The default is *false*.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _disableReplicationApplier;
@@ -455,8 +483,8 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief server default language for sorting strings
-///
-/// @CMDOPT{\-\-default-language @CA{default-language}}
+/// @startDocuBlock DefaultLanguage
+/// `--default-language default-language`
 ///
 /// The default language ist used for sorting and comparing strings.
 /// The language value is a two-letter language code (ISO-639) or it is
@@ -464,21 +492,23 @@ namespace triagens {
 /// (ISO-3166). Valid languages are "de", "en", "en_US" or "en_UK".
 ///
 /// The default default-language is set to be the system locale on that platform.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         string _defaultLanguage;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief development mode
-///
-/// @CMDOPT{\--development-mode}
+/// @startDocuBlock developmentMode
+/// `--development-mode`
 ///
 /// Specifying this option will start the server in development mode. The
 /// development mode forces reloading of all actions and Foxx applications on
 /// every HTTP request. This is very resource-intensive and slow, but makes
 /// developing server-side actions and Foxx applications much easier.
 ///
-/// Never use this option in production.
+/// **WARNING**: Never use this option in production.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _developmentMode; /* variable is only used for documentation generation */
