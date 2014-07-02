@@ -1,2 +1,0 @@
-arango> v = g.addVertex("hugo");
-Vertex("hugo")

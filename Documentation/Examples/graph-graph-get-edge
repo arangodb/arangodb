@@ -1,2 +1,0 @@
-arango> e = g.getEdge("1");
-Edge(1)

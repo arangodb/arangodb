@@ -200,14 +200,27 @@ ArangoCollection.prototype.toString = function () {
 /// Use *toArray* to get all documents at once:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionAll}
-///   db.five.all();
+/// ~ db._create("five");
+/// ~ db.five.save({ name : "one" });
+/// ~ db.five.save({ name : "two" });
+/// ~ db.five.save({ name : "three" });
+/// ~ db.five.save({ name : "four" });
+/// ~ db.five.save({ name : "five" });
+///   db.five.all().toArray();
+/// ~ db._drop("five");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// Use *next* to loop over all documents:
+/// Use *limit* to restrict the documents:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionAllNext}
-///   var a = db.five.all().toArray();
-///   while (a.hasNext()) print(a.next());
+/// ~ db._create("five");
+/// ~ db.five.save({ name : "one" });
+/// ~ db.five.save({ name : "two" });
+/// ~ db.five.save({ name : "three" });
+/// ~ db.five.save({ name : "four" });
+/// ~ db.five.save({ name : "five" });
+///   db.five.all().limit(2).toArray();
+/// ~ db._drop("five");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -268,10 +281,13 @@ ArangoCollection.prototype.all = function () {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionByExample}
 /// ~ db._create("users");
+/// ~ db.users.save({ name: "Gerhard" });
+/// ~ db.users.save({ name: "Helmut" });
+/// ~ db.users.save({ name: "Angela" });
 ///   db.users.all().toArray();
-///   db.users.byExample({ "id" : 323 }).toArray();
-///   db.users.byExample({ "name" : "Peter" }).toArray();
-///   db.users.byExample({ "name" : "Peter", "id" : 535 }).toArray();
+///   db.users.byExample({ "_id" : "users/20" }).toArray();
+///   db.users.byExample({ "name" : "Gerhard" }).toArray();
+///   db.users.byExample({ "name" : "Helmut", "_id" : "users/15" }).toArray();
 /// ~ db._drop("users");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -279,7 +295,10 @@ ArangoCollection.prototype.all = function () {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionByExampleNext}
 /// ~ db._create("users");
-///   var a = db.users.byExample( {"name" : "Peter" } );
+/// ~ db.users.save({ name: "Gerhard" });
+/// ~ db.users.save({ name: "Helmut" });
+/// ~ db.users.save({ name: "Angela" });
+///   var a = db.users.byExample( {"name" : "Angela" } );
 ///   while (a.hasNext()) print(a.next());
 /// ~ db._drop("users");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -516,9 +535,13 @@ ArangoCollection.prototype.byConditionBitarray = function (index, condition) {
 /// Use *toArray* to get all documents at once:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionRange}
-/// ~ db._create("example");
-///   l = db.example.range("age", 10, 13).toArray();
-/// ~ db._drop("example")
+/// ~ db._create("old");
+/// ~ db.old.ensureSkiplist("age");
+/// ~ db.old.save({ age: 15 });
+/// ~ db.old.save({ age: 25 });
+/// ~ db.old.save({ age: 35 });
+///   db.old.range("age", 10, 30).toArray();
+/// ~ db._drop("old")
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -771,9 +794,23 @@ ArangoCollection.prototype.within = function (lat, lon, radius) {
 ///
 /// To find all documents which contain the terms *text* and *word*:
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionFulltext}
-///   db.emails.fulltext("text", "word").toArray();
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// ```
+/// arango> db.emails.fulltext("text", "word").toArray();
+/// [ 
+///   { 
+///     "_id" : "emails/1721603", 
+///     "_key" : "1721603", 
+///     "_rev" : "1721603", 
+///     "text" : "this document contains a word" 
+///   },  
+///   {
+///     "_id" : "emails/1783231",
+///     "_key" : "1783231", 
+///     "_rev" : "1783231", 
+///     "text" : "this document also contains a word" 
+///   } 
+/// ]
+/// ``` 
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -800,12 +837,12 @@ ArangoCollection.prototype.fulltext = function (attribute, query, iid) {
 ///
 /// @EXAMPLES
 ///
-/// @code
+/// ```
 /// arango> db.example.getIndexes().map(function(x) { return x.id; });
 /// ["93013/0"]
 /// arango> db.example.index("93013/0");
 /// { "id" : "93013/0", "type" : "primary", "fields" : ["_id"] }
-/// @endcode
+/// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 

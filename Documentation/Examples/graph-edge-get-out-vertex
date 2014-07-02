@@ -1,8 +1,0 @@
-arango> v = g.addVertex(1);
-Vertex(1)
-
-arango> e = g.addEdge(v, v, 2, "self");
-Edge(2)
-
-arango> e.getOutVertex();
-Vertex(1)
