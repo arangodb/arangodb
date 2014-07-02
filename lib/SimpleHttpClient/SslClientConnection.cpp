@@ -257,18 +257,20 @@ bool SslClientConnection::writeClientConnection (void* buffer, size_t length, si
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SslClientConnection::readClientConnection (StringBuffer& stringBuffer) {
-  if (_ssl == 0 || ! _isConnected) {
+  if (_ssl == nullptr || ! _isConnected) {
     return false;
   }
 
   do {
+
+again:
     // reserve some memory for reading
     if (stringBuffer.reserve(READBUFFER_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
       // out of memory
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
       return false;
     }
 
-again:
     int lenRead = SSL_read(_ssl, stringBuffer.end(), READBUFFER_SIZE - 1);
 
     switch (SSL_get_error(_ssl, lenRead)) {

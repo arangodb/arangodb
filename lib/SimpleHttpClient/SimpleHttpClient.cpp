@@ -478,8 +478,13 @@ namespace triagens {
         }
         else {
           // body is not compressed
-          _result->getBody().appendText(_readBuffer.c_str(),
-                                        _result->getContentLength());
+          size_t len = _result->getContentLength();
+          if (len > _readBuffer.length()) {
+            // prevent reading across the string-buffer end
+            len = _readBuffer.length();
+          }
+
+          _result->getBody().appendText(_readBuffer.c_str(), len);
         }
 
         _readBuffer.move_front(_result->getContentLength());
