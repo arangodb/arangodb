@@ -56,7 +56,11 @@ function changeOperationModePositiveCaseTestSuite () {
         collections: { }, 
         action: function () {
           var db = require('internal').db; 
-          db._changeMode('Normal');
+          try {
+            db._changeMode('Normal');
+          }
+          catch (err) {
+          }
         } 
       });
     },
@@ -76,7 +80,13 @@ function changeOperationModePositiveCaseTestSuite () {
         collections: { }, 
         action: function () {
           var db = require('internal').db; 
-          var result = db._changeMode('NoCreate');
+          var result;
+          try {
+            result = db._changeMode('NoCreate');
+          }
+          catch (err) {
+            result = false;
+          }
           return result;
         } 
       });
