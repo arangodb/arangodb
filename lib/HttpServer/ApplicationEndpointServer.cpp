@@ -91,7 +91,7 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
     _authenticationRealm(authenticationRealm),
     _setContext(setContext),
     _contextData(contextData),
-    _handlerFactory(0),
+    _handlerFactory(nullptr),
     _servers(),
     _basePath(),
     _endpointList(),
@@ -108,7 +108,7 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
     _sslCache(false),
     _sslOptions((long) (SSL_OP_TLS_ROLLBACK_BUG | SSL_OP_CIPHER_SERVER_PREFERENCE)),
     _sslCipherList(""),
-    _sslContext(0),
+    _sslContext(nullptr),
     _rctx() {
 
   _defaultApiCompatibility = Version::getNumericServerVersion();
@@ -129,7 +129,7 @@ ApplicationEndpointServer::~ApplicationEndpointServer () {
   for_each(_servers.begin(), _servers.end(), triagens::basics::DeleteObjectAny());
   _servers.clear();
 
-  if (_handlerFactory != 0) {
+  if (_handlerFactory != nullptr) {
     delete _handlerFactory;
   }
 }
@@ -143,8 +143,8 @@ ApplicationEndpointServer::~ApplicationEndpointServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationEndpointServer::buildServers () {
-  TRI_ASSERT(_handlerFactory != 0);
-  TRI_ASSERT(_applicationScheduler->scheduler() != 0);
+  TRI_ASSERT(_handlerFactory != nullptr);
+  TRI_ASSERT(_applicationScheduler->scheduler() != nullptr);
 
   EndpointServer* server;
 
@@ -161,7 +161,7 @@ bool ApplicationEndpointServer::buildServers () {
   // ssl endpoints
   if (_endpointList.has(Endpoint::ENCRYPTION_SSL)) {
     // check the ssl context
-    if (_sslContext == 0) {
+    if (_sslContext == nullptr) {
       LOG_INFO("please use the --server.keyfile option");
       LOG_FATAL_AND_EXIT("no ssl context is known, cannot create https server");
     }
@@ -233,7 +233,7 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
     LOG_FATAL_AND_EXIT("invalid value for --server.backlog-size. maximum allowed value is %d", (int) SOMAXCONN);
   }
 
-  if (_httpPort != "") {
+  if (! _httpPort.empty()) {
     // issue #175: add hidden option --server.http-port for downwards-compatibility
     string httpEndpoint("tcp://" + _httpPort);
     _endpoints.push_back(httpEndpoint);
@@ -312,7 +312,7 @@ bool ApplicationEndpointServer::addEndpoint (std::string const& newEndpoint,
         return false;
       }
 
-      if (endpoint == 0) {
+      if (endpoint == nullptr) {
         if (save) {
           saveEndpoints();
         }
@@ -423,8 +423,8 @@ bool ApplicationEndpointServer::loadEndpoints () {
 
   const size_t n = json->_value._objects._length;
   for (size_t i = 0; i < n; i += 2) {
-    TRI_json_t const* e = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
-    TRI_json_t const* v = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i + 1);
+    TRI_json_t const* e = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
+    TRI_json_t const* v = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i + 1));
 
     if (! TRI_IsStringJson(e) || ! TRI_IsListJson(v)) {
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
@@ -475,7 +475,7 @@ bool ApplicationEndpointServer::saveEndpoints () {
 
   TRI_json_t* json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
-  if (json == 0) {
+  if (json == nullptr) {
     return false;
   }
 
@@ -484,7 +484,7 @@ bool ApplicationEndpointServer::saveEndpoints () {
   for (it = endpoints.begin(); it != endpoints.end(); ++it) {
     TRI_json_t* list = TRI_CreateListJson(TRI_CORE_MEM_ZONE);
 
-    if (list == 0) {
+    if (list == nullptr) {
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
       return false;
     }
@@ -559,7 +559,7 @@ bool ApplicationEndpointServer::prepare2 () {
   // scheduler might be created after prepare(), so we need to use prepare2()!!
   Scheduler* scheduler = _applicationScheduler->scheduler();
 
-  if (scheduler == 0) {
+  if (scheduler == nullptr) {
     LOG_FATAL_AND_EXIT("no scheduler is known, cannot create server");
 
     return false;
@@ -656,7 +656,7 @@ bool ApplicationEndpointServer::createSslContext () {
   // create context
   _sslContext = HttpsServer::sslContext(HttpsServer::protocol_e(_sslProtocol), _httpsKeyfile);
 
-  if (_sslContext == 0) {
+  if (_sslContext == nullptr) {
     LOG_ERROR("failed to create SSL context, cannot create HTTPS server");
     return false;
   }

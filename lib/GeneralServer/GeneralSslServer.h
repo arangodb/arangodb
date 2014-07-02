@@ -67,10 +67,10 @@ namespace triagens {
 
         enum protocol_e {
           SSL_UNKNOWN = 0,
-          SSL_V2  = 1,
-          SSL_V23 = 2,
-          SSL_V3  = 3,
-          TLS_V1  = 4,
+          SSL_V2      = 1,
+          SSL_V23     = 2,
+          SSL_V3      = 3,
+          TLS_V1      = 4,
 
           SSL_LAST
         };
@@ -91,9 +91,10 @@ namespace triagens {
 #define SSL_CONST const
 #endif
 
-        static SSL_CTX* sslContext (protocol_e protocol, string const& keyfile) {
+        static SSL_CTX* sslContext (protocol_e protocol, 
+                                    std::string const& keyfile) {
           // create our context
-          SSL_METHOD SSL_CONST* meth = 0;
+          SSL_METHOD SSL_CONST* meth = nullptr;
 
           switch (protocol) {
 #ifndef OPENSSL_NO_SSL2
@@ -115,20 +116,20 @@ namespace triagens {
 
             default:
               LOG_ERROR("unknown SSL protocol method");
-              return 0;
+              return nullptr;
           }
 
           SSL_CTX* sslctx = SSL_CTX_new(meth);
-
+            
           // load our keys and certificates
           if (! SSL_CTX_use_certificate_chain_file(sslctx, keyfile.c_str())) {
             LOG_ERROR("cannot read certificate from '%s': %s", keyfile.c_str(), triagens::basics::lastSSLError().c_str());
-            return 0;
+            return nullptr;
           }
 
           if (! SSL_CTX_use_PrivateKey_file(sslctx, keyfile.c_str(), SSL_FILETYPE_PEM)) {
             LOG_ERROR("cannot read key from '%s': %s", keyfile.c_str(), triagens::basics::lastSSLError().c_str());
-            return 0;
+            return nullptr;
           }
 
 #if (OPENSSL_VERSION_NUMBER < 0x00905100L)
@@ -142,7 +143,7 @@ namespace triagens {
 /// @brief get the name of an SSL protocol version
 ////////////////////////////////////////////////////////////////////////////////
 
-        static const string protocolName (const protocol_e protocol) {
+        static const std::string protocolName (const protocol_e protocol) {
           switch (protocol) {
             case SSL_V2:
               return "SSLv2";
@@ -235,6 +236,7 @@ namespace triagens {
           if (sbio == nullptr) {
             LOG_WARNING("cannot build new SSL BIO: %s", triagens::basics::lastSSLError().c_str());
             TRI_CLOSE_SOCKET(socket);
+            TRI_invalidatesocket(&socket);
             return;
           }
 
@@ -247,6 +249,7 @@ namespace triagens {
             BIO_free_all(sbio);
             LOG_WARNING("cannot build new SSL connection: %s", triagens::basics::lastSSLError().c_str());
             TRI_CLOSE_SOCKET(socket);
+            TRI_invalidatesocket(&socket);
             return;
           }
 
