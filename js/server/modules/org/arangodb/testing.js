@@ -108,8 +108,8 @@ var optionsDefaults = { "cluster": false,
 
 function findTopDir () {
   var topDir = fs.normalize(fs.makeAbsolute("."));
-  if (!fs.exists("3rdParty") && !fs.exists("arangod") && 
-      !fs.exists("arangosh") && !fs.exists("UnitTests")) {
+  if (! fs.exists("3rdParty") && ! fs.exists("arangod") && 
+      ! fs.exists("arangosh") && ! fs.exists("UnitTests")) {
     throw "Must be in ArangoDB topdir to execute unit tests.";
   }
   return topDir;
@@ -118,15 +118,12 @@ function findTopDir () {
 function makeTestingArgs () {
   var topDir = findTopDir();
   return [ "--configuration",                  "none",
-           "--server.keyfile",       fs.join(topDir,"UnitTests","server.pem"),
+           "--server.keyfile",       fs.join(topDir, "UnitTests", "server.pem"),
            "--database.maximal-journal-size",  "1048576",
            "--database.force-sync-properties", "false",
-           "--javascript.app-path",            fs.join(topDir,"js","apps"),
-           "--javascript.startup-directory",   fs.join(topDir,"js"),
-           "--ruby.action-directory",          fs.join(topDir,"mr","actions"),
-           "--ruby.modules-path", 
-             fs.join(topDir,"mr","server","modules")+":"+
-             fs.join(topDir,"mr","common","modules"),
+           "--javascript.app-path",            fs.join(topDir, "js", "apps"),
+           "--javascript.startup-directory",   fs.join(topDir, "js"),
+           "--ruby.modules-path", fs.join(topDir,"mr", "common", "modules"),
            "--server.threads",                 "4",
            "--server.disable-authentication",  "true",
            "--server.allow-use-database",      "true" ];
@@ -135,7 +132,7 @@ function makeTestingArgs () {
 function makeTestingArgsClient (options) {
   var topDir = findTopDir();
   return [ "--configuration",                  "none",
-           "--javascript.startup-directory",   fs.join(topDir,"js"),
+           "--javascript.startup-directory",   fs.join(topDir, "js"),
            "--no-colors",
            "--quiet",
            "--server.username",                options.username,
@@ -434,7 +431,8 @@ testFuncs.shell_client = function(options) {
     te = tests_shell_client[i];
     print("\nTrying",te,"...");
     if ((te.indexOf("-cluster") === -1 || options.cluster) &&
-        (te.indexOf("-noncluster") === -1 || options.cluster === false)) {
+        (te.indexOf("-noncluster") === -1 || options.cluster === false) &&
+        (te.indexOf("-disabled") === -1)) {
       var r = runInArangosh(options, instanceInfo, te);
       results[te] = r;
       if (r !== 0 && !options.force) {

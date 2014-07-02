@@ -144,8 +144,8 @@
   ).bodyParam("graph", "The required information for a graph", Model);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_general_graph_create_http_examples
-/// @EXAMPLE_ARANGOSH_RUN{HttpGharialCreate}
+/// @startDocuBlock JSF_general_graph_get_http_examples
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialGetGraph}
 ///   var graph = require("org/arangodb/general-graph");
 /// | if (graph._exists("myGraph")) {
 /// |    graph._drop("myGraph", true);
