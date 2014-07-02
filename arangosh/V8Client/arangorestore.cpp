@@ -767,7 +767,7 @@ static int ProcessInputDirectory (string& errorMsg) {
                 length = found - buffer.begin();
               }
 
-              assert(length > 0);
+              TRI_ASSERT(length > 0);
 
               Stats._totalBatches++;
 
