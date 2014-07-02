@@ -137,14 +137,20 @@ SslClientConnection::~SslClientConnection () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SslClientConnection::connectSocket () {
+  TRI_ASSERT(_endpoint != nullptr);
+
+  if (_endpoint->isConnected()) {
+    _endpoint->disconnect();
+  }
+
   _socket = _endpoint->connect(_connectTimeout, _requestTimeout);
 
-  if (!TRI_isvalidsocket(_socket) || _ctx == 0) {
+  if (! TRI_isvalidsocket(_socket) || _ctx == nullptr) {
     return false;
   }
 
   _ssl = SSL_new(_ctx);
-  if (_ssl == 0) {
+  if (_ssl == nullptr) {
     _endpoint->disconnect();
     TRI_invalidatesocket(&_socket);
     return false;
@@ -153,7 +159,7 @@ bool SslClientConnection::connectSocket () {
   if (SSL_set_fd(_ssl, (int) TRI_get_fd_or_handle_of_socket(_socket)) != 1) {
     _endpoint->disconnect();
     SSL_free(_ssl);
-    _ssl = 0;
+    _ssl = nullptr;
     TRI_invalidatesocket(&_socket);
     return false;
   }

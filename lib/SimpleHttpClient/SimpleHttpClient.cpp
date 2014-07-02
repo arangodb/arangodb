@@ -113,24 +113,12 @@ namespace triagens {
 
       TRI_ASSERT(_state == IN_CONNECT || _state == IN_WRITE);
 
-      size_t const maxConnects = _connection->connectRetries();      
-      size_t connects = 0;
-
       double endTime = now() + _requestTimeout;
       double remainingTime = _requestTimeout;
 
       while (isWorking() && remainingTime > 0.0) {
         switch (_state) {
           case (IN_CONNECT): {
-            if (++connects > maxConnects) {
-              // too many connects
-              SimpleHttpResult* result = getResult();
-
-              _result = nullptr;
-              return result;
-            }
-
-
             handleConnect();
             break;
           }
