@@ -36,6 +36,7 @@
 #include "VocBase/compactor.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/general-cursor.h"
+#include "Wal/LogfileManager.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants
@@ -69,25 +70,29 @@ static int const CLEANUP_INDEX_ITERATIONS = 5;
 
 static void CleanupDocumentCollection (TRI_vocbase_col_t* collection,
                                        TRI_document_collection_t* document) {
+  // unload operations can normally only be executed when a collection is fully garbage collected
   bool unloadChecked = false;
+  // but if we are in server shutdown, we can force unloading of collections
+  bool isInShutdown = triagens::wal::LogfileManager::instance()->isInShutdown();
 
   // loop until done
   while (true) {
-    TRI_barrier_list_t* container;
-    TRI_barrier_t* element;
-
-    container = &document->_barrierList;
-    element = nullptr;
+    TRI_barrier_list_t* container = &document->_barrierList;
+    TRI_barrier_t* element = nullptr;
 
     // check and remove all callback elements at the beginning of the list
     TRI_LockSpin(&container->_lock);
 
     // check the element on top of the barrier list
+    if (container->_begin == nullptr) {
+      // nothing to do
+      TRI_UnlockSpin(&container->_lock);
+      return;
+    }
+
     // if it is a TRI_BARRIER_ELEMENT, it means that there is still a reference held
     // to document data in a datafile. We must then not unload or remove a file
-
-    if (container->_begin == nullptr ||
-        container->_begin->_type == TRI_BARRIER_ELEMENT ||
+    if (container->_begin->_type == TRI_BARRIER_ELEMENT ||
         container->_begin->_type == TRI_BARRIER_COLLECTION_REPLICATION ||
         container->_begin->_type == TRI_BARRIER_COLLECTION_COMPACTION ||
         container->_numBarrierElements > 0) {
@@ -118,7 +123,7 @@ static void CleanupDocumentCollection (TRI_vocbase_col_t* collection,
       // check if we can really unload, this is only the case if the collection's WAL markers
       // were fully collected
 
-      if (! unloadChecked) {
+      if (! unloadChecked && ! isInShutdown) {
         // we must release the lock temporarily to check if the collection is fully collected
         TRI_UnlockSpin(&container->_lock);
 
@@ -133,6 +138,7 @@ static void CleanupDocumentCollection (TRI_vocbase_col_t* collection,
           }
 
           if (! isDeleted) {
+std::cout << "CANNOT UNLOAD2, NOT COLLECTED " << document->_info._name << "\n";
             // collection is not fully collected and still undeleted - postpone the unload
             return;
           }
@@ -242,14 +248,13 @@ void TRI_CleanupVocBase (void* data) {
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
 
   while (true) {
-    int state;
-
     // keep initial _state value as vocbase->_state might change during cleanup loop
-    state = vocbase->_state;
+    int state = vocbase->_state;
 
     ++iterations;
 
-    if (state == 2) {
+    if (state == (sig_atomic_t) TRI_VOCBASE_STATE_SHUTDOWN_COMPACTOR ||
+        state == (sig_atomic_t) TRI_VOCBASE_STATE_SHUTDOWN_CLEANUP) {
       // shadows must be cleaned before collections are handled
       // otherwise the shadows might still hold barriers on collections
       // and collections cannot be closed properly
