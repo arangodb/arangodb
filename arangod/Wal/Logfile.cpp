@@ -131,7 +131,14 @@ Logfile* Logfile::openExisting (std::string const& filename,
 ////////////////////////////////////////////////////////////////////////////////
 
 int Logfile::judge (std::string const& filename) {
-  if (basics::FileUtils::size(filename) < static_cast<off_t>(256 * sizeof(uint64_t))) {
+  off_t filesize = basics::FileUtils::size(filename);
+
+  if (filesize == 0) {
+    // empty logfile
+    return TRI_ERROR_ARANGO_DATAFILE_EMPTY;
+  }
+
+  if (filesize < static_cast<off_t>(256 * sizeof(uint64_t))) {
     // too small
     return TRI_ERROR_ARANGO_DATAFILE_UNREADABLE;
   }
