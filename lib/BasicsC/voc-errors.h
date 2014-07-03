@@ -66,8 +66,8 @@ extern "C" {
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 401: @LIT{unauthorized}
-///   Will be raised when authorisation is required but the user is not
-///   authorised.
+///   Will be raised when authorization is required but the user is not
+///   authorized.
 /// - 403: @LIT{forbidden}
 ///   Will be raised when the operation is forbidden.
 /// - 404: @LIT{not found}
@@ -103,13 +103,14 @@ extern "C" {
 /// - 1007: @LIT{datafile empty}
 ///   Internal error that will be raised when a datafile is empty.
 /// - 1008: @LIT{logfile recovery error}
-///   Will be raised when an error occurred during WAL logfile recovery.
+///   Will be raised when an error occurred during WAL log file recovery.
 /// - 1100: @LIT{corrupted datafile}
 ///   Will be raised when a corruption is detected in a datafile.
 /// - 1101: @LIT{illegal parameter file}
 ///   Will be raised if a parameter file is corrupted.
 /// - 1102: @LIT{corrupted collection}
-///   Will be raised when a collection contains one or more corrupted datafiles.
+///   Will be raised when a collection contains one or more corrupted data
+///   files.
 /// - 1103: @LIT{mmap failed}
 ///   Will be raised when the system call mmap failed.
 /// - 1104: @LIT{filesystem full}
@@ -149,7 +150,7 @@ extern "C" {
 ///   Will be raised when the collection parameter is missing.
 /// - 1205: @LIT{illegal document handle}
 ///   Will be raised when a document handle is corrupt.
-/// - 1206: @LIT{maixmal size of journal too small}
+/// - 1206: @LIT{maximal size of journal too small}
 ///   Will be raised when the maximal size of the journal is too small.
 /// - 1207: @LIT{duplicate name}
 ///   Will be raised when a name duplicate is detected.
@@ -222,7 +223,7 @@ extern "C" {
 /// - 1300: @LIT{datafile full}
 ///   Will be raised when the datafile reaches its limit.
 /// - 1301: @LIT{server database directory is empty}
-///   Will be raised when encoutering an empty server database directory.
+///   Will be raised when encountering an empty server database directory.
 /// - 1400: @LIT{no response}
 ///   Will be raised when the replication applier does not receive any or an
 ///   incomplete response from the master.
@@ -322,7 +323,7 @@ extern "C" {
 ///   Will be raised if a coordinator tries to find out which shard is
 ///   responsible for a partial document, but cannot do this because not all
 ///   sharding attributes are specified.
-/// - 1469: @LIT{must not change the value of a shardkey attribute}
+/// - 1469: @LIT{must not change the value of a shard key attribute}
 ///   Will be raised if there is an attempt to update the value of a shard
 ///   attribute.
 /// - 1470: @LIT{unsupported operation or parameter}
@@ -341,7 +342,7 @@ extern "C" {
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
 /// - 1501: @LIT{\%s}
-///   Will be raised when query is parsed and is found to be syntactially
+///   Will be raised when query is parsed and is found to be syntactically
 ///   invalid.
 /// - 1502: @LIT{query is empty}
 ///   Will be raised when an empty query is specified.
@@ -864,8 +865,8 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// unauthorized
 ///
-/// Will be raised when authorisation is required but the user is not
-/// authorised.
+/// Will be raised when authorization is required but the user is not
+/// authorized.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_HTTP_UNAUTHORIZED                                       (401)
@@ -1028,7 +1029,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// logfile recovery error
 ///
-/// Will be raised when an error occurred during WAL logfile recovery.
+/// Will be raised when an error occurred during WAL log file recovery.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_RECOVERY                                         (1008)
@@ -1058,7 +1059,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// corrupted collection
 ///
-/// Will be raised when a collection contains one or more corrupted datafiles.
+/// Will be raised when a collection contains one or more corrupted data files.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_CORRUPTED_COLLECTION                             (1102)
@@ -1222,7 +1223,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1206: ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL
 ///
-/// maixmal size of journal too small
+/// maximal size of journal too small
 ///
 /// Will be raised when the maximal size of the journal is too small.
 ////////////////////////////////////////////////////////////////////////////////
@@ -1544,7 +1545,7 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// server database directory is empty
 ///
-/// Will be raised when encoutering an empty server database directory.
+/// Will be raised when encountering an empty server database directory.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_EMPTY_DATADIR                                    (1301)
@@ -1913,7 +1914,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1469: ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES
 ///
-/// must not change the value of a shardkey attribute
+/// must not change the value of a shard key attribute
 ///
 /// Will be raised if there is an attempt to update the value of a shard
 /// attribute.
@@ -1980,7 +1981,8 @@ void TRI_InitialiseErrorMessages (void);
 ///
 /// %s
 ///
-/// Will be raised when query is parsed and is found to be syntactially invalid.
+/// Will be raised when query is parsed and is found to be syntactically
+/// invalid.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_PARSE                                             (1501)
