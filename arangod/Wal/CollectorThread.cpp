@@ -744,12 +744,12 @@ int CollectorThread::collect (Logfile* logfile) {
   }
 
   // get an aggregated list of all collection ids
-  std::vector<TRI_voc_cid_t> collectionIds;
+  std::set<TRI_voc_cid_t> collectionIds;
   for (auto it = state.structuralOperations.begin(); it != state.structuralOperations.end(); ++it) {
     auto cid = (*it).first;
 
     if (! ShouldIgnoreCollection(&state, cid)) {
-      collectionIds.push_back((*it).first);
+      collectionIds.insert((*it).first);
     }
   }
 
@@ -758,7 +758,7 @@ int CollectorThread::collect (Logfile* logfile) {
 
     if (state.structuralOperations.find(cid) == state.structuralOperations.end() &&
         ! ShouldIgnoreCollection(&state, cid)) {
-      collectionIds.push_back(cid);
+      collectionIds.insert(cid);
     }
   }
 
@@ -779,6 +779,7 @@ int CollectorThread::collect (Logfile* logfile) {
     // insert document operations - those are sorted by key, not by tick
     if (state.documentOperations.find(cid) != state.documentOperations.end()) {
       DocumentOperationsType const& ops = state.documentOperations[cid];
+
 
       for (auto it2 = ops.begin(); it2 != ops.end(); ++it2) {
         sortedOperations.push_back((*it2).second);

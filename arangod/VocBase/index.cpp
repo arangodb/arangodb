@@ -1831,7 +1831,7 @@ TRI_index_t* TRI_CreateFulltextIndex (TRI_document_collection_t* document,
 
   // look up the attribute
   shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
-  attribute = shaper->findOrCreateAttributePathByName(shaper, attributeName, true, true);
+  attribute = shaper->findOrCreateAttributePathByName(shaper, attributeName, true);
 
   if (attribute == 0) {
     return nullptr;
