@@ -415,7 +415,10 @@ bool LogfileManager::open () {
           // set all logfiles to sealed status so they can be collected
 
           // we don't care about the previous status here
-          logfile->setStatus(Logfile::StatusType::SEAL_REQUESTED);
+          logfile->forceStatus(Logfile::StatusType::SEALED);
+          if (logfile->id() > _lastSealedId) {
+            _lastSealedId = logfile->id();
+          }
         }
       }
     }
@@ -469,15 +472,7 @@ bool LogfileManager::open () {
   }
 
   TRI_ASSERT(_collectorThread != nullptr);
-/*
-  if (! _recoverState->hasRunningRemoteTransactions()) {
-    // wait for the collector to copy over everything
-    // we can only do this if there are no pending remote transactions
-    LOG_TRACE("waiting for collector to catch up");
-    waitForCollector(_lastOpenedId);
-  }
 
-*/
   // finished recovery
   _inRecovery = false;
 
@@ -1654,6 +1649,20 @@ int LogfileManager::inspectLogfiles () {
   LOG_TRACE("inspecting WAL logfiles");
 
   WRITE_LOCKER(_logfilesLock);
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  // print an inventory
+  for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
+    Logfile* logfile = (*it).second;
+
+    if (logfile != nullptr) {
+      LOG_DEBUG("logfile %llu, filename '%s', status %s", 
+                (unsigned long long) logfile->id(),
+                logfile->filename().c_str(),
+                logfile->statusText().c_str());
+    }
+  }
+#endif
 
   for (auto it = _logfiles.begin(); it != _logfiles.end(); ) {
     Logfile::IdType const id = (*it).first;
