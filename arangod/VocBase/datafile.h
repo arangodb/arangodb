@@ -182,8 +182,6 @@ typedef enum {
   TRI_WAL_MARKER_CREATE_DATABASE           = 4040,
   TRI_WAL_MARKER_DROP_DATABASE             = 4041,
 
-  TRI_TEMP_MARKER_ATTRIBUTE                = 9000, // not really written into datafiles...
-
   TRI_MARKER_MAX                            // again, this is not a real
                                             // marker, but we use it for
                                             // bounds checking
