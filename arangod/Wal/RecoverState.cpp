@@ -398,9 +398,16 @@ int RecoverState::executeSingleOperation (TRI_voc_tick_t databaseId,
 
   TRI_vocbase_col_t* collection = useCollection(vocbase, collectionId);
 
-  if (collection == nullptr) {
+  if (collection == nullptr || collection->_collection == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
+
+  TRI_voc_tick_t tickMax = collection->_collection->_tickMax;
+  if (marker->_tick <= tickMax) {
+    // already transferred this marker
+    return TRI_ERROR_NO_ERROR;
+  }
+
 
   SingleWriteTransactionType* trx = nullptr;
   EnvelopeMarker* envelope = nullptr;
@@ -468,7 +475,10 @@ bool RecoverState::InitialScanMarker (TRI_df_marker_t const* marker,
 
   // note the marker's tick
   TRI_ASSERT(marker->_tick >= state->lastTick);
-  state->lastTick = marker->_tick;
+
+  if (marker->_tick > state->lastTick) {
+    state->lastTick = marker->_tick;
+  }
 
   switch (marker->_type) {
 

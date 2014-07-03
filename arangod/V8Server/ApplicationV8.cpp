@@ -753,7 +753,7 @@ void ApplicationV8::runUpgradeCheck () {
   for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
     TRI_vocbase_t* vocbase = (TRI_vocbase_t*) _server->_databases._table[j];
 
-    if (vocbase != 0) {
+    if (vocbase != nullptr) {
       vocbase->_state = 2;
 
       int res = TRI_ERROR_NO_ERROR;
@@ -827,7 +827,6 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationV8::prepare () {
-
   // check the startup path
   if (_startupPath.empty()) {
     LOG_FATAL_AND_EXIT("no 'javascript.startup-directory' has been supplied, giving up");
@@ -902,7 +901,6 @@ bool ApplicationV8::prepare () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationV8::prepare2 () {
-
   // setup instances
   _contexts = new V8Context*[_nrInstances];
 

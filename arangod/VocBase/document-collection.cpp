@@ -3254,7 +3254,7 @@ static int PathBasedIndexFromJson (TRI_document_collection_t* document,
   TRI_DestroyVectorPointer(&attributes);
 
   if (idx == nullptr) {
-    LOG_ERROR("cannot create index %llu", (unsigned long long) iid);
+    LOG_ERROR("cannot create index %llu in collection '%s'", (unsigned long long) iid, document->_info._name);
     return TRI_errno();
   }
 

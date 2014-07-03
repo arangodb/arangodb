@@ -571,6 +571,8 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
     LOG_TRACE("wal collector processing operations for collection '%s'", document->_info._name);
 
     if (! _inRecovery) {
+      TRI_ASSERT(! cache->operations->empty());
+
       for (auto it = cache->operations->begin(); it != cache->operations->end(); ++it) {
         auto operation = (*it);
 
@@ -810,7 +812,7 @@ int CollectorThread::collect (Logfile* logfile) {
   if (! state.handledTransactions.empty()) {
     _logfileManager->unregisterFailedTransactions(state.handledTransactions);
   }
-
+  
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -854,12 +856,14 @@ int CollectorThread::transferMarkers (Logfile* logfile,
     res = executeTransferMarkers(document, cache, operations);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      // now sync the datafile
-      res = syncDatafileCollection(document);
+      if (! cache->operations->empty()) {
+        // now sync the datafile
+        res = syncDatafileCollection(document);
 
-      // note: cache is passed by reference and can be modified by queueOperations
-      // (i.e. set to nullptr!)
-      queueOperations(logfile, cache);
+        // note: cache is passed by reference and can be modified by queueOperations
+        // (i.e. set to nullptr!)
+        queueOperations(logfile, cache);
+      }
     }
   }
   catch (triagens::arango::Exception const& ex) {
@@ -891,6 +895,7 @@ int CollectorThread::executeTransferMarkers (TRI_document_collection_t* document
   int numMarkers = 0;
 
   TRI_voc_tick_t const minTransferTick = document->_tickMax;
+  TRI_ASSERT(! operations.empty());
 
   for (auto it2 = operations.begin(); it2 != operations.end(); ++it2) {
     TRI_df_marker_t const* source = (*it2);
@@ -1096,6 +1101,8 @@ int CollectorThread::queueOperations (triagens::wal::Logfile* logfile,
   TRI_IF_FAILURE("CollectorThreadQueueOperations") {
     throw std::bad_alloc();
   }
+  
+  TRI_ASSERT(! cache->operations->empty());
 
   {
     MUTEX_LOCKER(_operationsQueueLock);
