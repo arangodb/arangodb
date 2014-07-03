@@ -1438,7 +1438,7 @@ static void DatabaseManager (void* data) {
                   database->_name);
 
         // remove apps directory for database
-        if (strlen(server->_appPath) > 0) {
+        if (database->_isOwnAppsDirectory && strlen(server->_appPath) > 0) {
           path = TRI_Concatenate3File(server->_appPath, "databases", database->_name);
 
           if (path != nullptr) {
@@ -1455,7 +1455,7 @@ static void DatabaseManager (void* data) {
         }
 
         // remove dev-apps directory for database
-        if (strlen(server->_devAppPath) > 0) {
+        if (database->_isOwnAppsDirectory && strlen(server->_devAppPath) > 0) {
           path = TRI_Concatenate3File(server->_devAppPath, "databases", database->_name);
 
           if (path != nullptr) {
@@ -2323,6 +2323,7 @@ int TRI_DropCoordinatorDatabaseServer (TRI_server_t* server,
 
 int TRI_DropDatabaseServer (TRI_server_t* server,
                             char const* name,
+                            bool removeAppsDirectory,
                             bool writeMarker) {
   if (TRI_EqualString(name, TRI_VOC_SYSTEM_DATABASE)) {
     // prevent deletion of system database
@@ -2346,6 +2347,8 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
   else {
     // mark as deleted
     TRI_ASSERT(vocbase->_type == TRI_VOCBASE_TYPE_NORMAL);
+
+    vocbase->_isOwnAppsDirectory = removeAppsDirectory;
 
     if (TRI_DropVocBase(vocbase)) {
       LOG_INFO("dropping database '%s', directory '%s'",
@@ -2380,6 +2383,7 @@ int TRI_DropDatabaseServer (TRI_server_t* server,
 
 int TRI_DropByIdDatabaseServer (TRI_server_t* server,
                                 TRI_voc_tick_t id,
+                                bool removeAppsDirectory,
                                 bool writeMarker) {
   std::string name;
   
@@ -2398,7 +2402,7 @@ int TRI_DropByIdDatabaseServer (TRI_server_t* server,
     }
   }
   
-  return TRI_DropDatabaseServer(server, name.c_str(), writeMarker);
+  return TRI_DropDatabaseServer(server, name.c_str(), removeAppsDirectory, writeMarker);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

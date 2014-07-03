@@ -386,24 +386,6 @@ namespace triagens {
         bool _defaultWaitForSync;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief force syncing of collection properties
-/// @startDocuBlock databaseForceSync
-/// `--database.force-sync-properties boolean`
-///
-/// Force syncing of collection properties to disk after creating a collection
-/// or updating its properties.
-///
-/// If turned off, syncing will still happen for collection that have a
-/// waitForSync value of *true*. If turned on, syncing of properties will
-/// always happen, regardless of the value of waitForSync.
-///
-/// The default is *true*.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _forceSyncProperties;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief disable the replication applier on server startup
 /// @startDocuBlock serverDisableReplicationApplier
 /// `--server.disable-replication-applier flag`
