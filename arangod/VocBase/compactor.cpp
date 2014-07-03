@@ -99,7 +99,7 @@
 /// @brief re-try compaction of a specific collection in this interval (in s)
 ////////////////////////////////////////////////////////////////////////////////
 
-#define COMPACTOR_COLLECTION_INTERVAL (15.0)
+#define COMPACTOR_COLLECTION_INTERVAL (10.0)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compactify interval in microseconds
@@ -977,9 +977,6 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
-  TRI_vector_t vector;
-  uint64_t maxSize;
-
   // if we cannot acquire the read lock instantly, we will exit directly.
   // otherwise we'll risk a multi-thread deadlock between synchroniser,
   // compactor and data-modification threads (e.g. POST /_api/document)
@@ -999,7 +996,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
   }
 
   // get maximum size of result file
-  maxSize = (uint64_t) COMPACTOR_MAX_SIZE_FACTOR * (uint64_t) document->_info._maximalSize;
+  uint64_t maxSize = (uint64_t) COMPACTOR_MAX_SIZE_FACTOR * (uint64_t) document->_info._maximalSize;
   if (maxSize < 8 * 1024 * 1024) {
     maxSize = 8 * 1024 * 1024;
   }
@@ -1008,6 +1005,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
   }
 
   // copy datafile information
+  TRI_vector_t vector;
   TRI_InitVector(&vector, TRI_UNKNOWN_MEM_ZONE, sizeof(compaction_info_t));
   int64_t numAlive = 0;
   bool compactNext = false;
@@ -1122,6 +1120,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
 
   // handle datafiles with dead objects
   TRI_ASSERT(vector._length >= 1);
+
   CompactifyDatafiles(document, &vector);
 
   // cleanup local variables
