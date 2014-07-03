@@ -57,9 +57,17 @@ namespace {
   long* opensslLockCount;
   pthread_mutex_t* opensslLocks;
 
+  // The compiler chooses the right one from the following two,
+  // according to the type of the return value of pthread_self():
+  static inline void setter (CRYPTO_THREADID* id, void* p) {
+    CRYPTO_THREADID_set_pointer(id, p);
+  }
+  static inline void setter (CRYPTO_THREADID* id, unsigned long val) {
+    CRYPTO_THREADID_set_numeric(id, val);
+  }
 
   static void arango_threadid_func (CRYPTO_THREADID *id) {
-    CRYPTO_THREADID_set_numeric(id, pthread_self());
+    setter(id, pthread_self());
   }
 
   void opensslLockingCallback (int mode, int type, char const* /* file */, int /* line */) {
