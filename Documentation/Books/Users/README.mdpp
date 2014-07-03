@@ -7,7 +7,7 @@ The documentation introduces ArangoDB for you as an user, developer and administ
 ArangoDB is a multi-purpose open-source database with a flexible data
 model for documents, graphs and key-values. You can easily build high
 performance applications using a convenient 
-[SQL-like query language](../Aql/README.md) or [JavaScript](../Foxx/README.md) and mruby extensions.
+[SQL-like query language](../Aql/README.md) or [JavaScript](../Foxx/README.md) extensions.
 
 The database server [_arangod_](../FirstSteps/Arangod.md) stores all documents and serves them
 using a REST interface. There are [drivers](https://www.arangodb.org/drivers) for all major languages like
