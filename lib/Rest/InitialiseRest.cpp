@@ -58,12 +58,9 @@ namespace {
   pthread_mutex_t* opensslLocks;
 
 
-
-  unsigned long opensslThreadId () {
-    return (unsigned long) pthread_self();
+  static void arango_threadid_func (CRYPTO_THREADID *id) {
+    CRYPTO_THREADID_set_numeric(id, pthread_self());
   }
-
-
 
   void opensslLockingCallback (int mode, int type, char const* /* file */, int /* line */) {
     if (mode & CRYPTO_LOCK) {
@@ -76,8 +73,6 @@ namespace {
 
   }
 
-
-
   void opensslSetup () {
     opensslLockCount = (long*) OPENSSL_malloc(CRYPTO_num_locks() * sizeof(long));
     opensslLocks = (pthread_mutex_t*) OPENSSL_malloc(CRYPTO_num_locks() * sizeof(pthread_mutex_t));
@@ -87,14 +82,15 @@ namespace {
       pthread_mutex_init(&(opensslLocks[i]), 0);
     }
 
-    CRYPTO_set_id_callback(opensslThreadId);
+    CRYPTO_THREADID_set_callback(arango_threadid_func);
     CRYPTO_set_locking_callback(opensslLockingCallback);
   }
 
 
 
   void opensslCleanup () {
-    CRYPTO_set_locking_callback(0);
+    CRYPTO_set_locking_callback(nullptr);
+    CRYPTO_THREADID_set_callback(nullptr);
 
     for (long i = 0;  i < CRYPTO_num_locks();  ++i) {
       pthread_mutex_destroy(&(opensslLocks[i]));

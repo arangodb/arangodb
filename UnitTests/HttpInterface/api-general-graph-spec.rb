@@ -394,9 +394,9 @@ describe ArangoDB do
         name = "Bob"
 
         doc = replace_vertex(graph_name, user_collection, key, {"name2" => name}) 
-        doc.code.should eq(200)
+        doc.code.should eq(202)
         doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['code'].should eq(202)
         doc.parsed_response['vertex']['_rev'].should eq(doc.headers['etag'])
         doc.parsed_response['vertex']['_key'].should eq(key)
 
@@ -424,9 +424,9 @@ describe ArangoDB do
         name2 = "Bob"
 
         doc = update_vertex(graph_name, user_collection, key, {"name2" => name2}, "") 
-        doc.code.should eq(200)
+        doc.code.should eq(202)
         doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['code'].should eq(202)
         doc.parsed_response['vertex']['_rev'].should eq(doc.headers['etag'])
         doc.parsed_response['vertex']['_key'].should eq(key)
 
@@ -453,9 +453,9 @@ describe ArangoDB do
         key = doc.parsed_response['vertex']['_key']
 
         doc = delete_vertex(graph_name, user_collection, key) 
-        doc.code.should eq(200)
+        doc.code.should eq(202)
         doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['code'].should eq(202)
 
         doc = get_vertex(graph_name, user_collection, key) 
         doc.code.should eq(404)
@@ -538,9 +538,9 @@ describe ArangoDB do
         type = "divorced"
 
         doc = replace_edge(graph_name, friend_collection, key, {"type2" => type}) 
-        doc.code.should eq(200)
+        doc.code.should eq(202)
         doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['code'].should eq(202)
         doc.parsed_response['edge']['_rev'].should eq(doc.headers['etag'])
         doc.parsed_response['edge']['_key'].should eq(key)
 
@@ -572,9 +572,9 @@ describe ArangoDB do
         type2 = "divorced"
 
         doc = update_edge(graph_name, friend_collection, key, {"type2" => type2}, "") 
-        doc.code.should eq(200)
+        doc.code.should eq(202)
         doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['code'].should eq(202)
         doc.parsed_response['edge']['_rev'].should eq(doc.headers['etag'])
         doc.parsed_response['edge']['_key'].should eq(key)
 
@@ -604,9 +604,9 @@ describe ArangoDB do
         key = doc.parsed_response['edge']['_key']
 
         doc = delete_edge(graph_name, friend_collection, key) 
-        doc.code.should eq(200)
+        doc.code.should eq(202)
         doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['code'].should eq(202)
 
         doc = get_edge(graph_name, friend_collection, key) 
         doc.code.should eq(404)
