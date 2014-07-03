@@ -439,9 +439,6 @@ bool LogfileManager::open () {
     return false;
   }
 
-  // "seal" any open logfiles so the collector can copy over everything
-  setAllSealed();
-
   // remove all empty logfiles  
   _recoverState->removeEmptyLogfiles();
 
@@ -496,6 +493,13 @@ bool LogfileManager::open () {
     LOG_ERROR("could not initialise databases: %s", TRI_errno_string(res));
     return false;
   }
+  
+  // "seal" any open logfiles so the collector can copy over everything
+  setAllSealed();
+
+ 
+  // finally flush the open logfile 
+  // this->flush(true, false, true);
 
   return true;
 }
@@ -813,7 +817,7 @@ void LogfileManager::setAllSealed () {
         // set all logfiles to sealed status so they can be collected
 
         // we don't care about the previous status here
-        logfile->forceStatus(Logfile::StatusType::SEAL_REQUESTED);
+        logfile->setStatus(Logfile::StatusType::SEAL_REQUESTED);
         worked = true;
       }
     }
