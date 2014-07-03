@@ -458,7 +458,7 @@ bool LogfileManager::open () {
   _recoverState->releaseResources();
 
   // write the current state into the shutdown file
-  writeShutdownInfo(true);
+  writeShutdownInfo(false);
 
 
   res = startCollectorThread();
