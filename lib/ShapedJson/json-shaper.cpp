@@ -182,8 +182,7 @@ static bool EqualNameKeyAttributePath (TRI_associative_synced_t* array, void con
 static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
                                                     char const* name,
                                                     bool create,
-                                                    bool isLocked,
-                                                    bool isTemporary) {
+                                                    bool isLocked) {
   TRI_shape_aid_t* aids;
   TRI_shape_path_t* result;
   size_t count;
@@ -246,7 +245,7 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
 
       if (ptr != prev) {
         if (create) {
-          aids[count++] = shaper->findOrCreateAttributeByName(shaper, prev, isTemporary);
+          aids[count++] = shaper->findOrCreateAttributeByName(shaper, prev);
         }
         else {
           aids[count] = shaper->lookupAttributeByName(shaper, prev);
@@ -305,11 +304,8 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
 
 static TRI_shape_pid_t FindOrCreateAttributePathByName (TRI_shaper_t* shaper,
                                                         char const* name,
-                                                        bool isLocked,
-                                                        bool isTemporary) {
-
-  // TODO: is isTemporary always true?
-  TRI_shape_path_t const* path = FindShapePathByName(shaper, name, true, isLocked, isTemporary);
+                                                        bool isLocked) {
+  TRI_shape_path_t const* path = FindShapePathByName(shaper, name, true, isLocked);
 
   return path == nullptr ? 0 : path->_pid;
 }
@@ -322,7 +318,7 @@ static TRI_shape_pid_t LookupAttributePathByName (TRI_shaper_t* shaper,
                                                   char const* name) {
 
   // do not create an unknown attribute (therefore isTemporary will be ignored)
-  TRI_shape_path_t const* path = FindShapePathByName(shaper, name, false, true, false);
+  TRI_shape_path_t const* path = FindShapePathByName(shaper, name, false, true);
 
   return path == nullptr ? 0 : path->_pid;
 }

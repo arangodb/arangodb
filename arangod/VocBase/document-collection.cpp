@@ -109,6 +109,8 @@ void TRI_doc_mptr_copy_t::setDataPtr (void const* d) {
 TRI_document_collection_t::TRI_document_collection_t () 
   : _useSecondaryIndexes(true),
     _keyGenerator(nullptr) {
+
+  _tickMax = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1635,6 +1637,8 @@ static bool OpenIterator (TRI_df_marker_t const* marker,
                           TRI_datafile_t* datafile) {
   int res;
 
+  TRI_document_collection_t* document = static_cast<open_iterator_state_t*>(data)->_document;
+
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
       marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
     res = OpenIteratorHandleDocumentMarker(marker, datafile, (open_iterator_state_t*) data);
@@ -1688,7 +1692,6 @@ static bool OpenIterator (TRI_df_marker_t const* marker,
     }
   }
 
-  TRI_document_collection_t* document = static_cast<open_iterator_state_t*>(data)->_document;
   if (tick > document->_tickMax) {
     if (marker->_type != TRI_DF_MARKER_HEADER &&
         marker->_type != TRI_DF_MARKER_FOOTER && 
@@ -3440,8 +3443,7 @@ static int PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
                                      TRI_vector_t* pids,
                                      TRI_vector_pointer_t* names,
                                      bool sorted,
-                                     bool create,
-                                     bool isTemporary) {
+                                     bool create) {
   pid_name_t* pidnames;
 
   // .............................................................................
@@ -3461,7 +3463,7 @@ static int PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
       pidnames[j]._name = static_cast<char*>(attributes->_buffer[j]);
 
       if (create) {
-        pidnames[j]._pid = shaper->findOrCreateAttributePathByName(shaper, pidnames[j]._name, true, isTemporary);
+        pidnames[j]._pid = shaper->findOrCreateAttributePathByName(shaper, pidnames[j]._name, true);
       }
       else {
         pidnames[j]._pid = shaper->lookupAttributePathByName(shaper, pidnames[j]._name);
@@ -3502,7 +3504,7 @@ static int PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
 
       TRI_shape_pid_t pid;
       if (create) {
-        pid = shaper->findOrCreateAttributePathByName(shaper, name, true, isTemporary);
+        pid = shaper->findOrCreateAttributePathByName(shaper, name, true);
       }
       else {
         pid = shaper->lookupAttributePathByName(shaper, name);
@@ -3739,7 +3741,7 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (location != nullptr) {
-    loc = shaper->findOrCreateAttributePathByName(shaper, location, true, true);
+    loc = shaper->findOrCreateAttributePathByName(shaper, location, true);
 
     if (loc == 0) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -3748,7 +3750,7 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   }
 
   if (latitude != nullptr) {
-    lat = shaper->findOrCreateAttributePathByName(shaper, latitude, true, true);
+    lat = shaper->findOrCreateAttributePathByName(shaper, latitude, true);
 
     if (lat == 0) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -3757,7 +3759,7 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
   }
 
   if (longitude != nullptr) {
-    lon = shaper->findOrCreateAttributePathByName(shaper, longitude, true, true);
+    lon = shaper->findOrCreateAttributePathByName(shaper, longitude, true);
 
     if (lon == 0) {
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -4183,7 +4185,6 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
                                      &paths,
                                      &fields,
                                      true,
-                                     true,
                                      true);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -4292,8 +4293,7 @@ TRI_index_t* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t* d
                                  &paths,
                                  &fields,
                                  true,
-                                 false,
-                                 true);
+                                 false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return nullptr;
@@ -4378,7 +4378,6 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
                                  &paths,
                                  &fields,
                                  false,
-                                 true,
                                  true);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -4481,8 +4480,7 @@ TRI_index_t* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_
                                  &paths,
                                  &fields,
                                  false,
-                                 false,
-                                 true);
+                                 false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return nullptr;
@@ -4820,7 +4818,6 @@ static TRI_index_t* CreateBitarrayIndexDocumentCollection (TRI_document_collecti
                                  &paths,
                                  &fields,
                                  false,
-                                 true,
                                  true);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -4955,8 +4952,7 @@ TRI_index_t* TRI_LookupBitarrayIndexDocumentCollection (TRI_document_collection_
                                     &paths,
                                     &fields,
                                     false,
-                                    false,
-                                    true);
+                                    false);
 
   if (result != TRI_ERROR_NO_ERROR) {
     return nullptr;
