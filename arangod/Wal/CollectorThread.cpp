@@ -405,12 +405,16 @@ void CollectorThread::run () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool CollectorThread::collectLogfiles () {
+  TRI_IF_FAILURE("CollectorThreadCollect") {
+    return false;
+  }
+
   Logfile* logfile = _logfileManager->getCollectableLogfile();
 
   if (logfile == nullptr) {
     return false;
   }
-
+    
   _logfileManager->setCollectionRequested(logfile);
 
   int res = collect(logfile);
@@ -419,8 +423,11 @@ bool CollectorThread::collectLogfiles () {
     _logfileManager->setCollectionDone(logfile);
     return true;
   }
-
-  return false;
+  else {
+    // return the logfile to the logfile manager in case of errors
+    logfile->forceStatus(Logfile::StatusType::SEALED);
+    return false;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -563,7 +570,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
 
     return TRI_ERROR_LOCK_TIMEOUT;
   }
-
+ 
   int res;
 
   try {
@@ -855,15 +862,13 @@ int CollectorThread::transferMarkers (Logfile* logfile,
   try {
     res = executeTransferMarkers(document, cache, operations);
 
-    if (res == TRI_ERROR_NO_ERROR) {
-      if (! cache->operations->empty()) {
-        // now sync the datafile
-        res = syncDatafileCollection(document);
+    if (res == TRI_ERROR_NO_ERROR && ! cache->operations->empty()) {
+      // now sync the datafile
+      res = syncDatafileCollection(document);
 
-        // note: cache is passed by reference and can be modified by queueOperations
-        // (i.e. set to nullptr!)
-        queueOperations(logfile, cache);
-      }
+      // note: cache is passed by reference and can be modified by queueOperations
+      // (i.e. set to nullptr!)
+      queueOperations(logfile, cache);
     }
   }
   catch (triagens::arango::Exception const& ex) {
@@ -1097,11 +1102,7 @@ int CollectorThread::queueOperations (triagens::wal::Logfile* logfile,
                                       CollectorCache*& cache) {
   TRI_voc_cid_t cid = cache->collectionId;
   uint64_t maxNumPendingOperations = _logfileManager->throttleWhenPending();
-
-  TRI_IF_FAILURE("CollectorThreadQueueOperations") {
-    throw std::bad_alloc();
-  }
-  
+ 
   TRI_ASSERT(! cache->operations->empty());
 
   {
@@ -1276,7 +1277,7 @@ char* CollectorThread::nextFreeMarkerPosition (TRI_document_collection_t* docume
       TRI_CloseDatafileDocumentCollection(document, i, false);
     }
 
-    TRI_datafile_t* datafile = TRI_CreateDatafileDocumentCollection(document, tick, targetSize, false);
+    datafile = TRI_CreateDatafileDocumentCollection(document, tick, targetSize, false);
 
     if (datafile == nullptr) {
       int res = TRI_errno();

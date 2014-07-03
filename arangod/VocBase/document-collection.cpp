@@ -1689,8 +1689,12 @@ static bool OpenIterator (TRI_df_marker_t const* marker,
   }
 
   TRI_document_collection_t* document = static_cast<open_iterator_state_t*>(data)->_document;
-  if (document->_tickMax < tick) {
-    document->_tickMax = tick;
+  if (tick > document->_tickMax) {
+    if (marker->_type != TRI_DF_MARKER_HEADER &&
+        marker->_type != TRI_DF_MARKER_FOOTER && 
+        marker->_type != TRI_COL_MARKER_HEADER) { 
+      document->_tickMax = tick;
+    }
   }
 
   return (res == TRI_ERROR_NO_ERROR);

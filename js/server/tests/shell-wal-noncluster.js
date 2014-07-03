@@ -61,12 +61,12 @@ function walFailureSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test bad alloc in collector
+/// @brief test disabled collector
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCollectorBadAlloc : function () {
+    testCollectorDisabled : function () {
       internal.wal.flush(true, true);
-      internal.debugSetFailAt("CollectorThreadQueueOperations");
+      internal.debugSetFailAt("CollectorThreadCollect");
 
       var i = 0;
       for (i = 0; i < 1000; ++i) {
@@ -80,7 +80,6 @@ function walFailureSuite () {
       internal.wait(6);
       internal.debugClearFailAt();
       
-      internal.wait(6);
       testHelper.waitUnload(c);
       
       assertEqual(1000, c.count());
