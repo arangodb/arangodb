@@ -13,6 +13,13 @@ v2.2.0-beta3 (2014-07-01)
 
 * removed startup option `--database.remove-on-drop`
 
+  This option was used for debugging only.
+
+* removed startup option `--database.force-sync-properties`
+
+  This option is now superfluous as collection properties are now stored in the 
+  write-ahead log.
+
 * introduced write-ahead log
 
   All write operations in an ArangoDB server instance are automatically logged
