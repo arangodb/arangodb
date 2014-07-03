@@ -13,7 +13,7 @@ function runSetup () {
     c.save({ _key: "test" + i, value1: "test" + i, value2: i }); 
   }
 
-  internal.debugSetFailAt("CollectorThreadQueueOperations");
+  internal.debugSetFailAt("CollectorThreadProcessQueuedOperations");
   internal.wal.flush(true, false);
   internal.wait(5);
 
