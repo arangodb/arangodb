@@ -326,16 +326,26 @@ SimpleQuery.prototype.clone = function () {
 /// lead to the same result:
 /// 
 /// @EXAMPLE_ARANGOSH_OUTPUT{executeQuery}
+/// ~ db._create("users");
+/// ~ db.users.save({ name: "Gerhard" });
+/// ~ db.users.save({ name: "Helmut" });
+/// ~ db.users.save({ name: "Angela" });
 ///   result = db.users.all().toArray();
 ///   q = db.users.all(); q.execute(); result = [ ]; while (q.hasNext()) { result.push(q.next()); }
+/// ~ db._drop("users")
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// The following two alternatives both use a batchSize and return the same
 /// result:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{executeQueryBatchSize}
+/// ~ db._create("users");
+/// ~ db.users.save({ name: "Gerhard" });
+/// ~ db.users.save({ name: "Helmut" });
+/// ~ db.users.save({ name: "Angela" });
 ///   q = db.users.all(); q.setBatchSize(20); q.execute(); while (q.hasNext()) { print(q.next()); }
 ///   q = db.users.all(); q.execute(20); while (q.hasNext()) { print(q.next()); }
+/// ~ db._drop("users")
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -373,8 +383,15 @@ SimpleQuery.prototype.execute = function () {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{queryLimit}
+/// ~ db._create("five");
+/// ~ db.five.save({ name : "one" });
+/// ~ db.five.save({ name : "two" });
+/// ~ db.five.save({ name : "three" });
+/// ~ db.five.save({ name : "four" });
+/// ~ db.five.save({ name : "five" });
 ///   db.five.all().toArray();
 ///   db.five.all().limit(2).toArray();
+/// ~ db._drop("five")
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -411,8 +428,15 @@ SimpleQuery.prototype.limit = function (limit) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{querySkip}
+/// ~ db._create("five");
+/// ~ db.five.save({ name : "one" });
+/// ~ db.five.save({ name : "two" });
+/// ~ db.five.save({ name : "three" });
+/// ~ db.five.save({ name : "four" });
+/// ~ db.five.save({ name : "five" });
 ///   db.five.all().toArray();
 ///   db.five.all().skip(3).toArray();
+/// ~ db._drop("five")
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -529,13 +553,27 @@ SimpleQuery.prototype.setBatchSize = function (value) {
 /// Ignore any limit:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{cursorCount}
+/// ~ db._create("five");
+/// ~ db.five.save({ name : "one" });
+/// ~ db.five.save({ name : "two" });
+/// ~ db.five.save({ name : "three" });
+/// ~ db.five.save({ name : "four" });
+/// ~ db.five.save({ name : "five" });
 ///   db.five.all().limit(2).count();
+/// ~ db._drop("five")
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Counting any limit or skip:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{cursorCountLimit}
+/// ~ db._create("five");
+/// ~ db.five.save({ name : "one" });
+/// ~ db.five.save({ name : "two" });
+/// ~ db.five.save({ name : "three" });
+/// ~ db.five.save({ name : "four" });
+/// ~ db.five.save({ name : "five" });
 ///   db.five.all().limit(2).count(true);
+/// ~ db._drop("five")
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -563,8 +601,15 @@ SimpleQuery.prototype.count = function (applyPagination) {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{cursorHasNext}
+/// ~ db._create("five");
+/// ~ db.five.save({ name : "one" });
+/// ~ db.five.save({ name : "two" });
+/// ~ db.five.save({ name : "three" });
+/// ~ db.five.save({ name : "four" });
+/// ~ db.five.save({ name : "five" });
 ///   var a = db.five.all();
 ///   while (a.hasNext()) print(a.next());
+/// ~ db._drop("five")
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -589,7 +634,14 @@ SimpleQuery.prototype.hasNext = function () {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{cursorNext}
+/// ~ db._create("five");
+/// ~ db.five.save({ name : "one" });
+/// ~ db.five.save({ name : "two" });
+/// ~ db.five.save({ name : "three" });
+/// ~ db.five.save({ name : "four" });
+/// ~ db.five.save({ name : "five" });
 ///   db.five.all().next();
+/// ~ db._drop("five")
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
