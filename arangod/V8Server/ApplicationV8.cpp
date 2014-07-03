@@ -309,7 +309,7 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase,
   V8Context* context = _freeContexts.back();
 
   TRI_ASSERT(context != nullptr);
-  TRI_ASSERT(context->_isolate != 0);
+  TRI_ASSERT(context->_isolate != nullptr);
 
   _freeContexts.pop_back();
   _busyContexts.insert(context);
