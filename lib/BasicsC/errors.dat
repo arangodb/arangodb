@@ -1,4 +1,3 @@
-@startDocuBlock errorCodes
 ################################################################################
 ## general error messages
 ################################################################################
@@ -352,4 +351,3 @@ RESULT_ELEMENT_NOT_FOUND,10003,"element not found in structure","Will be returne
 ## foxx app update via github
 ################################################################################
 ERROR_APP_ALREADY_EXISTS,20000,"newest version of app already installed","newest version of app already installed"
-@endDocuBlock
