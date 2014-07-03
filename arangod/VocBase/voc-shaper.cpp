@@ -164,8 +164,7 @@ static TRI_shape_aid_t LookupAttributeByName (TRI_shaper_t* shaper,
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
-                                                    char const* name,
-                                                    bool isTemporary) {
+                                                    char const* name) {
   // check if the attribute exists
   TRI_shape_aid_t aid = LookupAttributeByName(shaper, name);
 
