@@ -52,31 +52,7 @@ namespace triagens {
             clientAddress(),
             endpoint(),
             endpointType(Endpoint::DOMAIN_UNKNOWN),
-            sslContext(0) {
-        }
-
-        ConnectionInfo (ConnectionInfo const& that)
-          : serverPort(that.serverPort),
-            clientPort(that.clientPort),
-            serverAddress(that.serverAddress),
-            clientAddress(that.clientAddress),
-            endpoint(that.endpoint),
-            endpointType(that.endpointType),
-            sslContext(that.sslContext) {
-        }
-
-        ConnectionInfo& operator= (ConnectionInfo const& that) {
-          if (this != &that) {
-            serverPort = that.serverPort;
-            clientPort = that.clientPort;
-            serverAddress = that.serverAddress;
-            clientAddress = that.clientAddress;
-            endpoint = that.endpoint;
-            endpointType = that.endpointType;
-            sslContext = that.sslContext;
-          }
-
-          return *this;
+            sslContext(nullptr) {
         }
 
       public:

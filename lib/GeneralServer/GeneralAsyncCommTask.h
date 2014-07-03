@@ -92,15 +92,17 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool setup (Scheduler* scheduler, EventLoop loop) {
-          bool ok;
-          ok = SocketTask::setup(scheduler, loop);
-          if (!ok) {
+          bool ok = SocketTask::setup(scheduler, loop);
+
+          if (! ok) {
             return false;
           }
+
           ok = AsyncTask::setup(scheduler, loop);
           if (! ok) {
             return false;
           }
+
           return true;
         }
 
