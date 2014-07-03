@@ -177,6 +177,8 @@ struct TRI_doc_mptr_t {
     char const* getShapedJsonPtr () const {
       TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(_dataptr);
 
+      TRI_ASSERT(marker != nullptr);
+
       if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
           marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
         auto offset = (reinterpret_cast<TRI_doc_document_key_marker_t const*>(marker))->_offsetJson;
@@ -188,9 +190,7 @@ struct TRI_doc_mptr_t {
         return static_cast<char const*>(_dataptr) + offset;
       }
 
-#ifdef TRI_ENABLE_MAINTAINER_MODE
       TRI_ASSERT(false);
-#endif
 
       return nullptr;
     }

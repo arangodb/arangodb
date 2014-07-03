@@ -75,14 +75,6 @@ static inline uint64_t MinSyncInterval () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief minimum value for --wal.open-logfiles
-////////////////////////////////////////////////////////////////////////////////
-
-static inline uint32_t MinOpenLogfiles () {
-  return 1;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief minimum value for --wal.logfile-size
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -137,7 +129,7 @@ LogfileManager::LogfileManager (TRI_server_t* server,
     _filesize(32 * 1024 * 1024),
     _reserveLogfiles(4),
     _historicLogfiles(10),
-    _maxOpenLogfiles(10),
+    _maxOpenLogfiles(0),
     _numberOfSlots(1048576),
     _syncInterval(100),
     _maxThrottleWait(15000),
@@ -298,10 +290,6 @@ bool LogfileManager::prepare () {
     LOG_FATAL_AND_EXIT("invalid value for --wal.slots. Please use a value between %lu and %lu", (unsigned long) MinSlots(), (unsigned long) MaxSlots());
   }
 
-  if (_maxOpenLogfiles < MinOpenLogfiles()) {
-    LOG_FATAL_AND_EXIT("invalid value for --wal.open-logfiles. Please use a value of at least %lu", (unsigned long) MinOpenLogfiles());
-  }
-  
   if (_throttleWhenPending > 0 && _throttleWhenPending < MinThrottleWhenPending()) {
     LOG_FATAL_AND_EXIT("invalid value for --wal.throttle-when-pending. Please use a value of at least %llu", (unsigned long long) MinThrottleWhenPending());
   }
@@ -411,7 +399,28 @@ bool LogfileManager::open () {
     _droppedDatabases   = _recoverState->droppedDatabases;
     _droppedCollections = _recoverState->droppedCollections;
   }
+
   
+  {
+    // set every open logfile to a status of sealed
+    WRITE_LOCKER(_logfilesLock);
+
+    for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
+      Logfile* logfile = (*it).second;
+
+      if (logfile != nullptr) {
+        Logfile::StatusType status = logfile->status();
+
+        if (status == Logfile::StatusType::OPEN) { 
+          // set all logfiles to sealed status so they can be collected
+
+          // we don't care about the previous status here
+          logfile->setStatus(Logfile::StatusType::SEAL_REQUESTED);
+        }
+      }
+    }
+  }
+ 
 
   // now start allocator and synchroniser
   res = startAllocatorThread();
@@ -448,6 +457,9 @@ bool LogfileManager::open () {
   // remove usage locks for databases and collections
   _recoverState->releaseResources();
 
+  // write the current state into the shutdown file
+  writeShutdownInfo(true);
+
 
   res = startCollectorThread();
 
@@ -466,18 +478,6 @@ bool LogfileManager::open () {
   }
 
 */
-  // write the current state into the shutdown file
-  writeShutdownInfo(true);
-
-  {
-    // reset the list of failed transactions
-    WRITE_LOCKER(_logfilesLock);
-    _failedTransactions.clear();
-    _droppedDatabases.clear();
-    _droppedCollections.clear();
-  }
-
-
   // finished recovery
   _inRecovery = false;
 
@@ -494,13 +494,6 @@ bool LogfileManager::open () {
     return false;
   }
   
-  // "seal" any open logfiles so the collector can copy over everything
-  setAllSealed();
-
- 
-  // finally flush the open logfile 
-  // this->flush(true, false, true);
-
   return true;
 }
 
@@ -662,6 +655,10 @@ bool LogfileManager::logfileCreationAllowed (uint32_t size) {
     return true;
   }
 
+  if (_maxOpenLogfiles == 0) {
+    return true;
+  }
+
   uint32_t numberOfLogfiles = 0;
 
   // note: this information could also be cached instead of being recalculated
@@ -796,36 +793,6 @@ SlotInfoCopy LogfileManager::allocateAndWrite (void* src,
 SlotInfoCopy LogfileManager::allocateAndWrite (Marker const& marker,
                                                bool waitForSync) {
   return allocateAndWrite(marker.mem(), marker.size(), waitForSync);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set all open logfiles to status sealed
-////////////////////////////////////////////////////////////////////////////////
-
-void LogfileManager::setAllSealed () {
-  bool worked = false;
-
-  WRITE_LOCKER(_logfilesLock);
-
-  for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
-    Logfile* logfile = (*it).second;
-
-    if (logfile != nullptr) {
-      Logfile::StatusType status = logfile->status();
-
-      if (status == Logfile::StatusType::OPEN) { 
-        // set all logfiles to sealed status so they can be collected
-
-        // we don't care about the previous status here
-        logfile->setStatus(Logfile::StatusType::SEAL_REQUESTED);
-        worked = true;
-      }
-    }
-  }
-
-  if (worked) {
-    signalSync();
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1317,6 +1284,7 @@ void LogfileManager::setCollectionRequested (Logfile* logfile) {
   }
 
   if (! _inRecovery) {
+    // to start collection
     _collectorThread->signal();
   }
 }
@@ -1336,6 +1304,7 @@ void LogfileManager::setCollectionDone (Logfile* logfile) {
   }
 
   if (! _inRecovery) {
+    // to start removal of unneeded datafiles
     _collectorThread->signal();
   }
 }
@@ -1410,7 +1379,6 @@ int LogfileManager::runRecovery () {
   }
   
   LOG_INFO("WAL recovery finished successfully");
-
   return TRI_ERROR_NO_ERROR;
 }
 
