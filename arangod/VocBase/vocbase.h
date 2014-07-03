@@ -306,6 +306,7 @@ typedef struct TRI_vocbase_s {
   TRI_read_write_lock_t      _authInfoLock;
   bool                       _authInfoLoaded;     // flag indicating whether the authentication info was loaded successfully
   bool                       _hasCompactor;
+  bool                       _isOwnAppsDirectory;
 
   std::set<TRI_voc_tid_t>*   _oldTransactions;
 

@@ -742,7 +742,7 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
 
     TRI_CopyString(info._name, newName, sizeof(info._name) - 1);
 
-    res = TRI_SaveCollectionInfo(collection->_path, &info, vocbase->_settings.forceSyncProperties);
+    res = TRI_SaveCollectionInfo(collection->_path, &info, false);
 
     TRI_FreeCollectionInfoOptions(&info);
 
@@ -1324,6 +1324,7 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_vocbase_type_e type,
   vocbase->_name               = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
   vocbase->_authInfoLoaded     = false;
   vocbase->_hasCompactor       = false;
+  vocbase->_isOwnAppsDirectory = true;
   vocbase->_replicationApplier = nullptr;
 
   vocbase->_oldTransactions    = nullptr;
@@ -2046,8 +2047,7 @@ int TRI_DropCollectionVocBase (TRI_vocbase_t* vocbase,
       info._deleted = true;
 
       // dropping a collection does not need to be synced
-      bool const doSync = false;  // vocbase->_settings.forceSyncProperties;
-      res = TRI_SaveCollectionInfo(collection->_path, &info, doSync);
+      res = TRI_SaveCollectionInfo(collection->_path, &info, false);
       TRI_FreeCollectionInfoOptions(&info);
 
       if (res != TRI_ERROR_NO_ERROR) {

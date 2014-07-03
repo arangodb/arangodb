@@ -1393,7 +1393,7 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
 
   TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
 
-  return TRI_SaveCollectionInfo(collection->_directory, &collection->_info, vocbase->_settings.forceSyncProperties);
+  return TRI_SaveCollectionInfo(collection->_directory, &collection->_info, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1411,7 +1411,7 @@ int TRI_RenameCollection (TRI_collection_t* collection,
   TRI_CopyCollectionInfo(&newInfo, &collection->_info);
   TRI_CopyString(newInfo._name, name, sizeof(newInfo._name) - 1);
 
-  res = TRI_SaveCollectionInfo(collection->_directory, &newInfo, collection->_vocbase->_settings.forceSyncProperties);
+  res = TRI_SaveCollectionInfo(collection->_directory, &newInfo, false);
 
   TRI_FreeCollectionInfoOptions(&newInfo);
 

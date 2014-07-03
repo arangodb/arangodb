@@ -209,6 +209,7 @@ int TRI_DropCoordinatorDatabaseServer (TRI_server_t*,
 
 int TRI_DropDatabaseServer (TRI_server_t*,
                             char const*,
+                            bool,
                             bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -217,6 +218,7 @@ int TRI_DropDatabaseServer (TRI_server_t*,
 
 int TRI_DropByIdDatabaseServer (TRI_server_t*,
                                 TRI_voc_tick_t,
+                                bool,
                                 bool);
 
 ////////////////////////////////////////////////////////////////////////////////
