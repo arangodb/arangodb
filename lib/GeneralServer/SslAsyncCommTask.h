@@ -39,6 +39,7 @@
 #include <openssl/err.h>
 
 #include "Basics/ssl-helper.h"
+#include "BasicsC/socket-utils.h"
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
@@ -64,18 +65,23 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         SslAsyncCommTask (S* server,
-                          TRI_socket_t socket,
-                          ConnectionInfo const& info,
+                          TRI_socket_t& socket,
+                          ConnectionInfo& info,
                           double keepAliveTimeout,
-                          BIO* bio)
+                          SSL_CTX* ctx,
+                          int verificationMode,
+                          int (*verificationCallback)(int, X509_STORE_CTX*))
         : Task("SslAsyncCommTask"),
           GeneralAsyncCommTask<S, HF, CT>(server, socket, info, keepAliveTimeout),
           accepted(false),
           readBlocked(false),
           readBlockedOnWrite(false),
           writeBlockedOnRead(false),
-          ssl((SSL*) info.sslContext),
-          bio(bio) {
+          _socket(socket),
+          _info(info),
+          _ctx(ctx),
+          _verificationMode(verificationMode),
+          _verificationCallback(verificationCallback) {
           tmpReadBuffer = new char[READ_BLOCK_SIZE];
         }
 
@@ -89,19 +95,63 @@ namespace triagens {
           static int const SHUTDOWN_ITERATIONS = 10;
           bool ok = false;
 
-          for (int i = 0;  i < SHUTDOWN_ITERATIONS;  ++i) {
-            if (SSL_shutdown(ssl) != 0) {
-              ok = true;
-              break;
+          if (nullptr != ssl) {
+            for (int i = 0;  i < SHUTDOWN_ITERATIONS;  ++i) {
+              if (SSL_shutdown(ssl) != 0) {
+                ok = true;
+                break;
+              }
             }
+            if (! ok) {
+              LOG_WARNING("cannot complete SSL shutdown");
+            }
+            SSL_free(ssl); // this will free bio as well
           }
 
-          if (! ok) {
-            LOG_WARNING("cannot complete SSL shutdown");
-          }
-
-          SSL_free(ssl); // this will free bio as well
           delete[] tmpReadBuffer;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief setup SSL stuff
+////////////////////////////////////////////////////////////////////////////////
+
+        bool setup (Scheduler* scheduler, EventLoop loop) {
+          bool ok;
+          ok = GeneralAsyncCommTask<S, HF, CT>::setup(scheduler, loop);
+          if (! ok) {
+            return false;
+          }
+
+          // convert in a SSL BIO structure
+          _bio = BIO_new_socket((int) TRI_get_fd_or_handle_of_socket(_socket), BIO_NOCLOSE);
+
+          if (_bio == nullptr) {
+            LOG_WARNING("cannot build new SSL BIO: %s", triagens::basics::lastSSLError().c_str());
+            TRI_CLOSE_SOCKET(_socket);
+            TRI_invalidatesocket(&_socket);
+            return false;
+          }
+
+          // build a new connection
+          ssl = SSL_new(_ctx);
+
+          _info.sslContext = ssl;
+
+          if (ssl == nullptr) {
+            BIO_free_all(_bio);
+            LOG_WARNING("cannot build new SSL connection: %s", triagens::basics::lastSSLError().c_str());
+            TRI_CLOSE_SOCKET(_socket);
+            TRI_invalidatesocket(&_socket);
+            return false;   // terminate ourselves, ssl is nullptr
+          }
+
+          // enforce verification
+          SSL_set_verify(ssl, _verificationMode, _verificationCallback);
+
+          // with the above bio
+          SSL_set_bio(ssl, _bio, _bio);
+
+          return true;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -390,8 +440,13 @@ again:
 
         char * tmpReadBuffer;
 
+        TRI_socket_t& _socket;
+        ConnectionInfo& _info;
         SSL* ssl;
-        BIO* bio;
+        BIO* _bio;
+        SSL_CTX* _ctx;
+        int _verificationMode;
+        int (*_verificationCallback)(int, X509_STORE_CTX*);
     };
   }
 }
