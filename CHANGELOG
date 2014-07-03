@@ -1,6 +1,22 @@
 v2.2.0-beta3 (2014-07-01)
 -------------------------
 
+* added AQL keywords `INSERT`, `UPDATE`, `REPLACE` and `REMOVE` (and `WITH`) to
+  support data-modification AQL queries.
+  
+  Unquoted usage of these keywords for attribute names in AQL queries will likely
+  fail in ArangoDB 2.2. If any such attribute name needs to be used in a query, it
+  should be enclosed in backticks to indicate the usage of a literal attribute
+  name. 
+
+  For example, the following query will fail in ArangoDB 2.2 with a parse error:
+
+      FOR i IN foo RETURN i.remove
+
+  and needs to be rewritten like this:
+
+      FOR i IN foo RETURN i.`remove`
+
 * disallow storing of JavaScript objects that contain JavaScript native objects
   of type `Date`, `Function`, `RegExp` or `External`, e.g.
 

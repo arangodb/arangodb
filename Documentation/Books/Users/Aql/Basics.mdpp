@@ -39,6 +39,10 @@ On the top level, AQL offers the following operations:
 - LIMIT: result slicing
 - LET: variable assignment
 - COLLECT: result grouping
+- INSERT: insertion of new documents
+- UPDATE: (partial) update of existing documents
+- REPLACE: replacement of existing documents
+- REMOVE: removal of existing documents
 
 Each of the above operations can be initiated in a query by using a keyword of
 the same name. An AQL query can (and typically does) consist of multiple of the
@@ -77,6 +81,11 @@ The current list of keywords is:
 - LIMIT
 - LET
 - COLLECT
+- INSERT
+- UPDATE
+- REPLACE
+- REMOVE
+- WITH
 - ASC
 - DESC
 - IN
