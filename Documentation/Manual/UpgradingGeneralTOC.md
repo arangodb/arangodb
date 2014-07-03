@@ -1,4 +1,0 @@
-TOC {#UpgradingGeneralTOC}
-==========================
-
-- @ref UpgradingGeneralIntroduction
