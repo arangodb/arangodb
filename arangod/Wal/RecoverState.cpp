@@ -635,7 +635,9 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         return res;
       });
 
-      if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND && res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+      if (res != TRI_ERROR_NO_ERROR && 
+          res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND && 
+          res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
         LOG_WARNING("could not apply attribute marker: %s", TRI_errno_string(res));
         return state->canContinue();
       }
@@ -661,7 +663,9 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         return res;
       });
 
-      if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND && res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+      if (res != TRI_ERROR_NO_ERROR && 
+          res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND && 
+          res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
         LOG_WARNING("could not apply shape marker: %s", TRI_errno_string(res));
         return state->canContinue();
       }
