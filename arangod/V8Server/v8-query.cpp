@@ -2484,7 +2484,7 @@ static v8::Handle<v8::Value> FulltextQuery (V8ReadTransaction& trx,
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_NO_INDEX);
   }
 
-  const string queryString = TRI_ObjectToString(argv[1]);
+  string const&& queryString = TRI_ObjectToString(argv[1]);
   bool isSubstringQuery = false;
 
   TRI_fulltext_query_t* query = TRI_CreateQueryFulltextIndex(TRI_FULLTEXT_SEARCH_MAX_WORDS);
