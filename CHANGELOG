@@ -1,6 +1,25 @@
 v2.2.0 (XXXX-XX-XX)
 -------------------
 
+* disallow storing of JavaScript objects that contain JavaScript native objects
+  of type `Date`, `Function`, `RegExp` or `External`, e.g.
+
+      db.test.save({ foo: /bar/ });
+      db.test.save({ foo: new Date() });
+
+  will now print
+
+      Error: <data> cannot be converted into JSON shape: could not shape document
+
+  Previously, objects of these types were silently converted into an empty object
+  (i.e. `{ }`).
+
+  To store such objects in a collection, explicitly convert them into strings 
+  like this:
+
+      db.test.save({ foo: String(/bar/) });
+      db.test.save({ foo: String(new Date()) });
+
 * honor startup option `--server.disable-statistics` when deciding whether or not
   to start periodic statistics collection jobs
 
