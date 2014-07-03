@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, white: true, plusplus: true, unparam: true, regexp: true, vars: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, white: true, plusplus: true, unparam: true, regexp: true, vars: true, stupid: true */
 /*global require, applicationContext*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -37,14 +37,28 @@
     Model = require("org/arangodb/foxx").Model,
     Graph = require("org/arangodb/general-graph"),
     _ = require("underscore"),
-    errors = require("org/arangodb").errors,
+    arangodb = require("org/arangodb"),
+    errors = arangodb.errors,
     toId = function(c, k) {
       return c + "/" + k;
+    },
+    setOptions = function(req) {
+      var options = {
+        code: actions.HTTP_ACCEPTED
+      };
+      if (req.params("waitForSync")) {
+        options.waitForSync = req.params("waitForSync");
+        options.code = actions.HTTP_OK;
+      }
+      if (req.params("keepNull")) {
+        options.keepNull = req.params("keepNull");
+      }
+      return options;
     },
     setResponse = function (res, name, body, code) {
       var obj = {};
       obj.error = false;
-      obj.code = code || actions.HTTP_OK;
+      obj.code = code || actions.HTTP_ACCEPTED; // Never wait for sync
       if (name !== undefined && body !== undefined) {
         obj[name] = body;
         if (body._rev) {
@@ -56,6 +70,53 @@
         res.status(code);
       }
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns true if a "if-match" or "if-none-match" error happens
+////////////////////////////////////////////////////////////////////////////////
+    matchError = function (req, res, doc, errorCode) {  
+
+      if (req.headers["if-none-match"] !== undefined) {
+        if (doc._rev === req.headers["if-none-match"].replace(/(^["']|["']$)/g, '')) {
+          // error      
+          res.responseCode = actions.HTTP_NOT_MODIFIED;
+          res.contentType = "application/json; charset=utf-8";
+          res.body = '';
+          res.headers = {};      
+          return true;
+        }
+      }  
+      
+      if (req.headers["if-match"] !== undefined) {
+        if (doc._rev !== req.headers["if-match"].replace(/(^["']|["']$)/g, '')) {
+          // error
+          actions.resultError(req, 
+                              res, 
+                              actions.HTTP_PRECONDITION_FAILED, 
+                              errorCode, 
+                              "wrong revision", 
+                              {});
+          return true;
+        }
+      }  
+      
+      var rev = req.parameters.rev;
+      if (rev !== undefined) {
+        if (doc._rev !== rev) {
+          // error
+          actions.resultError(req, 
+                              res, 
+                              actions.HTTP_PRECONDITION_FAILED, 
+                              errorCode, 
+                              "wrong revision", 
+                              {});
+          return true;
+        }
+      }  
+      
+      return false;
+    },
+
     setGraphResponse = function(res, g, code) {
       code = code || actions.HTTP_OK;
       setResponse(res, "graph", {
@@ -218,7 +279,7 @@
     var name = req.params("graph"),
         drop = req.params("dropCollections") || false;
     Graph._drop(name, Boolean(drop));
-    setResponse(res);
+    setResponse(res, "removed", true, actions.HTTP_OK);
   })
   .pathParam("graph", {
     type: "string",
@@ -264,7 +325,7 @@
     var g = Graph._graph(name);
     setResponse(res, "collections", _.map(g._vertexCollections(), function(c) {
       return c.name();
-    }).sort());
+    }).sort(), actions.HTTP_OK);
   })
   .pathParam("graph", {
     type: "string",
@@ -414,7 +475,7 @@
     var g = Graph._graph(name);
     setResponse(res, "collections", _.map(g._edgeCollections(), function(c) {
       return c.name();
-    }).sort());
+    }).sort(), actions.HTTP_OK);
   })
   .pathParam("graph", {
     type: "string",
@@ -664,7 +725,10 @@
     var key = req.params("key");
     var id = toId(collection, key);
     var g = Graph._graph(name);
-    setResponse(res, "vertex", g[collection].document(id));
+    var doc = g[collection].document(id);
+    if (!matchError(req, res, doc, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
+      setResponse(res, "vertex", doc, actions.HTTP_OK);
+    }
   })
   .pathParam("graph", {
     type: "string",
@@ -720,7 +784,11 @@
     var id = toId(collection, key);
     var body = req.params("vertex");
     var g = Graph._graph(name);
-    setResponse(res, "vertex", g[collection].replace(id, body.forDB()));
+    var doc = g[collection].document(id);
+    var options = setOptions(req);
+    if (!matchError(req, res, doc, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
+      setResponse(res, "vertex", g[collection].replace(id, body.forDB(), options), options.code);
+    }
   })
   .pathParam("graph", {
     type: "string",
@@ -733,6 +801,10 @@
   .pathParam("key", {
     type: "string",
     description: "_key attribute of one specific vertex."
+  })
+  .queryParam("waitForSync", {
+    type: "string",
+    description: "define if the request should wait until synced to disk."
   })
   .bodyParam("vertex", "The document to be stored", Model)
   .errorResponse(
@@ -776,7 +848,11 @@
     var id = toId(collection, key);
     var body = req.params("vertex");
     var g = Graph._graph(name);
-    setResponse(res, "vertex", g[collection].update(id, body.forDB()));
+    var doc = g[collection].document(id);
+    var options = setOptions(req);
+    if (!matchError(req, res, doc, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
+      setResponse(res, "vertex", g[collection].update(id, body.forDB(), options), options.code);
+    }
   })
   .bodyParam("vertex", "The values that should be modified", Model)
   .pathParam("graph", {
@@ -790,6 +866,14 @@
   .pathParam("key", {
     type: "string",
     description: "_key attribute of one specific vertex."
+  })
+  .queryParam("waitForSync", {
+    type: "string",
+    description: "define if the request should wait until synced to disk."
+  })
+  .queryParam("keepNull", {
+    type: "string",
+    description: "define if null values should not be deleted."
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The vertex does not exist.", function(e) {
@@ -828,14 +912,11 @@
     var key = req.params("key");
     var id = toId(collection, key);
     var g = Graph._graph(name);
-    var didRemove = g[collection].remove(id);
-    if (didRemove) {
-      setResponse(res, "removed", didRemove);
-    } else {
-      var err = new ArangoError();
-      err.errorNum = errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code;
-      err.errorMessage = errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.message;
-      throw err;
+    var doc = g[collection].document(id);
+    var options = setOptions(req);
+    if (!matchError(req, res, doc, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
+      var didRemove = g[collection].remove(id, options);
+      setResponse(res, "removed", didRemove, options.code);
     }
   })
   .pathParam("graph", {
@@ -849,6 +930,10 @@
   .pathParam("key", {
     type: "string",
     description: "_key attribute of one specific vertex."
+  })
+  .queryParam("waitForSync", {
+    type: "string",
+    description: "define if the request should wait until synced to disk."
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The vertex does not exist.", function(e) {
@@ -948,7 +1033,10 @@
     var key = req.params("key");
     var id = toId(collection, key);
     var g = Graph._graph(name);
-    setResponse(res, "edge", g[collection].document(id));
+    var doc = g[collection].document(id);
+    if (!matchError(req, res, doc, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
+      setResponse(res, "edge", doc, actions.HTTP_OK);
+    }
   })
   .pathParam("graph", {
     type: "string",
@@ -961,6 +1049,10 @@
   .pathParam("key", {
     type: "string",
     description: "_key attribute of one specific edge."
+  })
+  .queryParam("waitForSync", {
+    type: "string",
+    description: "define if the request should wait until synced to disk."
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The edge does not exist.", function(e) {
@@ -1002,7 +1094,11 @@
     var id = toId(collection, key);
     var body = req.params("edge");
     var g = Graph._graph(name);
-    setResponse(res, "edge", g[collection].replace(id, body.forDB()));
+    var doc = g[collection].document(id);
+    var options = setOptions(req);
+    if (!matchError(req, res, doc, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
+      setResponse(res, "edge", g[collection].replace(id, body.forDB(), options), options.code);
+    }
   })
   .pathParam("graph", {
     type: "string",
@@ -1015,6 +1111,10 @@
   .pathParam("key", {
     type: "string",
     description: "_key attribute of one specific edge."
+  })
+  .queryParam("waitForSync", {
+    type: "string",
+    description: "define if the request should wait until synced to disk."
   })
   .bodyParam("edge", "The document to be stored. _from and _to attributes are ignored", Model)
   .errorResponse(
@@ -1057,7 +1157,11 @@
     var id = toId(collection, key);
     var body = req.params("edge");
     var g = Graph._graph(name);
-    setResponse(res, "edge", g[collection].update(id, body.forDB()));
+    var doc = g[collection].document(id);
+    var options = setOptions(req);
+    if (!matchError(req, res, doc, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
+      setResponse(res, "edge", g[collection].update(id, body.forDB(), options), options.code);
+    }
   })
   .bodyParam(
     "edge", "The values that should be modified. _from and _to attributes are ignored", Model
@@ -1073,6 +1177,14 @@
   .pathParam("key", {
     type: "string",
     description: "_key attribute of one specific edge."
+  })
+  .queryParam("waitForSync", {
+    type: "string",
+    description: "define if the request should wait until synced to disk."
+  })
+  .queryParam("keepNull", {
+    type: "string",
+    description: "define if null values should not be deleted."
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The edge does not exist.", function(e) {
@@ -1110,14 +1222,11 @@
     var key = req.params("key");
     var id = toId(collection, key);
     var g = Graph._graph(name);
-    var didRemove = g[collection].remove(id);
-    if (didRemove) {
-      setResponse(res, "removed", didRemove);
-    } else {
-      var err = new ArangoError();
-      err.errorNum = errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code;
-      err.errorMessage = errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.message;
-      throw err;
+    var doc = g[collection].document(id);
+    var options = setOptions(req);
+    if (!matchError(req, res, doc, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
+      var didRemove = g[collection].remove(id, options);
+      setResponse(res, "removed", didRemove, options.code);
     }
   })
   .pathParam("graph", {
@@ -1131,6 +1240,10 @@
   .pathParam("key", {
     type: "string",
     description: "_key attribute of one specific edge."
+  })
+  .queryParam("waitForSync", {
+    type: "string",
+    description: "define if the request should wait until synced to disk."
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The edge does not exist.", function(e) {
