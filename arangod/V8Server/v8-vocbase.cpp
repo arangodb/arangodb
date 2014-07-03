@@ -9218,7 +9218,6 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
 
   v8::Local<v8::String> keyDefaultMaximalSize = v8::String::New("defaultMaximalSize");
   v8::Local<v8::String> keyDefaultWaitForSync = v8::String::New("defaultWaitForSync");
-  v8::Local<v8::String> keyForceSyncProperties = v8::String::New("forceSyncProperties");
   v8::Local<v8::String> keyRequireAuthentication = v8::String::New("requireAuthentication");
   v8::Local<v8::String> keyRequireAuthenticationUnixSockets = v8::String::New("requireAuthenticationUnixSockets");
   v8::Local<v8::String> keyAuthenticateSystemOnly = v8::String::New("authenticateSystemOnly");
@@ -9233,10 +9232,6 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
 
     if (options->Has(keyDefaultWaitForSync)) {
       defaults.defaultWaitForSync = options->Get(keyDefaultWaitForSync)->BooleanValue();
-    }
-
-    if (options->Has(keyForceSyncProperties)) {
-      defaults.forceSyncProperties = options->Get(keyForceSyncProperties)->BooleanValue();
     }
 
     if (options->Has(keyRequireAuthentication)) {
@@ -9383,7 +9378,7 @@ static v8::Handle<v8::Value> JS_DropDatabase (v8::Arguments const& argv) {
   string const name = TRI_ObjectToString(argv[0]);
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
-  int res = TRI_DropDatabaseServer(static_cast<TRI_server_t*>(v8g->_server), name.c_str(), true);
+  int res = TRI_DropDatabaseServer(static_cast<TRI_server_t*>(v8g->_server), name.c_str(), true, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);

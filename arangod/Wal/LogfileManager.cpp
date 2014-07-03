@@ -440,10 +440,7 @@ bool LogfileManager::open () {
   }
 
   // "seal" any open logfiles so the collector can copy over everything
-  if (! _recoverState->hasRunningRemoteTransactions()) {
-    // this is only safe is there are no running transactions
-    // setAllSealed();
-  }
+  setAllSealed();
 
   // remove all empty logfiles  
   _recoverState->removeEmptyLogfiles();
@@ -800,9 +797,11 @@ SlotInfoCopy LogfileManager::allocateAndWrite (Marker const& marker,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set all open logfiles to status sealed
 ////////////////////////////////////////////////////////////////////////////////
-/*
+
 void LogfileManager::setAllSealed () {
-  READ_LOCKER(_logfilesLock);
+  bool worked = false;
+
+  WRITE_LOCKER(_logfilesLock);
 
   for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
     Logfile* logfile = (*it).second;
@@ -810,22 +809,20 @@ void LogfileManager::setAllSealed () {
     if (logfile != nullptr) {
       Logfile::StatusType status = logfile->status();
 
-      if (status == Logfile::StatusType::OPEN ||
-          status == Logfile::StatusType::SEAL_REQUESTED) {
+      if (status == Logfile::StatusType::OPEN) { 
         // set all logfiles to sealed status so they can be collected
 
         // we don't care about the previous status here
-        logfile->forceStatus(Logfile::StatusType::SEALED);
-
-        if (logfile->id() > _lastSealedId) {
-          // adjust last sealed id
-          _lastSealedId = logfile->id();
-        }
+        logfile->forceStatus(Logfile::StatusType::SEAL_REQUESTED);
+        worked = true;
       }
     }
   }
+
+  if (worked) {
+    signalSync();
+  }
 }
-*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finalise and seal the currently open logfile

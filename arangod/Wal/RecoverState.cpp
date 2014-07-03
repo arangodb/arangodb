@@ -1248,7 +1248,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
 
       if (vocbase != nullptr) {
         // remove already existing database
-        TRI_DropByIdDatabaseServer(state->server, databaseId, false);
+        TRI_DropByIdDatabaseServer(state->server, databaseId, false, false);
         WaitForDeletion(state->server, databaseId);
       }
 
@@ -1280,7 +1280,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       if (vocbase != nullptr) {
         TRI_voc_tick_t otherId = vocbase->_id;
         state->releaseDatabase(otherId);
-        TRI_DropDatabaseServer(state->server, nameString.c_str(), false);
+        TRI_DropDatabaseServer(state->server, nameString.c_str(), false, false);
         WaitForDeletion(state->server, otherId);
       }
 
@@ -1395,7 +1395,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         triagens::arango::TransactionBase trx(true); 
   
         // ignore any potential error returned by this call
-        TRI_DropByIdDatabaseServer(state->server, databaseId, false);
+        TRI_DropByIdDatabaseServer(state->server, databaseId, false, false);
       }
       break;
     }
