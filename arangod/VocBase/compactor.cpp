@@ -541,7 +541,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
       LOG_FATAL_AND_EXIT("cannot write shape marker to compactor file: %s", TRI_last_error());
     }
 
-    res = TRI_MoveMarkerVocShaper(document->getShaper(), result);  // ONLY IN COMPACTOR, PROTECTED by fake trx in caller
+    res = TRI_MoveMarkerVocShaper(document->getShaper(), result, nullptr);  // ONLY IN COMPACTOR, PROTECTED by fake trx in caller
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_FATAL_AND_EXIT("cannot re-locate shape marker");
@@ -561,7 +561,7 @@ static bool Compactifier (TRI_df_marker_t const* marker,
       LOG_FATAL_AND_EXIT("cannot write attribute marker to compactor file: %s", TRI_last_error());
     }
 
-    res = TRI_MoveMarkerVocShaper(document->getShaper(), result);  // ONLY IN COMPACTOR, PROTECTED by fake trx in caller
+    res = TRI_MoveMarkerVocShaper(document->getShaper(), result, nullptr);  // ONLY IN COMPACTOR, PROTECTED by fake trx in caller
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_FATAL_AND_EXIT("cannot re-locate shape marker");
@@ -843,8 +843,12 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
     // deletion markers
     context._keepDeletions = compaction->_keepDeletions;
 
+    TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
+    
     // run the actual compaction of a single datafile
     bool ok = TRI_IterateDatafile(df, Compactifier, &context);
+    
+    TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
     if (! ok) {
       LOG_WARNING("failed to compact datafile '%s'", df->getName(df));
@@ -977,6 +981,11 @@ static void CompactifyDatafiles (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
+  // we can hopefully get away without the lock here...
+//  if (! TRI_IsFullyCollectedDocumentCollection(document)) {
+//    return false;
+//  }
+
   // if we cannot acquire the read lock instantly, we will exit directly.
   // otherwise we'll risk a multi-thread deadlock between synchroniser,
   // compactor and data-modification threads (e.g. POST /_api/document)
@@ -1027,7 +1036,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
     }
 
     shouldCompact = false;
-
+  
     if (! compactNext &&
         df->_maximalSize < COMPACTOR_MIN_SIZE &&
         i < n - 1) {
@@ -1085,7 +1094,6 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
               (unsigned long long) dfi->_sizeShapes,
               (unsigned long long) dfi->_sizeAttributes,
               (unsigned long long) dfi->_sizeTransactions);
-
     totalSize += (uint64_t) df->_maximalSize;
 
     compaction._datafile = df;
@@ -1111,7 +1119,7 @@ static bool CompactifyDocumentCollection (TRI_document_collection_t* document) {
 
   // can now continue without the lock
   TRI_READ_UNLOCK_DATAFILES_DOC_COLLECTION(document);
-
+  
   if (vector._length == 0) {
     // cleanup local variables
     TRI_DestroyVector(&vector);
@@ -1399,10 +1407,7 @@ void TRI_CompactorVocBase (void* data) {
       size_t const n = collections._length;
 
       for (size_t i = 0;  i < n;  ++i) {
-        bool doCompact;
-        bool worked;
-
-        TRI_vocbase_col_t* collection = (TRI_vocbase_col_t*) collections._buffer[i];
+        TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(collections._buffer[i]);
 
         if (! TRI_TRY_READ_LOCK_STATUS_VOCBASE_COL(collection)) {
           // if we can't acquire the read lock instantly, we continue directly
@@ -1417,8 +1422,8 @@ void TRI_CompactorVocBase (void* data) {
           continue;
         }
 
-        worked    = false;
-        doCompact = document->_info._doCompact;
+        bool worked    = false;
+        bool doCompact = document->_info._doCompact;
 
         // for document collection, compactify datafiles
         if (collection->_status == TRI_VOC_COL_STATUS_LOADED && doCompact) {

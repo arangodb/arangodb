@@ -5788,7 +5788,7 @@ static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) 
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-  if (collection == 0) {
+  if (collection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
@@ -7819,6 +7819,52 @@ static v8::Handle<v8::Value> JS_VersionVocbaseCol (v8::Arguments const& argv) {
 
   return scope.Close(v8::Number::New((int) info._version));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks all data pointers in a collection
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+static v8::Handle<v8::Value> JS_CheckPointersVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (collection == nullptr) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+  }
+
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
+
+  V8ReadTransaction trx(collection->_vocbase, collection->_cid);
+
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  TRI_document_collection_t* document = trx.documentCollection();
+
+  // iterate over the primary index and de-reference all the pointers to data
+  void** ptr = document->_primaryIndex._table;
+  void** end = ptr + document->_primaryIndex._nrAlloc;
+
+  for (;  ptr < end;  ++ptr) {
+    if (*ptr) {
+      char const* key = TRI_EXTRACT_MARKER_KEY((TRI_doc_mptr_t const*) *ptr);
+
+      TRI_ASSERT(key != nullptr);
+      // dereference the key
+      if (*key == '\0') {
+        TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+      }
+    }
+  }
+
+  return scope.Close(v8::True());
+}
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           TRI_VOCBASE_T FUNCTIONS
@@ -10310,6 +10356,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "type", JS_TypeVocbaseCol);
   TRI_AddMethodVocbase(rt, "unload", JS_UnloadVocbaseCol);
   TRI_AddMethodVocbase(rt, "version", JS_VersionVocbaseCol);
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  TRI_AddMethodVocbase(rt, "checkPointers", JS_CheckPointersVocbaseCol);
+#endif  
 
   TRI_AddMethodVocbase(rt, "replace", JS_ReplaceVocbaseCol);
   TRI_AddMethodVocbase(rt, "save", JS_InsertVocbaseCol); // note: save is now an alias for insert
