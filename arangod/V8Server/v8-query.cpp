@@ -1640,9 +1640,10 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);
   }
-
+ 
   res = trx.read(docs, skip, limit, &total);
-
+  TRI_ASSERT(docs.empty() || trx.hasBarrier());
+  
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1671,7 +1672,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
 
   result->Set(v8::String::New("total"), v8::Number::New(total));
   result->Set(v8::String::New("count"), v8::Number::New(count));
-
+ 
   return scope.Close(result);
 }
 
@@ -1717,6 +1718,8 @@ static v8::Handle<v8::Value> JS_OffsetQuery (v8::Arguments const& argv) {
   }
 
   res = trx.readOffset(docs, internalSkip, batchSize, skip, &total);
+  TRI_ASSERT(docs.empty() || trx.hasBarrier());
+
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1787,6 +1790,8 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
   }
 
   res = trx.readRandom(&document);
+  TRI_ASSERT(document.getDataPtr() == nullptr || trx.hasBarrier());
+
   res = trx.finish(res);
 
   if (res != TRI_ERROR_NO_ERROR) {

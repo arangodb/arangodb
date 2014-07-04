@@ -80,7 +80,8 @@ int TRI_InitVocShaper (TRI_shaper_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_MoveMarkerVocShaper (TRI_shaper_t*,
-                             TRI_df_marker_t*);
+                             TRI_df_marker_t*,
+                             void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief insert a shape, called when opening a collection

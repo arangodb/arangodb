@@ -2186,6 +2186,42 @@ function transactionRollbackSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test: rollback after flush
+////////////////////////////////////////////////////////////////////////////////
+
+    testRollbackAfterFlush : function () {
+      c1 = db._create(cn1);
+
+      var obj = {
+        collections : {
+          write: [ cn1 ]
+        },
+        action : function () {
+          c1.save({ _key: "tom" });
+          c1.save({ _key: "tim" });
+          c1.save({ _key: "tam" });
+      
+          internal.wal.flush(true);
+          assertEqual(3, c1.count());
+          throw "rollback";
+        }
+      };
+
+      try {
+        TRANSACTION(obj);
+        fail();
+      }
+      catch (err) {
+      }
+
+      assertEqual(0, c1.count());
+      
+      testHelper.waitUnload(c1);
+      
+      assertEqual(0, c1.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test: the collection revision id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3485,6 +3521,42 @@ function transactionCountSuite () {
 
       TRANSACTION(obj);
       assertEqual(0, c1.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: test counts during and after trx 
+////////////////////////////////////////////////////////////////////////////////
+
+    testCountCommitAfterFlush : function () {
+      c1 = db._create(cn1);
+      c1.save({ _key: "foo" });
+      c1.save({ _key: "bar" });
+      assertEqual(2, c1.count());
+
+      var obj = {
+        collections : {
+          write: [ cn1 ]
+        },
+        action : function () {
+          c1.save({ _key: "baz" });
+          assertEqual(3, c1.count());
+          
+          internal.wal.flush(true, false);
+
+          c1.save({ _key: "meow" });
+          assertEqual(4, c1.count());
+          
+          internal.wal.flush(true, false);
+
+          c1.remove("foo");
+          assertEqual(3, c1.count());
+
+          return true;
+        }
+      };
+
+      TRANSACTION(obj);
+      assertEqual(3, c1.count());
     },
 
 ////////////////////////////////////////////////////////////////////////////////

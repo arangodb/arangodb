@@ -383,27 +383,11 @@ function CompactionSuite () {
 
       c1.truncate();
       testHelper.rotate(c1);
-      
+     
       fig = c1.figures();
       assertEqual(0, c1.count());
       assertEqual(0, fig["alive"]["count"]);
       assertEqual(0, fig["alive"]["size"]);
-
-      if (fig.datafiles.count === 1) {
-        // compaction has already cleaned up
-        assertEqual(0, fig["dead"]["count"]);
-        assertEqual(0, fig["dead"]["size"]);
-        assertEqual(0, fig["dead"]["deletion"]);
-        assertEqual(1, fig["datafiles"]["count"]);
-      }
-      else {
-        // compaction has not yet cleaned up
-        assertEqual(2, fig["dead"]["count"]);
-        assertTrue(0 < fig["dead"]["size"]);
-        assertEqual(2, fig["dead"]["deletion"]);
-        assertEqual(2, fig["datafiles"]["count"]);
-      }
-      assertEqual(0, fig["journals"]["count"]);
 
       c1.drop();
     },

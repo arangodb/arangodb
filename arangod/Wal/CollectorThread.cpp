@@ -597,8 +597,8 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
 
           TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
 
-          if (found == nullptr || found->_rid != m->_revisionId) {
-            // somebody inserted a new revision of the document
+          if (found == nullptr || found->_rid != m->_revisionId || found->getDataPtr() != walMarker) {
+            // somebody inserted a new revision of the document or the revision was already moved by the compactor
             auto& dfi = createDfi(cache, fid);
             dfi._numberDead++;
             dfi._sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
@@ -621,8 +621,8 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
 
           TRI_doc_mptr_t* found = static_cast<TRI_doc_mptr_t*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
 
-          if (found == nullptr || found->_rid != m->_revisionId) {
-            // somebody inserted a new revision of the document
+          if (found == nullptr || found->_rid != m->_revisionId || found->getDataPtr() != walMarker) {
+            // somebody inserted a new revision of the document or the revision was already moved by the compactor
             auto& dfi = createDfi(cache, fid);
             dfi._numberDead++;
             dfi._sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(datafileMarkerSize);
@@ -656,11 +656,11 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
         }
         else if (walMarker->_type == TRI_WAL_MARKER_ATTRIBUTE) {
           // move the pointer to the attribute from WAL to the datafile
-          TRI_MoveMarkerVocShaper(document->getShaper(), const_cast<TRI_df_marker_t*>(marker));  // ONLY IN COLLECTOR, PROTECTED by COLLECTION LOCK and fake trx here
+          TRI_MoveMarkerVocShaper(document->getShaper(), const_cast<TRI_df_marker_t*>(marker), (void*) walMarker);  // ONLY IN COLLECTOR, PROTECTED by COLLECTION LOCK and fake trx here
         }
         else if (walMarker->_type == TRI_WAL_MARKER_SHAPE) {
           // move the pointer to the shape from WAL to the datafile
-          TRI_MoveMarkerVocShaper(document->getShaper(), const_cast<TRI_df_marker_t*>(marker));  // ONLY IN COLLECTOR, PROTECTED by COLLECTION LOCK and fake trx here
+          TRI_MoveMarkerVocShaper(document->getShaper(), const_cast<TRI_df_marker_t*>(marker), (void*) walMarker);  // ONLY IN COLLECTOR, PROTECTED by COLLECTION LOCK and fake trx here
         }
         else {
           // a marker we won't care about
