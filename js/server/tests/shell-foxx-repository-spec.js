@@ -58,6 +58,63 @@ describe('Repository', function () {
   });
 });
 
+describe('Repository Indexes', function () {
+  'use strict';
+  it('should create indexes on instantiation', function () {
+    var collection = createSpyObj('collection', [
+        'ensureIndex'
+      ]),
+      indexes = [
+        {type: 'skiplist', xyz: 'abcdef'},
+        {type: 'geo', more: 'args'},
+        {type: 'foo', bar: 'qux'}
+      ],
+      Repository = FoxxRepository.extend({
+        indexes: indexes
+      });
+
+    new Repository(collection, {model: Model});
+
+    expect(collection.ensureIndex.calls.count()).toEqual(3);
+    expect(collection.ensureIndex).toHaveBeenCalledWith(indexes[0]);
+    expect(collection.ensureIndex).toHaveBeenCalledWith(indexes[1]);
+    expect(collection.ensureIndex).toHaveBeenCalledWith(indexes[2]);
+  });
+
+  it('should add skiplist methods to the prototype', function () {
+    expect(FoxxRepository.prototype.range).toBeUndefined();
+    var Repository = FoxxRepository.extend({
+      indexes: [
+        {type: 'skiplist'}
+      ]
+    });
+
+    expect(typeof Repository.prototype.range).toBe('function');
+  });
+
+  it('should add geo methods to the prototype', function () {
+    expect(FoxxRepository.prototype.near).toBeUndefined();
+    expect(FoxxRepository.prototype.within).toBeUndefined();
+    var Repository = FoxxRepository.extend({
+      indexes: [
+        {type: 'geo'}
+      ]
+    });
+    expect(typeof Repository.prototype.near).toBe('function');
+    expect(typeof Repository.prototype.within).toBe('function');
+  });
+
+  it('should add fulltext methods to the prototype', function () {
+    expect(FoxxRepository.prototype.fulltext).toBeUndefined();
+    var Repository = FoxxRepository.extend({
+      indexes: [
+        {type: 'fulltext'}
+      ]
+    });
+    expect(typeof Repository.prototype.fulltext).toBe('function');
+  });
+});
+
 describe('Repository Methods', function () {
   'use strict';
   var collection,
