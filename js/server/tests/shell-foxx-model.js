@@ -143,6 +143,20 @@ function ModelSpec () {
       }
     },
 
+    testAlwaysAllowMetdataAttributes: function () {
+      var Model = FoxxModel.extend({}, {
+        attributes: {
+          anInteger: {type: 'integer'}
+        }
+      });
+
+      instance = new Model({anInteger: 1, nonExistant: 2});
+      assertEqual(_.keys(instance.attributes).length, 1);
+      instance.set("_key", "arango");
+      assertEqual(_.keys(instance.attributes).length, 2);
+      assertEqual(instance.get("_key"), "arango");
+    },
+
     testDisallowInvalidAttributes: function () {
       var Model = FoxxModel.extend({}, {
         attributes: {

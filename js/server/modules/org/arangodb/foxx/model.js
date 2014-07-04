@@ -224,6 +224,9 @@ _.extend(Model.prototype, {
     if (constructorAttributes) {
       _.each(_.keys(attributes), function (key) {
         if (!constructorAttributes.hasOwnProperty(key)) {
+          if (metadataKeys.indexOf(key) !== -1) {
+            return;
+          }
           throw new Error("Unknown attribute: " + key);
         }
         var value = attributes[key],
