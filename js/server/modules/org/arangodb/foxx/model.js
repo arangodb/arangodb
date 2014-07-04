@@ -186,11 +186,6 @@ _.extend(Model.prototype, {
 
   get: function (attributeName) {
     'use strict';
-    var attrs = this.constructor.attributes;
-    if (attrs && _.keys(attrs).indexOf(attributeName) === -1) {
-      throw new Error("Unknown attribute: " + attributeName);
-    }
-
     return this.attributes[attributeName];
   },
 
