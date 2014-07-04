@@ -202,11 +202,17 @@ _.extend(Repository.prototype, {
 /// @startDocuBlock JSF_foxx_repository_all
 /// `all()`
 ///
-/// Returns an array of models that matches the given example. You need to provide
+/// Returns an array of models that matches the given example. You can provide
 /// both a skip and a limit value.
 ///
 /// **Warning:** ArangoDB doesn't guarantee a specific order in this case, to make
 /// this really useful we have to explicitly provide something to order by.
+///
+/// *Parameter*
+///
+/// * *options* (optional):
+///   * *skip* (optional): skips the first given number of models.
+///   * *limit* (optional): only returns at most the given number of models.
 ///
 /// @EXAMPLES
 ///
@@ -218,8 +224,17 @@ _.extend(Repository.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   all: function (options) {
     'use strict';
-    var rawDocuments = this.collection.all().skip(options.skip).limit(options.limit).toArray();
-    return _.map(rawDocuments, function (rawDocument) {
+    if (!options) {
+      options = {};
+    }
+    var rawDocuments = this.collection.all();
+    if (options.skip) {
+      rawDocuments = rawDocuments.skip(options.skip);
+    }
+    if (options.limit) {
+      rawDocuments = rawDocuments.limit(options.limit);
+    }
+    return _.map(rawDocuments.toArray(), function (rawDocument) {
       return (new this.modelPrototype(rawDocument));
     }, this);
   },
