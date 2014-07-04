@@ -57,11 +57,20 @@ namespace {
   long* opensslLockCount;
   pthread_mutex_t* opensslLocks;
 
+#if OPENSSL_VERSION_NUMBER < 0x01000000L
+
+  unsigned long opensslThreadId () {
+    return (unsigned long) pthread_self();
+  }
+
+#else
+
   // The compiler chooses the right one from the following two,
   // according to the type of the return value of pthread_self():
   static inline void setter (CRYPTO_THREADID* id, void* p) {
     CRYPTO_THREADID_set_pointer(id, p);
   }
+
   static inline void setter (CRYPTO_THREADID* id, unsigned long val) {
     CRYPTO_THREADID_set_numeric(id, val);
   }
@@ -69,6 +78,8 @@ namespace {
   static void arango_threadid_func (CRYPTO_THREADID *id) {
     setter(id, pthread_self());
   }
+
+#endif
 
   void opensslLockingCallback (int mode, int type, char const* /* file */, int /* line */) {
     if (mode & CRYPTO_LOCK) {
@@ -90,15 +101,23 @@ namespace {
       pthread_mutex_init(&(opensslLocks[i]), 0);
     }
 
+#if OPENSSL_VERSION_NUMBER < 0x01000000L
+    CRYPTO_set_id_callback(opensslThreadId);
+    CRYPTO_set_locking_callback(opensslLockingCallback);
+#else
     CRYPTO_THREADID_set_callback(arango_threadid_func);
     CRYPTO_set_locking_callback(opensslLockingCallback);
+#endif
   }
-
-
 
   void opensslCleanup () {
     CRYPTO_set_locking_callback(nullptr);
+
+#if OPENSSL_VERSION_NUMBER < 0x01000000L
+    CRYPTO_set_id_callback(nullptr);
+#else
     CRYPTO_THREADID_set_callback(nullptr);
+#endif
 
     for (long i = 0;  i < CRYPTO_num_locks();  ++i) {
       pthread_mutex_destroy(&(opensslLocks[i]));
