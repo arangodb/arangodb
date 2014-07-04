@@ -45,25 +45,25 @@
 </div>
 <script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
 <script type="text/javascript">
+$(function(){
   jQuery(".summary>li").each(function(){
-  	var flag = true;
-  	var x = window.location.href;
-  	x = x.split("/");
-  	x = x[x.length - 2] + '/' + x[x.length - 1];
-  	jQuery('a',this).each(function(){
-  		var str = jQuery(this).attr('href');
+    var flag = true;
+    var x = window.location.href.split("/");
+    x = x[x.length - 2] + '/' + x[x.length - 1];
+    jQuery('a',this).each(function(){
+      var str = jQuery(this).attr('href');
       if(str.search(x) != -1){
-        console.log(x);
-  		  console.log(str);
-  			flag = false;
-  		}
-  	});
-  	if(flag){
-  		jQuery('ul',this).hide();
-  	}
+        flag = false;
+      }
+    });
+    if(flag){
+      jQuery('ul',this).hide();
+    }
+    else {
+      jQuery(this).show();
+      jQuery("ul", this).show();
+      $(this).get(0).scrollIntoView();
+    }
   });
-  jQuery(".summary>li").on("click",function(){
-  	jQuery(".summary>li").show();
-  	jQuery("ul",this).slideDown();
-  });
+});
 </script>
