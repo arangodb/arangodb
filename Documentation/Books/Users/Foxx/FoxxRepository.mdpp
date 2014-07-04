@@ -70,3 +70,13 @@ exports.repository = TodosRepository;
 !SUBSECTION Counting entries in the repository
 
 @startDocuBlock JSF_foxx_repository_count
+
+!SUBSECTION Index-specific repository methods
+
+@startDocuBlock JSF_foxx_repository_range
+
+@startDocuBlock JSF_foxx_repository_near
+
+@startDocuBlock JSF_foxx_repository_within
+
+@startDocuBlock JSF_foxx_repository_fulltext
