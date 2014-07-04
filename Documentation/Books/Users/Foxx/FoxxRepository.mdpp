@@ -3,15 +3,15 @@
 A repository is a gateway to the database. It gets data from the database, updates it or saves new data. It uses the given model when it returns a model and expects instances of the model for methods like save. In your repository file, export the repository as *repository*.
 
 ```javascript
-Foxx = require("org/arangodb/foxx");
+var Foxx = require("org/arangodb/foxx");
 
-TodosRepository = Foxx.Repository.extend({
+var TodosRepository = Foxx.Repository.extend({
 });
 
 exports.repository = TodosRepository;
 ```
 
-!SUBSECTION Initialize 
+!SUBSECTION Initialize
 
 @startDocuBlock JSF_foxx_repository_initializer
 
@@ -28,6 +28,29 @@ exports.repository = TodosRepository;
 !SUBSECTION Prefix
 
 @startDocuBlock JSF_foxx_repository_prefix
+
+!SECTION Defining indexes
+
+Repository can take care of ensuring the existence of collection indexes for you.
+If you define indexes for a repository, instances of the repository will have
+access to additional index-specific methods like *range* or *fulltext* (see below).
+
+The syntax for defining indexes is the same used in [*collection.ensureIndex*](../IndexHandling/README.md).
+
+@EXAMPLES
+
+```js
+var Foxx = require('org/arangodb/foxx');
+var FulltextRepository = Foxx.Repository.extend({
+    indexes: [
+        {
+            type: 'fulltext',
+            fields: ['text'],
+            minLength: 3
+        }
+    ]
+});
+```
 
 !SECTION Methods of a Repository
 
