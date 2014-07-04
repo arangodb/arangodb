@@ -112,7 +112,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_save
-///`save(model)`
+/// `FoxxRepository::save(model)`
 ///
 /// Saves a model into the database.
 /// Expects a model. Will set the ID and Rev on the model.
@@ -138,7 +138,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_byId
-/// `byId(id)`
+/// `FoxxRepository::byId(id)`
 ///
 /// Returns the model for the given ID.
 ///
@@ -158,7 +158,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_byExample
-/// `byExample(example)`
+/// `FoxxRepository::byExample(example)`
 ///
 /// Returns an array of models for the given ID.
 ///
@@ -180,7 +180,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_firstExample
-/// `firstExample(example)`
+/// `FoxxRepository::firstExample(example)`
 ///
 /// Returns the first model that matches the given example.
 ///
@@ -200,7 +200,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_all
-/// `all()`
+/// `FoxxRepository::all()`
 ///
 /// Returns an array of models that matches the given example. You can provide
 /// both a skip and a limit value.
@@ -245,7 +245,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_remove
-/// `remove(model)`
+/// `FoxxRepository::remove(model)`
 ///
 /// Remove the model from the repository.
 /// Expects a model.
@@ -265,7 +265,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_removeById
-/// `removeById(id)`
+/// `FoxxRepository::removeById(id)`
 ///
 /// Remove the document with the given ID.
 /// Expects an ID of an existing document.
@@ -284,7 +284,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_removeByExample
-/// `removeByExample(example)`
+/// `FoxxRepository::removeByExample(example)`
 ///
 /// Find all documents that fit this example and remove them.
 ///
@@ -306,7 +306,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_replace
-/// `replace(model)`
+/// `FoxxRepository::replace(model)`
 ///
 /// Find the model in the database by its *_id* and replace it with this version.
 /// Expects a model. Sets the Revision of the model.
@@ -331,7 +331,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_replaceById
-/// `replaceById(id, model)`
+/// `FoxxRepository::replaceById(id, model)`
 ///
 /// Find the model in the database by the given ID and replace it with the given.
 /// model.
@@ -354,7 +354,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_replaceByExample
-/// `replaceByExample(example, model)`
+/// `FoxxRepository::replaceByExample(example, model)`
 ///
 /// Find the model in the database by the given example and replace it with the given.
 /// model.
@@ -381,7 +381,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_updateById
-/// `updateById(id, object)`
+/// `FoxxRepository::updateById(id, object)`
 ///
 /// Find an item by ID and update it with the attributes in the provided object.
 /// Returns the updated model.
@@ -400,7 +400,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_updateByExample
-/// `updateByExample(example, object)`
+/// `FoxxRepository::updateByExample(example, object)`
 ///
 /// Find an item by example and update it with the attributes in the provided object.
 /// Returns the updated model.
@@ -423,7 +423,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_count
-/// `count()`
+/// `FoxxRepository::count()`
 ///
 /// Returns the number of entries in this collection.
 ///
@@ -445,7 +445,7 @@ var indexPrototypes = {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_range
-/// `range(attribute, left, right)`
+/// `FoxxRepository::range(attribute, left, right)`
 ///
 /// Returns all models in the repository such that the attribute is greater
 /// than or equal to *left* and strictly less than *right*.
@@ -479,7 +479,7 @@ var indexPrototypes = {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_near
-/// `near(latitude, longitude, options)`
+/// `FoxxRepository::near(latitude, longitude, options)`
 ///
 /// Finds models near the coordinate *(latitude, longitude)*. The returned
 /// list is sorted by distance with the nearest model coming first.
@@ -537,7 +537,7 @@ var indexPrototypes = {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_within
-/// `within(latitude, longitude, radius, options)`
+/// `FoxxRepository::within(latitude, longitude, radius, options)`
 ///
 /// Finds models within the distance *radius* from the coordinate
 /// *(latitude, longitude)*. The returned list is sorted by distance with the
@@ -599,7 +599,7 @@ var indexPrototypes = {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_fulltext
-/// `fulltext(attribute, query, options)`
+/// `FoxxRepository::fulltext(attribute, query, options)`
 ///
 /// Returns all models whose attribute *attribute* matches the search query
 /// *query*.
