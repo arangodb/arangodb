@@ -671,7 +671,8 @@ int TRI_InitVocShaper (TRI_shaper_t* s) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_MoveMarkerVocShaper (TRI_shaper_t* s,
-                             TRI_df_marker_t* marker) {
+                             TRI_df_marker_t* marker,
+                             void* expectedOldPosition) {
   voc_shaper_t* shaper = (voc_shaper_t*) s;
 
   if (marker->_type == TRI_DF_MARKER_SHAPE) {
@@ -680,6 +681,22 @@ int TRI_MoveMarkerVocShaper (TRI_shaper_t* s,
     void* f;
 
     MUTEX_LOCKER(shaper->_shapeLock);
+
+    if (expectedOldPosition != nullptr) {
+      char* old = static_cast<char*>(expectedOldPosition);
+      void const* found = TRI_LookupByKeyAssociativeSynced(&shaper->_shapeIds, &l->_sid);
+
+      if (found != nullptr) {
+        if (old + sizeof(TRI_df_shape_marker_t) != found &&
+            old + sizeof(triagens::wal::shape_marker_t) != found) {
+          LOG_TRACE("got unexpected shape position");
+          // do not insert if position doesn't match the expectation
+          // this is done to ensure that the WAL collector doesn't insert a shape pointer
+          // that has already been garbage collected by the compactor thread
+          return TRI_ERROR_NO_ERROR;
+        }
+      }
+    }
 
     // remove the old marker
     // and re-insert the marker with the new pointer
@@ -709,6 +726,18 @@ int TRI_MoveMarkerVocShaper (TRI_shaper_t* s,
     void* f;
 
     MUTEX_LOCKER(shaper->_attributeLock);
+    
+    if (expectedOldPosition != nullptr) {
+      void const* found = TRI_LookupByKeyAssociativeSynced(&shaper->_attributeNames, p);
+
+      if (found != nullptr && found != expectedOldPosition) {
+        // do not insert if position doesn't match the expectation
+        // this is done to ensure that the WAL collector doesn't insert a shape pointer
+        // that has already been garbage collected by the compactor thread
+        LOG_TRACE("got unexpected attribute position");
+        return TRI_ERROR_NO_ERROR;
+      }
+    }
 
     // remove attribute by name (p points to new location of name, but names
     // are identical in old and new marker)
@@ -828,7 +857,6 @@ int TRI_InsertAttributeVocShaper (TRI_shaper_t* s,
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     LOG_ERROR("found duplicate attribute name '%s' in collection '%s'", name, cname);
-    TRI_ASSERT(false);
 #else
     LOG_TRACE("found duplicate attribute name '%s' in collection '%s'", name, cname);
 #endif
@@ -841,7 +869,6 @@ int TRI_InsertAttributeVocShaper (TRI_shaper_t* s,
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     LOG_ERROR("found duplicate attribute id '%llu' in collection '%s'", (unsigned long long) aid, cname);
-    TRI_ASSERT(false);
 #else
     LOG_TRACE("found duplicate attribute id '%llu' in collection '%s'", (unsigned long long) aid, cname);
 #endif
