@@ -148,7 +148,7 @@ content-type: application/json
 }
 ```
 
-Do not do this:
+Do not do this because *hasMore* now has a value of false:
 
 ``` js 
 > curl -X PUT --dump - http://localhost:8529/_api/cursor/26011191
