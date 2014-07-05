@@ -664,14 +664,11 @@
                 },
                 addFilter: function () {
                 },
+                resetFilter: function () {
+                },
                 getDocuments: function () {
                 },
-                collection: {
-                  resetFilter: function () {
-                  },
-                  size: function () {
-                    return 0;
-                  }
+                size: function () {
                 }
             };
             spyOn(arangoDocStoreDummy, "setToFirst");
