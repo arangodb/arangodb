@@ -93,6 +93,12 @@ Repository = function (collection, opts) {
 ////////////////////////////////////////////////////////////////////////////////
 
   this.prefix = this.options.prefix;
+
+  if (this.indexes) {
+    _.each(this.indexes, function (index) {
+      this.collection.ensureIndex(index);
+    }, this);
+  }
 };
 
 // -----------------------------------------------------------------------------
@@ -106,7 +112,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_save
-///`save(model)`
+/// `FoxxRepository#save(model)`
 ///
 /// Saves a model into the database.
 /// Expects a model. Will set the ID and Rev on the model.
@@ -132,7 +138,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_byId
-/// `byId(id)`
+/// `FoxxRepository#byId(id)`
 ///
 /// Returns the model for the given ID.
 ///
@@ -152,7 +158,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_byExample
-/// `byExample(example)`
+/// `FoxxRepository#byExample(example)`
 ///
 /// Returns an array of models for the given ID.
 ///
@@ -174,7 +180,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_firstExample
-/// `firstExample(example)`
+/// `FoxxRepository#firstExample(example)`
 ///
 /// Returns the first model that matches the given example.
 ///
@@ -194,13 +200,19 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_all
-/// `all()`
+/// `FoxxRepository#all()`
 ///
-/// Returns an array of models that matches the given example. You need to provide
+/// Returns an array of models that matches the given example. You can provide
 /// both a skip and a limit value.
 ///
 /// **Warning:** ArangoDB doesn't guarantee a specific order in this case, to make
 /// this really useful we have to explicitly provide something to order by.
+///
+/// *Parameter*
+///
+/// * *options* (optional):
+///   * *skip* (optional): skips the first given number of models.
+///   * *limit* (optional): only returns at most the given number of models.
 ///
 /// @EXAMPLES
 ///
@@ -212,8 +224,17 @@ _.extend(Repository.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   all: function (options) {
     'use strict';
-    var rawDocuments = this.collection.all().skip(options.skip).limit(options.limit).toArray();
-    return _.map(rawDocuments, function (rawDocument) {
+    if (!options) {
+      options = {};
+    }
+    var rawDocuments = this.collection.all();
+    if (options.skip) {
+      rawDocuments = rawDocuments.skip(options.skip);
+    }
+    if (options.limit) {
+      rawDocuments = rawDocuments.limit(options.limit);
+    }
+    return _.map(rawDocuments.toArray(), function (rawDocument) {
       return (new this.modelPrototype(rawDocument));
     }, this);
   },
@@ -224,7 +245,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_remove
-/// `remove(model)`
+/// `FoxxRepository#remove(model)`
 ///
 /// Remove the model from the repository.
 /// Expects a model.
@@ -244,7 +265,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_removeById
-/// `removeById(id)`
+/// `FoxxRepository#removeById(id)`
 ///
 /// Remove the document with the given ID.
 /// Expects an ID of an existing document.
@@ -263,7 +284,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_removeByExample
-/// `removeByExample(example)`
+/// `FoxxRepository#removeByExample(example)`
 ///
 /// Find all documents that fit this example and remove them.
 ///
@@ -285,7 +306,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_replace
-/// `replace(model)`
+/// `FoxxRepository#replace(model)`
 ///
 /// Find the model in the database by its *_id* and replace it with this version.
 /// Expects a model. Sets the Revision of the model.
@@ -310,7 +331,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_replaceById
-/// `replaceById(id, model)`
+/// `FoxxRepository#replaceById(id, model)`
 ///
 /// Find the model in the database by the given ID and replace it with the given.
 /// model.
@@ -333,7 +354,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_replaceByExample
-/// `replaceByExample(example, model)`
+/// `FoxxRepository#replaceByExample(example, model)`
 ///
 /// Find the model in the database by the given example and replace it with the given.
 /// model.
@@ -360,7 +381,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_updateById
-/// `updateById(id, object)`
+/// `FoxxRepository#updateById(id, object)`
 ///
 /// Find an item by ID and update it with the attributes in the provided object.
 /// Returns the updated model.
@@ -379,7 +400,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_updateByExample
-/// `updateByExample(example, object)`
+/// `FoxxRepository#updateByExample(example, object)`
 ///
 /// Find an item by example and update it with the attributes in the provided object.
 /// Returns the updated model.
@@ -402,7 +423,7 @@ _.extend(Repository.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_count
-/// `count()`
+/// `FoxxRepository#count()`
 ///
 /// Returns the number of entries in this collection.
 ///
@@ -419,7 +440,228 @@ _.extend(Repository.prototype, {
   }
 });
 
-Repository.extend = extend;
+var indexPrototypes = {
+  skiplist: {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_repository_range
+/// `FoxxRepository#range(attribute, left, right)`
+///
+/// Returns all models in the repository such that the attribute is greater
+/// than or equal to *left* and strictly less than *right*.
+///
+/// For range queries it is required that a skiplist index is present for the
+/// queried attribute. If no skiplist index is present on the attribute, the
+/// method will not be available.
+///
+/// *Parameter*
+///
+/// * *attribute*: attribute to query.
+/// * *left*: lower bound of the value range (inclusive).
+/// * *right*: upper bound of the value range (exclusive).
+///
+/// @EXAMPLES
+///
+/// ```javascript
+/// repository.range("age", 10, 13);
+/// ```
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+    range: function (attribute, left, right) {
+      'use strict';
+      var rawDocuments = this.collection.range(attribute, left, right).toArray();
+      return _.map(rawDocuments, function (rawDocument) {
+        return (new this.modelPrototype(rawDocument));
+      }, this);
+    }
+  },
+  geo: {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_repository_near
+/// `FoxxRepository#near(latitude, longitude, options)`
+///
+/// Finds models near the coordinate *(latitude, longitude)*. The returned
+/// list is sorted by distance with the nearest model coming first.
+///
+/// For geo queries it is required that a geo index is present in the
+/// repository. If no geo index is present, the methods will not be available.
+///
+/// *Parameter*
+///
+/// * *latitude*: latitude of the coordinate.
+/// * *longitude*: longitude of the coordinate.
+/// * *options* (optional):
+///   * *geo* (optional): name of the specific geo index to use.
+///   * *distance* (optional): If set to a truthy value, the returned models
+///     will have an additional property containing the distance between the
+///     given coordinate and the model. If the value is a string, that value
+///     will be used as the property name, otherwise the name defaults to *"distance"*.
+///   * *limit* (optional): number of models to return. Defaults to *100*.
+///
+/// @EXAMPLES
+///
+/// ```javascript
+/// repository.near(0, 0, {geo: "home", distance: true, limit: 10});
+/// ```
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+    near: function (latitude, longitude, options) {
+      'use strict';
+      var collection = this.collection,
+        rawDocuments;
+      if (!options) {
+        options = {};
+      }
+      if (options.geo) {
+        collection = collection.geo(options.geo);
+      }
+      rawDocuments = collection.near(latitude, longitude);
+      if (options.distance) {
+        rawDocuments = rawDocuments.distance();
+      }
+      if (options.limit) {
+        rawDocuments = rawDocuments.limit(options.limit);
+      }
+      return _.map(rawDocuments.toArray(), function (rawDocument) {
+        var model = (new this.modelPrototype(rawDocument)),
+          distance;
+        if (options.distance) {
+          delete model.attributes._distance;
+          distance = typeof options.distance === "string" ? options.distance : "distance";
+          model[distance] = rawDocument._distance;
+        }
+        return model;
+      }, this);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_repository_within
+/// `FoxxRepository#within(latitude, longitude, radius, options)`
+///
+/// Finds models within the distance *radius* from the coordinate
+/// *(latitude, longitude)*. The returned list is sorted by distance with the
+/// nearest model coming first.
+///
+/// For geo queries it is required that a geo index is present in the
+/// repository. If no geo index is present, the methods will not be available.
+///
+/// *Parameter*
+///
+/// * *latitude*: latitude of the coordinate.
+/// * *longitude*: longitude of the coordinate.
+/// * *radius*: maximum distance from the coordinate.
+/// * *options* (optional):
+///   * *geo* (optional): name of the specific geo index to use.
+///   * *distance* (optional): If set to a truthy value, the returned models
+///     will have an additional property containing the distance between the
+///     given coordinate and the model. If the value is a string, that value
+///     will be used as the property name, otherwise the name defaults to *"distance"*.
+///   * *limit* (optional): number of models to return. Defaults to *100*.
+///
+/// @EXAMPLES
+///
+/// ```javascript
+/// repository.within(0, 0, 2000 * 1000, {geo: "home", distance: true, limit: 10});
+/// ```
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+    within: function (latitude, longitude, radius, options) {
+      'use strict';
+      var collection = this.collection,
+        rawDocuments;
+      if (!options) {
+        options = {};
+      }
+      if (options.geo) {
+        collection = collection.geo(options.geo);
+      }
+      rawDocuments = collection.within(latitude, longitude, radius);
+      if (options.distance) {
+        rawDocuments = rawDocuments.distance();
+      }
+      if (options.limit) {
+        rawDocuments = rawDocuments.limit(options.limit);
+      }
+      return _.map(rawDocuments.toArray(), function (rawDocument) {
+        var model = (new this.modelPrototype(rawDocument)),
+          distance;
+        if (options.distance) {
+          delete model.attributes._distance;
+          distance = typeof options.distance === "string" ? options.distance : "distance";
+          model[distance] = rawDocument._distance;
+        }
+        return model;
+      }, this);
+    }
+  },
+  fulltext: {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_repository_fulltext
+/// `FoxxRepository#fulltext(attribute, query, options)`
+///
+/// Returns all models whose attribute *attribute* matches the search query
+/// *query*.
+///
+/// In order to use the fulltext method, a fulltext index must be defined on
+/// the repository. If multiple fulltext indexes are defined on the repository
+/// for the attribute, the most capable one will be selected.
+/// If no fulltext index is present, the method will not be available.
+///
+/// *Parameter*
+///
+/// * *attribute*: model attribute to perform a search on.
+/// * *query*: query to match the attribute against.
+/// * *options* (optional):
+///   * *limit* (optional): number of models to return. Defaults to all.
+///
+/// @EXAMPLES
+///
+/// ```javascript
+/// repository.fulltext("text", "word", {limit: 1});
+/// ```
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+    fulltext: function (attribute, query, options) {
+      'use strict';
+      if (!options) {
+        options = {};
+      }
+      var rawDocuments = this.collection.fulltext(attribute, query);
+      if (options.limit) {
+        rawDocuments = rawDocuments.limit(options.limit);
+      }
+      return _.map(rawDocuments.toArray(), function (rawDocument) {
+        return (new this.modelPrototype(rawDocument));
+      }, this);
+    }
+  }
+};
+
+var addIndexMethods = function (prototype) {
+  'use strict';
+  _.each(prototype.indexes, function (index) {
+    var protoMethods = indexPrototypes[index.type];
+    if (!protoMethods) {
+      return;
+    }
+    _.each(protoMethods, function (method, key) {
+      if (prototype[key] === undefined) {
+        prototype[key] = method;
+      }
+    });
+  });
+};
+
+Repository.extend = function (prototypeProperties, constructorProperties) {
+  'use strict';
+  var constructor = extend.call(this, prototypeProperties, constructorProperties);
+  if (constructor.prototype.hasOwnProperty('indexes')) {
+    addIndexMethods(constructor.prototype);
+  }
+  return constructor;
+};
 
 exports.Repository = Repository;
 
