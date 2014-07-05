@@ -222,3 +222,223 @@ Note: The *COLLECT* statement eliminates all local variables in the current
 scope. After *COLLECT* only the variables introduced by *COLLECT* itself are
 available.
 
+!SUBSECTION REMOVE
+
+The *REMOVE* keyword can be used to remove documents from a collection. Only
+a single *REMOVE* statement is allowed per AQL query, and it cannot be combined
+with other data-modification or retrieval operations. A remove operation is
+restricted to a single collection, and the collection name must not be dynamic.
+
+The syntax for a remove operation is:
+
+    REMOVE key-expression IN collection options
+
+*collection* must contain the name of the collection to remove the documents 
+from. *key-expression* must be an expression that contains the document identification.
+This can either be a string (which must then contain the document key) or a
+document, which must contain a *_key* attribute.
+
+The following queries are thus equivalent:
+
+    FOR u IN users
+      REMOVE { _key: u._key } IN users
+
+    FOR u IN users
+      REMOVE u._key IN users
+
+    FOR u IN users
+      REMOVE u IN users
+
+Note that a remove operation can remove arbitrary documents, and the documents
+do not need to be identical to the ones produced by a preceeding *FOR* statement:
+
+    FOR i IN 1..1000
+      REMOVE { _key: CONCAT('test', TO_STRING(i)) } IN users
+
+    FOR u IN users
+      FILTER u.active == false
+      REMOVE { _key: u._key } IN backup
+
+*options* can be used to suppress query errors that might occur when trying to
+remove non-existing documents. For example, the following query will fail if one
+of the to-be-deleted documents does not exist:
+
+    FOR i IN 1..1000
+      REMOVE { _key: CONCAT('test', TO_STRING(i)) } IN users
+
+By specifying query options, these errors can be suppressed so the query completes:
+
+    FOR i IN 1..1000
+      REMOVE { _key: CONCAT('test', TO_STRING(i)) } IN users OPTIONS { ignoreErrors: true }
+
+!SUBSECTION UPDATE
+
+The *UPDATE* keyword can be used to partially update documents in a collection. Only
+a single *UPDATE* statement is allowed per AQL query, and it cannot be combined
+with other data-modification or retrieval operations. An update operation is
+restricted to a single collection, and the collection name must not be dynamic.
+
+The two syntaxes for an update operation are:
+
+    UPDATE document IN collection options
+    UPDATE key-expression WITH document IN collection options
+
+*collection* must contain the name of the collection in which the documents should
+be updated. *document* must be a document that contains the attributes and values 
+to be updated. When using the first syntax, *document* must also contain the *_key*
+attribute to identify the document to be updated. 
+
+    FOR u IN users
+      UPDATE { _key: u._key, name: CONCAT(u.firstName, u.lastName) } IN users
+
+The following query is invalid because it does not contain a *_key* attribute and
+thus it is not possible to determine the documents to be updated:
+
+    FOR u IN users
+      UPDATE { name: CONCAT(u.firstName, u.lastName) } IN users
+
+When using the second syntax, *key-expression* provides the document identification.
+This can either be a string (which must then contain the document key) or a
+document, which must contain a *_key* attribute.
+
+The following queries are equivalent:
+
+    FOR u IN users
+      UPDATE u._key WITH { name: CONCAT(u.firstName, u.lastName) } IN users
+
+    FOR u IN users
+      UPDATE { _key: u._key } WITH { name: CONCAT(u.firstName, u.lastName) } IN users
+    
+    FOR u IN users
+      UPDATE u WITH { name: CONCAT(u.firstName, u.lastName) } IN users
+
+An update operation may update arbitrary documents which do not need to be identical
+to the ones produced by a preceeding *FOR* statement:
+
+    FOR i IN 1..1000
+      UPDATE CONCAT('test', TO_STRING(i)) WITH { foobar: true } IN users
+
+    FOR u IN users
+      FILTER u.active == false
+      UPDATE u WITH { status: 'inactive' } IN backup
+
+*options* can be used to suppress query errors that might occur when trying to
+update non-existing documents or violating unique key constraints:
+
+    FOR i IN 1..1000
+      UPDATE { _key: CONCAT('test', TO_STRING(i)) } WITH { foobar: true } IN users OPTIONS { ignoreErrors: true }
+
+An update operation will only update the attributes specified in *document* and
+leave other attributes untouched. Internal attributes (such as *_id*, *_key*, *_rev*,
+*_from* and *_to*) cannot be updated and are ignored when specified in *document*.
+Updating a document will modify the document's revision number with a server-generated value.
+
+When updating an attribute with a null value, ArangoDB will not remove the attribute 
+from the document but store a null value for it. To get rid of attributes in an update
+operation, set them to null and provide the *keepNull* option:
+
+    FOR u IN users
+      UPDATE u WITH { foobar: true, notNeeded: null } IN users OPTIONS { keepNull: false }
+
+The above query will remove the *notNeeded* attribute from the documents and update
+the *foobar* attribute normally.
+
+!SUBSECTION REPLACE
+
+The *REPLACE* keyword can be used to completely replace documents in a collection. Only
+a single *REPLACE* statement is allowed per AQL query, and it cannot be combined
+with other data-modification or retrieval operations. A replace operation is
+restricted to a single collection, and the collection name must not be dynamic.
+
+The two syntaxes for a replace operation are:
+
+    REPLACE document IN collection options
+    REPLACE key-expression WITH document IN collection options
+
+*collection* must contain the name of the collection in which the documents should
+be replaced. *document* is the replacement document. When using the first syntax, *document* 
+must also contain the *_key* attribute to identify the document to be replaced. 
+
+    FOR u IN users
+      REPLACE { _key: u._key, name: CONCAT(u.firstName, u.lastName), status: u.status } IN users
+
+The following query is invalid because it does not contain a *_key* attribute and
+thus it is not possible to determine the documents to be replaced:
+
+    FOR u IN users
+      REPLACE { name: CONCAT(u.firstName, u.lastName, status: u.status) } IN users
+
+When using the second syntax, *key-expression* provides the document identification.
+This can either be a string (which must then contain the document key) or a
+document, which must contain a *_key* attribute.
+
+The following queries are equivalent:
+
+    FOR u IN users
+      REPLACE { _key: u._key, name: CONCAT(u.firstName, u.lastName) } IN users
+
+    FOR u IN users
+      REPLACE u._key WITH { name: CONCAT(u.firstName, u.lastName) } IN users
+
+    FOR u IN users
+      REPLACE { _key: u._key } WITH { name: CONCAT(u.firstName, u.lastName) } IN users
+    
+    FOR u IN users
+      REPLACE u WITH { name: CONCAT(u.firstName, u.lastName) } IN users
+
+A replace will fully replace an existing document, but it will not modify the values
+of internal attributes (such as *_id*, *_key*, *_from* and *_to*). Replacing a document
+will modify a document's revision number with a server-generated value.
+
+A replace operation may update arbitrary documents which do not need to be identical
+to the ones produced by a preceeding *FOR* statement:
+
+    FOR i IN 1..1000
+      REPLACE CONCAT('test', TO_STRING(i)) WITH { foobar: true } IN users
+
+    FOR u IN users
+      FILTER u.active == false
+      REPLACE u WITH { status: 'inactive', name: u.name } IN backup
+
+*options* can be used to suppress query errors that might occur when trying to
+replace non-existing documents or when violating unique key constraints:
+
+    FOR i IN 1..1000
+      REPLACE { _key: CONCAT('test', TO_STRING(i)) } WITH { foobar: true } IN users OPTIONS { ignoreErrors: true }
+
+!SUBSECTION INSERT
+
+The *INSERT* keyword can be used to insert new documents into a collection. Only
+a single *INSERT* statement is allowed per AQL query, and it cannot be combined
+with other data-modification or retrieval operations. An insert operation is
+restricted to a single collection, and the collection name must not be dynamic.
+
+The syntax for an insert operation is:
+
+    INSERT document IN collection options
+
+Note that the *INTO* keyword is also allowed in the place of *IN*.
+
+*collection* must contain the name of the collection into which the documents should
+be inserted. *document* is the document to be inserted, and it may or may not contain
+a *_key* attribute. If no *_key* attribute is provided, ArangoDB will auto-generate
+a value for *_key* value. Inserting a document will also auto-generate a document
+revision number for the document.
+
+    FOR i IN 1..100
+      INSERT { value: i } IN numbers
+
+When inserting into an edge collection, it is mandatory to specify the attributes
+*_from* and *_to* in document:
+
+    FOR u IN users
+      FOR p IN products
+        FILTER u._key == p.recommendedBy
+        INSERT { _from: u._id, _to: p._id } IN recommendations
+
+*options* can be used to suppress query errors that might occur when violating unique
+key constraints:
+
+    FOR i IN 1..1000
+      INSERT { _key: CONCAT('test', TO_STRING(i)), name: "test" } WITH { foobar: true } IN users OPTIONS { ignoreErrors: true }
+
