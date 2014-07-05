@@ -868,11 +868,14 @@ bool TRI_ConvertParameterFunctionAql (const TRI_aql_function_t* const function,
         }
         foundArg = false;
         break;
+
       case 'h':
         if (i == checkArg) {
           return true;
         }
-        // break intentionally missing
+        foundArg = true;
+        break;
+
       default:
         foundArg = true;
     }
@@ -961,7 +964,12 @@ bool TRI_ValidateArgsFunctionAql (TRI_aql_context_t* const context,
           case '.': // any type except collections
             allowed._list = true;
             allowed._array = true;
-            // break intentionally missing!!
+            allowed._null = true;
+            allowed._bool = true;
+            allowed._number = true;
+            allowed._string = true;
+            foundArg = true;
+            break;
           case 'p': // primitive types
             allowed._null = true;
             allowed._bool = true;
