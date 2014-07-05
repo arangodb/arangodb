@@ -2675,14 +2675,15 @@ static void ProcessUpdate (TRI_aql_codegen_js_t* const generator,
   if (node->_members._length > 1) {
     ScopeOutput(generator, "aql.UPDATE_DOCUMENT_KEY(ops, ");
     // document
-    ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
+    ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
     ScopeOutput(generator, ", ");
     // explicit key specification
-    ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
+    ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
   }
   else {
     ScopeOutput(generator, "aql.UPDATE_DOCUMENT(ops, ");
-    ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 1));
+    // document
+    ProcessNode(generator, TRI_AQL_NODE_MEMBER(node, 0));
   }
 
   ScopeOutput(generator, ");\n");
@@ -3165,7 +3166,7 @@ char* TRI_GenerateCodeAql (TRI_aql_context_t* const context,
                                         len1,
                                         generator->_buffer._buffer,
                                         len2);
-    if (code != NULL) {
+    if (code != nullptr) {
       LOG_TRACE("generated code: %s", code);
       *length = len1 + len2;
     }
