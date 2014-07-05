@@ -136,6 +136,7 @@ add_executable(
     Wal/Logfile.cpp
     Wal/Marker.cpp
     Wal/RecoverState.cpp
+    Wal/RemoverThread.cpp
     Wal/Slot.cpp
     Wal/Slots.cpp
     Wal/SynchroniserThread.cpp

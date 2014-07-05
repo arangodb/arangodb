@@ -43,6 +43,7 @@
 #include "Wal/AllocatorThread.h"
 #include "Wal/CollectorThread.h"
 #include "Wal/RecoverState.h"
+#include "Wal/RemoverThread.h"
 #include "Wal/Slots.h"
 #include "Wal/SynchroniserThread.h"
 
@@ -145,6 +146,7 @@ LogfileManager::LogfileManager (TRI_server_t* server,
     _synchroniserThread(nullptr),
     _allocatorThread(nullptr),
     _collectorThread(nullptr),
+    _removerThread(nullptr),
     _logfilesLock(),
     _lastOpenedId(0),
     _lastCollectedId(0),
@@ -463,6 +465,9 @@ bool LogfileManager::open () {
   // write the current state into the shutdown file
   writeShutdownInfo(false);
 
+  // finished recovery
+  _inRecovery = false;
+
 
   res = startCollectorThread();
 
@@ -473,11 +478,14 @@ bool LogfileManager::open () {
 
   TRI_ASSERT(_collectorThread != nullptr);
 
-  // finished recovery
-  _inRecovery = false;
+  res = startRemoverThread();
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("could not start WAL remover thread: %s", TRI_errno_string(res));
+    return false;
+  }
 
-  // tell the collector that the recovery is over now
-  _collectorThread->recoveryDone();
+  // tell the allocator that the recovery is over now
   _allocatorThread->recoveryDone();
 
 
@@ -519,6 +527,9 @@ void LogfileManager::stop () {
   // this->flush(true, true, false);
 
   // stop threads
+  LOG_TRACE("stopping remover thread");
+  stopRemoverThread();
+
   LOG_TRACE("stopping collector thread");
   stopCollectorThread();
 
@@ -898,33 +909,25 @@ Logfile* LogfileManager::unlinkLogfile (Logfile::IdType id) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a logfile from the inventory and in the file system
+/// @brief removes logfiles that are allowed to be removed
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogfileManager::removeLogfile (Logfile* logfile,
-                                    bool unlink) {
-  if (unlink) {
-    unlinkLogfile(logfile);
+bool LogfileManager::removeLogfiles () {
+  int iterations = 0;
+  bool worked = false;
+
+  while (++iterations < 6) {
+    Logfile* logfile = getRemovableLogfile();
+
+    if (logfile == nullptr) {
+      break;
+    }
+
+    removeLogfile(logfile, true);
+    worked = true;
   }
 
-  // old filename
-  Logfile::IdType const id = logfile->id();
-  std::string const filename = logfileName(id);
-
-  LOG_TRACE("removing logfile '%s'", filename.c_str());
-
-  // now close the logfile
-  delete logfile;
-
-  int res = TRI_ERROR_NO_ERROR;
-  // now physically remove the file
-
-  if (! basics::FileUtils::remove(filename, &res)) {
-    LOG_ERROR("unable to remove logfile '%s': %s",
-              filename.c_str(),
-              TRI_errno_string(res));
-    return;
-  }
+  return worked;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1114,15 +1117,16 @@ Logfile* LogfileManager::getLogfile (Logfile::IdType id) {
 Logfile* LogfileManager::getWriteableLogfile (uint32_t size,
                                               Logfile::StatusType& status) {
   static const uint64_t SleepTime = 10 * 1000;
-  static const uint64_t MaxIterations = 1000;
+  static const uint64_t MaxIterations = 1500;
   size_t iterations = 0;
+  bool haveSignalled = false;
 
   TRI_IF_FAILURE("LogfileManagerGetWriteableLogfile") {
     // intentionally don't return a logfile
     return nullptr;
   }
 
-  while (++iterations < 1000) {
+  while (++iterations < MaxIterations) {
     {
       WRITE_LOCKER(_logfilesLock);
       auto it = _logfiles.begin();
@@ -1157,7 +1161,10 @@ Logfile* LogfileManager::getWriteableLogfile (uint32_t size,
     }
 
     // signal & sleep outside the lock
-    _allocatorThread->signal(size);
+    if (! haveSignalled) {
+      _allocatorThread->signal(size);
+      haveSignalled = true;
+    }
     usleep(SleepTime);
   }
 
@@ -1321,6 +1328,35 @@ LogfileManagerState LogfileManager::state () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a logfile from the inventory and in the file system
+////////////////////////////////////////////////////////////////////////////////
+
+void LogfileManager::removeLogfile (Logfile* logfile,
+                                    bool unlink) {
+  if (unlink) {
+    unlinkLogfile(logfile);
+  }
+
+  // old filename
+  Logfile::IdType const id = logfile->id();
+  std::string const filename = logfileName(id);
+
+  LOG_TRACE("removing logfile '%s'", filename.c_str());
+
+  // now close the logfile
+  delete logfile;
+
+  int res = TRI_ERROR_NO_ERROR;
+  // now physically remove the file
+
+  if (! basics::FileUtils::remove(filename, &res)) {
+    LOG_ERROR("unable to remove logfile '%s': %s",
+              filename.c_str(),
+              TRI_errno_string(res));
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait until a specific logfile has been collected
@@ -1599,6 +1635,41 @@ void LogfileManager::stopCollectorThread () {
 
     delete _collectorThread;
     _collectorThread = nullptr;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start the remover thread
+////////////////////////////////////////////////////////////////////////////////
+
+int LogfileManager::startRemoverThread () {
+  _removerThread = new RemoverThread(this);
+
+  if (_removerThread == nullptr) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  if (! _removerThread->start()) {
+    delete _removerThread;
+    return TRI_ERROR_INTERNAL;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop the remover thread
+////////////////////////////////////////////////////////////////////////////////
+
+void LogfileManager::stopRemoverThread () {
+  if (_removerThread != nullptr) {
+    LOG_TRACE("stopping WAL remover thread");
+
+    _removerThread->stop();
+    _removerThread->shutdown();
+
+    delete _removerThread;
+    _removerThread = nullptr;
   }
 }
 

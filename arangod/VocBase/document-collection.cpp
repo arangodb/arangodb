@@ -225,81 +225,6 @@ static bool IsEqualKeyElementDatafile (TRI_associative_pointer_t* array, void co
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief closes a datafile
-///
-/// Note that the caller must hold a lock protecting the _datafiles and
-/// _journals entry.
-////////////////////////////////////////////////////////////////////////////////
-
-static bool CloseDatafileDocumentCollection (TRI_document_collection_t* document,
-                                             size_t position,
-                                             bool isCompactor) {
-  TRI_vector_pointer_t* vector;
-
-  // either use a journal or a compactor
-  if (isCompactor) {
-    vector = &document->_compactors;
-  }
-  else {
-    vector = &document->_journals;
-  }
-
-  // no journal at this position
-  if (vector->_length <= position) {
-    TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
-    return false;
-  }
-
-  // seal and rename datafile
-  TRI_datafile_t* journal = static_cast<TRI_datafile_t*>(vector->_buffer[position]);
-  int res = TRI_SealDatafile(journal);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("failed to seal datafile '%s': %s", journal->getName(journal), TRI_last_error());
-
-    if (! isCompactor) {
-      TRI_RemoveVectorPointer(vector, position);
-      TRI_PushBackVectorPointer(&document->_datafiles, journal);
-    }
-
-    return false;
-  }
-
-  if (! isCompactor && journal->isPhysical(journal)) {
-    // rename the file
-    char* number = TRI_StringUInt64(journal->_fid);
-    char* dname = TRI_Concatenate3String("datafile-", number, ".db");
-    char* filename = TRI_Concatenate2File(document->_directory, dname);
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, number);
-
-    bool ok = TRI_RenameDatafile(journal, filename);
-
-    if (! ok) {
-      LOG_ERROR("failed to rename datafile '%s' to '%s': %s", journal->getName(journal), filename, TRI_last_error());
-
-      TRI_RemoveVectorPointer(vector, position);
-      TRI_PushBackVectorPointer(&document->_datafiles, journal);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-
-      return false;
-    }
-
-    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-
-    LOG_TRACE("closed file '%s'", journal->getName(journal));
-  }
-
-  if (! isCompactor) {
-    TRI_RemoveVectorPointer(vector, position);
-    TRI_PushBackVectorPointer(&document->_datafiles, journal);
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief free an assoc array of datafile infos
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2353,7 +2278,7 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection (TRI_document_collection_t*
   cm._type = (TRI_col_type_t) document->_info._type;
   cm._cid  = document->_info._cid;
 
-  res = TRI_WriteCrcElementDatafile(journal, position, &cm.base, true);
+  res = TRI_WriteCrcElementDatafile(journal, position, &cm.base, false);
 
   TRI_IF_FAILURE("CreateJournalDocumentCollectionReserve2") {
     res = TRI_ERROR_DEBUG;
@@ -2617,13 +2542,77 @@ int TRI_RollbackOperationDocumentCollection (TRI_document_collection_t* document
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief closes an existing journal
+/// @brief closes an existing datafile
+/// Note that the caller must hold a lock protecting the _datafiles and
+/// _journals entry.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_CloseDatafileDocumentCollection (TRI_document_collection_t* document,
                                           size_t position,
                                           bool isCompactor) {
-  return CloseDatafileDocumentCollection(document, position, isCompactor);
+  TRI_vector_pointer_t* vector;
+
+  // either use a journal or a compactor
+  if (isCompactor) {
+    vector = &document->_compactors;
+  }
+  else {
+    vector = &document->_journals;
+  }
+
+  // no journal at this position
+  if (vector->_length <= position) {
+    TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
+    return false;
+  }
+
+  // seal and rename datafile
+  TRI_datafile_t* journal = static_cast<TRI_datafile_t*>(vector->_buffer[position]);
+  int res = TRI_SealDatafile(journal);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("failed to seal datafile '%s': %s", journal->getName(journal), TRI_last_error());
+
+    if (! isCompactor) {
+      TRI_RemoveVectorPointer(vector, position);
+      TRI_PushBackVectorPointer(&document->_datafiles, journal);
+    }
+
+    return false;
+  }
+
+  if (! isCompactor && journal->isPhysical(journal)) {
+    // rename the file
+    char* number = TRI_StringUInt64(journal->_fid);
+    char* dname = TRI_Concatenate3String("datafile-", number, ".db");
+    char* filename = TRI_Concatenate2File(document->_directory, dname);
+
+    TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, number);
+
+    bool ok = TRI_RenameDatafile(journal, filename);
+
+    if (! ok) {
+      LOG_ERROR("failed to rename datafile '%s' to '%s': %s", journal->getName(journal), filename, TRI_last_error());
+
+      TRI_RemoveVectorPointer(vector, position);
+      TRI_PushBackVectorPointer(&document->_datafiles, journal);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+      return false;
+    }
+
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+    LOG_TRACE("closed file '%s'", journal->getName(journal));
+  }
+
+  if (! isCompactor) {
+    TRI_RemoveVectorPointer(vector, position);
+    TRI_PushBackVectorPointer(&document->_datafiles, journal);
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
