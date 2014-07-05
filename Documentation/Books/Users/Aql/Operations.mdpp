@@ -224,8 +224,12 @@ available.
 
 !SUBSECTION REMOVE
 
-The *REMOVE* keyword can be used to remove documents from a collection. Only
-a single *REMOVE* statement is allowed per AQL query, and it cannot be combined
+The *REMOVE* keyword can be used to remove documents from a collection. On a
+single server, the document removal is executed transactionally in an 
+all-or-nothing fashion. For sharded collections, the entire remove operation
+is not transactional.
+
+Only a single *REMOVE* statement is allowed per AQL query, and it cannot be combined
 with other data-modification or retrieval operations. A remove operation is
 restricted to a single collection, and the collection name must not be dynamic.
 
@@ -266,15 +270,25 @@ of the to-be-deleted documents does not exist:
     FOR i IN 1..1000
       REMOVE { _key: CONCAT('test', TO_STRING(i)) } IN users
 
-By specifying query options, these errors can be suppressed so the query completes:
+By specifying the *ignoreErrors* query option, these errors can be suppressed so 
+the query completes:
 
     FOR i IN 1..1000
       REMOVE { _key: CONCAT('test', TO_STRING(i)) } IN users OPTIONS { ignoreErrors: true }
 
+To make sure data are durable when a query returns, there is the *waitForSync* 
+query option:
+
+    FOR i IN 1..1000
+      REMOVE { _key: CONCAT('test', TO_STRING(i)) } IN users OPTIONS { waitForSync: true }
+
 !SUBSECTION UPDATE
 
-The *UPDATE* keyword can be used to partially update documents in a collection. Only
-a single *UPDATE* statement is allowed per AQL query, and it cannot be combined
+The *UPDATE* keyword can be used to partially update documents in a collection. On a 
+single server, updates are executed transactionally in an all-or-nothing fashion. 
+For sharded collections, the entire update operation is not transactional.
+
+Only a single *UPDATE* statement is allowed per AQL query, and it cannot be combined
 with other data-modification or retrieval operations. An update operation is
 restricted to a single collection, and the collection name must not be dynamic.
 
@@ -343,10 +357,19 @@ operation, set them to null and provide the *keepNull* option:
 The above query will remove the *notNeeded* attribute from the documents and update
 the *foobar* attribute normally.
 
+To make sure data are durable when an update query returns, there is the *waitForSync* 
+query option:
+
+    FOR u IN users
+      UPDATE u WITH { foobar: true } IN users OPTIONS { waitForSync: true }
+
 !SUBSECTION REPLACE
 
-The *REPLACE* keyword can be used to completely replace documents in a collection. Only
-a single *REPLACE* statement is allowed per AQL query, and it cannot be combined
+The *REPLACE* keyword can be used to completely replace documents in a collection. On a
+single server, the replace operation is executed transactionally in an all-or-nothing 
+fashion. For sharded collections, the entire replace operation is not transactional.
+
+Only a single *REPLACE* statement is allowed per AQL query, and it cannot be combined
 with other data-modification or retrieval operations. A replace operation is
 restricted to a single collection, and the collection name must not be dynamic.
 
@@ -406,10 +429,19 @@ replace non-existing documents or when violating unique key constraints:
     FOR i IN 1..1000
       REPLACE { _key: CONCAT('test', TO_STRING(i)) } WITH { foobar: true } IN users OPTIONS { ignoreErrors: true }
 
+To make sure data are durable when a replace query returns, there is the *waitForSync* 
+query option:
+
+    FOR i IN 1..1000
+      REPLACE { _key: CONCAT('test', TO_STRING(i)) } WITH { foobar: true } IN users OPTIONS { waitForSync: true }
+
 !SUBSECTION INSERT
 
-The *INSERT* keyword can be used to insert new documents into a collection. Only
-a single *INSERT* statement is allowed per AQL query, and it cannot be combined
+The *INSERT* keyword can be used to insert new documents into a collection. On a 
+single server, an insert operation is executed transactionally in an all-or-nothing 
+fashion. For sharded collections, the entire insert operation is not transactional.
+
+Only a single *INSERT* statement is allowed per AQL query, and it cannot be combined
 with other data-modification or retrieval operations. An insert operation is
 restricted to a single collection, and the collection name must not be dynamic.
 
@@ -441,4 +473,10 @@ key constraints:
 
     FOR i IN 1..1000
       INSERT { _key: CONCAT('test', TO_STRING(i)), name: "test" } WITH { foobar: true } IN users OPTIONS { ignoreErrors: true }
+
+To make sure data are durable when an insert query returns, there is the *waitForSync* 
+query option:
+
+    FOR i IN 1..1000
+      INSERT { _key: CONCAT('test', TO_STRING(i)), name: "test" } WITH { foobar: true } IN users OPTIONS { waitForSync: true }
 

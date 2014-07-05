@@ -50,6 +50,7 @@
 <!-- 10 -->
 * [AQL](Aql/README.md)
   * [How to invoke AQL](Aql/Invoke.md)
+  * [Data modification queries](Aql/DataModification.md)
   * [Language Basics](Aql/Basics.md)
   * [Functions](Aql/Functions.md)
   * [Query Results](Aql/QueryResults.md)
@@ -137,7 +138,7 @@
   * [Databases](HttpDatabase/README.md)
     * [To-Endpoint](HttpDatabase/DatabaseEndpoint.md)
     * [Management](HttpDatabase/DatabaseManagement.md)
-    * [Note on Databases](HttpDatabase/NotesOnDatabases.md)
+    * [Notes on Databases](HttpDatabase/NotesOnDatabases.md)
   * [Documents](HttpDocument/README.md)
     * [Address and ETag](HttpDocument/AddressAndEtag.md)
     * [Working with](HttpDocument/WorkingWithDocuments.md)

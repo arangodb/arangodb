@@ -60,6 +60,9 @@ road map):
   * Transactions can be run, but do not behave like transactions. They
     simply execute but have no atomicity or isolation in version 2.0.
     See the road map for version 2.X.
+  * Data-modification AQL queries are not executed atomically or isolated.
+    If a data-modification AQL query fails for one shard, it might be
+    rolled back there, but still complete on other shards.
   * We plan to revise the AQL optimizer for version 2.2. This is
     necessary since for efficient queries in cluster mode we have to
     do as much as possible of the filtering and sorting on the
