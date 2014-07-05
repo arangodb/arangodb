@@ -3,13 +3,42 @@
 You can run AQL queries from your application via the HTTP REST API. The full
 API description is available at [Http Interface for AQL Query Cursor](../HttpAqlQueryCursor/README.md). 
 
-You can also run AQL queries from arangosh. To do so, first create an
+You can also run AQL queries from arangosh. To do so, you can use the *_query* method 
+of the *db* object. This will run the specified query in the context of the currently
+selected database and return the query results in a cursor. The results of the cursor
+can be printed using its *toArray* method:
+    
+    arangosh> db._query("FOR my IN mycollection RETURN my._key").toArray();
+
+To pass bind parameters into a query, they can be specified as second argument to the
+*_query* method:
+
+    arangosh> db._query("FOR c IN @@collection FILTER c._key == @key RETURN c._key", { 
+      "@collection": "mycollection", 
+      "key": "test1" 
+    }).toArray();
+
+Data-modifying AQL queries do not return a result, so the *toArray* method will always
+return an empty list. To retrieve statistics for a data-modification query, use the
+*getExtra* method:
+
+    arangosh> db._query("FOR i IN 1..100 INSERT { _key: CONCAT('test', TO_STRING(i)) } INTO mycollection").getExtra();
+    { 
+      "operations" : {
+        "executed" : 100,
+        "ignored" : 0
+      }
+    }
+
+The *_query* method is a shorthand for creating an ArangoStatement object,
+executing it and iterating over the resulting cursor. If more control over the
+result set iteration is needed, it is recommended to first create an
 ArangoStatement object as follows:
 
-    stmt = db._createStatement( { "query": "FOR i IN [ 1, 2 ] RETURN i * 2" } );
+    arangosh> stmt = db._createStatement( { "query": "FOR i IN [ 1, 2 ] RETURN i * 2" } );
     [object ArangoQueryCursor]
 
-To execute the query, use the *execute* method:
+To execute the query, use the *execute* method of the statement:
 
     arangosh> c = stmt.execute();
     [object ArangoQueryCursor]
@@ -57,7 +86,7 @@ or
     2
     4
 
-Please note that bind variables can also be passed into the *_createStatement* method directly,
+Please note that bind parameters can also be passed into the *_createStatement* method directly,
 making it a bit more convenient:
     
     arangosh> stmt = db._createStatement( { 
@@ -67,7 +96,7 @@ making it a bit more convenient:
         "two": 2 
       } 
     } );
-
+    
 Cursors also optionally provide the total number of results. By default, they do not. 
 To make the server return the total number of results, you may set the *count* attribute to 
 *true* when creating a statement:
