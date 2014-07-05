@@ -5261,7 +5261,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
     TRI_V8_TYPE_ERROR(scope, "expecting string for <querystring>");
   }
 
-  string const queryString = TRI_ObjectToString(queryArg);
+  string const&& queryString = TRI_ObjectToString(queryArg);
 
   // bind parameters
   TRI_json_t* parameters = nullptr;

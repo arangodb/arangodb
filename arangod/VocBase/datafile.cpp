@@ -1061,7 +1061,6 @@ TRI_datafile_t* TRI_CreatePhysicalDatafile (char const* filename,
     return nullptr;
   }
 
-
   // create datafile structure
   datafile = static_cast<TRI_datafile_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_datafile_t), false));
 
@@ -1675,8 +1674,6 @@ bool TRI_RenameDatafile (TRI_datafile_t* datafile, char const* filename) {
 int TRI_SealDatafile (TRI_datafile_t* datafile) {
   TRI_df_footer_marker_t footer;
   TRI_df_marker_t* position;
-  bool ok;
-  int res;
 
   if (datafile->_state == TRI_DF_STATE_READ) {
     return TRI_set_errno(TRI_ERROR_ARANGO_READ_ONLY);
@@ -1699,10 +1696,10 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
   // reserve space and write footer to file
   datafile->_footerSize = 0;
 
-  res = TRI_ReserveElementDatafile(datafile, footer.base._size, &position, 0);
+  int res = TRI_ReserveElementDatafile(datafile, footer.base._size, &position, 0);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    res = TRI_WriteCrcElementDatafile(datafile, position, &footer.base, true);
+    res = TRI_WriteCrcElementDatafile(datafile, position, &footer.base, false);
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1710,7 +1707,7 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
   }
 
   // sync file
-  ok = datafile->sync(datafile, datafile->_data, ((char*) datafile->_data) + datafile->_currentSize);
+  bool ok = datafile->sync(datafile, datafile->_synced, ((char*) datafile->_data) + datafile->_currentSize);
 
   if (! ok) {
     datafile->_state = TRI_DF_STATE_WRITE_ERROR;
