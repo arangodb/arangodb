@@ -545,6 +545,7 @@ function UPDATE_DOCUMENT_KEY (ops, document, key) {
 
 function EXECUTE_REMOVE (ops, collection, options) {
   var count = 0, i, n = ops.length, c = COLLECTION(collection);
+  options.silent = true;
 
   if (options.ignoreErrors) {
     for (i = 0; i < n; ++i) {
@@ -572,21 +573,44 @@ function EXECUTE_REMOVE (ops, collection, options) {
 
 function EXECUTE_INSERT (ops, collection, options) {
   var count = 0, i, n = ops.length, c = COLLECTION(collection);
+  options.silent = true;
 
-  if (options.ignoreErrors) {
-    for (i = 0; i < n; ++i) {
-      try {
-        c.save(ops[i]);
-        ++count;
+  if (c.type() === 3) {
+    // edge collection
+    if (options.ignoreErrors) {
+      for (i = 0; i < n; ++i) {
+        try {
+          c.save(ops[i]._from, ops[i]._to, ops[i], options);
+          ++count;
+        }
+        catch (err1) {
+        }
       }
-      catch (err) {
+    }
+    else { 
+      for (i = 0; i < n; ++i) {
+        c.save(ops[i]._from, ops[i]._to, ops[i], options);
+        ++count;
       }
     }
   }
-  else { 
-    for (i = 0; i < n; ++i) {
-      c.save(ops[i]);
-      ++count;
+  else {
+    // document collection
+    if (options.ignoreErrors) {
+      for (i = 0; i < n; ++i) {
+        try {
+          c.save(ops[i], options);
+          ++count;
+        }
+        catch (err2) {
+        }
+      }
+    }
+    else { 
+      for (i = 0; i < n; ++i) {
+        c.save(ops[i], options);
+        ++count;
+      }
     }
   }
 
@@ -599,6 +623,7 @@ function EXECUTE_INSERT (ops, collection, options) {
 
 function EXECUTE_UPDATE (ops, collection, options) {
   var count = 0, i, n = ops.length, c = COLLECTION(collection);
+  options.silent = true;
 
   if (options.ignoreErrors) {
     for (i = 0; i < n; ++i) {
@@ -626,6 +651,7 @@ function EXECUTE_UPDATE (ops, collection, options) {
 
 function EXECUTE_REPLACE (ops, collection, options) {
   var count = 0, i, n = ops.length, c = COLLECTION(collection);
+  options.silent = true;
 
   if (options.ignoreErrors) {
     for (i = 0; i < n; ++i) {
