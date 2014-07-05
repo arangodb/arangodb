@@ -112,7 +112,10 @@ var internal = require("internal");
 ///
 /// - *id*: id of temporary cursor created on the server (optional, see above)
 ///
-/// - *extra*: an optional JSON object with extra information about the query result
+/// - *extra*: an optional JSON object with extra information about the query result.
+///   For data-modification queries, the *extra* attribute will contain the number
+///   of modified documents and the number of documents that could not be modified
+///   due to an error (if *ignoreErrors* query option is specified)
 ///
 /// If the JSON representation is malformed or the query specification is
 /// missing from the request, the server will respond with *HTTP 400*.
@@ -222,6 +225,54 @@ var internal = require("internal");
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
+/// Executes a data-modification query and retrieves the number of 
+/// modified documents:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestCursorDeleteQuery}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     db.products.save({"hello1":"world1"});
+///     db.products.save({"hello2":"world1"});
+///
+///     var url = "/_api/cursor";
+///     var body = {
+///       query: "FOR p IN products REMOVE p IN products"
+///     };
+/// 
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+/// 
+///     assert(response.code === 201);
+///     assert(JSON.parse(response.body).extra.operations.executed === 2);
+///     assert(JSON.parse(response.body).extra.operations.ignored === 0);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Executes a data-modification query with option *ignoreErrors*:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestCursorDeleteIgnore}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     db.products.save({ _key: "foo" });
+///
+///     var url = "/_api/cursor";
+///     var body = {
+///       query: "REMOVE 'bar' IN products OPTIONS { ignoreErrors: true }"
+///     };
+/// 
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+/// 
+///     assert(response.code === 201);
+///     assert(JSON.parse(response.body).extra.operations.executed === 0);
+///     assert(JSON.parse(response.body).extra.operations.ignored === 1);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
 /// Bad queries:
 ///
 /// Missing body:
@@ -252,6 +303,29 @@ var internal = require("internal");
 /// 
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Executes a data-modification query that attempts to remove a non-existing
+/// document:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestCursorDeleteQueryFail}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+/// 
+///     db.products.save({ _key: "bar" });
+///
+///     var url = "/_api/cursor";
+///     var body = {
+///       query: "REMOVE 'foo' IN products"
+///     };
+/// 
+///     var response = logCurlRequest('POST', url, JSON.stringify(body));
+/// 
+///     assert(response.code === 404);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
