@@ -103,10 +103,12 @@ bool ListenTask::setup (Scheduler* scheduler, EventLoop loop) {
 
 
 #ifdef _WIN32
+
   // ..........................................................................
   // The problem we have here is that this opening of the fs handle may fail.
   // There is no mechanism to the calling function to report failure.
   // ..........................................................................
+
   LOG_TRACE("attempting to convert socket handle to socket descriptor");
 
   if (! TRI_isvalidsocket(_listenSocket)) {
@@ -212,6 +214,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
 
     // disable nagle's algorithm, set to non-blocking and close-on-exec
     bool result = _endpoint->initIncoming(connectionSocket);
+
     if (! result) {
       TRI_CLOSE_SOCKET(connectionSocket);
 
@@ -224,6 +227,7 @@ bool ListenTask::handleEvent (EventToken token, EventType revents) {
     ConnectionInfo info;
 
     char host[NI_MAXHOST], serv[NI_MAXSERV];
+
     if (getnameinfo((sockaddr*) &addr, len,
                     host, sizeof(host),
                     serv, sizeof(serv), NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
