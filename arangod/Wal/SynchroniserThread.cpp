@@ -110,6 +110,8 @@ void SynchroniserThread::signalSync () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SynchroniserThread::run () {
+  uint64_t iterations = 0;
+
   while (true) {
     int stop = (int) _stop;
     uint32_t waiting = 0;
@@ -121,7 +123,9 @@ void SynchroniserThread::run () {
 
     // go on without the lock
 
-    if (waiting > 0) {
+    if (waiting > 0 || ++iterations == 10) {
+      iterations = 0;
+
       try {
         // sync as much as we can in this loop
         bool checkMore = false;
