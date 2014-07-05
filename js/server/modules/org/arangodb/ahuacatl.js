@@ -496,12 +496,11 @@ function REMOVE_DOCUMENT (ops, document) {
 function INSERT_DOCUMENT (ops, document) {
   "use strict";
 
-  if (TYPEWEIGHT(document) === TYPEWEIGHT_DOCUMENT) {
-    ops.push(document);
-    return;
+  if (TYPEWEIGHT(document) !== TYPEWEIGHT_DOCUMENT) {
+    THROW(INTERNAL.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
-      
-  THROW(INTERNAL.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+
+  ops.push(CLONE(document));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -514,11 +513,12 @@ function UPDATE_DOCUMENT (ops, document) {
   if (TYPEWEIGHT(document) !== TYPEWEIGHT_DOCUMENT) {
     THROW(INTERNAL.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
-  if (document.hasOwnProperty("_key")) {
-    ops.push(document);
+
+  if (! document.hasOwnProperty("_key")) {
+    THROW(INTERNAL.errors.ERROR_ARANGO_DOCUMENT_KEY_MISSING);
   }
-  
-  THROW(INTERNAL.errors.ERROR_ARANGO_DOCUMENT_KEY_MISSING);
+
+  ops.push(CLONE(document));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -528,15 +528,23 @@ function UPDATE_DOCUMENT (ops, document) {
 function UPDATE_DOCUMENT_KEY (ops, document, key) {
   "use strict";
 
-  if (TYPEWEIGHT(key) !== TYPEWEIGHT_STRING) {
+  if (TYPEWEIGHT(key) === TYPEWEIGHT_DOCUMENT) {
+    if (! key.hasOwnProperty("_key")) {
+      THROW(INTERNAL.errors.ERROR_ARANGO_DOCUMENT_KEY_MISSING);
+    }
+    key = key._key;
+  }
+  else if (TYPEWEIGHT(key) !== TYPEWEIGHT_STRING) {
     THROW(INTERNAL.errors.ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
+
   if (TYPEWEIGHT(document) !== TYPEWEIGHT_DOCUMENT) {
     THROW(INTERNAL.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  document._key = key;
-  ops.push(document);
+  var clone = CLONE(document);
+  clone._key = key;
+  ops.push(clone);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -652,7 +660,7 @@ function EXECUTE_UPDATE (ops, collection, options) {
 function EXECUTE_REPLACE (ops, collection, options) {
   var count = 0, i, n = ops.length, c = COLLECTION(collection);
   options.silent = true;
-
+    
   if (options.ignoreErrors) {
     for (i = 0; i < n; ++i) {
       try {
