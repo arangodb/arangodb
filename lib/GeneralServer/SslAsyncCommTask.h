@@ -441,8 +441,8 @@ again:
           if (callCompletedWriteBuffer) {
             this->completedWriteBuffer(closed);
 
+            // return immediately, everything is closed down
             if (closed) {
-              shutdownSsl();
               return false;
             }
           }
