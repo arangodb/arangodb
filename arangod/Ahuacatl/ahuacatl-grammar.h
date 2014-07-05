@@ -56,8 +56,8 @@ extern int Ahuacatldebug;
     T_ASC = 265,
     T_DESC = 266,
     T_IN = 267,
-    T_INTO = 268,
-    T_WITH = 269,
+    T_WITH = 268,
+    T_INTO = 269,
     T_REMOVE = 270,
     T_INSERT = 271,
     T_UPDATE = 272,
@@ -110,14 +110,14 @@ extern int Ahuacatldebug;
 typedef union YYSTYPE YYSTYPE;
 union YYSTYPE
 {
-#line 26 "arangod/Ahuacatl/ahuacatl-grammar.y" /* yacc.c:1915  */
+#line 26 "arangod/Ahuacatl/ahuacatl-grammar.y" /* yacc.c:1909  */
 
   TRI_aql_node_t* node;
   char* strval;
   bool boolval;
   int64_t intval;
 
-#line 121 "arangod/Ahuacatl/ahuacatl-grammar.h" /* yacc.c:1915  */
+#line 121 "arangod/Ahuacatl/ahuacatl-grammar.h" /* yacc.c:1909  */
 };
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
