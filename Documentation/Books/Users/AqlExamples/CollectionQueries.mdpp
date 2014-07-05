@@ -86,7 +86,7 @@ relationships between users. The example data for *relations* are as follows:
 Note that all documents created in the two collections will automatically get the
 following server-generated attributes:
 
-* *_id*: An unique id, consisting of collection name and a server-side sequence value
+* *_id*: A unique id, consisting of collection name and a server-side sequence value
 * *_key*: The server sequence value
 * *_rev*: The document's revision id
 
