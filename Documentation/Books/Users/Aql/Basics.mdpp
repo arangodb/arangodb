@@ -1,5 +1,19 @@
 !CHAPTER Language basics
 
+An AQL query must either produce a result (indicated by usage of the *RETURN*
+keyword) or execute a data-modification operation (indicated by usage
+of one of the keywords *INSERT*, *UPDATE*, *REPLACE* or *REMOVE*).
+
+Data-modification queries are restricted to modifying one collection per query.
+That means a data-modification query cannot modify data in multiple collections
+with a single query. The name of the modified collection must be known to the
+AQL executor at query-compile time and cannot be dynamic at runtime. Using a
+bind parameter to specify the collection name is allowed.
+
+In SQL, the semicolon can be used to indicate the end of a query and to separate
+multiple queries. This is not supported in AQL. Using a semicolon to terminate
+a query string is not allowed in AQL.
+
 !SUBSECTION Whitespace 
 
 Whitespace can be used in the query text to increase its readability.  However,
