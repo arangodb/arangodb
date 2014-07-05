@@ -73,10 +73,10 @@ namespace triagens {
                           int (*verificationCallback)(int, X509_STORE_CTX*))
         : Task("SslAsyncCommTask"),
           GeneralAsyncCommTask<S, HF, CT>(server, socket, info, keepAliveTimeout),
-          accepted(false),
-          readBlocked(false),
-          readBlockedOnWrite(false),
-          writeBlockedOnRead(false),
+          _accepted(false),
+          _readBlocked(false),
+          _readBlockedOnWrite(false),
+          _writeBlockedOnRead(false),
           _ssl(nullptr),
           _ctx(ctx),
           _verificationMode(verificationMode),
@@ -91,23 +91,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~SslAsyncCommTask () {
-          static int const SHUTDOWN_ITERATIONS = 10;
-          bool ok = false;
-
-          if (nullptr != _ssl) {
-            for (int i = 0;  i < SHUTDOWN_ITERATIONS;  ++i) {
-              if (SSL_shutdown(_ssl) != 0) {
-                ok = true;
-                break;
-              }
-            }
-
-            if (! ok) {
-              LOG_WARNING("cannot complete SSL shutdown");
-            }
-
-            SSL_free(_ssl); // this will free bio as well
-          }
+          shutdownSsl();
 
           delete[] tmpReadBuffer;
         }
@@ -132,8 +116,8 @@ namespace triagens {
 
           if (_ssl == nullptr) {
             LOG_WARNING("cannot build new SSL connection: %s", triagens::basics::lastSSLError().c_str());
-            TRI_CLOSE_SOCKET(this->_commSocket);
-            TRI_invalidatesocket(&this->_commSocket);
+
+            shutdownSsl();
             return false;   // terminate ourselves, ssl is nullptr
           }
 
@@ -154,7 +138,7 @@ namespace triagens {
           bool result = GeneralAsyncCommTask<S, HF, CT>::handleEvent(token, revents);
 
           if (result) {
-            if (readBlockedOnWrite) {
+            if (_readBlockedOnWrite) {
               this->_scheduler->startSocketEvents(this->writeWatcher);
             }
           }
@@ -167,10 +151,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool fillReadBuffer (bool& closed) {
+          if (nullptr == _ssl) {
+            closed = true;
+            return false;
+          }
+
           closed = false;
 
           // is the handshake already done?
-          if (! accepted) {
+          if (! _accepted) {
             if (! trySSLAccept()) {
               LOG_DEBUG("failed to establish SSL connection");
               return false;
@@ -180,7 +169,7 @@ namespace triagens {
           }
 
           // check if read is blocked by write
-          if (writeBlockedOnRead) {
+          if (_writeBlockedOnRead) {
             return trySSLWrite(closed, ! this->hasWriteBuffer());
           }
 
@@ -192,9 +181,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool handleWrite (bool& closed, bool noWrite) {
+          if (nullptr == _ssl) {
+            closed = true;
+            return false;
+          }
 
           // is the handshake already done?
-          if (! accepted) {
+          if (! _accepted) {
             if (! trySSLAccept()) {
               LOG_DEBUG("failed to establish SSL connection");
               return false;
@@ -204,7 +197,7 @@ namespace triagens {
           }
 
           // check if write is blocked by read
-          if (readBlockedOnWrite) {
+          if (_readBlockedOnWrite) {
             if (! trySSLRead(closed)) {
               return false;
             }
@@ -217,19 +210,25 @@ namespace triagens {
 
       private:
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief accepts SSL connection
+////////////////////////////////////////////////////////////////////////////////
+
         bool trySSLAccept () {
           int res = SSL_accept(_ssl);
 
           // accept successful
           if (res == 1) {
             LOG_DEBUG("established SSL connection");
-            accepted = true;
+            _accepted = true;
             return true;
           }
 
           // shutdown of connection
           else if (res == 0) {
             LOG_DEBUG("SSL_accept failed: %s", triagens::basics::lastSSLError().c_str());
+
+            shutdownSsl();
             return false;
           }
 
@@ -242,15 +241,21 @@ namespace triagens {
             }
             else {
               LOG_TRACE("error in SSL handshake: %s", triagens::basics::lastSSLError().c_str());
+
+              shutdownSsl();
               return false;
             }
           }
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reads from SSL connection
+////////////////////////////////////////////////////////////////////////////////
+
         bool trySSLRead (bool& closed) {
           closed = false;
-          readBlocked = false;
-          readBlockedOnWrite = false;
+          _readBlocked = false;
+          _readBlockedOnWrite = false;
 
 again:
           int nr = SSL_read(_ssl, tmpReadBuffer, READ_BLOCK_SIZE);
@@ -261,6 +266,8 @@ again:
             switch (res) {
               case SSL_ERROR_NONE:
                 LOG_WARNING("unknown error in SSL_read");
+
+                shutdownSsl();
                 return false;
 
               case SSL_ERROR_SSL:
@@ -268,20 +275,23 @@ again:
                             nr,
                             (int) TRI_get_fd_or_handle_of_socket(this->_commSocket),
                             triagens::basics::lastSSLError().c_str());
+
+                shutdownSsl();
                 return false;
 
               case SSL_ERROR_ZERO_RETURN:
                 LOG_WARNING("received SSL_ERROR_ZERO_RETURN");
+
+                shutdownSsl();
                 closed = true;
-                SSL_shutdown(_ssl);
                 return false;
 
               case SSL_ERROR_WANT_READ:
-                readBlocked = true;
+                _readBlocked = true;
                 break;
 
               case SSL_ERROR_WANT_WRITE:
-                readBlockedOnWrite = true;
+                _readBlockedOnWrite = true;
                 break;
 
               case SSL_ERROR_WANT_CONNECT:
@@ -306,11 +316,14 @@ again:
                     LOG_WARNING("SSL_read return syscall error: %d: %s", (int) errno, strerror(errno));
                   }
 
+                  shutdownSsl();
                   return false;
                 }
 
               default:
                 LOG_WARNING("received error with %d and %d: %s", res, nr, triagens::basics::lastSSLError().c_str());
+
+                shutdownSsl();
                 return false;
             }
           }
@@ -324,6 +337,10 @@ again:
 
           return true;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief writes from SSL connection
+////////////////////////////////////////////////////////////////////////////////
 
         bool trySSLWrite (bool& closed, bool noWrite) {
           closed = false;
@@ -346,7 +363,7 @@ again:
             int nr = 0;
 
             if (0 < len) {
-              writeBlockedOnRead = false;
+              _writeBlockedOnRead = false;
               nr = SSL_write(_ssl, this->_writeBuffer->begin() + this->writeLength, (int) len);
 
               if (nr <= 0) {
@@ -358,10 +375,9 @@ again:
                     break;
 
                   case SSL_ERROR_ZERO_RETURN:
+                    shutdownSsl();
                     closed = true;
-                    SSL_shutdown(_ssl);
                     return false;
-                    break;
 
                   case SSL_ERROR_WANT_CONNECT:
                     LOG_WARNING("received SSL_ERROR_WANT_CONNECT");
@@ -372,10 +388,11 @@ again:
                     break;
 
                   case SSL_ERROR_WANT_WRITE:
+                    shutdownSsl();
                     return false;
 
                   case SSL_ERROR_WANT_READ:
-                    writeBlockedOnRead = true;
+                    _writeBlockedOnRead = true;
                     return true;
 
                   case SSL_ERROR_SYSCALL:
@@ -392,11 +409,14 @@ again:
                         LOG_DEBUG("SSL_read return syscall error: %d: %s", errno, strerror(errno));
                       }
 
+                      shutdownSsl();
                       return false;
                     }
 
                   default:
                     LOG_DEBUG("received error with %d and %d: %s", res, nr, triagens::basics::lastSSLError().c_str());
+
+                    shutdownSsl();
                     return false;
                 }
               }
@@ -422,6 +442,7 @@ again:
             this->completedWriteBuffer(closed);
 
             if (closed) {
+              shutdownSsl();
               return false;
             }
           }
@@ -433,10 +454,36 @@ again:
         }
 
       private:
-        bool accepted;
-        bool readBlocked;
-        bool readBlockedOnWrite;
-        bool writeBlockedOnRead;
+        void shutdownSsl () {
+          static int const SHUTDOWN_ITERATIONS = 10;
+          bool ok = false;
+
+          if (nullptr != _ssl) {
+            for (int i = 0;  i < SHUTDOWN_ITERATIONS;  ++i) {
+              if (SSL_shutdown(_ssl) != 0) {
+                ok = true;
+                break;
+              }
+            }
+
+            if (! ok) {
+              LOG_WARNING("cannot complete SSL shutdown");
+            }
+
+            SSL_free(_ssl); // this will free bio as well
+
+            _ssl= nullptr;
+          }
+
+          TRI_CLOSE_SOCKET(this->_commSocket);
+          TRI_invalidatesocket(&this->_commSocket);
+        }
+
+      private:
+        bool _accepted;
+        bool _readBlocked;
+        bool _readBlockedOnWrite;
+        bool _writeBlockedOnRead;
 
         char * tmpReadBuffer;
 
