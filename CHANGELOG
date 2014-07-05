@@ -1,6 +1,8 @@
 v2.2.0 (XXXX-XX-XX)
 -------------------
 
+* added support for data-modification AQL queries
+
 * added AQL keywords `INSERT`, `UPDATE`, `REPLACE` and `REMOVE` (and `WITH`) to
   support data-modification AQL queries.
   

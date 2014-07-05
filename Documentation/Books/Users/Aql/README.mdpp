@@ -18,11 +18,12 @@ all clients, no matter what programming language the clients might use.  Further
 design goals of AQL were the support of complex query patterns and the different
 data models ArangoDB offers.
 
-In its purpose, AQL is similar to the Structured Query Language (SQL), but the
-two languages have major syntactic differences and keywords. 
-
-AQL supports reading and modifying data, but doesn't support data-definition
+In its purpose, AQL is similar to the Structured Query Language (SQL). AQL supports 
+reading and modifying collection data, but it doesn't support data-definition
 operations such as creating and dropping databases, collections and indexes.
+
+The syntax of AQL queries is different to SQL, even if some keywords overlap.
+Nevertheless, AQL should be easy to understand for anyone with an SQL background.
 
 For some example queries, please refer to the page [AQL Examples](../AqlExamples/README.md).
 
