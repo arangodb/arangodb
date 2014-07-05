@@ -123,7 +123,10 @@
       $('#documents_last').css("visibility", "visible");
       $('#documents_first').css("visibility", "visible");
       this.addDocumentSwitch = true;
+      this.collection.resetFilter();
       this.collection.getDocuments(this.collectionID, 1);
+      this.drawTable();
+      this.renderPagination();
     },
 
     startUpload: function () {
@@ -274,6 +277,9 @@
       //Hide first/last pagination
       $('#documents_last').css("visibility", "hidden");
       $('#documents_first').css("visibility", "hidden");
+
+      this.drawTable();
+      this.renderPagination();
     },
 
     addFilterItem : function () {

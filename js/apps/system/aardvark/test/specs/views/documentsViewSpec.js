@@ -663,10 +663,12 @@
                 setToFirst: function () {
                 },
                 addFilter: function () {
-
+                },
+                resetFilter: function () {
                 },
                 getDocuments: function () {
-
+                },
+                size: function () {
                 }
             };
             spyOn(arangoDocStoreDummy, "setToFirst");
