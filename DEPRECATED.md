@@ -23,6 +23,7 @@ migrations will also be detailed here.
 * Traversal: The usage of the traversal datasource `collectionDatasourceFactory` is no longer suggested, it will be deprecated in the next version. Please use `generalGraphDatasourceFactory` instead.
 * Http: The api `_api/graph` is no longer suggested, it will be deprecated in the next version. Please use the general graph api `_api/gharial` instead.
 * Http: In `POST _api/traversal` the usage of the body parameter `edgeCollection` is no longer suggested, it will be deprecated in the next version. Please use `graphName` instead.
+* MRuby: The MRuby server integration for arangod has been removed and can no longer be used.
 
 ## 2.3
 
