@@ -45,11 +45,11 @@ Verify that your system contains:
 
 * the GNU C/C++ compilers "gcc" and "g++" and the standard C/C++ libraries. You will 
   compiler and library support for C++11. To be on the safe side with gcc/g++, you will
-  need version number 4.8 or higher. For "clang" and "clang++", you will need at least
+  need version number 4.8.1 or higher. For "clang" and "clang++", you will need at least
   version 3.4.
 * the GNU make
 
-In addition you will need the following library:
+In addition you will need the following libraries:
 
 * the GNU readline library
 * the OpenSSL library
@@ -165,7 +165,7 @@ Verify that your system contains
 
 * the GNU C/C++ compilers "gcc" and "g++" and the standard C/C++ libraries. You will 
 * compiler and library support for C++11. To be on the safe side with gcc/g++, you will
-* need version number 4.8 or higher. For "clang" and "clang++", you will need at least
+* need version number 4.8.1 or higher. For "clang" and "clang++", you will need at least
 * version 3.4.
 * the GNU autotools (autoconf, automake)
 * the GNU make
@@ -191,7 +191,7 @@ versions of the programs and/or libraries.
 
 If necessary, install or download the prerequisites:
 
-* GNU C/C++ 4.8 or higher (see http://gcc.gnu.org) 
+* GNU C/C++ 4.8.1 or higher (see http://gcc.gnu.org) 
 * Google's V8 engine (see http://code.google.com/p/v8)
 * SCons for compiling V8 (see http://www.scons.org)
 * libev (see http://software.schmorp.de/pkg/libev.html) 
@@ -286,12 +286,6 @@ ICU instead of using the system version.
 
 `--disable-all-in-one-icu` 
 
-This tells the build system to use the installed system
-version of ICU instead of compiling the supplied version from the 3rdParty
-directory in the make run.
-
-`--enable-all-in-one-boost` 
-
 This tells the build system to use the bundled version of
 Boost header files. This is the default and recommended.
 
@@ -316,6 +310,16 @@ to the error messages file, which is converted to js and C header files using
 Python. You will need Python 2 or 3 for this.  Furthermore, this option enables
 additional test cases to be executed in a *make unittests* run. You also need to
 install the Boost test framework for this.
+
+Additionally, turning on the maintainer mode will turn on a lot of assertions in
+the code.
+
+`--enable-failure-tests`
+
+This option activates additional code in the server that intentionally makes the
+server crash or misbehave (e.g. by pretending the system ran out of memory). This
+option is useful to test the recovery after a crash and also several edge cases.
+
 
 !SUBSECTION Compiling Go
 
