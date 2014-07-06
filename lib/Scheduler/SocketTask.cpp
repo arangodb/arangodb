@@ -418,11 +418,14 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
   watcher = _scheduler->installAsyncEvent(loop, this);
   readWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, _commSocket);
   writeWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_WRITE, this, _commSocket);
+
   if (readWatcher == -1 || writeWatcher == -1) {
     return false;
   }
+
   // install timer for keep-alive timeout with some high default value
   keepAliveWatcher = _scheduler->installTimerEvent(loop, this, 60.0);
+
   // and stop it immediately so it's not actively at the start
   _scheduler->clearTimer(keepAliveWatcher);
 
