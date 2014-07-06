@@ -1,6 +1,9 @@
 v2.2.0-beta3 (2014-07-01)
 -------------------------
 
+* added `insert` method as an alias for `save`. Documents can now be inserted into
+  a collection using either method 
+
 * added support for data-modification AQL queries
 
 * added AQL keywords `INSERT`, `UPDATE`, `REPLACE` and `REMOVE` (and `WITH`) to
