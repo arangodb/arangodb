@@ -222,8 +222,8 @@
 
       appender(curl + "\n");
 
-      if (body !== undefined && body !== "") {
-        appender(body += "\n");
+      if (body !== undefined && body !== "" && body !== "undefined") {
+        appender(body + "\n");
       }
 
       appender("\n");
