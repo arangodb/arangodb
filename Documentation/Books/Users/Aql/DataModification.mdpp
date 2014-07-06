@@ -38,9 +38,13 @@ matching documents in collection "users":
 The name of the modified collection ("backup" in th above cases) must be 
 known to the AQL executor at query-compile time and cannot change at 
 runtime. Using a bind parameter to specify the collection name is allowed.
-
+  
 On a single server, data-modification operations are executed transactionally.
 If a data-modification operation fails, it will be rolled back automatically
 as if it never happened.
-AQL data-modification queries are not executed transactionally for sharded
-collections or in a cluster.
+
+In a cluster, AQL data-modification queries are not executed transactionally.
+Additionally, update, replace and remove AQL queries currently require the 
+*_key* attribute to be specified for all documents that should be modified or 
+removed, even if a shard key attribute other than *_key* was chosen for the
+collection. This restriction might be lifted in a future release of ArangoDB.
