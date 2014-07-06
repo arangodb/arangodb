@@ -6193,18 +6193,25 @@ static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
 /// @startDocuBlock collectionFigures
 /// `collection.figures()`
 ///
-/// Returns an object containing all collection figures.
+/// Returns an object containing statistics about the collection.
+/// **Note** : Retrieving the figures will always load the collection into 
+/// memory.
 ///
-/// * *alive.count*: The number of living documents.
-/// * *alive.size*: The total size in bytes used by all
-///   living documents.
-/// * *dead.count*: The number of dead documents.
-/// * *dead.size*: The total size in bytes used by all
-///   dead documents.
-/// * *dead.deletion*: The total number of deletion markers.
-/// * *datafiles.count*: The number of active datafiles.
-/// * *datafiles.fileSize*: The total filesize of the active datafiles
-///   (in bytes).
+/// * *alive.count*: The number of curretly active documents in all datafiles and
+///   journals of the collection. Documents that are contained in the
+///   write-ahead log only are not reported in this figure.
+/// * *alive.size*: The total size in bytes used by all active documents of the
+///   collection. Documents that are contained in the write-ahead log only are
+///   not reported in this figure.
+/// - *dead.count*: The number of dead documents. This includes document
+///   versions that have been deleted or replaced by a newer version. Documents
+///   deleted or replaced that are contained in the write-ahead log only are not
+///   reported in this figure.
+/// * *dead.size*: The total size in bytes used by all dead documents.
+/// * *dead.deletion*: The total number of deletion markers. Deletion markers
+///   only contained in the write-ahead log are not reporting in this figure.
+/// * *datafiles.count*: The number of datafiles.
+/// * *datafiles.fileSize*: The total filesize of datafiles (in bytes).
 /// * *journals.count*: The number of journal files.
 /// * *journals.fileSize*: The total filesize of the journal files
 ///   (in bytes).
@@ -6213,32 +6220,57 @@ static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
 ///   (in bytes).
 /// * *shapefiles.count*: The number of shape files. This value is
 ///   deprecated and kept for compatibility reasons only. The value will always
-///   be 0.
+///   be 0 since ArangoDB 2.0 and higher.
 /// * *shapefiles.fileSize*: The total filesize of the shape files. This
 ///   value is deprecated and kept for compatibility reasons only. The value will
-///   always be 0.
+///   always be 0 in ArangoDB 2.0 and higher.
 /// * *shapes.count*: The total number of shapes used in the collection.
-///   This includes shapes that are not in use anymore.
+///   This includes shapes that are not in use anymore. Shapes that are contained
+///   in the write-ahead log only are not reported in this figure.
 /// * *shapes.size*: The total size of all shapes (in bytes). This includes
-///   shapes that are not in use anymore.
+///   shapes that are not in use anymore. Shapes that are contained in the
+///   write-ahead log only are not reported in this figure.
 /// * *attributes.count*: The total number of attributes used in the
 ///   collection. Note: the value includes data of attributes that are not in use
-///   anymore.
+///   anymore. Attributes that are contained in the write-ahead log only are
+///   not reported in this figure.
 /// * *attributes.size*: The total size of the attribute data (in bytes).
 ///   Note: the value includes data of attributes that are not in use anymore.
+///   Attributes that are contained in the write-ahead log only are not 
+///   reported in this figure.
 /// * *indexes.count*: The total number of indexes defined for the
 ///   collection, including the pre-defined indexes (e.g. primary index).
 /// * *indexes.size*: The total memory allocated for indexes in bytes.
 /// * *maxTick*: The tick of the last marker that was stored in a journal
 ///   of the collection. This might be 0 if the collection does not yet have
 ///   a journal.
-/// * *uncollectedLogfileEntries*: The number of markers in the write-aheads
-///   for this collection that have not been transferred in datafiles /
-///   journals of the collection.
+/// * *uncollectedLogfileEntries*: The number of markers in the write-ahead
+///   log for this collection that have not been transferred to journals or
+///   datafiles.
+///
+/// **Note**: collection data that are stored in the write-ahead log only are
+/// not reported in the results. When the write-ahead log is collected, documents
+/// might be added to journals and datafiles of the collection, which may modify 
+/// the figures of the collection.
+///
+/// Additionally, the filesizes of collection and index parameter JSON files are
+/// not reported. These files should normally have a size of a few bytes
+/// each. Please also note that the *fileSize* values are reported in bytes
+/// and reflect the logical file sizes. Some filesystems may use optimisations
+/// (e.g. sparse files) so that the actual physical file size is somewhat
+/// different. Directories and sub-directories may also require space in the
+/// file system, but this space is not reported in the *fileSize* results.
+///
+/// That means that the figures reported do not reflect the actual disk
+/// usage of the collection with 100% accuracy. The actual disk usage of
+/// a collection is normally slightly higher than the sum of the reported 
+/// *fileSize* values. Still the sum of the *fileSize* values can still be 
+/// used as a lower bound approximation of the disk usage.
 ///
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionFigures}
+/// ~ require("internal").wal.flush(true, true);
 ///   db.demo.figures()
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -6250,7 +6282,7 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-  if (collection == 0) {
+  if (collection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
@@ -6265,13 +6297,7 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
     info = GetFigures(collection);
   }
 
-  if (info == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_errno());
-  }
-
-  TRI_ASSERT(info != 0);
-
-  if (info == NULL) {
+  if (info == nullptr) {
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
@@ -7158,10 +7184,10 @@ static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
 /// @startDocuBlock collectionRotate
 /// `collection.rotate()`
 ///
-/// Rotates the current journal of a collection (i.e. makes the journal a
-/// read-only datafile). The purpose of the rotation is to include the
-/// datafile in a following compaction run and perform earlier garbage
-/// collection.
+/// Rotates the current journal of a collection. This operation makes the 
+/// current journal of the collection a read-only datafile so it may become a
+/// candidate for garbage collection. If there is currently no journal available
+/// for the collection, the operation will fail with an error.
 ///
 /// **Note**: this method is not available in a cluster.
 ///
@@ -8228,8 +8254,6 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionsDatabaseName}
 /// ~ db._create("example");
-///   db.example.load();
-///   var d = db.demo;
 ///   db._collections();
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
