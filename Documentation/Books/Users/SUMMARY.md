@@ -63,6 +63,7 @@
     * [Registering Functions](AqlExtending/Functions.md)
   * [AQL Examples](AqlExamples/README.md)
     * [Collection based queries](AqlExamples/CollectionQueries.md)
+    * [Data-modification queries](AqlExamples/DataModificationQueries.md)
     * [Projections and filters](AqlExamples/ProjectionsAndFilters.md)
     * [Joins](AqlExamples/Join.md)
     * [Grouping](AqlExamples/Grouping.md)
