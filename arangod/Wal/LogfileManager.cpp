@@ -140,7 +140,6 @@ LogfileManager::LogfileManager (TRI_server_t* server,
     _ignoreRecoveryErrors(false),
     _allowWrites(false), // start in read-only mode
     _hasFoundLastTick(false),
-    _recoverRemote(true),
     _inRecovery(true),
     _slots(nullptr),
     _synchroniserThread(nullptr),
@@ -233,7 +232,6 @@ void LogfileManager::setupOptions (std::map<std::string, triagens::basics::Progr
     ("wal.ignore-recovery-errors", &_ignoreRecoveryErrors, "continue recovery even if re-applying operations fails")
     ("wal.logfile-size", &_filesize, "size of each logfile")
     ("wal.open-logfiles", &_maxOpenLogfiles, "maximum number of parallel open logfiles")
-    ("wal.recover-remote", &_recoverRemote, "recover remotely started transactions on startup (use on a slave only)")
     ("wal.reserve-logfiles", &_reserveLogfiles, "maximum number of reserve logfiles to maintain")
     ("wal.slots", &_numberOfSlots, "number of logfile slots to use")
     ("wal.sync-interval", &_syncInterval, "interval for automatic, non-requested disk syncs (in milliseconds)")

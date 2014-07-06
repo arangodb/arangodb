@@ -120,6 +120,7 @@
 <!-- 19 -->
 * [Configure ArangoDB](ConfigureArango/README.md)
   * [Arangod options](ConfigureArango/Arangod.md)
+  * [Write-ahead log options](ConfigureArango/Wal.md)
   * [Endpoints options](ConfigureArango/Endpoint.md)
   * [Cluster options](ConfigureArango/Cluster.md)
   * [Logging options](ConfigureArango/Logging.md)
