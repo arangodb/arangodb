@@ -1,8 +1,18 @@
 v2.2.0 (XXXX-XX-XX)
 -------------------
 
+* INCOMPATIBLE CHANGE: the figures reported by the `collection.figures` method
+  now only reflect documents and data contained in the journals and datafiles of
+  collections. Documents or deletions contained only in the write-ahead log will
+  not influence collection figures until the write-ahead log garbage collection
+  kicks in. The figures for a collection might therefore underreport the total
+  resource usage of a collection.
+
 * added `insert` method as an alias for `save`. Documents can now be inserted into
-  a collection using either method 
+  a collection using either method:
+  
+      db.test.save({ foo: "bar" }); 
+      db.test.insert({ foo: "bar" }); 
 
 * added support for data-modification AQL queries
 
@@ -65,16 +75,18 @@ v2.2.0 (XXXX-XX-XX)
   All write operations in an ArangoDB server instance are automatically logged
   to the server's write-ahead log. The write-ahead log is a set of append-only 
   logfiles, and it is used in case of a crash recovery and for replication.
-  Data from the write-ahead log will eventually be moved into the datafiles of
-  collections, allowing the server to remove older write-ahead log logfiles.
+  Data from the write-ahead log will eventually be moved into the journals or
+  datafiles of collections, allowing the server to remove older write-ahead log 
+  logfiles. Figures of collections will be updated when data are moved from the
+  write-ahead log into the journals or datafiles of collections.
 
   Cross-collection transactions in ArangoDB should benefit considerably by this
-  change, as less writes than in previous versions is required to ensure the data 
+  change, as less writes than in previous versions are required to ensure the data 
   of multiple collections are atomcially and durably committed. All data-modifying 
   operations inside transactions (insert, update, remove) will write their 
   operations into the write-ahead log directly, making transactions with multiple 
   operations also require less physical memory than in previous versions of ArangoDB,
-  where most parts of transactions were handled in RAM first.
+  that required all transaction data to fit into RAM.
 
   The data in the write-ahead log can also be used in the replication context.
   The `_replication` collection that was used in previous versions of ArangoDB to 
