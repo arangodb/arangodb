@@ -568,7 +568,7 @@ function get_api_collections (req, res) {
 ///
 /// @EXAMPLES
 ///
-/// Using an identifier and requesting the number of documents:
+/// Requesting the number of documents:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionGetCollectionCount}
 ///     var cn = "products";
@@ -577,7 +577,7 @@ function get_api_collections (req, res) {
 ///     for(var i=0;i<100;i++) {
 ///        coll.save({"count" :  i });
 ///     }
-///     var url = "/_api/collection/"+ coll._id + "/count";
+///     var url = "/_api/collection/"+ coll.name() + "/count";
 ///
 ///     var response = logCurlRequest('GET', url);
 ///
@@ -592,7 +592,7 @@ function get_api_collections (req, res) {
 ////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_get_api_collection_figures
 ///
-/// @RESTHEADER{GET /_api/collection/{collection-name}/figures, Return stats for a collection}
+/// @RESTHEADER{GET /_api/collection/{collection-name}/figures, Return statistics for a collection}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -606,48 +606,77 @@ function get_api_collections (req, res) {
 ///
 /// - *count*: The number of documents currently present in the collection.
 ///
-/// - *figures.alive.count*: The number of currently active documents.
+/// * *figures.alive.count*: The number of curretly active documents in all datafiles 
+///   and journals of the collection. Documents that are contained in the
+///   write-ahead log only are not reported in this figure.
 ///
-/// - *figures.alive.size*: The total size in bytes used by all
-///   active documents.
+/// * *figures.alive.size*: The total size in bytes used by all active documents of 
+///   the collection. Documents that are contained in the write-ahead log only are
+///   not reported in this figure.
 ///
 /// - *figures.dead.count*: The number of dead documents. This includes document
-///   versions that have been deleted or replaced by a newer version.
+///   versions that have been deleted or replaced by a newer version. Documents
+///   deleted or replaced that are contained the write-ahead log only are not reported
+///   in this figure.
 ///
-/// - *figures.dead.size*: The total size in bytes used by all dead documents.
+/// * *figures.dead.size*: The total size in bytes used by all dead documents.
 ///
-/// - *figures.dead.deletion*: The total number of deletion markers in the 
-///   collection.
+/// * *figures.dead.deletion*: The total number of deletion markers. Deletion markers
+///   only contained in the write-ahead log are not reporting in this figure.
 ///
-/// - *figures.datafiles.count*: The number of current datafiles.
-/// - *figures.datafiles.fileSize*: The total filesize of all datafiles.
+/// - *figures.datafiles.count*: The number of datafiles.
+/// - *figures.datafiles.fileSize*: The total filesize of datafiles (in bytes).
 ///
 /// - *figures.journals.count*: The number of journal files.
-/// - *figures.journals.fileSize*: The total filesize of all journal files.
+/// - *figures.journals.fileSize*: The total filesize of all journal files (in bytes).
 ///
 /// - *figures.compactors.count*: The number of compactor files.
-/// - *figures.compactors.fileSize*: The total filesize of all compactor files.
+/// - *figures.compactors.fileSize*: The total filesize of all compactor files (in bytes).
 ///
-/// - *figures.shapefiles.count*: The number of shape files.
-/// - *figures.shapefiles.fileSize*: The total filesize of all shape files.
+/// * *figures.shapefiles.count*: The number of shape files. This value is
+///   deprecated and kept for compatibility reasons only. The value will always
+///   be 0 since ArangoDB 2.0 and higher.
+/// * *figures.shapefiles.fileSize*: The total filesize of the shape files. This
+///   value is deprecated and kept for compatibility reasons only. The value will
+///   always be 0 in ArangoDB 2.0 and higher.
 ///
-/// - *figures.shapes.count*: The total number of shapes in the 
-///   collection (this includes shapes that are not in use anymore) 
+/// * *figures.shapes.count*: The total number of shapes used in the collection.
+///   This includes shapes that are not in use anymore. Shapes that are contained
+///   in the write-ahead log only are not reported in this figure.
+/// * *figures.shapes.size*: The total size of all shapes (in bytes). This includes
+///   shapes that are not in use anymore. Shapes that are contained in the
+///   write-ahead log only are not reported in this figure.
 ///
-/// - *figures.attributes.count*: The total number of attributes in the 
-///   collection (this includes attributes that are not in use anymore) 
+/// * *figures.attributes.count*: The total number of attributes used in the
+///   collection. Note: the value includes data of attributes that are not in use
+///   anymore. Attributes that are contained in the write-ahead log only are
+///   not reported in this figure.
+/// * *figures.attributes.size*: The total size of the attribute data (in bytes).
+///   Note: the value includes data of attributes that are not in use anymore.
+///   Attributes that are contained in the write-ahead log only are not 
+///   reported in this figure.
 ///
-/// - *figures.attributes.size*: The total size used by all attribute
-///   names in the collection (this includes attributes that are not in use anymore) 
+/// * *figures.indexes.count*: The total number of indexes defined for the
+///   collection, including the pre-defined indexes (e.g. primary index).
 ///
-/// - *figures.indexes.count*: The total number of indexes defined for the
-///   collection (this includes internal indexes such as the primary index)
+/// * *figures.indexes.size*: The total memory allocated for indexes in bytes.
 ///
-/// - *figures.indexes.size*: The total memory allocated by the indexes in bytes
+/// * *figures.maxTick*: The tick of the last marker that was stored in a journal
+///   of the collection. This might be 0 if the collection does not yet have
+///   a journal.
+///
+/// * *figures.uncollectedLogfileEntries*: The number of markers in the write-ahead
+///   log for this collection that have not been transferred to journals or
+///   datafiles.
 ///
 /// - *journalSize*: The maximal size of the journal in bytes.
 ///
-/// **Note**: the filesizes of collection and index parameter JSON files are
+/// **Note**: collection data that are stored in the write-ahead log only are
+/// not reported in the results. When the write-ahead log is collected, documents
+/// might be added to journals and datafiles of the collection, which may modify 
+/// the figures of the collection.
+///
+/// Additionally, the filesizes of collection and index parameter JSON files are
 /// not reported. These files should normally have a size of a few bytes
 /// each. Please also note that the *fileSize* values are reported in bytes
 /// and reflect the logical file sizes. Some filesystems may use optimisations
@@ -678,8 +707,10 @@ function get_api_collections (req, res) {
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionGetCollectionFigures}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     var coll = db._create(cn, { waitForSync: true });
-///     var url = "/_api/collection/"+ coll._id + "/figures";
+///     var coll = db._create(cn);
+///     coll.save({"test":"hello"});
+///     require("internal").wal.flush(true, true);
+///     var url = "/_api/collection/"+ coll.name() + "/figures";
 ///
 ///     var response = logCurlRequest('GET', url);
 ///
@@ -727,7 +758,7 @@ function get_api_collections (req, res) {
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     var coll = db._create(cn, { waitForSync: false });
-///     var url = "/_api/collection/"+ coll._id + "/revision";
+///     var url = "/_api/collection/"+ coll.name() + "/revision";
 ///
 ///     var response = logCurlRequest('GET', url);
 ///
@@ -804,7 +835,7 @@ function get_api_collections (req, res) {
 ///     db._drop(cn);
 ///     var coll = db._create(cn);
 ///     coll.save({ foo: "bar" });
-///     var url = "/_api/collection/" + coll._id + "/checksum";
+///     var url = "/_api/collection/" + coll.name() + "/checksum";
 ///
 ///     var response = logCurlRequest('GET', url);
 ///
@@ -822,7 +853,7 @@ function get_api_collections (req, res) {
 ///     db._drop(cn);
 ///     var coll = db._create(cn);
 ///     coll.save({ foo: "bar" });
-///     var url = "/_api/collection/" + coll._id + "/checksum?withRevisions=false&withData=true";
+///     var url = "/_api/collection/" + coll.name() + "/checksum?withRevisions=false&withData=true";
 ///
 ///     var response = logCurlRequest('GET', url);
 ///
@@ -1019,7 +1050,7 @@ function get_api_collection (req, res) {
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     var coll = db._create(cn, { waitForSync: true });
-///     var url = "/_api/collection/"+ coll._id + "/load";
+///     var url = "/_api/collection/"+ coll.name() + "/load";
 ///
 ///     var response = logCurlRequest('PUT', url, '');
 ///
@@ -1092,7 +1123,7 @@ function put_api_collection_load (req, res, collection) {
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     var coll = db._create(cn, { waitForSync: true });
-///     var url = "/_api/collection/"+ coll._id + "/unload";
+///     var url = "/_api/collection/"+ coll.name() + "/unload";
 ///
 ///     var response = logCurlRequest('PUT', url, '');
 ///
@@ -1137,7 +1168,7 @@ function put_api_collection_unload (req, res, collection) {
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     var coll = db._create(cn, { waitForSync: true });
-///     var url = "/_api/collection/"+ coll._id + "/truncate";
+///     var url = "/_api/collection/"+ coll.name() + "/truncate";
 ///
 ///     var response = logCurlRequest('PUT', url, '');
 ///
@@ -1209,7 +1240,7 @@ function put_api_collection_truncate (req, res, collection) {
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     var coll = db._create(cn, { waitForSync: true });
-///     var url = "/_api/collection/"+ coll._id + "/properties";
+///     var url = "/_api/collection/"+ coll.name() + "/properties";
 ///
 ///     var response = logCurlRequest('PUT', url, {"waitForSync" : true });
 ///
@@ -1273,7 +1304,7 @@ function put_api_collection_properties (req, res, collection) {
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionIdentifierRename}
 ///     var cn = "products1";
 ///     var coll = db._create(cn);
-///     var url = "/_api/collection/"+ coll._id + "/rename";
+///     var url = "/_api/collection/"+ coll.name() + "/rename";
 ///
 ///     var response = logCurlRequest('PUT', url, { name: "newname" });
 ///
@@ -1358,7 +1389,7 @@ function put_api_collection_rename (req, res, collection) {
 ///     coll.save({ "test" : true });
 ///     require("internal").wal.flush(true, true);
 ///
-///     var url = "/_api/collection/"+ coll._id + "/rotate";
+///     var url = "/_api/collection/"+ coll.name() + "/rotate";
 ///     var response = logCurlRequest('PUT', url, { });
 ///
 ///     assert(response.code === 200);
@@ -1374,7 +1405,7 @@ function put_api_collection_rename (req, res, collection) {
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     var coll = db._create(cn);
-///     var url = "/_api/collection/"+ coll._id + "/rotate";
+///     var url = "/_api/collection/"+ coll.name() + "/rotate";
 ///
 ///     var response = logCurlRequest('PUT', url, { });
 ///
