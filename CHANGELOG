@@ -40,6 +40,9 @@ v2.2.0-beta3 (2014-07-01)
   slave servers that are used for read-scaling. In order to avoid long lasting collection
   locks on the slave, transactions should be kept small.
 
+  The `_replication` system collection is not used anymore in ArangoDB 2.2 and its usage is
+  discouraged.
+
 * INCOMPATIBLE CHANGE: the figures reported by the `collection.figures` method
   now only reflect documents and data contained in the journals and datafiles of
   collections. Documents or deletions contained only in the write-ahead log will
@@ -130,6 +133,9 @@ v2.2.0-beta3 (2014-07-01)
   operations into the write-ahead log directly, making transactions with multiple 
   operations also require less physical memory than in previous versions of ArangoDB,
   that required all transaction data to fit into RAM.
+  
+  The `_trx` system collection is not used anymore in ArangoDB 2.2 and its usage is
+  discouraged.
 
   The data in the write-ahead log can also be used in the replication context.
   The `_replication` collection that was used in previous versions of ArangoDB to 
@@ -137,8 +143,6 @@ v2.2.0-beta3 (2014-07-01)
   slaves can read from a master's write-ahead log to get informed about most
   recent changes. This removes the need to store data-modifying operations in 
   both the actual place and the `_replication` collection. 
-
-  Note: the replication from the write-ahead log is still in development.
 
 * removed startup option `--server.disable-replication-logger`
 
