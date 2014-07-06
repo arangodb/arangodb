@@ -70,8 +70,8 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_get_admin_server_role
 /// @brief returns the role of a server in a cluster
+/// @startDocuBlock JSF_get_admin_server_role
 ///
 /// @RESTHEADER{GET /_admin/server/role, Return role of a server in a cluster}
 ///
@@ -105,7 +105,40 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief flushes the WAL
+/// @brief flushes the write-ahead log
+/// @startDocuBlock JSF_put_admin_wal_flush
+///
+/// @RESTHEADER{PUT /_admin/wal/flush, Flushes the write-ahead log}
+///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{waitForSync,boolean,optional}
+/// Whether or not the operation should block until the not-yet synchronized
+/// data in the write-ahead log was synchronized to disk.
+///
+/// @RESTURLPARAM{waitForCollector,boolean,optional}
+/// Whether or not the operation should block until the data in the flushed
+/// log has been collected by the write-ahead log garbage collector. Note that
+/// setting this option to *true* might block for a long time if there are
+/// long-running transactions and the write-ahead log garbage collector cannot
+/// finish garbage collection.
+///
+/// @RESTDESCRIPTION
+///
+/// Flushes the write-ahead log. By flushing the currently active write-ahead
+/// logfile, the data in it can be transferred to collection journals and
+/// datafiles. This is useful to ensure that all data for a collection is
+/// present in the collection journals and datafiles, for example, when dumping
+/// the data of a collection.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Is returned if the operation succeeds.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -127,7 +160,100 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gets or sets the WAL properties
+/// @brief configures the write-ahead log
+/// @startDocuBlock JSF_put_admin_wal_properties
+///
+/// @RESTHEADER{PUT /_admin/wal/properties, Configures the write-ahead log}
+///
+/// @RESTDESCRIPTION
+///
+/// Configures the behavior of the write-ahead log. The body of the request
+/// must be a JSON object with the following attributes:
+/// - *allowOversizeEntries*: whether or not operations that are bigger than a 
+///   single logfile can be executed and stored
+/// - *logfileSize*: the size of each write-ahead logfile
+/// - *historicLogfiles*: the maximum number of historic logfiles to keep
+/// - *reserveLogfiles*: the maximum number of reserve logfiles that ArangoDB
+///   allocates in the background
+/// - *throttleWait*: the maximum wait time that operations will wait before
+///   they get aborted if case of write-throttling (in milliseconds)
+/// - *throttleWhenPending*: the number of unprocessed garbage-collection 
+///   operations that, when reached, will activate write-throttling. A value of
+///   *0* means that write-throttling will not be triggered.
+///
+/// Specifying any of the above attributes is optional. Not specified attributes
+/// will be ignored and the configuration for them will not be modified.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Is returned if the operation succeeds.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+/// @endDocuBlock
+///
+/// @EXAMPLES
+/// 
+/// @EXAMPLE_ARANGOSH_RUN{RestWalPropertiesPut}
+///     var url = "/_admin/wal/properties";
+///     var body = {
+///       logfileSize: 32 * 1024 * 1024,
+///       allowOversizeEntries: true
+///     };
+///     var response = logCurlRequest('PUT', url, JSON.stringify(body));
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief retrieves the configuration of the write-ahead log
+/// @startDocuBlock JSF_get_admin_wal_properties
+///
+/// @RESTHEADER{GET /_admin/wal/properties, Retrieves the configuration of the write-ahead log}
+///
+/// @RESTDESCRIPTION
+///
+/// Retrieves the configuration of the write-ahead log. The result is a JSON
+/// array with the following attributes:
+/// - *allowOversizeEntries*: whether or not operations that are bigger than a
+///   single logfile can be executed and stored
+/// - *logfileSize*: the size of each write-ahead logfile
+/// - *historicLogfiles*: the maximum number of historic logfiles to keep
+/// - *reserveLogfiles*: the maximum number of reserve logfiles that ArangoDB
+///   allocates in the background
+/// - *syncInterval*: the interval for automatic synchronization of not-yet
+///   synchronized write-ahead log data (in milliseconds)
+/// - *throttleWait*: the maximum wait time that operations will wait before
+///   they get aborted if case of write-throttling (in milliseconds)
+/// - *throttleWhenPending*: the number of unprocessed garbage-collection 
+///   operations that, when reached, will activate write-throttling. A value of
+///   *0* means that write-throttling will not be triggered.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Is returned if the operation succeeds.
+///
+/// @RESTRETURNCODE{405}
+/// is returned when an invalid HTTP method is used.
+/// @endDocuBlock
+///
+/// @EXAMPLES
+/// 
+/// @EXAMPLE_ARANGOSH_RUN{RestWalPropertiesGet}
+///     var url = "/_admin/wal/properties";
+///     var response = logCurlRequest('GET', url);
+/// 
+///     assert(response.code === 200);
+/// 
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -188,10 +314,10 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_get_admin_routing_reloads
 /// @brief reloads the routing information
+/// @startDocuBlock JSF_get_admin_routing_reloads
 ///
-/// @RESTHEADER{POST /_admin/routing/reload, Reload routing collection}
+/// @RESTHEADER{POST /_admin/routing/reload, Reloads the routing information}
 ///
 /// @RESTDESCRIPTION
 ///
@@ -231,10 +357,10 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_get_admin_modules_flush
 /// @brief flushes the modules cache
+/// @startDocuBlock JSF_get_admin_modules_flush
 ///
-/// @RESTHEADER{POST /_admin/modules/flush, Flush module cache}
+/// @RESTHEADER{POST /_admin/modules/flush, Flushes the modules cache}
 ///
 /// @RESTDESCRIPTION
 ///
@@ -261,8 +387,8 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_get_admin_time
 /// @brief returns the system time
+/// @startDocuBlock JSF_get_admin_time
 ///
 /// @RESTHEADER{GET /_admin/time, Return system time}
 ///
@@ -289,8 +415,8 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_get_admin_sleep
 /// @brief sleeps, this is useful for timeout tests
+/// @startDocuBlock JSF_get_admin_sleep
 ///
 /// @RESTHEADER{GET /_admin/sleep?duration=5, Sleep for 5 seconds}
 ///
@@ -322,8 +448,8 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_get_admin_echo
 /// @brief returns the request
+/// @startDocuBlock JSF_get_admin_echo
 ///
 /// @RESTHEADER{GET /_admin/echo, Return current request}
 ///
@@ -357,8 +483,8 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_get_admin_statistics
 /// @brief returns system status information for the server
+/// @startDocuBlock JSF_get_admin_statistics
 ///
 /// @RESTHEADER{GET /_admin/statistics, Read the statistics}
 ///
@@ -418,8 +544,8 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_get_admin_statistics_description
 /// @brief returns statistics description
+/// @startDocuBlock JSF_get_admin_statistics_description
 ///
 /// @RESTHEADER{GET /_admin/statistics-description, Statistics description}
 /// 
@@ -789,8 +915,8 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_post_admin_test
 /// @brief executes one or multiple tests on the server
+/// @startDocuBlock JSF_post_admin_test
 ///
 /// @RESTHEADER{POST /_admin/test, Runs tests on the server}
 ///
@@ -848,8 +974,8 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_get_admin_execute
 /// @brief executes a JavaScript program on the server
+/// @startDocuBlock JSF_get_admin_execute
 ///
 /// @RESTHEADER{POST /_admin/execute, Execute program}
 ///

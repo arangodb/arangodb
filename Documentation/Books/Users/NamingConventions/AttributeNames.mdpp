@@ -13,7 +13,7 @@ following attribute naming constraints are not violated:
   end users should not use attribute names starting with an underscore for their
   own attributes.
 
-* Attribute names should not start with the at-mark (*\@*). The at-mark
+* Attribute names should not start with the at-mark (*@*). The at-mark
   at the start of attribute names is reserved in ArangoDB for future use cases.
 * Theoretically, attribute names can include punctuation and special characters
   as desired, provided the name is a valid UTF-8 string.  For maximum
