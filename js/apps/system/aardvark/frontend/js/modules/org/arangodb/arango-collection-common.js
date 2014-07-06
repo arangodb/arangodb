@@ -228,11 +228,11 @@ ArangoCollection.prototype.all = function () {
 /// as example, then you will find all documents, such that the attribute
 /// *a* contains a document of the form *{c : 1 }*. For example the document
 ///
-/// *{ a : { c : 1 }\, b : 1 }*
+/// *{ a : { c : 1 }, b : 1 }*
 ///
 /// will match, but the document 
 ///
-/// *{ a : { c : 1\, b : 1 } }*
+/// *{ a : { c : 1, b : 1 } }*
 ///
 /// will not.
 ///
@@ -243,9 +243,9 @@ ArangoCollection.prototype.all = function () {
 /// then you will find all documents, which contain a sub-document in *a*
 /// that has an attribute *c* of value *1*. Both the following documents 
 ///
-/// *{ a : { c : 1 }\, b : 1 }* and 
+/// *{ a : { c : 1 }, b : 1 }* and 
 ///
-/// *{ a : { c : 1\, b : 1 } }*
+/// *{ a : { c : 1, b : 1 } }*
 ///
 /// will match.
 ///
@@ -326,11 +326,11 @@ ArangoCollection.prototype.byExample = function (example) {
 /// as example, then you will find all documents, such that the attribute
 /// *a* contains a document of the form *{c : 1 }*. For example the document
 ///
-/// *{ a : { c : 1 }\, b : 1 }*
+/// *{ a : { c : 1 }, b : 1 }*
 ///
 /// will match, but the document 
 ///
-/// *{ a : { c : 1\, b : 1 } }*
+/// *{ a : { c : 1, b : 1 } }*
 ///
 /// will not.
 ///
@@ -341,9 +341,9 @@ ArangoCollection.prototype.byExample = function (example) {
 /// then you will find all documents, which contain a sub-document in *a*
 /// that has an attribute @LIT{c} of value *1*. Both the following documents 
 ///
-/// *{ a : { c : 1 }\, b : 1 }* and 
+/// *{ a : { c : 1 }, b : 1 }* and 
 ///
-/// *{ a : { c : 1\, b : 1 } }*
+/// *{ a : { c : 1, b : 1 } }*
 ///
 /// will match.
 ///
@@ -379,11 +379,11 @@ ArangoCollection.prototype.byExampleHash = function (index, example) {
 /// as example, then you will find all documents, such that the attribute
 /// *a* contains a document of the form *{c : 1 }*. For example the document
 ///
-/// *{ a : { c : 1 }\, b : 1 }*
+/// *{ a : { c : 1 }, b : 1 }*
 ///
 /// will match, but the document 
 ///
-/// *{ a : { c : 1\, b : 1 } }*
+/// *{ a : { c : 1, b : 1 } }*
 ///
 /// will not.
 ///
@@ -394,9 +394,9 @@ ArangoCollection.prototype.byExampleHash = function (index, example) {
 /// then you will find all documents, which contain a sub-document in *a*
 /// that has an attribute @LIT{c} of value *1*. Both the following documents 
 ///
-/// *{ a : { c : 1 }\, b : 1 }*and 
+/// *{ a : { c : 1 }, b : 1 }*and 
 ///
-/// *{ a : { c : 1\, b : 1 } }*
+/// *{ a : { c : 1, b : 1 } }*
 ///
 /// will match.
 ///
@@ -432,11 +432,11 @@ ArangoCollection.prototype.byExampleSkiplist = function (index, example) {
 /// as example, then you will find all documents, such that the attribute
 /// *a* contains a document of the form *{c : 1 }*. For example the document
 ///
-/// *{ a : { c : 1 }\, b : 1 }*
+/// *{ a : { c : 1 }, b : 1 }*
 ///
 /// will match, but the document 
 ///
-/// *{ a : { c : 1\, b : 1 } }*
+/// *{ a : { c : 1, b : 1 } }*
 ///
 /// will not.
 ///
@@ -447,9 +447,9 @@ ArangoCollection.prototype.byExampleSkiplist = function (index, example) {
 /// then you will find all documents, which contain a sub-document in *a*
 /// that has an attribute @LIT{c} of value *1*. Both the following documents 
 ///
-/// *{ a : { c : 1 }\, b : 1 }*and 
+/// *{ a : { c : 1 }, b : 1 }*and 
 ///
-/// *{ a : { c : 1\, b : 1 } }*
+/// *{ a : { c : 1, b : 1 } }*
 ///
 /// will match.
 ///
