@@ -1,6 +1,20 @@
 !CHAPTER Administrating ArangoDB 
 
-!SUBSECTION Mostly Memory/Durability
+!SECTION AppendOnly/MVCC 
+
+Instead of overwriting existing documents, ArangoDB will create a new version of 
+modified documents. This is even the case when a document gets deleted. The
+two benefits are:
+
+* Objects can be stored coherently and compactly in the main memory.
+* Objects are preserved, wo isolated writing and reading transactions allow
+  accessing these objects for parallel operations.
+
+The system collects obsolete versions as garbage, recognizing them as
+forsaken. Garbage collection is asynchronous and runs parallel to other
+processes.
+
+!SECTION Mostly Memory/Durability
 
 Database documents are stored in memory-mapped files. Per default, these
 memory-mapped files are synced regularly but not instantly. This is often a good
@@ -9,35 +23,75 @@ is too low for an application, the server can also sync all modifications to
 disk instantly. This will give full durability but will come with a performance
 penalty as each data modification will trigger a sync I/O operation.
 
-!SECTION AppendOnly/MVCC 
+!SUBSECTION Durability Configuration
 
-Instead of overwriting existing documents, a completely new version of the
-document is generated. The two benefits are:
+!SUBSUBSECTION Global Configuration 
 
-* Objects can be stored coherently and compactly in the main memory.
-* Objects are preserved-isolated writing and reading transactions allow
-  accessing these objects for parallel operations.
+There are global configuration values for durability, which can be adjusted by
+specifying the following configuration options:
 
-The system collects obsolete versions as garbage, recognizing them as
-forsaken. Garbage collection is asynchronous and runs parallel to other
-processes.
+<!-- arangod/RestServer/ArangoServer.h -->
+@startDocuBlock databaseWaitForSync
 
-!SECTION Configuration
+
+<!-- arangod/Wal/LogfileManager.h -->
+@startDocuBlock WalLogfileSyncInterval
+
+
+!SUBSUBSECTION Per-collection configuration
+
+You can also configure the durability behavior on a per-collection basis.
+Use the ArangoDB shell to change these properties.
+
+<!-- arangod/V8Server/v8-vocbase.cpp -->
+@startDocuBlock collectionProperties
+
+
+!SUBSUBSECTION Per-operation configuration
+
+Many data-modification operations and also ArangoDB's transactions allow to specify 
+a *waitForSync* attribute, which when set ensures the operation data has been 
+synchronized to disk when the operation returns.
+
+!SECTION Disk-Usage Configuration
+
+The amount of disk space used by ArangoDB is determined by a few configuration
+options. 
 
 !SUBSECTION Global Configuration 
 
-There are certain default values, which you can store in the configuration file
-or supply on the command line.
+The total amount of disk storage required by ArangoDB is determined by the size of
+the write-ahead logfiles plus the sizes of the collection journals and datafiles.
 
-!SUBSECTION Maximal Journal Size
+There are the following options for configuring the number and sizes of the write-ahead
+logfiles:
+
+<!-- arangod/Wal/LogfileManager.h -->
+@startDocuBlock WalLogfileReserveLogfiles
+
+
+<!-- arangod/Wal/LogfileManager.h -->
+@startDocuBlock WalLogfileHistoricLogfiles
+
+
+<!-- arangod/Wal/LogfileManager.h -->
+@startDocuBlock WalLogfileFilesize
+
+
+<!-- arangod/Wal/LogfileManager.h -->
+@startDocuBlock WalLogfileAllowOversizeEntries
+
+
+When data gets copied from the write-ahead logfiles into the journals or datafiles
+of collections, files will be created on the collection level. How big these files
+are is determined by the following global configuration value:
+
 <!-- arangod/RestServer/ArangoServer.h -->
 @startDocuBlock databaseMaximalJournalSize
 
-!SECTION Per Collection Configuration
 
-You can configure the durability behavior on a per collection basis.
-Use the ArangoDB shell to change these properties.
+!SUBSECTION Per-collection configuration
 
-!SUBSECTION Properties
-<!-- arangod/V8Server/v8-vocbase.cpp -->
-@startDocuBlock collectionProperties
+The journal size can also be adjusted on a per-collection level using the collection's
+*properties* method.
+
