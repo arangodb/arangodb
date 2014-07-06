@@ -63,6 +63,10 @@ road map):
   * Data-modification AQL queries are not executed atomically or isolated.
     If a data-modification AQL query fails for one shard, it might be
     rolled back there, but still complete on other shards.
+  * Data-modification AQL queries require a *_key* attribute in documents
+    in order to operate. If a different shard key is chosen for a collection,
+    specifying the *_key* attribute is currently still required. This
+    restriction might be lifted in a future release.
   * We plan to revise the AQL optimizer for version 2.2. This is
     necessary since for efficient queries in cluster mode we have to
     do as much as possible of the filtering and sorting on the
@@ -74,9 +78,6 @@ road map):
     maintenance and scaling of a cluster. However, in version 2.0 the
     cluster layout is static and no redistribution of data between the
     DBservers or moving of shards between servers is possible. 
-  * For version 2.3 we envision an extension for AQL to allow writing
-    queries. This will also allow to run modifying queries in parallel
-    on all shards.
   * At this stage the sharding of an edge collection is independent of
     the sharding of the corresponding vertex collection in a graph.
     For version 2.2 we plan to synchronize the two, to allow for more
