@@ -1002,7 +1002,7 @@ function routeRequest (req, res) {
 /// parameter *foo* is accessible as *request.parametrs.foo*. A request
 /// header *bar* is accessible as *request.headers.bar*. Assume that
 /// the action is defined for the url */foo/bar* and the request url is
-/// */foo/bar/hugo/egon*. Then the suffix parts *[ "hugon"\, "egon" ]*
+/// */foo/bar/hugo/egon*. Then the suffix parts *[ "hugo", "egon" ]*
 /// are availible in *request.suffix*.
 ///
 /// The callback must define fill the *response*.
