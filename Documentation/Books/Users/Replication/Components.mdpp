@@ -1,71 +1,50 @@
 !CHAPTER Components
 
-The replication architecture in ArangoDB 1.4 consists of two main components, which 
-can be used together or in isolation: the *replication logger* and the *replication applier*.
+The replication architecture in ArangoDB before version 2.2 consisted of two main 
+components, which could be used together or in isolation: the *replication logger* 
+and the *replication applier*. Since ArangoDB 2.2, the replication logger has no
+special purpose anymore and is available for downwards-compatibility only.
 
-Both are available in ArangoDB 1.4 and can be administered via the command line or 
-a REST API (see [HTTP Interface for Replication](../HttpReplications/README.md)).
+The replication applier can be administered via the command line or a REST API 
+(see [HTTP Interface for Replication](../HttpReplications/README.md)).
 
-In most cases, the *replication logger* will be run inside a master database, and the 
-*replication applier* will be executed in a slave database. 
-
-As there can be multiple database inside an ArangoDB instance, there can be multiple
-replication loggers and multiple replication appliers per ArangoDB instance.
+As replication is configured on a per-database level and there can be multiple 
+databases inside one ArangoDB instance, there can be multiple replication appliers
+in one ArangoDB instance.
 
 !SUBSECTION Replication Logger
 
 !SUBSUBSECTION Purpose
 
-The purpose of the replication logger is to log all changes that modify the state
-of data in a specific database. This includes document insertions, updates, and deletions. 
-It also includes creating, dropping, renaming and changing collections and indexes.
+The purpose of the replication logger in ArangoDB before version 2.2 was to log all 
+changes that modify the state of data in a specific database on a master server. 
+This included document insertions, updates, and deletions as well as creating, dropping, 
+renaming and changing collections and indexes.
 
-When the replication logger is used, it will log all these write operations for the
-database in its *event log*, in the same order in which the operations were carried out 
-originally.
+When the replication logger was used, it logged all these write operations for the
+database in its own event log, which was a system collection named *_replication*.
 
-Reading the event log sequentially provides a list of all write operations carried out
-in the database. Replication clients can request certain log events from the logger.
+Reading the events sequentially from the *_replication* collection provided a list of 
+all write operations carried out in the master database. Replication clients could then
+request these events from the logger and apply them on their own.
 
-For example, ArangoDB's replication applier will permanently query the latest events 
-from the replication logger. The applier of the slave database will then apply all changes 
-locally to get to the same state of data as the master database. It will keep track of 
-which parts of the event log it already synchronized, meaning that it will perform an
-incremental synchronization.
-
-Technically, the event log is a system collection named *_replication* inside the database
-the applier runs in. The event log is persisted and will still be present after a server 
-shutdown or crash. The event log's underlying collection should not be modified by users 
-directly. It should only be accessed using the special API methods offered by ArangoDB.
+Starting with ArangoDB 2.2, the *_replication* system collection is not used anymore.
+Instead, the server will write all data-modification operations into its write-ahead log.
+The write-ahead log can be queried by clients, so the need for an extra event log is 
+gone.
 
 !SUBSUBSECTION Starting and Stopping
 
-ArangoDB will only log changes if the replication logger is turned on for the specific
-database. Should there be any write operations in the database while the replication logger 
-is turned off, these events will be lost for replication.
+Starting with version 2.2, ArangoDB will log all data-modification operations in its
+write-ahead log automatically. There is no need to explicitly start or configure the
+replication logger on the master.
 
-To turn on the replication logger for a database once, the following command can be executed:
+The replication logger object is still present in ArangoDB 2.2 with the same methods
+as in previous versions of ArangoDB, but only for compatibility reasons. For example, the
+replication logger has *start* and *stop* methods, which are no-ops in ArangoDB 2.2.
 
-    require("org/arangodb/replication").logger.start();
-
-**Note**: Starting the replication logger does not necessarily mean it will be started
-automatically on all following server startups. This can be configured separately (keep on
-reading for this).
-
-**Note**: The above command turns on the replication logger for the current database 
-only, but not for all databases. To turn on the replication logger for multiple databases,
-the above command must be executed separately for each database.
-
-To turn the replication logger off for the current database, execute the *stop* command:
-  
-    require("org/arangodb/replication").logger.stop();
-
-This has turned off the logger, but still the logger may be started again automatically
-the next time the ArangoDB server is started. This can be configured separately (again,
-keep on reading).
-
-To determine the current state of the replication logger in the current database (including 
-whether it is currently running or not), use the *state* command:
+One functionality of the replication logger object remains useful in ArangoDB 2.2, and
+that is to query the current state. The state can be queried using the *state* command:
   
     require("org/arangodb/replication").logger.state();
 
@@ -74,112 +53,55 @@ The result might look like this:
 ```js
 { 
   "state" : { 
-    "running" : false, 
-    "lastLogTick" : "255376126918573", 
-    "totalEvents" : 0, 
-    "time" : "2013-08-02T11:01:28Z" 
+    "running" : true, 
+      "lastLogTick" : "133322013", 
+      "totalEvents" : 16, 
+      "time" : "2014-07-06T12:58:11Z" 
   }, 
   "server" : { 
-    "version" : "1.4.devel", 
-    "serverId" : "53904504772335" 
+    "version" : "2.2.0-devel", 
+    "serverId" : "40897075811372" 
   }, 
-  "clients" : [ ] 
+  "clients" : { 
+  } 
 }
 ```
 
-The *running* attribute indicates whether the logger is currently enabled and will
-log any events. The *totalEvents* attribute will indicate how many log events have been
-logged since the start of the ArangoDB server. The value will not be reset between
-multiple stops and restarts of the logger. Finally, the *lastLogTick* value will indicate
-the id of the last event that was logged. It can be used to determine whether new 
-events were logged, and is also used by the replication applier for incremental 
+In previous versions of ArangoDB, the *running* attribute indicated whether the logger 
+was currently enabled and logged any events. In ArangoDB 2.2 and higher, this attribute
+will always have a value of *true*.
+
+The *totalEvents* attribute indicates how many log events have been logged since the start 
+of the ArangoDB server. Finally, the *lastLogTick* value indicates the id of the last 
+operation that was written to the server's write-ahead log. It can be used to determine whether new 
+operations were logged, and is also used by the replication applier for incremental 
 fetching of data.
 
 **Note**: Replication logger state can also be queried via the [HTTP API](../HttpReplications/README.md).
 
 !SUBSUBSECTION Configuration
 
-To determine whether the current database's replication logger is automatically started 
-when the ArangoDB server is started, the logger has a separate configuration. The 
-configuration is stored in a file *REPLICATION-LOGGER-CONFIG* inside the current database's 
-directory. If it does not exist, ArangoDB will use default values.
+Since ArangoDB 2.2, no special configuration is necessary for the replication logger.
+All operations are written to a server's write-ahead log, and the write-ahead log is 
+used in replication, too.
 
-To check and adjust the configuration of the replication logger for the current database, 
-use the *properties* command. To view the current configuration, use *properties* without 
-any arguments:
-
-```js
-require("org/arangodb/replication").logger.properties();
-```
-
-The result might look like this:
-
-```
-{ 
-  "autoStart" : false, 
-  "logRemoteChanges" : false, 
-  "maxEvents" : 1048576, 
-  "maxEventsSize" : 134217728 
-}
-```
-
-The *autoStart* attribute indicates whether the current database's replication logger is 
-automatically started whenever the ArangoDB server is started. You may want to set it to 
-*true* for a proper master setup. To do so, supply the updated attributes to the *properties* 
-command, e.g.:
-
-```js
-require("org/arangodb/replication").logger.properties({ 
-  autoStart: true 
-});
-```
-
-This will ensure the replication logger for the current database is automatically started 
-on all following ArangoDB starts unless *autoStart* is set to *false* again.
-
-Note that only those attributes will be changed that you supplied in the argument to *properties*.
-All other configuration values will remain unchanged. Also note that the replication logger
-can be reconfigured while it is running.
-
-It a replication logger is turned on, the event log may be allowed to grow indefinitely.
-It may be sensible to set a maximum size or a maximum number of events to keep. 
-If one of these thresholds is reached during logging, the replication logger will start
-removing the oldest events from the event log automatically. 
-
-The thresholds are set by adjusting the *maxEvents* and *maxEventsSize* attributes via the
-*properties* command. The *maxEvents* attribute is the maximum number of events to keep 
-in the event log before starting to remove oldest events. The *maxEventsSize* is the maximum 
-cumulated size of event log data (in bytes) that is kept in the log before starting to remove
-oldest events. If both are set to a value of *0*, it means that the number and size
-of log events to keep is unrestricted. If both are set to a non-zero value, it means
-that there are restrictions on both the number and cumulated size of events to keep, 
-and if either of the restrictions is hit, the deletion will be triggered.
-
-The following command will set the threshold to 5000 events to keep, irrespective of the
-cumulated event data sizes:
-
-```js
-require("org/arangodb/replication").logger.properties({ 
-  maxEvents: 5000, 
-  maxEventsSize: 0 
-});
-```
 
 !SUBSECTION Replication Applier
 
 !SUBSUBSECTION Purpose
 
 The purpose of the replication applier is to read data from a master database's event log, 
-and apply them locally. The applier will check the master database for new events periodically. 
-It will perform an incremental synchronization, i.e. only asking the master for events 
+and apply them locally. The applier will check the master database for new operations periodically. 
+It will perform an incremental synchronization, i.e. only asking the master for operations
 that occurred after the last synchronization.
 
 The replication applier does not get notified by the master database when there are "new" 
-events, but uses the pull principle. It might thus take some time (the *replication lag*) 
-before an event from the master database gets shipped to and applied in a slave database. 
+operations available, but instead uses the pull principle. It might thus take some time (the 
+so-called *replication lag*) before an operation from the master database gets shipped to and 
+applied in a slave database. 
 
 The replication applier of a database is run in a separate thread. It may encounter problems 
-when a log event from the master cannot be applied safely, or when the connection to the master
+when an operation from the master cannot be applied safely, or when the connection to the master
 database goes down (network outage, master database is down or unavailable etc.). In this case, 
 the database's replication applier thread might terminate itself. It is then up to the 
 administrator to fix the problem and restart the database's replication applier.
@@ -201,47 +123,47 @@ The result might look like this:
 ```js
 { 
   "state" : { 
-    "running" : false, 
-    "lastAppliedContinuousTick" : "231848832948633", 
-    "lastProcessedContinuousTick" : "231848832948633", 
-    "lastAvailableContinuousTick" : null, 
+    "running" : true, 
+    "lastAppliedContinuousTick" : "152786205", 
+    "lastProcessedContinuousTick" : "152786205", 
+    "lastAvailableContinuousTick" : "152786205", 
     "progress" : { 
-      "time" : "2013-08-02T11:40:08Z", 
-      "message" : "applier created", 
+      "time" : "2014-07-06T13:04:57Z", 
+      "message" : "fetching master log from offset 152786205", 
       "failedConnects" : 0 
     }, 
-    "totalRequests" : 0, 
+    "totalRequests" : 38, 
     "totalFailedConnects" : 0, 
-    "totalEvents" : 0, 
+    "totalEvents" : 1, 
     "lastError" : { 
       "errorNum" : 0 
     }, 
-    "time" : "2013-08-02T11:40:22Z" 
+    "time" : "2014-07-06T13:04:57Z" 
   }, 
   "server" : { 
-    "version" : "1.4.devel", 
-    "serverId" : "53904504772335" 
+    "version" : "2.2.0-devel", 
+    "serverId" : "210189384542896" 
   }, 
-  "endpoint" : "tcp://master.domain.org:8529" 
+  "endpoint" : "tcp://master.example.org:8529", 
+  "database" : "_system" 
 }
 ```
 
 The *running* attribute indicates whether the replication applier of the current database
 is currently running and polling the server at *endpoint* for new events.
 
-The *failedConnects* attribute shows how many failed connection attempts the replication
+The *progress.failedConnects* attribute shows how many failed connection attempts the replication
 applier currently has encountered in a row. In contrast, the *totalFailedConnects* attribute
 indicates how many failed connection attempts the applier has made in total. The
-*totalRequest* attribute shows how many requests the applier has sent to the master database
+*totalRequests* attribute shows how many requests the applier has sent to the master database
 in total. The *totalEvents* attribute shows how many log events the applier has read from the
 master. 
 
-The *message* sub-attribute of the *progress* sub-attribute gives a brief hint of what the
-applier currently does (if it is running). The *lastError* attribute also has an optional
-*errorMessage* sub-attribute, showing the latest error message. The *errorNum* sub-attribute of the
-*lastError* attribute can be used by clients to programmatically check for errors. It should be *0*
-if there is no error, and it should be non-zero when the applier terminated itself due to
-a problem.
+The *progress.message* sub-attribute provides a brief hint of what the applier currently does 
+(if it is running). The *lastError* attribute also has an optional *errorMessage* sub-attribute, 
+showing the latest error message. The *errorNum* sub-attribute of the *lastError* attribute can be 
+used by clients to programmatically check for errors. It should be *0* if there is no error, and 
+it should be non-zero if the applier terminated itself due to a problem.
 
 Here is an example of the state after the replication applier terminated itself due to 
 (repeated) connection problems:
@@ -251,15 +173,15 @@ Here is an example of the state after the replication applier terminated itself 
   "state" : { 
     "running" : false, 
     "progress" : { 
-      "time" : "2013-08-02T12:40:25Z", 
+      "time" : "2014-07-06T13:14:37Z", 
       "message" : "applier stopped", 
       "failedConnects" : 6 
     }, 
-    "totalRequests" : 18, 
+    "totalRequests" : 79, 
     "totalFailedConnects" : 11, 
     "totalEvents" : 0, 
     "lastError" : { 
-      "time" : "2013-08-02T12:40:25Z", 
+      "time" : "2014-07-06T13:09:41Z", 
       "errorMessage" : "could not connect to master at tcp://master.example.org:8529: Could not connect to 'tcp:/...", 
       "errorNum" : 1400 
     },
@@ -288,26 +210,26 @@ ArangoDB will use some default configuration, but it cannot guess the endpoint (
 of the master database) the applier should connect to. Thus starting the applier without 
 configuration will fail.
 
-Note that the first time you start the applier, you should pass *1* as value for tick. Otherwise
-you might see the message
-
-```js
-"lastError" : { 
-  "time" : "2014-04-16T16:59:16Z", 
-  "errorMessage" : "no start tick", 
-  "errorNum" : 1413 
-}
-```
+Note that at the first time you start the applier, you should pass the value returned in the
+*lastLogTick* attribute of the initial sync operation.
 
 **Note**: Starting a database's replication applier via the *start* command will not necessarily 
 start the applier on the next and following ArangoDB server restarts. Additionally, stopping a
 database's replication applier manually will not necessarily prevent the applier from being 
 started again on the next server start. All of this is configurable separately (hang on reading).
 
-**Note**: that when starting the replication applier of database, it will resume where it stopped. 
-This is sensible because replication log events should be applied incrementally. If the
-replication applier of a database has never been started before, it needs some *tick* value from the
-master database's event log from which to start fetching events.
+**Note**: when stopping and restarting the replication applier of database, it will resume where 
+it last stopped. This is sensible because replication log events should be applied incrementally. 
+If the replication applier of a database has never been started before, it needs some *tick* value 
+from the master's log from which to start fetching events.
+
+There is one caveat to consider when stopping a replication on the slave: if there are still
+ongoing replicated transactions that are neither commited or aborted, stopping the replication
+applier will cause these operations to be lost for the slave. If these transactions commit on the
+master later and the replication is resumed, the slave will not be able to commit these transactions,
+too. Thus stopping the replication applier on the slave manually should only be done if there
+is certainty that there are no ongoing transactions on the master.
+
 
 !SUBSUBSECTION Configuration
 
@@ -354,9 +276,7 @@ starts, use the *autoStart* attribute.
 Setting the *adaptivePolling* attribute to *true* will make the replication applier poll the 
 master database for changes with a variable frequency. The replication applier will then lower the 
 frequency when the master is idle, and increase it when the master can provide new events).
-Otherwise the replication applier will poll the master database for changes with a constant frequency 
-of 5 seconds if the master database's replication logger is turned off, and 0.5 seconds if it is 
-turned on.
+Otherwise the replication applier will poll the master database for changes with a constant frequency.
 
 To set a timeout for connection and following request attempts, use the *connectTimeout* and 
 *requestTimeout* values. The *maxConnectRetries* attribute configures after how many failed 
@@ -386,15 +306,14 @@ require("org/arangodb/replication").applier.properties({
 
 After the applier is now fully configured, it could theoretically be started. However, we
 may first need an initial synchronization of all collections and their data from the master before
-we start the replication applier. The reason is that the replication logger of the master database
-may not contain all data we need for a full synchronization. 
+we start the replication applier. 
 
-The only safe method for doing a full synchronization is thus to 
+The only safe method for doing a full synchronization (or re-synchronization) is thus to 
 
-* make sure the replication logger of the master database is running
+* stop the replication applier on the slave (if currently running)
 * perform an initial full sync with the master database
-* note the master database's replication logger *tick* value and
-* start the continuous replication applier using this tick value.
+* note the master database's *lastLogTick* value and
+* start the continuous replication applier on the slave using this tick value.
 
 The initial synchronization for the current database is executed with the *sync* command:
 
@@ -411,9 +330,9 @@ collections present in the master database.
 Any local instances of the collections and all their data are removed! Only execute this
 command when you are sure you want to remove the local data!
 
-As *sync* does a full synchronization, it may take a while to execute.
-When *sync* completes successfully, it show a list of collections it has synchronized in the
-*collections* attribute. It will also return the master database's replication logger tick value 
+As *sync* does a full synchronization, it might take a while to execute.
+When *sync* completes successfully, it show a list of collections it has synchronized in its
+*collections* attribute. It will also return the master database's last log tick value 
 at the time the *sync* was started on the master. The tick value is contained in the *lastLogTick*
 attribute of the *sync* command: 
 
@@ -423,8 +342,8 @@ attribute of the *sync* command:
   "collections" : [ ... ]
 }
 ```
-If the master database's replication logger is turned on, you can now start the continuous 
-synchronization for the current database with the command
+Now you can start the continuous synchronization for the current database on the slave
+with the command
 
 ```js
 require("org/arangodb/replication").applier.start("231848833079705");
