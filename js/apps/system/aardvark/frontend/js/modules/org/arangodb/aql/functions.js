@@ -172,9 +172,9 @@ var stringifyFunction = function (code, name) {
 ///
 /// @EXAMPLES
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{aqlFunctionUnregister}
+/// ```js
 ///   require("org/arangodb/aql/functions").unregister("myfunctions::temperature::celsiustofahrenheit");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -216,11 +216,11 @@ var unregisterFunction = function (name) {
 ///
 /// @EXAMPLES
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{aqlFunctionUnregisterGroup}
+/// ```js
 ///   require("org/arangodb/aql/functions").unregisterGroup("myfunctions::temperature");
 ///
 ///   require("org/arangodb/aql/functions").unregisterGroup("myfunctions");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -267,12 +267,12 @@ var unregisterFunctionsGroup = function (group) {
 ///
 /// @EXAMPLES
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{aqlFunctionRegister}
+/// ```js
 ///   require("org/arangodb/aql/functions").register("myfunctions::temperature::celsiustofahrenheit", 
 ///   function (celsius) {
 ///     return celsius * 1.8 + 32; 
 ///   });
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -358,21 +358,21 @@ var registerFunction = function (name, code, isDeterministic) {
 ///
 /// To list all available user functions:
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{aqlFunctionsToArray}
+/// ```js
 ///   require("org/arangodb/aql/functions").toArray();
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// ```
 ///
 /// To list all available user functions in the *myfunctions* namespace:
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{aqlFunctionsToArrayPrefix}
+/// ```js
 ///   require("org/arangodb/aql/functions").toArray("myfunctions");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// ```
 ///
 /// To list all available user functions in the *myfunctions::temperature* namespace:
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{aqlFunctionsToArrayList}
+/// ```js
 ///   require("org/arangodb/aql/functions").toArray("myfunctions::temperature");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   

@@ -3859,14 +3859,11 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
   var graphObj = _graph(graph._key);
   var eDs = graph.edgeDefinitions;
   var gotAHit = false;
-  require("internal").print("Graph: " + graph._key);
 
   //replace edgeDefintion
   eDs.forEach(
     function(eD, id) {
       if(eD.collection === edgeDefinition.collection) {
-        require("internal").print("eD.collection");
-        require("internal").print(eD.collection);
         gotAHit = true;
         oldCollections = _.union(oldCollections, eD.from);
         oldCollections = _.union(oldCollections, eD.to);
