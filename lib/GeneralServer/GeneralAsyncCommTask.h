@@ -99,6 +99,7 @@ namespace triagens {
           }
 
           ok = AsyncTask::setup(scheduler, loop);
+
           if (! ok) {
             return false;
           }
