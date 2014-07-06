@@ -21,7 +21,7 @@ Key features include:
   durability or more performance
 * *No-nonsense storage*: ArangoDB uses all of the power of modern storage
   hardware, like SSD and large caches
-* *Powerful query language* (AQL) to retrieve data 
+* *Powerful query language* (AQL) to retrieve and modify data 
 * *Transactions*: Run queries on multiple documents or collections with 
   optional transactional consistency and isolation
 * *Replication*: Set up the database in a master-slave configuration
