@@ -1,9 +1,9 @@
 !CHAPTER Example Setup
 
 Setting up a working master-slave replication requires two ArangoDB instances:
-* _master_: this is the instance we'll activate the replication logger on
+* _master_: this is the instance that all data-modification operations should be directed to
 * _slave_: on this instance, we'll start a replication applier, and this will fetch data from the 
-  master database's events log and apply all events locally
+  master database's write-ahead log and apply its operations locally
   
 For the following example setup, we'll use the instance *tcp://master.domain.org:8529* as the 
 master, and the instance *tcp://slave.domain.org:8530* as a slave.
@@ -11,33 +11,18 @@ master, and the instance *tcp://slave.domain.org:8530* as a slave.
 The goal is to have all data from the database *_system* on master *tcp://master.domain.org:8529* 
 be replicated to the database *_system* on the slave *tcp://slave.domain.org:8530*.
 
-On the *master*, configure the replication logger for database *_system* to start automatically 
-on ArangoDB startup. Additionally, set some restrictions for the event log size:
+On the *master*, nothing special needs to be done, as all write operations will automatically be
+logged in the master's write-ahead log.
 
-```js
-db._useDatabase("_system");
-
-require("org/arangodb/replication").logger.properties({
-  autoStart: true,
-  maxEvents: 1048576,
-  maxEventsSize: 0
-});
-```
-
-After that, start the replication logger for the *_system* database on the master:
-
-```js
-db._useDatabase("_system");
-require("org/arangodb/replication").logger.start();
-```
-
-On the *slave*, make sure there currently is no replication applier running in the *_system*
-database:
+To start replication, make sure there currently is no replication applier running in the slave's
+*_system* database:
 
 ```js
 db._useDatabase("_system");
 require("org/arangodb/replication").applier.stop();
 ```
+
+The stop operation will terminate any replication activity in the _system database on the slave.
 
 After that, do an initial sync of the slave with data from the master. Execute the following
 commands on the slave:
@@ -51,12 +36,28 @@ require("org/arangodb/replication").sync({
 });
 ```
 
-**Warning**: This will replace data in the slave database with data from the master database! 
-Only execute the commands if you have verified you are on the correct server, in the
+Username and password only need to be specified when the master server requires authentication.
+
+**Warning**: The sync command will replace data in the slave database with data from the master 
+database! Only execute the commands if you have verified you are on the correct server, in the
 correct database!
 
-Then re-configure the slave database's replication applier to point to the master database, 
-set the username and password for the connection, and set the *autoStart* attribute:
+The sync operation will return an attribute named *lastLogTick* which we'll need to note. The
+last log tick will be used as the starting point for any subsequent replication activity. Let's
+assume we got the following last log tick:
+
+```js
+{ 
+  "lastLogTick" : "40694126", 
+  ...
+}
+```
+
+Now, we could start the replication applier in the slave database using the last log tick.
+However, there is one thing to consider: replication on the slave will be running until the 
+slave gets shut down. When the slave server gets restarted, replication will be turned off again. 
+To change this, we first need to configure the slave's replication applier and set its
+*autoStart* attribute:
 
 ```js
 db._useDatabase("_system");
@@ -68,20 +69,34 @@ require("org/arangodb/replication").applier.properties({
   adaptivePolling: true
 });
 ```
-After that, start the applier in the slave database:
+
+Now it's time to start the replication applier on the slave using the last log tick we got
+before:
 
 ```js
 db._useDatabase("_system");
-require("org/arangodb/replication").applier.start();
+require("org/arangodb/replication").applier.start("40694126");
 ```
 
+This will replicate all operations happening in the master's system database and apply them
+on the slave, too.
+
 After that, you should be able to monitor the state and progress of the replication 
-applier by executing the *state* command in the slave database:
+applier by executing the *state* command on the slave server:
 
 ```js
     db._useDatabase("_system");
     require("org/arangodb/replication").applier.state();
 ```
 
-You may also want to check the master and slave states via the HTTP APIs (see [HTTP Interface for Replication](../HttpReplications/README.md)) or the web interface ("Dashboard" tab).
+Please note that stopping the replication applier on the slave using the *stop* command 
+should be avoided. The reason is that currently ongoing transactions (that have partly been
+replicated to the slave) will be lost after a restart. Stopping and restarting the replication
+applier on the slave should thus only be performed if there is certainty that the master is
+currently fully idle and all transactions have been replicated fully.
+
+Note that while a slave has only partly executed a transaction from the master, it might keep
+a lock on the collections involved in the transaction.
+
+You may also want to check the master and slave states via the HTTP APIs (see [HTTP Interface for Replication](../HttpReplications/README.md)).
 
