@@ -7535,6 +7535,8 @@ static v8::Handle<v8::Value> InsertEdgeColCoordinator (TRI_vocbase_col_t* collec
 /// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///
+/// Note: since ArangoDB 2.2, *insert* is an alias for *save*.
+///
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionSave}
@@ -8573,8 +8575,8 @@ static v8::Handle<v8::Value> JS_CreateEdgeCollectionVocbase (v8::Arguments const
 /// ~ db._create("example");
 ///   a1 = db.example.save({ a : 1 });
 ///   a2 = db._replace(a1, { a : 2 });
-///   db._delete(a1);
-///   db._delete(a1, true);
+///   db._remove(a1);
+///   db._remove(a1, true);
 ///   db._document(a1);
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
