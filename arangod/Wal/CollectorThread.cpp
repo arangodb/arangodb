@@ -355,9 +355,6 @@ void CollectorThread::run () {
 
       // step 2: update master pointers
       worked |= this->processQueuedOperations();
-
-      // step 3: delete a logfile if any qualifies
-      worked |= this->removeLogfiles();
     }
     catch (triagens::arango::Exception const& ex) {
       int res = ex.code();
@@ -691,14 +688,6 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
             TRI_errno_string(res));
 
   return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief step 3: perform removal of a logfile (if any)
-////////////////////////////////////////////////////////////////////////////////
-
-bool CollectorThread::removeLogfiles () {
-  return _logfileManager->removeLogfiles();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
