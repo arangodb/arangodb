@@ -20,10 +20,6 @@
 <!-- arangod/RestServer/ArangoServer.h -->
 @startDocuBlock serverAuthenticateSystemOnly
 
-!SUBSECTION Disable replication-logger
-<!-- arangod/RestServer/ArangoServer.h -->
-@startDocuBlock serverDisableReplicationLogger
-
 !SUBSECTION Disable replication-applier
 <!-- arangod/RestServer/ArangoServer.h -->
 @startDocuBlock serverDisableReplicationApplier
