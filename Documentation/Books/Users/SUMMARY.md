@@ -175,7 +175,7 @@
     * [Replication Dump](HttpReplications/ReplicationDump.md)
     * [Replication Logger](HttpReplications/ReplicationLogger.md)
     * [Replication Applier](HttpReplications/ReplicationApplier.md)
-    * [Other Replications](HttpReplications/OtherReplication.md)
+    * [Other Replication Commands](HttpReplications/OtherReplication.md)
   * [Bulk Imports](HttpBulkImports/README.md)
     * [JSON Documents](HttpBulkImports/ImportingSelfContained.md)
     * [Headers and Values](HttpBulkImports/ImportingHeadersAndValues.md)
