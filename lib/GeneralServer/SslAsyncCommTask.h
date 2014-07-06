@@ -74,7 +74,6 @@ namespace triagens {
         : Task("SslAsyncCommTask"),
           GeneralAsyncCommTask<S, HF, CT>(server, socket, info, keepAliveTimeout),
           _accepted(false),
-          _readBlocked(false),
           _readBlockedOnWrite(false),
           _writeBlockedOnRead(false),
           _ssl(nullptr),
@@ -135,8 +134,42 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool handleEvent (EventToken token, EventType revents) {
+          // if we blocked on write, read can be called when the socket is writeable
+          if (_readBlockedOnWrite && token == this->writeWatcher && (revents & EVENT_SOCKET_WRITE)) {
+            _readBlockedOnWrite = false;
+            revents &= ~EVENT_SOCKET_WRITE;
+            revents |= EVENT_SOCKET_READ;
+            token = this->readWatcher;
+          }
+
+          if (_readBlockedOnWrite && token == this->readWatcher && (revents & EVENT_SOCKET_READ)) {
+            return true;
+          }
+
+          // if we blocked on read, write can be called when the socket is readable
+          if (_writeBlockedOnRead && token == this->readWatcher && (revents & EVENT_SOCKET_READ)) {
+            _writeBlockedOnRead = false;
+            revents &= ~EVENT_SOCKET_READ;
+            revents |= EVENT_SOCKET_WRITE;
+            token = this->writeWatcher;
+          }
+
+          if (_writeBlockedOnRead && token == this->writeWatcher && (revents & EVENT_SOCKET_WRITE)) {
+            return true;
+          }
+
+          if (! _accepted && token == this->readWatcher && (revents & EVENT_SOCKET_READ)) {
+            return trySSLAccept();
+          }
+
+          if (! _accepted && token == this->writeWatcher && (revents & EVENT_SOCKET_WRITE)) {
+            return trySSLAccept();
+          }
+
+          // handle normal socket operation
           bool result = GeneralAsyncCommTask<S, HF, CT>::handleEvent(token, revents);
 
+          // we might need to start listing for writes (even we only want to READ)
           if (result) {
             if (_readBlockedOnWrite) {
               this->_scheduler->startSocketEvents(this->writeWatcher);
@@ -160,17 +193,7 @@ namespace triagens {
 
           // is the handshake already done?
           if (! _accepted) {
-            if (! trySSLAccept()) {
-              LOG_DEBUG("failed to establish SSL connection");
-              return false;
-            }
-
-            return true;
-          }
-
-          // check if read is blocked by write
-          if (_writeBlockedOnRead) {
-            return trySSLWrite(closed, ! this->hasWriteBuffer());
+            return false;
           }
 
           return trySSLRead(closed);
@@ -188,25 +211,15 @@ namespace triagens {
 
           // is the handshake already done?
           if (! _accepted) {
-            if (! trySSLAccept()) {
-              LOG_DEBUG("failed to establish SSL connection");
-              return false;
-            }
-
-            return true;
-          }
-
-          // check if write is blocked by read
-          if (_readBlockedOnWrite) {
-            if (! trySSLRead(closed)) {
-              return false;
-            }
-
-            return this->handleRead(closed);
+            return false;
           }
 
           return trySSLWrite(closed, noWrite);
         }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
 
       private:
 
@@ -215,6 +228,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool trySSLAccept () {
+          if (nullptr == _ssl) {
+            return false;
+          }
+
+          _readBlockedOnWrite = false;
+          _writeBlockedOnRead = false;
+
           int res = SSL_accept(_ssl);
 
           // accept successful
@@ -236,7 +256,13 @@ namespace triagens {
           else {
             int err = SSL_get_error(_ssl, res);
 
-            if (err == SSL_ERROR_WANT_READ || err == SSL_ERROR_WANT_WRITE) {
+            if (err == SSL_ERROR_WANT_READ) {
+              _readBlockedOnWrite = true;
+              this->_scheduler->startSocketEvents(this->writeWatcher);
+              return true;
+            }
+            else if (err == SSL_ERROR_WANT_WRITE) {
+              _writeBlockedOnRead = true;
               return true;
             }
             else {
@@ -254,7 +280,6 @@ namespace triagens {
 
         bool trySSLRead (bool& closed) {
           closed = false;
-          _readBlocked = false;
           _readBlockedOnWrite = false;
 
 again:
@@ -287,12 +312,12 @@ again:
                 return false;
 
               case SSL_ERROR_WANT_READ:
-                _readBlocked = true;
-                break;
+                // we must retry with the EXCAT same parameters later
+                return true;
 
               case SSL_ERROR_WANT_WRITE:
                 _readBlockedOnWrite = true;
-                break;
+                return true;
 
               case SSL_ERROR_WANT_CONNECT:
                 LOG_WARNING("received SSL_ERROR_WANT_CONNECT");
@@ -344,6 +369,7 @@ again:
 
         bool trySSLWrite (bool& closed, bool noWrite) {
           closed = false;
+          _writeBlockedOnRead = false;
 
           // if no write buffer is left, return
           if (noWrite) {
@@ -363,7 +389,6 @@ again:
             int nr = 0;
 
             if (0 < len) {
-              _writeBlockedOnRead = false;
               nr = SSL_write(_ssl, this->_writeBuffer->begin() + this->writeLength, (int) len);
 
               if (nr <= 0) {
@@ -388,8 +413,8 @@ again:
                     break;
 
                   case SSL_ERROR_WANT_WRITE:
-                    shutdownSsl();
-                    return false;
+                    // we must retry with the EXACT same parameters later
+                    return true;
 
                   case SSL_ERROR_WANT_READ:
                     _writeBlockedOnRead = true;
@@ -453,7 +478,6 @@ again:
           return true;
         }
 
-      private:
         void shutdownSsl () {
           static int const SHUTDOWN_ITERATIONS = 10;
           bool ok = false;
@@ -467,21 +491,27 @@ again:
             }
 
             if (! ok) {
-              LOG_WARNING("cannot complete SSL shutdown");
+              LOG_WARNING("cannot complete SSL shutdown in socket %d",
+                          (int) TRI_get_fd_or_handle_of_socket(this->_commSocket));
             }
 
             SSL_free(_ssl); // this will free bio as well
 
-            _ssl= nullptr;
+            _ssl = nullptr;
           }
 
-          TRI_CLOSE_SOCKET(this->_commSocket);
-          TRI_invalidatesocket(&this->_commSocket);
+          if (TRI_isvalidsocket(this->_commSocket)) {
+            TRI_CLOSE_SOCKET(this->_commSocket);
+            TRI_invalidatesocket(&this->_commSocket);
+          }
         }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
 
       private:
         bool _accepted;
-        bool _readBlocked;
         bool _readBlockedOnWrite;
         bool _writeBlockedOnRead;
 
