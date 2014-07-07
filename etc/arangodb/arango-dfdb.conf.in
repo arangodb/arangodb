@@ -4,7 +4,6 @@ no-server = true
 [database]
 directory= @LOCALSTATEDIR@/lib/arangodb
 # maximal-journal-size=33554432
-# remove-on-drop=true
 
 [server]
 # set number of threads to 1 so we don't have concurrency
