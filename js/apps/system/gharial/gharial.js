@@ -763,7 +763,7 @@
 ///   var url = "/_api/gharial/social/vertex/female/alice";
 ///   var response = logCurlRequest('PUT', url, body);
 ///
-///   assert(response.code === 200);
+///   assert(response.code === 202);
 ///
 ///   logJsonResponse(response);
 ///   examples.dropGraph("social");
@@ -827,7 +827,7 @@
 ///   var url = "/_api/gharial/social/vertex/female/alice";
 ///   var response = logCurlRequest('PATCH', url, body);
 ///
-///   assert(response.code === 200);
+///   assert(response.code === 202);
 ///
 ///   logJsonResponse(response);
 ///   examples.dropGraph("social");
@@ -892,7 +892,7 @@
 ///   var url = "/_api/gharial/social/vertex/female/alice";
 ///   var response = logCurlRequest('DELETE', url);
 ///
-///   assert(response.code === 200);
+///   assert(response.code === 202);
 ///
 ///   logJsonResponse(response);
 ///   examples.dropGraph("social");
@@ -1074,7 +1074,7 @@
 ///   }
 ///   var response = logCurlRequest('PUT', url, body);
 ///
-///   assert(response.code === 200);
+///   assert(response.code === 202);
 ///
 ///   logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -1137,7 +1137,7 @@
 ///   }
 ///   var response = logCurlRequest('PATCH', url, body);
 ///
-///   assert(response.code === 200);
+///   assert(response.code === 202);
 ///
 ///   logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -1203,7 +1203,7 @@
 ///   var url = "/_api/gharial/social/edge/relation/aliceAndBob";
 ///   var response = logCurlRequest('DELETE', url);
 ///
-///   assert(response.code === 200);
+///   assert(response.code === 202);
 ///
 ///   logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
