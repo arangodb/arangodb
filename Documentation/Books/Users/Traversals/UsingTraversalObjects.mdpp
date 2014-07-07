@@ -325,10 +325,10 @@ This will traverse edges of the same vertex in backward *_key* order:
 ]
 ```
 
-Note that this attribute only works for the usual expanders
+**Note**: This attribute only works for the usual expanders
 *traversal.inboundExpander*, *traversal.outboundExpander*,
 *traversal.anyExpander* and their corresponding "WithLabels" variants.
-If you are using custom expanders (see @ref TraversalsCustomExpanders)
+If you are using custom expanders
 you have to organize the sorting within the specified expander.
 
 !SUBSUBSECTION Writing Custom Visitors
