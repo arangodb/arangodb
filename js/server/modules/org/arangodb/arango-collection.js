@@ -933,7 +933,7 @@ ArangoCollection.prototype.updateByExample = function (example,
 /// rejected and therefore not inserted within the collection. Documents without
 /// the attribute *x* defined will not take part in the index.
 ///
-/// @code
+/// ```js
 /// arango> arangod> db.example.ensureBitarray("x", [0,1]);
 /// {
 ///   "id" : "2755894/3607862",
@@ -943,7 +943,7 @@ ArangoCollection.prototype.updateByExample = function (example,
 ///   "undefined" : false,
 ///   "isNewlyCreated" : true
 /// }
-/// @endcode
+/// ```
 ///
 /// In the example below we create a bitarray index with one field and that
 /// field can have the values of either *0*, *1* or *other* (indicated by
@@ -951,7 +951,7 @@ ArangoCollection.prototype.updateByExample = function (example,
 /// the index. Documents without the attribute *x* defined will not take part in
 /// the index.
 ///
-/// @code
+/// ```js
 /// arangod> db.example.ensureBitarray("x", [0,1,[]]);
 /// {
 ///   "id" : "2755894/4263222",
@@ -961,7 +961,7 @@ ArangoCollection.prototype.updateByExample = function (example,
 ///   "undefined" : false,
 ///   "isNewlyCreated" : true
 /// }
-/// @endcode
+/// ```
 ///
 /// In the example below we create a bitarray index with two fields. Field *x*
 /// can have the values of either *0* or *1*; while field *y* can have the values
@@ -971,7 +971,7 @@ ArangoCollection.prototype.updateByExample = function (example,
 /// *2* or *1* for attribute *y*, otherwise the document will not be inserted
 /// within the collection.
 ///
-/// @code
+/// ```js
 /// arangod> db.example.ensureBitarray("x", [0,1], "y", [2,"a"]);
 /// {
 ///   "id" : "2755894/5246262",
@@ -981,7 +981,7 @@ ArangoCollection.prototype.updateByExample = function (example,
 ///   "undefined" : false,
 ///   "isNewlyCreated" : false
 /// }
-/// @endcode
+/// ```
 ///
 /// In the example below we create a bitarray index with two fields. Field *x*
 /// can have the values of either *0* or *1*; while field *y* can have the
@@ -991,7 +991,7 @@ ArangoCollection.prototype.updateByExample = function (example,
 /// or *1* for attribute *x* and any value for attribute *y* will be acceptable,
 /// otherwise the document will not be inserted within the collection.
 ///
-/// @code
+/// ```js
 /// arangod> db.example.ensureBitarray("x", [0,1], "y", [2,"a",[]]);
 /// {
 ///   "id" : "2755894/5770550",
@@ -1001,7 +1001,8 @@ ArangoCollection.prototype.updateByExample = function (example,
 ///   "undefined" : false,
 ///   "isNewlyCreated" : true
 /// }
-/// @endcode
+/// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
