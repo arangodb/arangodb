@@ -1,32 +1,25 @@
 !CHAPTER Working with Edges using REST 
 
-!SUBSECTION Read edge
-`GET /_api/edge`
+<!-- arangod/RestHandler/RestEdgeHandler.cpp -->
+@startDocuBlock API_EDGE_READ
 
-See [HTTP Interface for Documents](../HttpDocuments/README.md) for details.
+<!-- arangod/RestHandler/RestEdgeHandler.cpp -->
+@startDocuBlock API_EDGE_READ_ALL
 
 <!-- arangod/RestHandler/RestEdgeHandler.cpp -->
 @startDocuBlock API_EDGE_CREATE
 
-!SUBSECTION Update edge
-`PUT /_api/edge`
+<!-- arangod/RestHandler/RestEdgeHandler.cpp -->
+@startDocuBlock API_EDGE_UPDATES
 
-See [HTTP Interface for Documents](../HttpDocuments/README.md) for details.
+<!-- arangod/RestHandler/RestEdgeHandler.cpp -->
+@startDocuBlock API_EDGE_REPLACE
 
-!SUBSECTION Partially Update Edge
-`PATCH /_api/edge`
+<!-- arangod/RestHandler/RestEdgeHandler.cpp -->
+@startDocuBlock API_EDGE_DELETE
 
-See [HTTP Interface for Documents](../HttpDocuments/README.md) for details.
-
-!SUBSECTION Delete edge
-`DELETE /_api/edge`
-
-See [HTTP Interface for Documents](../HttpDocuments/README.md) for details.
-
-!SUBSECTION Read edge header
-`HEAD /_api/edge`
-
-See [HTTP Interface for Documents](../HttpDocuments/README.md) for details.
+<!-- arangod/RestHandler/RestEdgeHandler.cpp -->
+@startDocuBlock API_EDGE_READ_HEAD
 
 <!-- js/actions/api-edges.js -->
 @startDocuBlock API_EDGE_READINOUTBOUND

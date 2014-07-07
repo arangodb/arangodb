@@ -5729,7 +5729,7 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that an index exists
 /// @startDocuBlock collectionEnsureIndex
-/// `collection.ensureIndex(index-description)
+/// `collection.ensureIndex(index-description)`
 ///
 /// Ensures that an index according to the *index-description* exists. A
 /// new index will be created if none exists with the given description.
@@ -5752,7 +5752,7 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
 ///
 /// @EXAMPLES
 ///
-/// @code
+/// ```js
 /// arango> db.example.ensureIndex({ type: "hash", fields: [ "name" ], unique: true });
 /// {
 ///   "id" : "example/30242599562",
@@ -5763,7 +5763,8 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
 ///    ],
 ///   "isNewlyCreated" : true
 /// }
-/// @endcode
+/// ```js
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -5856,11 +5857,9 @@ static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the datafiles
-/// @startDocuBlock collectionDatafiles
 /// `collection.datafiles()`
 ///
 /// Returns information about the datafiles. The collection must be unloaded.
-/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) {
@@ -6104,7 +6103,7 @@ static v8::Handle<v8::Value> DropIndexCoordinator (TRI_vocbase_col_t const* coll
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an index
-/// @startDocuBock col_dropIndex
+/// @startDocuBlock col_dropIndex
 /// `collection.dropIndex(index)`
 ///
 /// Drops the index. If the index does not exist, then *false* is
@@ -6118,7 +6117,26 @@ static v8::Handle<v8::Value> DropIndexCoordinator (TRI_vocbase_col_t const* coll
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell_index-drop-index
+/// ```js
+/// arango> db.example.ensureSkiplist("a", "b");
+/// { "id" : "example/991154", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"], "isNewlyCreated" : true }
+/// 
+/// arango> i = db.example.getIndexes();
+/// [
+///   { "id" : "example/0", "type" : "primary", "fields" : ["_id"] },
+///   { "id" : "example/991154", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"] }
+///   ]
+/// 
+/// arango> db.example.dropIndex(i[0])
+/// false
+/// 
+/// arango> db.example.dropIndex(i[1].id)
+/// true
+/// 
+/// arango> i = db.example.getIndexes();
+/// [{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] }]
+/// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -6485,13 +6503,40 @@ static v8::Handle<v8::Value> GetIndexesCoordinator (TRI_vocbase_col_t const* col
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the indexes
 /// @startDocuBlock collectionGetIndexes
-/// @FUN{getIndexes()}
+/// `getIndexes()`
 ///
 /// Returns a list of all indexes defined for the collection.
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell_index-read-all
+/// ```js
+/// [
+///   { 
+///     "id" : "demo/0", 
+///     "type" : "primary",
+///     "fields" : [ "_id" ]
+///   }, 
+///   { 
+///     "id" : "demo/2290971", 
+///     "unique" : true, 
+///     "type" : "hash", 
+///     "fields" : [ "a" ] 
+///   }, 
+///   { 
+///     "id" : "demo/2946331",
+///     "unique" : false, 
+///     "type" : "hash", 
+///     "fields" : [ "b" ] 
+///   },
+///   { 
+///     "id" : "demo/3077403", 
+///     "unique" : false, 
+///     "type" : "skiplist", 
+///     "fields" : [ "c" ]
+///   }
+/// ]
+/// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -8158,7 +8203,7 @@ static v8::Handle<v8::Value> MapGetVocBase (v8::Local<v8::String> const name,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief changes the operation mode of the server
-/// @startDocuBlock TODO
+/// @startDocuBock TODO
 /// `db._changeMode(<mode>)`
 ///
 /// Sets the server to the given mode.
