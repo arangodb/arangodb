@@ -123,7 +123,7 @@ namespace triagens {
           this->_connectionInfo.sslContext = _ssl;
 
           if (_ssl == nullptr) {
-            LOG_WARNING("cannot build new SSL connection: %s", triagens::basics::lastSSLError().c_str());
+            LOG_DEBUG("cannot build new SSL connection: %s", triagens::basics::lastSSLError().c_str());
 
             shutdownSsl(false);
             return false;   // terminate ourselves, ssl is nullptr
@@ -297,7 +297,7 @@ again:
                 return true;
 
               case SSL_ERROR_SSL:
-                LOG_WARNING("received SSL error (bytes read %d, socket %d): %s",
+                LOG_DBEUG("received SSL error (bytes read %d, socket %d): %s",
                             nr,
                             (int) TRI_get_fd_or_handle_of_socket(this->_commSocket),
                             triagens::basics::lastSSLError().c_str());
@@ -319,29 +319,29 @@ again:
                 return true;
 
               case SSL_ERROR_WANT_CONNECT:
-                LOG_WARNING("received SSL_ERROR_WANT_CONNECT");
+                LOG_DEBUG("received SSL_ERROR_WANT_CONNECT");
                 break;
 
               case SSL_ERROR_WANT_ACCEPT:
-                LOG_WARNING("received SSL_ERROR_WANT_ACCEPT");
+                LOG_DEBUG("received SSL_ERROR_WANT_ACCEPT");
                 break;
 
               case SSL_ERROR_SYSCALL:
                 if (res != 0) {
-                  LOG_WARNING("SSL_read returned syscall error with: %s", triagens::basics::lastSSLError().c_str());
+                  LOG_DEBUG("SSL_read returned syscall error with: %s", triagens::basics::lastSSLError().c_str());
                 }
                 else if (nr == 0) {
-                  LOG_WARNING("SSL_read returned syscall error because an EOF was received");
+                  LOG_DEBUG("SSL_read returned syscall error because an EOF was received");
                 }
                 else {
-                  LOG_WARNING("SSL_read return syscall error: %d: %s", (int) errno, strerror(errno));
+                  LOG_DEBUG("SSL_read return syscall error: %d: %s", (int) errno, strerror(errno));
                 }
 
                 shutdownSsl(false);
                 return false;
 
               default:
-                LOG_WARNING("received error with %d and %d: %s", res, nr, triagens::basics::lastSSLError().c_str());
+                LOG_DEBUG("received error with %d and %d: %s", res, nr, triagens::basics::lastSSLError().c_str());
 
                 shutdownSsl(false);
                 return false;
@@ -400,11 +400,11 @@ again:
                     return false;
 
                   case SSL_ERROR_WANT_CONNECT:
-                    LOG_WARNING("received SSL_ERROR_WANT_CONNECT");
+                    LOG_DEBUG("received SSL_ERROR_WANT_CONNECT");
                     break;
 
                   case SSL_ERROR_WANT_ACCEPT:
-                    LOG_WARNING("received SSL_ERROR_WANT_ACCEPT");
+                    LOG_DEBUG("received SSL_ERROR_WANT_ACCEPT");
                     break;
 
                   case SSL_ERROR_WANT_WRITE:
@@ -492,14 +492,14 @@ again:
                   int err = SSL_get_error(_ssl, res);
 
                   if (err != SSL_ERROR_WANT_READ && err != SSL_ERROR_WANT_WRITE) {
-                    LOG_WARNING("received shutdown error with %d, %d: %s", res, err, triagens::basics::lastSSLError().c_str());
+                    LOG_DEBUG("received shutdown error with %d, %d: %s", res, err, triagens::basics::lastSSLError().c_str());
                     break;
                   }
                 }
               }
 
               if (! ok) {
-                LOG_WARNING("cannot complete SSL shutdown in socket %d",
+                LOG_DEBUG("cannot complete SSL shutdown in socket %d",
                             (int) TRI_get_fd_or_handle_of_socket(this->_commSocket));
               }
             }
