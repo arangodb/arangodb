@@ -334,7 +334,13 @@ ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([0-9]+)$/;
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell_index-read-db
+/// ```js
+/// arango> db.example.getIndexes().map(function(x) { return x.id; });
+/// ["example/0"]
+/// arango> db._index("example/0");
+/// { "id" : "example/0", "type" : "primary", "fields" : ["_id"] }
+/// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -391,7 +397,24 @@ ArangoDatabase.prototype._index = function(id) {
 ///
 /// @EXAMPLES
 ///
-/// @verbinclude shell_index-drop-index-db
+/// ```js
+/// arango> db.example.ensureSkiplist("a", "b");
+/// { "id" : "example/1577138", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"], "isNewlyCreated" : true }
+/// 
+/// arango> i = db.example.getIndexes();
+/// [{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] },
+///  { "id" : "example/1577138", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"] }]
+///  
+///  arango> db._dropIndex(i[0]);
+///  false
+///  
+///  arango> db._dropIndex(i[1].id);
+/// true
+/// 
+/// arango> i = db.example.getIndexes();
+/// [{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] }]
+/// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
