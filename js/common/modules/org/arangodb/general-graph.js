@@ -1625,7 +1625,8 @@ var _create = function (graphName, edgeDefinitions, orphanCollections) {
   var gdb = getGraphCollection(),
     err,
     graphAlreadyExists = true,
-    collections;
+    collections,
+    result;
   if (!graphName) {
     err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_GRAPH_CREATE_MISSING_NAME.code;
@@ -1706,12 +1707,15 @@ var _create = function (graphName, edgeDefinitions, orphanCollections) {
   );
   orphanCollections = orphanCollections.sort();
 
-  gdb.save({
+  var e = gdb.save({
     'orphanCollections' : orphanCollections,
     'edgeDefinitions' : edgeDefinitions,
     '_key' : graphName
   });
-  return new Graph(graphName, edgeDefinitions, collections[0], collections[1], orphanCollections);
+
+  result = new Graph(graphName, edgeDefinitions, collections[0], collections[1],
+    orphanCollections, e._rev , e._id);
+  return result;
 
 };
 
@@ -2129,7 +2133,8 @@ var updateBindCollections = function(graph) {
 /// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
-var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollections, orphanCollections) {
+var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollections,
+                     orphanCollections, revision, id) {
   edgeDefinitions.forEach(
     function(eD, index) {
       var tmp = sortEdgeDefinition(eD);
@@ -2148,6 +2153,8 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
   createHiddenProperty(this, "__edgeDefinitions", edgeDefinitions);
   createHiddenProperty(this, "__idsToRemove", []);
   createHiddenProperty(this, "__collectionsToLock", []);
+  createHiddenProperty(this, "__id", id);
+  createHiddenProperty(this, "__rev", revision);
   createHiddenProperty(this, "__orphanCollections", orphanCollections);
   updateBindCollections(self);
 
@@ -2205,7 +2212,8 @@ var _graph = function(graphName) {
     orphanCollections = [];
   }
 
-  return new Graph(graphName, g.edgeDefinitions, collections[0], collections[1], orphanCollections);
+  return new Graph(graphName, g.edgeDefinitions, collections[0], collections[1], orphanCollections,
+    g._rev , g._id);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3858,14 +3866,11 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
   var graphObj = _graph(graph._key);
   var eDs = graph.edgeDefinitions;
   var gotAHit = false;
-  require("internal").print("Graph: " + graph._key);
 
   //replace edgeDefintion
   eDs.forEach(
     function(eD, id) {
       if(eD.collection === edgeDefinition.collection) {
-        require("internal").print("eD.collection");
-        require("internal").print(eD.collection);
         gotAHit = true;
         oldCollections = _.union(oldCollections, eD.from);
         oldCollections = _.union(oldCollections, eD.to);
