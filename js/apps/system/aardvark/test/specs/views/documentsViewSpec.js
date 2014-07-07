@@ -223,25 +223,32 @@
 
         it("resetView", function () {
             jQueryDummy = {
-                val: function () {
-                },
-                css: function () {
-                }
+              val: function () {
+                throw "Should be a spy";
+              },
+              css: function () {
+                throw "Should be a spy";
+              }
             };
             spyOn(jQueryDummy, "val");
             spyOn(jQueryDummy, "css");
             spyOn(window, "$").andReturn(
                 jQueryDummy
             );
-            spyOn(view, "removeAllFilterItems").andCallFake(function () {
-            });
-            spyOn(view, "clearTable").andCallFake(function () {
-            });
+            spyOn(view, "removeAllFilterItems");
+            spyOn(view, "clearTable");
+            spyOn(view, "drawTable");
+            spyOn(view, "renderPagination");
             var arangoDocStoreDummy = {
+                resetFilter: function () {
+                  throw "Should be a spy";
+                },
                 getDocuments: function () {
+                  throw "Should be a spy";
                 }
             };
             spyOn(arangoDocStoreDummy, "getDocuments");
+            spyOn(arangoDocStoreDummy, "resetFilter");
             spyOn(window, "arangoDocuments").andReturn(arangoDocStoreDummy);
             view.collection = new window.arangoDocuments({collectionID: view.colid});
             view.resetView();
@@ -253,9 +260,12 @@
             expect(jQueryDummy.val).toHaveBeenCalledWith('==');
             expect(jQueryDummy.css).toHaveBeenCalledWith("visibility", "visible");
             expect(jQueryDummy.css).toHaveBeenCalledWith("visibility", "visible");
+            expect(arangoDocStoreDummy.resetFilter).toHaveBeenCalled();
             expect(arangoDocStoreDummy.getDocuments).toHaveBeenCalledWith(view.collectionID, 1);
             expect(view.removeAllFilterItems).toHaveBeenCalled();
             expect(view.clearTable).toHaveBeenCalled();
+            expect(view.drawTable).toHaveBeenCalled();
+            expect(view.renderPagination).toHaveBeenCalled();
             expect(view.addDocumentSwitch).toEqual(true);
         });
 
@@ -646,8 +656,8 @@
 
             jQueryDummy = {
                 css: function () {
+                  throw "Should be a spy";
                 }
-
             };
             spyOn(jQueryDummy, "css");
             spyOn(window, "$").andReturn(jQueryDummy);
@@ -661,14 +671,19 @@
 
             var arangoDocStoreDummy = {
                 setToFirst: function () {
+                  throw "Should be a spy.";
                 },
                 addFilter: function () {
+                  throw "Should be a spy.";
                 },
                 resetFilter: function () {
+                  throw "Should be a spy.";
                 },
                 getDocuments: function () {
+                  throw "Should be a spy.";
                 },
                 size: function () {
+                  throw "Should be a spy.";
                 }
             };
             spyOn(arangoDocStoreDummy, "setToFirst");
@@ -676,12 +691,16 @@
             spyOn(arangoDocStoreDummy, "getDocuments");
             spyOn(window, "arangoDocuments").andReturn(arangoDocStoreDummy);
             spyOn(view, "clearTable");
+            spyOn(view, "drawTable");
+            spyOn(view, "renderPagination");
             view.collection = new window.arangoDocuments();
 
             view.sendFilter();
 
             expect(view.addDocumentSwitch).toEqual(false);
             expect(view.clearTable).toHaveBeenCalled();
+            expect(view.drawTable).toHaveBeenCalled();
+            expect(view.renderPagination).toHaveBeenCalled();
             expect(arangoDocStoreDummy.addFilter).toHaveBeenCalledWith(
                 "name0", "operator0", { jsonval: 1 }
             );
