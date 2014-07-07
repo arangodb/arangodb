@@ -33,8 +33,15 @@ var Model,
   is = require("org/arangodb/is"),
   extend = require('org/arangodb/extend').extend,
   metadataKeys = ['_id', '_key', '_rev'],
+  getTypeFromJoi,
+  getTypeFromString,
+  getTypeFromSchema,
+  isRequiredByJoi,
+  isRequiredBySchema,
   parseAttributes,
-  parseRequiredAttributes;
+  parseRequiredAttributes,
+  validateJoi,
+  validateSchema;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             Model
@@ -115,19 +122,68 @@ Model.fromClient = function (attributes) {
   return instance;
 };
 
+getTypeFromJoi = function (value) {
+  'use strict';
+  if (!value || typeof value.describe !== 'function') {
+    return undefined;
+  }
+
+  var description = value.describe(),
+    rules = description.rules;
+
+  if (
+    description.type === 'number' &&
+      _.isArray(rules) &&
+      _.some(rules, function (rule) {
+        return rule.name === 'integer';
+      })
+  ) {
+    return 'integer';
+  }
+  return description.type;
+};
+
+getTypeFromString = function (value) {
+  'use strict';
+  if (!_.isString(value)) {
+    return undefined;
+  }
+  return value;
+};
+
+getTypeFromSchema = function (value) {
+  'use strict';
+  if (!value && !value.type) {
+    return undefined;
+  }
+  return value.type;
+};
+
+isRequiredByJoi = function (value) {
+  'use strict';
+  if (!value || typeof value.describe !== 'function') {
+    return false;
+  }
+  var description = value.describe();
+  return Boolean(
+    description.flags &&
+      description.flags.presence === 'required'
+  );
+};
+
+isRequiredBySchema = function (value) {
+  'use strict';
+  return Boolean(value && value.required);
+};
+
 parseAttributes = function (rawAttributes) {
   'use strict';
   var properties = {};
 
   _.each(rawAttributes, function (value, key) {
-    if (_.isString(value)) {
-      properties[key] = {
-        type: value
-      };
-    } else {
-      properties[key] = {
-        type: value.type
-      };
+    var type = getTypeFromJoi(value) || getTypeFromString(value) || getTypeFromSchema(value);
+    if (type) {
+      properties[key] = {type: type};
     }
   });
 
@@ -139,12 +195,55 @@ parseRequiredAttributes = function (rawAttributes) {
   var requiredProperties = [];
 
   _.each(rawAttributes, function (value, key) {
-    if (_.isObject(value) && value.required) {
+    if (isRequiredByJoi(value) || isRequiredBySchema(value)) {
       requiredProperties.push(key);
     }
   });
 
   return requiredProperties;
+};
+
+validateJoi = function (key, value, joi) {
+  'use strict';
+  if (!joi || typeof joi.validate !== "function") {
+    return;
+  }
+  var result = joi.validate(value);
+  if (result.error) {
+    result.error.message = "Invalid value for \"" + key + "\": " + result.error.message;
+    throw result.error;
+  }
+  return result.value;
+};
+
+validateSchema = function (key, value, schema) {
+  'use strict';
+  if (!schema) {
+    return;
+  }
+
+  var actualType = typeof value,
+    expectedType = typeof schema === "string" ? schema : schema.type;
+
+  if (typeof expectedType !== "string") {
+    return;
+  }
+
+  if (_.isArray(value)) {
+    actualType = "array";
+  }
+
+  if (expectedType === "integer" && actualType === "number") {
+    actualType = (Math.floor(value) === value ? "integer" : "number");
+  }
+
+  if (actualType !== expectedType) {
+    throw new Error(
+      "Invalid value for \"" +
+        key + "\": Expected " + expectedType +
+        " instead of " + actualType + "!"
+    );
+  }
 };
 
 // "Class" Properties
@@ -229,25 +328,19 @@ _.extend(Model.prototype, {
           }
           throw new Error("Unknown attribute: " + key);
         }
+
         var value = attributes[key],
-          actualType = typeof value,
-          expectedType = constructorAttributes[key].type;
+          result;
 
         if (value === undefined || value === null) {
           return;
         }
-        if (_.isArray(value)) {
-          actualType = "array";
-        }
-        if (expectedType === "integer" && actualType === "number") {
-          actualType = (Math.floor(value) === value ? "integer" : "number");
-        }
-        if (actualType !== expectedType) {
-          throw new Error(
-            "Invalid value for \"" +
-              key + "\": Expected " + expectedType +
-              " instead of " + actualType + "!"
-          );
+
+        result = validateJoi(key, value, constructorAttributes[key]);
+        validateSchema(key, value, constructorAttributes[key]);
+
+        if (result) {
+          attributes[key] = result;
         }
       });
     }
