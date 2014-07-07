@@ -1,4 +1,4 @@
-!CHAPTE Vertex
+!CHAPTER Vertex
 
 `POST /_api/graph/graph-name/vertex-name`*(create vertex)*
 
