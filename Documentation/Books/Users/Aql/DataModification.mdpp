@@ -9,13 +9,20 @@ data-modification operations:
 - REPLACE: completely replace existing documents in a collection
 - REMOVE: remove existing documents from a collection
 
-Data-modification operations are normally combined with a *FOR* loop to
-iterate over a given list of documents. It can optionally be combined with
+Data-modification operations are normally combined with *FOR* loops to
+iterate over a given list of documents. They can optionally be combined with
 *FILTER* statements and the like.
 
     FOR u IN users
       FILTER u.status == 'not active'
       UPDATE u WITH { status: 'inactive' } IN users
+
+Though there is no need to combine a data-modification query with other
+AQL operations such a *FOR* and *FILTER*. For example, the following 
+stripped-down update query will work, too. It will update one document
+(with key *foo*) in collection *users*:
+
+    UPDATE "foo" WITH { status: 'inactive' } IN users
 
 Data-modification queries are restricted to modifying data in a single 
 collection per query. That means a data-modification query cannot modify 
