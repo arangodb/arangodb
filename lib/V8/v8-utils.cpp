@@ -1764,8 +1764,7 @@ static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current process information
-/// @startDocuBlock internalProcessStatistics
-/// @FUN{internal.processStatistics()}
+/// `internal.processStatistics()`
 ///
 /// Returns information about the current process:
 ///
@@ -1795,10 +1794,9 @@ static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
 ///
 /// - virtualSize: Virtual memory size in bytes.
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{HIER_FEHLT_DER_NAME}
+/// @EXAMPLE_ARANGOSH_OUTPUT{internalStatistics}
 ///   require("internal").processStat();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ProcessStatistics (v8::Arguments const& argv) {
