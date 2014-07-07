@@ -416,7 +416,7 @@ AQL supports the following functions to operate on list values:
   will return *[ 1, 2, 3 ]*
 
 - *UNIQUE(list)*: Returns all unique elements in *list*. To determine
-  uniqueness, the function will use the comparison order defined in @ref AqlTypeOrder.
+  uniqueness, the function will use the comparison order.
   Calling this function might return the unique elements in any order.
 
 - *UNION(list1, list2, ...)*: Returns the union of all lists specified.
