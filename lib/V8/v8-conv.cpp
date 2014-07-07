@@ -634,7 +634,7 @@ static int FillShapeValueArray (TRI_shaper_t* shaper,
     }
 
     if (create) {
-      p->_aid = shaper->findOrCreateAttributeByName(shaper, *keyStr, false);
+      p->_aid = shaper->findOrCreateAttributeByName(shaper, *keyStr);
     }
     else {
       p->_aid = shaper->lookupAttributeByName(shaper, *keyStr);
@@ -829,6 +829,11 @@ static int FillShapeValueJson (TRI_shaper_t* shaper,
                                set<int>& seenHashes,
                                vector< v8::Handle<v8::Object> >& seenObjects,
                                bool create) {
+  if (json->IsRegExp() || json->IsFunction() || json->IsExternal() || json->IsDate()) {
+    LOG_TRACE("shaper failed because regexp/function/external/date object cannot be converted");
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+  
   // check for cycles
   if (json->IsObject()) {
     v8::Handle<v8::Object> o = json->ToObject();
@@ -851,7 +856,7 @@ static int FillShapeValueJson (TRI_shaper_t* shaper,
     seenObjects.push_back(o);
   }
 
-  if (json->IsNull()) {
+  if (json->IsNull() || json->IsUndefined()) {
     return FillShapeValueNull(shaper, dst);
   }
 
@@ -887,31 +892,6 @@ static int FillShapeValueJson (TRI_shaper_t* shaper,
     int res = FillShapeValueArray(shaper, dst, json->ToObject(), seenHashes, seenObjects, create);
     seenObjects.pop_back();
     return res;
-  }
-
-  else if (json->IsRegExp()) {
-    LOG_TRACE("shaper failed because a regexp cannot be converted");
-    return TRI_ERROR_BAD_PARAMETER;
-  }
-
-  else if (json->IsFunction()) {
-    LOG_TRACE("shaper failed because a function cannot be converted");
-    return TRI_ERROR_BAD_PARAMETER;
-  }
-
-  else if (json->IsExternal()) {
-    LOG_TRACE("shaper failed because an external cannot be converted");
-    return TRI_ERROR_BAD_PARAMETER;
-  }
-
-  else if (json->IsDate()) {
-    LOG_TRACE("shaper failed because a date cannot be converted");
-    return TRI_ERROR_BAD_PARAMETER;
-  }
-
-  // treat undefined as null value
-  else if (json->IsUndefined()) {
-    return FillShapeValueNull(shaper, dst);
   }
 
   LOG_TRACE("shaper failed to convert object");

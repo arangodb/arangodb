@@ -16,4 +16,5 @@ These *ACID* properties provide the following guarantees:
 * Finally, the *durability* proposition makes sure that operations from 
   transactions that have committed will be made persistent. The amount of
   transaction durability is configurable in ArangoDB, as is the durability
-  on collection level.
+  on collection level. 
+

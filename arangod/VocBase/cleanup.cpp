@@ -302,15 +302,19 @@ void TRI_CleanupVocBase (void* data) {
       // server is still running, clean up unused shadows
       if (iterations % CLEANUP_SHADOW_ITERATIONS == 0) {
         CleanupCursors(vocbase, false);
+      
+        // clean up expired compactor locks
+        TRI_CleanupCompactorVocBase(vocbase);
       }
-
-      // clean up expired compactor locks
-      TRI_CleanupCompactorVocBase(vocbase);
 
       if (state == 1) {
         TRI_LockCondition(&vocbase->_cleanupCondition);
         TRI_TimedWaitCondition(&vocbase->_cleanupCondition, (uint64_t) CLEANUP_INTERVAL);
         TRI_UnlockCondition(&vocbase->_cleanupCondition);
+      }
+      else if (state > 1) {
+        // prevent busy waiting
+        usleep(10000);
       }
     }
 

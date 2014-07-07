@@ -191,8 +191,8 @@ def fetch_comments(dirpath):
 
 if __name__ == "__main__":
     open("allComments.txt", "w").close()  
-    path = ["arangod/cluster","arangod/RestHandler","arangod/V8Server","arangod/RestServer",
-            "lib/Admin","lib/HttpServer","lib/V8","lib/ApplicationServer","lib/Scheduler","lib/Rest",
+    path = ["arangod/cluster","arangod/RestHandler","arangod/V8Server","arangod/RestServer","arangod/Wal",
+            "lib/Admin","lib/HttpServer","lib/V8","lib/ApplicationServer","lib/Scheduler","lib/Rest","lib/BasicsC",
             "js/actions","js/client","js/apps/databases","js/apps/system/cerberus","js/apps/system/gharial","js/common","js/server"]
     for i in path:
       dirpath = os.path.abspath(os.path.join(os.path.dirname( __file__ ), os.pardir,"ArangoDB/../../"+i))

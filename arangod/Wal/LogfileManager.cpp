@@ -43,6 +43,7 @@
 #include "Wal/AllocatorThread.h"
 #include "Wal/CollectorThread.h"
 #include "Wal/RecoverState.h"
+#include "Wal/RemoverThread.h"
 #include "Wal/Slots.h"
 #include "Wal/SynchroniserThread.h"
 
@@ -72,14 +73,6 @@ static inline uint64_t MinThrottleWhenPending () {
 
 static inline uint64_t MinSyncInterval () {
   return 5;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief minimum value for --wal.open-logfiles
-////////////////////////////////////////////////////////////////////////////////
-
-static inline uint32_t MinOpenLogfiles () {
-  return 1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -137,7 +130,7 @@ LogfileManager::LogfileManager (TRI_server_t* server,
     _filesize(32 * 1024 * 1024),
     _reserveLogfiles(4),
     _historicLogfiles(10),
-    _maxOpenLogfiles(10),
+    _maxOpenLogfiles(0),
     _numberOfSlots(1048576),
     _syncInterval(100),
     _maxThrottleWait(15000),
@@ -147,12 +140,12 @@ LogfileManager::LogfileManager (TRI_server_t* server,
     _ignoreRecoveryErrors(false),
     _allowWrites(false), // start in read-only mode
     _hasFoundLastTick(false),
-    _recoverRemote(true),
     _inRecovery(true),
     _slots(nullptr),
     _synchroniserThread(nullptr),
     _allocatorThread(nullptr),
     _collectorThread(nullptr),
+    _removerThread(nullptr),
     _logfilesLock(),
     _lastOpenedId(0),
     _lastCollectedId(0),
@@ -239,7 +232,6 @@ void LogfileManager::setupOptions (std::map<std::string, triagens::basics::Progr
     ("wal.ignore-recovery-errors", &_ignoreRecoveryErrors, "continue recovery even if re-applying operations fails")
     ("wal.logfile-size", &_filesize, "size of each logfile")
     ("wal.open-logfiles", &_maxOpenLogfiles, "maximum number of parallel open logfiles")
-    ("wal.recover-remote", &_recoverRemote, "recover remotely started transactions on startup (use on a slave only)")
     ("wal.reserve-logfiles", &_reserveLogfiles, "maximum number of reserve logfiles to maintain")
     ("wal.slots", &_numberOfSlots, "number of logfile slots to use")
     ("wal.sync-interval", &_syncInterval, "interval for automatic, non-requested disk syncs (in milliseconds)")
@@ -298,10 +290,6 @@ bool LogfileManager::prepare () {
     LOG_FATAL_AND_EXIT("invalid value for --wal.slots. Please use a value between %lu and %lu", (unsigned long) MinSlots(), (unsigned long) MaxSlots());
   }
 
-  if (_maxOpenLogfiles < MinOpenLogfiles()) {
-    LOG_FATAL_AND_EXIT("invalid value for --wal.open-logfiles. Please use a value of at least %lu", (unsigned long) MinOpenLogfiles());
-  }
-  
   if (_throttleWhenPending > 0 && _throttleWhenPending < MinThrottleWhenPending()) {
     LOG_FATAL_AND_EXIT("invalid value for --wal.throttle-when-pending. Please use a value of at least %llu", (unsigned long long) MinThrottleWhenPending());
   }
@@ -411,7 +399,31 @@ bool LogfileManager::open () {
     _droppedDatabases   = _recoverState->droppedDatabases;
     _droppedCollections = _recoverState->droppedCollections;
   }
+
   
+  {
+    // set every open logfile to a status of sealed
+    WRITE_LOCKER(_logfilesLock);
+
+    for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
+      Logfile* logfile = (*it).second;
+
+      if (logfile != nullptr) {
+        Logfile::StatusType status = logfile->status();
+
+        if (status == Logfile::StatusType::OPEN) { 
+          // set all logfiles to sealed status so they can be collected
+
+          // we don't care about the previous status here
+          logfile->forceStatus(Logfile::StatusType::SEALED);
+          if (logfile->id() > _lastSealedId) {
+            _lastSealedId = logfile->id();
+          }
+        }
+      }
+    }
+  }
+ 
 
   // now start allocator and synchroniser
   res = startAllocatorThread();
@@ -448,6 +460,12 @@ bool LogfileManager::open () {
   // remove usage locks for databases and collections
   _recoverState->releaseResources();
 
+  // write the current state into the shutdown file
+  writeShutdownInfo(false);
+
+  // finished recovery
+  _inRecovery = false;
+
 
   res = startCollectorThread();
 
@@ -457,32 +475,15 @@ bool LogfileManager::open () {
   }
 
   TRI_ASSERT(_collectorThread != nullptr);
-/*
-  if (! _recoverState->hasRunningRemoteTransactions()) {
-    // wait for the collector to copy over everything
-    // we can only do this if there are no pending remote transactions
-    LOG_TRACE("waiting for collector to catch up");
-    waitForCollector(_lastOpenedId);
+
+  res = startRemoverThread();
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("could not start WAL remover thread: %s", TRI_errno_string(res));
+    return false;
   }
 
-*/
-  // write the current state into the shutdown file
-  writeShutdownInfo(true);
-
-  {
-    // reset the list of failed transactions
-    WRITE_LOCKER(_logfilesLock);
-    _failedTransactions.clear();
-    _droppedDatabases.clear();
-    _droppedCollections.clear();
-  }
-
-
-  // finished recovery
-  _inRecovery = false;
-
-  // tell the collector that the recovery is over now
-  _collectorThread->recoveryDone();
+  // tell the allocator that the recovery is over now
   _allocatorThread->recoveryDone();
 
 
@@ -494,13 +495,6 @@ bool LogfileManager::open () {
     return false;
   }
   
-  // "seal" any open logfiles so the collector can copy over everything
-  setAllSealed();
-
- 
-  // finally flush the open logfile 
-  // this->flush(true, false, true);
-
   return true;
 }
 
@@ -531,6 +525,9 @@ void LogfileManager::stop () {
   // this->flush(true, true, false);
 
   // stop threads
+  LOG_TRACE("stopping remover thread");
+  stopRemoverThread();
+
   LOG_TRACE("stopping collector thread");
   stopCollectorThread();
 
@@ -659,6 +656,10 @@ bool LogfileManager::logfileCreationAllowed (uint32_t size) {
   if (size + Logfile::overhead() > filesize()) {
     // oversize entry. this is always allowed because otherwise everything would
     // lock
+    return true;
+  }
+
+  if (_maxOpenLogfiles == 0) {
     return true;
   }
 
@@ -799,36 +800,6 @@ SlotInfoCopy LogfileManager::allocateAndWrite (Marker const& marker,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set all open logfiles to status sealed
-////////////////////////////////////////////////////////////////////////////////
-
-void LogfileManager::setAllSealed () {
-  bool worked = false;
-
-  WRITE_LOCKER(_logfilesLock);
-
-  for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
-    Logfile* logfile = (*it).second;
-
-    if (logfile != nullptr) {
-      Logfile::StatusType status = logfile->status();
-
-      if (status == Logfile::StatusType::OPEN) { 
-        // set all logfiles to sealed status so they can be collected
-
-        // we don't care about the previous status here
-        logfile->setStatus(Logfile::StatusType::SEAL_REQUESTED);
-        worked = true;
-      }
-    }
-  }
-
-  if (worked) {
-    signalSync();
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief finalise and seal the currently open logfile
 /// this is useful to ensure that any open writes up to this point have made
 /// it into a logfile
@@ -936,33 +907,25 @@ Logfile* LogfileManager::unlinkLogfile (Logfile::IdType id) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a logfile from the inventory and in the file system
+/// @brief removes logfiles that are allowed to be removed
 ////////////////////////////////////////////////////////////////////////////////
 
-void LogfileManager::removeLogfile (Logfile* logfile,
-                                    bool unlink) {
-  if (unlink) {
-    unlinkLogfile(logfile);
+bool LogfileManager::removeLogfiles () {
+  int iterations = 0;
+  bool worked = false;
+
+  while (++iterations < 6) {
+    Logfile* logfile = getRemovableLogfile();
+
+    if (logfile == nullptr) {
+      break;
+    }
+
+    removeLogfile(logfile, true);
+    worked = true;
   }
 
-  // old filename
-  Logfile::IdType const id = logfile->id();
-  std::string const filename = logfileName(id);
-
-  LOG_TRACE("removing logfile '%s'", filename.c_str());
-
-  // now close the logfile
-  delete logfile;
-
-  int res = TRI_ERROR_NO_ERROR;
-  // now physically remove the file
-
-  if (! basics::FileUtils::remove(filename, &res)) {
-    LOG_ERROR("unable to remove logfile '%s': %s",
-              filename.c_str(),
-              TRI_errno_string(res));
-    return;
-  }
+  return worked;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1152,15 +1115,16 @@ Logfile* LogfileManager::getLogfile (Logfile::IdType id) {
 Logfile* LogfileManager::getWriteableLogfile (uint32_t size,
                                               Logfile::StatusType& status) {
   static const uint64_t SleepTime = 10 * 1000;
-  static const uint64_t MaxIterations = 1000;
+  static const uint64_t MaxIterations = 1500;
   size_t iterations = 0;
+  bool haveSignalled = false;
 
   TRI_IF_FAILURE("LogfileManagerGetWriteableLogfile") {
     // intentionally don't return a logfile
     return nullptr;
   }
 
-  while (++iterations < 1000) {
+  while (++iterations < MaxIterations) {
     {
       WRITE_LOCKER(_logfilesLock);
       auto it = _logfiles.begin();
@@ -1195,7 +1159,10 @@ Logfile* LogfileManager::getWriteableLogfile (uint32_t size,
     }
 
     // signal & sleep outside the lock
-    _allocatorThread->signal(size);
+    if (! haveSignalled) {
+      _allocatorThread->signal(size);
+      haveSignalled = true;
+    }
     usleep(SleepTime);
   }
 
@@ -1317,6 +1284,7 @@ void LogfileManager::setCollectionRequested (Logfile* logfile) {
   }
 
   if (! _inRecovery) {
+    // to start collection
     _collectorThread->signal();
   }
 }
@@ -1336,6 +1304,7 @@ void LogfileManager::setCollectionDone (Logfile* logfile) {
   }
 
   if (! _inRecovery) {
+    // to start removal of unneeded datafiles
     _collectorThread->signal();
   }
 }
@@ -1357,6 +1326,35 @@ LogfileManagerState LogfileManager::state () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a logfile from the inventory and in the file system
+////////////////////////////////////////////////////////////////////////////////
+
+void LogfileManager::removeLogfile (Logfile* logfile,
+                                    bool unlink) {
+  if (unlink) {
+    unlinkLogfile(logfile);
+  }
+
+  // old filename
+  Logfile::IdType const id = logfile->id();
+  std::string const filename = logfileName(id);
+
+  LOG_TRACE("removing logfile '%s'", filename.c_str());
+
+  // now close the logfile
+  delete logfile;
+
+  int res = TRI_ERROR_NO_ERROR;
+  // now physically remove the file
+
+  if (! basics::FileUtils::remove(filename, &res)) {
+    LOG_ERROR("unable to remove logfile '%s': %s",
+              filename.c_str(),
+              TRI_errno_string(res));
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait until a specific logfile has been collected
@@ -1410,7 +1408,6 @@ int LogfileManager::runRecovery () {
   }
   
   LOG_INFO("WAL recovery finished successfully");
-
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1640,6 +1637,41 @@ void LogfileManager::stopCollectorThread () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief start the remover thread
+////////////////////////////////////////////////////////////////////////////////
+
+int LogfileManager::startRemoverThread () {
+  _removerThread = new RemoverThread(this);
+
+  if (_removerThread == nullptr) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  if (! _removerThread->start()) {
+    delete _removerThread;
+    return TRI_ERROR_INTERNAL;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop the remover thread
+////////////////////////////////////////////////////////////////////////////////
+
+void LogfileManager::stopRemoverThread () {
+  if (_removerThread != nullptr) {
+    LOG_TRACE("stopping WAL remover thread");
+
+    _removerThread->stop();
+    _removerThread->shutdown();
+
+    delete _removerThread;
+    _removerThread = nullptr;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief check which logfiles are present in the log directory
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1686,6 +1718,20 @@ int LogfileManager::inspectLogfiles () {
   LOG_TRACE("inspecting WAL logfiles");
 
   WRITE_LOCKER(_logfilesLock);
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  // print an inventory
+  for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
+    Logfile* logfile = (*it).second;
+
+    if (logfile != nullptr) {
+      LOG_DEBUG("logfile %llu, filename '%s', status %s", 
+                (unsigned long long) logfile->id(),
+                logfile->filename().c_str(),
+                logfile->statusText().c_str());
+    }
+  }
+#endif
 
   for (auto it = _logfiles.begin(); it != _logfiles.end(); ) {
     Logfile::IdType const id = (*it).first;

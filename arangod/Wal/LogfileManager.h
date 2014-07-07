@@ -49,6 +49,7 @@ namespace triagens {
     class AllocatorThread;
     class CollectorThread;
     struct RecoverState;
+    class RemoverThread;
     class Slot;
     class SynchroniserThread;
 
@@ -442,12 +443,6 @@ namespace triagens {
                                        bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set all open logfiles to status sealed
-////////////////////////////////////////////////////////////////////////////////
-
-        void setAllSealed ();
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief finalise and seal the currently open logfile
 /// this is useful to ensure that any open writes up to this point have made
 /// it into a logfile
@@ -476,11 +471,10 @@ namespace triagens {
         Logfile* unlinkLogfile (Logfile::IdType);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a logfile from the inventory and in the file system
+/// @brief removes logfiles that are allowed to be removed
 ////////////////////////////////////////////////////////////////////////////////
 
-        void removeLogfile (Logfile*,
-                            bool);
+        bool removeLogfiles ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the status of a logfile to open
@@ -602,6 +596,13 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a logfile from the inventory and in the file system
+////////////////////////////////////////////////////////////////////////////////
+
+        void removeLogfile (Logfile*,
+                            bool);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief wait for the collector thread to collect a specific logfile
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -669,6 +670,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void stopCollectorThread ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief start the remover thread
+////////////////////////////////////////////////////////////////////////////////
+
+        int startRemoverThread ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stop the remover thread
+////////////////////////////////////////////////////////////////////////////////
+
+        void stopRemoverThread ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check which logfiles are present in the log directory
@@ -739,7 +752,15 @@ namespace triagens {
         std::string* _databasePath;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the logfile directory
+/// @brief the WAL logfiles directory
+/// @startDocuBlock WalLogfileDirectory
+/// `--wal.directory`
+///
+/// Specifies the directory in which the write-ahead logfiles should be 
+/// stored. If this option is not specified, it defaults to the subdirectory
+/// *journals* in the server's global database directory. If the directory is
+/// not present, it will be created.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string _directory;
@@ -751,19 +772,57 @@ namespace triagens {
         RecoverState* _recoverState;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the size of each logfile
+/// @brief the size of each WAL logfile
+/// @startDocuBlock WalLogfileSize
+/// `--wal.logfile-size`
+///
+/// Specifies the filesize for each write-ahead logfile. The logfile size 
+/// should be chosen so that each logfile can store a considerable amount of
+/// documents. The bigger the logfile size is chosen, the longer it will take
+/// to fill up a single logfile, which also influences the delay until the data
+/// in a logfile will be garbage-collected and written to collection journals
+/// and datafiles. It also affects how long logfile recovery will take at
+/// server start. 
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         uint32_t _filesize;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum number of reserve logfiles
+/// @startDocuBlock WalLogfileReserveLogfiles
+/// `--wal.reserve-logfiles`
+///
+/// The maximum number of reserve logfiles that ArangoDB will create in a 
+/// background process. Reserve logfiles are useful in the situation when an
+/// operation needs to be written to a logfile but the reserve space in the 
+/// logfile is too low for storing the operation. In this case, a new logfile
+/// needs to be created to store the operation. Creating new logfiles is 
+/// normally slow, so ArangoDB will try to pre-create logfiles in a background
+/// process so there are always reserve logfiles when the active logfile gets
+/// full. The number of reserve logfiles that ArangoDB keeps in the background
+/// is configurable with this option.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         uint32_t _reserveLogfiles;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximum number of historic logfiles
+/// @startDocuBlock WalLogfileHistoricLogfiles
+/// `--wal.historic-logfiles`
+///
+/// The maximum number of historic logfiles that ArangoDB will keep after they
+/// have been garbage-collected. If no replication is used, there is no need
+/// to keep historic logfiles except for having a local changelog.
+/// 
+/// In a replication setup, the number of historic logfiles affects the amount
+/// of data a slave can fetch from the master's logs. The more historic 
+/// logfiles, the more historic data is available for a slave, which is useful
+/// if the connection between master and slave is unstable or slow. Not having
+/// enough historic logfiles available might lead to logfile data being deleted
+/// on the master already before a slave has fetched it.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         uint32_t _historicLogfiles;
@@ -775,13 +834,33 @@ namespace triagens {
         uint32_t _maxOpenLogfiles;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief number of slots to be used in parallel
+/// @brief maximum number of slots to be used in parallel
+/// @startDocuBlock WalLogfileSlots
+/// `--wal.slots`
+///
+/// Configures the amount of write slots the write-ahead log can give to write
+/// operations in parallel. Any write operation will lease a slot and return it
+/// to the write-ahead log when it is finished writing the data. A slot will
+/// remain blocked until the data in it was synchronized to disk. After that,
+/// a slot becomes reusable by following operations. The required number of
+/// slots is thus determined by the parallelity of write operations and the 
+/// disk synchronization speed. Slow disks probably need higher values, and fast
+/// disks may only require a value lower than the default.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         uint32_t _numberOfSlots;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief interval for automatic, non-requested disk syncs
+/// @startDocuBlock WalLogfileSyncInterval
+/// `--wal.sync-interval`
+///
+/// The interval (in milliseconds) that ArangoDB will use to automatically 
+/// synchronize data in its write-ahead logs to disk. Automatic syncs will only
+/// be performed for not-yet synchronized data, and only for operations that
+/// have been executed without the *waitForSync* attribute.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         uint64_t _syncInterval;
@@ -795,24 +874,88 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief throttle writes to WAL when at least such many operations are
 /// waiting for garbage collection
+/// @startDocuBlock WalLogfileThrottling
+/// `--wal.throttle-when-pending`
+///
+/// The maximum value for the number of write-ahead log garbage-collection queue
+/// elements. If set to *0*, the queue size is unbounded, and no 
+/// writtle-throttling will occur. If set to a non-zero value, writte-throttling
+/// will automatically kick in when the garbage-collection queue contains at
+/// least as many elements as specified by this option.
+/// While write-throttling is active, data-modification operations will 
+/// intentionally be delayed by a configurable amount of time. This is to 
+/// ensure the write-ahead log garbage collector can catch up with the 
+/// operations executed.
+/// Write-throttling will stay active until the garbage-collection queue size
+/// goes down below the specified value.
+/// Write-throttling is turned off by default.
+///
+/// `--wal.throttle-wait`
+///
+/// This option determines the maximum wait time (in milliseconds) for
+/// operations that are write-throttled. If write-throttling is active and a
+/// new write operation is to be executed, it will wait for at most the 
+/// specified amount of time for the write-ahead log garbage-collection queue
+/// size to fall below the throttling threshold. If the queue size decreases
+/// before the maximum wait time is over, the operation will be executed
+/// normally. If the queue size does not decrease before the wait time is over,
+/// the operation will be aborted with an error.
+/// This option only has an effect if `--wal.throttle-when-pending` has a 
+/// non-zero value, which is not the default.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         uint64_t _throttleWhenPending;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief allow entries that are bigger than a single logfile
+/// @brief whether or not oversize entries are allowed
+/// @startDocuBlock WalLogfileAllowOversizeEntries
+/// `--wal.allow-oversize-entries`
+///
+/// Whether or not it is allowed to store individual documents that are bigger 
+/// than would fit into a single logfile. Setting the option to false will make 
+/// such operations fail with an error. Setting the option to true will make
+/// such operations succeed, but with a high potential performance impact.
+/// The reason is that for each oversize operation, an individual oversize
+/// logfile needs to be created which may also block other operations. 
+/// The option should be set to *false* if it is certain that documents will
+/// always have a size smaller than a single logfile.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _allowOversizeEntries;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ignore logfile errors when opening logfiles
+/// @startDocuBlock WalLogfileIgnoreLogfileErrors
+/// `--wal.ignore-logfile-errors`
+///
+/// Ignores any recovery errors caused by corrupted logfiles on startup. When
+/// set to *false*, the recovery procedure on startup will fail with an error
+/// whenever it encounters a corrupted (that includes only half-written) 
+/// logfile. This is a security precaution to prevent data loss in case of disk
+/// errors etc. When the recovery procedure aborts because of corruption, any
+/// corrupted files can be inspected and fixed (or removed) manually and the
+/// server can be restarted afterwards.
+///
+/// Setting the option to *true* will make the server continue with the recovery
+/// procedure even in case it detects corrupt logfile entries. In this case it
+/// will stop at the first corrupted logfile entry and ignore all others, which
+/// might cause data loss.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _ignoreLogfileErrors;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief continue recovery even when re-applying operations fails
+/// @brief ignore recovery errors
+/// @startDocuBlock WalLogfileIgnoreRecoveryErrors
+/// `--wal.ignore-recovery-errors`
+///
+/// Ignores any recovery errors not caused by corrupted logfiles but by logical
+/// errors. Logical errors can occur if logfiles or any other server datafiles
+/// have been manually edited or the server is somehow misconfigured. 
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _ignoreRecoveryErrors;
@@ -829,12 +972,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _hasFoundLastTick;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief recover remote transactions on startup
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _recoverRemote;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the recovery procedure is running
@@ -865,6 +1002,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         CollectorThread* _collectorThread;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the logfile remover thread
+////////////////////////////////////////////////////////////////////////////////
+
+        RemoverThread* _removerThread;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a lock protecting the _logfiles map, _lastOpenedId, _lastCollectedId

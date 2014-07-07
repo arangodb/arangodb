@@ -22,8 +22,7 @@ console.assert(value === "abc", "expected: value === abc, actual:", value);
 
 Formats the arguments according to *format* and logs the result as
 debug message. Note that debug messages will only be logged if the
-server is started with log levels *debug* or *trace*. Please refer to
-@ref CommandLineLoggingHuman for details.
+server is started with log levels *debug* or *trace*.
 
 String substitution patterns, which can be used in *format*.
 

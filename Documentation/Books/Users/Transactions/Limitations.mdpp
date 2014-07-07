@@ -7,18 +7,23 @@ and/or modification operations.
 The implementation is not optimized for very long-running or very voluminous
 operations, and may not be usable for these cases. 
 
-A major limitation is that a transaction must entirely fit into main
-memory. This includes all data that is created, updated, or deleted during a
-transaction, plus management overhead.
+One limitation is that a transaction operation information must fit into main
+memory. The transaction information consists of record pointers, revision numbers
+and rollback information. The actual data modification operations of a transaction
+are written to the write-ahead log and do not need to fit entirely into main
+memory.
 
-Transactions should thus be kept as small as possible, and big operations
-should be split into multiple smaller transactions if they are too big to fit
-into one transaction.
+Ongoing transactions will also prevent the write-ahead logs from being fully
+garbage-collected. Information in the write-ahead log files cannot be written
+to collection data files or be discarded while transactions are ongoing.
 
-Additionally, transactions in ArangoDB cannot be nested, i.e. a transaction 
-must not call any other transaction. If an attempt is made to call a transaction 
-from inside a running transaction, the server will throw error *1651 (nested 
-transactions detected)*.
+To ensure progress of the write-ahead log garbage collection, transactions should 
+be kept as small as possible, and big transactions should be split into multiple
+smaller transactions.
+
+Transactions in ArangoDB cannot be nested, i.e. a transaction must not start another 
+transaction. If an attempt is made to call a transaction from inside a running 
+transaction, the server will throw error *1651 (nested transactions detected)*.
 
 It is also disallowed to execute user transaction on some of ArangoDB's own system
 collections. This shouldn't be a problem for regular usage as system collections will

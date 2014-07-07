@@ -23,6 +23,9 @@ migrations will also be detailed here.
 * Traversal: The usage of the traversal datasource `collectionDatasourceFactory` is no longer suggested, it will be deprecated in the next version. Please use `generalGraphDatasourceFactory` instead.
 * Http: The api `_api/graph` is no longer suggested, it will be deprecated in the next version. Please use the general graph api `_api/gharial` instead.
 * Http: In `POST _api/traversal` the usage of the body parameter `edgeCollection` is no longer suggested, it will be deprecated in the next version. Please use `graphName` instead.
+* MRuby: The MRuby server integration for arangod has been removed and can no longer be used.
+* Replication: the methods `logger.start`, `logger.stop` and `logger.properties` are no-ops since ArangoDB 2.2. They are available in this version only for backwards-compatibility. Usage is no longer suggested as they will be deprecated in the next version.
+* Replication: the HTTP methods `PUT /_api/replication/logger-start`, `PUT /_api/replication/logger-stop`, `GET /_api/replication/logger-config` and `PUT /_api/replication/logger-config` are no-ops since ArangoDB 2.2. They are available in this version only for backwards-compatibility. Usage is no longer suggested as they will be deprecated in the next version.
 
 ## 2.3
 
@@ -36,6 +39,8 @@ migrations will also be detailed here.
 * Traversal: The usage of the traversal datasource `collectionDatasourceFactory` is now deprecated, it will raise a warning if you use it. To suppress the warning, please start `arangod` with the option `--server.default-api-compatibility 20200`. Please use `generalGraphDatasourceFactory` instead.
 * Http: The api `_api/graph` is now deprecated, it will raise a warning if you use it. To suppress the warning, please start `arangod` with the option `--server.default-api-compatibility 20200`. Please use the general graph api `_api/gharial` instead.
 * Http: In `POST _api/traversal` the usage of the body parameter `edgeCollection` is now deprecated, it will raise a warning if you use it. To suppress the warning, please start `arangod` with the option `--server.default-api-compatibility 20200`. Please use `graphName` instead.
+* Replication: the methods `logger.start`, `logger.stop` and `logger.properties` are now deprecated. Using them will raise a warning. 
+* Replication: the HTTP methods `PUT /_api/replication/logger-start`, `PUT /_api/replication/logger-stop`, `GET /_api/replication/logger-config` and `PUT /_api/replication/logger-config` are now deprecated. Using them will raise a warning.
 
 ## 2.4
 
@@ -49,6 +54,8 @@ migrations will also be detailed here.
 * Traversal: The usage of the traversal datasource `collectionDatasourceFactory` is no longer available by default. If you still want to use it. Please use `generalGraphDatasourceFactory` instead.
 * Http: The api `_api/graph` is no longer available by default. If you still want to use it, please start `arangod` with the option `--server.default-api-compatibility 20200`. Please use the general graph api `_api/gharial` instead.
 * Http: In `POST _api/traversal` the usage of the body parameter `edgeCollection` is no longer available by default. If you still want to use it, please start `arangod` with the option `--server.default-api-compatibility 20200`. Please use `graphName` instead.
+* Replication: the methods `logger.start`, `logger.stop` and `logger.properties` are no longer available.
+* Replication: the HTTP methods `PUT /_api/replication/logger-start`, `PUT /_api/replication/logger-stop`, `GET /_api/replication/logger-config` and `PUT /_api/replication/logger-config` are no longer available.
 
 ## 2.5
 

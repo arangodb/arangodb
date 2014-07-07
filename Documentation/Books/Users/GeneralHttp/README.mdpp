@@ -21,6 +21,11 @@ an HTTP 505 (HTTP version not supported) error.
 ArangoDB will always respond to client requests with HTTP 1.1. Clients
 should therefore support HTTP version 1.1. 
 
+Clients are required to include the *Content-Length* HTTP header with the 
+correct content length in every request that can have a body (e.g. *POST*, 
+*PUT* or *PATCH*) request. ArangoDB will not process requests without a
+*Content-Length* header.
+
 !SECTION Blocking vs. Non-blocking Requests
 
 ArangoDB supports both blocking and non-blocking requests.

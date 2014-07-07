@@ -404,23 +404,6 @@ namespace triagens {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock serverDisableReplicationLogger
-/// `--server.disable-replication-logger flag`
-///
-/// If *true* the server will start with the replication logger turned off, even 
-/// if the replication logger is configured with the autoStart option. Using this 
-/// option will not change the value of the autoStart option in the logger 
-///configuration, but will suppress auto-starting the replication logger just once.
-///
-/// If the option is not used, ArangoDB will read the logger configuration from 
-/// the file REPLICATION-LOGGER-CONFIG on startup, and use the value of the 
-/// autoStart attribute from this file.
-///
-/// The default is *false*.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-
         bool _disableReplicationApplier;
 
 ////////////////////////////////////////////////////////////////////////////////

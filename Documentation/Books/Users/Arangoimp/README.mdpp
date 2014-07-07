@@ -208,8 +208,8 @@ Attributes whose names start with an underscore are treated in a special way by
 ArangoDB:
 
 - the optional *_key* attribute contains the document's key. If specified, the value
-  must be formally valid (e.g. must be a string and conform to the naming conventions 
-  for @ref DocumentKeys). Additionally, the key value must be unique within the 
+  must be formally valid (e.g. must be a string and conform to the naming conventions). 
+  Additionally, the key value must be unique within the 
   collection the import is run for.
 - *_from*: when importing into an edge collection, this attribute contains the id
   of one of the documents connected by the edge. The value of *_from* must be a

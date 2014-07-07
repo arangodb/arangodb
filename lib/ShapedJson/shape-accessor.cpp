@@ -56,16 +56,22 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
   // find the shape
   shape = shaper->lookupShapeId(shaper, accessor->_sid);
 
-  if (shape == NULL) {
+  if (shape == nullptr) {
     LOG_ERROR("unknown shape id %llu", (unsigned long long) accessor->_sid);
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(false);
+#endif
     return false;
   }
 
   // find the attribute path
   path = shaper->lookupAttributePathByPid(shaper, accessor->_pid);
 
-  if (path == NULL) {
+  if (path == nullptr) {
     LOG_ERROR("unknown attribute path %llu", (unsigned long long) accessor->_pid);
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(false);
+#endif
     return false;
   }
 
@@ -127,7 +133,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
 
           shape = shaper->lookupShapeId(shaper, sid);
 
-          if (shape == NULL) {
+          if (shape == nullptr) {
             LOG_ERROR("unknown shape id '%ld' for attribute id '%ld'",
                       (unsigned long) accessor->_sid,
                       (unsigned long) *paids);
@@ -179,7 +185,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
 
           shape = shaper->lookupShapeId(shaper, sid);
 
-          if (shape == NULL) {
+          if (shape == nullptr) {
             LOG_ERROR("unknown shape id '%ld' for attribute id '%ld'",
                       (unsigned long) accessor->_sid,
                       (unsigned long) *paids);
@@ -218,15 +224,14 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
       TRI_DestroyVectorPointer(&ops);
 
       accessor->_resultSid = TRI_SHAPE_ILLEGAL;
-      accessor->_code = NULL;
-
+      accessor->_code = nullptr;
       return true;
     }
     else {
       TRI_DestroyVectorPointer(&ops);
 
       accessor->_resultSid = TRI_SHAPE_ILLEGAL;
-      accessor->_code = NULL;
+      accessor->_code = nullptr;
 
       return true;
     }
@@ -248,7 +253,7 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
   accessor->_code = const_cast<void const**>(ops._buffer);
 
   // inform the vector that we took over ownership
-  ops._buffer = NULL;
+  ops._buffer = nullptr;
 
   TRI_DestroyVectorPointer(&ops);
   return true;
@@ -316,9 +321,9 @@ static bool ExecuteBytecodeShapeAccessor (TRI_shape_access_t const* accessor,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeShapeAccessor (TRI_shape_access_t* accessor) {
-  TRI_ASSERT(accessor != NULL);
+  TRI_ASSERT(accessor != nullptr);
 
-  if (accessor->_code != NULL) {
+  if (accessor->_code != nullptr) {
     TRI_Free(accessor->_memoryZone, (void*) accessor->_code);
   }
 
@@ -334,14 +339,14 @@ TRI_shape_access_t* TRI_ShapeAccessor (TRI_shaper_t* shaper,
                                        TRI_shape_pid_t pid) {
   TRI_shape_access_t* accessor = static_cast<TRI_shape_access_t*>(TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shape_access_t), false));
 
-  if (accessor == NULL) {
+  if (accessor == nullptr) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-    return NULL;
+    return nullptr;
   }
 
   accessor->_sid = sid;
   accessor->_pid = pid;
-  accessor->_code = NULL;
+  accessor->_code = nullptr;
   accessor->_memoryZone = shaper->_memoryZone;
 
   bool ok = BytecodeShapeAccessor(shaper, accessor);
@@ -351,7 +356,7 @@ TRI_shape_access_t* TRI_ShapeAccessor (TRI_shaper_t* shaper,
   }
 
   TRI_FreeShapeAccessor(accessor);
-  return NULL;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

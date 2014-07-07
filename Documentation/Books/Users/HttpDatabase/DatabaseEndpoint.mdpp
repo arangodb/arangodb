@@ -23,7 +23,7 @@ Endpoint-to-database mapping           Access to *mydb* allowed?
 ```
 
 In case no database name is specified in the request URI, ArangoDB will derive the database
-name from the endpoint-to-database mapping (see @ref NewFeatures14Endpoints} of the endpoint 
+name from the endpoint-to-database mapping of the endpoint 
 the connection was coming in on. 
 
 If the endpoint is not restricted to a list of databases, ArangoDB will assume the *_system*

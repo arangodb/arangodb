@@ -141,7 +141,7 @@ struct TRI_replication_applier_t {
 
   void abortRunningRemoteTransactions () {
     size_t const n = _runningRemoteTransactions.size();
-    triagens::arango::TransactionBase::increaseNumbers(n, n);
+    triagens::arango::TransactionBase::increaseNumbers((int) n, (int) n);
 
     for (auto it = _runningRemoteTransactions.begin(); it != _runningRemoteTransactions.end(); ++it) {
       auto trx = (*it).second;

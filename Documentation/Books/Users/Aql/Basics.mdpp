@@ -1,5 +1,19 @@
 !CHAPTER Language basics
 
+!SUBSECTION Query types
+
+An AQL query must either return a result (indicated by usage of the *RETURN*
+keyword) or execute a data-modification operation (indicated by usage
+of one of the keywords *INSERT*, *UPDATE*, *REPLACE* or *REMOVE*). The AQL
+parser will return an error if it detects more than one data-modification 
+operation in the same query or if it cannot figure out if the query is meant
+to be a data retrieval or a modification operation.
+
+In SQL, the semicolon can be used to indicate the end of a query and to separate
+multiple queries. This is not supported in AQL. Using a semicolon to terminate
+a query string is not allowed in AQL. Specifying more than one AQL query in
+a single query string is disallowed, too. 
+
 !SUBSECTION Whitespace 
 
 Whitespace can be used in the query text to increase its readability.  However,
@@ -39,6 +53,10 @@ On the top level, AQL offers the following operations:
 - LIMIT: result slicing
 - LET: variable assignment
 - COLLECT: result grouping
+- INSERT: insertion of new documents
+- UPDATE: (partial) update of existing documents
+- REPLACE: replacement of existing documents
+- REMOVE: removal of existing documents
 
 Each of the above operations can be initiated in a query by using a keyword of
 the same name. An AQL query can (and typically does) consist of multiple of the
@@ -77,6 +95,11 @@ The current list of keywords is:
 - LIMIT
 - LET
 - COLLECT
+- INSERT
+- UPDATE
+- REPLACE
+- REMOVE
+- WITH
 - ASC
 - DESC
 - IN
@@ -298,9 +321,7 @@ parameters can be used everywhere in a query where literals can be used.
 
 The syntax for bind parameters is *@nameparameter* where *nameparameter* is the
 actual parameter name. The bind parameter values need to be passed along with
-the query when it is executed, but not as part of the query text itself. Please
-refer to the @ref HttpCursorHttp manual section for information about how to
-pass the bind parameter values to the server.
+the query when it is executed, but not as part of the query text itself.
 
     FOR u IN users
       FILTER u.id == @id && u.name == @nameparameter
@@ -390,7 +411,6 @@ result is defined as follows:
 - boolean: *false* is less than *true*
 - number: numeric values are ordered by their cardinal value
 - string: string values are ordered using a localized comparison,
-  see @ref CommandLineDefaultLanguage "--default-language"
 
 Note: unlike in SQL, *null* can be compared to any value, including *null*
 itself, without the result being converted into *null* automatically.

@@ -492,8 +492,8 @@ static int UseCollections (TRI_transaction_t* trx,
 /// @brief release collection locks for a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ReleaseCollections (TRI_transaction_t* trx,
-                               int nestingLevel) {
+static int UnuseCollections (TRI_transaction_t* trx,
+                             int nestingLevel) {
   int res = TRI_ERROR_NO_ERROR;
 
   size_t i = trx->_collections._length;
@@ -518,19 +518,41 @@ static int ReleaseCollections (TRI_transaction_t* trx,
         trxCollection->_compactionLocked = false;
       }
 
-      if (! HasHint(trx, TRI_TRANSACTION_HINT_LOCK_NEVER)) {
-        // unuse collection, remove usage-lock
-        LOG_TRX(trx, nestingLevel, "unusing collection %llu", (unsigned long long) trxCollection->_cid);
-
-        TRI_ReleaseCollectionVocBase(trx->_vocbase, trxCollection->_collection);
-      }
-
       trxCollection->_locked = false;
-      trxCollection->_collection = nullptr;
     }
   }
 
   return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief release collection locks for a transaction
+////////////////////////////////////////////////////////////////////////////////
+
+static int ReleaseCollections (TRI_transaction_t* trx,
+                               int nestingLevel) {
+  TRI_ASSERT(nestingLevel == 0);
+  if (HasHint(trx, TRI_TRANSACTION_HINT_LOCK_NEVER)) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  size_t i = trx->_collections._length;
+
+  // process collections in reverse order
+  while (i-- > 0) {
+    TRI_transaction_collection_t* trxCollection = static_cast<TRI_transaction_collection_t*>(TRI_AtVectorPointer(&trx->_collections, i));
+
+    // the top level transaction releases all collections
+    if (trxCollection->_collection != nullptr) {
+      // unuse collection, remove usage-lock
+      LOG_TRX(trx, nestingLevel, "unusing collection %llu", (unsigned long long) trxCollection->_cid);
+
+      TRI_ReleaseCollectionVocBase(trx->_vocbase, trxCollection->_collection);
+      trxCollection->_collection = nullptr;
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -745,6 +767,8 @@ void TRI_FreeTransaction (TRI_transaction_t* trx) {
   // release the marker protector
   bool const hasFailedOperations = (trx->_hasOperations && trx->_status == TRI_TRANSACTION_ABORTED);
   triagens::wal::LogfileManager::instance()->unregisterTransaction(trx->_id, hasFailedOperations);
+
+  ReleaseCollections(trx, 0);
 
   // free all collections
   size_t i = trx->_collections._length;
@@ -1133,7 +1157,7 @@ int TRI_BeginTransaction (TRI_transaction_t* trx,
     }
 
     // free what we have got so far
-    ReleaseCollections(trx, nestingLevel);
+    UnuseCollections(trx, nestingLevel);
   }
 
   return res;
@@ -1166,7 +1190,7 @@ int TRI_CommitTransaction (TRI_transaction_t* trx,
     FreeOperations(trx);
   }
 
-  ReleaseCollections(trx, nestingLevel);
+  UnuseCollections(trx, nestingLevel);
 
   return res;
 }
@@ -1191,7 +1215,7 @@ int TRI_AbortTransaction (TRI_transaction_t* trx,
     FreeOperations(trx);
   }
 
-  ReleaseCollections(trx, nestingLevel);
+  UnuseCollections(trx, nestingLevel);
 
   return res;
 }

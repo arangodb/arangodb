@@ -334,12 +334,33 @@ function ahuacatlRemoveSuite () {
 /// @brief test remove
 ////////////////////////////////////////////////////////////////////////////////
 
+    testRemoveAll5 : function () {
+      var expected = { executed: 100, ignored: 0 };
+      var actual = getModifyQueryResults("FOR d IN @@cn REMOVE d INTO @@cn", { "@cn": cn1 });
+
+      assertEqual(0, c1.count());
+      assertEqual(expected, actual.operations);
+    },
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test remove
+////////////////////////////////////////////////////////////////////////////////
+
     testRemoveHalf : function () {
       var expected = { executed: 50, ignored: 0 };
       var actual = getModifyQueryResults("FOR i IN 0..99 FILTER i % 2 == 0 REMOVE { _key: CONCAT('test', TO_STRING(i)) } IN @@cn", { "@cn": cn1 });
 
       assertEqual(50, c1.count());
       assertEqual(expected, actual.operations);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test remove
+////////////////////////////////////////////////////////////////////////////////
+
+    testSingleNotFound : function () {
+      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, "REMOVE 'foobar' IN @@cn", { "@cn": cn1 });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -415,6 +436,716 @@ function ahuacatlRemoveSuite () {
       assertEqual(100, c1.count());
       assertEqual(50, c2.count());
       assertEqual(expected, actual.operations);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test remove
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveWaitForSync : function () {
+      var expected = { executed: 100, ignored: 0 };
+      var actual = getModifyQueryResults("FOR d IN @@cn REMOVE d IN @@cn OPTIONS { waitForSync: true }", { "@cn": cn1 });
+
+      assertEqual(0, c1.count());
+      assertEqual(expected, actual.operations);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test remove
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveEdge : function () {
+      db._drop("UnitTestsAhuacatlEdge");
+      var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
+
+      for (var i = 0; i < 100; ++i) {
+        edge.save("UnitTestsAhuacatlRemove1/foo" + i, "UnitTestsAhuacatlRemove2/bar", { what: i, _key: "test" + i });
+      }
+      var expected = { executed: 10, ignored: 0 };
+      var actual = getModifyQueryResults("FOR i IN 0..9 REMOVE CONCAT('test', TO_STRING(i)) IN @@cn", { "@cn": edge.name() });
+
+      assertEqual(100, c1.count());
+      assertEqual(90, edge.count());
+      assertEqual(expected, actual.operations);
+      db._drop("UnitTestsAhuacatlEdge");
+    }
+
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
+function ahuacatlInsertSuite () {
+  var errors = internal.errors;
+  var cn1 = "UnitTestsAhuacatlInsert1";
+  var cn2 = "UnitTestsAhuacatlInsert2";
+  var c1;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(cn1);
+      db._drop(cn2);
+      c1 = db._create(cn1);
+      c2 = db._create(cn2);
+
+      for (var i = 0; i < 100; ++i) {
+        c1.save({ _key: "test" + i, value1: i, value2: "test" + i });
+      }
+      for (var i = 0; i < 50; ++i) {
+        c2.save({ _key: "test" + i, value1: i, value2: "test" + i });
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      db._drop(cn1);
+      db._drop(cn2);
+      c1 = null;
+      c2 = null;
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertNothing : function () {
+      var expected = { executed: 0, ignored: 0 };
+      var actual = getModifyQueryResults("FOR d IN " + cn1 + " FILTER d.value1 < 0 INSERT { foxx: true } IN " + cn1);
+    
+      assertEqual(100, c1.count());
+      assertEqual(expected, actual.operations);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertNothingBind : function () {
+      var expected = { executed: 0, ignored: 0 };
+      var actual = getModifyQueryResults("FOR d IN @@cn FILTER d.value1 < 0 INSERT { foxx: true } IN @@cn", { "@cn": cn1 });
+
+      assertEqual(100, c1.count());
+      assertEqual(expected, actual.operations);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertInvalid1 : function () {
+      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, "FOR d IN @@cn INSERT d.foobar IN @@cn", { "@cn": cn1 });
+      assertEqual(100, c1.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertInvalid2 : function () {
+      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, "FOR d IN @@cn INSERT [ ] IN @@cn", { "@cn": cn1 });
+      assertEqual(100, c1.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertInvalid3 : function () {
+      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, "FOR d IN @@cn INSERT 'foo' IN @@cn", { "@cn": cn1 });
+      assertEqual(100, c1.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertUniqueConstraint1 : function () {
+      assertQueryError(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, "FOR d IN @@cn INSERT d IN @@cn", { "@cn": cn1 });
+      assertEqual(100, c1.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertUniqueConstraint2 : function () {
+      assertQueryError(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, "FOR i IN 0..100 INSERT { _key: CONCAT('test', TO_STRING(i)) } IN @@cn", { "@cn": cn2 });
+      assertEqual(50, c2.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertUniqueConstraint3 : function () {
+      assertQueryError(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, "FOR i IN 0..50 INSERT { _key: 'foo' } IN @@cn", { "@cn": cn1 });
+      assertEqual(100, c1.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertIgnore1 : function () {
+      var expected = { executed: 0, ignored: 100 };
+      var actual = getModifyQueryResults("FOR d IN @@cn INSERT d IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn1 });
+
+      assertEqual(100, c1.count());
+      assertEqual(expected, actual.operations);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertIgnore2 : function () {
+      var expected = { executed: 1, ignored: 50 };
+      var actual = getModifyQueryResults("FOR i IN 50..100 INSERT { _key: CONCAT('test', TO_STRING(i)) } IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn1 });
+
+      assertEqual(101, c1.count());
+      assertEqual(expected, actual.operations);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertIgnore3 : function () {
+      var expected = { executed: 51, ignored: 50 };
+      var actual = getModifyQueryResults("FOR i IN 0..100 INSERT { _key: CONCAT('test', TO_STRING(i)) } IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn2 });
+
+      assertEqual(101, c2.count());
+      assertEqual(expected, actual.operations);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertIgnore4 : function () {
+      var expected = { executed: 0, ignored: 100 };
+      var actual = getModifyQueryResults("FOR i IN 0..99 INSERT { _key: CONCAT('test', TO_STRING(i)) } IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn1 });
+
+      assertEqual(100, c1.count());
+      assertEqual(expected, actual.operations);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertIgnore5 : function () {
+      var expected = { executed: 50, ignored: 50 };
+      var actual = getModifyQueryResults("FOR i IN 0..99 INSERT { _key: CONCAT('test', TO_STRING(i)) } IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn2 });
+
+      assertEqual(100, c2.count());
+      assertEqual(expected, actual.operations);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertEmpty : function () {
+      var expected = { executed: 100, ignored: 0 };
+      var actual = getModifyQueryResults("FOR d IN @@cn INSERT { } IN @@cn", { "@cn": cn1 });
+
+      assertEqual(200, c1.count());
+      assertEqual(expected, actual.operations);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertCopy : function () {
+      var expected = { executed: 50, ignored: 0 };
+      var actual = getModifyQueryResults("FOR i IN 50..99 INSERT { _key: CONCAT('test', TO_STRING(i)) } IN @@cn", { "@cn": cn2 });
+
+      assertEqual(100, c1.count());
+      assertEqual(100, c2.count());
+      assertEqual(expected, actual.operations);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testSingle : function () {
+      var expected = { executed: 1, ignored: 0 };
+      var actual = getModifyQueryResults("INSERT { value: 'foobar', _key: 'test' } IN @@cn", { "@cn": cn1 });
+
+      assertEqual(101, c1.count());
+      assertEqual("foobar", c1.document("test").value);
+      assertEqual(expected, actual.operations);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertWaitForSync : function () {
+      var expected = { executed: 50, ignored: 0 };
+      var actual = getModifyQueryResults("FOR i IN 1..50 INSERT { value: i } INTO @@cn OPTIONS { waitForSync: true }", { "@cn": cn2 });
+
+      assertEqual(100, c1.count());
+      assertEqual(expected, actual.operations);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertEdgeInvalid : function () {
+      db._drop("UnitTestsAhuacatlEdge");
+      var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
+
+      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, "FOR i IN 1..50 INSERT { } INTO @@cn", { "@cn": edge.name() });
+      assertEqual(0, edge.count());
+
+      db._drop("UnitTestsAhuacatlEdge");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertEdgeNoFrom : function () {
+      db._drop("UnitTestsAhuacatlEdge");
+      var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
+
+      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, "FOR i IN 1..50 INSERT { _to: CONCAT('UnitTestsAhuacatlInsert1/', TO_STRING(i)) } INTO @@cn", { "@cn": edge.name() });
+      assertEqual(0, edge.count());
+
+      db._drop("UnitTestsAhuacatlEdge");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertEdgeNoTo : function () {
+      db._drop("UnitTestsAhuacatlEdge");
+      var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
+
+      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, "FOR i IN 1..50 INSERT { _from: CONCAT('UnitTestsAhuacatlInsert1/', TO_STRING(i)) } INTO @@cn", { "@cn": edge.name() });
+      assertEqual(0, edge.count());
+
+      db._drop("UnitTestsAhuacatlEdge");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertEdgeInvalid : function () {
+      db._drop("UnitTestsAhuacatlEdge");
+      var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
+
+      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, "FOR i IN 1..50 INSERT { } INTO @@cn", { "@cn": edge.name() });
+      assertEqual(0, edge.count());
+
+      db._drop("UnitTestsAhuacatlEdge");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertEdge : function () {
+      db._drop("UnitTestsAhuacatlEdge");
+      var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
+
+      var expected = { executed: 50, ignored: 0 };
+      var actual = getModifyQueryResults("FOR i IN 1..50 INSERT { _key: CONCAT('test', TO_STRING(i)), _from: CONCAT('UnitTestsAhuacatlInsert1/', TO_STRING(i)), _to: CONCAT('UnitTestsAhuacatlInsert2/', TO_STRING(i)), value: [ i ], sub: { foo: 'bar' } } INTO @@cn", { "@cn": edge.name() });
+
+      assertEqual(expected, actual.operations);
+      assertEqual(50, edge.count());
+
+      for (var i = 1; i <= 50; ++i) {
+        var doc = edge.document("test" + i);
+        assertEqual("UnitTestsAhuacatlInsert1/" + i, doc._from);
+        assertEqual("UnitTestsAhuacatlInsert2/" + i, doc._to);
+        assertEqual([ i ], doc.value);
+        assertEqual({ foo: "bar" }, doc.sub);
+      }
+      db._drop("UnitTestsAhuacatlEdge");
+    }
+
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
+function ahuacatlUpdateSuite () {
+  var errors = internal.errors;
+  var cn1 = "UnitTestsAhuacatlUpdate1";
+  var cn2 = "UnitTestsAhuacatlUpdate2";
+  var c1;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(cn1);
+      db._drop(cn2);
+      c1 = db._create(cn1);
+      c2 = db._create(cn2);
+
+      for (var i = 0; i < 100; ++i) {
+        c1.save({ _key: "test" + i, value1: i, value2: "test" + i });
+      }
+      for (var i = 0; i < 50; ++i) {
+        c2.save({ _key: "test" + i, value1: i, value2: "test" + i });
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      db._drop(cn1);
+      db._drop(cn2);
+      c1 = null;
+      c2 = null;
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateNothing : function () {
+      var expected = { executed: 0, ignored: 0 };
+      var actual = getModifyQueryResults("FOR d IN " + cn1 + " FILTER d.value1 < 0 UPDATE { foxx: true } IN " + cn1);
+    
+      assertEqual(expected, actual.operations);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateNothingBind : function () {
+      var expected = { executed: 0, ignored: 0 };
+      var actual = getModifyQueryResults("FOR d IN @@cn FILTER d.value1 < 0 UPDATE { foxx: true } IN @@cn", { "@cn": cn1 });
+
+      assertEqual(expected, actual.operations);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateInvalid1 : function () {
+      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, "FOR d IN @@cn UPDATE d.foobar IN @@cn", { "@cn": cn1 });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateInvalid2 : function () {
+      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, "FOR d IN @@cn UPDATE [ ] IN @@cn", { "@cn": cn1 });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateInvalid3 : function () {
+      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, "FOR d IN @@cn UPDATE 'foo' IN @@cn", { "@cn": cn1 });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateUniqueConstraint1 : function () {
+      c1.ensureUniqueConstraint("value1");
+      assertQueryError(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, "FOR d IN @@cn UPDATE d._key WITH { value1: 1 } IN @@cn", { "@cn": cn1 });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateUniqueConstraint2 : function () {
+      c1.ensureUniqueConstraint("value3");
+      assertQueryError(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, "FOR d IN @@cn UPDATE d._key WITH { value3: 1 } IN @@cn", { "@cn": cn1 });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateIgnore1 : function () {
+      c1.ensureUniqueConstraint("value3");
+      var expected = { executed: 1, ignored: 99 };
+      var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d WITH { value3: 1 } IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn1 });
+
+      assertEqual(expected, actual.operations);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateIgnore2 : function () {
+      c1.ensureUniqueConstraint("value1");
+      var expected = { executed: 0, ignored: 51 };
+      var actual = getModifyQueryResults("FOR i IN 50..100 UPDATE { _key: CONCAT('test', TO_STRING(i)), value1: 1 } IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn1 });
+
+      assertEqual(expected, actual.operations);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateEmpty1 : function () {
+      var expected = { executed: 100, ignored: 0 };
+      var actual = getModifyQueryResults("FOR d IN @@cn UPDATE { _key: d._key } IN @@cn", { "@cn": cn1 });
+
+      assertEqual(expected, actual.operations);
+      for (var i = 0; i < 100; ++i) {
+        var doc = c1.document("test" + i);
+        assertEqual(i, doc.value1);
+        assertEqual("test" + i, doc.value2);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateEmpty2 : function () {
+      var expected = { executed: 100, ignored: 0 };
+      var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d IN @@cn", { "@cn": cn1 });
+
+      assertEqual(expected, actual.operations);
+      for (var i = 0; i < 100; ++i) {
+        var doc = c1.document("test" + i);
+        assertEqual(i, doc.value1);
+        assertEqual("test" + i, doc.value2);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testSingleNotFound : function () {
+      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, "UPDATE { _key: 'foobar' } WITH { value1: 1 } IN @@cn", { "@cn": cn1 });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testSingle : function () {
+      var expected = { executed: 1, ignored: 0 };
+      var actual = getModifyQueryResults("UPDATE { value: 'foobar', _key: 'test17' } IN @@cn", { "@cn": cn1 });
+
+      assertEqual("foobar", c1.document("test17").value);
+      assertEqual(expected, actual.operations);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateOldValue : function () {
+      var expected = { executed: 100, ignored: 0 };
+      var actual = getModifyQueryResults("FOR d IN @@cn UPDATE { _key: d._key, value1: d.value2, value2: d.value1, value3: d.value1 + 5 } IN @@cn", { "@cn": cn1 });
+      assertEqual(expected, actual.operations);
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = c1.document("test" + i);
+        assertEqual("test" + i, doc.value1);
+        assertEqual(i, doc.value2);
+        assertEqual(i + 5, doc.value3);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateWaitForSync : function () {
+      var expected = { executed: 50, ignored: 0 };
+      var actual = getModifyQueryResults("FOR i IN 1..50 UPDATE { _key: CONCAT('test', TO_STRING(i)) } INTO @@cn OPTIONS { waitForSync: true }", { "@cn": cn1 });
+      assertEqual(expected, actual.operations);
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = c1.document("test" + i);
+        assertEqual(i, doc.value1);
+        assertEqual("test" + i, doc.value2);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateKeepNullDefault : function () {
+      var expected = { executed: 100, ignored: 0 };
+      var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d._key WITH { value1: null, value3: 'foobar', value9: null } INTO @@cn", { "@cn": cn1 });
+      assertEqual(expected, actual.operations);
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = c1.document("test" + i);
+        assertNull(doc.value1);
+        assertEqual("test" + i, doc.value2);
+        assertEqual("foobar", doc.value3);
+        assertNull(doc.value9);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateKeepNullTrue : function () {
+      var expected = { executed: 100, ignored: 0 };
+      var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d._key WITH { value1: null, value3: 'foobar', value9: null } INTO @@cn OPTIONS { keepNull: true }", { "@cn": cn1 });
+      assertEqual(expected, actual.operations);
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = c1.document("test" + i);
+        assertNull(doc.value1);
+        assertEqual("test" + i, doc.value2);
+        assertEqual("foobar", doc.value3);
+        assertNull(doc.value9);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateKeepNullFalse : function () {
+      var expected = { executed: 100, ignored: 0 };
+      var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d._key WITH { value1: null, value3: 'foobar', value9: null } INTO @@cn OPTIONS { keepNull: false }", { "@cn": cn1 });
+      assertEqual(expected, actual.operations);
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = c1.document("test" + i);
+        assertFalse(doc.hasOwnProperty("value1"));
+        assertEqual("test" + i, doc.value2);
+        assertEqual("foobar", doc.value3);
+        assertFalse(doc.hasOwnProperty("value9"));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateFilter : function () {
+      var expected = { executed: 50, ignored: 0 };
+      var actual = getModifyQueryResults("FOR d IN @@cn FILTER d.value1 % 2 == 0 UPDATE d._key WITH { value2: 100 } INTO @@cn", { "@cn": cn1 });
+      assertEqual(expected, actual.operations);
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = c1.document("test" + i);
+        if (i % 2 === 0) {
+          assertEqual(100, doc.value2);
+        }
+        else {
+          assertEqual("test" + i, doc.value2);
+        }
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateUpdate : function () {
+      var expected = { executed: 100, ignored: 0 };
+      for (var i = 0; i < 5; ++i) {
+        var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d._key WITH { counter: HAS(d, 'counter') ? d.counter + 1 : 1 } INTO @@cn", { "@cn": cn1 });
+        assertEqual(expected, actual.operations);
+      }
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = c1.document("test" + i);
+        assertEqual(5, doc.counter);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test replace
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplace1 : function () {
+      var expected = { executed: 100, ignored: 0 };
+      for (var i = 0; i < 5; ++i) {
+        var actual = getModifyQueryResults("FOR d IN @@cn REPLACE d._key WITH { value4: 12 } INTO @@cn", { "@cn": cn1 });
+        assertEqual(expected, actual.operations);
+      }
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = c1.document("test" + i);
+        assertFalse(doc.hasOwnProperty("value1"));
+        assertFalse(doc.hasOwnProperty("value2"));
+        assertFalse(doc.hasOwnProperty("value3"));
+        assertEqual(12, doc.value4);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test replace
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplace2 : function () {
+      var expected = { executed: 100, ignored: 0 };
+      for (var i = 0; i < 5; ++i) {
+        var actual = getModifyQueryResults("FOR d IN @@cn REPLACE { _key: d._key, value4: 13 } INTO @@cn", { "@cn": cn1 });
+        assertEqual(expected, actual.operations);
+      }
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = c1.document("test" + i);
+        assertFalse(doc.hasOwnProperty("value1"));
+        assertFalse(doc.hasOwnProperty("value2"));
+        assertFalse(doc.hasOwnProperty("value3"));
+        assertEqual(13, doc.value4);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test replace
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceReplace : function () {
+      var expected = { executed: 100, ignored: 0 };
+      for (var i = 0; i < 5; ++i) {
+        var actual = getModifyQueryResults("FOR d IN @@cn REPLACE d._key WITH { value1: d.value1 + 1 } INTO @@cn", { "@cn": cn1 });
+        assertEqual(expected, actual.operations);
+      }
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = c1.document("test" + i);
+        assertEqual(i + 5, doc.value1);
+        assertFalse(doc.hasOwnProperty("value2"));
+      }
     }
 
   };
@@ -426,6 +1157,8 @@ function ahuacatlRemoveSuite () {
 
 jsunity.run(ahuacatlModifySuite);
 jsunity.run(ahuacatlRemoveSuite);
+jsunity.run(ahuacatlInsertSuite);
+jsunity.run(ahuacatlUpdateSuite);
 
 return jsunity.done();
 
