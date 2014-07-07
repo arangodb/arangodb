@@ -77,6 +77,10 @@
     matchError = function (req, res, doc, errorCode) {  
 
       if (req.headers["if-none-match"] !== undefined) {
+    var options = setOptions(req);
+    if (options.code === actions.HTTP_OK) {
+      options.code = actions.HTTP_CREATED;
+    }
         if (doc._rev === req.headers["if-none-match"].replace(/(^["']|["']$)/g, '')) {
           // error      
           res.responseCode = actions.HTTP_NOT_MODIFIED;
@@ -686,7 +690,11 @@
     var collection = req.params("collection");
     var body = req.params("vertex");
     var g = Graph._graph(name);
-    setResponse(res, "vertex", g[collection].save(body.forDB()), actions.HTTP_CREATED);
+    var options = setOptions(req);
+    if (options.code === actions.HTTP_OK) {
+      options.code = actions.HTTP_CREATED;
+    }
+    setResponse(res, "vertex", g[collection].save(body.forDB(), options), options.code);
   })
   .pathParam("graph", {
     type: "string",
@@ -695,6 +703,10 @@
   .pathParam("collection", {
     type: "string",
     description: "Name of the vertex collection."
+  })
+  .queryParam("waitForSync", {
+    type: "string",
+    description: "define if the request should wait until synced to disk."
   })
   .bodyParam("vertex", "The document to be stored", Model);
 
@@ -985,7 +997,11 @@
       throw err;
     }
     var g = Graph._graph(name);
-    setResponse(res, "edge", g[collection].save(from, to, body.forDB()), actions.HTTP_CREATED);
+    var options = setOptions(req);
+    if (options.code === actions.HTTP_OK) {
+      options.code = actions.HTTP_CREATED;
+    }
+    setResponse(res, "edge", g[collection].save(from, to, body.forDB(), options), options.code);
   })
   .pathParam("graph", {
     type: "string",
@@ -994,6 +1010,10 @@
   .pathParam("collection", {
     type: "string",
     description: "Name of the edge collection."
+  })
+  .queryParam("waitForSync", {
+    type: "string",
+    description: "define if the request should wait until synced to disk."
   })
   .bodyParam(
     "edge", "The edge to be stored. Has to contain _from and _to attributes.", Model
