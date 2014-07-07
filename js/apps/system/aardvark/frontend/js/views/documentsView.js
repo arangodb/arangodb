@@ -266,6 +266,7 @@
     sendFilter : function () {
       var filters = this.getFilterContent();
       var self = this;
+      this.collection.resetFilter();
       this.addDocumentSwitch = false;
       _.each(filters, function (f) {
           self.collection.addFilter(f.attribute, f.operator, f.value);

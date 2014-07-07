@@ -5,7 +5,6 @@
 
   window.arangoDocuments = window.PaginatedCollection.extend({
     collectionID: 1,
-    collectionCount: null,
 
     filters: [],
 
@@ -23,7 +22,6 @@
         async: false,
         success: function(data) {
           self.setTotal(data.count);
-          self.collectionCount = data.count;
         }
       });
     },
@@ -79,7 +77,7 @@
       query = "FOR x in @@collection";
       query += this.setFiltersForQuery(bindVars);
       // Sort result, only useful for a small number of docs
-      if (this.collectionCount !== null && this.collectionCount < 10000) {
+      if (this.getTotal() < 10000) {
         query += " SORT TO_NUMBER(x._key) == 0 ? x._key : TO_NUMBER(x._key)";
       }
       query += " LIMIT @offset, @count RETURN x";
