@@ -207,8 +207,7 @@ present in ArangoDB. The server can be run with or without HTTP authentication.
 If authentication is turned on, 
 then every access to the server is authenticated via HTTP authentication. This 
 includes Foxx applications. The global authentication can be toggled 
-via the configuration option @ref CommandLineArangoDisableAuthentication 
-"server.disable-authentication".
+via the configuration option.
 
 If global HTTP authentication is turned on, requests to Foxx applications will 
 require HTTP authentication too, and only valid users present in the *_users*
