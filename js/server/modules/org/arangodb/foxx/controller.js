@@ -145,7 +145,6 @@ extend(Controller.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_controller_handleRequest
 ///
 /// The *handleRequest* method is the raw way to create a new route. You
 /// probably wont call it directly, but it is used in the other request methods:
@@ -153,7 +152,6 @@ extend(Controller.prototype, {
 /// When defining a route you can also define a so called 'parameterized' route
 /// like */goose/:barn*. In this case you can later get the value the user
 /// provided for *barn* via the *params* function (see the Request object).
-/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   handleRequest: function (method, route, callback) {
