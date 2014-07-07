@@ -37,7 +37,7 @@ def replaceText(text, pathOfFile, searchText):
   f=open(pathOfFile,'w')
 
   replaced = re.sub("@startDocuBlock\s+"+ searchText + "(?:\s+|$)",text,s)
-  replaced = re.sub("<!-- (\.*)","",replaced)
+  replaced = re.sub("<!-- (\.*) -->","",replaced)
 
   # HTTP API changing code
   replaced = replaced.replace("@brief","")
