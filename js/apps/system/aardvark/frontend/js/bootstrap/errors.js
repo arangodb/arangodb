@@ -40,6 +40,7 @@
     "ERROR_DEBUG"                  : { "code" : 22, "message" : "intentional debug error" }, 
     "ERROR_AID_NOT_FOUND"          : { "code" : 23, "message" : "internal error with attribute ID in shaper" }, 
     "ERROR_LEGEND_INCOMPLETE"      : { "code" : 24, "message" : "internal error if a legend could not be created" }, 
+    "ERROR_IP_ADDRESS_INVALID"     : { "code" : 25, "message" : "IP address is invalid" }, 
     "ERROR_HTTP_BAD_PARAMETER"     : { "code" : 400, "message" : "bad parameter" }, 
     "ERROR_HTTP_UNAUTHORIZED"      : { "code" : 401, "message" : "unauthorized" }, 
     "ERROR_HTTP_FORBIDDEN"         : { "code" : 403, "message" : "forbidden" }, 
