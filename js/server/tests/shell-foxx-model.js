@@ -1,6 +1,7 @@
 require("internal").flushModuleCache();
 
 var _ = require("underscore"),
+  joi = require("joi"),
   jsunity = require("jsunity");
 
 function ModelSpec () {
@@ -157,7 +158,57 @@ function ModelSpec () {
       assertEqual(instance.get("_key"), "arango");
     },
 
-    testDisallowInvalidAttributes: function () {
+    testCoerceJoiAttributes: function () {
+      var Model = FoxxModel.extend({}, {
+        attributes: {
+          anInteger: joi.number().integer()
+        }
+      });
+
+      instance = new Model({anInteger: 1});
+      instance.set("anInteger", "2");
+      assertEqual(instance.get("anInteger"), 2);
+    },
+
+    testDisallowInvalidJoiAttributes: function () {
+      var Model = FoxxModel.extend({}, {
+        attributes: {
+          anInteger: joi.number().integer()
+        }
+      });
+
+      instance = new Model({anInteger: 1});
+      instance.set("anInteger", undefined);
+      assertEqual(instance.attributes.anInteger, undefined);
+      instance.set("anInteger", 2);
+      assertEqual(instance.attributes.anInteger, 2);
+      try {
+        instance.set("anInteger", 5.1);
+        fail();
+      } catch(err) {
+        assertTrue(err.message.indexOf("anInteger") !== -1);
+        assertTrue(err.message.indexOf("integer") !== -1);
+        assertEqual(instance.attributes.anInteger, 2);
+      }
+      try {
+        instance.set("anInteger", false);
+        fail();
+      } catch(err) {
+        assertTrue(err.message.indexOf("anInteger") !== -1);
+        assertTrue(err.message.indexOf("number") !== -1);
+        assertEqual(instance.attributes.anInteger, 2);
+      }
+      try {
+        instance.set("anInteger", "");
+        fail();
+      } catch(err) {
+        assertTrue(err.message.indexOf("anInteger") !== -1);
+        assertTrue(err.message.indexOf("number") !== -1);
+        assertEqual(instance.attributes.anInteger, 2);
+      }
+    },
+
+    testDisallowInvalidSchemaAttributes: function () {
       var Model = FoxxModel.extend({}, {
         attributes: {
           anInteger: {type: 'integer'}
