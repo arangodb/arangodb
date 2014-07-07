@@ -57,11 +57,6 @@ var SimpleQueryFulltext = simple.SimpleQueryFulltext;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief collection is corrupted
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -116,18 +111,9 @@ ArangoCollection.TYPE_DOCUMENT = 2;
 
 ArangoCollection.TYPE_EDGE = 3;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints a collection
@@ -174,18 +160,9 @@ ArangoCollection.prototype.toString = function () {
   return "[ArangoCollection: " + this._id + "]";
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs an all query for a collection
@@ -201,14 +178,27 @@ ArangoCollection.prototype.toString = function () {
 /// Use *toArray* to get all documents at once:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionAll}
-///   db.five.all();
+/// ~ db._create("five");
+/// ~ db.five.save({ name : "one" });
+/// ~ db.five.save({ name : "two" });
+/// ~ db.five.save({ name : "three" });
+/// ~ db.five.save({ name : "four" });
+/// ~ db.five.save({ name : "five" });
+///   db.five.all().toArray();
+/// ~ db._drop("five");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
-/// Use *next* to loop over all documents:
+/// Use *limit* to restrict the documents:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionAllNext}
-///   var a = db.five.all().toArray();
-///   while (a.hasNext()) print(a.next());
+/// ~ db._create("five");
+/// ~ db.five.save({ name : "one" });
+/// ~ db.five.save({ name : "two" });
+/// ~ db.five.save({ name : "three" });
+/// ~ db.five.save({ name : "four" });
+/// ~ db.five.save({ name : "five" });
+///   db.five.all().limit(2).toArray();
+/// ~ db._drop("five");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -238,11 +228,11 @@ ArangoCollection.prototype.all = function () {
 /// as example, then you will find all documents, such that the attribute
 /// *a* contains a document of the form *{c : 1 }*. For example the document
 ///
-/// *{ a : { c : 1 }\, b : 1 }*
+/// *{ a : { c : 1 }, b : 1 }*
 ///
 /// will match, but the document 
 ///
-/// *{ a : { c : 1\, b : 1 } }*
+/// *{ a : { c : 1, b : 1 } }*
 ///
 /// will not.
 ///
@@ -253,9 +243,9 @@ ArangoCollection.prototype.all = function () {
 /// then you will find all documents, which contain a sub-document in *a*
 /// that has an attribute *c* of value *1*. Both the following documents 
 ///
-/// *{ a : { c : 1 }\, b : 1 }* and 
+/// *{ a : { c : 1 }, b : 1 }* and 
 ///
-/// *{ a : { c : 1\, b : 1 } }*
+/// *{ a : { c : 1, b : 1 } }*
 ///
 /// will match.
 ///
@@ -269,10 +259,13 @@ ArangoCollection.prototype.all = function () {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionByExample}
 /// ~ db._create("users");
+/// ~ db.users.save({ name: "Gerhard" });
+/// ~ db.users.save({ name: "Helmut" });
+/// ~ db.users.save({ name: "Angela" });
 ///   db.users.all().toArray();
-///   db.users.byExample({ "id" : 323 }).toArray();
-///   db.users.byExample({ "name" : "Peter" }).toArray();
-///   db.users.byExample({ "name" : "Peter", "id" : 535 }).toArray();
+///   db.users.byExample({ "_id" : "users/20" }).toArray();
+///   db.users.byExample({ "name" : "Gerhard" }).toArray();
+///   db.users.byExample({ "name" : "Helmut", "_id" : "users/15" }).toArray();
 /// ~ db._drop("users");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -280,7 +273,10 @@ ArangoCollection.prototype.all = function () {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionByExampleNext}
 /// ~ db._create("users");
-///   var a = db.users.byExample( {"name" : "Peter" } );
+/// ~ db.users.save({ name: "Gerhard" });
+/// ~ db.users.save({ name: "Helmut" });
+/// ~ db.users.save({ name: "Angela" });
+///   var a = db.users.byExample( {"name" : "Angela" } );
 ///   while (a.hasNext()) print(a.next());
 /// ~ db._drop("users");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -330,11 +326,11 @@ ArangoCollection.prototype.byExample = function (example) {
 /// as example, then you will find all documents, such that the attribute
 /// *a* contains a document of the form *{c : 1 }*. For example the document
 ///
-/// *{ a : { c : 1 }\, b : 1 }*
+/// *{ a : { c : 1 }, b : 1 }*
 ///
 /// will match, but the document 
 ///
-/// *{ a : { c : 1\, b : 1 } }*
+/// *{ a : { c : 1, b : 1 } }*
 ///
 /// will not.
 ///
@@ -345,9 +341,9 @@ ArangoCollection.prototype.byExample = function (example) {
 /// then you will find all documents, which contain a sub-document in *a*
 /// that has an attribute @LIT{c} of value *1*. Both the following documents 
 ///
-/// *{ a : { c : 1 }\, b : 1 }* and 
+/// *{ a : { c : 1 }, b : 1 }* and 
 ///
-/// *{ a : { c : 1\, b : 1 } }*
+/// *{ a : { c : 1, b : 1 } }*
 ///
 /// will match.
 ///
@@ -383,11 +379,11 @@ ArangoCollection.prototype.byExampleHash = function (index, example) {
 /// as example, then you will find all documents, such that the attribute
 /// *a* contains a document of the form *{c : 1 }*. For example the document
 ///
-/// *{ a : { c : 1 }\, b : 1 }*
+/// *{ a : { c : 1 }, b : 1 }*
 ///
 /// will match, but the document 
 ///
-/// *{ a : { c : 1\, b : 1 } }*
+/// *{ a : { c : 1, b : 1 } }*
 ///
 /// will not.
 ///
@@ -398,9 +394,9 @@ ArangoCollection.prototype.byExampleHash = function (index, example) {
 /// then you will find all documents, which contain a sub-document in *a*
 /// that has an attribute @LIT{c} of value *1*. Both the following documents 
 ///
-/// *{ a : { c : 1 }\, b : 1 }*and 
+/// *{ a : { c : 1 }, b : 1 }*and 
 ///
-/// *{ a : { c : 1\, b : 1 } }*
+/// *{ a : { c : 1, b : 1 } }*
 ///
 /// will match.
 ///
@@ -436,11 +432,11 @@ ArangoCollection.prototype.byExampleSkiplist = function (index, example) {
 /// as example, then you will find all documents, such that the attribute
 /// *a* contains a document of the form *{c : 1 }*. For example the document
 ///
-/// *{ a : { c : 1 }\, b : 1 }*
+/// *{ a : { c : 1 }, b : 1 }*
 ///
 /// will match, but the document 
 ///
-/// *{ a : { c : 1\, b : 1 } }*
+/// *{ a : { c : 1, b : 1 } }*
 ///
 /// will not.
 ///
@@ -451,9 +447,9 @@ ArangoCollection.prototype.byExampleSkiplist = function (index, example) {
 /// then you will find all documents, which contain a sub-document in *a*
 /// that has an attribute @LIT{c} of value *1*. Both the following documents 
 ///
-/// *{ a : { c : 1 }\, b : 1 }*and 
+/// *{ a : { c : 1 }, b : 1 }*and 
 ///
-/// *{ a : { c : 1\, b : 1 } }*
+/// *{ a : { c : 1, b : 1 } }*
 ///
 /// will match.
 ///
@@ -517,9 +513,13 @@ ArangoCollection.prototype.byConditionBitarray = function (index, condition) {
 /// Use *toArray* to get all documents at once:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionRange}
-/// ~ db._create("example");
-///   l = db.example.range("age", 10, 13).toArray();
-/// ~ db._drop("example")
+/// ~ db._create("old");
+/// ~ db.old.ensureSkiplist("age");
+/// ~ db.old.save({ age: 15 });
+/// ~ db.old.save({ age: 25 });
+/// ~ db.old.save({ age: 35 });
+///   db.old.range("age", 10, 30).toArray();
+/// ~ db._drop("old")
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -772,9 +772,23 @@ ArangoCollection.prototype.within = function (lat, lon, radius) {
 ///
 /// To find all documents which contain the terms *text* and *word*:
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionFulltext}
-///   db.emails.fulltext("text", "word").toArray();
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// ```
+/// arango> db.emails.fulltext("text", "word").toArray();
+/// [ 
+///   { 
+///     "_id" : "emails/1721603", 
+///     "_key" : "1721603", 
+///     "_rev" : "1721603", 
+///     "text" : "this document contains a word" 
+///   },  
+///   {
+///     "_id" : "emails/1783231",
+///     "_key" : "1783231", 
+///     "_rev" : "1783231", 
+///     "text" : "this document also contains a word" 
+///   } 
+/// ]
+/// ``` 
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -801,12 +815,12 @@ ArangoCollection.prototype.fulltext = function (attribute, query, iid) {
 ///
 /// @EXAMPLES
 ///
-/// @code
+/// ```
 /// arango> db.example.getIndexes().map(function(x) { return x.id; });
 /// ["93013/0"]
 /// arango> db.example.index("93013/0");
 /// { "id" : "93013/0", "type" : "primary", "fields" : ["_id"] }
-/// @endcode
+/// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -881,18 +895,9 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  document methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoShell
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes documents matching an example
@@ -1032,10 +1037,6 @@ ArangoCollection.prototype.replaceByExample = function (example, newValue, waitF
 ArangoCollection.prototype.updateByExample = function (example, newValue, keepNull, waitForSync, limit) {
   throw "cannot call abstract updateExample function";
 };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

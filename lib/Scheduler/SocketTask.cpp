@@ -169,21 +169,21 @@ bool SocketTask::fillReadBuffer (bool& closed) {
 /// @brief handles a write
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SocketTask::handleWrite (bool& closed, bool noWrite) {
+bool SocketTask::handleWrite (bool& closed) {
   closed = false;
-
-  if (noWrite) {
-    return true;
-  }
 
   bool callCompletedWriteBuffer = false;
 
   {
-    MUTEX_LOCKER(writeBufferLock);
+    MUTEX_LOCKER(_writeBufferLock);
 
     // size_t is unsigned, should never get < 0
-    TRI_ASSERT(_writeBuffer->length() >= writeLength);
-    size_t len = _writeBuffer->length() - writeLength;
+    size_t len = 0;
+
+    if (nullptr != _writeBuffer) {
+      TRI_ASSERT(_writeBuffer->length() >= writeLength);
+      len = _writeBuffer->length() - writeLength;
+    }
 
     int nr = 0;
 
@@ -192,7 +192,7 @@ bool SocketTask::handleWrite (bool& closed, bool noWrite) {
 
       if (nr < 0) {
         if (errno == EINTR) {
-          return handleWrite(closed, noWrite);
+          return handleWrite(closed);
         }
         else if (errno != EWOULDBLOCK) {
           LOG_DEBUG("write failed with %d: %s", (int) errno, strerror(errno));
@@ -208,7 +208,7 @@ bool SocketTask::handleWrite (bool& closed, bool noWrite) {
     }
 
     if (len == 0) {
-      if (ownBuffer) {
+      if (nullptr != _writeBuffer && ownBuffer) {
         delete _writeBuffer;
       }
 
@@ -234,7 +234,7 @@ bool SocketTask::handleWrite (bool& closed, bool noWrite) {
 
   // we might have a new write buffer or none at all
   {
-    MUTEX_LOCKER(writeBufferLock);
+    MUTEX_LOCKER(_writeBufferLock);
 
     if (_writeBuffer == nullptr) {
       _scheduler->stopSocketEvents(writeWatcher);
@@ -259,7 +259,7 @@ void SocketTask::setWriteBuffer (StringBuffer* buffer, TRI_request_statistics_t*
   bool callCompletedWriteBuffer = false;
 
   {
-    MUTEX_LOCKER(writeBufferLock);
+    MUTEX_LOCKER(_writeBufferLock);
 
 #ifdef TRI_ENABLE_FIGURES
 
@@ -302,7 +302,7 @@ void SocketTask::setWriteBuffer (StringBuffer* buffer, TRI_request_statistics_t*
 
   // we might have a new write buffer or none at all
   if (tid == Thread::currentThreadId()) {
-    MUTEX_LOCKER(writeBufferLock);
+    MUTEX_LOCKER(_writeBufferLock);
 
     if (_writeBuffer == 0) {
       _scheduler->stopSocketEvents(writeWatcher);
@@ -328,7 +328,7 @@ void SocketTask::appendWriteBuffer (StringBuffer* buffer) {
   bool newBuffer = false;
 
   {
-    MUTEX_LOCKER(writeBufferLock);
+    MUTEX_LOCKER(_writeBufferLock);
 
     if (_writeBuffer == nullptr) {
       writeLength = 0;
@@ -344,7 +344,7 @@ void SocketTask::appendWriteBuffer (StringBuffer* buffer) {
   // we might have a new write buffer
   if (newBuffer) {
     if (tid == Thread::currentThreadId()) {
-      MUTEX_LOCKER(writeBufferLock);
+      MUTEX_LOCKER(_writeBufferLock);
 
       _scheduler->startSocketEvents(writeWatcher);
     }
@@ -359,7 +359,7 @@ void SocketTask::appendWriteBuffer (StringBuffer* buffer) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SocketTask::hasWriteBuffer () const {
-  MUTEX_LOCKER(writeBufferLock);
+  MUTEX_LOCKER(_writeBufferLock);
 
   return _writeBuffer != nullptr;
 }
@@ -418,11 +418,14 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
   watcher = _scheduler->installAsyncEvent(loop, this);
   readWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_READ, this, _commSocket);
   writeWatcher = _scheduler->installSocketEvent(loop, EVENT_SOCKET_WRITE, this, _commSocket);
+
   if (readWatcher == -1 || writeWatcher == -1) {
     return false;
   }
+
   // install timer for keep-alive timeout with some high default value
   keepAliveWatcher = _scheduler->installTimerEvent(loop, this, 60.0);
+
   // and stop it immediately so it's not actively at the start
   _scheduler->clearTimer(keepAliveWatcher);
 
@@ -487,20 +490,13 @@ bool SocketTask::handleEvent (EventToken token, EventType revents) {
   }
 
   if (result && ! closed && token == writeWatcher) {
-    bool noWrite = false;
-
-    {
-      MUTEX_LOCKER(writeBufferLock);
-      noWrite = (_writeBuffer == nullptr);
-    }
-
     if (revents & EVENT_SOCKET_WRITE) {
-      result = handleWrite(closed, noWrite);
+      result = handleWrite(closed);
     }
   }
 
   if (result) {
-    MUTEX_LOCKER(writeBufferLock);
+    MUTEX_LOCKER(_writeBufferLock);
 
     if (_writeBuffer == nullptr) {
       _scheduler->stopSocketEvents(writeWatcher);

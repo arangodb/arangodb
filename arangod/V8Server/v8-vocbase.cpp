@@ -3861,7 +3861,62 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adjusts the WAL configuration at runtime
+/// @brief retrieves the configuration of the write-ahead log
+/// @startDocuBlock walPropertiesGet
+/// `internal.wal.properties()`
+///
+/// Retrieves the configuration of the write-ahead log. The result is a JSON
+/// array with the following attributes:
+/// - *allowOversizeEntries*: whether or not operations that are bigger than a
+///   single logfile can be executed and stored
+/// - *logfileSize*: the size of each write-ahead logfile
+/// - *historicLogfiles*: the maximum number of historic logfiles to keep
+/// - *reserveLogfiles*: the maximum number of reserve logfiles that ArangoDB
+///   allocates in the background
+/// - *syncInterval*: the interval for automatic synchronization of not-yet
+///   synchronized write-ahead log data (in milliseconds)
+/// - *throttleWait*: the maximum wait time that operations will wait before
+///   they get aborted if case of write-throttling (in milliseconds)
+/// - *throttleWhenPending*: the number of unprocessed garbage-collection 
+///   operations that, when reached, will activate write-throttling. A value of
+///   *0* means that write-throttling will not be triggered.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{WalPropertiesGet}
+///   require("internal").wal.properties();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief configures the write-ahead log
+/// @startDocuBlock walPropertiesSet
+/// `internal.wal.properties(properties)`
+///
+/// Configures the behavior of the write-ahead log. *properties* must be a JSON
+/// JSON object with the following attributes:
+/// - *allowOversizeEntries*: whether or not operations that are bigger than a 
+///   single logfile can be executed and stored
+/// - *logfileSize*: the size of each write-ahead logfile
+/// - *historicLogfiles*: the maximum number of historic logfiles to keep
+/// - *reserveLogfiles*: the maximum number of reserve logfiles that ArangoDB
+///   allocates in the background
+/// - *throttleWait*: the maximum wait time that operations will wait before
+///   they get aborted if case of write-throttling (in milliseconds)
+/// - *throttleWhenPending*: the number of unprocessed garbage-collection 
+///   operations that, when reached, will activate write-throttling. A value of
+///   *0* means that write-throttling will not be triggered.
+///
+/// Specifying any of the above attributes is optional. Not specified attributes
+/// will be ignored and the configuration for them will not be modified.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{WalPropertiesSet}
+///   require("internal").wal.properties({ allowOverSizeEntries: true, logfileSize: 32 * 1024 * 1024 });
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_PropertiesWal (v8::Arguments const& argv) {
@@ -3920,7 +3975,32 @@ static v8::Handle<v8::Value> JS_PropertiesWal (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief flush the currently open WAL logfile
+/// @brief flushes the currently open WAL logfile
+/// @startDocuBlock walFlush
+/// `internal.wal.flush(waitForSync, waitForCollector)`
+///
+/// Flushes the write-ahead log. By flushing the currently active write-ahead
+/// logfile, the data in it can be transferred to collection journals and
+/// datafiles. This is useful to ensure that all data for a collection is
+/// present in the collection journals and datafiles, for example, when dumping
+/// the data of a collection.
+///
+/// The *waitForSync* option determines whether or not the operation should 
+/// block until the not-yet synchronized data in the write-ahead log was 
+/// synchronized to disk.
+///
+/// The *waitForCollector* operation can be used to specify that the operation
+/// should block until the data in the flushed log has been collected by the 
+/// write-ahead log garbage collector. Note that setting this option to *true* 
+/// might block for a long time if there are long-running transactions and 
+/// the write-ahead log garbage collector cannot finish garbage collection.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{WalFlush}
+///   require("internal").wal.flush();
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_FlushWal (v8::Arguments const& argv) {
@@ -5261,7 +5341,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
     TRI_V8_TYPE_ERROR(scope, "expecting string for <querystring>");
   }
 
-  string const queryString = TRI_ObjectToString(queryArg);
+  string const&& queryString = TRI_ObjectToString(queryArg);
 
   // bind parameters
   TRI_json_t* parameters = nullptr;
@@ -5788,7 +5868,7 @@ static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) 
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-  if (collection == 0) {
+  if (collection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
@@ -6193,18 +6273,25 @@ static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
 /// @startDocuBlock collectionFigures
 /// `collection.figures()`
 ///
-/// Returns an object containing all collection figures.
+/// Returns an object containing statistics about the collection.
+/// **Note** : Retrieving the figures will always load the collection into 
+/// memory.
 ///
-/// * *alive.count*: The number of living documents.
-/// * *alive.size*: The total size in bytes used by all
-///   living documents.
-/// * *dead.count*: The number of dead documents.
-/// * *dead.size*: The total size in bytes used by all
-///   dead documents.
-/// * *dead.deletion*: The total number of deletion markers.
-/// * *datafiles.count*: The number of active datafiles.
-/// * *datafiles.fileSize*: The total filesize of the active datafiles
-///   (in bytes).
+/// * *alive.count*: The number of curretly active documents in all datafiles and
+///   journals of the collection. Documents that are contained in the
+///   write-ahead log only are not reported in this figure.
+/// * *alive.size*: The total size in bytes used by all active documents of the
+///   collection. Documents that are contained in the write-ahead log only are
+///   not reported in this figure.
+/// - *dead.count*: The number of dead documents. This includes document
+///   versions that have been deleted or replaced by a newer version. Documents
+///   deleted or replaced that are contained in the write-ahead log only are not
+///   reported in this figure.
+/// * *dead.size*: The total size in bytes used by all dead documents.
+/// * *dead.deletion*: The total number of deletion markers. Deletion markers
+///   only contained in the write-ahead log are not reporting in this figure.
+/// * *datafiles.count*: The number of datafiles.
+/// * *datafiles.fileSize*: The total filesize of datafiles (in bytes).
 /// * *journals.count*: The number of journal files.
 /// * *journals.fileSize*: The total filesize of the journal files
 ///   (in bytes).
@@ -6213,32 +6300,57 @@ static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
 ///   (in bytes).
 /// * *shapefiles.count*: The number of shape files. This value is
 ///   deprecated and kept for compatibility reasons only. The value will always
-///   be 0.
+///   be 0 since ArangoDB 2.0 and higher.
 /// * *shapefiles.fileSize*: The total filesize of the shape files. This
 ///   value is deprecated and kept for compatibility reasons only. The value will
-///   always be 0.
+///   always be 0 in ArangoDB 2.0 and higher.
 /// * *shapes.count*: The total number of shapes used in the collection.
-///   This includes shapes that are not in use anymore.
+///   This includes shapes that are not in use anymore. Shapes that are contained
+///   in the write-ahead log only are not reported in this figure.
 /// * *shapes.size*: The total size of all shapes (in bytes). This includes
-///   shapes that are not in use anymore.
+///   shapes that are not in use anymore. Shapes that are contained in the
+///   write-ahead log only are not reported in this figure.
 /// * *attributes.count*: The total number of attributes used in the
 ///   collection. Note: the value includes data of attributes that are not in use
-///   anymore.
+///   anymore. Attributes that are contained in the write-ahead log only are
+///   not reported in this figure.
 /// * *attributes.size*: The total size of the attribute data (in bytes).
 ///   Note: the value includes data of attributes that are not in use anymore.
+///   Attributes that are contained in the write-ahead log only are not 
+///   reported in this figure.
 /// * *indexes.count*: The total number of indexes defined for the
 ///   collection, including the pre-defined indexes (e.g. primary index).
 /// * *indexes.size*: The total memory allocated for indexes in bytes.
 /// * *maxTick*: The tick of the last marker that was stored in a journal
 ///   of the collection. This might be 0 if the collection does not yet have
 ///   a journal.
-/// * *uncollectedLogfileEntries*: The number of markers in the write-aheads
-///   for this collection that have not been transferred in datafiles /
-///   journals of the collection.
+/// * *uncollectedLogfileEntries*: The number of markers in the write-ahead
+///   log for this collection that have not been transferred to journals or
+///   datafiles.
+///
+/// **Note**: collection data that are stored in the write-ahead log only are
+/// not reported in the results. When the write-ahead log is collected, documents
+/// might be added to journals and datafiles of the collection, which may modify 
+/// the figures of the collection.
+///
+/// Additionally, the filesizes of collection and index parameter JSON files are
+/// not reported. These files should normally have a size of a few bytes
+/// each. Please also note that the *fileSize* values are reported in bytes
+/// and reflect the logical file sizes. Some filesystems may use optimisations
+/// (e.g. sparse files) so that the actual physical file size is somewhat
+/// different. Directories and sub-directories may also require space in the
+/// file system, but this space is not reported in the *fileSize* results.
+///
+/// That means that the figures reported do not reflect the actual disk
+/// usage of the collection with 100% accuracy. The actual disk usage of
+/// a collection is normally slightly higher than the sum of the reported 
+/// *fileSize* values. Still the sum of the *fileSize* values can still be 
+/// used as a lower bound approximation of the disk usage.
 ///
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionFigures}
+/// ~ require("internal").wal.flush(true, true);
 ///   db.demo.figures()
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -6250,7 +6362,7 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
 
-  if (collection == 0) {
+  if (collection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
@@ -6265,13 +6377,7 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
     info = GetFigures(collection);
   }
 
-  if (info == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_errno());
-  }
-
-  TRI_ASSERT(info != 0);
-
-  if (info == NULL) {
+  if (info == nullptr) {
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
@@ -7158,10 +7264,10 @@ static v8::Handle<v8::Value> JS_RevisionVocbaseCol (v8::Arguments const& argv) {
 /// @startDocuBlock collectionRotate
 /// `collection.rotate()`
 ///
-/// Rotates the current journal of a collection (i.e. makes the journal a
-/// read-only datafile). The purpose of the rotation is to include the
-/// datafile in a following compaction run and perform earlier garbage
-/// collection.
+/// Rotates the current journal of a collection. This operation makes the 
+/// current journal of the collection a read-only datafile so it may become a
+/// candidate for garbage collection. If there is currently no journal available
+/// for the collection, the operation will fail with an error.
 ///
 /// **Note**: this method is not available in a cluster.
 ///
@@ -7535,6 +7641,8 @@ static v8::Handle<v8::Value> InsertEdgeColCoordinator (TRI_vocbase_col_t* collec
 /// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
 ///
+/// Note: since ArangoDB 2.2, *insert* is an alias for *save*.
+///
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionSave}
@@ -7819,6 +7927,52 @@ static v8::Handle<v8::Value> JS_VersionVocbaseCol (v8::Arguments const& argv) {
 
   return scope.Close(v8::Number::New((int) info._version));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks all data pointers in a collection
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+static v8::Handle<v8::Value> JS_CheckPointersVocbaseCol (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (collection == nullptr) {
+    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
+  }
+
+  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
+
+  V8ReadTransaction trx(collection->_vocbase, collection->_cid);
+
+  int res = trx.begin();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  TRI_document_collection_t* document = trx.documentCollection();
+
+  // iterate over the primary index and de-reference all the pointers to data
+  void** ptr = document->_primaryIndex._table;
+  void** end = ptr + document->_primaryIndex._nrAlloc;
+
+  for (;  ptr < end;  ++ptr) {
+    if (*ptr) {
+      char const* key = TRI_EXTRACT_MARKER_KEY((TRI_doc_mptr_t const*) *ptr);
+
+      TRI_ASSERT(key != nullptr);
+      // dereference the key
+      if (*key == '\0') {
+        TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+      }
+    }
+  }
+
+  return scope.Close(v8::True());
+}
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           TRI_VOCBASE_T FUNCTIONS
@@ -8180,8 +8334,6 @@ static v8::Handle<v8::Value> JS_CollectionVocbase (v8::Arguments const& argv) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionsDatabaseName}
 /// ~ db._create("example");
-///   db.example.load();
-///   var d = db.demo;
 ///   db._collections();
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -8527,8 +8679,8 @@ static v8::Handle<v8::Value> JS_CreateEdgeCollectionVocbase (v8::Arguments const
 /// ~ db._create("example");
 ///   a1 = db.example.save({ a : 1 });
 ///   a2 = db._replace(a1, { a : 2 });
-///   db._delete(a1);
-///   db._delete(a1, true);
+///   db._remove(a1);
+///   db._remove(a1, true);
 ///   db._document(a1);
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -10310,6 +10462,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "type", JS_TypeVocbaseCol);
   TRI_AddMethodVocbase(rt, "unload", JS_UnloadVocbaseCol);
   TRI_AddMethodVocbase(rt, "version", JS_VersionVocbaseCol);
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  TRI_AddMethodVocbase(rt, "checkPointers", JS_CheckPointersVocbaseCol);
+#endif  
 
   TRI_AddMethodVocbase(rt, "replace", JS_ReplaceVocbaseCol);
   TRI_AddMethodVocbase(rt, "save", JS_InsertVocbaseCol); // note: save is now an alias for insert

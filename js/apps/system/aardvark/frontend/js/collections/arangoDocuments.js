@@ -99,7 +99,12 @@
         contentType: "application/json",
         success: function(data) {
           self.clearDocuments();
-          self.setTotal(data.extra.fullCount);
+          if (data.extra && data.extra.fullCount) {
+            self.setTotal(data.extra.fullCount);
+          }
+          else {
+            self.setTotal(0);
+          }
           if (self.getTotal() !== 0) {
             _.each(data.result, function(v) {
               self.add({

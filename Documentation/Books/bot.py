@@ -37,6 +37,7 @@ def replaceText(text, pathOfFile, searchText):
   f=open(pathOfFile,'w')
 
   replaced = re.sub("@startDocuBlock\s+"+ searchText + "(?:\s+|$)",text,s)
+  replaced = re.sub("<!-- (\.*) -->","",replaced)
 
   # HTTP API changing code
   replaced = replaced.replace("@brief","")
@@ -60,6 +61,10 @@ def replaceText(text, pathOfFile, searchText):
   replaced = re.sub(r"@RESTRETURNCODE{(.*)}", r"* *\g<1>*:", replaced)
   replaced = re.sub(r"@RESTBODYPARAMS{(.*)}", r"*(\g<1>)*", replaced)
   replaced = replaced.replace("@EXAMPLES","**Examples**")
+  # Error codes replace
+  replaced = re.sub(r"#+\n","", replaced)
+  replaced = re.sub(r"(#+)\s+([\s\w()./,:-]+)\n", r"###\g<2>\n", replaced)
+  replaced = re.sub(r"([\w\_]+),([\d-]+),\s*\"([\s\w\/%()':.,-]+)\",\s*\"([\s\w(),.:'-]+).*\"(\,)*", r"**\g<2>** *\g<3>*:\n\g<4>\n", replaced)
 
   f.write(replaced)
   f.close()

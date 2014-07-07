@@ -1,4 +1,0 @@
-TOC {#GlossaryTOC}
-==================
-
-- @ref GlossaryIntro

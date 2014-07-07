@@ -104,8 +104,8 @@ void TRI_FreeQueryFulltextIndex (TRI_fulltext_query_t*);
 /// @brief create a fulltext query from a query string
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ParseQueryFulltextIndex (TRI_fulltext_query_t* const,
-                                 const char* const,
+int TRI_ParseQueryFulltextIndex (TRI_fulltext_query_t*,
+                                 char const*,
                                  bool*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -114,10 +114,10 @@ int TRI_ParseQueryFulltextIndex (TRI_fulltext_query_t* const,
 /// the caller must not free the word itself
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_SetQueryFulltextIndex (TRI_fulltext_query_t* const,
-                                const size_t,
-                                const char* const,
-                                const size_t,
+bool TRI_SetQueryFulltextIndex (TRI_fulltext_query_t*,
+                                size_t,
+                                char const*,
+                                size_t,
                                 TRI_fulltext_query_match_e,
                                 TRI_fulltext_query_operation_e);
 

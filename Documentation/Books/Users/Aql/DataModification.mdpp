@@ -1,0 +1,50 @@
+!CHAPTER Data modification queries
+
+Up to including version 2.1, AQL supported data retrieval operations only.
+Starting with ArangoDB version 2.2, AQL also supports the following 
+data-modification operations:
+
+- INSERT: insert new documents into a collection
+- UPDATE: partially update existing documents in a collection
+- REPLACE: completely replace existing documents in a collection
+- REMOVE: remove existing documents from a collection
+
+Data-modification operations are normally combined with a *FOR* loop to
+iterate over a given list of documents. It can optionally be combined with
+*FILTER* statements and the like.
+
+    FOR u IN users
+      FILTER u.status == 'not active'
+      UPDATE u WITH { status: 'inactive' } IN users
+
+Data-modification queries are restricted to modifying data in a single 
+collection per query. That means a data-modification query cannot modify 
+data in multiple collections with a single query, though it is possible
+to read from one collection and modify data in another with one query.
+
+For example, to copy the contents of collection "users" into collection
+"backup":
+
+    FOR u IN users
+      INSERT u IN backup
+
+To remove documents in collection "backup" that have the same key as some
+matching documents in collection "users":
+
+    FOR u IN users
+      FILTER u.status == 'inactive'
+      REMOVE u._key IN backup
+
+The name of the modified collection ("backup" in th above cases) must be 
+known to the AQL executor at query-compile time and cannot change at 
+runtime. Using a bind parameter to specify the collection name is allowed.
+  
+On a single server, data-modification operations are executed transactionally.
+If a data-modification operation fails, it will be rolled back automatically
+as if it never happened.
+
+In a cluster, AQL data-modification queries are not executed transactionally.
+Additionally, update, replace and remove AQL queries currently require the 
+*_key* attribute to be specified for all documents that should be modified or 
+removed, even if a shard key attribute other than *_key* was chosen for the
+collection. This restriction might be lifted in a future release of ArangoDB.

@@ -14,28 +14,20 @@ The *dump* method can be used to fetch data from a specific collection. As the
 results of the dump command can be huge, *dump* may not return all data from a collection
 at once. Instead, the dump command may be called repeatedly by replication clients
 until there is no more data to fetch. The dump command will not only return the
-current documents in the collection, but also document updates and deletions. 
+current documents in the collection, but also document updates and deletions.
+
+Please note that the *dump* method will only return documents, updates and deletions
+from a collection's journals and datafiles. Operations that are stored in the write-ahead
+log only will not be returned. In order to ensure that these operations are included
+in a dump, the write-ahead log must be flushed first. 
 
 To get to an identical state of data, replication clients should apply the individual
-parts of the dump results in the same order as they are served to them.
+parts of the dump results in the same order as they are provided.
 
 <!-- arangod/RestHandler/RestReplicationHandler.cpp -->
 @startDocuBlock JSF_get_api_replication_dump
 
-The *sync* method can be used by replication clients to connect an ArangoDB database 
-to a remote endpoint, fetch the remote list of collections and indexes, and collection
-data. 
-It will thus create a local backup of the state of data at the remote ArangoDB database.
-*sync* works on a database level. 
-
-*sync* will first fetch the list of collections and indexes from the remote endpoint.
-It does so by calling the *inventory* API of the remote database. It will then purge
-data in the local ArangoDB database, and after start will transfer collection data 
-from the remote database to the local ArangoDB database. It will extract data from the
-remote database by calling the remote database's *dump* API until all data are fetched.
-
-As mentioned, *sync* will remove data from the local instance, and thus must be handled
-with caution.
 
 <!-- arangod/RestHandler/RestReplicationHandler.cpp -->
 @startDocuBlock JSF_put_api_replication_synchronize
+

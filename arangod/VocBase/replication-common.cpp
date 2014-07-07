@@ -77,6 +77,8 @@ bool TRI_ExcludeCollectionReplication (const char* name) {
       TRI_EqualString(name, TRI_COL_NAME_USERS) ||
       TRI_IsPrefixString(name, TRI_COL_NAME_STATISTICS) ||
       TRI_EqualString(name, "_aal") ||
+      TRI_EqualString(name, "_configuration") ||
+      TRI_EqualString(name, "_cluster_kickstarter_plans") ||
       TRI_EqualString(name, "_fishbowl") ||
       TRI_EqualString(name, "_modules") ||
       TRI_EqualString(name, "_routing")) {

@@ -1,0 +1,130 @@
+!CHAPTER Data-modification queries
+
+The following operations can be used to modify data of multiple documents
+with one query. This is superior to fetching and updating the documents individually
+with multiple queries. However, if only a single document needs to be modified,
+ArangoDB's specialized data-modification operations for single documents
+might execute faster. 
+
+!SUBSECTION Updating documents
+
+To update existing documents, we can either use the *UPDATE* or the *REPLACE*
+operation. *UPDATE* updates only the specified attributes in the found documents,
+and *REPLACE* completely replaces the found documents with the specified values.
+
+We'll start with an *UPDATE* query that rewrites the gender attribute in all
+documents:
+
+```js
+FOR u IN users
+  UPDATE u WITH { gender: TRANSLATE(u.gender, { m: 'male', f: 'female' }) } IN users
+``` 
+
+To add new attributes to existing documents, we can also use an *UPDATE* query.
+The following query adds an attribute *numberOfLogins* for all users with status
+active:
+
+```js
+FOR u IN users
+  FILTER u.active == true
+  UPDATE u WITH { numberOfLogins: 0 } IN users
+``` 
+
+Existing attributes can also be updated based on their previous value:
+
+```js
+FOR u IN users
+  FILTER u.active == true
+  UPDATE u WITH { numberOfLogins: u.numberOfLogins + 1 } IN users
+``` 
+
+The above query will only work if there was already a *numberOfLogins* attribute
+present in the document. If it is unsure whether there is a *numberOfLogins* 
+attribute in the document, the increase must be made conditional:
+
+```js
+FOR u IN users
+  FILTER u.active == true
+  UPDATE u WITH { 
+    numberOfLogins: HAS(u, 'numberOfLogins') ? u.numberOfLogins + 1 : 1 
+  } IN users
+``` 
+
+Updates of multiple attributes can be combined in a single query:
+
+```js
+FOR u IN users
+  FILTER u.active == true
+  UPDATE u WITH { 
+    lastLogin: DATE_NOW(), 
+    numberOfLogins: HAS(u, 'numberOfLogins') ? u.numberOfLogins + 1 : 1 
+  } IN users
+``` 
+
+To completely replace existing documents, use the *REPLACE* operation.
+The following query replaces all documents in collection backup with the documents
+found in collection users. Only those documents will be replaced that are present
+in both collections. Documents are compared using their *_key* attributes:
+
+```js
+FOR u IN users
+  REPLACE u IN backup 
+``` 
+
+The above query will fail if there are documents in collection users that are
+not in collection backup yet. In this case, the query would attempt to replace
+documents that do not exist. To make the query succeed for such case, use the
+*ignoreErrors* query option:
+
+```js
+FOR u IN users
+  REPLACE u IN backup OPTIONS { ignoreErrors: true } 
+``` 
+
+!SUBSECTION Removing documents
+
+Removing documents can be achieved with the *REMOVE* operation.
+To remove all users within a certain age range, we can use the following query:
+
+```js
+FOR u IN users
+  FILTER u.active == true && u.age >= 35 && u.age <= 37
+  REMOVE u IN users
+``` 
+
+!SUBSECTION Creating documents
+
+To create new documents, there is the *INSERT* operation. 
+It can also be used to generate copies of existing documents from other collections,
+or to create synthetic documents (e.g. for testing purposes). The following
+query creates 1000 test users in collection users with some attributes set:
+
+```js
+FOR i IN 1..1000
+  INSERT { 
+    id: 100000 + i, 
+    age: 18 + FLOOR(RAND() * 25), 
+    name: CONCAT('test', TO_STRING(i)), 
+    active: false, 
+    gender: i % 2 == 0 ? 'male' : 'female' 
+  } IN users
+``` 
+
+!SUBSECTION Copying data from one collection into another
+
+To copy data from one collection into another, an *INSERT* operation can be
+used:
+
+```js
+FOR u IN users
+  INSERT u IN backup
+``` 
+
+This will copy over all documents from collection users into collection 
+backup. Note that both collections must already exist when the query is
+executed. The query might fail if backup already contains documents, as
+executing the insert might attempt to insert the same document again. This
+will trigger a unique key constraint violation.
+To make such copy operation work in all cases, the target collection can
+be emptied before using a *REMOVE* query.
+
