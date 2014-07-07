@@ -16,6 +16,10 @@
 <!-- js/common/modules/org/arangodb/arango-collection-common.js-->
 @startDocuBlock collectionRange
 
+!SUBSECTION Closed range
+<!-- js/common/modules/org/arangodb/arango-collection-common.js-->
+@startDocuBlock collectionClosedRange
+
 !SUBSECTION Any
 <!-- js/server/modules/org/arangodb/arango-collection.js-->
 @startDocuBlock documentsCollectionAny

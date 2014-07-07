@@ -86,11 +86,6 @@ the option *--disable-figures*.
 <!-- lib/HttpServer/ApplicationEndpointServer.h -->
 @startDocuBlock databaseWaitForSync
 
-
-!SUBSECTION Sync properties
-<!-- lib/HttpServer/ApplicationEndpointServer.h -->
-@startDocuBlock databaseForceSync
-
 !SUBSECTION Frequency
 <!-- arangod/V8Server/ApplicationV8.h -->
 @startDocuBlock jsGcFrequency

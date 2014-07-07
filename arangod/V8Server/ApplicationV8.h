@@ -428,13 +428,11 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the directory containing the startup scripts
-/// @startDocuBlock jsStartupDirectory
 /// 
 /// `--javascript.startup-directory directory`
 ///
 /// Specifies the *directory* path to the JavaScript files used for
 /// bootstraping.
-/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         string _startupPath;
@@ -459,25 +457,21 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief semicolon separated list of application directories
-/// @startDocuBlock jsAppPath
 /// `--javascript.app-path directory`
 ///
 /// Specifies the *directory* path where the applications are located.
 /// Multiple paths can be specified separated with commas.
-/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         string _appPath;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief semicolon separated list of application directories
-/// @startDocuBlock jsDevApp
 /// `--javascript.dev-app-path directory`
 ///
 /// Specifies the `directory` path where the development applications are
 /// located. Multiple paths can be specified separated with commas. Never use
 /// this option for production.
-/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         string _devAppPath;
