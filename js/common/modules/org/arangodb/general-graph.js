@@ -1707,14 +1707,14 @@ var _create = function (graphName, edgeDefinitions, orphanCollections) {
   );
   orphanCollections = orphanCollections.sort();
 
-  var e = gdb.save({
+  var data =  gdb.save({
     'orphanCollections' : orphanCollections,
     'edgeDefinitions' : edgeDefinitions,
     '_key' : graphName
   });
 
   result = new Graph(graphName, edgeDefinitions, collections[0], collections[1],
-    orphanCollections, e._rev , e._id);
+    orphanCollections, data._rev , data._id);
   return result;
 
 };
