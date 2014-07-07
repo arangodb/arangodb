@@ -1249,17 +1249,21 @@ static int ScanTrxCollection (TRI_vocbase_t* vocbase) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  triagens::arango::SingleCollectionReadOnlyTransaction<triagens::arango::RestTransactionContext> trx(vocbase, collection->_cid);
+  int res = TRI_ERROR_INTERNAL;
 
-  int res = trx.begin();
+  {
+    triagens::arango::SingleCollectionReadOnlyTransaction<triagens::arango::RestTransactionContext> trx(vocbase, collection->_cid);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+    res = trx.begin();
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
+    TRI_DocumentIteratorDocumentCollection(&trx, trx.documentCollection(), vocbase, &ScanTrxCallback);
+
+    trx.finish(res);
   }
-
-  TRI_DocumentIteratorDocumentCollection(&trx, trx.documentCollection(), vocbase, &ScanTrxCallback);
-
-  trx.finish(res);
 
   // don't need the collection anymore, so unload it
   TRI_UnloadCollectionVocBase(vocbase, collection, true);
