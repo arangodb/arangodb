@@ -356,9 +356,9 @@ describe ArangoDB do
       it "can create a vertex" do
         name = "Alice"
         doc = create_vertex(graph_name, user_collection, {"name" => name}) 
-        doc.code.should eq(201)
+        doc.code.should eq(202)
         doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['code'].should eq(202)
         doc.parsed_response['vertex']['_rev'].should eq(doc.headers['etag'])
       end
 
@@ -492,9 +492,9 @@ describe ArangoDB do
         v2 = create_vertex(graph_name, user_collection, {}) 
         v2 = v2.parsed_response['vertex']['_id']
         doc = create_edge(graph_name, friend_collection, v1, v2, {}) 
-        doc.code.should eq(201)
+        doc.code.should eq(202)
         doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['code'].should eq(202)
         doc.parsed_response['edge']['_rev'].should eq(doc.headers['etag'])
       end
 
