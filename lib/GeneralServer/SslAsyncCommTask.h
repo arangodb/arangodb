@@ -297,10 +297,10 @@ again:
                 return true;
 
               case SSL_ERROR_SSL:
-                LOG_DBEUG("received SSL error (bytes read %d, socket %d): %s",
-                            nr,
-                            (int) TRI_get_fd_or_handle_of_socket(this->_commSocket),
-                            triagens::basics::lastSSLError().c_str());
+                LOG_DEBUG("received SSL error (bytes read %d, socket %d): %s",
+                          nr,
+                          (int) TRI_get_fd_or_handle_of_socket(this->_commSocket),
+                          triagens::basics::lastSSLError().c_str());
 
                 shutdownSsl(false);
                 return false;
