@@ -688,6 +688,7 @@
             };
             spyOn(arangoDocStoreDummy, "setToFirst");
             spyOn(arangoDocStoreDummy, "addFilter");
+            spyOn(arangoDocStoreDummy, "resetFilter");
             spyOn(arangoDocStoreDummy, "getDocuments");
             spyOn(window, "arangoDocuments").andReturn(arangoDocStoreDummy);
             spyOn(view, "clearTable");
@@ -701,6 +702,7 @@
             expect(view.clearTable).toHaveBeenCalled();
             expect(view.drawTable).toHaveBeenCalled();
             expect(view.renderPagination).toHaveBeenCalled();
+            expect(arangoDocStoreDummy.resetFilter).toHaveBeenCalled();
             expect(arangoDocStoreDummy.addFilter).toHaveBeenCalledWith(
                 "name0", "operator0", { jsonval: 1 }
             );
