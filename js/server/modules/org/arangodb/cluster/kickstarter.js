@@ -1218,7 +1218,7 @@ Kickstarter.prototype.isHealthy = function() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_Kickstarter_prototype_upgrade
 ///
-/// `Kickstarter.upgrade()
+/// `Kickstarter.upgrade()`
 ///
 /// This performs an upgrade procedure on a cluster as described in
 /// the plan which was given to the constructor. To this end, other
