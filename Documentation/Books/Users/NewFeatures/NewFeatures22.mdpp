@@ -78,7 +78,7 @@ datafiles of collections, allowing the server to remove older write-ahead logfil
 
 Cross-collection transactions in ArangoDB should benefit considerably by this
 change, as less writes than in previous versions are required to ensure the data 
-of multiple collections are atomcially and durably committed. All data-modifying 
+of multiple collections are atomically and durably committed. All data-modifying 
 operations inside transactions (insert, update, remove) will write their 
 operations into the write-ahead log directly now. In previous versions, such 
 operations were buffered until the commit or rollback occurred. Transactions with
@@ -128,7 +128,7 @@ or configuring it will have no effect.
 
   This change will emit buffered intermediate print results and discard the
   output buffer to quickly deliver print results to the user, and to prevent
-  constructing very large buffers for large resultis.
+  constructing very large buffers for large results.
 
 
 !SECTION Miscellaneous improvements

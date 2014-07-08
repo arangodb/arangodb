@@ -267,6 +267,11 @@ static bool LoadJavaScriptDirectory (char const* path,
       if (tryCatch.CanContinue()) {
         TRI_LogV8Exception(&tryCatch);
       }
+      else {
+        TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+
+        v8g->_canceled = true;
+      }
     }
   }
 
@@ -418,6 +423,9 @@ static v8::Handle<v8::Value> JS_Parse (v8::Arguments const& argv) {
       TRI_V8_SYNTAX_ERROR(scope, err.c_str());
     }
     else {
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+
+      v8g->_canceled = true;
       return scope.Close(v8::Undefined());
     }
   }
@@ -828,6 +836,9 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
         return scope.Close(v8::ThrowException(tryCatch.Exception()));
       }
       else {
+        TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+        v8g->_canceled = true;
         return scope.Close(v8::Undefined());
       }
     }
@@ -846,6 +857,9 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
         return scope.Close(v8::ThrowException(tryCatch.Exception()));
       }
       else {
+        TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+        v8g->_canceled = true;
         return scope.Close(v8::Undefined());
       }
     }
@@ -3300,6 +3314,9 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString (v8::Handle<v8::Context> conte
           TRI_LogV8Exception(&tryCatch);
         }
         else {
+          TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+          v8g->_canceled = true;
           return scope.Close(v8::Undefined());
         }
       }
