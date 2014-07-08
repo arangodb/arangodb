@@ -4013,18 +4013,22 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__deleteEdgeDefinition
+/// @brief Delete one relation definition
+///
 /// `graph_module._deleteEdgeDefinition(edgeCollectionName)`
-/// *Delete one relation definition*
 ///
 /// Deletes a relation definition defined by the edge collection of a graph. If the
 /// collections defined in the edge definition (collection, from, to) are not used
 /// in another edge definition of the graph, they will be moved to the orphanage.
 ///
-/// *Parameter*
+/// @PARAMS
 ///
-/// * *edgeCollectionName*: Name of edge collection in the relation definition.
+/// @PARAM{edgeCollectionName, string, required}
+/// Name of edge collection in the relation definition.
+/// @PARAM{edgeCollectionName, string, required}
+/// Define if the edge collection should be dropped. Default false.
 ///
-/// *Examples*
+/// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__deleteEdgeDefinition}
 ///   var graph_module = require("org/arangodb/general-graph")
@@ -4033,13 +4037,25 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
 ///   var ed2 = graph_module._directedRelation("myEC2", ["myVC1"], ["myVC3"]);
 ///   var graph = graph_module._create("myGraph", [ed1, ed2]);
 ///   graph._deleteEdgeDefinition("myEC1");
+///   db._collection("myEC1");
+/// ~ var blub = graph_module._drop("myGraph", true);
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__deleteEdgeDefinitionWithDrop}
+///   var graph_module = require("org/arangodb/general-graph")
+/// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
+///   var ed1 = graph_module._directedRelation("myEC1", ["myVC1"], ["myVC2"]);
+///   var ed2 = graph_module._directedRelation("myEC2", ["myVC1"], ["myVC3"]);
+///   var graph = graph_module._create("myGraph", [ed1, ed2]);
+///   graph._deleteEdgeDefinition("myEC1", true);
+///   db._collection("myEC1");
 /// ~ var blub = graph_module._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._deleteEdgeDefinition = function(edgeCollection) {
+Graph.prototype._deleteEdgeDefinition = function(edgeCollection, dropCollection) {
 
   //check, if in graphs edge definition
   if (this.__edgeCollections[edgeCollection] === undefined) {
@@ -4085,7 +4101,9 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection) {
     }
   );
 
-
+  if (dropCollection) {
+    db._drop(edgeCollection);
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
