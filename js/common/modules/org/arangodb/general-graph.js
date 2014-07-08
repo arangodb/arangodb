@@ -3864,7 +3864,6 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
 
 var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollections, possibleOrphans, self) {
 
-  var oldCollections = [];
   var graphCollections = [];
   var graphObj = _graph(graph._key);
   var eDs = graph.edgeDefinitions;
@@ -3875,8 +3874,6 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
     function(eD, id) {
       if(eD.collection === edgeDefinition.collection) {
         gotAHit = true;
-        oldCollections = _.union(oldCollections, eD.from);
-        oldCollections = _.union(oldCollections, eD.to);
         eDs[id].from = edgeDefinition.from;
         eDs[id].to = edgeDefinition.to;
         db._graphs.update(graph._key, {edgeDefinitions: eDs});
@@ -3891,32 +3888,50 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
       }
     }
   );
-
+  if (!gotAHit) {
+    return;
+  }
 
   //remove used collection from orphanage
-  newCollections.forEach(
-    function(nc) {
-      if (graph._key === self.__name) {
+  if (graph._key === self.__name) {
+    newCollections.forEach(
+      function(nc) {
         if (self.__vertexCollections[nc] === undefined) {
           self.__vertexCollections[nc] = db[nc];
         }
         try {
-          graphObj._removeVertexCollection(nc, false);
-        } catch (ignore) {
+          self._removeVertexCollection(nc, false);
+        } catch (ignore) { }
+      }
+    );
+    possibleOrphans.forEach(
+      function(po) {
+        if (graphCollections.indexOf(po) === -1) {
+          delete self.__vertexCollections[po];
+          self._addVertexCollection(po);
         }
       }
-    }
-  );
+    );
+  } else {
+    newCollections.forEach(
+      function(nc) {
+        try {
+          graphObj._removeVertexCollection(nc, false);
+        } catch (ignore) { }
+      }
+    );
+    possibleOrphans.forEach(
+      function(po) {
+        if (graphCollections.indexOf(po) === -1) {
+          delete graphObj.__vertexCollections[po];
+          graphObj._addVertexCollection(po);
+        }
+      }
+    );
+
+  }
 
   //move unused collections to orphanage
-  possibleOrphans.forEach(
-    function(po) {
-      if (graphCollections.indexOf(po) === -1 && gotAHit) {
-        delete graphObj.__vertexCollections[po];
-        graphObj._addVertexCollection(po);
-      }
-    }
-  );
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3952,6 +3967,11 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
 ///
 ////////////////////////////////////////////////////////////////////////////////
 Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
+  /*
+  require("internal").print("Before:");
+  require("internal").print(this.__vertexCollections);
+  require("internal").print(this.__orphanCollections);
+  */
   edgeDefinition = sortEdgeDefinition(edgeDefinition);
   var self = this;
 
@@ -3993,6 +4013,11 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
     }
   );
   updateBindCollections(this);
+  /*
+  require("internal").print("After:");
+  require("internal").print(this.__vertexCollections);
+  require("internal").print(this.__orphanCollections);
+  */
 
 };
 
