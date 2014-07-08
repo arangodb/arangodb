@@ -150,7 +150,7 @@ Job::status_t V8Job::work () {
         TRI_LogV8Exception(&tryCatch);
       }
       else {
-        LOG_WARNING("caught non-printable exception in periodic task");
+        LOG_WARNING("caught non-cachable exception in periodic task");
       }
     }
   }
