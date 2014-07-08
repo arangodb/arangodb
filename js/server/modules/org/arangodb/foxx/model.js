@@ -208,7 +208,7 @@ _.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_get
 ///
-/// `FoxxModel::get(name)`
+/// `FoxxModel#get(name)`
 ///
 /// Get the value of an attribute
 ///
@@ -232,7 +232,7 @@ _.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_set
 ///
-/// `FoxxModel::set(name, value)`
+/// `FoxxModel#set(name, value)`
 ///
 /// Set the value of an attribute or multiple attributes at once
 ///
@@ -291,7 +291,7 @@ _.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_has
 ///
-/// `FoxxModel::has(name)`
+/// `FoxxModel#has(name)`
 ///
 /// Returns true if the attribute is set to a non-null or non-undefined value.
 ///
@@ -317,7 +317,7 @@ _.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_forDB
 ///
-/// `FoxxModel::forDB()`
+/// `FoxxModel#forDB()`
 ///
 /// Return a copy of the model which can be saved into ArangoDB
 /// @endDocuBlock
@@ -331,7 +331,7 @@ _.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_forClient
 ///
-/// `FoxxModel::forClient()`
+/// `FoxxModel#forClient()`
 ///
 /// Return a copy of the model which you can send to the client.
 /// @endDocuBlock
@@ -346,7 +346,7 @@ _.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_extend
 ///
-/// `FoxxModel::extend(instanceProperties, classProperties)`
+/// `FoxxModel#extend(instanceProperties, classProperties)`
 ///
 /// Extend the Model prototype to add or overwrite methods.
 /// The first object contains the properties to be defined on the instance,
