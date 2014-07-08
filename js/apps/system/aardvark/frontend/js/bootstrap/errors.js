@@ -234,6 +234,7 @@
     "ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS" : { "code" : 1935, "message" : "Invalid number of arguments. Expected: " }, 
     "ERROR_GRAPH_INVALID_PARAMETER" : { "code" : 1936, "message" : "Invalid parameter type." }, 
     "ERROR_GRAPH_INVALID_ID"       : { "code" : 1937, "message" : "Invalid id" }, 
+    "ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS" : { "code" : 1938, "message" : "collection used in orphans" }, 
     "ERROR_SESSION_UNKNOWN"        : { "code" : 1950, "message" : "unknown session" }, 
     "ERROR_SESSION_EXPIRED"        : { "code" : 1951, "message" : "session expired" }, 
     "SIMPLE_CLIENT_UNKNOWN_ERROR"  : { "code" : 2000, "message" : "unknown client error" }, 

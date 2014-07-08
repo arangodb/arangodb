@@ -541,6 +541,8 @@ extern "C" {
 ///   Invalid parameter type.
 /// - 1937: @LIT{Invalid id}
 ///   Invalid id
+/// - 1938: @LIT{collection used in orphans}
+///   The collection is already used in the orphans of the graph.
 /// - 1950: @LIT{unknown session}
 ///   Will be raised when an invalid/unknown session id is passed to the server.
 /// - 1951: @LIT{session expired}
@@ -2869,6 +2871,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_INVALID_ID                                        (1937)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1938: ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS
+///
+/// collection used in orphans
+///
+/// The collection is already used in the orphans of the graph.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS                        (1938)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1950: ERROR_SESSION_UNKNOWN
