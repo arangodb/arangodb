@@ -323,13 +323,10 @@ extend(RequestContext.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_RequestContext_summary
-///
 /// `FoxxController::summary(description)`
 ///
 /// Set the summary for this route in the documentation. Can't be longer than 60.
 /// characters
-/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   summary: function (summary) {
@@ -342,12 +339,9 @@ extend(RequestContext.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_foxx_RequestContext_notes
-///
 /// `FoxxController::notes(description)`
 ///
 /// Set the notes for this route in the documentation
-/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   notes: function (notes) {
