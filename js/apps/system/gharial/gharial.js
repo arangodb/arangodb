@@ -42,6 +42,14 @@
     toId = function(c, k) {
       return c + "/" + k;
     },
+    buildError = function(err, code) {
+      return {
+        error: true,
+        code: code || actions.HTTP_BAD,
+        errorNum: err.errorNum,
+        errorMessage: err.errorMessage
+      };
+    },
     setOptions = function(req) {
       var options = {
         code: actions.HTTP_ACCEPTED
@@ -204,10 +212,7 @@
   })
   .errorResponse(
     ArangoError, actions.HTTP_CONFLICT, "Graph creation error.", function(e) {
-      return {
-        code: actions.HTTP_CONFLICT,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_CONFLICT);
     }
   )
   .bodyParam("graph", "The required information for a graph", Model);
@@ -252,10 +257,7 @@
     description: "Name of the graph."
   }).errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "Graph could not be found.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 
@@ -299,10 +301,7 @@
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The graph does not exist.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 
@@ -341,10 +340,7 @@
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The graph could not be found.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 
@@ -388,10 +384,7 @@
   )
   .errorResponse(
     ArangoError, actions.HTTP_BAD, "The vertex collection is invalid.", function(e) {
-      return {
-        code: actions.HTTP_BAD,
-        error: e.errorMessage
-      };
+      return buildError(e);
     }
   );
 
@@ -456,7 +449,9 @@
   })
   .errorResponse(
     ArangoError, actions.HTTP_BAD,
-    "The collection is not found or part of an edge definition."
+    "The collection is not found or part of an edge definition.", function(e) {
+      return buildError(e, actions.HTTP_BAD);
+    }
   );
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -491,10 +486,7 @@
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The graph could not be found.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 
@@ -542,10 +534,7 @@
   )
   .errorResponse(
     ArangoError, actions.HTTP_BAD, "The edge definition is invalid.", function(e) {
-      return {
-        code: actions.HTTP_BAD,
-        error: e.errorMessage
-      };
+      return buildError(e);
     }
   );
 
@@ -606,10 +595,7 @@
   )
   .errorResponse(
     ArangoError, actions.HTTP_BAD, "The edge definition is invalid.", function(e) {
-      return {
-        code: actions.HTTP_BAD,
-        error: e.errorMessage
-      };
+      return buildError(e);
     }
   );
 
@@ -657,10 +643,7 @@
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The edge definition is invalid.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 
@@ -760,10 +743,7 @@
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The vertex does not exist.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 
@@ -825,10 +805,7 @@
   .bodyParam("vertex", "The document to be stored", Model)
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The vertex does not exist.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 
@@ -893,10 +870,7 @@
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The vertex does not exist.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 
@@ -953,10 +927,7 @@
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The vertex does not exist.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 
@@ -1024,10 +995,7 @@
   )
   .errorResponse(
     ArangoError, actions.HTTP_BAD_REQUEST, "The edge could not be created.", function(e) {
-      return {
-        code: actions.HTTP_BAD_REQUEST,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_BAD_REQUEST);
     }
   );
 
@@ -1080,10 +1048,7 @@
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The edge does not exist.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 
@@ -1143,10 +1108,7 @@
   .bodyParam("edge", "The document to be stored. _from and _to attributes are ignored", Model)
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The edge does not exist.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 
@@ -1212,10 +1174,7 @@
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The edge does not exist.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 
@@ -1271,10 +1230,7 @@
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The edge does not exist.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 }());
