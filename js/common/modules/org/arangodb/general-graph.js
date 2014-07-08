@@ -3967,11 +3967,6 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
 ///
 ////////////////////////////////////////////////////////////////////////////////
 Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
-  /*
-  require("internal").print("Before:");
-  require("internal").print(this.__vertexCollections);
-  require("internal").print(this.__orphanCollections);
-  */
   edgeDefinition = sortEdgeDefinition(edgeDefinition);
   var self = this;
 
@@ -4013,12 +4008,6 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
     }
   );
   updateBindCollections(this);
-  /*
-  require("internal").print("After:");
-  require("internal").print(this.__vertexCollections);
-  require("internal").print(this.__orphanCollections);
-  */
-
 };
 
 
