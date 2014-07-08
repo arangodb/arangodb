@@ -583,7 +583,6 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_cluster_statistics_GET
 /// @brief allows to query the statistics of a DBserver in the cluster
 ///
 /// @RESTHEADER{GET /_admin/clusterStatistics, Queries statistics of DBserver}
@@ -602,7 +601,6 @@ actions.defineHttp({
 /// ID of a DBserver
 ///
 /// @RESTRETURNCODE{403} server is not a coordinator.
-/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
