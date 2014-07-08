@@ -240,7 +240,7 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContext_queryParam
 ///
-/// `FoxxController::queryParam(id, options)`
+/// `FoxxController#queryParam(id, options)`
 ///
 /// Describe a query parameter:
 ///
@@ -284,7 +284,7 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContext_bodyParam
 ///
-/// `FoxxController::bodyParam(paramName, description, Model)`
+/// `FoxxController#bodyParam(paramName, description, Model)`
 ///
 /// Expect the body of the request to be a JSON with the attributes you annotated
 /// in your model. It will appear alongside the provided description in your
@@ -300,7 +300,7 @@ extend(RequestContext.prototype, {
 /// return an array of models.
 ///
 /// The behavior of *bodyParam* changes depending on the *rootElement* option
-/// set in the [manifest](../Foxx/Manifest.md). If it is set to true, it is 
+/// set in the [manifest](../Foxx/Manifest.md). If it is set to true, it is
 /// expected that the body is an
 /// object with a key of the same name as the *paramName* argument.
 /// The value of this object is either a single object or in the case of a multi
@@ -323,7 +323,7 @@ extend(RequestContext.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// `FoxxController::summary(description)`
+/// `FoxxController#summary(description)`
 ///
 /// Set the summary for this route in the documentation. Can't be longer than 60.
 /// characters
@@ -339,7 +339,7 @@ extend(RequestContext.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// `FoxxController::notes(description)`
+/// `FoxxController#notes(description)`
 ///
 /// Set the notes for this route in the documentation
 ////////////////////////////////////////////////////////////////////////////////
@@ -353,7 +353,7 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContext_errorResponse
 ///
-/// `FoxxController::errorResponse(errorClass, code, description)`
+/// `FoxxController#errorResponse(errorClass, code, description)`
 ///
 /// Define a reaction to a thrown error for this route: If your handler throws an error
 /// of the defined errorClass, it will be caught and the response will have the given
@@ -403,7 +403,7 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContext_onlyIf
 ///
-/// `FoxxController::onlyIf(check)`
+/// `FoxxController#onlyIf(check)`
 ///
 /// Provide it with a function that throws an exception if the normal processing should
 /// not be executed. Provide an `errorResponse` to define the behavior in this case.
@@ -428,7 +428,7 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContext_onlyIfAuthenticated
 ///
-/// `FoxxController::onlyIf(code, reason)`
+/// `FoxxController#onlyIf(code, reason)`
 ///
 /// Please activate authentification for this app if you want to use this function.
 /// If the user is logged in, it will do nothing. Otherwise it will respond with
@@ -486,7 +486,7 @@ _.each([
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContextBuffer_errorResponse
 ///
-/// `RequestContextBuffer::errorResponse(errorClass, code, description)`
+/// `RequestContextBuffer#errorResponse(errorClass, code, description)`
 ///
 /// Defines an *errorResponse* for all routes of this controller. For details on
 /// *errorResponse* see the according method on routes.
@@ -507,7 +507,7 @@ _.each([
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContextBuffer_onlyIf
 ///
-/// `RequestContextBuffer::onlyIf(code, reason)`
+/// `RequestContextBuffer#onlyIf(code, reason)`
 ///
 /// Defines an *onlyIf* for all routes of this controller. For details on
 /// *onlyIf* see the according method on routes.
@@ -528,7 +528,7 @@ _.each([
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContextBuffer_onlyIfAuthenticated
 ///
-/// `RequestContextBuffer::errorResponse(errorClass, code, description)`
+/// `RequestContextBuffer#errorResponse(errorClass, code, description)`
 ///
 /// Defines an *onlyIfAuthenticated* for all routes of this controller. For details on
 /// *onlyIfAuthenticated* see the according method on routes.
