@@ -201,14 +201,16 @@
       infos.get("orphanCollections")
     );
     setGraphResponse(res, g, actions.HTTP_CREATED);
-  }).errorResponse(
+  })
+  .errorResponse(
     ArangoError, actions.HTTP_CONFLICT, "Graph creation error.", function(e) {
       return {
         code: actions.HTTP_CONFLICT,
         error: e.errorMessage
       };
     }
-  ).bodyParam("graph", "The required information for a graph", Model);
+  )
+  .bodyParam("graph", "The required information for a graph", Model);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_get_http_examples
@@ -675,7 +677,7 @@
 ///   }
 ///   var response = logCurlRequest('POST', url, body);
 ///
-///   assert(response.code === 201);
+///   assert(response.code === 202);
 ///
 ///   logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -973,7 +975,7 @@
 ///   };
 ///   var response = logCurlRequest('POST', url, body);
 ///
-///   assert(response.code === 201);
+///   assert(response.code === 202);
 ///
 ///   logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
