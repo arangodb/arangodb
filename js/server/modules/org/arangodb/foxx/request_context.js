@@ -284,7 +284,7 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContext_bodyParam
 ///
-/// `FoxxController#bodyParam(paramName, description, Model)`
+/// `FoxxController#bodyParam(paramName, options)`
 ///
 /// Expect the body of the request to be a JSON with the attributes you annotated
 /// in your model. It will appear alongside the provided description in your
@@ -305,19 +305,41 @@ extend(RequestContext.prototype, {
 /// object with a key of the same name as the *paramName* argument.
 /// The value of this object is either a single object or in the case of a multi
 /// element an array of objects.
+///
+/// @EXAMPLES
+///
+/// ```js
+/// app.post("/foxx", function {
+///   // Do something
+/// }).bodyParam("body", {
+///   description: "Body of the Foxx",
+///   type: FoxxBodyModel
+/// });
+/// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  bodyParam: function (paramName, description, Proto) {
+  bodyParam: function (paramName, attributes, Proto) {
     'use strict';
     var handler = this.route.action.callback;
 
-    if (is.array(Proto)) {
-      this.docs.addBodyParam(paramName, description, Proto[0].toJSONSchema(paramName));
-    } else {
-      this.docs.addBodyParam(paramName, description, Proto.toJSONSchema(paramName));
+    if (Proto !== undefined) {
+      require('console').log(
+        'RequestContext#bodyParam(paramName, description, Model) is deprecated, ' +
+          'use RequestContext#bodyParam(paramName, {type: Model, description: description}) instead'
+      );
+      attributes = {
+        description: attributes,
+        type: Proto
+      };
     }
-    this.route.action.callback = createBodyParamBubbleWrap(handler, paramName, Proto, this.rootElement);
+
+    if (is.array(attributes.type)) {
+      this.docs.addBodyParam(paramName, attributes.description, attributes.type[0].toJSONSchema(paramName));
+    } else {
+      this.docs.addBodyParam(paramName, attributes.description, attributes.type.toJSONSchema(paramName));
+    }
+    this.route.action.callback = createBodyParamBubbleWrap(handler, paramName, attributes.type, this.rootElement);
 
     return this;
   },
