@@ -635,14 +635,9 @@ function GeneralGraphCreationSuite() {
       g1._editEdgeDefinitions(dr3);
       assertEqual([dr3, dr2], g1.__edgeDefinitions);
       assertEqual([dr3], g2.__edgeDefinitions);
-      g1 = graph._graph(gN1);
       g2 = graph._graph(gN2);
-      assertTrue(g1._orphanCollections().indexOf(vc2) !== -1);
-      assertTrue(g1._orphanCollections().indexOf(vc3) !== -1);
-      assertTrue(g2._orphanCollections().indexOf(vc1) !== -1);
-      assertTrue(g2._orphanCollections().indexOf(vc2) !== -1);
-      assertTrue(g2._orphanCollections().indexOf(vc3) !== -1);
-      assertTrue(g2._orphanCollections().indexOf(vc4) !== -1);
+      assertEqual(g1._orphanCollections().sort(), [vc2, vc3].sort());
+      assertEqual(g2._orphanCollections().sort(), [vc1, vc2, vc3, vc4].sort());
 
     },
 
@@ -661,12 +656,9 @@ function GeneralGraphCreationSuite() {
 
       assertEqual([dr2, dr3], g1.__edgeDefinitions);
       assertEqual([dr2], g2.__edgeDefinitions);
-      g1 = graph._graph(gN1);
       g2 = graph._graph(gN2);
       assertEqual([vc1], g1._orphanCollections());
-      assertTrue(g2._orphanCollections().indexOf(vc1) !== -1);
-      assertTrue(g2._orphanCollections().indexOf(vc2) !== -1);
-      assertTrue(g2._orphanCollections().indexOf(vc6) !== -1);
+      assertEqual(g2._orphanCollections().sort(), [vc1, vc2, vc6].sort());
 
       try {
         graph._drop(gN1, true);
