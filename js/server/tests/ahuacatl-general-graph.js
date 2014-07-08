@@ -132,14 +132,11 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', [{hugo : true}, {heinz : 1}], {direction : 'any'}) " +
         "SORT e.what RETURN e.what");
       assertEqual(actual, [ "v1->v2",
-        "v1->v2",
         "v1->v5",
-        "v2->v1",
         "v2->v1",
         "v2->v5",
         "v3->v5",
         "v3->v6",
-        "v3->v8",
         "v3->v8" ]);
 
       actual = getRawQueryResults("FOR e IN GRAPH_VERTICES('bla3', [{hugo : true}, {heinz : 1}], {direction : 'any'}) SORT e._id RETURN e");
