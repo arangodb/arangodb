@@ -208,10 +208,13 @@ var transformExample = function(example) {
   throw err;
 };
 
-var checkAllowsRestriction = function(colList, rest, msg) {
+var checkAllowsRestriction = function(list, rest, msg) {
   var unknown = [];
+  var colList = _.map(list, function(item) {
+    return item.name();
+  });
   _.each(rest, function(r) {
-    if (!colList[r]) {
+    if (!_.contains(colList, r)) {
       unknown.push(r);
     }
   });
@@ -1013,7 +1016,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
   var restricts;
   if (lastQuery.isEdgeQuery()) {
     checkAllowsRestriction(
-      this.graph.__edgeCollections,
+      this.graph._edgeCollections(),
       rest,
       "edge collections"
     );
@@ -1021,7 +1024,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
     opts.edgeCollectionRestriction = restricts.concat(restrictions);
   } else if (lastQuery.isVertexQuery() || lastQuery.isNeighborQuery()) {
     checkAllowsRestriction(
-      this.graph.__vertexCollections,
+      this.graph._vertexCollections(),
       rest,
       "vertex collections"
     );
@@ -4125,9 +4128,13 @@ Graph.prototype._addVertexCollection = function(vertexCollectionName, createColl
     err.errorMessage = arangodb.errors.ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF.message;
     throw err;
   }
-
+  if (_.contains(this.__orphanCollections, vertexCollectionName)) {
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS.message;
+    throw err;
+  }
   this.__orphanCollections.push(vertexCollectionName);
-  this[vertexCollectionName] = db[vertexCollectionName];
   updateBindCollections(this);
   db._graphs.update(this.__name, {orphanCollections: this.__orphanCollections});
 

@@ -2637,9 +2637,17 @@ function OrphanCollectionSuite() {
       assertTrue(db._collection(vC4) === null);
     },
 
-
-
-
+    test_doNotAddTheSameOrphanCollectionMultipleTimes: function() {
+      g1._addVertexCollection(vC4, true); 
+      try {
+        g1._addVertexCollection(vC4, true); 
+        fail();
+      } catch(err) {
+        assertEqual(err.errorNum, arangodb.errors.ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS.code);
+        assertEqual(err.errorMessage,
+          arangodb.errors.ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS.message);
+      }
+    }
   };
 
 

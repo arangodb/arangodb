@@ -310,6 +310,7 @@ ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT,1934,"Invalid example type. Has to be A
 ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS,1935,"Invalid number of arguments. Expected: ","Invalid number of arguments. Expected: ",
 ERROR_GRAPH_INVALID_PARAMETER,1936,"Invalid parameter type.","Invalid parameter type.",
 ERROR_GRAPH_INVALID_ID,1937,"Invalid id","Invalid id",
+ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS,1938,"collection used in orphans","The collection is already used in the orphans of the graph.",
 
 ################################################################################
 ## Session errors
