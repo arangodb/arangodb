@@ -3499,6 +3499,9 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
       return scope.Close(v8::ThrowException(tryCatch.Exception()));
     }
     else {
+      TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+      v8g->_canceled = true;
       return scope.Close(result);
     }
   }
@@ -3847,6 +3850,9 @@ static v8::Handle<v8::Value> JS_Transaction (v8::Arguments const& argv) {
       return scope.Close(v8::ThrowException(tryCatch.Exception()));
     }
     else {
+      TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+      v8g->_canceled = true;
       return scope.Close(result);
     }
   }
@@ -4489,6 +4495,9 @@ static v8::Handle<v8::Value> JS_NextGeneralCursor (v8::Arguments const& argv) {
         return scope.Close(v8::ThrowException(tryCatch.Exception()));
       }
       else {
+        TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+        v8g->_canceled = true;
         return scope.Close(v8::Undefined());
       }
     }
@@ -4566,6 +4575,9 @@ static v8::Handle<v8::Value> JS_ToArrayGeneralCursor (v8::Arguments const& argv)
         return scope.Close(v8::ThrowException(tryCatch.Exception()));
       }
       else {
+        TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+        v8g->_canceled = true;
         return scope.Close(v8::Undefined());
       }
     }
@@ -5433,6 +5445,12 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
         TRI_ObjectToString(tryCatch.Exception()).c_str());
       return scope.Close(v8::ThrowException(errorObject));
     }
+    else {
+      TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+      v8g->_canceled = true;
+      return scope.Close(result);
+    }
   }
 
   return scope.Close(result);
@@ -5562,6 +5580,9 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
       return scope.Close(v8::ThrowException(errorObject));
     }
     else {
+      TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+      v8g->_canceled = true;
       return scope.Close(result);
     }
   }
@@ -5636,6 +5657,9 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
       return scope.Close(v8::ThrowException(errorObject));
     }
     else {
+      TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+      v8g->_canceled = true;
       return scope.Close(result);
     }
   }

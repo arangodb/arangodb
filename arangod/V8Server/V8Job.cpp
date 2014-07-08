@@ -150,7 +150,10 @@ Job::status_t V8Job::work () {
         TRI_LogV8Exception(&tryCatch);
       }
       else {
-        LOG_WARNING("caught non-cachable exception in periodic task");
+        TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+
+        v8g->_canceled = true;
+        LOG_WARNING("caught non-catchable exception (aka termination) in periodic job");
       }
     }
   }
