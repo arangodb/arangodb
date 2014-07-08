@@ -1764,8 +1764,7 @@ static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current process information
-/// @startDocuBlock internalProcessStatistics
-/// @FUN{internal.processStatistics()}
+/// `internal.processStatistics()`
 ///
 /// Returns information about the current process:
 ///
@@ -1795,10 +1794,9 @@ static v8::Handle<v8::Value> JS_Output (v8::Arguments const& argv) {
 ///
 /// - virtualSize: Virtual memory size in bytes.
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{HIER_FEHLT_DER_NAME}
+/// @EXAMPLE_ARANGOSH_OUTPUT{internalStatistics}
 ///   require("internal").processStat();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
-/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ProcessStatistics (v8::Arguments const& argv) {
@@ -3009,6 +3007,30 @@ static v8::Handle<v8::Value> JS_SleepAndRequeue (const v8::Arguments& args) {
   return scope.Close(self);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief isIP
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_IsIP (const v8::Arguments& args) {
+  v8::HandleScope scope;
+
+  if (args.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "base64Decode(<value>)");
+  }
+
+  TRI_Utf8ValueNFC address(TRI_UNKNOWN_MEM_ZONE, args[0]);
+
+  if (TRI_InetPton4(*address, NULL) == TRI_ERROR_NO_ERROR) {
+    return scope.Close(v8::Number::New(4));
+  }
+  else if (TRI_InetPton6(*address, NULL) == 0) {
+    return scope.Close(v8::Number::New(6));
+  }
+  else {
+    return scope.Close(v8::Number::New(0));
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -3484,6 +3506,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_GETLINE", JS_Getline);
   TRI_AddGlobalFunctionVocbase(context, "SYS_HMAC", JS_HMAC);
   TRI_AddGlobalFunctionVocbase(context, "SYS_HTTP_STATISTICS", JS_HttpStatistics);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_IS_IP", JS_IsIP);
   TRI_AddGlobalFunctionVocbase(context, "SYS_KILL_EXTERNAL", JS_KillExternal);
   TRI_AddGlobalFunctionVocbase(context, "SYS_LOAD", JS_Load);
   TRI_AddGlobalFunctionVocbase(context, "SYS_LOG", JS_Log);
@@ -3497,9 +3520,9 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_READ64", JS_Read64);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SAVE", JS_Save);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SERVER_STATISTICS", JS_ServerStatistics);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_SHA256", JS_Sha256);
-  TRI_AddGlobalFunctionVocbase(context, "SYS_SHA224", JS_Sha224);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SHA1", JS_Sha1);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_SHA224", JS_Sha224);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_SHA256", JS_Sha256);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SLEEP", JS_Sleep);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SPRINTF", JS_SPrintF);
   TRI_AddGlobalFunctionVocbase(context, "SYS_STATUS_EXTERNAL", JS_StatusExternal);

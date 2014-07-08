@@ -2,7 +2,7 @@ v2.2.0 (XXXX-XX-XX)
 -------------------
 
 * The replication methods `logger.start`, `logger.stop` and `logger.properties` are
-  no-ops in ArangoDB 2.2 as there is no separate replication logger anymore. Changes
+  no-ops in ArangoDB 2.2 as there is no separate replication logger anymore. Data changes
   are logged into the write-ahead log in ArangoDB 2.2, and not separately by the 
   replication logger. The replication logger object is still there in ArangoDB 2.2 to
   ensure backwards-compatibility, however, logging cannot be started, stopped or 
@@ -20,7 +20,7 @@ v2.2.0 (XXXX-XX-XX)
 * INCOMPATIBLE CHANGE: replication of transactions has changed. Previously, transactions
   were logged on a master in one big block and shipped to a slave in one block, too.
   Now transactions will be logged and replicated as separate entries, allowing transactions
-  to bigger and ensure replication progress.
+  to be bigger and also ensure replication progress.
   
   This change also affects the behavior of the `stop` method of the replication applier.
   If the replication applier is now stopped manually using the `stop` method and later 

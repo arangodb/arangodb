@@ -63,6 +63,8 @@ extern "C" {
 /// - 24: @LIT{internal error if a legend could not be created}
 ///   Will be raised if the legend generator was only given access to the shape
 ///   and some sids are in the data object (inhomogeneous lists).
+/// - 25: @LIT{IP address is invalid}
+///   Will be raised when the structure of an IP address is invalid.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 401: @LIT{unauthorized}
@@ -849,6 +851,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_LEGEND_INCOMPLETE                                       (24)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 25: ERROR_IP_ADDRESS_INVALID
+///
+/// IP address is invalid
+///
+/// Will be raised when the structure of an IP address is invalid.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_IP_ADDRESS_INVALID                                      (25)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER
