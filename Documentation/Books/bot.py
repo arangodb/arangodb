@@ -53,6 +53,8 @@ def replaceText(text, pathOfFile, searchText):
   replaced = replaced.replace("@RESTBODYPARAMETERS","**Body Parameters**\n")  
   replaced = replaced.replace("@RESTRETURNCODES","**Return Codes**\n")
   replaced = replaced.replace("@RESTURLPARAM", "@RESTPARAM")
+  replaced = replaced.replace("@PARAMS", "**Parameters**\n")
+  replaced = replaced.replace("@PARAM", "@RESTPARAM")
   replaced = replaced.replace("@RESTHEADERPARAM", "@RESTPARAM")
   replaced = replaced.replace("@RESTQUERYPARAM", "@RESTPARAM")
   replaced = replaced.replace("@RESTBODYPARAM", "@RESTPARAM")
