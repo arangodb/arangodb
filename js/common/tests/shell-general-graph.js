@@ -497,10 +497,31 @@ function GeneralGraphCreationSuite() {
       g1._deleteEdgeDefinition(ec1);
       assertEqual([dr2, dr3], g1.__edgeDefinitions);
       assertEqual([vc1, vc2], g1._orphanCollections());
+      assertTrue(db._collection(ec1) !== null);
 
       g1._deleteEdgeDefinition(ec2);
       assertEqual([dr3], g1.__edgeDefinitions);
       assertEqual([vc1, vc2, vc3], g1._orphanCollections());
+      assertTrue(db._collection(ec2) !== null);
+    },
+
+    test_deleteEdgeDefinitionFromExistingGraphAndDropIt: function() {
+
+      var dr1 = graph._directedRelation(ec1, [vc1], [vc1, vc2]),
+        dr2 = graph._directedRelation(ec2, [vc3], [vc4, vc5]),
+        dr3 = graph._directedRelation(ec3, [vc4], [vc5]),
+        g1 = graph._create(gN1, [dr1, dr2, dr3]);
+
+      assertEqual([dr1, dr2, dr3], g1.__edgeDefinitions);
+      g1._deleteEdgeDefinition(ec1, true);
+      assertEqual([dr2, dr3], g1.__edgeDefinitions);
+      assertEqual([vc1, vc2], g1._orphanCollections());
+      assertTrue(db._collection(ec1) === null);
+
+      g1._deleteEdgeDefinition(ec2, true);
+      assertEqual([dr3], g1.__edgeDefinitions);
+      assertEqual([vc1, vc2, vc3], g1._orphanCollections());
+      assertTrue(db._collection(ec2) === null);
     },
 
     test_extendEdgeDefinitionFromExistingGraph1: function() {
