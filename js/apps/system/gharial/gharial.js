@@ -55,8 +55,10 @@
         code: actions.HTTP_ACCEPTED
       };
       if (req.params("waitForSync")) {
-        options.waitForSync = req.params("waitForSync");
-        options.code = actions.HTTP_OK;
+        options.waitForSync = (req.params("waitForSync").toLowerCase() === "true");
+        if (options.waitForSync) {
+          options.code = actions.HTTP_OK;
+        }
       }
       if (req.params("keepNull")) {
         options.keepNull = req.params("keepNull");
@@ -692,7 +694,7 @@
     description: "Name of the vertex collection."
   })
   .queryParam("waitForSync", {
-    type: "string",
+    type: "boolean",
     description: "define if the request should wait until synced to disk."
   })
   .bodyParam("vertex", "The document to be stored", Model);
