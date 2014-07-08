@@ -85,22 +85,22 @@ Model = function (attributes) {
 /// @brief The attributes property is the internal hash containing the model's state.
 ////////////////////////////////////////////////////////////////////////////////
 
-  this.attributes = _.clone(attributes || {});
+  this.attributes = {};
   this.isValid = true;
   this.errors = {};
 
   var instance = this;
   if (instance.schema) {
     _.each(
-      _.union(_.keys(instance.schema), _.keys(instance.attributes)),
+      _.union(_.keys(instance.schema), _.keys(attributes)),
       function (attributeName) {
-        instance.set(attributeName, instance.attributes[attributeName]);
+        instance.set(attributeName, attributes ? attributes[attributeName] : undefined);
       }
     );
-  } else {
-    if (instance.constructor.attributes) {
+  } else if (instance.constructor.attributes) {
+    if (attributes) {
       instance.attributes = _.pick(
-        instance.attributes,
+        attributes,
         _.union(
           _.keys(metadataSchema),
           _.keys(instance.constructor.attributes)
@@ -112,6 +112,8 @@ Model = function (attributes) {
         instance.attributes[attributeName] = attribute.defaultValue;
       }
     });
+  } else if (attributes) {
+    instance.attributes = _.clone(attributes);
   }
 };
 
