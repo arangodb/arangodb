@@ -5949,11 +5949,14 @@ function GENERAL_GRAPH_EDGES (
 
   var neighbors = GENERAL_GRAPH_NEIGHBORS(graphName,
     vertexExample,
-    options), result = [];
+    options), result = [],ids = [];
 
   neighbors.forEach(function (n) {
     n.path.edges.forEach(function (e) {
-      result = result.concat(e);
+      if (ids.indexOf(e._id) === -1) {
+        result.push(e);
+        ids.push(e._id);
+      }
     });
   });
 
