@@ -3936,7 +3936,7 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__editEdgeDefinition
-/// `general-graph._editEdgeDefinition(edgeDefinition)`
+/// `graph_module._editEdgeDefinition(edgeDefinition)`
 /// *Modify an relation definition*
 ///
 /// Edits one relation definition of a graph. The edge definition used as argument will
@@ -3956,10 +3956,10 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__editEdgeDefinition}
 ///   var graph_module = require("org/arangodb/general-graph")
 /// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
-///   var ed1 = graph_module._directedRelation("myEC1", ["myVC1"], ["myVC2"]);
-///   var ed2 = graph_module._directedRelation("myEC1", ["myVC2"], ["myVC3"]);
-///   var graph = graph_module._create("myGraph", [ed1, ed2]);
-///   graph._editEdgeDefinition(ed2, true);
+///   var original = graph_module._directedRelation("myEC1", ["myVC1"], ["myVC2"]);
+///   var modified = graph_module._directedRelation("myEC1", ["myVC2"], ["myVC3"]);
+///   var graph = graph_module._create("myGraph", [original]);
+///   graph._editEdgeDefinition(modified);
 /// ~ var blub = graph_module._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -4013,7 +4013,7 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__deleteEdgeDefinition
-/// `general-graph._deleteEdgeDefinition(edgeCollectionName)`
+/// `graph_module._deleteEdgeDefinition(edgeCollectionName)`
 /// *Delete one relation definition*
 ///
 /// Deletes a relation definition defined by the edge collection of a graph. If the

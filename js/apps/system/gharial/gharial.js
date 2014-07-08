@@ -90,10 +90,10 @@
     matchError = function (req, res, doc, errorCode) {  
 
       if (req.headers["if-none-match"] !== undefined) {
-    var options = setOptions(req);
-    if (options.code === actions.HTTP_OK) {
-      options.code = actions.HTTP_CREATED;
-    }
+        var options = setOptions(req);
+        if (options.code === actions.HTTP_OK) {
+          options.code = actions.HTTP_CREATED;
+        }
         if (doc._rev === req.headers["if-none-match"].replace(/(^["']|["']$)/g, '')) {
           // error      
           res.responseCode = actions.HTTP_NOT_MODIFIED;
