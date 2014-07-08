@@ -85,6 +85,9 @@ v8::Handle<v8::Value> JSLoader::executeGlobalScript (v8::Handle<v8::Context> con
       return scope.Close(v8::Undefined());
     }
     else {
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+
+      v8g->_canceled = true;
       return scope.Close(result);
     }
   }
@@ -121,6 +124,9 @@ bool JSLoader::loadScript (v8::Persistent<v8::Context> context, string const& na
       return false;
     }
     else {
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+
+      v8g->_canceled = true;
       return false;
     }
   }
