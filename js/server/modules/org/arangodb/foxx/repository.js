@@ -94,6 +94,9 @@ Repository = function (collection, opts) {
 
   this.prefix = this.options.prefix;
 
+  // Undocumented, unfinished graph feature
+  this.graph = this.options.graph;
+
   if (this.indexes) {
     _.each(this.indexes, function (index) {
       this.collection.ensureIndex(index);
