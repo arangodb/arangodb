@@ -73,9 +73,17 @@ person.attributes // => { name: "Pete", active: true }
 <!-- js/server/modules/org/arangodb/foxx/model.js -->
 @startDocuBlock JSF_foxx_model_has
 
-!SECTION Attributes
+!SUBSECTION isValid
+<!-- js/server/modules/org/arangodb/foxx/model.js -->
+@startDocuBlock JSF_foxx_model_isvalid
 
-The attributes property is the internal hash containing the model's state.
+!SUBSECTION Errors
+<!-- js/server/modules/org/arangodb/foxx/model.js -->
+@startDocuBlock JSF_foxx_model_errors
+
+!SUBSECTION Attributes
+<!-- js/server/modules/org/arangodb/foxx/model.js -->
+@startDocuBlock JSF_foxx_model_attributes
 
 !SUBSECTION forDB
 <!-- js/server/modules/org/arangodb/foxx/model.js -->

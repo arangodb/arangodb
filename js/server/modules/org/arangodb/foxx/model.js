@@ -81,12 +81,38 @@ excludeExtraAttributes = function (attributes, Model) {
 Model = function (attributes) {
   'use strict';
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_model_attributes
-/// @brief The attributes property is the internal hash containing the model's state.
+/// @startDocuBlock JSF_foxx_model_attributes
+///
+/// `model.attributes`
+///
+/// The *attributes* property is the internal hash containing the model's state.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   this.attributes = {};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_model_isvalid
+///
+/// `model.isValid`
+///
+/// The *isValid* flag indicates whether the model's state is currently valid.
+/// If the model does not have a schema, it will always be considered valid.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
   this.isValid = true;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_model_errors
+///
+/// `model.errors`
+///
+/// The *errors* property maps the names of any invalid attributes to their
+/// corresponding validation error.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
   this.errors = {};
 
   var instance = this;
