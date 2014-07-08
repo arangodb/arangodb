@@ -27,6 +27,10 @@ data retrieval and/or modification operations, and at the end automatically
 commit the transaction. If an error occurs during transaction execution, the
 transaction is automatically aborted, and all changes are rolled back.
 
+!SUBSECTION Execute transaction
+<!-- js/server/modules/org/arangodb/arango-database.js -->
+@startDocuBlock executeTransaction
+
 !SUBSECTION Declaration of collections
 
 All collections which are to participate in a transaction need to be declared 
@@ -52,8 +56,7 @@ db._executeTransaction({
   collections: {
     write: [ "users", "logins" ],
     read: [ "recommendations" ]
-  },
-  ...
+  }
 });
 ```
 
@@ -68,12 +71,11 @@ db._executeTransaction({
   collections: {
     write: "users",
     read: "recommendations"
-  },
-  ...
+  }
 });
 ```
 
-Note that it is currently optional to specify collections for read-only access.
+**Note**: It is currently optional to specify collections for read-only access.
 Even without specifying them, it is still possible to read from such collections
 from within a transaction, but with relaxed isolation. Please refer to 
 [Transactions Locking](../Transactions/LockingAndIsolation.md) for more details.
@@ -142,7 +144,6 @@ db._executeTransaction({
   action: function () {
     var db = require("internal").db;
     db.users.save({ _key: "hello" });
-
     // will abort and roll back the transaction 
     throw "doh!";
   }
@@ -163,7 +164,6 @@ db._executeTransaction({
   action: function () {
     var db = require("internal").db;
     db.users.save({ _key: "hello" });
-
     // will commit the transaction and return the value "hello" 
     return "hello"; 
   }
@@ -214,10 +214,8 @@ db._executeTransaction({
     var db = require("internal").db;
     db.c1.save({ _key: "key1" });
     db.c1.count(); // 1 
-
     db.c1.save({ _key: "key2" });
     db.c1.count(); // 2 
-
     throw "doh!";
   }
 });
@@ -239,10 +237,8 @@ db._executeTransaction({
   action: function () {
     var db = require("internal").db;
     db.c1.save({ _key: "key1" });
-    
     // will throw duplicate a key error, not explicitly requested by the user 
     db.c1.save({ _key: "key1" });  
-
     // we'll never get here... 
   }
 });
@@ -279,7 +275,6 @@ db._executeTransaction({
     var db = require("internal").db;
     // this will push out key2. we now have keys [ "key3", "key4", "key5" ] 
     db.c1.save({ _key: "key5" }); 
-
     // will abort the transaction 
     throw "doh!"
   }
@@ -332,10 +327,8 @@ db._executeTransaction({
       db.c1.save({ _key: "key" + i });
       db.c2.save({ _key: "key" + i });
     }
-
     db.c1.count(); // 100 
     db.c2.count(); // 100 
-
     // abort 
     throw "doh!"
   }
