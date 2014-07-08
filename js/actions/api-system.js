@@ -918,7 +918,7 @@ actions.defineHttp({
 /// @brief executes one or multiple tests on the server
 /// @startDocuBlock JSF_post_admin_test
 ///
-/// @RESTHEADER{POST /_admin/test, Runs tests on the server}
+/// @RESTHEADER{POST /_admin/test, Runs tests on server}
 ///
 /// @RESTBODYPARAM{body,javascript,required}
 /// A JSON body containing an attribute "tests" which lists the files 
@@ -975,7 +975,7 @@ actions.defineHttp({
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a JavaScript program on the server
-/// @startDocuBlock JSF_get_admin_execute
+/// @startDocuBlock JSF_post_admin_execute
 ///
 /// @RESTHEADER{POST /_admin/execute, Execute program}
 ///
