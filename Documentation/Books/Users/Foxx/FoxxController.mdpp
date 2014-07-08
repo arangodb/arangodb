@@ -215,7 +215,7 @@ system collection are allowed to use the applications.
 
 Since ArangoDB 1.4, there is an extra option to restrict the authentication to 
 just system API calls, such as */_api/...* and */_admin/...*. This option can be 
-turned on using the @ref CommandLineArangoAuthenticateSystemOnly 
+turned on using the  
 "server.authenticate-system-only" configuration option. If it is turned on, 
 then only system API requests need authentication whereas all requests to Foxx 
 applications and routes will not require authentication. 
