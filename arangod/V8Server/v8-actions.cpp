@@ -730,6 +730,7 @@ static TRI_action_result_t ExecuteActionVocbase (TRI_vocbase_t* vocbase,
       }
     }
     else {
+      v8g->_canceled = true;
       result.isValid = false;
       result.canceled = true;
     }

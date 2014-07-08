@@ -608,7 +608,6 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_post_api_replication_batch
 /// @brief handle a dump batch command
 ///
 /// @RESTHEADER{POST /_api/replication/batch, Create new dump batch}
@@ -643,11 +642,9 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 ///
 /// @RESTRETURNCODE{405}
 /// is returned when an invalid HTTP method is used.
-/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_put_api_replication_prolong
 /// @brief handle a dump batch command
 ///
 /// @RESTHEADER{PUT /_api/replication/batch/id, Prolong existing dump batch}
@@ -685,11 +682,9 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 ///
 /// @RESTRETURNCODE{405}
 /// is returned when an invalid HTTP method is used.
-/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock JSF_api_replication_delete
 /// @brief handle a dump batch command
 ///
 /// @RESTHEADER{DELETE /_api/replication/batch/id, Deletes an existing dump batch}
@@ -717,7 +712,6 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 ///
 /// @RESTRETURNCODE{405}
 /// is returned when an invalid HTTP method is used.
-/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandBatch () {
