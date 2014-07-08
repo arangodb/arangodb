@@ -167,9 +167,6 @@ ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, opti
 /// - *params*: optional arguments passed to the function specified in 
 ///   *action*.
 ///
-/// @EXAMPLES
-///
-/// @verbinclude shell_transaction
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
