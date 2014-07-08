@@ -503,74 +503,80 @@ function require (path) {
     }
 
     // create a new module
-    var localModule = currentPackage.defineModule(
-      id,
-      "js",
-      new Module(id, currentPackage, currentModule._applicationContext, path, origin, false));
+    try {
+      var localModule = currentPackage.defineModule(
+        id,
+        "js",
+        new Module(id, currentPackage, currentModule._applicationContext, path, origin, false));
 
-    // create a new sandbox and execute
-    var env = currentPackage._environment;
+      // create a new sandbox and execute
+      var env = currentPackage._environment;
 
-    var sandbox = {};
-    sandbox.print = internal.print;
+      var sandbox = {};
+      sandbox.print = internal.print;
 
-    if (env !== undefined) {
-      for (key in env) {
-        if (env.hasOwnProperty(key) && key !== "__myenv__") {
-          sandbox[key] = env[key];
+      if (env !== undefined) {
+        for (key in env) {
+          if (env.hasOwnProperty(key) && key !== "__myenv__") {
+            sandbox[key] = env[key];
+          }
         }
       }
-    }
 
-    var filename = fileUri2Path(origin);
+      var filename = fileUri2Path(origin);
 
-    if (filename !== null) {
-      sandbox.__filename = filename;
-      sandbox.__dirname = normalizeModuleName(filename + "/..");
-    }
-
-    sandbox.module = localModule;
-    sandbox.exports = localModule.exports;
-
-    sandbox.require = function(path) {
-      return localModule.require(path);
-    };
-
-    if (localModule.hasOwnProperty("_applicationContext")) {
-      sandbox.applicationContext = localModule._applicationContext;
-    }
-
-    // try to execute the module source code
-    var script = "(function (__myenv__) {";
-
-    for (key in sandbox) {
-      if (sandbox.hasOwnProperty(key)) {
-        script += "var " + key + " = __myenv__['" + key + "'];";
+      if (filename !== null) {
+        sandbox.__filename = filename;
+        sandbox.__dirname = normalizeModuleName(filename + "/..");
       }
+
+      sandbox.module = localModule;
+      sandbox.exports = localModule.exports;
+
+      sandbox.require = function(path) {
+        return localModule.require(path);
+      };
+
+      if (localModule.hasOwnProperty("_applicationContext")) {
+        sandbox.applicationContext = localModule._applicationContext;
+      }
+
+      // try to execute the module source code
+      var script = "(function (__myenv__) {";
+
+      for (key in sandbox) {
+        if (sandbox.hasOwnProperty(key)) {
+          script += "var " + key + " = __myenv__['" + key + "'];";
+        }
+      }
+
+      script += "delete __myenv__;"
+             + content
+             + "\n});";
+
+      var fun = internal.executeScript(script, undefined, filename);
+
+      if (fun === undefined) {
+        e = new Error("corrupted package '" + path
+                    + "', cannot create module context function for: "
+                    + script);
+
+        e.moduleNotFound = false;
+        e._path = path;
+        e._package = currentPackage.id;
+        e._packageOrigin = currentPackage._origin;
+
+        throw e;
+      }
+
+      fun(sandbox);
+
+      return localModule;
     }
-
-    script += "delete __myenv__;"
-           + content
-           + "\n});";
-
-    var fun = internal.executeScript(script, undefined, filename);
-
-    if (fun === undefined) {
-      e = new Error("corrupted package '" + path
-                  + "', cannot create module context function for: "
-                  + script);
-
-      e.moduleNotFound = false;
-      e._path = path;
-      e._package = currentPackage.id;
-      e._packageOrigin = currentPackage._origin;
-
-      throw e;
+    catch (err) {
+      currentPackage.clearModule(id, "js");
+      throw err;
     }
-
-    fun(sandbox);
-
-    return localModule;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -903,6 +909,14 @@ function require (path) {
 
   delete REGISTER_EXECUTE_FILE;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cleans up after cancelation
+////////////////////////////////////////////////////////////////////////////////
+
+  function cleanupCancelation () {
+    module.unloadAll();
+  }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           Package
 // -----------------------------------------------------------------------------
@@ -1106,6 +1120,8 @@ function require (path) {
         internal[key] = EXPORTS_SLOW_BUFFER[key];
       }
     }
+
+    internal.cleanupCancelation = cleanupCancelation;
   }());
 
   delete EXPORTS_SLOW_BUFFER;

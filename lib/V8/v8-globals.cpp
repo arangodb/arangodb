@@ -128,9 +128,10 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     _resolver(0),
     _server(0),
     _vocbase(0),
-    _loader(0),
     _allowUseDatabase(true),
-    _hasDeadObjects(false) {
+    _hasDeadObjects(false),
+    _loader(0),
+    _canceled(false) {
   v8::HandleScope scope;
 
   BufferConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("Buffer"));

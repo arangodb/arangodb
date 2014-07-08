@@ -2238,7 +2238,7 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
         return;
       }
       var edgeDefinitions = graph.edgeDefinitions;
-      if (graph.edgeDefinitions) {
+      if (edgeDefinitions) {
         edgeDefinitions.forEach(
           function(edgeDefinition) {
             var from = edgeDefinition.from;
@@ -2257,7 +2257,7 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
       var orphanCollections = graph.orphanCollections;
       if (orphanCollections) {
         if (orphanCollections.indexOf(colName) !== -1) {
-          return false;
+          result = false;
         }
       }
     }
