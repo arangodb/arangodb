@@ -370,7 +370,7 @@ Edge.prototype.getInVertex = function () {
 /// @EXAMPLES
 ///
 /// @verbinclude graph-edge-get-out-vertex
-/// @startDocuBlock
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getOutVertex = function () {

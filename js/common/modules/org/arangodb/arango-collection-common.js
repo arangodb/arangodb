@@ -516,7 +516,7 @@ ArangoCollection.prototype.byConditionBitarray = function (index, condition) {
 /// ~ db.old.ensureSkiplist("age");
 /// ~ db.old.save({ age: 15 });
 /// ~ db.old.save({ age: 25 });
-/// ~ db.old.save({ age: 35 });
+/// ~ db.old.save({ age: 30 });
 ///   db.old.range("age", 10, 30).toArray();
 /// ~ db._drop("old")
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -530,7 +530,7 @@ ArangoCollection.prototype.range = function (name, left, right) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a closed range query for a collection
-/// @startDocuBlock
+/// @startDocuBlock collectionClosedRange
 /// `collection.closedRange(attribute, left, right)`
 ///
 /// Selects all documents of a collection such that the *attribute* is
@@ -547,7 +547,15 @@ ArangoCollection.prototype.range = function (name, left, right) {
 ///
 /// Use *toArray* to get all documents at once:
 ///
-/// @TINYEXAMPLE{simple-query-closed-range-to-array,convert into a list}
+/// @EXAMPLE_ARANGOSH_OUTPUT{collectionClosedRange}
+/// ~ db._create("old");
+/// ~ db.old.ensureSkiplist("age");
+/// ~ db.old.save({ age: 15 });
+/// ~ db.old.save({ age: 25 });
+/// ~ db.old.save({ age: 30 });
+///   db.old.closedRange("age", 10, 30).toArray();
+/// ~ db._drop("old")
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 

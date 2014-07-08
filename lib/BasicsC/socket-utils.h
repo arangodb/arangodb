@@ -268,6 +268,22 @@ bool TRI_SetNonBlockingSocket (TRI_socket_t);
 
 bool TRI_SetCloseOnExecSocket (TRI_socket_t);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief translates for IPv4 address
+///
+/// This code is copyright Internet Systems Consortium, Inc. ("ISC")
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_InetPton4 (const char *src, unsigned char *dst);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief translates for IPv6 address
+///
+/// This code is copyright Internet Systems Consortium, Inc. ("ISC")
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_InetPton6 (const char *src, unsigned char *dst);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            MODULE
 // -----------------------------------------------------------------------------

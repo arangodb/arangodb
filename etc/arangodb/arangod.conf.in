@@ -9,7 +9,6 @@ directory = @LOCALSTATEDIR@/lib/arangodb
 # directory = @HOMEDRIVE@/@HOMEPATH@/arangodb/databases
 
 # maximal-journal-size = 33554432
-# remove-on-drop = true
 
 [server]
 # Specify the endpoint for HTTP requests by clients.
@@ -49,10 +48,6 @@ threads = 3
 startup-directory = @PKGDATADIR@/js
 app-path = @LOCALSTATEDIR@/lib/arangodb-apps
 # app-path = @HOMEDRIVE@/@HOMEPATH@/arangodb/apps
-
-[ruby]
-action-directory = @PKGDATADIR@/mr/actions
-modules-path = @PKGDATADIR@/mr/server/modules;@PKGDATADIR@/mr/common/modules
 
 [log]
 level = info

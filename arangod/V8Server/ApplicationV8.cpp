@@ -620,9 +620,9 @@ void ApplicationV8::runVersionCheck (bool skip, bool perform) {
 
     // can do this without a lock as this is the startup
     for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
-      TRI_vocbase_t* vocbase = (TRI_vocbase_t*) _server->_databases._table[j];
+      TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(_server->_databases._table[j]);
 
-      if (vocbase != 0) {
+      if (vocbase != nullptr) {
         // special check script to be run just once in first thread (not in all)
         // but for all databases
         v8::HandleScope scope;
@@ -669,9 +669,9 @@ void ApplicationV8::runVersionCheck (bool skip, bool perform) {
 
     // again, can do this without the lock
     for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
-      TRI_vocbase_t* vocbase = (TRI_vocbase_t*) _server->_databases._table[j];
+      TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(_server->_databases._table[j]);
 
-      if (vocbase != 0) {
+      if (vocbase != nullptr) {
         vocbase->_state = 2;
 
         int res = TRI_ERROR_NO_ERROR;
@@ -719,9 +719,9 @@ void ApplicationV8::runUpgradeCheck () {
   int result = 1;
 
   for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
-    TRI_vocbase_t* vocbase = (TRI_vocbase_t*) _server->_databases._table[j];
+    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(_server->_databases._table[j]);
 
-    if (vocbase != 0) {
+    if (vocbase != nullptr) {
       // special check script to be run just once in first thread (not in all)
       // but for all databases
       v8::HandleScope scope;
