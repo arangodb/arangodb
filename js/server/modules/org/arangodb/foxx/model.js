@@ -30,18 +30,15 @@
 
 var Model,
   _ = require("underscore"),
+  joi = require("joi"),
   is = require("org/arangodb/is"),
   extend = require('org/arangodb/extend').extend,
-  metadataKeys = ['_id', '_key', '_rev'],
-  getTypeFromJoi,
-  getTypeFromString,
-  getTypeFromSchema,
-  isRequiredByJoi,
-  isRequiredBySchema,
-  parseAttributes,
-  parseRequiredAttributes,
-  validateJoi,
-  validateSchema;
+  excludeExtraAttributes,
+  metadataSchema = {
+    _id: joi.string().optional(),
+    _key: joi.string().optional(),
+    _rev: joi.string().optional()
+  };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             Model
@@ -64,186 +61,63 @@ var Model,
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-var whitelistProperties = function (properties, constructorProperties, whitelistMetadata) {
+excludeExtraAttributes = function (attributes, Model) {
   'use strict';
-  if (!properties) {
-    return {};
+  var extraAttributeNames;
+  if (Model.prototype.schema) {
+    extraAttributeNames = _.difference(
+      _.keys(metadataSchema),
+      _.keys(Model.prototype.schema)
+    );
+  } else {
+    extraAttributeNames = _.difference(
+      _.keys(metadataSchema),
+      _.keys(Model.attributes)
+    );
   }
-
-  if (!constructorProperties) {
-    return _.clone(properties);
-  }
-
-  var whitelistedKeys = _.keys(constructorProperties);
-
-  if (whitelistMetadata) {
-    whitelistedKeys = whitelistedKeys.concat(metadataKeys);
-  }
-
-  return _.pick(properties, whitelistedKeys);
-};
-
-var fillInDefaults = function (properties, constructorProperties) {
-  'use strict';
-  if (!constructorProperties) {
-    return properties;
-  }
-  var defaults = _.reduce(constructorProperties, function (result, value, key) {
-    if (_.has(value, "defaultValue")) {
-      result[key] = value.defaultValue;
-    }
-
-    return result;
-  }, {});
-
-  return _.defaults(properties, defaults);
+  return _.omit(attributes, extraAttributeNames);
 };
 
 Model = function (attributes) {
   'use strict';
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_model_attributes
 /// @brief The attributes property is the internal hash containing the model's state.
 ////////////////////////////////////////////////////////////////////////////////
 
-  this.attributes = whitelistProperties(attributes, this.constructor.attributes, true);
-  this.attributes = fillInDefaults(this.attributes, this.constructor.attributes);
-  this.whitelistedAttributes = whitelistProperties(this.attributes, this.constructor.attributes);
+  this.attributes = _.clone(attributes || {});
+  this.isValid = true;
+  this.errors = {};
+
+  var instance = this;
+  if (instance.schema) {
+    _.each(
+      _.union(_.keys(instance.schema), _.keys(instance.attributes)),
+      function (attributeName) {
+        instance.set(attributeName, instance.attributes[attributeName]);
+      }
+    );
+  } else {
+    if (instance.constructor.attributes) {
+      instance.attributes = _.pick(
+        instance.attributes,
+        _.union(
+          _.keys(metadataSchema),
+          _.keys(instance.constructor.attributes)
+        )
+      );
+    }
+    _.each(instance.constructor.attributes, function (attribute, attributeName) {
+      if (_.has(attribute, 'defaultValue') && instance.attributes[attributeName] === undefined) {
+        instance.attributes[attributeName] = attribute.defaultValue;
+      }
+    });
+  }
 };
 
 Model.fromClient = function (attributes) {
   'use strict';
-
-  var instance = new this(attributes);
-  instance.attributes = whitelistProperties(attributes, this.attributes, false);
-  instance.attributes = fillInDefaults(instance.attributes, this.attributes);
-  instance.whitelistedAttributes = whitelistProperties(instance.attributes, this.attributes);
-  return instance;
-};
-
-getTypeFromJoi = function (value) {
-  'use strict';
-  if (!value || typeof value.describe !== 'function') {
-    return undefined;
-  }
-
-  var description = value.describe(),
-    rules = description.rules;
-
-  if (
-    description.type === 'number' &&
-      _.isArray(rules) &&
-      _.some(rules, function (rule) {
-        return rule.name === 'integer';
-      })
-  ) {
-    return 'integer';
-  }
-  return description.type;
-};
-
-getTypeFromString = function (value) {
-  'use strict';
-  if (!_.isString(value)) {
-    return undefined;
-  }
-  return value;
-};
-
-getTypeFromSchema = function (value) {
-  'use strict';
-  if (!value && !value.type) {
-    return undefined;
-  }
-  return value.type;
-};
-
-isRequiredByJoi = function (value) {
-  'use strict';
-  if (!value || typeof value.describe !== 'function') {
-    return false;
-  }
-  var description = value.describe();
-  return Boolean(
-    description.flags &&
-      description.flags.presence === 'required'
-  );
-};
-
-isRequiredBySchema = function (value) {
-  'use strict';
-  return Boolean(value && value.required);
-};
-
-parseAttributes = function (rawAttributes) {
-  'use strict';
-  var properties = {};
-
-  _.each(rawAttributes, function (value, key) {
-    var type = getTypeFromJoi(value) || getTypeFromString(value) || getTypeFromSchema(value);
-    if (type) {
-      properties[key] = {type: type};
-    }
-  });
-
-  return properties;
-};
-
-parseRequiredAttributes = function (rawAttributes) {
-  'use strict';
-  var requiredProperties = [];
-
-  _.each(rawAttributes, function (value, key) {
-    if (isRequiredByJoi(value) || isRequiredBySchema(value)) {
-      requiredProperties.push(key);
-    }
-  });
-
-  return requiredProperties;
-};
-
-validateJoi = function (key, value, joi) {
-  'use strict';
-  if (!joi || typeof joi.validate !== "function") {
-    return;
-  }
-  var result = joi.validate(value);
-  if (result.error) {
-    result.error.message = "Invalid value for \"" + key + "\": " + result.error.message;
-    throw result.error;
-  }
-  return result.value;
-};
-
-validateSchema = function (key, value, schema) {
-  'use strict';
-  if (!schema) {
-    return;
-  }
-
-  var actualType = typeof value,
-    expectedType = typeof schema === "string" ? schema : schema.type;
-
-  if (typeof expectedType !== "string") {
-    return;
-  }
-
-  if (_.isArray(value)) {
-    actualType = "array";
-  }
-
-  if (expectedType === "integer" && actualType === "number") {
-    actualType = (Math.floor(value) === value ? "integer" : "number");
-  }
-
-  if (actualType !== expectedType) {
-    throw new Error(
-      "Invalid value for \"" +
-        key + "\": Expected " + expectedType +
-        " instead of " + actualType + "!"
-    );
-  }
+  return new this(excludeExtraAttributes(attributes, this));
 };
 
 // "Class" Properties
@@ -252,12 +126,51 @@ _.extend(Model, {
 
   toJSONSchema: function (id) {
     'use strict';
-    var attributes = this.attributes;
+    var required = [],
+      properties = {};
+
+    if (this.prototype.schema) {
+      _.each(this.prototype.schema, function (schema, attributeName) {
+        var description = schema.describe(),
+          type = description.type,
+          rules = description.rules,
+          flags = description.flags;
+
+        if (flags && flags.presence === 'required') {
+          required.push(attributeName);
+        }
+
+        if (
+          type === 'number' &&
+            _.isArray(rules) &&
+            _.some(rules, function (rule) {
+              return rule.name === 'integer';
+            })
+        ) {
+          type = 'integer';
+        }
+
+        properties[attributeName] = {type: type};
+      });
+    } else {
+      _.each(this.attributes, function (attribute, attributeName) {
+        if (typeof attribute === 'string') {
+          properties[attributeName] = {type: attribute};
+        } else if (attribute) {
+          if (typeof attribute.type === 'string') {
+            properties[attributeName] = {type: attribute.type};
+          }
+          if (attribute.required) {
+            required.push(attributeName);
+          }
+        }
+      });
+    }
 
     return {
       id: id,
-      required: parseRequiredAttributes(attributes),
-      properties: parseAttributes(attributes)
+      required: required,
+      properties: properties
     };
   }
 });
@@ -312,41 +225,39 @@ _.extend(Model.prototype, {
 
   set: function (attributeName, value) {
     'use strict';
-    var constructorAttributes = this.constructor.attributes,
-      attributes = attributeName;
 
-    if (!is.object(attributeName)) {
-      attributes = {};
-      attributes[attributeName] = value;
+    if (is.object(attributeName)) {
+      _.each(attributeName, function (value, key) {
+        this.set(key, value);
+      }, this);
+      return;
     }
 
-    if (constructorAttributes) {
-      _.each(_.keys(attributes), function (key) {
-        if (!constructorAttributes.hasOwnProperty(key)) {
-          if (metadataKeys.indexOf(key) !== -1) {
-            return;
-          }
-          throw new Error("Unknown attribute: " + key);
+    if (this.schema) {
+      var schema = (
+          this.schema[attributeName] ||
+          metadataSchema[attributeName] ||
+          joi.forbidden()
+        ),
+        result = schema.validate(value);
+
+      if (result.error) {
+        this.errors[attributeName] = result.error;
+        this.isValid = false;
+      } else {
+        delete this.errors[attributeName];
+        if (!_.keys(this.errors).length) {
+          this.isValid = true;
         }
-
-        var value = attributes[key],
-          result;
-
-        if (value === undefined || value === null) {
-          return;
-        }
-
-        result = validateJoi(key, value, constructorAttributes[key]);
-        validateSchema(key, value, constructorAttributes[key]);
-
-        if (result) {
-          attributes[key] = result;
-        }
-      });
+      }
+      if (result.value === undefined) {
+        delete this.attributes[attributeName];
+      } else {
+        this.attributes[attributeName] = result.value;
+      }
+    } else {
+      this.attributes[attributeName] = value;
     }
-
-    _.extend(this.attributes, attributes);
-    this.whitelistedAttributes = whitelistProperties(this.attributes, constructorAttributes);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -400,7 +311,7 @@ _.extend(Model.prototype, {
 
   forClient: function () {
     'use strict';
-    return this.whitelistedAttributes;
+    return excludeExtraAttributes(this.attributes, this.constructor);
   }
 });
 
