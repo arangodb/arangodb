@@ -2527,10 +2527,18 @@ function OrphanCollectionSuite() {
     },
 
     tearDown : function() {
-      graph._drop(gN1, true);
-      graph._drop(gN2, true);
-      try {db[vC1].drop()} catch (e) {}
-      try {db[vC4].drop()} catch (e) {}
+      try {
+        graph._drop(gN1, true);
+      } catch(ignore) { }
+      try {
+        graph._drop(gN2, true);
+      } catch(ignore) { }
+      try {
+        db[vC1].drop();
+      } catch (ignore) {}
+      try {
+        db[vC4].drop();
+      } catch (ignore) {}
     },
 
     test_getOrphanCollection: function() {
@@ -2596,7 +2604,40 @@ function OrphanCollectionSuite() {
         assertEqual(e.errorNum, ERRORS.ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION.code);
         assertEqual(e.errorMessage, ERRORS.ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION.message);
       }
-    }
+    },
+
+    test_doNotDropOrphanCollectionsUsedInOtherEdgedefinitions: function() {
+      assertTrue(db._collection(vC3) !== null);
+      g1._addVertexCollection(vC3, true); 
+      assertTrue(db._collection(vC3) !== null);
+      graph._drop(gN1, true);
+      assertTrue(db._collection(vC3) !== null);
+      graph._drop(gN2, true);
+      assertTrue(db._collection(vC3) === null);
+    },
+
+    test_doNotDropCollectionsIfUsedAsOrphansInOtherGraphs: function() {
+      assertTrue(db._collection(vC3) !== null);
+      g1._addVertexCollection(vC3, true); 
+      assertTrue(db._collection(vC3) !== null);
+      graph._drop(gN2, true);
+      assertTrue(db._collection(vC3) !== null);
+      graph._drop(gN1, true);
+      assertTrue(db._collection(vC3) === null);
+    },
+
+    test_doNotDropOrphanCollectionsUsedAsOrphansInOtherGraphs: function() {
+      assertTrue(db._collection(vC4) === null);
+      g1._addVertexCollection(vC4, true); 
+      g2._addVertexCollection(vC4, true); 
+      assertTrue(db._collection(vC4) !== null);
+      graph._drop(gN1, true);
+      assertTrue(db._collection(vC4) !== null);
+      graph._drop(gN2, true);
+      assertTrue(db._collection(vC4) === null);
+    },
+
+
 
 
   };
