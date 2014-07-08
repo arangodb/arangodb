@@ -13,13 +13,21 @@ The name of the graph.
 @RESTPARAM{collection-name, string, required} 
 The name of the vertex collection the vertex belongs to.
 
+@RESTQUERYPARAMS
+
+@RESTPARAM{waitForSync, boolean, optional}
+Define if the request should wait until synced to disk.
+
 @RESTBODYPARAMS
 The body has to be the JSON object to be stored.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{201}
-Returned if the vertex could be added.
+Returned if the vertex could be added and waitForSync is true.
+
+@RESTRETURNCODE{202}
+Returned if the request was successful but waitForSync is false.
 
 @RESTRETURNCODE{404}
 Returned if no graph or no vertex collection with this name could be found.
@@ -44,6 +52,11 @@ The name of the vertex collection the vertex belongs to.
 @RESTPARAM{vertex-key, string, required} 
 The *_key* attribute of the vertex.
 
+@RESTHEADERPARAMS
+
+@RESTPARAM{if-match, string, optional}
+If the "If-Match" header is given, then it must contain exactly one etag. The document is returned, if it has the same revision as the given etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the etag in an attribute rev in the URL.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
@@ -51,6 +64,9 @@ Returned if the vertex could be found.
 
 @RESTRETURNCODE{404}
 Returned if no graph with this name, no vertex collection or no vertex with this id could be found.
+
+@RESTRETURNCODE{412}
+Returned if if-match header is given, but the documents revision is different.
 
 @EXAMPLES
 
@@ -72,6 +88,19 @@ The name of the vertex collection the vertex belongs to.
 @RESTPARAM{vertex-key, string, required} 
 The *_key* attribute of the vertex.
 
+@RESTQUERYPARAMS
+
+@RESTPARAM{waitForSync, boolean, optional}
+Define if the request should wait until synced to disk.
+
+@RESTPARAM{keepNull, boolean, optional}
+Define if values set to null should be stored. By default the key is removed from the document.
+
+@RESTHEADERPARAMS
+
+@RESTPARAM{if-match, string, optional}
+If the "If-Match" header is given, then it must contain exactly one etag. The document is updated, if it has the same revision as the given etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the etag in an attribute rev in the URL.
+
 @RESTBODYPARAMS
 The body has to contain a JSON object containing exactly the attributes that should be replaced.
 
@@ -80,8 +109,14 @@ The body has to contain a JSON object containing exactly the attributes that sho
 @RESTRETURNCODE{200}
 Returned if the vertex could be updated.
 
+@RESTRETURNCODE{202}
+Returned if the request was successful but waitForSync is false.
+
 @RESTRETURNCODE{404}
 Returned if no graph with this name, no vertex collection or no vertex with this id could be found.
+
+@RESTRETURNCODE{412}
+Returned if if-match header is given, but the documents revision is different.
 
 @EXAMPLES
 
@@ -103,6 +138,16 @@ The name of the vertex collection the vertex belongs to.
 @RESTPARAM{vertex-key, string, required} 
 The *_key* attribute of the vertex.
 
+@RESTQUERYPARAMS
+
+@RESTPARAM{waitForSync, boolean, optional}
+Define if the request should wait until synced to disk.
+
+@RESTHEADERPARAMS
+
+@RESTPARAM{if-match, string, optional}
+If the "If-Match" header is given, then it must contain exactly one etag. The document is updated, if it has the same revision as the given etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the etag in an attribute rev in the URL.
+
 @RESTBODYPARAMS
 The body has to be the JSON object to be stored.
 
@@ -111,8 +156,14 @@ The body has to be the JSON object to be stored.
 @RESTRETURNCODE{200}
 Returned if the vertex could be replaced.
 
+@RESTRETURNCODE{202}
+Returned if the request was successful but waitForSync is false.
+
 @RESTRETURNCODE{404}
 Returned if no graph with this name, no vertex collection or no vertex with this id could be found.
+
+@RESTRETURNCODE{412}
+Returned if if-match header is given, but the documents revision is different.
 
 @EXAMPLES
 
@@ -134,13 +185,29 @@ The name of the vertex collection the vertex belongs to.
 @RESTPARAM{vertex-key, string, required} 
 The *_key* attribute of the vertex.
 
+@RESTQUERYPARAMS
+
+@RESTPARAM{waitForSync, boolean, optional}
+Define if the request should wait until synced to disk.
+
+@RESTHEADERPARAMS
+
+@RESTPARAM{if-match, string, optional}
+If the "If-Match" header is given, then it must contain exactly one etag. The document is updated, if it has the same revision as the given etag. Otherwise a HTTP 412 is returned. As an alternative you can supply the etag in an attribute rev in the URL.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
 Returned if the vertex could be removed.
 
+@RESTRETURNCODE{202}
+Returned if the request was successful but waitForSync is false.
+
 @RESTRETURNCODE{404}
 Returned if no graph with this name, no vertex collection or no vertex with this id could be found.
+
+@RESTRETURNCODE{412}
+Returned if if-match header is given, but the documents revision is different.
 
 @EXAMPLES
 
