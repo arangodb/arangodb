@@ -274,7 +274,7 @@ _.extend(Model.prototype, {
         this.isValid = false;
       } else {
         delete this.errors[attributeName];
-        if (!_.keys(this.errors).length) {
+        if (_.isEmpty(this.errors)) {
           this.isValid = true;
         }
       }
