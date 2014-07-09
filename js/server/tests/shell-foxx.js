@@ -578,6 +578,236 @@ function DocumentationAndConstraintsSpec () {
 
       app.get('/foxx', function () {
         //nothing
+      }).bodyParam(paramName, {
+        description: description,
+        type: ModelPrototype
+      });
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].docs.parameters[0].name, paramName);
+      assertEqual(routes[0].docs.parameters[0].paramType, "body");
+      assertEqual(routes[0].docs.parameters[0].description, description);
+      assertEqual(routes[0].docs.parameters[0].dataType, jsonSchema.id);
+    },
+
+    testAddBodyParamWithMultipleItems: function () {
+      var paramName = stub(),
+        description = stub(),
+        ModelPrototype = stub(),
+        jsonSchema = { id: 'a', required: [], properties: {} };
+
+      allow(ModelPrototype)
+        .toReceive("toJSONSchema")
+        .andReturn(jsonSchema);
+
+      app.get('/foxx', function () {
+        //nothing
+      }).bodyParam(paramName, {
+        description: description,
+        type: [ModelPrototype]
+      });
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].docs.parameters[0].name, paramName);
+      assertEqual(routes[0].docs.parameters[0].paramType, "body");
+      assertEqual(routes[0].docs.parameters[0].description, description);
+      assertEqual(routes[0].docs.parameters[0].dataType, jsonSchema.id);
+    },
+
+    testDefineBodyParamAddsJSONSchemaToModels: function () {
+      var paramName = stub(),
+        description = stub(),
+        ModelPrototype = stub(),
+        jsonSchema = { id: 'a', required: [], properties: {} };
+
+      allow(ModelPrototype)
+        .toReceive("toJSONSchema")
+        .andReturn(jsonSchema);
+
+      app.get('/foxx', function () {
+        //nothing
+      }).bodyParam(paramName, {
+        description: description,
+        type: ModelPrototype
+      });
+
+      assertEqual(app.models[jsonSchema.id], jsonSchema);
+    },
+
+    testSetParamForBodyParam: function () {
+      var req = { parameters: {} },
+        res = {},
+        paramName = stub(),
+        description = stub(),
+        requestBody = stub(),
+        ModelPrototype = stub(),
+        jsonSchemaId = stub(),
+        called = false;
+
+      allow(req)
+        .toReceive("body")
+        .andReturn(requestBody);
+
+      ModelPrototype = mockConstructor(requestBody);
+      ModelPrototype.toJSONSchema = function () { return { id: jsonSchemaId }; };
+
+      app.get('/foxx', function (providedReq) {
+        called = (providedReq.parameters[paramName] instanceof ModelPrototype);
+      }).bodyParam(paramName, {
+        description: description,
+        type: ModelPrototype
+      });
+
+      routes[0].action.callback(req, res);
+
+      assertTrue(called);
+      ModelPrototype.assertIsSatisfied();
+    },
+
+    testSetParamForBodyParamWithMultipleItems: function () {
+      var req = { parameters: {} },
+        res = {},
+        paramName = stub(),
+        description = stub(),
+        rawElement = stub(),
+        requestBody = [rawElement],
+        ModelPrototype = stub(),
+        jsonSchemaId = stub(),
+        called = false;
+
+      allow(req)
+        .toReceive("body")
+        .andReturn(requestBody);
+
+      ModelPrototype = mockConstructor(rawElement);
+      ModelPrototype.toJSONSchema = function () { return { id: jsonSchemaId }; };
+
+      app.get('/foxx', function (providedReq) {
+        called = (providedReq.parameters[paramName][0] instanceof ModelPrototype);
+      }).bodyParam(paramName, {
+        description: description,
+        type: [ModelPrototype]
+      });
+
+      routes[0].action.callback(req, res);
+
+      assertTrue(called);
+      ModelPrototype.assertIsSatisfied();
+    },
+
+    testDocumentationForErrorResponse: function () {
+      var CustomErrorClass = function () {};
+
+      app.get('/foxx', function () {
+        //nothing
+      }).errorResponse(CustomErrorClass, 400, "I don't understand a word you're saying");
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].docs.errorResponses.length, 1);
+      assertEqual(routes[0].docs.errorResponses[0].code, 400);
+      assertEqual(routes[0].docs.errorResponses[0].reason, "I don't understand a word you're saying");
+    },
+
+    testCatchesDefinedError: function () {
+      var CustomErrorClass = function () {},
+        req = {},
+        res,
+        code = 400,
+        reason = "This error was really... something!",
+        statusWasCalled = false,
+        jsonWasCalled = false,
+        passedRequestAndResponse = false;
+
+      res = {
+        status: function (givenCode) {
+          statusWasCalled = (givenCode === code);
+        },
+        json: function (givenBody) {
+          jsonWasCalled = (givenBody.error === reason);
+        }
+      };
+
+      app.get('/foxx', function (providedReq, providedRes) {
+        if (providedReq === req && providedRes === res) {
+          passedRequestAndResponse = true;
+        }
+        throw new CustomErrorClass();
+      }).errorResponse(CustomErrorClass, code, reason);
+
+      routes[0].action.callback(req, res);
+
+      assertTrue(statusWasCalled);
+      assertTrue(jsonWasCalled);
+      assertTrue(passedRequestAndResponse);
+    },
+
+    testCatchesDefinedErrorWithCustomFunction: function () {
+      var jsonWasCalled = false,
+        req = {},
+        res,
+        code = 400,
+        reason = "This error was really... something!",
+        CustomErrorClass = function () {};
+
+      res = {
+        status: function () {},
+        json: function (givenBody) {
+          jsonWasCalled = givenBody.success;
+        }
+      };
+
+      app.get('/foxx', function (providedReq, providedRes) {
+        throw new CustomErrorClass();
+      }).errorResponse(CustomErrorClass, code, reason, function (e) {
+        if (e instanceof CustomErrorClass) {
+          return { success: "true" };
+        }
+      });
+
+      routes[0].action.callback(req, res);
+
+      assertTrue(jsonWasCalled);
+    },
+
+    testControllerWideErrorResponse: function () {
+      var CustomErrorClass = function () {};
+
+      app.allRoutes.errorResponse(CustomErrorClass, 400, "I don't understand a word you're saying");
+
+      app.get('/foxx', function () {
+        //nothing
+      });
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].docs.errorResponses.length, 1);
+      assertEqual(routes[0].docs.errorResponses[0].code, 400);
+      assertEqual(routes[0].docs.errorResponses[0].reason, "I don't understand a word you're saying");
+    }
+  };
+}
+
+function LegacyDocumentationAndConstraintsSpec () {
+  var app, routes, models;
+
+  return {
+    setUp: function () {
+      app = new FoxxController(fakeContext);
+      routes = app.routingInfo.routes;
+      models = app.models;
+    },
+
+    testAddBodyParam: function () {
+      var paramName = stub(),
+        description = stub(),
+        ModelPrototype = stub(),
+        jsonSchema = { id: 'a', required: [], properties: {} };
+
+      allow(ModelPrototype)
+        .toReceive("toJSONSchema")
+        .andReturn(jsonSchema);
+
+      app.get('/foxx', function () {
+        //nothing
       }).bodyParam(paramName, description, ModelPrototype);
 
       assertEqual(routes.length, 1);
@@ -678,95 +908,6 @@ function DocumentationAndConstraintsSpec () {
 
       assertTrue(called);
       ModelPrototype.assertIsSatisfied();
-    },
-
-    testDocumentationForErrorResponse: function () {
-      var CustomErrorClass = function () {};
-
-      app.get('/foxx', function () {
-        //nothing
-      }).errorResponse(CustomErrorClass, 400, "I don't understand a word you're saying");
-
-      assertEqual(routes.length, 1);
-      assertEqual(routes[0].docs.errorResponses.length, 1);
-      assertEqual(routes[0].docs.errorResponses[0].code, 400);
-      assertEqual(routes[0].docs.errorResponses[0].reason, "I don't understand a word you're saying");
-    },
-
-    testCatchesDefinedError: function () {
-      var CustomErrorClass = function () {},
-        req = {},
-        res,
-        code = 400,
-        reason = "This error was really... something!",
-        statusWasCalled = false,
-        jsonWasCalled = false,
-        passedRequestAndResponse = false;
-
-      res = {
-        status: function (givenCode) {
-          statusWasCalled = (givenCode === code);
-        },
-        json: function (givenBody) {
-          jsonWasCalled = (givenBody.error === reason);
-        }
-      };
-
-      app.get('/foxx', function (providedReq, providedRes) {
-        if (providedReq === req && providedRes === res) {
-          passedRequestAndResponse = true;
-        }
-        throw new CustomErrorClass();
-      }).errorResponse(CustomErrorClass, code, reason);
-
-      routes[0].action.callback(req, res);
-
-      assertTrue(statusWasCalled);
-      assertTrue(jsonWasCalled);
-      assertTrue(passedRequestAndResponse);
-    },
-
-    testCatchesDefinedErrorWithCustomFunction: function () {
-      var jsonWasCalled = false,
-        req = {},
-        res,
-        code = 400,
-        reason = "This error was really... something!",
-        CustomErrorClass = function () {};
-
-      res = {
-        status: function () {},
-        json: function (givenBody) {
-          jsonWasCalled = givenBody.success;
-        }
-      };
-
-      app.get('/foxx', function (providedReq, providedRes) {
-        throw new CustomErrorClass();
-      }).errorResponse(CustomErrorClass, code, reason, function (e) {
-        if (e instanceof CustomErrorClass) {
-          return { success: "true" };
-        }
-      });
-
-      routes[0].action.callback(req, res);
-
-      assertTrue(jsonWasCalled);
-    },
-
-    testControllerWideErrorResponse: function () {
-      var CustomErrorClass = function () {};
-
-      app.allRoutes.errorResponse(CustomErrorClass, 400, "I don't understand a word you're saying");
-
-      app.get('/foxx', function () {
-        //nothing
-      });
-
-      assertEqual(routes.length, 1);
-      assertEqual(routes[0].docs.errorResponses.length, 1);
-      assertEqual(routes[0].docs.errorResponses[0].code, 400);
-      assertEqual(routes[0].docs.errorResponses[0].reason, "I don't understand a word you're saying");
     }
   };
 }
