@@ -3,15 +3,16 @@
 (function () {
   'use strict';
   var _ = require('underscore'),
+    joi = require('joi'),
     arangodb = require('org/arangodb'),
     db = arangodb.db,
     Foxx = require('org/arangodb/foxx'),
     errors = require('./errors'),
-    User = Foxx.Model.extend({}, {
-      attributes: {
-        user: {type: 'string', required: true},
-        authData: {type: 'object', required: true},
-        userData: {type: 'object', required: true}
+    User = Foxx.Model.extend({
+      schema: {
+        user: joi.string().required(),
+        authData: joi.object().required(),
+        userData: joi.object().required()
       }
     }),
     users = new Foxx.Repository(

@@ -3,6 +3,7 @@
 (function () {
   'use strict';
   var _ = require('underscore'),
+    joi = require('joi'),
     internal = require('internal'),
     arangodb = require('org/arangodb'),
     db = arangodb.db,
@@ -11,15 +12,15 @@
     Foxx = require('org/arangodb/foxx'),
     errors = require('./errors'),
     cfg = applicationContext.configuration,
-    Session = Foxx.Model.extend({}, {
-      attributes: {
-        _key: {type: 'string', required: true},
-        uid: {type: 'string', required: false},
-        sessionData: {type: 'object', required: true},
-        userData: {type: 'object', required: true},
-        created: {type: 'integer', required: true},
-        lastAccess: {type: 'integer', required: true},
-        lastUpdate: {type: 'integer', required: true}
+    Session = Foxx.Model.extend({
+      schema: {
+        _key: joi.string().required(),
+        uid: joi.string().optional(),
+        sessionData: joi.object().required(),
+        userData: joi.object().required(),
+        created: joi.number().integer().required(),
+        lastAccess: joi.number().integer().required(),
+        lastUpdate: joi.number().integer().required()
       }
     }),
     sessions = new Foxx.Repository(

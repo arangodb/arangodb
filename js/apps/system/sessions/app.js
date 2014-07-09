@@ -3,10 +3,12 @@
 (function () {
   'use strict';
   var _ = require('underscore'),
+    joi = require('joi'),
     Foxx = require('org/arangodb/foxx'),
     errors = require('./errors'),
     controller = new Foxx.Controller(applicationContext),
-    api = Foxx.requireApp(applicationContext.mount).sessionStorage;
+    api = Foxx.requireApp(applicationContext.mount).sessionStorage,
+    sessionId = joi.string().description('Session ID');
 
   controller.post('/', function (req, res) {
     var session = api.create(req.body());
@@ -21,10 +23,7 @@
     var session = api.get(req.urlParameters.sid);
     res.json(session.forClient());
   })
-    .pathParam('sid', {
-      description: 'Session ID',
-      type: 'string'
-    })
+    .pathParam('sid', {type: sessionId})
     .errorResponse(errors.SessionExpired, 404, 'Session has expired')
     .errorResponse(errors.SessionNotFound, 404, 'Session does not exist')
     .summary('Read session')
@@ -37,10 +36,7 @@
     session.save();
     res.json(session.forClient());
   })
-    .pathParam('sid', {
-      description: 'Session ID',
-      type: 'string'
-    })
+    .pathParam('sid', {type: sessionId})
     .errorResponse(errors.SessionExpired, 404, 'Session has expired')
     .errorResponse(errors.SessionNotFound, 404, 'Session does not exist')
     .errorResponse(SyntaxError, 400, 'Malformed or non-JSON session data.')
@@ -54,10 +50,7 @@
     session.save();
     res.json(session.forClient());
   })
-    .pathParam('sid', {
-      description: 'Session ID',
-      type: 'string'
-    })
+    .pathParam('sid', {type: sessionId})
     .errorResponse(errors.SessionExpired, 404, 'Session has expired')
     .errorResponse(errors.SessionNotFound, 404, 'Session does not exist')
     .errorResponse(SyntaxError, 400, 'Malformed or non-JSON session data.')
@@ -68,10 +61,7 @@
     api.destroy(req.urlParameters.sid);
     res.status(204);
   })
-    .pathParam('sid', {
-      description: 'Session ID',
-      type: 'string'
-    })
+    .pathParam('sid', {type: sessionId})
     .errorResponse(errors.SessionNotFound, 404, 'Session does not exist')
     .summary('Delete session')
     .notes('Removes the session with the given sid from the database.');
