@@ -52,7 +52,7 @@ var person = new PersonModel({
 });
 
 person.attributes // => { name: "Pete", admin: true, active: true }
-person.errors // {admin: [ValidationError: value is not allowed]}
+person.errors // => {admin: [ValidationError: value is not allowed]}
 ```
 
 !SUBSECTION Extend
