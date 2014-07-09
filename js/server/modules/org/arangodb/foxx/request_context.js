@@ -203,7 +203,7 @@ extend(RequestContext.prototype, {
 /// @startDocuBlock JSF_foxx_RequestContext_pathParam
 ///
 /// If you defined a route "/foxx/:id", you can constrain which format a path
-/// parameter (*/foxx?a=12*) can have by giving it a *joi* type.
+/// parameter (*/foxx/12*) can have by giving it a *joi* type.
 ///
 /// For more information on *joi* see [the official Joi documentation](https://github.com/spumko/joi).
 ///
