@@ -23,6 +23,11 @@
     loadGraphViewer: function(e) {
       var name = $(e.currentTarget).attr("id");
       name = name.substr(0, name.length - 5);
+      var edgeDefs = this.collection.get(name).get("edgeDefinitions");
+      if (!edgeDefs || edgeDefs.length === 0) {
+        // User Info
+        return;
+      }
       var adapterConfig = {
         type: "gharial",
         graphName: name,
