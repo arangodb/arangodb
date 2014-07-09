@@ -175,7 +175,10 @@ extend(Controller.prototype, {
 
     if (method === 'post' || method === 'put' || method === 'patch') {
       undocumentedBody = require('org/arangodb/foxx').Model.extend();
-      requestContext.bodyParam("undocumented body", "Undocumented body param", undocumentedBody);
+      requestContext.bodyParam("undocumented body", {
+        description: "Undocumented body param",
+        type: undocumentedBody
+      });
     }
 
     return requestContext;
