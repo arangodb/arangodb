@@ -5189,7 +5189,21 @@ function TRAVERSAL_PARAMS (params) {
 
 function MERGE_EXAMPLES_WITH_EDGES (examples, edges) {
   var result = [],filter;
-  if (examples.length === 0) {
+  if (examples === "null") {
+    examples = [{}];
+  }
+  if (!examples) {
+    examples = [{}];
+  }
+  if (typeof examples === "string") {
+    examples = {_id : examples};
+  }
+  if (!Array.isArray(examples)) {
+    examples = [examples];
+  }
+  if (examples.length === 0 || (
+    examples.length === 1 &&
+    Object.keys(examples).length === 0)) {
     return edges;
   }
   edges.forEach(function(edge) {
@@ -5849,7 +5863,7 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
   params.minDepth = options.minDepth === undefined ? 1 : options.minDepth;
   params.maxDepth = options.maxDepth === undefined ? 1 : options.maxDepth;
   params.paths = true;
-  options.edgeExamples = options.edgeExamples || [];
+  options.edgeExamples = options.edgeExamples || {};
   params.visitor = TRAVERSAL_NEIGHBOR_VISITOR;
 
   var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
