@@ -42,6 +42,13 @@
     toId = function(c, k) {
       return c + "/" + k;
     },
+    parseBooleanParameter = function(req, name, deflt) {
+      var testee = req.params(name);
+      if (testee === undefined) {
+        return deflt || false;
+      }
+      return testee.toLowerCase() === "true";
+    },
     buildError = function(err, code) {
       return {
         error: true,
@@ -54,13 +61,11 @@
       var options = {
         code: actions.HTTP_ACCEPTED
       };
-      if (req.params("waitForSync")) {
-        options.waitForSync = req.params("waitForSync");
+      options.waitForSync = parseBooleanParameter(req, "waitForSync");
+      if (options.waitForSync) {
         options.code = actions.HTTP_OK;
       }
-      if (req.params("keepNull")) {
-        options.keepNull = req.params("keepNull");
-      }
+      options.keepNull = parseBooleanParameter(req, "keepNull");
       return options;
     },
     setResponse = function (res, name, body, code) {
@@ -85,10 +90,10 @@
     matchError = function (req, res, doc, errorCode) {  
 
       if (req.headers["if-none-match"] !== undefined) {
-    var options = setOptions(req);
-    if (options.code === actions.HTTP_OK) {
-      options.code = actions.HTTP_CREATED;
-    }
+        var options = setOptions(req);
+        if (options.code === actions.HTTP_OK) {
+          options.code = actions.HTTP_CREATED;
+        }
         if (doc._rev === req.headers["if-none-match"].replace(/(^["']|["']$)/g, '')) {
           // error      
           res.responseCode = actions.HTTP_NOT_MODIFIED;
@@ -287,8 +292,8 @@
    */
   controller.del("/:graph", function(req, res) {
     var name = req.params("graph"),
-        drop = req.params("dropCollections") || false;
-    Graph._drop(name, Boolean(drop));
+        drop = parseBooleanParameter(req, "dropCollections");
+    Graph._drop(name, drop);
     setResponse(res, "removed", true, actions.HTTP_OK);
   })
   .pathParam("graph", {
@@ -431,8 +436,8 @@
     var name = req.params("graph");
     var def_name = req.params("collection");
     var g = Graph._graph(name);
-    var drop = req.params("dropCollections") || false;
-    g._removeVertexCollection(def_name, Boolean(drop));
+    var drop = parseBooleanParameter(req, "dropCollection");
+    g._removeVertexCollection(def_name, drop);
     setGraphResponse(res, g);
   })
   .pathParam("graph", {
@@ -625,8 +630,8 @@
     var name = req.params("graph");
     var def_name = req.params("definition");
     var g = Graph._graph(name);
-    var drop = req.params("dropCollections") || false;
-    g._deleteEdgeDefinition(def_name, Boolean(drop));
+    var drop = parseBooleanParameter(req, "dropCollection");
+    g._deleteEdgeDefinition(def_name, drop);
     setGraphResponse(res, g);
   })
   .pathParam("graph", {
@@ -692,7 +697,7 @@
     description: "Name of the vertex collection."
   })
   .queryParam("waitForSync", {
-    type: "string",
+    type: "boolean",
     description: "define if the request should wait until synced to disk."
   })
   .bodyParam("vertex", "The document to be stored", Model);
