@@ -4773,6 +4773,9 @@ function FILTER_RESTRICTION (list, restrictionList) {
 
 function DOCUMENTS_BY_EXAMPLE (collectionList, example) {
   var res = [];
+  if (example === "null") {
+    example = [{}];
+  }
   if (!example) {
     example = [{}];
   }
