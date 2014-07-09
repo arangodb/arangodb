@@ -126,10 +126,22 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
     },
     getCursorPositionInSVG = function (ev) {
       var pos = getCursorPosition(ev),
-        off = $('svg#graphViewerSVG').offset();
+          off = $('svg#graphViewerSVG').offset(),
+          svg, bBox, bCR;
+      svg = d3.select("svg#graphViewerSVG").node();
+      // Normal case. SVG has no clipped view box.
+      bCR = svg.getBoundingClientRect();
+      if ($("svg#graphViewerSVG").height() <= bCR.height ) {
+        return {
+          x: pos.x - off.left,
+          y: pos.y - off.top
+        };
+      }
+      // Firefox case. SVG has a clipped view box.
+      bBox = svg.getBBox();
       return {
-        x: pos.x - off.left,
-        y: pos.y - off.top
+        x: pos.x - (bCR.left - bBox.x),
+        y: pos.y - (bCR.top - bBox.y)
       };
     },
     callbacks = {

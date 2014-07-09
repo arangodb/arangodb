@@ -156,8 +156,9 @@ extend(Controller.prototype, {
 
   handleRequest: function (method, route, callback) {
     'use strict';
-    var newRoute = internal.constructRoute(method, route, callback, this),
-      requestContext = new RequestContext(this.allRoutes, this.models, newRoute, this.rootElement),
+    var constraints = {queryParams: {}, urlParams: {}},
+      newRoute = internal.constructRoute(method, route, callback, this, constraints),
+      requestContext = new RequestContext(this.allRoutes, this.models, newRoute, this.rootElement, constraints),
       summary,
       undocumentedBody;
 
@@ -175,7 +176,10 @@ extend(Controller.prototype, {
 
     if (method === 'post' || method === 'put' || method === 'patch') {
       undocumentedBody = require('org/arangodb/foxx').Model.extend();
-      requestContext.bodyParam("undocumented body", "Undocumented body param", undocumentedBody);
+      requestContext.bodyParam("undocumented body", {
+        description: "Undocumented body param",
+        type: undocumentedBody
+      });
     }
 
     return requestContext;
@@ -184,7 +188,7 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_head
 ///
-/// `FoxxController::head(path, callback)`
+/// `FoxxController#head(path, callback)`
 ///
 /// This handles requests from the HTTP verb *head*.  You have to give a
 /// function as *callback*. It will get a request and response object as its
@@ -200,7 +204,7 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_get
 ///
-/// `FoxxController::get(path, callback)`
+/// `FoxxController#get(path, callback)`
 ///
 /// This handles requests from the HTTP verb *get*.
 ///
@@ -227,7 +231,7 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_post
 ///
-/// `FoxxController::post(path, callback)`
+/// `FoxxController#post(path, callback)`
 ///
 /// This handles requests from the HTTP verb *post*.  See above for the
 /// arguments you can give.
@@ -250,7 +254,7 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_put
 ///
-/// `FoxxController::put(path, callback)`
+/// `FoxxController#put(path, callback)`
 ///
 /// This handles requests from the HTTP verb *put*.  See above for the arguments
 /// you can give.
@@ -273,7 +277,7 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_patch
 ///
-/// `FoxxController::patch(path, callback)`
+/// `FoxxController#patch(path, callback)`
 ///
 /// This handles requests from the HTTP verb *patch*.  See above for the
 /// arguments you can give.
@@ -296,7 +300,7 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_delete
 ///
-/// `FoxxController::delete(path, callback)`
+/// `FoxxController#delete(path, callback)`
 ///
 /// This handles requests from the HTTP verb *delete*.  See above for the
 /// arguments you can give.
@@ -332,7 +336,7 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_before
 ///
-/// `FoxxController::before(path, callback)`
+/// `FoxxController#before(path, callback)`
 ///
 /// The before function takes a *path* on which it should watch and a
 /// function that it should execute before the routing takes place. If you do
@@ -371,7 +375,7 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_after
 ///
-/// `FoxxController::after(path, callback)`
+/// `FoxxController#after(path, callback)`
 ///
 /// This works pretty similar to the before function.  But it acts after the
 /// execution of the handlers (Big surprise, I suppose).
@@ -430,7 +434,7 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_activateAuthentication
 ///
-/// `FoxxController::activateAuthentication(opts)`
+/// `FoxxController#activateAuthentication(opts)`
 ///
 /// To activate authentication for this authentication, first call this function.
 /// Provide the following arguments:
@@ -464,7 +468,7 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_login
 ///
-/// `FoxxController::login(path, opts)`
+/// `FoxxController#login(path, opts)`
 ///
 /// Add a route for the login. You can provide further customizations via the
 /// the options:
@@ -479,7 +483,7 @@ extend(Controller.prototype, {
 ///   work. This includes sending a response to the user. This defaults to a function
 ///   that sets the response to 401 and returns a JSON with *error* set to
 ///   "Username or Password was wrong".
-/// 
+///
 /// Both *onSuccess* and *onError* should take request and result as arguments.
 ///
 /// @EXAMPLES
@@ -502,12 +506,12 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_logout
 ///
-/// `FoxxController::logout(path, opts)`
+/// `FoxxController#logout(path, opts)`
 ///
 /// This works pretty similar to the logout function and adds a path to your
 /// app for the logout functionality. You can customize it with a custom *onSuccess*
 /// and *onError* function:
-/// 
+///
 /// * *onSuccess* is a function that you can define to do something if the logout was
 ///   successful. This includes sending a response to the user. This defaults to a
 ///   function that returns a JSON with *message* set to "logged out".
@@ -515,7 +519,7 @@ extend(Controller.prototype, {
 ///   work. This includes sending a response to the user. This defaults to a function
 ///   that sets the response to 401 and returns a JSON with *error* set to
 ///   "No session was found".
-/// 
+///
 /// Both *onSuccess* and *onError* should take request and result as arguments.
 ///
 ///
@@ -539,7 +543,7 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_register
 ///
-/// `FoxxController::register(path, opts)`
+/// `FoxxController#register(path, opts)`
 ///
 /// This works pretty similar to the logout function and adds a path to your
 /// app for the register functionality. You can customize it with a custom `*nSuccess*
@@ -552,9 +556,9 @@ extend(Controller.prototype, {
 ///   work. This includes sending a response to the user. This defaults to a function
 ///   that sets the response to 401 and returns a JSON with *error* set to
 ///   "Registration failed".
-/// 
+///
 /// Both *onSuccess* and *onError* should take request and result as arguments.
-/// 
+///
 /// You can also set the fields containing the username and password via *usernameField*
 /// (defaults to *username*) and *passwordField* (defaults to *password*).
 /// If you want to accept additional attributes for the user document, use the option
@@ -590,7 +594,7 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_changePassword
 ///
-/// FoxxController::changePassword(route, opts)`
+/// FoxxController#changePassword(route, opts)`
 ///
 /// Add a route for the logged in user to change the password.
 /// You can provide further customizations via the
@@ -605,7 +609,7 @@ extend(Controller.prototype, {
 ///   work. This includes sending a response to the user. This defaults to a function
 ///   that sets the response to 401 and returns a JSON with *error* set to
 ///   "No session was found".
-/// 
+///
 /// Both *onSuccess* and *onError* should take request and result as arguments.
 ///
 /// @EXAMPLES
