@@ -1,34 +1,31 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, vars: true, es5: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, es5: true */
 /*global require, exports, applicationContext */
 (function () {
   'use strict';
-  var _ = require('underscore');
-  var internal = require('internal');
-  var arangodb = require('org/arangodb');
-  var db = arangodb.db;
-  var addCookie = require('org/arangodb/actions').addCookie;
-  var crypto = require('org/arangodb/crypto');
-  var Foxx = require('org/arangodb/foxx');
-  var errors = require('./errors');
-
-  var cfg = applicationContext.configuration;
-
-  var Session = Foxx.Model.extend({}, {
-    attributes: {
-      _key: {type: 'string', required: true},
-      uid: {type: 'string', required: false},
-      sessionData: {type: 'object', required: true},
-      userData: {type: 'object', required: true},
-      created: {type: 'integer', required: true},
-      lastAccess: {type: 'integer', required: true},
-      lastUpdate: {type: 'integer', required: true}
-    }
-  });
-
-  var sessions = new Foxx.Repository(
-    applicationContext.collection('sessions'),
-    {model: Session}
-  );
+  var _ = require('underscore'),
+    internal = require('internal'),
+    arangodb = require('org/arangodb'),
+    db = arangodb.db,
+    addCookie = require('org/arangodb/actions').addCookie,
+    crypto = require('org/arangodb/crypto'),
+    Foxx = require('org/arangodb/foxx'),
+    errors = require('./errors'),
+    cfg = applicationContext.configuration,
+    Session = Foxx.Model.extend({}, {
+      attributes: {
+        _key: {type: 'string', required: true},
+        uid: {type: 'string', required: false},
+        sessionData: {type: 'object', required: true},
+        userData: {type: 'object', required: true},
+        created: {type: 'integer', required: true},
+        lastAccess: {type: 'integer', required: true},
+        lastUpdate: {type: 'integer', required: true}
+      }
+    }),
+    sessions = new Foxx.Repository(
+      applicationContext.collection('sessions'),
+      {model: Session}
+    );
 
   function generateSessionId() {
     var sid = '';
@@ -43,17 +40,17 @@
   }
 
   function createSession(sessionData) {
-    var sid = generateSessionId(cfg);
-    var now = Number(new Date());
-    var session = new Session({
-      _key: sid,
-      sid: sid,
-      sessionData: sessionData || {},
-      userData: {},
-      created: now,
-      lastAccess: now,
-      lastUpdate: now
-    });
+    var sid = generateSessionId(cfg),
+      now = Number(new Date()),
+      session = new Session({
+        _key: sid,
+        sid: sid,
+        sessionData: sessionData || {},
+        userData: {},
+        created: now,
+        lastAccess: now,
+        lastUpdate: now
+      });
     sessions.save(session);
     return session;
   }
@@ -106,11 +103,12 @@
   }
 
   function fromCookie(req, cookieName, secret) {
-    var session = null;
-    var value = req.cookies[cookieName];
+    var session = null,
+      value = req.cookies[cookieName],
+      signature;
     if (value) {
       if (secret) {
-        var signature = req.cookies[cookieName + '_sig'] || '';
+        signature = req.cookies[cookieName + '_sig'] || '';
         if (!crypto.constantEquals(signature, crypto.hmac(secret, value))) {
           return null;
         }
@@ -131,8 +129,8 @@
       if (!cfg.timeToLive) {
         return;
       }
-      var now = Number(new Date());
-      var prop = cfg.ttlType;
+      var now = Number(new Date()),
+        prop = cfg.ttlType;
       if (!prop || !this.get(prop)) {
         prop = 'created';
       }
@@ -141,8 +139,8 @@
       }
     },
     addCookie: function (res, cookieName, secret) {
-      var value = this.get('_key');
-      var ttl = cfg.timeToLive;
+      var value = this.get('_key'),
+        ttl = cfg.timeToLive;
       ttl = ttl ? Math.floor(ttl / 1000) : undefined;
       addCookie(res, cookieName, value, ttl);
       if (secret) {
@@ -167,16 +165,16 @@
       return session;
     },
     save: function () {
-      var session = this;
-      var now = Number(new Date());
+      var session = this,
+        now = Number(new Date());
       session.set('lastAccess', now);
       session.set('lastUpdate', now);
       sessions.replace(session);
       return session;
     },
     delete: function () {
-      var session = this;
-      var now = Number(new Date());
+      var session = this,
+        now = Number(new Date());
       session.set('lastAccess', now);
       session.set('lastUpdate', now);
       try {
