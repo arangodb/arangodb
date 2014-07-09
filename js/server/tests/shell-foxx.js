@@ -6,6 +6,7 @@ var stub,
   allow,
   FunctionStub,
   mockConstructor,
+  joi = require("joi"),
   _ = require("underscore");
 
 // Sorry for Yak Shaving. But I can't take it anymore.
@@ -464,47 +465,49 @@ function DocumentationAndConstraintsSpec () {
     },
 
     testDefinePathParam: function () {
-      app.get('/foxx/:id', function () {
-        //nothing
-      }).pathParam("id", {
-        description: "Id of the Foxx",
-        type: "int"
-      });
+      var constraint = joi.number().integer().description("Id of the Foxx"),
+        context = app.get('/foxx/:id', function () {
+          //nothing
+        }).pathParam("id", {
+          type: constraint
+        });
 
       assertEqual(routes.length, 1);
       assertEqual(routes[0].url.constraint.id, "/[0-9]+/");
       assertEqual(routes[0].docs.parameters[0].paramType, "path");
       assertEqual(routes[0].docs.parameters[0].name, "id");
       assertEqual(routes[0].docs.parameters[0].description, "Id of the Foxx");
-      assertEqual(routes[0].docs.parameters[0].dataType, "int");
+      assertEqual(routes[0].docs.parameters[0].dataType, "integer");
+      assertEqual(context.constraints.urlParams, {id: constraint});
     },
 
     testDefinePathCaseParam: function () {
-      app.get('/foxx/:idParam', function () {
-        //nothing
-      }).pathParam("idParam", {
-        description: "Id of the Foxx",
-        type: "int"
-      });
+      var constraint = joi.number().integer().description("Id of the Foxx"),
+        context = app.get('/foxx/:idParam', function () {
+          //nothing
+        }).pathParam("idParam", {
+          type: constraint
+        });
 
       assertEqual(routes.length, 1);
       assertEqual(routes[0].url.constraint.idParam, "/[0-9]+/");
       assertEqual(routes[0].docs.parameters[0].paramType, "path");
       assertEqual(routes[0].docs.parameters[0].name, "idParam");
       assertEqual(routes[0].docs.parameters[0].description, "Id of the Foxx");
-      assertEqual(routes[0].docs.parameters[0].dataType, "int");
+      assertEqual(routes[0].docs.parameters[0].dataType, "integer");
+      assertEqual(context.constraints.urlParams, {idParam: constraint});
     },
 
     testDefineMultiplePathParams: function () {
-      app.get('/:foxx/:id', function () {
-        //nothing
-      }).pathParam("foxx", {
-        description: "Kind of Foxx",
-        type: "string"
-      }).pathParam("id", {
-        description: "Id of the Foxx",
-        type: "int"
-      });
+      var foxxConstraint = joi.string().description("Kind of Foxx"),
+        idConstraint = joi.number().integer().description("Id of the Foxx"),
+        context = app.get('/:foxx/:id', function () {
+          //nothing
+        }).pathParam("foxx", {
+          type: foxxConstraint
+        }).pathParam("id", {
+          type: idConstraint
+        });
 
       assertEqual(routes.length, 1);
 
@@ -518,19 +521,21 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[1].paramType, "path");
       assertEqual(routes[0].docs.parameters[1].name, "id");
       assertEqual(routes[0].docs.parameters[1].description, "Id of the Foxx");
-      assertEqual(routes[0].docs.parameters[1].dataType, "int");
+      assertEqual(routes[0].docs.parameters[1].dataType, "integer");
+
+      assertEqual(context.constraints.urlParams, {foxx: foxxConstraint, id: idConstraint});
     },
 
     testDefineMultiplePathCaseParams: function () {
-      app.get('/:foxxParam/:idParam', function () {
-        //nothing
-      }).pathParam("foxxParam", {
-        description: "Kind of Foxx",
-        type: "string"
-      }).pathParam("idParam", {
-        description: "Id of the Foxx",
-        type: "int"
-      });
+      var foxxConstraint = joi.string().description("Kind of Foxx"),
+        idConstraint = joi.number().integer().description("Id of the Foxx"),
+        context = app.get('/:foxxParam/:idParam', function () {
+          //nothing
+        }).pathParam("foxxParam", {
+          type: foxxConstraint
+        }).pathParam("idParam", {
+          type: idConstraint
+        });
 
       assertEqual(routes.length, 1);
 
@@ -544,26 +549,28 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[1].paramType, "path");
       assertEqual(routes[0].docs.parameters[1].name, "idParam");
       assertEqual(routes[0].docs.parameters[1].description, "Id of the Foxx");
-      assertEqual(routes[0].docs.parameters[1].dataType, "int");
+      assertEqual(routes[0].docs.parameters[1].dataType, "integer");
+
+      assertEqual(context.constraints.urlParams, {foxxParam: foxxConstraint, idParam: idConstraint});
     },
 
     testDefineQueryParam: function () {
-      app.get('/foxx', function () {
-        //nothing
-      }).queryParam("a", {
-        description: "The value of an a",
-        type: "int",
-        required: false,
-        allowMultiple: true
-      });
+      var constraint = joi.number().integer().description("The value of an a"),
+        context = app.get('/foxx', function () {
+          //nothing
+        }).queryParam("a", {
+          type: constraint,
+          allowMultiple: true
+        });
 
       assertEqual(routes.length, 1);
       assertEqual(routes[0].docs.parameters[0].paramType, "query");
       assertEqual(routes[0].docs.parameters[0].name, "a");
       assertEqual(routes[0].docs.parameters[0].description, "The value of an a");
-      assertEqual(routes[0].docs.parameters[0].dataType, "int");
+      assertEqual(routes[0].docs.parameters[0].dataType, "integer");
       assertEqual(routes[0].docs.parameters[0].required, false);
       assertEqual(routes[0].docs.parameters[0].allowMultiple, true);
+      assertEqual(context.constraints.queryParams, {a: constraint});
     },
 
     testAddBodyParam: function () {
@@ -908,6 +915,160 @@ function LegacyDocumentationAndConstraintsSpec () {
 
       assertTrue(called);
       ModelPrototype.assertIsSatisfied();
+    }
+  };
+}
+
+function LegacyDocumentationAndConstraintsSpec () {
+  var app, routes, models;
+
+  return {
+    setUp: function () {
+      app = new FoxxController(fakeContext);
+      routes = app.routingInfo.routes;
+      models = app.models;
+    },
+
+    testDefinePathParamOverride: function () {
+      var constraint = joi.number().integer().description("no text"),
+        context = app.get('/foxx/:id', function () {
+          //nothing
+        }).pathParam("id", {
+          type: constraint,
+          description: "Id of the Foxx"
+        });
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].url.constraint.id, "/[0-9]+/");
+      assertEqual(routes[0].docs.parameters[0].paramType, "path");
+      assertEqual(routes[0].docs.parameters[0].name, "id");
+      assertEqual(routes[0].docs.parameters[0].description, "Id of the Foxx");
+      assertEqual(routes[0].docs.parameters[0].dataType, "integer");
+      assertEqual(context.constraints.urlParams, {id: constraint});
+    },
+
+    testDefinePathParam: function () {
+      app.get('/foxx/:id', function () {
+        //nothing
+      }).pathParam("id", {
+        description: "Id of the Foxx",
+        type: "int"
+      });
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].url.constraint.id, "/[0-9]+/");
+      assertEqual(routes[0].docs.parameters[0].paramType, "path");
+      assertEqual(routes[0].docs.parameters[0].name, "id");
+      assertEqual(routes[0].docs.parameters[0].description, "Id of the Foxx");
+      assertEqual(routes[0].docs.parameters[0].dataType, "int");
+    },
+
+    testDefinePathCaseParam: function () {
+      app.get('/foxx/:idParam', function () {
+        //nothing
+      }).pathParam("idParam", {
+        description: "Id of the Foxx",
+        type: "int"
+      });
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].url.constraint.idParam, "/[0-9]+/");
+      assertEqual(routes[0].docs.parameters[0].paramType, "path");
+      assertEqual(routes[0].docs.parameters[0].name, "idParam");
+      assertEqual(routes[0].docs.parameters[0].description, "Id of the Foxx");
+      assertEqual(routes[0].docs.parameters[0].dataType, "int");
+    },
+
+    testDefineMultiplePathParams: function () {
+      app.get('/:foxx/:id', function () {
+        //nothing
+      }).pathParam("foxx", {
+        description: "Kind of Foxx",
+        type: "string"
+      }).pathParam("id", {
+        description: "Id of the Foxx",
+        type: "int"
+      });
+
+      assertEqual(routes.length, 1);
+
+      assertEqual(routes[0].url.constraint.foxx, "/[^/]+/");
+      assertEqual(routes[0].docs.parameters[0].paramType, "path");
+      assertEqual(routes[0].docs.parameters[0].name, "foxx");
+      assertEqual(routes[0].docs.parameters[0].description, "Kind of Foxx");
+      assertEqual(routes[0].docs.parameters[0].dataType, "string");
+
+      assertEqual(routes[0].url.constraint.id, "/[0-9]+/");
+      assertEqual(routes[0].docs.parameters[1].paramType, "path");
+      assertEqual(routes[0].docs.parameters[1].name, "id");
+      assertEqual(routes[0].docs.parameters[1].description, "Id of the Foxx");
+      assertEqual(routes[0].docs.parameters[1].dataType, "int");
+    },
+
+    testDefineMultiplePathCaseParams: function () {
+      app.get('/:foxxParam/:idParam', function () {
+        //nothing
+      }).pathParam("foxxParam", {
+        description: "Kind of Foxx",
+        type: "string"
+      }).pathParam("idParam", {
+        description: "Id of the Foxx",
+        type: "int"
+      });
+
+      assertEqual(routes.length, 1);
+
+      assertEqual(routes[0].url.constraint.foxxParam, "/[^/]+/");
+      assertEqual(routes[0].docs.parameters[0].paramType, "path");
+      assertEqual(routes[0].docs.parameters[0].name, "foxxParam");
+      assertEqual(routes[0].docs.parameters[0].description, "Kind of Foxx");
+      assertEqual(routes[0].docs.parameters[0].dataType, "string");
+
+      assertEqual(routes[0].url.constraint.idParam, "/[0-9]+/");
+      assertEqual(routes[0].docs.parameters[1].paramType, "path");
+      assertEqual(routes[0].docs.parameters[1].name, "idParam");
+      assertEqual(routes[0].docs.parameters[1].description, "Id of the Foxx");
+      assertEqual(routes[0].docs.parameters[1].dataType, "int");
+    },
+
+    testDefineQueryParamOverride: function () {
+      var constraint = joi.number().integer().description("no text"),
+        context = app.get('/foxx', function () {
+          //nothing
+        }).queryParam("a", {
+          type: constraint,
+          required: true,
+          description: "The value of an a",
+          allowMultiple: true
+        });
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].docs.parameters[0].paramType, "query");
+      assertEqual(routes[0].docs.parameters[0].name, "a");
+      assertEqual(routes[0].docs.parameters[0].description, "The value of an a");
+      assertEqual(routes[0].docs.parameters[0].dataType, "integer");
+      assertEqual(routes[0].docs.parameters[0].required, false);
+      assertEqual(routes[0].docs.parameters[0].allowMultiple, true);
+      assertEqual(context.constraints.queryParams, {a: constraint});
+    },
+
+    testDefineQueryParam: function () {
+      app.get('/foxx', function () {
+        //nothing
+      }).queryParam("a", {
+        description: "The value of an a",
+        type: "int",
+        required: false,
+        allowMultiple: true
+      });
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].docs.parameters[0].paramType, "query");
+      assertEqual(routes[0].docs.parameters[0].name, "a");
+      assertEqual(routes[0].docs.parameters[0].description, "The value of an a");
+      assertEqual(routes[0].docs.parameters[0].dataType, "int");
+      assertEqual(routes[0].docs.parameters[0].required, false);
+      assertEqual(routes[0].docs.parameters[0].allowMultiple, true);
     }
   };
 }
