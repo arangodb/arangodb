@@ -70,6 +70,7 @@ excludeExtraAttributes = function (attributes, Model) {
       _.keys(Model.prototype.schema)
     );
   } else {
+    // deprecated
     extraAttributeNames = _.difference(
       _.keys(metadataSchema),
       _.keys(Model.attributes)
@@ -124,6 +125,7 @@ Model = function (attributes) {
       }
     );
   } else if (instance.constructor.attributes) {
+    // deprecated
     if (attributes) {
       instance.attributes = _.pick(
         attributes,
@@ -181,6 +183,7 @@ _.extend(Model, {
         properties[attributeName] = {type: type};
       });
     } else {
+      // deprecated
       _.each(this.attributes, function (attribute, attributeName) {
         if (typeof attribute === 'string') {
           properties[attributeName] = {type: attribute};
