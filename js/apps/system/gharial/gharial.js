@@ -57,6 +57,15 @@
         errorMessage: err.errorMessage
       };
     },
+    checkCollection = function(g, collection) {
+      if (g[collection] === undefined) {
+        var err;
+        err = new ArangoError();
+        err.errorNum = arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code;
+        err.errorMessage = arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.message;
+        throw err;
+      }
+    },
     setOptions = function(req) {
       var options = {
         code: actions.HTTP_ACCEPTED
@@ -686,6 +695,7 @@
     if (options.code === actions.HTTP_OK) {
       options.code = actions.HTTP_CREATED;
     }
+    checkCollection(g, collection);
     setResponse(res, "vertex", g[collection].save(body.forDB(), options), options.code);
   })
   .pathParam("graph", {
@@ -729,6 +739,7 @@
     var key = req.params("key");
     var id = toId(collection, key);
     var g = Graph._graph(name);
+    checkCollection(g, collection);
     var doc = g[collection].document(id);
     if (!matchError(req, res, doc, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
       setResponse(res, "vertex", doc, actions.HTTP_OK);
@@ -785,6 +796,7 @@
     var id = toId(collection, key);
     var body = req.params("vertex");
     var g = Graph._graph(name);
+    checkCollection(g, collection);
     var doc = g[collection].document(id);
     var options = setOptions(req);
     if (!matchError(req, res, doc, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
@@ -804,7 +816,7 @@
     description: "_key attribute of one specific vertex."
   })
   .queryParam("waitForSync", {
-    type: "string",
+    type: "boolean",
     description: "define if the request should wait until synced to disk."
   })
   .bodyParam("vertex", "The document to be stored", Model)
@@ -846,6 +858,7 @@
     var id = toId(collection, key);
     var body = req.params("vertex");
     var g = Graph._graph(name);
+    checkCollection(g, collection);
     var doc = g[collection].document(id);
     var options = setOptions(req);
     if (!matchError(req, res, doc, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
@@ -866,11 +879,11 @@
     description: "_key attribute of one specific vertex."
   })
   .queryParam("waitForSync", {
-    type: "string",
+    type: "boolean",
     description: "define if the request should wait until synced to disk."
   })
   .queryParam("keepNull", {
-    type: "string",
+    type: "boolean",
     description: "define if null values should not be deleted."
   })
   .errorResponse(
@@ -907,6 +920,7 @@
     var key = req.params("key");
     var id = toId(collection, key);
     var g = Graph._graph(name);
+    checkCollection(g, collection);
     var doc = g[collection].document(id);
     var options = setOptions(req);
     if (!matchError(req, res, doc, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
@@ -927,7 +941,7 @@
     description: "_key attribute of one specific vertex."
   })
   .queryParam("waitForSync", {
-    type: "string",
+    type: "boolean",
     description: "define if the request should wait until synced to disk."
   })
   .errorResponse(
@@ -969,19 +983,23 @@
     var body = req.params("edge");
     var from = body.get("_from");
     var to = body.get("_to");
-    var err;
     if (!from || !to) {
-      err = new ArangoError();
-      err.errorNum = errors.ERROR_GRAPH_INVALID_EDGE.code;
-      err.errorMessage = errors.ERROR_GRAPH_INVALID_EDGE.message;
-      throw err;
+      throw new Error();
     }
     var g = Graph._graph(name);
+    checkCollection(g, collection);
     var options = setOptions(req);
     if (options.code === actions.HTTP_OK) {
       options.code = actions.HTTP_CREATED;
     }
-    setResponse(res, "edge", g[collection].save(from, to, body.forDB(), options), options.code);
+    try {
+      setResponse(res, "edge", g[collection].save(from, to, body.forDB(), options), options.code);
+    } catch(e) {
+      if (e.errorNum === errors.ERROR_GRAPH_INVALID_EDGE.code) {
+        throw new Error();
+      }
+      throw e;
+    }
   })
   .pathParam("graph", {
     type: "string",
@@ -992,15 +1010,23 @@
     description: "Name of the edge collection."
   })
   .queryParam("waitForSync", {
-    type: "string",
+    type: "boolean",
     description: "define if the request should wait until synced to disk."
   })
   .bodyParam(
     "edge", "The edge to be stored. Has to contain _from and _to attributes.", Model
   )
   .errorResponse(
-    ArangoError, actions.HTTP_BAD_REQUEST, "The edge could not be created.", function(e) {
-      return buildError(e, actions.HTTP_BAD_REQUEST);
+    ArangoError, actions.HTTP_NOT_FOUND, "Graph or collection not found.", function(e) {
+      return buildError(e, actions.HTTP_NOT_FOUND);
+    }
+  )
+  .errorResponse(
+    Error, actions.HTTP_BAD, "Edge is invalid.", function(e) {
+      return buildError({
+        errorNum: errors.ERROR_GRAPH_INVALID_EDGE.code,
+        errorMessage: errors.ERROR_GRAPH_INVALID_EDGE.message
+      }, actions.HTTP_BAD);
     }
   );
 
@@ -1030,6 +1056,7 @@
     var key = req.params("key");
     var id = toId(collection, key);
     var g = Graph._graph(name);
+    checkCollection(g, collection);
     var doc = g[collection].document(id);
     if (!matchError(req, res, doc, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
       setResponse(res, "edge", doc, actions.HTTP_OK);
@@ -1048,7 +1075,7 @@
     description: "_key attribute of one specific edge."
   })
   .queryParam("waitForSync", {
-    type: "string",
+    type: "boolean",
     description: "define if the request should wait until synced to disk."
   })
   .errorResponse(
@@ -1088,6 +1115,7 @@
     var id = toId(collection, key);
     var body = req.params("edge");
     var g = Graph._graph(name);
+    checkCollection(g, collection);
     var doc = g[collection].document(id);
     var options = setOptions(req);
     if (!matchError(req, res, doc, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
@@ -1107,7 +1135,7 @@
     description: "_key attribute of one specific edge."
   })
   .queryParam("waitForSync", {
-    type: "string",
+    type: "boolean",
     description: "define if the request should wait until synced to disk."
   })
   .bodyParam("edge", "The document to be stored. _from and _to attributes are ignored", Model)
@@ -1148,6 +1176,7 @@
     var id = toId(collection, key);
     var body = req.params("edge");
     var g = Graph._graph(name);
+    checkCollection(g, collection);
     var doc = g[collection].document(id);
     var options = setOptions(req);
     if (!matchError(req, res, doc, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
@@ -1170,11 +1199,11 @@
     description: "_key attribute of one specific edge."
   })
   .queryParam("waitForSync", {
-    type: "string",
+    type: "boolean",
     description: "define if the request should wait until synced to disk."
   })
   .queryParam("keepNull", {
-    type: "string",
+    type: "boolean",
     description: "define if null values should not be deleted."
   })
   .errorResponse(
@@ -1210,6 +1239,7 @@
     var key = req.params("key");
     var id = toId(collection, key);
     var g = Graph._graph(name);
+    checkCollection(g, collection);
     var doc = g[collection].document(id);
     var options = setOptions(req);
     if (!matchError(req, res, doc, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
@@ -1230,7 +1260,7 @@
     description: "_key attribute of one specific edge."
   })
   .queryParam("waitForSync", {
-    type: "string",
+    type: "boolean",
     description: "define if the request should wait until synced to disk."
   })
   .errorResponse(
