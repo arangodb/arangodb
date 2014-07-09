@@ -324,10 +324,7 @@ extend(RequestContext.prototype, {
     var handler = this.route.action.callback;
 
     if (Proto !== undefined) {
-      require('console').log(
-        'RequestContext#bodyParam(paramName, description, Model) is deprecated, ' +
-          'use RequestContext#bodyParam(paramName, {type: Model, description: description}) instead'
-      );
+      // deprecated
       attributes = {
         description: attributes,
         type: Proto
