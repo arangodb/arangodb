@@ -5,6 +5,7 @@ documents, graphs, and key-values. Build high performance applications using a
 convenient SQL-like query language or JavaScript/Ruby extensions. Use ACID
 transaction if you require them. Scale horizontally and vertically with a few
 mouse clicks.
+
 Key features include:
 
 * Schema-free schemata let you combine the space efficiency of MySQL with the
