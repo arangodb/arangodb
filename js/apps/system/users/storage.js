@@ -1,25 +1,23 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, vars: true, es5: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, es5: true */
 /*global require, exports, applicationContext */
 (function () {
   'use strict';
-  var _ = require('underscore');
-  var arangodb = require('org/arangodb');
-  var db = arangodb.db;
-  var Foxx = require('org/arangodb/foxx');
-  var errors = require('./errors');
-
-  var User = Foxx.Model.extend({}, {
-    attributes: {
-      user: {type: 'string', required: true},
-      authData: {type: 'object', required: true},
-      userData: {type: 'object', required: true}
-    }
-  });
-
-  var users = new Foxx.Repository(
-    applicationContext.collection('users'),
-    {model: User}
-  );
+  var _ = require('underscore'),
+    arangodb = require('org/arangodb'),
+    db = arangodb.db,
+    Foxx = require('org/arangodb/foxx'),
+    errors = require('./errors'),
+    User = Foxx.Model.extend({}, {
+      attributes: {
+        user: {type: 'string', required: true},
+        authData: {type: 'object', required: true},
+        userData: {type: 'object', required: true}
+      }
+    }),
+    users = new Foxx.Repository(
+      applicationContext.collection('users'),
+      {model: User}
+    );
 
   function resolve(username) {
     var user = users.firstExample({user: username});
