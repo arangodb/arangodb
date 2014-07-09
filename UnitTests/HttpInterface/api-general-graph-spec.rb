@@ -529,7 +529,7 @@ describe ArangoDB do
         doc = get_edge(graph_name, friend_collection, key) 
         doc.code.should eq(404)
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorMessage'].should eq("document not found")
+        doc.parsed_response['errorMessage'].should include("document not found")
         doc.parsed_response['code'].should eq(404)
       end
 
@@ -566,7 +566,7 @@ describe ArangoDB do
         doc = replace_edge(graph_name, friend_collection, key, {"type2" => "divorced"}) 
         doc.code.should eq(404)
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorMessage'].should eq("document not found")
+        doc.parsed_response['errorMessage'].should include("document not found")
         doc.parsed_response['code'].should eq(404)
       end
 
@@ -600,7 +600,7 @@ describe ArangoDB do
         doc = update_edge(graph_name, friend_collection, key, {"type2" => "divorced"}, "") 
         doc.code.should eq(404)
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorMessage'].should eq("document not found")
+        doc.parsed_response['errorMessage'].should include("document not found")
         doc.parsed_response['code'].should eq(404)
       end
 
@@ -631,7 +631,7 @@ describe ArangoDB do
         doc = delete_edge(graph_name, friend_collection, key) 
         doc.code.should eq(404)
         doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorMessage'].should eq("document not found")
+        doc.parsed_response['errorMessage'].should include("document not found")
         doc.parsed_response['code'].should eq(404)
       end
 

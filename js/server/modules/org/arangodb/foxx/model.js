@@ -30,11 +30,15 @@
 
 var Model,
   _ = require("underscore"),
+  joi = require("joi"),
   is = require("org/arangodb/is"),
   extend = require('org/arangodb/extend').extend,
-  metadataKeys = ['_id', '_key', '_rev'],
-  parseAttributes,
-  parseRequiredAttributes;
+  excludeExtraAttributes,
+  metadataSchema = {
+    _id: joi.string().optional(),
+    _key: joi.string().optional(),
+    _rev: joi.string().optional()
+  };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             Model
@@ -57,94 +61,93 @@ var Model,
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-var whitelistProperties = function (properties, constructorProperties, whitelistMetadata) {
+excludeExtraAttributes = function (attributes, Model) {
   'use strict';
-  if (!properties) {
-    return {};
+  var extraAttributeNames;
+  if (Model.prototype.schema) {
+    extraAttributeNames = _.difference(
+      _.keys(metadataSchema),
+      _.keys(Model.prototype.schema)
+    );
+  } else {
+    // deprecated
+    extraAttributeNames = _.difference(
+      _.keys(metadataSchema),
+      _.keys(Model.attributes)
+    );
   }
-
-  if (!constructorProperties) {
-    return _.clone(properties);
-  }
-
-  var whitelistedKeys = _.keys(constructorProperties);
-
-  if (whitelistMetadata) {
-    whitelistedKeys = whitelistedKeys.concat(metadataKeys);
-  }
-
-  return _.pick(properties, whitelistedKeys);
-};
-
-var fillInDefaults = function (properties, constructorProperties) {
-  'use strict';
-  if (!constructorProperties) {
-    return properties;
-  }
-  var defaults = _.reduce(constructorProperties, function (result, value, key) {
-    if (_.has(value, "defaultValue")) {
-      result[key] = value.defaultValue;
-    }
-
-    return result;
-  }, {});
-
-  return _.defaults(properties, defaults);
+  return _.omit(attributes, extraAttributeNames);
 };
 
 Model = function (attributes) {
   'use strict';
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_model_attributes
+///
+/// `model.attributes`
+///
+/// The *attributes* property is the internal hash containing the model's state.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+  this.attributes = {};
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @fn JSF_foxx_model_attributes
-/// @brief The attributes property is the internal hash containing the model's state.
+/// @startDocuBlock JSF_foxx_model_isvalid
+///
+/// `model.isValid`
+///
+/// The *isValid* flag indicates whether the model's state is currently valid.
+/// If the model does not have a schema, it will always be considered valid.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  this.attributes = whitelistProperties(attributes, this.constructor.attributes, true);
-  this.attributes = fillInDefaults(this.attributes, this.constructor.attributes);
-  this.whitelistedAttributes = whitelistProperties(this.attributes, this.constructor.attributes);
+  this.isValid = true;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_model_errors
+///
+/// `model.errors`
+///
+/// The *errors* property maps the names of any invalid attributes to their
+/// corresponding validation error.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+  this.errors = {};
+
+  var instance = this;
+  if (instance.schema) {
+    _.each(
+      _.union(_.keys(instance.schema), _.keys(attributes)),
+      function (attributeName) {
+        instance.set(attributeName, attributes ? attributes[attributeName] : undefined);
+      }
+    );
+  } else if (instance.constructor.attributes) {
+    // deprecated
+    if (attributes) {
+      instance.attributes = _.pick(
+        attributes,
+        _.union(
+          _.keys(metadataSchema),
+          _.keys(instance.constructor.attributes)
+        )
+      );
+    }
+    _.each(instance.constructor.attributes, function (attribute, attributeName) {
+      if (_.has(attribute, 'defaultValue') && instance.attributes[attributeName] === undefined) {
+        instance.attributes[attributeName] = attribute.defaultValue;
+      }
+    });
+  } else if (attributes) {
+    instance.attributes = _.clone(attributes);
+  }
 };
 
 Model.fromClient = function (attributes) {
   'use strict';
-
-  var instance = new this(attributes);
-  instance.attributes = whitelistProperties(attributes, this.attributes, false);
-  instance.attributes = fillInDefaults(instance.attributes, this.attributes);
-  instance.whitelistedAttributes = whitelistProperties(instance.attributes, this.attributes);
-  return instance;
-};
-
-parseAttributes = function (rawAttributes) {
-  'use strict';
-  var properties = {};
-
-  _.each(rawAttributes, function (value, key) {
-    if (_.isString(value)) {
-      properties[key] = {
-        type: value
-      };
-    } else {
-      properties[key] = {
-        type: value.type
-      };
-    }
-  });
-
-  return properties;
-};
-
-parseRequiredAttributes = function (rawAttributes) {
-  'use strict';
-  var requiredProperties = [];
-
-  _.each(rawAttributes, function (value, key) {
-    if (_.isObject(value) && value.required) {
-      requiredProperties.push(key);
-    }
-  });
-
-  return requiredProperties;
+  return new this(excludeExtraAttributes(attributes, this));
 };
 
 // "Class" Properties
@@ -153,12 +156,52 @@ _.extend(Model, {
 
   toJSONSchema: function (id) {
     'use strict';
-    var attributes = this.attributes;
+    var required = [],
+      properties = {};
+
+    if (this.prototype.schema) {
+      _.each(this.prototype.schema, function (schema, attributeName) {
+        var description = schema.describe(),
+          type = description.type,
+          rules = description.rules,
+          flags = description.flags;
+
+        if (flags && flags.presence === 'required') {
+          required.push(attributeName);
+        }
+
+        if (
+          type === 'number' &&
+            _.isArray(rules) &&
+            _.some(rules, function (rule) {
+              return rule.name === 'integer';
+            })
+        ) {
+          type = 'integer';
+        }
+
+        properties[attributeName] = {type: type};
+      });
+    } else {
+      // deprecated
+      _.each(this.attributes, function (attribute, attributeName) {
+        if (typeof attribute === 'string') {
+          properties[attributeName] = {type: attribute};
+        } else if (attribute) {
+          if (typeof attribute.type === 'string') {
+            properties[attributeName] = {type: attribute.type};
+          }
+          if (attribute.required) {
+            required.push(attributeName);
+          }
+        }
+      });
+    }
 
     return {
       id: id,
-      required: parseRequiredAttributes(attributes),
-      properties: parseAttributes(attributes)
+      required: required,
+      properties: properties
     };
   }
 });
@@ -168,7 +211,7 @@ _.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_get
 ///
-/// `FoxxModel::get(name)`
+/// `FoxxModel#get(name)`
 ///
 /// Get the value of an attribute
 ///
@@ -192,7 +235,7 @@ _.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_set
 ///
-/// `FoxxModel::set(name, value)`
+/// `FoxxModel#set(name, value)`
 ///
 /// Set the value of an attribute or multiple attributes at once
 ///
@@ -213,53 +256,45 @@ _.extend(Model.prototype, {
 
   set: function (attributeName, value) {
     'use strict';
-    var constructorAttributes = this.constructor.attributes,
-      attributes = attributeName;
 
-    if (!is.object(attributeName)) {
-      attributes = {};
-      attributes[attributeName] = value;
+    if (is.object(attributeName)) {
+      _.each(attributeName, function (value, key) {
+        this.set(key, value);
+      }, this);
+      return;
     }
 
-    if (constructorAttributes) {
-      _.each(_.keys(attributes), function (key) {
-        if (!constructorAttributes.hasOwnProperty(key)) {
-          if (metadataKeys.indexOf(key) !== -1) {
-            return;
-          }
-          throw new Error("Unknown attribute: " + key);
-        }
-        var value = attributes[key],
-          actualType = typeof value,
-          expectedType = constructorAttributes[key].type;
+    if (this.schema) {
+      var schema = (
+          this.schema[attributeName] ||
+          metadataSchema[attributeName] ||
+          joi.forbidden()
+        ),
+        result = schema.validate(value);
 
-        if (value === undefined || value === null) {
-          return;
+      if (result.error) {
+        this.errors[attributeName] = result.error;
+        this.isValid = false;
+      } else {
+        delete this.errors[attributeName];
+        if (_.isEmpty(this.errors)) {
+          this.isValid = true;
         }
-        if (_.isArray(value)) {
-          actualType = "array";
-        }
-        if (expectedType === "integer" && actualType === "number") {
-          actualType = (Math.floor(value) === value ? "integer" : "number");
-        }
-        if (actualType !== expectedType) {
-          throw new Error(
-            "Invalid value for \"" +
-              key + "\": Expected " + expectedType +
-              " instead of " + actualType + "!"
-          );
-        }
-      });
+      }
+      if (result.value === undefined) {
+        delete this.attributes[attributeName];
+      } else {
+        this.attributes[attributeName] = result.value;
+      }
+    } else {
+      this.attributes[attributeName] = value;
     }
-
-    _.extend(this.attributes, attributes);
-    this.whitelistedAttributes = whitelistProperties(this.attributes, constructorAttributes);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_has
 ///
-/// `FoxxModel::has(name)`
+/// `FoxxModel#has(name)`
 ///
 /// Returns true if the attribute is set to a non-null or non-undefined value.
 ///
@@ -285,7 +320,7 @@ _.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_forDB
 ///
-/// `FoxxModel::forDB()`
+/// `FoxxModel#forDB()`
 ///
 /// Return a copy of the model which can be saved into ArangoDB
 /// @endDocuBlock
@@ -299,7 +334,7 @@ _.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_forClient
 ///
-/// `FoxxModel::forClient()`
+/// `FoxxModel#forClient()`
 ///
 /// Return a copy of the model which you can send to the client.
 /// @endDocuBlock
@@ -307,14 +342,14 @@ _.extend(Model.prototype, {
 
   forClient: function () {
     'use strict';
-    return this.whitelistedAttributes;
+    return excludeExtraAttributes(this.attributes, this.constructor);
   }
 });
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_extend
 ///
-/// `FoxxModel::extend(instanceProperties, classProperties)`
+/// `FoxxModel#extend(instanceProperties, classProperties)`
 ///
 /// Extend the Model prototype to add or overwrite methods.
 /// The first object contains the properties to be defined on the instance,
