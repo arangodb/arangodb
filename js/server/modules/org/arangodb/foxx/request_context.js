@@ -180,7 +180,7 @@ extend(SwaggerDocs.prototype, {
 /// Used for documenting and constraining the routes.
 ////////////////////////////////////////////////////////////////////////////////
 
-RequestContext = function (executionBuffer, models, route, rootElement) {
+RequestContext = function (executionBuffer, models, route, rootElement, constraints) {
   'use strict';
   this.route = route;
   this.typeToRegex = {
@@ -189,6 +189,7 @@ RequestContext = function (executionBuffer, models, route, rootElement) {
     "string": "/[^/]+/"
   };
   this.rootElement = rootElement;
+  this.constraints = constraints;
 
   this.docs = new SwaggerDocs(this.route.docs, models);
   this.docs.addNickname(route.docs.httpMethod, route.url.match);
@@ -202,11 +203,9 @@ extend(RequestContext.prototype, {
 /// @startDocuBlock JSF_foxx_RequestContext_pathParam
 ///
 /// If you defined a route "/foxx/:id", you can constrain which format a path
-/// parameter (*/foxx/12*) can have by giving it a type.  We currently support
-/// the following types:
+/// parameter (*/foxx/12*) can have by giving it a *joi* type.
 ///
-/// * int
-/// * string
+/// For more information on *joi* see [the official Joi documentation](https://github.com/spumko/joi).
 ///
 /// You can also provide a description of this parameter.
 ///
@@ -216,8 +215,7 @@ extend(RequestContext.prototype, {
 /// app.get("/foxx/:id", function {
 ///   // Do something
 /// }).pathParam("id", {
-///   description: "Id of the Foxx",
-///   type: "int"
+///   type: joi.number().integer().required().description("Id of the Foxx")
 /// });
 /// ```
 /// @endDocuBlock
@@ -226,14 +224,49 @@ extend(RequestContext.prototype, {
   pathParam: function (paramName, attributes) {
     'use strict';
     var url = this.route.url,
-      constraint = url.constraint || {};
+      urlConstraint = url.constraint || {},
+      type = attributes.type,
+      required = attributes.required,
+      description = attributes.description,
+      constraint = type,
+      regexType = type,
+      cfg;
 
-    constraint[paramName] = this.typeToRegex[attributes.type];
-    if (!constraint[paramName]) {
-      throw new Error("Illegal attribute type: " + attributes.type);
+    // deprecated: assume type.describe is always a function
+    if (type && typeof type.describe === 'function') {
+      if (typeof required === 'boolean') {
+        constraint = required ? constraint.required() : constraint.optional();
+      }
+      if (typeof description === 'string') {
+        constraint = constraint.description(description);
+      }
+      this.constraints.urlParams[paramName] = constraint;
+      cfg = constraint.describe();
+      required = Boolean(cfg.flags && cfg.flags.presense === 'required');
+      description = cfg.description;
+      type = cfg.type;
+      if (
+        type === 'number' &&
+          _.isArray(cfg.rules) &&
+          _.some(cfg.rules, function (rule) {
+            return rule.name === 'integer';
+          })
+      ) {
+        type = 'integer';
+      }
+      if (_.has(this.typeToRegex, type)) {
+        regexType = type;
+      } else {
+        regexType = 'string';
+      }
     }
-    this.route.url = internal.constructUrlObject(url.match, constraint, url.methods[0]);
-    this.docs.addPathParam(paramName, attributes.description, attributes.type);
+
+    urlConstraint[paramName] = this.typeToRegex[regexType];
+    if (!urlConstraint[paramName]) {
+      throw new Error("Illegal attribute type: " + regexType);
+    }
+    this.route.url = internal.constructUrlObject(url.match, urlConstraint, url.methods[0]);
+    this.docs.addPathParam(paramName, description, type);
     return this;
   },
 
@@ -245,14 +278,12 @@ extend(RequestContext.prototype, {
 /// Describe a query parameter:
 ///
 /// If you defined a route "/foxx", you can constrain which format a query
-/// parameter (*/foxx?a=12*) can have by giving it a type.  We currently support
-/// the following types:
+/// parameter (*/foxx?a=12*) can have by giving it a *joi* type.
 ///
-/// * int
-/// * string
+/// For more information on *joi* see [the official Joi documentation](https://github.com/spumko/joi).
 ///
-/// You can also provide a description of this parameter, if it is required and
-/// if you can provide the parameter multiple times.
+/// You can also provide a description of this parameter and
+/// whether you can provide the parameter multiple times.
 ///
 /// @EXAMPLES
 ///
@@ -260,9 +291,7 @@ extend(RequestContext.prototype, {
 /// app.get("/foxx", function {
 ///   // Do something
 /// }).queryParam("id", {
-///   description: "Id of the Foxx",
-///   type: "int",
-///   required: true,
+///   type: joi.number().integer().required().description("Id of the Foxx"),
 ///   allowMultiple: false
 /// });
 /// ```
@@ -271,11 +300,41 @@ extend(RequestContext.prototype, {
 
   queryParam: function (paramName, attributes) {
     'use strict';
+    var type = attributes.type,
+      required = attributes.required,
+      description = attributes.description,
+      constraint = type,
+      cfg;
+
+    // deprecated: assume type.describe is always a function
+    if (type && typeof type.describe === 'function') {
+      if (typeof required === 'boolean') {
+        constraint = required ? constraint.required() : constraint.optional();
+      }
+      if (typeof description === 'string') {
+        constraint = constraint.description(description);
+      }
+      this.constraints.queryParams[paramName] = constraint;
+      cfg = constraint.describe();
+      required = Boolean(cfg.flags && cfg.flags.presense === 'required');
+      description = cfg.description;
+      type = cfg.type;
+      if (
+        type === 'number' &&
+          _.isArray(cfg.rules) &&
+          _.some(cfg.rules, function (rule) {
+            return rule.name === 'integer';
+          })
+      ) {
+        type = 'integer';
+      }
+    }
+
     this.docs.addQueryParam(
       paramName,
-      attributes.description,
-      attributes.type,
-      attributes.required,
+      description,
+      type,
+      required,
       attributes.allowMultiple
     );
     return this;
