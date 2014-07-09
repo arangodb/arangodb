@@ -37,6 +37,7 @@
     Model = require("org/arangodb/foxx").Model,
     Graph = require("org/arangodb/general-graph"),
     _ = require("underscore"),
+    joi = require("joi"),
     arangodb = require("org/arangodb"),
     errors = arangodb.errors,
     toId = function(c, k) {
@@ -96,7 +97,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true if a "if-match" or "if-none-match" error happens
 ////////////////////////////////////////////////////////////////////////////////
-    matchError = function (req, res, doc, errorCode) {  
+    matchError = function (req, res, doc, errorCode) {
 
       if (req.headers["if-none-match"] !== undefined) {
         var options = setOptions(req);
@@ -104,42 +105,42 @@
           options.code = actions.HTTP_CREATED;
         }
         if (doc._rev === req.headers["if-none-match"].replace(/(^["']|["']$)/g, '')) {
-          // error      
+          // error
           res.responseCode = actions.HTTP_NOT_MODIFIED;
           res.contentType = "application/json; charset=utf-8";
           res.body = '';
-          res.headers = {};      
+          res.headers = {};
           return true;
         }
-      }  
-      
+      }
+
       if (req.headers["if-match"] !== undefined) {
         if (doc._rev !== req.headers["if-match"].replace(/(^["']|["']$)/g, '')) {
           // error
-          actions.resultError(req, 
-                              res, 
-                              actions.HTTP_PRECONDITION_FAILED, 
-                              errorCode, 
-                              "wrong revision", 
+          actions.resultError(req,
+                              res,
+                              actions.HTTP_PRECONDITION_FAILED,
+                              errorCode,
+                              "wrong revision",
                               {});
           return true;
         }
-      }  
-      
+      }
+
       var rev = req.parameters.rev;
       if (rev !== undefined) {
         if (doc._rev !== rev) {
           // error
-          actions.resultError(req, 
-                              res, 
-                              actions.HTTP_PRECONDITION_FAILED, 
-                              errorCode, 
-                              "wrong revision", 
+          actions.resultError(req,
+                              res,
+                              actions.HTTP_PRECONDITION_FAILED,
+                              errorCode,
+                              "wrong revision",
                               {});
           return true;
         }
-      }  
-      
+      }
+
       return false;
     },
 
@@ -152,7 +153,17 @@
         _id : g.__id,
         _rev : g.__rev
       }, code);
-    };
+    },
+
+    graphName = joi.string().description("Name of the graph."),
+    vertexCollectionName = joi.string().description("Name of the vertex collection."),
+    edgeCollectionName = joi.string().description("Name of the edge collection."),
+    dropCollectionFlag = joi.boolean().description("Flag to drop collection as well."),
+    definitionEdgeCollectionName = joi.string().description("Name of the edge collection in the definition."),
+    waitForSyncFlag = joi.boolean().description("define if the request should wait until synced to disk."),
+    vertexKey = joi.string().description("_key attribute of one specific vertex"),
+    edgeKey = joi.string().description("_key attribute of one specific edge."),
+    keepNullFlag = joi.boolean().description("define if null values should not be deleted.");
 
 ////////////////////// Graph Creation /////////////////////////////////
 
@@ -238,7 +249,10 @@
       return buildError(e, actions.HTTP_CONFLICT);
     }
   )
-  .bodyParam("graph", "The required information for a graph", Model);
+  .bodyParam("graph", {
+    description: "The required information for a graph",
+    type: Model
+  });
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_get_http_examples
@@ -276,8 +290,7 @@
     var g = Graph._graph(name);
     setGraphResponse(res, g, actions.HTTP_OK);
   }).pathParam("graph", {
-    type: "string",
-    description: "Name of the graph."
+    type: graphName
   }).errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "Graph could not be found.", function(e) {
       return buildError(e, actions.HTTP_NOT_FOUND);
@@ -315,12 +328,10 @@
     setResponse(res, "removed", true, actions.HTTP_OK);
   })
   .pathParam("graph", {
-    type: "string",
-    description: "Name of the graph."
+    type: graphName
   })
   .queryParam("dropCollections", {
-    type: "boolean",
-    description: "flag to drop collections as well"
+    type: dropCollectionFlag
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The graph does not exist.", function(e) {
@@ -358,8 +369,7 @@
     }).sort(), actions.HTTP_OK);
   })
   .pathParam("graph", {
-    type: "string",
-    description: "Name of the graph."
+    type: graphName
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The graph could not be found.", function(e) {
@@ -407,12 +417,12 @@
     setGraphResponse(res, g, actions.HTTP_CREATED);
   })
   .pathParam("graph", {
-    type: "string",
-    description: "Name of the graph."
+    type: graphName
   })
-  .bodyParam(
-    "collection", "The vertex collection to be stored.", Model
-  )
+  .bodyParam("collection", {
+    description: "The vertex collection to be stored.",
+    type: Model
+  })
   .errorResponse(
     Error, actions.HTTP_NOT_FOUND, "The graph could not be found.", function(e) {
       return buildError(e, actions.HTTP_NOT_FOUND);
@@ -487,16 +497,13 @@
     setGraphResponse(res, g);
   })
   .pathParam("graph", {
-    type: "string",
-    description: "Name of the graph."
+    type: graphName
   })
   .pathParam("collection", {
-    type: "string",
-    description: "Name of the vertex collection."
+    type: vertexCollectionName
   })
   .queryParam("dropCollection", {
-    type: "boolean",
-    description: "flag to drop collection as well"
+    type: dropCollectionFlag
   })
   .errorResponse(
     ArangoError, actions.HTTP_BAD,
@@ -537,8 +544,7 @@
     }).sort(), actions.HTTP_OK);
   })
   .pathParam("graph", {
-    type: "string",
-    description: "Name of the graph."
+    type: graphName
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The graph could not be found.", function(e) {
@@ -590,12 +596,12 @@
     setGraphResponse(res, g, actions.HTTP_CREATED);
   })
   .pathParam("graph", {
-    type: "string",
-    description: "Name of the graph."
+    type: graphName
   })
-  .bodyParam(
-    "edgeDefinition", "The edge definition to be stored.", Model
-  )
+  .bodyParam("edgeDefinition", {
+    description: "The edge definition to be stored.",
+    type: Model
+  })
   .errorResponse(
     Error, actions.HTTP_NOT_FOUND, "The graph could not be found.", function(e) {
       return buildError(e, actions.HTTP_NOT_FOUND);
@@ -661,16 +667,15 @@
     setGraphResponse(res, g);
   })
   .pathParam("graph", {
-    type: "string",
-    description: "Name of the graph."
+    type: graphName
   })
   .pathParam("definition", {
-    type: "string",
-    description: "Name of the edge collection in the definition."
+    type: definitionEdgeCollectionName
   })
-  .bodyParam(
-    "edgeDefinition", "The edge definition to be stored.", Model
-  )
+  .bodyParam("edgeDefinition", {
+    description: "The edge definition to be stored.",
+    type: Model
+  })
   .errorResponse(
     Error, actions.HTTP_NOT_FOUND, "The graph could not be found.", function(e) {
       return buildError(e, actions.HTTP_NOT_FOUND);
@@ -721,16 +726,13 @@
     setGraphResponse(res, g);
   })
   .pathParam("graph", {
-    type: "string",
-    description: "Name of the graph."
+    type: graphName
   })
   .pathParam("definition", {
-    type: "string",
-    description: "Name of the edge collection in the definition."
+    type: definitionEdgeCollectionName
   })
   .queryParam("dropCollection", {
-    type: "boolean",
-    description: "flag to drop collection as well"
+    type: dropCollectionFlag
   })
   .errorResponse(
     Error, actions.HTTP_NOT_FOUND, "The graph could not be found.", function(e) {
@@ -781,23 +783,23 @@
     setResponse(res, "vertex", g[collection].save(body.forDB(), options), options.code);
   })
   .pathParam("graph", {
-    type: "string",
-    description: "Name of the graph."
+    type: graphName
   })
   .pathParam("collection", {
-    type: "string",
-    description: "Name of the vertex collection."
+    type: vertexCollectionName
   })
   .queryParam("waitForSync", {
-    type: "boolean",
-    description: "define if the request should wait until synced to disk."
+    type: waitForSyncFlag
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "Graph or collection not found.", function(e) {
       return buildError(e, actions.HTTP_NOT_FOUND);
     }
   )
-  .bodyParam("vertex", "The document to be stored", Model);
+  .bodyParam("vertex", {
+    description: "The document to be stored",
+    type: Model
+  });
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_vertex_get_http_examples
@@ -833,16 +835,13 @@
     }
   })
   .pathParam("graph", {
-    type: "string",
-    description: "Name of the graph."
+    type: graphName
   })
   .pathParam("collection", {
-    type: "string",
-    description: "Name of the vertex collection."
+    type: vertexCollectionName
   })
   .pathParam("key", {
-    type: "string",
-    description: "_key attribute of one specific vertex."
+    type: vertexKey
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The vertex does not exist.", function(e) {
@@ -891,22 +890,17 @@
     }
   })
   .pathParam("graph", {
-    type: "string",
-    description: "Name of the graph."
+    type: graphName
   })
   .pathParam("collection", {
-    type: "string",
-    description: "Name of the vertex collection."
+    type: vertexCollectionName
   })
   .pathParam("key", {
-    type: "string",
-    description: "_key attribute of one specific vertex."
+    type: vertexKey
   })
   .queryParam("waitForSync", {
-    type: "boolean",
-    description: "define if the request should wait until synced to disk."
+    type: waitForSyncFlag
   })
-  .bodyParam("vertex", "The document to be stored", Model)
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The vertex does not exist.", function(e) {
       return buildError(e, actions.HTTP_NOT_FOUND);
@@ -952,26 +946,24 @@
       setResponse(res, "vertex", g[collection].update(id, body.forDB(), options), options.code);
     }
   })
-  .bodyParam("vertex", "The values that should be modified", Model)
+  .bodyParam("vertex", {
+    description: "The values that should be modified",
+    type: Model
+  })
   .pathParam("graph", {
-    type: "string",
-    description: "Name of the graph."
+    type: graphName
   })
   .pathParam("collection", {
-    type: "string",
-    description: "Name of the vertex collection."
+    type: vertexCollectionName
   })
   .pathParam("key", {
-    type: "string",
-    description: "_key attribute of one specific vertex."
+    type: vertexKey
   })
   .queryParam("waitForSync", {
-    type: "boolean",
-    description: "define if the request should wait until synced to disk."
+    type: waitForSyncFlag
   })
   .queryParam("keepNull", {
-    type: "boolean",
-    description: "define if null values should not be deleted."
+    type: keepNullFlag
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The vertex does not exist.", function(e) {
@@ -1016,20 +1008,16 @@
     }
   })
   .pathParam("graph", {
-    type: "string",
-    description: "Name of the graph."
+    type: graphName
   })
   .pathParam("collection", {
-    type: "string",
-    description: "Name of the vertex collection."
+    type: vertexCollectionName
   })
   .pathParam("key", {
-    type: "string",
-    description: "_key attribute of one specific vertex."
+    type: vertexKey
   })
   .queryParam("waitForSync", {
-    type: "boolean",
-    description: "define if the request should wait until synced to disk."
+    type: waitForSyncFlag
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The vertex does not exist.", function(e) {
@@ -1089,20 +1077,14 @@
     }
   })
   .pathParam("graph", {
-    type: "string",
-    description: "Name of the graph."
+    type: graphName
   })
   .pathParam("collection", {
-    type: "string",
-    description: "Name of the edge collection."
+    type: edgeCollectionName
   })
   .queryParam("waitForSync", {
-    type: "boolean",
-    description: "define if the request should wait until synced to disk."
+    type: waitForSyncFlag
   })
-  .bodyParam(
-    "edge", "The edge to be stored. Has to contain _from and _to attributes.", Model
-  )
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "Graph or collection not found.", function(e) {
       return buildError(e, actions.HTTP_NOT_FOUND);
@@ -1150,20 +1132,16 @@
     }
   })
   .pathParam("graph", {
-    type: "string",
-    description: "Name of the graph."
+    type: graphName
   })
   .pathParam("collection", {
-    type: "string",
-    description: "Name of the edge collection."
+    type: edgeCollectionName
   })
   .pathParam("key", {
-    type: "string",
-    description: "_key attribute of one specific edge."
+    type: edgeKey
   })
   .queryParam("waitForSync", {
-    type: "boolean",
-    description: "define if the request should wait until synced to disk."
+    type: waitForSyncFlag
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The edge does not exist.", function(e) {
@@ -1210,22 +1188,21 @@
     }
   })
   .pathParam("graph", {
-    type: "string",
-    description: "Name of the graph."
+    type: graphName
   })
   .pathParam("collection", {
-    type: "string",
-    description: "Name of the edge collection."
+    type: edgeCollectionName
   })
   .pathParam("key", {
-    type: "string",
-    description: "_key attribute of one specific edge."
+    type: edgeKey
   })
   .queryParam("waitForSync", {
-    type: "boolean",
-    description: "define if the request should wait until synced to disk."
+    type: waitForSyncFlag
   })
-  .bodyParam("edge", "The document to be stored. _from and _to attributes are ignored", Model)
+  .bodyParam("edge", {
+    description: "The document to be stored. _from and _to attributes are ignored",
+    type: Model
+  })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The edge does not exist.", function(e) {
       return buildError(e, actions.HTTP_NOT_FOUND);
@@ -1270,28 +1247,24 @@
       setResponse(res, "edge", g[collection].update(id, body.forDB(), options), options.code);
     }
   })
-  .bodyParam(
-    "edge", "The values that should be modified. _from and _to attributes are ignored", Model
-  )
+  .bodyParam("edge", {
+    description: "The values that should be modified. _from and _to attributes are ignored",
+    type: Model
+  })
   .pathParam("graph", {
-    type: "string",
-    description: "Name of the graph."
+    type: graphName
   })
   .pathParam("collection", {
-    type: "string",
-    description: "Name of the edge collection."
+    type: edgeCollectionName
   })
   .pathParam("key", {
-    type: "string",
-    description: "_key attribute of one specific edge."
+    type: edgeKey
   })
   .queryParam("waitForSync", {
-    type: "boolean",
-    description: "define if the request should wait until synced to disk."
+    type: waitForSyncFlag
   })
   .queryParam("keepNull", {
-    type: "boolean",
-    description: "define if null values should not be deleted."
+    type: keepNullFlag
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The edge does not exist.", function(e) {
@@ -1335,20 +1308,16 @@
     }
   })
   .pathParam("graph", {
-    type: "string",
-    description: "Name of the graph."
+    type: graphName
   })
   .pathParam("collection", {
-    type: "string",
-    description: "Name of the edge collection."
+    type: edgeCollectionName
   })
   .pathParam("key", {
-    type: "string",
-    description: "_key attribute of one specific edge."
+    type: edgeKey
   })
   .queryParam("waitForSync", {
-    type: "boolean",
-    description: "define if the request should wait until synced to disk."
+    type: waitForSyncFlag
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The edge does not exist.", function(e) {
