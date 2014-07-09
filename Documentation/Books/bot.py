@@ -64,10 +64,7 @@ def replaceText(text, pathOfFile, searchText):
   replaced = re.sub(r"@RESTBODYPARAMS{(.*)}", r"*(\g<1>)*", replaced)
   replaced = replaced.replace("@EXAMPLES","**Examples**")
   # Error codes replace
-  replaced = re.sub(r"#+\n","", replaced)
-  replaced = re.sub(r"(#+)\s+([\s\w()./,:-]+)\n", r"###\g<2>\n", replaced)
-  replaced = re.sub(r"([\w\_]+),([\d-]+),\s*\"([\s\w\/%()':.,-]+)\",\s*\"([\s\w(),.:'-]+).*\"(\,)*", r"**\g<2>** *\g<3>*:\n\g<4>\n", replaced)
-
+  replaced = re.sub(r"- (\w+):\s*@LIT{(.+)}", r"\n*\g<1>* - **\g<2>**:", replaced)
   f.write(replaced)
   f.close()
 

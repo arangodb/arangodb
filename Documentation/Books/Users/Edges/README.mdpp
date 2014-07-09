@@ -5,9 +5,9 @@ edges from the JavaScript shell *arangosh*. For other languages see the
 corresponding language API.
 
 Edges in ArangoDB are special documents. In addition to the internal 
-attributes _key, _id and _rev, they have two attributes _from and _to, 
+attributes *_key*, *_id* and *_rev*, they have two attributes *_from* and *_to*, 
 which contain document handles, namely the start-point and the end-point of the edge.
-The values of _from and _to are immutable once saved.
+The values of *_from* and *_to* are immutable once saved.
 
 Edge collections are special collections that store edge documents. Edge documents 
 are connection documents that reference other documents. The type of a collection 
