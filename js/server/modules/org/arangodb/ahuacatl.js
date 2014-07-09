@@ -4854,7 +4854,7 @@ function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
     toVertices : DOCUMENTS_BY_EXAMPLE(
       toCollection.filter(removeDuplicates), options.toVertexExample
     ),
-    edges : DOCUMENTS_BY_EXAMPLE(edgeCollections.filter(removeDuplicates), options.edgeExample),
+    edges : DOCUMENTS_BY_EXAMPLE(edgeCollections.filter(removeDuplicates), options.edgeExamples),
     edgeCollections : edgeCollections,
     fromCollections : fromCollections,
     toCollection : toCollection
@@ -5364,8 +5364,7 @@ function GENERAL_GRAPH_SHORTEST_PATH (graphName,
     options.direction =  'any';
   }
 
-  options.edgeExamples = options.edgeExamples || [];
-
+  options.edgeExamples = options.edgeExamples || {};
   var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
 
   if (!options.algorithm) {
