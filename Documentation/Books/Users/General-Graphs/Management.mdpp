@@ -26,28 +26,9 @@ An edge definition is a directed or undirected relation of a graph. Each graph c
 
 @startDocuBlock JSF_general_graph_directedRelation
 
-!SUBSECTION Vertex Collections
-
-Each graph can have an arbitrary amount of vertex collections, which are not part of any edge definition of the graph.
-These collections are called orphan collections.
-If the graph is extended with an edge definition using one of the orphans,
-it will be removed from the set of orphan collection automatically.
-
-!SUBSUBSECTION Add
-
-@startDocuBlock JSF_general_graph__addVertexCollection
-
-!SUBSUBSECTION Get
-
-@startDocuBlock JSF_general_graph__orphanCollections
-
-!SUBSUBSECTION Remove
-
-@startDocuBlock JSF_general_graph__removeVertexCollection
-
 !SECTION Create a graph
 
-After having introduced edge definitions and orphan collections a graph can be created.
+After having introduced edge definitions a graph can be created.
 
 @startDocuBlock JSF_general_graph_create
 
@@ -72,6 +53,43 @@ alternative call:
 !SUBSECTION Remove a graph
 
 @startDocuBlock JSF_general_graph_drop
+
+!SECTION Modify a graph definition during runtime
+
+After you have created an graph its definition is not immutable.
+You can still add, delete or modify edge definitions and vertex collections.
+
+!SUBSECTION Extend the edge definitions
+
+@startDocuBlock JSF_general_graph__extendEdgeDefinitions
+
+!SUBSECTION Modify an edge definition
+
+@startDocuBlock JSF_general_graph__editEdgeDefinition
+
+!SUBSECTION Delete an edge definition
+
+@startDocuBlock JSF_general_graph__deleteEdgeDefinition
+
+!SUBSECTION Extend vertex Collections
+
+Each graph can have an arbitrary amount of vertex collections, which are not part of any edge definition of the graph.
+These collections are called orphan collections.
+If the graph is extended with an edge definition using one of the orphans,
+it will be removed from the set of orphan collection automatically.
+
+!SUBSUBSECTION Add
+
+@startDocuBlock JSF_general_graph__addVertexCollection
+
+!SUBSUBSECTION Get
+
+@startDocuBlock JSF_general_graph__orphanCollections
+
+!SUBSUBSECTION Remove
+
+@startDocuBlock JSF_general_graph__removeVertexCollection
+
 
 !SECTION Vertex
 

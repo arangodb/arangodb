@@ -230,6 +230,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS, "Invalid number of arguments. Expected: ");
   REG_ERROR(ERROR_GRAPH_INVALID_PARAMETER, "Invalid parameter type.");
   REG_ERROR(ERROR_GRAPH_INVALID_ID, "Invalid id");
+  REG_ERROR(ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS, "collection used in orphans");
   REG_ERROR(ERROR_SESSION_UNKNOWN, "unknown session");
   REG_ERROR(ERROR_SESSION_EXPIRED, "session expired");
   REG_ERROR(SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");
