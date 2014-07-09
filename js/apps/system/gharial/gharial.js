@@ -47,7 +47,7 @@
       if (testee === undefined) {
         return deflt || false;
       }
-      return testee.toLowerCase() === "true";
+      return testee.toLowerCase() === "true" || testee === "1";
     },
     buildError = function(err, code) {
       return {
