@@ -307,11 +307,6 @@ controller.get('/docu/:key/*', function(req, res) {
       mountPoint += "/" + part;
     });
   res.json(docus.show(mountPoint));
-}).pathParam("appname", {
-  type: appname.description(
-    "The mount point of the App the documentation should be requested for"
-  ),
-  allowMultiple: false
 }).summary("List the API for one foxx")
   .notes("This function lists the API of the foxx"
        + " running under the given mount point");
