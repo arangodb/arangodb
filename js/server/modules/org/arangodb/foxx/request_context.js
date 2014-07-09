@@ -232,6 +232,7 @@ extend(RequestContext.prototype, {
       regexType = type,
       cfg;
 
+    // deprecated: assume type.describe is always a function
     if (type && typeof type.describe === 'function') {
       if (typeof required === 'boolean') {
         constraint = required ? constraint.required() : constraint.optional();
@@ -305,6 +306,7 @@ extend(RequestContext.prototype, {
       constraint = type,
       cfg;
 
+    // deprecated: assume type.describe is always a function
     if (type && typeof type.describe === 'function') {
       if (typeof required === 'boolean') {
         constraint = required ? constraint.required() : constraint.optional();
