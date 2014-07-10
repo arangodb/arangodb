@@ -84,11 +84,13 @@
 
       queryObj = {
         query: query,
-        bindVars: bindVars,
-        options: {
-          fullCount: true
-        }
+        bindVars: bindVars
       };
+      if (this.getTotal() < 10000 || this.filters.length > 0) {
+        queryObj.options = {
+          fullCount: true
+        };
+      }
 
       $.ajax({
         cache: false,
@@ -99,11 +101,8 @@
         contentType: "application/json",
         success: function(data) {
           self.clearDocuments();
-          if (data.extra && data.extra.fullCount) {
+          if (data.extra && data.extra.fullCount !== undefined) {
             self.setTotal(data.extra.fullCount);
-          }
-          else {
-            self.setTotal(0);
           }
           if (self.getTotal() !== 0) {
             _.each(data.result, function(v) {
