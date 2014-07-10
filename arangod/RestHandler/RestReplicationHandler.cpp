@@ -744,6 +744,7 @@ void RestReplicationHandler::handleCommandBatch () {
 
     if (res != TRI_ERROR_NO_ERROR) {
       generateError(HttpResponse::BAD, res);
+      return;
     }
 
     TRI_json_t json;
@@ -2203,25 +2204,25 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
           }
           else {
             res = TRI_ERROR_NO_ERROR;
-          }
 
-          string const from = JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_FROM, "");
-          string const to   = JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_TO, "");
+            string const from = JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_FROM, "");
+            string const to   = JsonHelper::getStringValue(json, TRI_VOC_ATTRIBUTE_TO, "");
 
 
-          // parse _from
-          TRI_document_edge_t edge;
-          if (! DocumentHelper::parseDocumentId(resolver, from.c_str(), edge._fromCid, &edge._fromKey)) {
-            res = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
-          }
+            // parse _from
+            TRI_document_edge_t edge;
+            if (! DocumentHelper::parseDocumentId(resolver, from.c_str(), edge._fromCid, &edge._fromKey)) {
+              res = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+            }
 
-          // parse _to
-          if (! DocumentHelper::parseDocumentId(resolver, to.c_str(), edge._toCid, &edge._toKey)) {
-            res = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
-          }
+            // parse _to
+            if (! DocumentHelper::parseDocumentId(resolver, to.c_str(), edge._toCid, &edge._toKey)) {
+              res = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+            }
 
-          if (res == TRI_ERROR_NO_ERROR) {
-            res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &mptr, shaped, &edge, false, false, true);
+            if (res == TRI_ERROR_NO_ERROR) {
+              res = TRI_InsertShapedJsonDocumentCollection(trxCollection, key, rid, nullptr, &mptr, shaped, &edge, false, false, true);
+            }
           }
         }
         else {
@@ -2675,6 +2676,17 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
     ClusterCommResult* result;
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
+    bool force = false;
+    char const* value;
+    string forceopt;
+    value = _request->value("force");
+    if (value != nullptr) {
+      force = StringUtils::boolean(value);
+      if (force) {
+        forceopt = "&force=true";
+      }
+    }
+
     for (it = shardIdsMap.begin(); it != shardIdsMap.end(); ++it) {
       map<string, string>* headers = new map<string, string>;
       it2 = shardTab.find(it->first);
@@ -2688,7 +2700,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
                                triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
                                "/_db/" + StringUtils::urlEncode(dbName) +
                                "/_api/replication/restore-data?collection=" +
-                               it->first,
+                               it->first + forceopt,
                                new string(bufs[j]->c_str(), bufs[j]->length()),
                                true, headers, NULL, 300.0);
         delete result;
@@ -2713,18 +2725,44 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
                 nrok++;
               }
             }
+            else {
+              TRI_json_t const* m = TRI_LookupArrayJson(json, "errorMessage");
+              if (TRI_IsStringJson(m)) {
+                errorMsg.append(m->_value._string.data,
+                                m->_value._string.length);
+                errorMsg.push_back(':');
+              }
+            }
           }
 
           if (json != 0) {
             TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
           }
         }
+        else if (result->answer_code == triagens::rest::HttpResponse::SERVER_ERROR) {
+          TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
+                                            result->answer->body());
+
+          if (JsonHelper::isArray(json)) {
+            TRI_json_t const* m = TRI_LookupArrayJson(json, "errorMessage");
+            if (TRI_IsStringJson(m)) {
+              errorMsg.append(m->_value._string.data,
+                              m->_value._string.length);
+              errorMsg.push_back(':');
+            }
+          }
+
+          if (json != 0) {
+            TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+          }
+        }
+
       }
       delete result;
     }
 
     if (nrok != shardIdsMap.size()) {
-      errorMsg = "some shard produced an error";
+      errorMsg.append("some shard(s) produced error(s)");
       res = TRI_ERROR_INTERNAL;
     }
   }
@@ -2736,6 +2774,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::BAD, res, errorMsg);
+    return;
   }
 
   TRI_json_t result;

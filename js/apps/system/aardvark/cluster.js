@@ -166,6 +166,11 @@
       res.json(plans.loadConfig());
     });
 
+    controller.del("/plan/cleanUp", function(req, res) {
+      cleanUp();
+      res.json("ok");
+    });
+
     controller.del("/plan", function(req, res) {
       plans.clear();
       res.json("ok");

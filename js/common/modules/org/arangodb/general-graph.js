@@ -1542,7 +1542,7 @@ var _edgeDefinitions = function () {
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitionsExtend}
 ///   var graph_module = require("org/arangodb/general-graph");
 ///   directed_relation = graph_module._directedRelation("lives_in", "user", "city");
-///   undirected_relation = graph_module._directedRelation("knows", "user");
+///   undirected_relation = graph_module._undirectedRelation("knows", "user");
 ///   edgedefinitions = graph_module._edgeDefinitions(directed_relation);
 ///   edgedefinitions = graph_module._extendEdgeDefinitions(undirected_relation);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
