@@ -6127,14 +6127,13 @@ function GENERAL_GRAPH_COMMON_NEIGHBORS (
   var neighbors1 = TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT(
     GENERAL_GRAPH_NEIGHBORS(graphName, vertex1Examples, options1)
   ), neighbors2;
-  if (vertex1Examples === vertex2Examples) {
+  if (vertex1Examples === vertex2Examples && options1 === options2) {
     neighbors2 = CLONE(neighbors1);
   } else {
     neighbors2 = TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT(
       GENERAL_GRAPH_NEIGHBORS(graphName, vertex2Examples, options2)
     );
   }
-
   var res = {}, res2 = {}, res3 = [];
 
   Object.keys(neighbors1).forEach(function (v) {
