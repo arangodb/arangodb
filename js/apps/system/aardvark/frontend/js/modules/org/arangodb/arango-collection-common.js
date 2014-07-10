@@ -806,7 +806,6 @@ ArangoCollection.prototype.fulltext = function (attribute, query, iid) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterators over some elements of a collection
-/// @startDocuBlock collectionIterate
 /// `collection.iterate(iterator, options)`
 ///
 /// Iterates over some elements of the collection and apply the function
@@ -829,7 +828,6 @@ ArangoCollection.prototype.fulltext = function (attribute, query, iid) {
 /// arango> db.example.index("93013/0");
 /// { "id" : "93013/0", "type" : "primary", "fields" : ["_id"] }
 /// ```
-/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.iterate = function (iterator, options) {

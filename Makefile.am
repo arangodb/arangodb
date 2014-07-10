@@ -475,7 +475,15 @@ endif
 ################################################################################
 
 if ENABLE_MAINTAINER_MODE
-include lib/Makefile.bison
+
+BUILT_SOURCES += $(BISON_FILES) $(BISONXX_FILES)
+
+%.cpp: %.y
+	@top_srcdir@/utils/bison-c.sh $(BISON) $@ $<
+
+%.cpp: %.yy
+	@top_srcdir@/utils/bison-c++.sh $(BISON) $@ $<
+
 endif
 
 ## -----------------------------------------------------------------------------
