@@ -2676,6 +2676,17 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
     ClusterCommResult* result;
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
+    bool force = false;
+    char const* value;
+    string forceopt;
+    value = _request->value("force");
+    if (value != nullptr) {
+      force = StringUtils::boolean(value);
+      if (force) {
+        forceopt = "&force=true";
+      }
+    }
+
     for (it = shardIdsMap.begin(); it != shardIdsMap.end(); ++it) {
       map<string, string>* headers = new map<string, string>;
       it2 = shardTab.find(it->first);
@@ -2689,7 +2700,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
                                triagens::rest::HttpRequest::HTTP_REQUEST_PUT,
                                "/_db/" + StringUtils::urlEncode(dbName) +
                                "/_api/replication/restore-data?collection=" +
-                               it->first,
+                               it->first + forceopt,
                                new string(bufs[j]->c_str(), bufs[j]->length()),
                                true, headers, NULL, 300.0);
         delete result;
