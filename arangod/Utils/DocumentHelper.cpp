@@ -88,8 +88,8 @@ bool DocumentHelper::parseDocumentId (CollectionNameResolver const& resolver,
   cid = resolver.getCollectionIdCluster(string(input, pos - input));
   *key = (char*) (pos + 1);
 
-  if (**key == '\0') {
-    // empty key
+  if (cid == 0 || **key == '\0') {
+    // unknown collection or empty key
     return false;
   }
 

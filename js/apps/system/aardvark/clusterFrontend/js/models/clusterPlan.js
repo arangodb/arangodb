@@ -80,6 +80,14 @@
 
     isTestSetup: function() {
       return _.size(this.get("config").dispatchers) === 1;
+    },
+
+    cleanUp: function() {
+      $.ajax({
+        url: "cluster/plan/cleanUp",
+        type: "DELETE",
+        async: false
+      });
     }
 
   });
