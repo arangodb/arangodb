@@ -3,6 +3,14 @@ v2.1.3 (2014-XX-XX)
 
 * fixed datafile debugger
 
+* fixed a bug in arangodump which got the collection name in _from and _to
+  attributes of edges wrong (all were "_unknown")
+
+* fixed a bug in arangorestore which did not recognise wrong _from and _to
+  attributes of edges
+
+* improved error detection and reporting in arangorestore
+
 
 v2.1.2 (2014-06-15)
 -------------------
