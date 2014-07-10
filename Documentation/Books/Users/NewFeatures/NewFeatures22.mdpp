@@ -233,3 +233,28 @@ effect and might fully be removed in a future version of ArangoDB:
 - `--ruby.startup-directory`
 - `--server.disable-replication-logger`
 
+<!-- Michaels new features for graph -->
+
+!SECTION Multi Collection Graphs
+ArangoDB is a multi model database with native graph support.
+In version 2.2 the features for graphs have been improved by integration of a new graph module.
+All graphs created with the old module are automatically migrated into the new module but can still be used by the old module.
+
+!SUBSECTION New graph module
+Up to including version 2.1, ArangoDB offered a module for graphs and graph operations.
+This module allowed you to use exactly one edge collection together with one vertex collection in a graph.
+With ArangoDB version 2.2 this graph module is deprecated and a new graph module is offered.
+This new module allows to combine an arbitrary number of vertex collections and edge collections in the same graph.
+For each edge collection a list of collections containing source vertices and a list of collections containing target vertices can be defined.
+If an edge is stored ArangoDB checks if this edge is valid in this collection.
+Furthermore if a vertex is removed from one of the collections all connected edges will be removed as well, giving the guarantee of no loose ends in the graphs.
+The layout of the graph can be modified at runtime by adding or removing collections and changing the definitions for edge collections.
+All operations on the graph level are transactional by default.
+
+!SUBSECTION Graphs in AQL
+Multi collection graphs have been added to AQL as well.
+Basic functionality (getting vertices, edges, neighbors) can be executed using the entire graph.
+Also more advanced features like shortest path calculations, characteristic factors of the graph or traversals have been integrated into AQL.
+For these functions all graphs created with the graph module can be used.
+
+<!-- End of Michaels new features -->

@@ -180,7 +180,7 @@ extend(SwaggerDocs.prototype, {
 /// Used for documenting and constraining the routes.
 ////////////////////////////////////////////////////////////////////////////////
 
-RequestContext = function (executionBuffer, models, route, rootElement) {
+RequestContext = function (executionBuffer, models, route, rootElement, constraints) {
   'use strict';
   this.route = route;
   this.typeToRegex = {
@@ -189,6 +189,7 @@ RequestContext = function (executionBuffer, models, route, rootElement) {
     "string": "/[^/]+/"
   };
   this.rootElement = rootElement;
+  this.constraints = constraints;
 
   this.docs = new SwaggerDocs(this.route.docs, models);
   this.docs.addNickname(route.docs.httpMethod, route.url.match);
@@ -202,11 +203,9 @@ extend(RequestContext.prototype, {
 /// @startDocuBlock JSF_foxx_RequestContext_pathParam
 ///
 /// If you defined a route "/foxx/:id", you can constrain which format a path
-/// parameter (*/foxx/12*) can have by giving it a type.  We currently support
-/// the following types:
+/// parameter (*/foxx/12*) can have by giving it a *joi* type.
 ///
-/// * int
-/// * string
+/// For more information on *joi* see [the official Joi documentation](https://github.com/spumko/joi).
 ///
 /// You can also provide a description of this parameter.
 ///
@@ -216,8 +215,7 @@ extend(RequestContext.prototype, {
 /// app.get("/foxx/:id", function {
 ///   // Do something
 /// }).pathParam("id", {
-///   description: "Id of the Foxx",
-///   type: "int"
+///   type: joi.number().integer().required().description("Id of the Foxx")
 /// });
 /// ```
 /// @endDocuBlock
@@ -226,33 +224,66 @@ extend(RequestContext.prototype, {
   pathParam: function (paramName, attributes) {
     'use strict';
     var url = this.route.url,
-      constraint = url.constraint || {};
+      urlConstraint = url.constraint || {},
+      type = attributes.type,
+      required = attributes.required,
+      description = attributes.description,
+      constraint = type,
+      regexType = type,
+      cfg;
 
-    constraint[paramName] = this.typeToRegex[attributes.type];
-    if (!constraint[paramName]) {
-      throw new Error("Illegal attribute type: " + attributes.type);
+    // deprecated: assume type.describe is always a function
+    if (type && typeof type.describe === 'function') {
+      if (typeof required === 'boolean') {
+        constraint = required ? constraint.required() : constraint.optional();
+      }
+      if (typeof description === 'string') {
+        constraint = constraint.description(description);
+      }
+      this.constraints.urlParams[paramName] = constraint;
+      cfg = constraint.describe();
+      required = Boolean(cfg.flags && cfg.flags.presense === 'required');
+      description = cfg.description;
+      type = cfg.type;
+      if (
+        type === 'number' &&
+          _.isArray(cfg.rules) &&
+          _.some(cfg.rules, function (rule) {
+            return rule.name === 'integer';
+          })
+      ) {
+        type = 'integer';
+      }
+      if (_.has(this.typeToRegex, type)) {
+        regexType = type;
+      } else {
+        regexType = 'string';
+      }
     }
-    this.route.url = internal.constructUrlObject(url.match, constraint, url.methods[0]);
-    this.docs.addPathParam(paramName, attributes.description, attributes.type);
+
+    urlConstraint[paramName] = this.typeToRegex[regexType];
+    if (!urlConstraint[paramName]) {
+      throw new Error("Illegal attribute type: " + regexType);
+    }
+    this.route.url = internal.constructUrlObject(url.match, urlConstraint, url.methods[0]);
+    this.docs.addPathParam(paramName, description, type);
     return this;
   },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContext_queryParam
 ///
-/// `FoxxController::queryParam(id, options)`
+/// `FoxxController#queryParam(id, options)`
 ///
 /// Describe a query parameter:
 ///
 /// If you defined a route "/foxx", you can constrain which format a query
-/// parameter (*/foxx?a=12*) can have by giving it a type.  We currently support
-/// the following types:
+/// parameter (*/foxx?a=12*) can have by giving it a *joi* type.
 ///
-/// * int
-/// * string
+/// For more information on *joi* see [the official Joi documentation](https://github.com/spumko/joi).
 ///
-/// You can also provide a description of this parameter, if it is required and
-/// if you can provide the parameter multiple times.
+/// You can also provide a description of this parameter and
+/// whether you can provide the parameter multiple times.
 ///
 /// @EXAMPLES
 ///
@@ -260,9 +291,7 @@ extend(RequestContext.prototype, {
 /// app.get("/foxx", function {
 ///   // Do something
 /// }).queryParam("id", {
-///   description: "Id of the Foxx",
-///   type: "int",
-///   required: true,
+///   type: joi.number().integer().required().description("Id of the Foxx"),
 ///   allowMultiple: false
 /// });
 /// ```
@@ -271,11 +300,41 @@ extend(RequestContext.prototype, {
 
   queryParam: function (paramName, attributes) {
     'use strict';
+    var type = attributes.type,
+      required = attributes.required,
+      description = attributes.description,
+      constraint = type,
+      cfg;
+
+    // deprecated: assume type.describe is always a function
+    if (type && typeof type.describe === 'function') {
+      if (typeof required === 'boolean') {
+        constraint = required ? constraint.required() : constraint.optional();
+      }
+      if (typeof description === 'string') {
+        constraint = constraint.description(description);
+      }
+      this.constraints.queryParams[paramName] = constraint;
+      cfg = constraint.describe();
+      required = Boolean(cfg.flags && cfg.flags.presense === 'required');
+      description = cfg.description;
+      type = cfg.type;
+      if (
+        type === 'number' &&
+          _.isArray(cfg.rules) &&
+          _.some(cfg.rules, function (rule) {
+            return rule.name === 'integer';
+          })
+      ) {
+        type = 'integer';
+      }
+    }
+
     this.docs.addQueryParam(
       paramName,
-      attributes.description,
-      attributes.type,
-      attributes.required,
+      description,
+      type,
+      required,
       attributes.allowMultiple
     );
     return this;
@@ -284,7 +343,7 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContext_bodyParam
 ///
-/// `FoxxController::bodyParam(paramName, description, Model)`
+/// `FoxxController#bodyParam(paramName, options)`
 ///
 /// Expect the body of the request to be a JSON with the attributes you annotated
 /// in your model. It will appear alongside the provided description in your
@@ -300,30 +359,49 @@ extend(RequestContext.prototype, {
 /// return an array of models.
 ///
 /// The behavior of *bodyParam* changes depending on the *rootElement* option
-/// set in the [manifest](../Foxx/Manifest.md). If it is set to true, it is 
+/// set in the [manifest](../Foxx/Manifest.md). If it is set to true, it is
 /// expected that the body is an
 /// object with a key of the same name as the *paramName* argument.
 /// The value of this object is either a single object or in the case of a multi
 /// element an array of objects.
+///
+/// @EXAMPLES
+///
+/// ```js
+/// app.post("/foxx", function {
+///   // Do something
+/// }).bodyParam("body", {
+///   description: "Body of the Foxx",
+///   type: FoxxBodyModel
+/// });
+/// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  bodyParam: function (paramName, description, Proto) {
+  bodyParam: function (paramName, attributes, Proto) {
     'use strict';
     var handler = this.route.action.callback;
 
-    if (is.array(Proto)) {
-      this.docs.addBodyParam(paramName, description, Proto[0].toJSONSchema(paramName));
-    } else {
-      this.docs.addBodyParam(paramName, description, Proto.toJSONSchema(paramName));
+    if (Proto !== undefined) {
+      // deprecated
+      attributes = {
+        description: attributes,
+        type: Proto
+      };
     }
-    this.route.action.callback = createBodyParamBubbleWrap(handler, paramName, Proto, this.rootElement);
+
+    if (is.array(attributes.type)) {
+      this.docs.addBodyParam(paramName, attributes.description, attributes.type[0].toJSONSchema(paramName));
+    } else {
+      this.docs.addBodyParam(paramName, attributes.description, attributes.type.toJSONSchema(paramName));
+    }
+    this.route.action.callback = createBodyParamBubbleWrap(handler, paramName, attributes.type, this.rootElement);
 
     return this;
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// `FoxxController::summary(description)`
+/// `FoxxController#summary(description)`
 ///
 /// Set the summary for this route in the documentation. Can't be longer than 60.
 /// characters
@@ -339,7 +417,7 @@ extend(RequestContext.prototype, {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// `FoxxController::notes(description)`
+/// `FoxxController#notes(description)`
 ///
 /// Set the notes for this route in the documentation
 ////////////////////////////////////////////////////////////////////////////////
@@ -353,7 +431,7 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContext_errorResponse
 ///
-/// `FoxxController::errorResponse(errorClass, code, description)`
+/// `FoxxController#errorResponse(errorClass, code, description)`
 ///
 /// Define a reaction to a thrown error for this route: If your handler throws an error
 /// of the defined errorClass, it will be caught and the response will have the given
@@ -403,7 +481,7 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContext_onlyIf
 ///
-/// `FoxxController::onlyIf(check)`
+/// `FoxxController#onlyIf(check)`
 ///
 /// Provide it with a function that throws an exception if the normal processing should
 /// not be executed. Provide an `errorResponse` to define the behavior in this case.
@@ -428,7 +506,7 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContext_onlyIfAuthenticated
 ///
-/// `FoxxController::onlyIf(code, reason)`
+/// `FoxxController#onlyIf(code, reason)`
 ///
 /// Please activate authentification for this app if you want to use this function.
 /// If the user is logged in, it will do nothing. Otherwise it will respond with
@@ -486,7 +564,7 @@ _.each([
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContextBuffer_errorResponse
 ///
-/// `RequestContextBuffer::errorResponse(errorClass, code, description)`
+/// `RequestContextBuffer#errorResponse(errorClass, code, description)`
 ///
 /// Defines an *errorResponse* for all routes of this controller. For details on
 /// *errorResponse* see the according method on routes.
@@ -507,7 +585,7 @@ _.each([
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContextBuffer_onlyIf
 ///
-/// `RequestContextBuffer::onlyIf(code, reason)`
+/// `RequestContextBuffer#onlyIf(code, reason)`
 ///
 /// Defines an *onlyIf* for all routes of this controller. For details on
 /// *onlyIf* see the according method on routes.
@@ -528,7 +606,7 @@ _.each([
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContextBuffer_onlyIfAuthenticated
 ///
-/// `RequestContextBuffer::errorResponse(errorClass, code, description)`
+/// `RequestContextBuffer#errorResponse(errorClass, code, description)`
 ///
 /// Defines an *onlyIfAuthenticated* for all routes of this controller. For details on
 /// *onlyIfAuthenticated* see the according method on routes.

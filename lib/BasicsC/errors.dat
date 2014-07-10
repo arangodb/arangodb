@@ -27,6 +27,7 @@ ERROR_REQUEST_CANCELED,21,"canceled request","Will be raised when a request is c
 ERROR_DEBUG,22,"intentional debug error","Will be raised intentionally during debugging."
 ERROR_AID_NOT_FOUND,23,"internal error with attribute ID in shaper","Will be raised if an attribute ID is not found in the shaper but should have been."
 ERROR_LEGEND_INCOMPLETE,24,"internal error if a legend could not be created","Will be raised if the legend generator was only given access to the shape and some sids are in the data object (inhomogeneous lists)."
+ERROR_IP_ADDRESS_INVALID,25,"IP address is invalid","Will be raised when the structure of an IP address is invalid."
 
 ################################################################################
 ## HTTP standard errors
@@ -309,6 +310,7 @@ ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT,1934,"Invalid example type. Has to be A
 ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS,1935,"Invalid number of arguments. Expected: ","Invalid number of arguments. Expected: ",
 ERROR_GRAPH_INVALID_PARAMETER,1936,"Invalid parameter type.","Invalid parameter type.",
 ERROR_GRAPH_INVALID_ID,1937,"Invalid id","Invalid id",
+ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS,1938,"collection used in orphans","The collection is already used in the orphans of the graph.",
 
 ################################################################################
 ## Session errors

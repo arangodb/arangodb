@@ -1,29 +1,21 @@
 NODE
 ----
 
-_stream_duplex.js:	0.10.25
-_stream_passthrough.js:	0.10.25
-_stream_readable.js:	0.10.25
-_stream_transform.js:	0.10.25
-_stream_writable.js:	0.10.25
-assert:         	0.11.0
-buffer:         	0.11.0          	(SlowBuffer)
-child_process:  	not supported
-events.js:		0.10.25
-path.js:        	0.11.0          	(process)
-punycode.js:    	0.11.0
-querystring.js: 	0.11.0          	(urlDecode)
-stream.js:		0.10.25
-url.js:         	0.11.0
-util.js:        	compatibility
-vm.js:          	not supported
-
-NPM
----
-
-buster-format:		0.5.6
-cheerio:		0.13.1
-coffee-script:		1.7.1			'compile' supported
-htmlparser2:		3.4.0
-sinon:			1.8.1
-underscore:		1.5.2			working
+_stream_duplex:     	0.10.25
+_stream_passthrough:	0.10.25
+_stream_readable:   	0.10.25
+_stream_transform:  	0.10.25
+_stream_writable:   	0.10.25
+assert:             	0.11.0
+buffer:             	0.11.0       	(SlowBuffer)
+child_process:      	not supported
+events:             	0.10.25
+net:                	compatibility
+path:               	0.11.0       	(process)
+punycode:           	0.11.0
+querystring:        	0.11.0        	(urlDecode)
+stream:             	0.10.25
+sys:                	not supported
+url:                	0.11.0
+util:               	compatibility
+vm:                 	not supported

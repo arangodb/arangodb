@@ -148,7 +148,11 @@ namespace {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
+// --SECTION--                                                   class V8Context
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -206,6 +210,21 @@ void ApplicationV8::V8Context::handleGlobalContextMethods () {
                                 v8::String::New("global context method"),
                                 false);
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes the cancelation cleanup
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationV8::V8Context::handleCancelationCleanup () {
+  v8::HandleScope scope;
+
+  LOG_DEBUG("executing cancelation cleanup context %d", (int) _id);
+
+  TRI_ExecuteJavaScriptString(_context,
+                              v8::String::New("require('internal').cleanupCancelation();"),
+                              v8::String::New("context cleanup method"),
+                              false);
 }
 
 // -----------------------------------------------------------------------------
@@ -360,9 +379,24 @@ void ApplicationV8::exitContext (V8Context* context) {
   // HasOutOfMemoryException must be called while there is still an isolate!
   bool const hasOutOfMemoryException = context->_context->HasOutOfMemoryException();
 
+  // check for cancelation requests
+  bool const canceled = v8g->_canceled;
+  v8g->_canceled = false;
+
   // exit the context
   context->_context->Exit();
   context->_isolate->Exit();
+
+  // if the execution was canceled, we need to cleanup
+  if (canceled) {
+    context->_isolate->Enter();
+    context->_context->Enter();
+
+    context->handleCancelationCleanup();
+
+    context->_context->Exit();
+    context->_isolate->Exit();
+  }
 
   // try to execute new global context methods
   bool runGlobal = false;

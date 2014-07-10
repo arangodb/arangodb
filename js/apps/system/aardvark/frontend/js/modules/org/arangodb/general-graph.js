@@ -209,10 +209,13 @@ var transformExample = function(example) {
   throw err;
 };
 
-var checkAllowsRestriction = function(colList, rest, msg) {
+var checkAllowsRestriction = function(list, rest, msg) {
   var unknown = [];
+  var colList = _.map(list, function(item) {
+    return item.name();
+  });
   _.each(rest, function(r) {
-    if (!colList[r]) {
+    if (!_.contains(colList, r)) {
       unknown.push(r);
     }
   });
@@ -1014,7 +1017,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
   var restricts;
   if (lastQuery.isEdgeQuery()) {
     checkAllowsRestriction(
-      this.graph.__edgeCollections,
+      this.graph._edgeCollections(),
       rest,
       "edge collections"
     );
@@ -1022,7 +1025,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
     opts.edgeCollectionRestriction = restricts.concat(restrictions);
   } else if (lastQuery.isVertexQuery() || lastQuery.isNeighborQuery()) {
     checkAllowsRestriction(
-      this.graph.__vertexCollections,
+      this.graph._vertexCollections(),
       rest,
       "vertex collections"
     );
@@ -1626,7 +1629,8 @@ var _create = function (graphName, edgeDefinitions, orphanCollections) {
   var gdb = getGraphCollection(),
     err,
     graphAlreadyExists = true,
-    collections;
+    collections,
+    result;
   if (!graphName) {
     err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_GRAPH_CREATE_MISSING_NAME.code;
@@ -1707,12 +1711,15 @@ var _create = function (graphName, edgeDefinitions, orphanCollections) {
   );
   orphanCollections = orphanCollections.sort();
 
-  gdb.save({
+  var data =  gdb.save({
     'orphanCollections' : orphanCollections,
     'edgeDefinitions' : edgeDefinitions,
     '_key' : graphName
   });
-  return new Graph(graphName, edgeDefinitions, collections[0], collections[1], orphanCollections);
+
+  result = new Graph(graphName, edgeDefinitions, collections[0], collections[1],
+    orphanCollections, data._rev , data._id);
+  return result;
 
 };
 
@@ -2130,7 +2137,8 @@ var updateBindCollections = function(graph) {
 /// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
-var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollections, orphanCollections) {
+var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollections,
+                     orphanCollections, revision, id) {
   edgeDefinitions.forEach(
     function(eD, index) {
       var tmp = sortEdgeDefinition(eD);
@@ -2149,6 +2157,8 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
   createHiddenProperty(this, "__edgeDefinitions", edgeDefinitions);
   createHiddenProperty(this, "__idsToRemove", []);
   createHiddenProperty(this, "__collectionsToLock", []);
+  createHiddenProperty(this, "__id", id);
+  createHiddenProperty(this, "__rev", revision);
   createHiddenProperty(this, "__orphanCollections", orphanCollections);
   updateBindCollections(self);
 
@@ -2206,7 +2216,8 @@ var _graph = function(graphName) {
     orphanCollections = [];
   }
 
-  return new Graph(graphName, g.edgeDefinitions, collections[0], collections[1], orphanCollections);
+  return new Graph(graphName, g.edgeDefinitions, collections[0], collections[1], orphanCollections,
+    g._rev , g._id);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2230,7 +2241,7 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
         return;
       }
       var edgeDefinitions = graph.edgeDefinitions;
-      if (graph.edgeDefinitions) {
+      if (edgeDefinitions) {
         edgeDefinitions.forEach(
           function(edgeDefinition) {
             var from = edgeDefinition.from;
@@ -2249,7 +2260,7 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
       var orphanCollections = graph.orphanCollections;
       if (orphanCollections) {
         if (orphanCollections.indexOf(colName) !== -1) {
-          return false;
+          result = false;
         }
       }
     }
@@ -4118,9 +4129,13 @@ Graph.prototype._addVertexCollection = function(vertexCollectionName, createColl
     err.errorMessage = arangodb.errors.ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF.message;
     throw err;
   }
-
+  if (_.contains(this.__orphanCollections, vertexCollectionName)) {
+    err = new ArangoError();
+    err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS.code;
+    err.errorMessage = arangodb.errors.ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS.message;
+    throw err;
+  }
   this.__orphanCollections.push(vertexCollectionName);
-  this[vertexCollectionName] = db[vertexCollectionName];
   updateBindCollections(this);
   db._graphs.update(this.__name, {orphanCollections: this.__orphanCollections});
 

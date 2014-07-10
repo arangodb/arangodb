@@ -16,21 +16,22 @@ exports.model = TodoModel;
 
 A Foxx Model can be initialized with an object of attributes and their values.
 
-There's also the possibility of annotation: The second hash you give to the
-extend method are properties of the prototype. You can define an attributes 
-property there:
+There's also the possibility of annotation: If you extend the model with a
+*schema* property, the model's attributes will be validated against it.
+
+You can define attributes in the schema using the bundled *joi* library.
+For more information on the syntax see [the official joi documentation](https://github.com/spumko/joi).
 
 ```js
 var Foxx = require("org/arangodb/foxx");
+var joi = require("joi");
 
 var PersonModel = Foxx.Model.extend({
-  // Your instance properties
-}, {
-  // Your prototype properties
-  attributes: {
-    name: { type: "string", required: true },
-    age: { type: "integer" },
-    active: { type: "boolean", defaultValue: true }
+    schema: {
+        name: joi.string().required(),
+        age: joi.number().integer(),
+        active: joi.boolean().default(true)
+    }
 });
 
 exports.model = TodoModel;
@@ -39,8 +40,8 @@ exports.model = TodoModel;
 This has two effects: On the one hand it provides documentation. If you annotated
 your model, you can use it in the *bodyParam* method for documentation.
 On the other hand it will influence the behavior of the constructor: If you provide
-an object to the constructor, it will only take those attributes that are listed
-in the attributes object. This is especially useful if you want to to initialize
+an object to the constructor, it will validate its attributes and set the special
+*errors* property. This is especially useful if you want to to initialize
 the Model from user input. On the other hand it will set the default value for all
 attributes that have not been set by hand. An example:
 
@@ -50,7 +51,8 @@ var person = new PersonModel({
   admin: true
 });
 
-person.attributes // => { name: "Pete", active: true }
+person.attributes // => { name: "Pete", admin: true, active: true }
+person.errors // => {admin: [ValidationError: value is not allowed]}
 ```
 
 !SUBSECTION Extend
@@ -73,9 +75,17 @@ person.attributes // => { name: "Pete", active: true }
 <!-- js/server/modules/org/arangodb/foxx/model.js -->
 @startDocuBlock JSF_foxx_model_has
 
-!SECTION Attributes
+!SUBSECTION isValid
+<!-- js/server/modules/org/arangodb/foxx/model.js -->
+@startDocuBlock JSF_foxx_model_isvalid
 
-The attributes property is the internal hash containing the model's state.
+!SUBSECTION Errors
+<!-- js/server/modules/org/arangodb/foxx/model.js -->
+@startDocuBlock JSF_foxx_model_errors
+
+!SUBSECTION Attributes
+<!-- js/server/modules/org/arangodb/foxx/model.js -->
+@startDocuBlock JSF_foxx_model_attributes
 
 !SUBSECTION forDB
 <!-- js/server/modules/org/arangodb/foxx/model.js -->

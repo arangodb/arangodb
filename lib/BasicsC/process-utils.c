@@ -1010,6 +1010,10 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
       external->_status = TRI_EXT_STOPPED;
       external->_exitStatus = 0;
     }
+    else {
+      external->_status = TRI_EXT_ABORTED;
+      external->_exitStatus = 0;
+    }
 #else
     if (wait) {
       DWORD result;

@@ -94,10 +94,10 @@ Citing ArangoDB
 Please kindly cite ArangoDB in your publications if it helps your research:
 
 ```bibtex
-@misc{ArangoDB2013,
+@misc{ArangoDB2014,
    Author = {ArangoDB},
-   Title = { {ArangoDB}: An Open Source multi-purpose database supporting flexible data models for documents, graphs, and key-values.},
-   Year  = {2013},
+   Title = { {ArangoDB 2.2}: An Open Source multi-purpose database supporting flexible data models for documents, graphs, and key-values.},
+   Year  = {2014},
    Howpublished = {\url{http://arangodb.org/}
 }
 ```

@@ -75,7 +75,7 @@ logfiles:
 
 
 <!-- arangod/Wal/LogfileManager.h -->
-@startDocuBlock WalLogfileFilesize
+@startDocuBlock WalLogfileSize
 
 
 <!-- arangod/Wal/LogfileManager.h -->

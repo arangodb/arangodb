@@ -28,7 +28,9 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var is = require("org/arangodb/is"),
+var _ = require("underscore"),
+  is = require("org/arangodb/is"),
+  actions = require("org/arangodb/actions"),
   constructUrlObject,
   constructNickname,
   constructRoute,
@@ -84,17 +86,37 @@ constructNickname = function (httpMethod, url) {
     .toLowerCase();
 };
 
-constructRoute = function (method, route, callback, controller) {
+constructRoute = function (method, route, callback, controller, constraints) {
   'use strict';
   return {
     url: constructUrlObject(route, undefined, method),
     action: {
       callback: function (req, res) {
-        Object.keys(controller.injectors).forEach(function (key) {
-          if (Object.prototype.hasOwnProperty.call(controller.injected, key)) {
+        if (constraints) {
+          try {
+            _.each({
+              urlParameters: constraints.urlParams,
+              parameters: constraints.queryParams
+            }, function (paramConstraints, paramsPropertyName) {
+              var params = req[paramsPropertyName];
+              _.each(paramConstraints, function (constraint, paramName) {
+                var result = constraint.validate(params[paramName]);
+                params[paramName] = result.value;
+                if (result.error) {
+                  result.error.message = 'Invalid value for "' + paramName + '": ' + result.error.message;
+                  throw result.error;
+                }
+              });
+            });
+          } catch (err) {
+            actions.resultBad(req, res, actions.HTTP_BAD, err.message);
             return;
           }
-          var injector = controller.injectors[key];
+        }
+        _.each(controller.injectors, function (injector, key) {
+          if (_.has(controller.injected, key)) {
+            return;
+          }
           if (typeof injector === 'function') {
             controller.injected[key] = injector();
           } else {

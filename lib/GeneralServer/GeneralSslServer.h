@@ -230,37 +230,8 @@ namespace triagens {
         void handleConnected (TRI_socket_t socket, ConnectionInfo& info) {
           LOG_DEBUG("trying to establish secure connection");
 
-          // convert in a SSL BIO structure
-          BIO* sbio = BIO_new_socket((int) TRI_get_fd_or_handle_of_socket(socket), BIO_NOCLOSE);
-
-          if (sbio == nullptr) {
-            LOG_WARNING("cannot build new SSL BIO: %s", triagens::basics::lastSSLError().c_str());
-            TRI_CLOSE_SOCKET(socket);
-            TRI_invalidatesocket(&socket);
-            return;
-          }
-
-          // build a new connection
-          SSL* ssl = SSL_new(ctx);
-
-          info.sslContext = ssl;
-
-          if (ssl == nullptr) {
-            BIO_free_all(sbio);
-            LOG_WARNING("cannot build new SSL connection: %s", triagens::basics::lastSSLError().c_str());
-            TRI_CLOSE_SOCKET(socket);
-            TRI_invalidatesocket(&socket);
-            return;
-          }
-
-          // enforce verification
-          SSL_set_verify(ssl, verificationMode, verificationCallback);
-
-          // with the above bio
-          SSL_set_bio(ssl, sbio, sbio);
-
           // create an ssl task
-          SocketTask* task = new SslAsyncCommTask<S, HF, CT>(dynamic_cast<S*>(this), socket, info, this->_keepAliveTimeout, sbio);
+          SocketTask* task = new SslAsyncCommTask<S, HF, CT>(dynamic_cast<S*>(this), socket, info, this->_keepAliveTimeout, ctx, verificationMode, verificationCallback);
 
           // add the task, otherwise it will not be shut down properly
           GENERAL_SERVER_LOCK(&this->_commTasksLock);

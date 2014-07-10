@@ -53,6 +53,8 @@ def replaceText(text, pathOfFile, searchText):
   replaced = replaced.replace("@RESTBODYPARAMETERS","**Body Parameters**\n")  
   replaced = replaced.replace("@RESTRETURNCODES","**Return Codes**\n")
   replaced = replaced.replace("@RESTURLPARAM", "@RESTPARAM")
+  replaced = replaced.replace("@PARAMS", "**Parameters**\n")
+  replaced = replaced.replace("@PARAM", "@RESTPARAM")
   replaced = replaced.replace("@RESTHEADERPARAM", "@RESTPARAM")
   replaced = replaced.replace("@RESTQUERYPARAM", "@RESTPARAM")
   replaced = replaced.replace("@RESTBODYPARAM", "@RESTPARAM")
@@ -62,10 +64,7 @@ def replaceText(text, pathOfFile, searchText):
   replaced = re.sub(r"@RESTBODYPARAMS{(.*)}", r"*(\g<1>)*", replaced)
   replaced = replaced.replace("@EXAMPLES","**Examples**")
   # Error codes replace
-  replaced = re.sub(r"#+\n","", replaced)
-  replaced = re.sub(r"(#+)\s+([\s\w()./,:-]+)\n", r"###\g<2>\n", replaced)
-  replaced = re.sub(r"([\w\_]+),([\d-]+),\s*\"([\s\w\/%()':.,-]+)\",\s*\"([\s\w(),.:'-]+).*\"(\,)*", r"**\g<2>** *\g<3>*:\n\g<4>\n", replaced)
-
+  replaced = re.sub(r"- (\w+):\s*@LIT{(.+)}", r"\n*\g<1>* - **\g<2>**:", replaced)
   f.write(replaced)
   f.close()
 

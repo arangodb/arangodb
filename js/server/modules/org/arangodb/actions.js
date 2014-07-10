@@ -61,7 +61,7 @@ var ALL_METHODS = [ "DELETE", "GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH" ]
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function that's returned for non-implemented actions
 ////////////////////////////////////////////////////////////////////////////////
-        
+
 function notImplementedFunction (route, message) {
   'use strict';
 
@@ -259,7 +259,7 @@ function lookupCallbackActionCallbackString (route, action, context) {
   catch (err) {
     func = errorFunction(
       route,
-      "an error occurred while loading function '" 
+      "an error occurred while loading function '"
         + action.callback + "': " + String(err.stack || err));
   }
 
@@ -292,7 +292,7 @@ function lookupCallbackActionCallback (route, action, context) {
   return {
     controller: errorFunction(
       route,
-      "an error occurred while loading function '" 
+      "an error occurred while loading function '"
         + action.callback + "': unknown type '" + String(typeof action.callback) + "'"),
     options: action.options || {},
     methods: action.methods || ALL_METHODS
@@ -331,22 +331,22 @@ function lookupCallbackActionDo (route, action) {
   catch (err) {
     if (err.hasOwnProperty("moduleNotFound") && err.moduleNotFound) {
       func = notImplementedFunction(
-        route, 
-        "an error occurred while loading action named '" + name 
+        route,
+        "an error occurred while loading action named '" + name
           + "' in module '" + joined + "': " + String(err.stack || err));
     }
     else {
       func = errorFunction(
         route,
-        "an error occurred while loading action named '" + name 
+        "an error occurred while loading action named '" + name
           + "' in module '" + joined + "': " + String(err.stack || err));
     }
   }
 
   if (func === null || typeof func !== 'function') {
     func = errorFunction(
-      route, 
-      "invalid definition for the action named '" + name 
+      route,
+      "invalid definition for the action named '" + name
         + "' in module '" + joined + "'");
   }
 
@@ -366,7 +366,7 @@ function lookupCallbackActionController (route, action) {
 
   var func;
   var mdl;
-  var httpMethods = { 
+  var httpMethods = {
     'get': exports.GET,
     'head': exports.HEAD,
     'put': exports.PUT,
@@ -389,12 +389,12 @@ function lookupCallbackActionController (route, action) {
             if (req.requestType === httpMethods[m] && mdl.hasOwnProperty(m)) {
               func = mdl[m]
                 || errorFunction(
-                     route, 
-                     "invalid definition for " + m 
-                       + " action in action controller module '" 
+                     route,
+                     "invalid definition for " + m
+                       + " action in action controller module '"
                        + action.controller + "'");
 
-              return func(req, res, options, next); 
+              return func(req, res, options, next);
             }
           }
         }
@@ -418,14 +418,14 @@ function lookupCallbackActionController (route, action) {
   catch (err) {
     if (err.hasOwnProperty("moduleNotFound") && err.moduleNotFound) {
       return notImplementedFunction(
-        route, 
-        "cannot load/execute action controller module '" 
+        route,
+        "cannot load/execute action controller module '"
           + action.controller + ": " + String(err.stack || err));
     }
 
     return errorFunction(
-      route, 
-      "cannot load/execute action controller module '" 
+      route,
+      "cannot load/execute action controller module '"
         + action.controller + ": " + String(err.stack || err));
   }
 }
@@ -438,7 +438,7 @@ function lookupCallbackActionPrefixController (route, action) {
   'use strict';
 
   var prefixController = action.prefixController;
-  var httpMethods = { 
+  var httpMethods = {
     'get': exports.GET,
     'head': exports.HEAD,
     'put': exports.PUT,
@@ -496,11 +496,11 @@ function lookupCallbackActionPrefixController (route, action) {
             }
           }
         }
-  
+
         if (mdl.hasOwnProperty('do')) {
           func = mdl['do']
             || errorFunction(
-                 route, 
+                 route,
                  "Invalid definition for do action in prefix controller '"
                    + action.prefixController + "'");
 
@@ -509,7 +509,7 @@ function lookupCallbackActionPrefixController (route, action) {
       }
       catch (err2) {
         return errorFunction(
-          route, 
+          route,
           "Cannot load/execute prefix controller '"
             + action.prefixController + "': " + String(err2.stack || err2))(
           req, res, options, next);
@@ -592,7 +592,7 @@ function lookupCallback (route, context) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief intersect methods 
+/// @brief intersect methods
 ////////////////////////////////////////////////////////////////////////////////
 
 function intersectMethods (a, b) {
@@ -611,7 +611,7 @@ function intersectMethods (a, b) {
   }
 
   for (j = 0; j < a.length; j++) {
-    var name = a[j].toUpperCase(); 
+    var name = a[j].toUpperCase();
 
     if (d[name]) {
       results.push(name);
@@ -697,7 +697,7 @@ function defineRoutePart (route, subwhere, parts, pos, constraint, callback) {
       for (i = 0;  i < part.parameters.length;  ++i) {
         p = part.parameters[i];
         subsub = { parameter: p, match: {} };
-        subwhere.parameters.push(subsub); 
+        subwhere.parameters.push(subsub);
 
         if (constraint.hasOwnProperty(p)) {
           subsub.constraint = constraint[p];
@@ -858,13 +858,13 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
 
     for (i = 0;  i < sorted.length;  ++i) {
       sorted[i] = {
-        path: path, 
+        path: path,
         regexp: new RegExp("^" + path + "$"),
         prefix: prefix,
         depth: depth,
         urlParameters: urlParameters,
         callback: sorted[i].callback,
-        route: sorted[i].route 
+        route: sorted[i].route
       };
     }
 
@@ -905,7 +905,7 @@ function routeRequest (req, res) {
 
   execute = function () {
     if (action.route === undefined) {
-      exports.resultNotFound(req, res, arangodb.ERROR_HTTP_NOT_FOUND, 
+      exports.resultNotFound(req, res, arangodb.ERROR_HTTP_NOT_FOUND,
         "unknown path '" + path + "'");
       return;
     }
@@ -942,7 +942,7 @@ function routeRequest (req, res) {
 
     if (func === null || typeof func !== 'function') {
       func = exports.errorFunction(action.route,
-                                   'Invalid callback definition found for route ' 
+                                   'Invalid callback definition found for route '
                                    + JSON.stringify(action.route));
     }
 
@@ -1125,7 +1125,7 @@ function getJsonBody (req, res, code) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers, keyvals) {  
+function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers, keyvals) {
   'use strict';
 
   var i;
@@ -1140,7 +1140,7 @@ function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers,
     errorMessage = errorNum;
     errorNum = httpReturnCode;
   }
-  
+
   if (errorMessage === undefined || errorMessage === null) {
     msg = getErrorMessage(errorNum);
   }
@@ -1162,11 +1162,11 @@ function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers,
   result.code         = httpReturnCode;
   result.errorNum     = errorNum;
   result.errorMessage = msg;
-  
+
   res.body = JSON.stringify(result);
 
   if (headers !== undefined && headers !== null) {
-    res.headers = headers;    
+    res.headers = headers;
   }
 }
 
@@ -1184,10 +1184,10 @@ function reloadRouting () {
   // .............................................................................
   // clear the routing cache
   // .............................................................................
- 
-  // work with a local variable first 
+
+  // work with a local variable first
   var routingCache = { };
-          
+
   routingCache.flat = {};
   routingCache.routes = {};
   routingCache.middleware = {};
@@ -1250,7 +1250,7 @@ function reloadRouting () {
 
     defineRoute(route, storage, url, callback);
   };
-  
+
   // .............................................................................
   // analyses a new route
   // .............................................................................
@@ -1290,10 +1290,10 @@ function reloadRouting () {
         for (i = 0;  i < r.length;  ++i) {
           var context = { appModule: appModule };
 
-          installRoute(routingCache[key], 
-                       urlPrefix, 
-                       modulePrefix, 
-                       context, 
+          installRoute(routingCache[key],
+                       urlPrefix,
+                       modulePrefix,
+                       context,
                        r[i]);
         }
       }
@@ -1341,7 +1341,7 @@ function reloadRouting () {
 
     routingCache.flat[method] = b.concat(a);
   }
- 
+
   // once we're done, we can set the complete routing cache for database
   // doing this here instead of above ensures we don't have a half-updated routing
   // cache if this function fails somewhere in the middle
@@ -1405,11 +1405,11 @@ function firstRouting (type, parts) {
   'use strict';
 
   var url = parts;
-  
+
   if (undefined === RoutingCache[arangodb.db._name()]) {
     reloadRouting();
   }
-  
+
   var routingCache = RoutingCache[arangodb.db._name()];
 
   if (typeof url === 'string') {
@@ -1452,7 +1452,7 @@ function firstRouting (type, parts) {
 function badParameter (req, res, name) {
   'use strict';
 
-  resultError(req, res, exports.HTTP_BAD, exports.HTTP_BAD, 
+  resultError(req, res, exports.HTTP_BAD, exports.HTTP_BAD,
               "invalid value for parameter '" + name + "'");
 }
 
@@ -1469,24 +1469,24 @@ function badParameter (req, res, name) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-function resultOk (req, res, httpReturnCode, result, headers) {  
+function resultOk (req, res, httpReturnCode, result, headers) {
   'use strict';
 
   res.responseCode = httpReturnCode;
   res.contentType = "application/json; charset=utf-8";
-  
+
   // add some default attributes to result
   if (result === undefined) {
     result = {};
   }
 
-  result.error = false;  
+  result.error = false;
   result.code = httpReturnCode;
-  
+
   res.body = JSON.stringify(result);
-  
+
   if (headers !== undefined) {
-    res.headers = headers;    
+    res.headers = headers;
   }
 }
 
@@ -1532,7 +1532,7 @@ function resultNotFound (req, res, code, msg, headers) {
 function resultNotImplemented (req, res, msg, headers) {
   'use strict';
 
-  resultError(req, 
+  resultError(req,
               res,
               exports.HTTP_NOT_IMPLEMENTED,
               arangodb.ERROR_NOT_IMPLEMENTED,
@@ -1556,11 +1556,11 @@ function resultUnsupported (req, res, headers) {
               exports.HTTP_METHOD_NOT_ALLOWED,
               arangodb.ERROR_HTTP_METHOD_NOT_ALLOWED,
               "Unsupported method",
-              headers);  
+              headers);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief internal function for handling redirects 
+/// @brief internal function for handling redirects
 ////////////////////////////////////////////////////////////////////////////////
 
 function handleRedirect (req, res, options, headers) {
@@ -1582,7 +1582,7 @@ function handleRedirect (req, res, options, headers) {
     else {
       url += req.server.address + ":" + req.server.port;
     }
-    
+
     if (options.relative) {
       var u = req.url;
 
@@ -1637,7 +1637,7 @@ function resultPermanentRedirect (req, res, options, headers) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @startDocuBlock actionsResultTemporaryRedirect 
+/// @startDocuBlock actionsResultTemporaryRedirect
 ///
 /// `actions.resultTemporaryRedirect(req, res, options, headers)`
 ///
@@ -1649,7 +1649,7 @@ function resultTemporaryRedirect (req, res, options, headers) {
   'use strict';
 
   res.responseCode = exports.HTTP_TEMPORARY_REDIRECT;
-  
+
   handleRedirect(req, res, options, headers);
 }
 
@@ -1693,7 +1693,7 @@ function resultCursor (req, res, cursor, code, options) {
 
       if (hasNext) {
         cursor.persist();
-        cursorId = cursor.id(); 
+        cursorId = cursor.id();
       }
       else {
         cursorId = null;
@@ -1713,7 +1713,7 @@ function resultCursor (req, res, cursor, code, options) {
 
   // do not use cursor after this
 
-  var result = { 
+  var result = {
     result : rows,
     hasMore : hasNext
   };
@@ -1721,7 +1721,7 @@ function resultCursor (req, res, cursor, code, options) {
   if (cursorId) {
     result.id = cursorId;
   }
-    
+
   if (hasCount) {
     result.count = count;
   }
@@ -1798,8 +1798,8 @@ function indexNotFound (req, res, collection, index, headers) {
 ///
 /// `actions.resultException(req, res, err, headers, verbose)`
 ///
-/// The function generates an error response. If @FA{verbose} is set to 
-/// *true* or not specified (the default), then the error stack trace will 
+/// The function generates an error response. If @FA{verbose} is set to
+/// *true* or not specified (the default), then the error stack trace will
 /// be included in the error message if available.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -1827,44 +1827,44 @@ function resultException (req, res, err, headers, verbose) {
     }
 
     if (err.errorMessage !== "" && ! verbose) {
-      msg = err.errorMessage; 
+      msg = err.errorMessage;
     }
 
     switch (num) {
-      case arangodb.ERROR_INTERNAL: 
-      case arangodb.ERROR_OUT_OF_MEMORY: 
-      case arangodb.ERROR_GRAPH_TOO_MANY_ITERATIONS: 
-        code = exports.HTTP_SERVER_ERROR; 
+      case arangodb.ERROR_INTERNAL:
+      case arangodb.ERROR_OUT_OF_MEMORY:
+      case arangodb.ERROR_GRAPH_TOO_MANY_ITERATIONS:
+        code = exports.HTTP_SERVER_ERROR;
         break;
-      
-      case arangodb.ERROR_FORBIDDEN: 
-      case arangodb.ERROR_ARANGO_USE_SYSTEM_DATABASE: 
-        code = exports.HTTP_FORBIDDEN; 
+
+      case arangodb.ERROR_FORBIDDEN:
+      case arangodb.ERROR_ARANGO_USE_SYSTEM_DATABASE:
+        code = exports.HTTP_FORBIDDEN;
         break;
-      
-      case arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND: 
-      case arangodb.ERROR_ARANGO_DOCUMENT_NOT_FOUND: 
-      case arangodb.ERROR_ARANGO_DATABASE_NOT_FOUND: 
-      case arangodb.ERROR_ARANGO_ENDPOINT_NOT_FOUND: 
-      case arangodb.ERROR_ARANGO_NO_INDEX: 
-      case arangodb.ERROR_ARANGO_INDEX_NOT_FOUND: 
-      case arangodb.ERROR_CURSOR_NOT_FOUND: 
-      case arangodb.ERROR_USER_NOT_FOUND: 
+
+      case arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND:
+      case arangodb.ERROR_ARANGO_DOCUMENT_NOT_FOUND:
+      case arangodb.ERROR_ARANGO_DATABASE_NOT_FOUND:
+      case arangodb.ERROR_ARANGO_ENDPOINT_NOT_FOUND:
+      case arangodb.ERROR_ARANGO_NO_INDEX:
+      case arangodb.ERROR_ARANGO_INDEX_NOT_FOUND:
+      case arangodb.ERROR_CURSOR_NOT_FOUND:
+      case arangodb.ERROR_USER_NOT_FOUND:
         code = exports.HTTP_NOT_FOUND;
-        break; 
-      
-      case arangodb.ERROR_REQUEST_CANCELED: 
-        code = exports.HTTP_REQUEST_TIMEOUT;
-        break; 
-
-      case arangodb.ERROR_ARANGO_DUPLICATE_NAME: 
-      case arangodb.ERROR_ARANGO_DUPLICATE_IDENTIFIER: 
-        code = exports.HTTP_CONFLICT; 
         break;
 
-      case arangodb.ERROR_CLUSTER_UNSUPPORTED: 
+      case arangodb.ERROR_REQUEST_CANCELED:
+        code = exports.HTTP_REQUEST_TIMEOUT;
+        break;
+
+      case arangodb.ERROR_ARANGO_DUPLICATE_NAME:
+      case arangodb.ERROR_ARANGO_DUPLICATE_IDENTIFIER:
+        code = exports.HTTP_CONFLICT;
+        break;
+
+      case arangodb.ERROR_CLUSTER_UNSUPPORTED:
         code = exports.HTTP_NOT_IMPLEMENTED;
-        break; 
+        break;
     }
   }
   else if (err instanceof TypeError) {
@@ -1875,7 +1875,7 @@ function resultException (req, res, err, headers, verbose) {
     num = arangodb.ERROR_HTTP_SERVER_ERROR;
     code = exports.HTTP_SERVER_ERROR;
   }
-  
+
   resultError(req, res, code, num, msg, headers);
 }
 
@@ -2052,12 +2052,12 @@ function addCookie (res, name, value, lifeTime, path, domain, secure, httpOnly) 
   if (value === undefined) {
     return;
   }
-  
+
   var cookie = {
     'name' : name,
     'value' : value
   };
-  
+
   if (lifeTime !== undefined && lifeTime !== null) {
     cookie.lifeTime = parseInt(lifeTime, 10);
   }
@@ -2073,11 +2073,11 @@ function addCookie (res, name, value, lifeTime, path, domain, secure, httpOnly) 
   if (httpOnly !== undefined && httpOnly !== null) {
     cookie.httpOnly = (httpOnly) ? true : false;
   }
-  
+
   if (res.cookies === undefined || res.cookies === null) {
     res.cookies = [];
   }
-  
+
   res.cookies.push(cookie);
 }
 
