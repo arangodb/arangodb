@@ -178,39 +178,6 @@ static bool IsEqualKeyElementCid (TRI_associative_pointer_t* array,
 }
     
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup a collection name
-////////////////////////////////////////////////////////////////////////////////
-
-static bool LookupCollectionName (TRI_replication_dump_t* dump,
-                                  TRI_voc_cid_t cid,
-                                  char** result) {
-
-  assert(cid > 0);
-  
-  resolved_name_t* found = static_cast<resolved_name_t*>(TRI_LookupByKeyAssociativePointer(&dump->_collectionNames, &cid));
-
-  if (found == NULL) {
-    found = static_cast<resolved_name_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(resolved_name_t), false));
-
-    if (found == NULL) {
-      // out of memory;
-      return false;
-    }
-
-    found->_cid = cid;
-    // name can be NULL if collection is not found. 
-    // but we will still cache a NULL result!
-    found->_name = TRI_GetCollectionNameByIdVocBase(dump->_vocbase, cid);
-    
-    TRI_InsertKeyAssociativePointer(&dump->_collectionNames, &found->_cid, found, false); 
-  }
-
-  *result = found->_name;
-  
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief append a collection name or id to a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
