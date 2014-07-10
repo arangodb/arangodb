@@ -47,6 +47,7 @@
 
     submitEditPlan : function() {
       $('#editPlanModal').modal('hide');
+      window.App.clusterPlan.cleanUp();
       var plan = window.App.clusterPlan;
       if (plan.isTestSetup()) {
         window.App.navigate("planTest", {trigger : true});
@@ -62,6 +63,7 @@
 
     submitDeletePlan : function() {
       $('#deletePlanModal').modal('hide');
+      window.App.clusterPlan.cleanUp();
       window.App.clusterPlan.destroy();
       window.App.clusterPlan = new window.ClusterPlan();
       window.App.planScenario();
