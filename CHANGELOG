@@ -1,5 +1,5 @@
-v2.2.0-beta3 (2014-07-01)
--------------------------
+v2.2.0 (2014-07-10)
+-------------------
 
 * The replication methods `logger.start`, `logger.stop` and `logger.properties` are
   no-ops in ArangoDB 2.2 as there is no separate replication logger anymore. Data changes

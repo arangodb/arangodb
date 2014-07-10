@@ -24,7 +24,7 @@
                     "notes": "Retrieves the list of all existing databases <br><br> **Note**: retrieving the list of databases is only possible from within the *_system* database. <br><br>",
                     "summary": " List of databases",
                     "httpMethod": "GET",
-                    "examples": "<br><br><br><br><pre><code class=\"json\">shell> curl --data-binary @- --dump - http://localhost:8529/_api/database\nundefined\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    \"_system\" \n  ], \n  \"error\" : false, \n  \"code\" : 200 \n}\n</code></pre><br>@endDocuBlock",
+                    "examples": "<br><br><br><br><pre><code class=\"json\">shell> curl --data-binary @- --dump - http://localhost:8529/_api/database\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    \"_system\" \n  ], \n  \"error\" : false, \n  \"code\" : 200 \n}\n</code></pre><br>@endDocuBlock",
                     "nickname": "ListOfDatabases"
                 }
             ],
@@ -47,7 +47,7 @@
                     "notes": "Retrieves the list of all databases the current user can access without  specifying a different username or password. <br><br>",
                     "summary": " List of accessible databases ",
                     "httpMethod": "GET",
-                    "examples": "<br><br><br><br><pre><code class=\"json\">shell> curl --data-binary @- --dump - http://localhost:8529/_api/database/user\nundefined\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    \"_system\" \n  ], \n  \"error\" : false, \n  \"code\" : 200 \n}\n</code></pre><br>@endDocuBlock",
+                    "examples": "<br><br><br><br><pre><code class=\"json\">shell> curl --data-binary @- --dump - http://localhost:8529/_api/database/user\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : [ \n    \"_system\" \n  ], \n  \"error\" : false, \n  \"code\" : 200 \n}\n</code></pre><br>@endDocuBlock",
                     "nickname": "ListOfAccessibleDatabases"
                 }
             ],
@@ -74,7 +74,7 @@
                     "notes": "Retrieves information about the current database <br><br> The response is a JSON object with the following attributes: <br><br>  <ul class=\"swagger-list\"><li>*name*: the name of the current database  <li>*id*: the id of the current database  <li>*path*: the filesystem path of the current database  <li>*isSystem*: whether or not the current database is the *_system* database",
                     "summary": " Information of the database",
                     "httpMethod": "GET",
-                    "examples": "<br><br><br><br><pre><code class=\"json\">shell> curl --data-binary @- --dump - http://localhost:8529/_api/database/current\nundefined\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : { \n    \"name\" : \"_system\", \n    \"id\" : \"87405\", \n    \"path\" : \"/tmp/vocdir.48606/databases/database-87405\", \n    \"isSystem\" : true \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n</code></pre><br>@endDocuBlock",
+                    "examples": "<br><br><br><br><pre><code class=\"json\">shell> curl --data-binary @- --dump - http://localhost:8529/_api/database/current\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : { \n    \"name\" : \"_system\", \n    \"id\" : \"111247\", \n    \"path\" : \"/tmp/vocdir.27850/databases/database-111247\", \n    \"isSystem\" : true \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n</code></pre><br>@endDocuBlock",
                     "nickname": "InformationOfTheDatabase"
                 }
             ],
@@ -152,7 +152,7 @@
                     "notes": "Deletes the database along with all data stored in it. <br><br> **Note**: dropping a database is only possible from within the *_system* database. The *_system* database itself cannot be dropped. <br><br>",
                     "summary": " Drop database",
                     "httpMethod": "DELETE",
-                    "examples": "<br><br><br><br><pre><code class=\"json\">shell> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/database/example\nundefined\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : true, \n  \"error\" : false, \n  \"code\" : 200 \n}\n</code></pre><br>@endDocuBlock",
+                    "examples": "<br><br><br><br><pre><code class=\"json\">shell> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/database/example\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"result\" : true, \n  \"error\" : false, \n  \"code\" : 200 \n}\n</code></pre><br>@endDocuBlock",
                     "nickname": "DropDatabase"
                 }
             ],
