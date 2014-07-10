@@ -431,7 +431,8 @@ testFuncs.shell_client = function(options) {
     te = tests_shell_client[i];
     print("\nTrying",te,"...");
     if ((te.indexOf("-cluster") === -1 || options.cluster) &&
-        (te.indexOf("-noncluster") === -1 || options.cluster === false)) {
+        (te.indexOf("-noncluster") === -1 || options.cluster === false) &&
+        (te.indexOf("-disabled") === -1)) {
       var r = runInArangosh(options, instanceInfo, te);
       results[te] = r;
       if (r !== 0 && !options.force) {

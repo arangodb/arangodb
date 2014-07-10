@@ -1001,6 +1001,7 @@ int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
         cout << TRI_StringifyV8Exception(&tryCatch);
       }
       else {
+        // will stop, so need for v8g->_canceled = true;
         return EXIT_FAILURE;
       }
     }
@@ -1065,6 +1066,7 @@ int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
         TRI_LogV8Exception(&tryCatch);
       }
       else {
+        // will stop, so need for v8g->_canceled = true;
         return EXIT_FAILURE;
       }
     }

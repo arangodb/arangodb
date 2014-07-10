@@ -74,6 +74,9 @@ TRI_js_exec_context_t* TRI_CreateExecutionContext (char const* script,
       ctx->_error = TRI_ERROR_INTERNAL;
     }
     else {
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+
+      v8g->_canceled = true;
       ctx->_error = TRI_ERROR_REQUEST_CANCELED;
     }
     return ctx;
@@ -134,6 +137,9 @@ TRI_json_t* TRI_ExecuteResultContext (TRI_js_exec_context_t* ctx) {
       ctx->_error = TRI_ERROR_INTERNAL;
     }
     else {
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+
+      v8g->_canceled = true;
       ctx->_error = TRI_ERROR_REQUEST_CANCELED;
     }
     return NULL;

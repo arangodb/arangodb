@@ -476,6 +476,7 @@ am_arangod_libarangod_a_OBJECTS =  \
 	arangod/Wal/arangod_libarangod_a-Logfile.$(OBJEXT) \
 	arangod/Wal/arangod_libarangod_a-Marker.$(OBJEXT) \
 	arangod/Wal/arangod_libarangod_a-RecoverState.$(OBJEXT) \
+	arangod/Wal/arangod_libarangod_a-RemoverThread.$(OBJEXT) \
 	arangod/Wal/arangod_libarangod_a-Slot.$(OBJEXT) \
 	arangod/Wal/arangod_libarangod_a-Slots.$(OBJEXT) \
 	arangod/Wal/arangod_libarangod_a-SynchroniserThread.$(OBJEXT)
@@ -1557,6 +1558,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Wal/Logfile.cpp \
 	arangod/Wal/Marker.cpp \
 	arangod/Wal/RecoverState.cpp \
+	arangod/Wal/RemoverThread.cpp \
 	arangod/Wal/Slot.cpp \
 	arangod/Wal/Slots.cpp \
 	arangod/Wal/SynchroniserThread.cpp 
@@ -1732,7 +1734,6 @@ SERVER_START :=
 SERVER_OPT := \
 	--configuration none \
 	--database.maximal-journal-size 1048576 \
-	--database.force-sync-properties false \
 	--javascript.app-path @top_srcdir@/js/apps \
 	--javascript.startup-directory @top_srcdir@/js \
         --log.file "" \
@@ -1873,7 +1874,7 @@ SHELL_SERVER_AHUACATL = @top_srcdir@/js/server/tests/ahuacatl-ranges.js \
 			@top_srcdir@/js/server/tests/ahuacatl-general-graph.js \
 			@top_srcdir@/js/server/tests/ahuacatl-graph.js \
 			@top_srcdir@/js/server/tests/ahuacatl-edges.js \
-			@top_srcdir@/js/server/tests/ahuacatl-modify.js \
+			@top_srcdir@/js/server/tests/ahuacatl-modify-noncluster.js \
 			@top_srcdir@/js/server/tests/ahuacatl-refaccess-variable.js \
 			@top_srcdir@/js/server/tests/ahuacatl-refaccess-attribute.js \
 		        @top_srcdir@/js/server/tests/ahuacatl-queries-simple.js \
@@ -1909,7 +1910,7 @@ UNITTESTS_SERVER_AHUACATL_EXTENDED = $(addprefix --javascript.unit-tests ,$(SHEL
 ################################################################################
 ### @brief SHELL CLIENT TESTS
 ################################################################################
-UNITTESTS_READONLY = $(addprefix --javascript.unit-tests ,@top_srcdir@/js/client/tests/shell-changeMode-noncluster.js)
+UNITTESTS_READONLY = $(addprefix --javascript.unit-tests ,@top_srcdir@/js/client/tests/shell-changeMode-noncluster-disabled.js)
 UNITTESTS_NO_READONLY = $(addprefix --javascript.unit-tests ,@top_srcdir@/js/client/tests/shell-noChangeMode-noncluster.js)
 SHELL_CLIENT_ONLY = \
 	       @top_srcdir@/js/client/tests/shell-endpoints.js \
@@ -2480,6 +2481,9 @@ arangod/Wal/arangod_libarangod_a-Marker.$(OBJEXT):  \
 	arangod/Wal/$(am__dirstamp) \
 	arangod/Wal/$(DEPDIR)/$(am__dirstamp)
 arangod/Wal/arangod_libarangod_a-RecoverState.$(OBJEXT):  \
+	arangod/Wal/$(am__dirstamp) \
+	arangod/Wal/$(DEPDIR)/$(am__dirstamp)
+arangod/Wal/arangod_libarangod_a-RemoverThread.$(OBJEXT):  \
 	arangod/Wal/$(am__dirstamp) \
 	arangod/Wal/$(DEPDIR)/$(am__dirstamp)
 arangod/Wal/arangod_libarangod_a-Slot.$(OBJEXT):  \
@@ -3547,6 +3551,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Wal/$(DEPDIR)/arangod_libarangod_a-LogfileManager.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Wal/$(DEPDIR)/arangod_libarangod_a-Marker.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Wal/$(DEPDIR)/arangod_libarangod_a-RecoverState.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/Wal/$(DEPDIR)/arangod_libarangod_a-RemoverThread.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Wal/$(DEPDIR)/arangod_libarangod_a-Slot.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Wal/$(DEPDIR)/arangod_libarangod_a-Slots.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Wal/$(DEPDIR)/arangod_libarangod_a-SynchroniserThread.Po@am__quote@
@@ -5783,6 +5788,20 @@ arangod/Wal/arangod_libarangod_a-RecoverState.obj: arangod/Wal/RecoverState.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Wal/RecoverState.cpp' object='arangod/Wal/arangod_libarangod_a-RecoverState.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Wal/arangod_libarangod_a-RecoverState.obj `if test -f 'arangod/Wal/RecoverState.cpp'; then $(CYGPATH_W) 'arangod/Wal/RecoverState.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Wal/RecoverState.cpp'; fi`
+
+arangod/Wal/arangod_libarangod_a-RemoverThread.o: arangod/Wal/RemoverThread.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Wal/arangod_libarangod_a-RemoverThread.o -MD -MP -MF arangod/Wal/$(DEPDIR)/arangod_libarangod_a-RemoverThread.Tpo -c -o arangod/Wal/arangod_libarangod_a-RemoverThread.o `test -f 'arangod/Wal/RemoverThread.cpp' || echo '$(srcdir)/'`arangod/Wal/RemoverThread.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Wal/$(DEPDIR)/arangod_libarangod_a-RemoverThread.Tpo arangod/Wal/$(DEPDIR)/arangod_libarangod_a-RemoverThread.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Wal/RemoverThread.cpp' object='arangod/Wal/arangod_libarangod_a-RemoverThread.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Wal/arangod_libarangod_a-RemoverThread.o `test -f 'arangod/Wal/RemoverThread.cpp' || echo '$(srcdir)/'`arangod/Wal/RemoverThread.cpp
+
+arangod/Wal/arangod_libarangod_a-RemoverThread.obj: arangod/Wal/RemoverThread.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Wal/arangod_libarangod_a-RemoverThread.obj -MD -MP -MF arangod/Wal/$(DEPDIR)/arangod_libarangod_a-RemoverThread.Tpo -c -o arangod/Wal/arangod_libarangod_a-RemoverThread.obj `if test -f 'arangod/Wal/RemoverThread.cpp'; then $(CYGPATH_W) 'arangod/Wal/RemoverThread.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Wal/RemoverThread.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Wal/$(DEPDIR)/arangod_libarangod_a-RemoverThread.Tpo arangod/Wal/$(DEPDIR)/arangod_libarangod_a-RemoverThread.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Wal/RemoverThread.cpp' object='arangod/Wal/arangod_libarangod_a-RemoverThread.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Wal/arangod_libarangod_a-RemoverThread.obj `if test -f 'arangod/Wal/RemoverThread.cpp'; then $(CYGPATH_W) 'arangod/Wal/RemoverThread.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Wal/RemoverThread.cpp'; fi`
 
 arangod/Wal/arangod_libarangod_a-Slot.o: arangod/Wal/Slot.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Wal/arangod_libarangod_a-Slot.o -MD -MP -MF arangod/Wal/$(DEPDIR)/arangod_libarangod_a-Slot.Tpo -c -o arangod/Wal/arangod_libarangod_a-Slot.o `test -f 'arangod/Wal/Slot.cpp' || echo '$(srcdir)/'`arangod/Wal/Slot.cpp
@@ -8059,6 +8078,15 @@ curl-request-get:
 @ENABLE_FAILURE_TESTS_TRUE@	@echo "================================================================================"
 @ENABLE_FAILURE_TESTS_TRUE@	@echo
 
+@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="collection-unload"
+@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="resume-recovery-multi-flush"
+@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="resume-recovery-simple"
+@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="resume-recovery-all"
+@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="resume-recovery"
+@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="foxx-directories"
+@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="collection-rename"
+@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="collection-properties"
+@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="empty-logfiles"
 @ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="many-logs"
 @ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="multiple-logs"
 @ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="collection-recreate"

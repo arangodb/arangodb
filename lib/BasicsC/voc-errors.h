@@ -8,7 +8,7 @@ extern "C" {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ArangoErrors Error codes and meanings
-///
+/// @startDocuBlock errorCodes
 /// The following errors might be raised when running ArangoDB:
 ///
 /// - 0: @LIT{no error}
@@ -63,6 +63,8 @@ extern "C" {
 /// - 24: @LIT{internal error if a legend could not be created}
 ///   Will be raised if the legend generator was only given access to the shape
 ///   and some sids are in the data object (inhomogeneous lists).
+/// - 25: @LIT{IP address is invalid}
+///   Will be raised when the structure of an IP address is invalid.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 401: @LIT{unauthorized}
@@ -539,6 +541,8 @@ extern "C" {
 ///   Invalid parameter type.
 /// - 1937: @LIT{Invalid id}
 ///   Invalid id
+/// - 1938: @LIT{collection used in orphans}
+///   The collection is already used in the orphans of the graph.
 /// - 1950: @LIT{unknown session}
 ///   Will be raised when an invalid/unknown session id is passed to the server.
 /// - 1951: @LIT{session expired}
@@ -578,7 +582,8 @@ extern "C" {
 /// - 10003: @LIT{element not found in structure}
 ///   Will be returned if the element was not found in the structure.
 /// - 20000: @LIT{newest version of app already installed}
-///   newest version of app already installed
+///   Newest version of app already installed
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -849,6 +854,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_LEGEND_INCOMPLETE                                       (24)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 25: ERROR_IP_ADDRESS_INVALID
+///
+/// IP address is invalid
+///
+/// Will be raised when the structure of an IP address is invalid.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_IP_ADDRESS_INVALID                                      (25)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER
@@ -2857,6 +2872,16 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_GRAPH_INVALID_ID                                        (1937)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1938: ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS
+///
+/// collection used in orphans
+///
+/// The collection is already used in the orphans of the graph.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS                        (1938)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1950: ERROR_SESSION_UNKNOWN

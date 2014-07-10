@@ -124,9 +124,10 @@
       $('#documents_first').css("visibility", "visible");
       this.addDocumentSwitch = true;
       this.collection.resetFilter();
-      this.collection.getDocuments(this.collectionID, 1);
+      this.collection.loadTotal();
+      this.collection.getDocuments();
       this.drawTable();
-      this.renderPagination();
+      this.renderPaginationElements();
     },
 
     startUpload: function () {
@@ -266,6 +267,7 @@
     sendFilter : function () {
       var filters = this.getFilterContent();
       var self = this;
+      this.collection.resetFilter();
       this.addDocumentSwitch = false;
       _.each(filters, function (f) {
           self.collection.addFilter(f.attribute, f.operator, f.value);
@@ -279,7 +281,7 @@
       $('#documents_first').css("visibility", "hidden");
 
       this.drawTable();
-      this.renderPagination();
+      this.renderPaginationElements();
     },
 
     addFilterItem : function () {
@@ -574,21 +576,19 @@
         this.drawTable();
         $('#documents_last').css("visibility", "hidden");
         $('#documents_first').css("visibility", "hidden");
-        this.renderPagination();
+        this.renderPaginationElements();
     },
 
     renderPaginationElements: function () {
-
-        this.renderPagination();
-        var total = $('#totalDocuments');
-          if (total.length > 0) {
-            total.html("Total: " + this.collection.getTotal() + " documents");
-          } else {
-            $('#documentsToolbarFL').append(
-              '<a id="totalDocuments" class="totalDocuments">Total: ' + this.collection.getTotal() +
-              ' document(s) </a>'
-            );
-          }
+      this.renderPagination();
+      var total = $('#totalDocuments');
+      if (total.length === 0) {
+        $('#documentsToolbarFL').append(
+          '<a id="totalDocuments" class="totalDocuments"></a>'
+        );
+        total = $('#totalDocuments');
+      }
+      total.html("Total: " + this.collection.getTotal() + " document(s)");
     },
 
     breadcrumb: function () {

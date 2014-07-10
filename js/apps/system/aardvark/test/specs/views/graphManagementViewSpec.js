@@ -65,7 +65,7 @@
 
     describe("after rendering", function () {
 
-      var g1, g2, g3;
+      var g1, g2, g3, g4;
 
       beforeEach(function () {
         g1 = {
@@ -110,22 +110,31 @@
           ],
           orphanCollections: ["o3"]
         };
+        g4 = {
+          _id: "_graphs/g4",
+          _key: "g4",
+          _rev: "111",
+          edgeDefinitions: [
+          ],
+          orphanCollections: []
+        };
         spyOn(graphs, "fetch");
         graphs.add(g1);
         graphs.add(g2);
         graphs.add(g3);
+        graphs.add(g4);
         view.render();
       });
 
-      it("should loadGraphViewer", function () {
+      it("should load the GraphViewer", function () {
         var e = {
             currentTarget: {
-              id: "blabalblub"
+              id: "g1_tile"
             }
           },
           a = {
-            attr: function (x) {
-              return "blabalblub";
+            attr: function () {
+              return "g1_tile";
             },
             width : function () {
               return 100;
@@ -145,7 +154,7 @@
           undefined,
           {
             type : 'gharial',
-            graphName : 'blaba',
+            graphName : 'g1',
             baseUrl : '/_db/_system/'
           }, 25, 680,
           {
@@ -158,6 +167,33 @@
         );
       });
 
+      it("should not load the GraphViewer for empty graphs", function () {
+        var e = {
+            currentTarget: {
+              id: "g4_tile"
+            }
+          },
+          a = {
+            attr: function () {
+              return "g4_tile";
+            },
+            width : function () {
+              return 100;
+            },
+            html : function () {
+
+            }
+          };
+        spyOn(window, "GraphViewerUI");
+
+        spyOn(window, "$").andReturn(a);
+
+
+        view.loadGraphViewer(e);
+
+        expect(window.GraphViewerUI).not.toHaveBeenCalled();
+      });
+
       it("should showHideDefinition", function () {
         var e = {
             currentTarget: {
@@ -168,7 +204,7 @@
             }
           },
           a = {
-            attr: function (x) {
+            attr: function () {
               return "row_newEdgeDefinitions1";
             },
             toggle : function () {
@@ -896,11 +932,12 @@
 
       it("should create a sorted list of all graphs", function () {
         var list = $("div.tile h5.collectionName", "#graphManagementThumbnailsIn");
-        expect(list.length).toEqual(3);
-        // Order would be g2, g3, g1
+        expect(list.length).toEqual(4);
+        // Order would be g2, g3, g1, g4
         expect($(list[0]).html()).toEqual(g1._key);
         expect($(list[1]).html()).toEqual(g2._key);
         expect($(list[2]).html()).toEqual(g3._key);
+        expect($(list[3]).html()).toEqual(g4._key);
       });
 
       it("should not saveCreatedGraph as name already exists", function () {

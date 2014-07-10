@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, white: true, plusplus: true, unparam: true, regexp: true, vars: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, white: true, plusplus: true, unparam: true, regexp: true, vars: true, stupid: true */
 /*global require, applicationContext*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -37,14 +37,50 @@
     Model = require("org/arangodb/foxx").Model,
     Graph = require("org/arangodb/general-graph"),
     _ = require("underscore"),
-    errors = require("internal").errors,
+    arangodb = require("org/arangodb"),
+    errors = arangodb.errors,
     toId = function(c, k) {
       return c + "/" + k;
+    },
+    parseBooleanParameter = function(req, name, deflt) {
+      var testee = req.params(name);
+      if (testee === undefined) {
+        return deflt || false;
+      }
+      return testee.toLowerCase() === "true" || testee === "1";
+    },
+    buildError = function(err, code) {
+      return {
+        error: true,
+        code: code || actions.HTTP_BAD,
+        errorNum: err.errorNum,
+        errorMessage: err.errorMessage
+      };
+    },
+    checkCollection = function(g, collection) {
+      if (g[collection] === undefined) {
+        var err;
+        err = new ArangoError();
+        err.errorNum = arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code;
+        err.errorMessage = arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.message;
+        throw err;
+      }
+    },
+    setOptions = function(req) {
+      var options = {
+        code: actions.HTTP_ACCEPTED
+      };
+      options.waitForSync = parseBooleanParameter(req, "waitForSync");
+      if (options.waitForSync) {
+        options.code = actions.HTTP_OK;
+      }
+      options.keepNull = parseBooleanParameter(req, "keepNull");
+      return options;
     },
     setResponse = function (res, name, body, code) {
       var obj = {};
       obj.error = false;
-      obj.code = code || actions.HTTP_OK;
+      obj.code = code || actions.HTTP_ACCEPTED; // Never wait for sync
       if (name !== undefined && body !== undefined) {
         obj[name] = body;
         if (body._rev) {
@@ -56,12 +92,65 @@
         res.status(code);
       }
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns true if a "if-match" or "if-none-match" error happens
+////////////////////////////////////////////////////////////////////////////////
+    matchError = function (req, res, doc, errorCode) {  
+
+      if (req.headers["if-none-match"] !== undefined) {
+        var options = setOptions(req);
+        if (options.code === actions.HTTP_OK) {
+          options.code = actions.HTTP_CREATED;
+        }
+        if (doc._rev === req.headers["if-none-match"].replace(/(^["']|["']$)/g, '')) {
+          // error      
+          res.responseCode = actions.HTTP_NOT_MODIFIED;
+          res.contentType = "application/json; charset=utf-8";
+          res.body = '';
+          res.headers = {};      
+          return true;
+        }
+      }  
+      
+      if (req.headers["if-match"] !== undefined) {
+        if (doc._rev !== req.headers["if-match"].replace(/(^["']|["']$)/g, '')) {
+          // error
+          actions.resultError(req, 
+                              res, 
+                              actions.HTTP_PRECONDITION_FAILED, 
+                              errorCode, 
+                              "wrong revision", 
+                              {});
+          return true;
+        }
+      }  
+      
+      var rev = req.parameters.rev;
+      if (rev !== undefined) {
+        if (doc._rev !== rev) {
+          // error
+          actions.resultError(req, 
+                              res, 
+                              actions.HTTP_PRECONDITION_FAILED, 
+                              errorCode, 
+                              "wrong revision", 
+                              {});
+          return true;
+        }
+      }  
+      
+      return false;
+    },
+
     setGraphResponse = function(res, g, code) {
       code = code || actions.HTTP_OK;
       setResponse(res, "graph", {
         name: g.__name,
         edgeDefinitions: g.__edgeDefinitions,
-        orphanCollections: g._orphanCollections()
+        orphanCollections: g._orphanCollections(),
+        _id : g.__id,
+        _rev : g.__rev
       }, code);
     };
 
@@ -134,14 +223,57 @@
       infos.get("orphanCollections")
     );
     setGraphResponse(res, g, actions.HTTP_CREATED);
-  }).errorResponse(
+  })
+  .errorResponse(
     ArangoError, actions.HTTP_CONFLICT, "Graph creation error.", function(e) {
-      return {
-        code: actions.HTTP_CONFLICT,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_CONFLICT);
     }
-  ).bodyParam("graph", "The required information for a graph", Model);
+  )
+  .bodyParam("graph", "The required information for a graph", Model);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_get_http_examples
+/// @EXAMPLE_ARANGOSH_RUN{HttpGharialGetGraph}
+///   var graph = require("org/arangodb/general-graph");
+/// | if (graph._exists("myGraph")) {
+/// |    graph._drop("myGraph", true);
+///   }
+///   graph._create("myGraph", [{
+///     collection: "edges",
+///     from: [ "startVertices" ],
+///     to: [ "endVertices" ]
+///   }]);
+///   var url = "/_api/gharial/myGraph";
+///
+///   var response = logCurlRequest('GET', url);
+///
+///   assert(response.code === 200);
+///
+///   logJsonResponse(response);
+///
+///   graph._drop("myGraph", true);
+/// @END_EXAMPLE_ARANGOSH_RUN
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+  /** Get information of a graph
+   *
+   * Selects information for a given graph.
+   * Will return the edge definitions as well as the vertex collections.
+   * Or throws a 404 if the graph does not exist.
+   */
+  controller.get("/:graph", function(req, res) {
+    var name = req.params("graph");
+    var g = Graph._graph(name);
+    setGraphResponse(res, g, actions.HTTP_OK);
+  }).pathParam("graph", {
+    type: "string",
+    description: "Name of the graph."
+  }).errorResponse(
+    ArangoError, actions.HTTP_NOT_FOUND, "Graph could not be found.", function(e) {
+      return buildError(e, actions.HTTP_NOT_FOUND);
+    }
+  );
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_drop_http_examples
@@ -169,9 +301,9 @@
    */
   controller.del("/:graph", function(req, res) {
     var name = req.params("graph"),
-        drop = req.params("dropCollections") || false;
-    Graph._drop(name, Boolean(drop));
-    setResponse(res);
+        drop = parseBooleanParameter(req, "dropCollections");
+    Graph._drop(name, drop);
+    setResponse(res, "removed", true, actions.HTTP_OK);
   })
   .pathParam("graph", {
     type: "string",
@@ -183,10 +315,7 @@
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The graph does not exist.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 
@@ -217,7 +346,7 @@
     var g = Graph._graph(name);
     setResponse(res, "collections", _.map(g._vertexCollections(), function(c) {
       return c.name();
-    }).sort());
+    }).sort(), actions.HTTP_OK);
   })
   .pathParam("graph", {
     type: "string",
@@ -225,10 +354,7 @@
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The graph could not be found.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 
@@ -272,10 +398,7 @@
   )
   .errorResponse(
     ArangoError, actions.HTTP_BAD, "The vertex collection is invalid.", function(e) {
-      return {
-        code: actions.HTTP_BAD,
-        error: e.errorMessage
-      };
+      return buildError(e);
     }
   );
 
@@ -322,8 +445,8 @@
     var name = req.params("graph");
     var def_name = req.params("collection");
     var g = Graph._graph(name);
-    var drop = req.params("dropCollections") || false;
-    g._removeVertexCollection(def_name, Boolean(drop));
+    var drop = parseBooleanParameter(req, "dropCollection");
+    g._removeVertexCollection(def_name, drop);
     setGraphResponse(res, g);
   })
   .pathParam("graph", {
@@ -340,7 +463,9 @@
   })
   .errorResponse(
     ArangoError, actions.HTTP_BAD,
-    "The collection is not found or part of an edge definition."
+    "The collection is not found or part of an edge definition.", function(e) {
+      return buildError(e, actions.HTTP_BAD);
+    }
   );
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -367,7 +492,7 @@
     var g = Graph._graph(name);
     setResponse(res, "collections", _.map(g._edgeCollections(), function(c) {
       return c.name();
-    }).sort());
+    }).sort(), actions.HTTP_OK);
   })
   .pathParam("graph", {
     type: "string",
@@ -375,10 +500,7 @@
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The graph could not be found.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 
@@ -426,10 +548,7 @@
   )
   .errorResponse(
     ArangoError, actions.HTTP_BAD, "The edge definition is invalid.", function(e) {
-      return {
-        code: actions.HTTP_BAD,
-        error: e.errorMessage
-      };
+      return buildError(e);
     }
   );
 
@@ -490,10 +609,7 @@
   )
   .errorResponse(
     ArangoError, actions.HTTP_BAD, "The edge definition is invalid.", function(e) {
-      return {
-        code: actions.HTTP_BAD,
-        error: e.errorMessage
-      };
+      return buildError(e);
     }
   );
 
@@ -523,8 +639,8 @@
     var name = req.params("graph");
     var def_name = req.params("definition");
     var g = Graph._graph(name);
-    var drop = req.params("dropCollections") || false;
-    g._deleteEdgeDefinition(def_name, Boolean(drop));
+    var drop = parseBooleanParameter(req, "dropCollection");
+    g._deleteEdgeDefinition(def_name, drop);
     setGraphResponse(res, g);
   })
   .pathParam("graph", {
@@ -541,10 +657,7 @@
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The edge definition is invalid.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 
@@ -561,7 +674,7 @@
 ///   }
 ///   var response = logCurlRequest('POST', url, body);
 ///
-///   assert(response.code === 201);
+///   assert(response.code === 202);
 ///
 ///   logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -578,7 +691,12 @@
     var collection = req.params("collection");
     var body = req.params("vertex");
     var g = Graph._graph(name);
-    setResponse(res, "vertex", g[collection].save(body.forDB()), actions.HTTP_CREATED);
+    var options = setOptions(req);
+    if (options.code === actions.HTTP_OK) {
+      options.code = actions.HTTP_CREATED;
+    }
+    checkCollection(g, collection);
+    setResponse(res, "vertex", g[collection].save(body.forDB(), options), options.code);
   })
   .pathParam("graph", {
     type: "string",
@@ -587,6 +705,10 @@
   .pathParam("collection", {
     type: "string",
     description: "Name of the vertex collection."
+  })
+  .queryParam("waitForSync", {
+    type: "boolean",
+    description: "define if the request should wait until synced to disk."
   })
   .bodyParam("vertex", "The document to be stored", Model);
 
@@ -617,7 +739,11 @@
     var key = req.params("key");
     var id = toId(collection, key);
     var g = Graph._graph(name);
-    setResponse(res, "vertex", g[collection].document(id));
+    checkCollection(g, collection);
+    var doc = g[collection].document(id);
+    if (!matchError(req, res, doc, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
+      setResponse(res, "vertex", doc, actions.HTTP_OK);
+    }
   })
   .pathParam("graph", {
     type: "string",
@@ -633,10 +759,7 @@
   })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The vertex does not exist.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 
@@ -652,7 +775,7 @@
 ///   var url = "/_api/gharial/social/vertex/female/alice";
 ///   var response = logCurlRequest('PUT', url, body);
 ///
-///   assert(response.code === 200);
+///   assert(response.code === 202);
 ///
 ///   logJsonResponse(response);
 ///   examples.dropGraph("social");
@@ -673,7 +796,12 @@
     var id = toId(collection, key);
     var body = req.params("vertex");
     var g = Graph._graph(name);
-    setResponse(res, "vertex", g[collection].replace(id, body.forDB()));
+    checkCollection(g, collection);
+    var doc = g[collection].document(id);
+    var options = setOptions(req);
+    if (!matchError(req, res, doc, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
+      setResponse(res, "vertex", g[collection].replace(id, body.forDB(), options), options.code);
+    }
   })
   .pathParam("graph", {
     type: "string",
@@ -687,13 +815,14 @@
     type: "string",
     description: "_key attribute of one specific vertex."
   })
+  .queryParam("waitForSync", {
+    type: "boolean",
+    description: "define if the request should wait until synced to disk."
+  })
   .bodyParam("vertex", "The document to be stored", Model)
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The vertex does not exist.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 
@@ -708,7 +837,7 @@
 ///   var url = "/_api/gharial/social/vertex/female/alice";
 ///   var response = logCurlRequest('PATCH', url, body);
 ///
-///   assert(response.code === 200);
+///   assert(response.code === 202);
 ///
 ///   logJsonResponse(response);
 ///   examples.dropGraph("social");
@@ -729,7 +858,12 @@
     var id = toId(collection, key);
     var body = req.params("vertex");
     var g = Graph._graph(name);
-    setResponse(res, "vertex", g[collection].update(id, body.forDB()));
+    checkCollection(g, collection);
+    var doc = g[collection].document(id);
+    var options = setOptions(req);
+    if (!matchError(req, res, doc, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
+      setResponse(res, "vertex", g[collection].update(id, body.forDB(), options), options.code);
+    }
   })
   .bodyParam("vertex", "The values that should be modified", Model)
   .pathParam("graph", {
@@ -744,12 +878,17 @@
     type: "string",
     description: "_key attribute of one specific vertex."
   })
+  .queryParam("waitForSync", {
+    type: "boolean",
+    description: "define if the request should wait until synced to disk."
+  })
+  .queryParam("keepNull", {
+    type: "boolean",
+    description: "define if null values should not be deleted."
+  })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The vertex does not exist.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 
@@ -761,7 +900,7 @@
 ///   var url = "/_api/gharial/social/vertex/female/alice";
 ///   var response = logCurlRequest('DELETE', url);
 ///
-///   assert(response.code === 200);
+///   assert(response.code === 202);
 ///
 ///   logJsonResponse(response);
 ///   examples.dropGraph("social");
@@ -781,7 +920,13 @@
     var key = req.params("key");
     var id = toId(collection, key);
     var g = Graph._graph(name);
-    setResponse(res, "vertex", g[collection].remove(id));
+    checkCollection(g, collection);
+    var doc = g[collection].document(id);
+    var options = setOptions(req);
+    if (!matchError(req, res, doc, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
+      var didRemove = g[collection].remove(id, options);
+      setResponse(res, "removed", didRemove, options.code);
+    }
   })
   .pathParam("graph", {
     type: "string",
@@ -795,12 +940,13 @@
     type: "string",
     description: "_key attribute of one specific vertex."
   })
+  .queryParam("waitForSync", {
+    type: "boolean",
+    description: "define if the request should wait until synced to disk."
+  })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The vertex does not exist.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 
@@ -819,7 +965,7 @@
 ///   };
 ///   var response = logCurlRequest('POST', url, body);
 ///
-///   assert(response.code === 201);
+///   assert(response.code === 202);
 ///
 ///   logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -837,15 +983,23 @@
     var body = req.params("edge");
     var from = body.get("_from");
     var to = body.get("_to");
-    var err;
     if (!from || !to) {
-      err = new ArangoError();
-      err.errorNum = errors.ERROR_GRAPH_INVALID_EDGE.code;
-      err.errorMessage = errors.ERROR_GRAPH_INVALID_EDGE.message;
-      throw err;
+      throw new Error();
     }
     var g = Graph._graph(name);
-    setResponse(res, "edge", g[collection].save(from, to, body.forDB()), actions.HTTP_CREATED);
+    checkCollection(g, collection);
+    var options = setOptions(req);
+    if (options.code === actions.HTTP_OK) {
+      options.code = actions.HTTP_CREATED;
+    }
+    try {
+      setResponse(res, "edge", g[collection].save(from, to, body.forDB(), options), options.code);
+    } catch(e) {
+      if (e.errorNum === errors.ERROR_GRAPH_INVALID_EDGE.code) {
+        throw new Error();
+      }
+      throw e;
+    }
   })
   .pathParam("graph", {
     type: "string",
@@ -855,15 +1009,24 @@
     type: "string",
     description: "Name of the edge collection."
   })
+  .queryParam("waitForSync", {
+    type: "boolean",
+    description: "define if the request should wait until synced to disk."
+  })
   .bodyParam(
     "edge", "The edge to be stored. Has to contain _from and _to attributes.", Model
   )
   .errorResponse(
-    ArangoError, actions.HTTP_BAD_REQUEST, "The edge could not be created.", function(e) {
-      return {
-        code: actions.HTTP_BAD_REQUEST,
-        error: e.errorMessage
-      };
+    ArangoError, actions.HTTP_NOT_FOUND, "Graph or collection not found.", function(e) {
+      return buildError(e, actions.HTTP_NOT_FOUND);
+    }
+  )
+  .errorResponse(
+    Error, actions.HTTP_BAD, "Edge is invalid.", function(e) {
+      return buildError({
+        errorNum: errors.ERROR_GRAPH_INVALID_EDGE.code,
+        errorMessage: errors.ERROR_GRAPH_INVALID_EDGE.message
+      }, actions.HTTP_BAD);
     }
   );
 
@@ -893,7 +1056,11 @@
     var key = req.params("key");
     var id = toId(collection, key);
     var g = Graph._graph(name);
-    setResponse(res, "edge", g[collection].document(id));
+    checkCollection(g, collection);
+    var doc = g[collection].document(id);
+    if (!matchError(req, res, doc, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
+      setResponse(res, "edge", doc, actions.HTTP_OK);
+    }
   })
   .pathParam("graph", {
     type: "string",
@@ -907,12 +1074,13 @@
     type: "string",
     description: "_key attribute of one specific edge."
   })
+  .queryParam("waitForSync", {
+    type: "boolean",
+    description: "define if the request should wait until synced to disk."
+  })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The edge does not exist.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 
@@ -927,7 +1095,7 @@
 ///   }
 ///   var response = logCurlRequest('PUT', url, body);
 ///
-///   assert(response.code === 200);
+///   assert(response.code === 202);
 ///
 ///   logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -947,7 +1115,12 @@
     var id = toId(collection, key);
     var body = req.params("edge");
     var g = Graph._graph(name);
-    setResponse(res, "edge", g[collection].replace(id, body.forDB()));
+    checkCollection(g, collection);
+    var doc = g[collection].document(id);
+    var options = setOptions(req);
+    if (!matchError(req, res, doc, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
+      setResponse(res, "edge", g[collection].replace(id, body.forDB(), options), options.code);
+    }
   })
   .pathParam("graph", {
     type: "string",
@@ -961,13 +1134,14 @@
     type: "string",
     description: "_key attribute of one specific edge."
   })
+  .queryParam("waitForSync", {
+    type: "boolean",
+    description: "define if the request should wait until synced to disk."
+  })
   .bodyParam("edge", "The document to be stored. _from and _to attributes are ignored", Model)
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The edge does not exist.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 
@@ -982,7 +1156,7 @@
 ///   }
 ///   var response = logCurlRequest('PATCH', url, body);
 ///
-///   assert(response.code === 200);
+///   assert(response.code === 202);
 ///
 ///   logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -1002,7 +1176,12 @@
     var id = toId(collection, key);
     var body = req.params("edge");
     var g = Graph._graph(name);
-    setResponse(res, "edge", g[collection].update(id, body.forDB()));
+    checkCollection(g, collection);
+    var doc = g[collection].document(id);
+    var options = setOptions(req);
+    if (!matchError(req, res, doc, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
+      setResponse(res, "edge", g[collection].update(id, body.forDB(), options), options.code);
+    }
   })
   .bodyParam(
     "edge", "The values that should be modified. _from and _to attributes are ignored", Model
@@ -1019,12 +1198,17 @@
     type: "string",
     description: "_key attribute of one specific edge."
   })
+  .queryParam("waitForSync", {
+    type: "boolean",
+    description: "define if the request should wait until synced to disk."
+  })
+  .queryParam("keepNull", {
+    type: "boolean",
+    description: "define if null values should not be deleted."
+  })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The edge does not exist.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 
@@ -1036,7 +1220,7 @@
 ///   var url = "/_api/gharial/social/edge/relation/aliceAndBob";
 ///   var response = logCurlRequest('DELETE', url);
 ///
-///   assert(response.code === 200);
+///   assert(response.code === 202);
 ///
 ///   logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
@@ -1055,7 +1239,13 @@
     var key = req.params("key");
     var id = toId(collection, key);
     var g = Graph._graph(name);
-    setResponse(res, "edge", g[collection].remove(id));
+    checkCollection(g, collection);
+    var doc = g[collection].document(id);
+    var options = setOptions(req);
+    if (!matchError(req, res, doc, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
+      var didRemove = g[collection].remove(id, options);
+      setResponse(res, "removed", didRemove, options.code);
+    }
   })
   .pathParam("graph", {
     type: "string",
@@ -1069,12 +1259,13 @@
     type: "string",
     description: "_key attribute of one specific edge."
   })
+  .queryParam("waitForSync", {
+    type: "boolean",
+    description: "define if the request should wait until synced to disk."
+  })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The edge does not exist.", function(e) {
-      return {
-        code: actions.HTTP_NOT_FOUND,
-        error: e.errorMessage
-      };
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 }());

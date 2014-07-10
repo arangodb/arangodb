@@ -97,6 +97,102 @@ v2.2.0-beta3 (2014-07-01)
       db.test.save({ foo: String(/bar/) });
       db.test.save({ foo: String(new Date()) });
 
+* The replication methods `logger.start`, `logger.stop` and `logger.properties` are
+  no-ops in ArangoDB 2.2 as there is no separate replication logger anymore. Data changes
+  are logged into the write-ahead log in ArangoDB 2.2, and not separately by the 
+  replication logger. The replication logger object is still there in ArangoDB 2.2 to
+  ensure backwards-compatibility, however, logging cannot be started, stopped or 
+  configured anymore. Using any of these methods will do nothing.
+
+  This also affects the following HTTP API methods:
+  - `PUT /_api/replication/logger-start`
+  - `PUT /_api/replication/logger-stop`
+  - `GET /_api/replication/logger-config` 
+  - `PUT /_api/replication/logger-config`
+
+  Using any of these methods is discouraged from now on as they will be removed in 
+  future versions of ArangoDB.
+
+* INCOMPATIBLE CHANGE: replication of transactions has changed. Previously, transactions
+  were logged on a master in one big block and shipped to a slave in one block, too.
+  Now transactions will be logged and replicated as separate entries, allowing transactions
+  to be bigger and also ensure replication progress.
+  
+  This change also affects the behavior of the `stop` method of the replication applier.
+  If the replication applier is now stopped manually using the `stop` method and later 
+  restarted using the `start` method, any transactions that were unfinished at the
+  point of stopping will be aborted on a slave, even if they later commit on the master.
+
+  In ArangoDB 2.2, stopping the replication applier manually should be avoided unless the
+  goal is to stop replication permanently or to do a full resync with the master anyway.
+  If the replication applier still must be stopped, it should be made sure that the
+  slave has fetched and applied all pending operations from a master, and that no 
+  extra transactions are started on the master before the `stop` command on the slave
+  is executed.
+
+  Replication of transactions in ArangoDB 2.2 might also lock the involved collections on
+  the slave while a transaction is either committed or aborted on the master and the
+  change has been replicated to the slave. This change in behavior may be important for
+  slave servers that are used for read-scaling. In order to avoid long lasting collection
+  locks on the slave, transactions should be kept small.
+
+  The `_replication` system collection is not used anymore in ArangoDB 2.2 and its usage is
+  discouraged.
+
+* INCOMPATIBLE CHANGE: the figures reported by the `collection.figures` method
+  now only reflect documents and data contained in the journals and datafiles of
+  collections. Documents or deletions contained only in the write-ahead log will
+  not influence collection figures until the write-ahead log garbage collection
+  kicks in. The figures for a collection might therefore underreport the total
+  resource usage of a collection.
+
+  Additionally, the attributes `lastTick` and `uncollectedLogfileEntries` have been
+  added to the result of the `figures` operation and the HTTP API method 
+  `PUT /_api/collection/figures`
+
+* added `insert` method as an alias for `save`. Documents can now be inserted into
+  a collection using either method:
+  
+      db.test.save({ foo: "bar" }); 
+      db.test.insert({ foo: "bar" }); 
+
+* added support for data-modification AQL queries
+
+* added AQL keywords `INSERT`, `UPDATE`, `REPLACE` and `REMOVE` (and `WITH`) to
+  support data-modification AQL queries.
+  
+  Unquoted usage of these keywords for attribute names in AQL queries will likely
+  fail in ArangoDB 2.2. If any such attribute name needs to be used in a query, it
+  should be enclosed in backticks to indicate the usage of a literal attribute
+  name. 
+
+  For example, the following query will fail in ArangoDB 2.2 with a parse error:
+
+      FOR i IN foo RETURN i.remove
+
+  and needs to be rewritten like this:
+
+      FOR i IN foo RETURN i.`remove`
+
+* disallow storing of JavaScript objects that contain JavaScript native objects
+  of type `Date`, `Function`, `RegExp` or `External`, e.g.
+
+      db.test.save({ foo: /bar/ });
+      db.test.save({ foo: new Date() });
+
+  will now print
+
+      Error: <data> cannot be converted into JSON shape: could not shape document
+
+  Previously, objects of these types were silently converted into an empty object
+  (i.e. `{ }`).
+
+  To store such objects in a collection, explicitly convert them into strings 
+  like this:
+
+      db.test.save({ foo: String(/bar/) });
+      db.test.save({ foo: String(new Date()) });
+
 * honor startup option `--server.disable-statistics` when deciding whether or not
   to start periodic statistics collection jobs
 
@@ -237,6 +333,14 @@ v2.2.0-beta3 (2014-07-01)
   of attributes was only used in one particular and unlikely case, so it
   was removed. Collections with many different attribute names should 
   benefit from this change by faster inserts and slightly less memory usage.
+
+* fixed a bug in arangodump which got the collection name in _from and _to
+  attributes of edges wrong (all were "_unknown")
+
+* fixed a bug in arangorestore which did not recognise wrong _from and _to
+  attributes of edges
+
+* improved error detection and reporting in arangorestore
 
 
 v2.1.1 (2014-06-06)

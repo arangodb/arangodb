@@ -19,7 +19,7 @@
   BYTES_SENT_DISTRIBUTION, BYTES_RECEIVED_DISTRIBUTION, CONNECTION_TIME_DISTRIBUTION,
   REQUEST_TIME_DISTRIBUTION, DEVELOPMENT_MODE, FE_DEVELOPMENT_MODE, THREAD_NUMBER, LOGFILE_PATH,
   SYS_PLATFORM, SYS_EXECUTE_EXTERNAL, SYS_STATUS_EXTERNAL, SYS_KILL_EXTERNAL,
-  SYS_REGISTER_TASK, SYS_UNREGISTER_TASK, SYS_GET_TASK, SYS_TEST_PORT */
+  SYS_REGISTER_TASK, SYS_UNREGISTER_TASK, SYS_GET_TASK, SYS_TEST_PORT, SYS_IS_IP */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -700,6 +700,15 @@
   if (typeof SYS_TEST_PORT !== "undefined") {
     exports.testPort = SYS_TEST_PORT;
     delete SYS_TEST_PORT;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief isIP
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_IS_IP !== "undefined") {
+    exports.isIP = SYS_IS_IP;
+    delete SYS_IS_IP;
   }
 
 // -----------------------------------------------------------------------------

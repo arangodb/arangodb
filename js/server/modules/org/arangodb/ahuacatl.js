@@ -4773,6 +4773,9 @@ function FILTER_RESTRICTION (list, restrictionList) {
 
 function DOCUMENTS_BY_EXAMPLE (collectionList, example) {
   var res = [];
+  if (example === "null") {
+    example = [{}];
+  }
   if (!example) {
     example = [{}];
   }
@@ -4851,7 +4854,7 @@ function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
     toVertices : DOCUMENTS_BY_EXAMPLE(
       toCollection.filter(removeDuplicates), options.toVertexExample
     ),
-    edges : DOCUMENTS_BY_EXAMPLE(edgeCollections.filter(removeDuplicates), options.edgeExample),
+    edges : DOCUMENTS_BY_EXAMPLE(edgeCollections.filter(removeDuplicates), options.edgeExamples),
     edgeCollections : edgeCollections,
     fromCollections : fromCollections,
     toCollection : toCollection
@@ -5186,7 +5189,21 @@ function TRAVERSAL_PARAMS (params) {
 
 function MERGE_EXAMPLES_WITH_EDGES (examples, edges) {
   var result = [],filter;
-  if (examples.length === 0) {
+  if (examples === "null") {
+    examples = [{}];
+  }
+  if (!examples) {
+    examples = [{}];
+  }
+  if (typeof examples === "string") {
+    examples = {_id : examples};
+  }
+  if (!Array.isArray(examples)) {
+    examples = [examples];
+  }
+  if (examples.length === 0 || (
+    examples.length === 1 &&
+    Object.keys(examples).length === 0)) {
     return edges;
   }
   edges.forEach(function(edge) {
@@ -5361,8 +5378,7 @@ function GENERAL_GRAPH_SHORTEST_PATH (graphName,
     options.direction =  'any';
   }
 
-  options.edgeExamples = options.edgeExamples || [];
-
+  options.edgeExamples = options.edgeExamples || {};
   var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
 
   if (!options.algorithm) {
@@ -5847,7 +5863,7 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
   params.minDepth = options.minDepth === undefined ? 1 : options.minDepth;
   params.maxDepth = options.maxDepth === undefined ? 1 : options.maxDepth;
   params.paths = true;
-  options.edgeExamples = options.edgeExamples || [];
+  options.edgeExamples = options.edgeExamples || {};
   params.visitor = TRAVERSAL_NEIGHBOR_VISITOR;
 
   var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
@@ -5949,11 +5965,14 @@ function GENERAL_GRAPH_EDGES (
 
   var neighbors = GENERAL_GRAPH_NEIGHBORS(graphName,
     vertexExample,
-    options), result = [];
+    options), result = [],ids = [];
 
   neighbors.forEach(function (n) {
     n.path.edges.forEach(function (e) {
-      result = result.concat(e);
+      if (ids.indexOf(e._id) === -1) {
+        result.push(e);
+        ids.push(e._id);
+      }
     });
   });
 
@@ -6108,14 +6127,13 @@ function GENERAL_GRAPH_COMMON_NEIGHBORS (
   var neighbors1 = TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT(
     GENERAL_GRAPH_NEIGHBORS(graphName, vertex1Examples, options1)
   ), neighbors2;
-  if (vertex1Examples === vertex2Examples) {
+  if (vertex1Examples === vertex2Examples && options1 === options2) {
     neighbors2 = CLONE(neighbors1);
   } else {
     neighbors2 = TRANSFER_GENERAL_GRAPH_NEIGHBORS_RESULT(
       GENERAL_GRAPH_NEIGHBORS(graphName, vertex2Examples, options2)
     );
   }
-
   var res = {}, res2 = {}, res3 = [];
 
   Object.keys(neighbors1).forEach(function (v) {

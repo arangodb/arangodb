@@ -141,12 +141,9 @@ namespace triagens {
 ///
 /// @param closed
 ///     will be set to true, if the system receives a close on the socket.
-///
-/// @param noWrite
-///     is true if no writeBuffer exists.
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual bool handleWrite (bool& closed, bool noWrite);
+        virtual bool handleWrite (bool& closed);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief called if write buffer has been sent
@@ -257,7 +254,7 @@ namespace triagens {
 /// @brief lock on the write buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-        mutable basics::Mutex writeBufferLock;
+        mutable basics::Mutex _writeBufferLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the current write buffer
