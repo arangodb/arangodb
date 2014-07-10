@@ -35,10 +35,10 @@ setup:
 
 MAINTAINER = \
 	README \
-	arangod/Ahuacatl/ahuacatl-tokens.c \
-	arangod/Ahuacatl/ahuacatl-grammar.c \
+	arangod/Ahuacatl/ahuacatl-tokens.cpp \
+	arangod/Ahuacatl/ahuacatl-grammar.cpp \
 	arangod/Ahuacatl/ahuacatl-grammar.h \
-	lib/JsonParser/json-parser.c \
+	lib/JsonParser/json-parser.cpp \
 	lib/V8/v8-json.cpp \
 	lib/V8/v8-json.h \
 	lib/BasicsC/voc-errors.h \
