@@ -5855,7 +5855,6 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
       options.startVertexCollectionRestriction = options.vertexCollectionRestriction;
     }
   }
-
   var neighbors = [],
     params = TRAVERSAL_PARAMS(), 
     factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
@@ -5865,11 +5864,11 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
   params.paths = true;
   options.edgeExamples = options.edgeExamples || {};
   params.visitor = TRAVERSAL_NEIGHBOR_VISITOR;
-
   var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
-
   params.followEdges = MERGE_EXAMPLES_WITH_EDGES(options.edgeExamples, graph.edges);
-
+  if (params.followEdges.length === 0) {
+    return [];
+  }
   graph.fromVertices.forEach(function (v) {
     var e = TRAVERSAL_FUNC("GRAPH_NEIGHBORS",
       factory,

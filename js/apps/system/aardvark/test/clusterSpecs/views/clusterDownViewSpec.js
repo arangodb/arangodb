@@ -20,6 +20,9 @@
           isTestSetup : function () {
             return undefined;
           },
+          cleanUp : function () {
+            return undefined;
+          },
           destroy :  function () {
             return undefined;
           }
@@ -158,10 +161,12 @@
       });
       spyOn(window.App, "navigate");
       spyOn(window.App.clusterPlan, "isTestSetup").andReturn(false);
+      spyOn(window.App.clusterPlan, "cleanUp");
       spyOn(jquerydummy, "modal");
       view.submitEditPlan();
 
       expect(jquerydummy.modal).toHaveBeenCalledWith("hide");
+      expect(window.App.clusterPlan.cleanUp).toHaveBeenCalled();
       expect(window.App.navigate).toHaveBeenCalledWith("planAsymmetrical", {trigger : true});
 
     });
@@ -178,9 +183,11 @@
       });
       spyOn(window.App, "navigate");
       spyOn(window.App.clusterPlan, "isTestSetup").andReturn(true);
+      spyOn(window.App.clusterPlan, "cleanUp");
       spyOn(jquerydummy, "modal");
       view.submitEditPlan();
 
+      expect(window.App.clusterPlan.cleanUp).toHaveBeenCalled();
       expect(jquerydummy.modal).toHaveBeenCalledWith("hide");
       expect(window.App.navigate).toHaveBeenCalledWith("planTest", {trigger : true});
 
@@ -198,13 +205,16 @@
           return jquerydummy;
         }
       });
+      spyOn(window, "ClusterPlan").andReturn(window.App.clusterPlan);
       spyOn(window.App, "navigate");
       spyOn(window.App, "planScenario");
+      spyOn(window.App.clusterPlan, "cleanUp");
       spyOn(window.App.clusterPlan, "destroy");
       spyOn(jquerydummy, "modal");
       view.submitDeletePlan();
 
       expect(jquerydummy.modal).toHaveBeenCalledWith("hide");
+      expect(window.App.clusterPlan.cleanUp).toHaveBeenCalled();
       expect(window.App.planScenario).toHaveBeenCalled();
 
     });
