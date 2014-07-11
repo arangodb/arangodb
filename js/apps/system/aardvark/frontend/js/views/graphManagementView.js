@@ -45,6 +45,9 @@
         }
 
       }, true);
+
+      //decorate hash. is needed for router url management
+      window.location.hash = "#graphdetail";
     },
 
     handleResize: function(w) {
