@@ -106,6 +106,30 @@ def BackTicks(txt, wordboundary = ['<em>','</em>']):
     return r.sub(subpattern, txt)
 
 ################################################################################
+### @brief AsteriskItalic
+###
+### *word* -> <b>word</b>
+################################################################################
+
+def AsteriskItalic(txt, wordboundary = ['<em>','</em>']):
+    r = rc(r"""([\(\s'/">]|^|.)\*(.*?)\*([<\s\.\),:;'"?!/-]|$)""", MS)
+    subpattern = '\\1' + wordboundary[0] + '\\2' + wordboundary[1] + '\\3'
+
+    return r.sub(subpattern, txt)
+
+################################################################################
+### @brief AsteriskBold
+###
+### **word** -> <b>word</b>
+################################################################################
+
+def AsteriskBold(txt, wordboundary = ['<em>','</em>']):
+    r = rc(r"""([\(\s'/">]|^|.)\*\*(.*?)\*\*([<\s\.\),:;'"?!/-]|$)""", MS)
+    subpattern = '\\1' + wordboundary[0] + '\\2' + wordboundary[1] + '\\3'
+
+    return r.sub(subpattern, txt)
+
+################################################################################
 ### @brief FA
 ###
 ### @FA{word} -> <b>word</b>
@@ -152,6 +176,8 @@ def Typography(txt):
         txt = txt[0:-1]
 
     txt = BackTicks(txt)
+    txt = AsteriskItalic(txt)
+    txt = AsteriskBold(txt)
     txt = FN(txt)
     txt = LIT(txt)
     txt = FA(txt)
