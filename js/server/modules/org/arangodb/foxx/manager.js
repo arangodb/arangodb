@@ -749,6 +749,7 @@ function routingAalApp (app, mount, options) {
     appContextTempl.isProduction = ! devel;
 
     appContextTempl.manifest = app._manifest;
+    extendContext(appContextTempl, app, root);
 
     var appContext;
     var file;
@@ -763,9 +764,8 @@ function routingAalApp (app, mount, options) {
           var result = {};
           var context = { exports: result };
 
-          appContext = Object.create(appContextTempl);
+          appContext = _.extend({}, appContextTempl);
           appContext.prefix = "/";
-          extendContext(appContext, app, root);
 
           app.loadAppScript(appContext, file, { context: context });
 
@@ -782,11 +782,10 @@ function routingAalApp (app, mount, options) {
         file = controllers[i];
 
         // set up a context for the application start function
-        appContext = Object.create(appContextTempl);
+        appContext = _.extend({}, appContextTempl);
         appContext.prefix = arangodb.normalizeURL("/" + i); // app mount
         appContext.routingInfo = {};
         appContext.foxxes = [];
-        extendContext(appContext, app, root);
 
         app.loadAppScript(appContext, file, { transform: transformScript(file) });
 
