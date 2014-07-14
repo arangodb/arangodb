@@ -437,7 +437,7 @@ pre {
 display: block;
 padding: 9.5px;
 margin: 0 0 10px;
-font-size: 13px;
+font-size: inherit;
 line-height: 1.428571429;
 word-break: break-all;
 word-wrap: break-word;
@@ -6882,7 +6882,6 @@ padding: 5px 15px;
 background: #fff;
 border-radius: 2px;
 line-height: 1.6em;
-font-size: 1.6rem
 }
 .book .book-body .page-wrapper .page-inner .btn-group .btn {
 border-radius: 0;
@@ -7423,7 +7422,7 @@ padding: .5em
 opacity: .5
 }
 .book .book-body .page-wrapper .page-inner section.normal pre {
-font-size: 13px;
+font-size: inherit;
 line-height: 1.5em;
 overflow: auto;
 padding: 10px;
