@@ -1,3 +1,7 @@
+v2.2.1 (XXXX-XX-XX)
+-------------------
+* issue #947 Foxx applicationContext missing some properties
+
 v2.2.0 (2014-07-10)
 -------------------
 
