@@ -35,12 +35,11 @@ def replaceText(text, pathOfFile, searchText):
     s=f.read()
   f.close()
   f=open(pathOfFile,'w')
-
   replaced = re.sub("@startDocuBlock\s+"+ searchText + "(?:\s+|$)",text,s)
   replaced = re.sub("<!-- (\.*) -->","",replaced)
 
   # HTTP API changing code
-  replaced = replaced.replace("@brief","")
+  replaced = re.sub(r"@brief(.+)",r"\g<1>", replaced)
   replaced = re.sub(r"@RESTHEADER{([\s\w\/\_{}-]*),([\s\w-]*)}", r"###\g<2>\n `\g<1>`", replaced)
   replaced = replaced.replace("@RESTDESCRIPTION","")
   replaced = replaced.replace("@RESTURLPARAMETERS","**URL Parameters**\n")  
