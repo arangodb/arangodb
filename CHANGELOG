@@ -1,6 +1,16 @@
 v2.2.1 (XXXX-XX-XX)
 -------------------
+
 * issue #947 Foxx applicationContext missing some properties
+
+* (reported by Christian Neubauer): 
+
+  The problem was that in googles V8, signed and unsignet chars are not always declared cleanly.
+  so we need to force v8 to compile with forced signed chars which is done by the Flag:
+    -fsigned-char
+  at least it is enough to follow the instructions of compiling arango on rasperry 
+  and add "CFLAGS='-fsigned-char'" to the make command of V8 and remove the armv7=0
+
 
 v2.2.0 (2014-07-10)
 -------------------
