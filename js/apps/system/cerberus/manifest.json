@@ -2,7 +2,6 @@
   "name": "cerberus",
   "version": "0.0.1",
   "author": "gschwab",
-  "description": "ArangoDB Password Reset",
   "isSystem": true,
   "controllers": {
     "/": "cerberus.js"
@@ -11,6 +10,21 @@
     "changePassword.html": {
       "files": [
         "html/changePassword.html"
+      ]
+    },
+    "confirmed.html": {
+      "files": [
+        "html/confirmed.html"
+      ]
+    },
+    "invalid.html": {
+      "files": [
+        "html/invalid.html"
+      ]
+    },
+    "style.css": {
+      "files": [
+        "css/style.css"
       ]
     }
   }
