@@ -217,12 +217,21 @@
    */
   controller.post("/", function(req, res) {
     var infos = req.params("graph");
+    var options = setOptions(req);
+    if (options.code === actions.HTTP_OK) {
+      options.code = actions.HTTP_CREATED;
+    }
     var g = Graph._create(
       infos.get("name"),
       infos.get("edgeDefinitions"),
-      infos.get("orphanCollections")
+      infos.get("orphanCollections"),
+      options
     );
     setGraphResponse(res, g, actions.HTTP_CREATED);
+  })
+  .queryParam("waitForSync", {
+    type: "boolean",
+    description: "define if the request should wait until synced to disk."
   })
   .errorResponse(
     ArangoError, actions.HTTP_CONFLICT, "Graph creation error.", function(e) {
@@ -710,6 +719,11 @@
     type: "boolean",
     description: "define if the request should wait until synced to disk."
   })
+  .errorResponse(
+    ArangoError, actions.HTTP_NOT_FOUND, "Graph or collection not found.", function(e) {
+      return buildError(e, actions.HTTP_NOT_FOUND);
+    }
+  )
   .bodyParam("vertex", "The document to be stored", Model);
 
 ////////////////////////////////////////////////////////////////////////////////
