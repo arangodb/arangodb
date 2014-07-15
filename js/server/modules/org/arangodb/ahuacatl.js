@@ -5303,9 +5303,9 @@ function IS_EXAMPLE_SET (example) {
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *startVertexExample* : An example for the desired start Vertices
-/// (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// (see [example](#short_explanation_of_the_example_parameter)).
 /// * *endVertexExample*   : An example for the desired
-/// end Vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// end Vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *options* (optional) : An object containing the following options::
 ///   * *direction*                        : The direction of the edges as a string.
 ///   Possible values are *outbound*, *inbound* and *any* (default).
@@ -5319,7 +5319,7 @@ function IS_EXAMPLE_SET (example) {
 ///   end vertex of a path.
 ///   * *edgeExamples*                     : A filter example for the
 ///   edges in the shortest paths
-///   (see [example](#short_explaination_of_the_vertex_example_parameter)).
+///   (see [example](#short_explanation_of_the_example_parameter)).
 ///   * *algorithm*                        : The algorithm to calculate
 ///   the shortest paths. If both start and end vertex examples are empty
 ///   [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) is
@@ -5432,7 +5432,7 @@ function GRAPH_TRAVERSAL (vertexCollection,
 /// *Parameters*
 /// * *graphName*          : The name of the graph as a string.
 /// * *startVertexExample*        : An example for the desired
-/// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *direction*          : The direction of the edges as a string. Possible values
 /// are *outbound*, *inbound* and *any* (default).
 /// * *options* (optional) : Object containing optional options, see
@@ -5622,7 +5622,7 @@ function GENERAL_GRAPH_DISTANCE_TO (graphName,
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *startVertexExample*         : An example for the desired
-/// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *direction*          : The direction of the edges as a string.
 ///  Possible values are *outbound*, *inbound* and *any* (default).
 /// * *connectName*        : The result attribute which
@@ -5790,14 +5790,14 @@ function GRAPH_NEIGHBORS (vertexCollection,
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
-/// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *options*            : An object containing the following options::
 ///   * *direction*                        : The direction
 ///      of the edges. Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeExamples*                     : A filter example for the edges to
-///      the neighbors (see [example](#short_explaination_of_the_vertex_example_parameter)).
+///      the neighbors (see [example](#short_explanation_of_the_example_parameter)).
 ///   * *neighborExamples*                 : An example for the desired neighbors
-///      (see [example](#short_explaination_of_the_vertex_example_parameter)).
+///      (see [example](#short_explanation_of_the_example_parameter)).
 ///   * *edgeCollectionRestriction*        : One or multiple edge
 ///   collection names. Only edges from these collections will be considered for the path.
 ///   * *vertexCollectionRestriction* : One or multiple vertex
@@ -5855,7 +5855,6 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
       options.startVertexCollectionRestriction = options.vertexCollectionRestriction;
     }
   }
-
   var neighbors = [],
     params = TRAVERSAL_PARAMS(), 
     factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
@@ -5865,11 +5864,11 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
   params.paths = true;
   options.edgeExamples = options.edgeExamples || {};
   params.visitor = TRAVERSAL_NEIGHBOR_VISITOR;
-
   var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
-
   params.followEdges = MERGE_EXAMPLES_WITH_EDGES(options.edgeExamples, graph.edges);
-
+  if (params.followEdges.length === 0) {
+    return [];
+  }
   graph.fromVertices.forEach(function (v) {
     var e = TRAVERSAL_FUNC("GRAPH_NEIGHBORS",
       factory,
@@ -5908,7 +5907,7 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
-/// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *options* (optional) : An object containing the following options::
 ///   * *direction*                        : The direction
 /// of the edges as a string. Possible values are *outbound*, *inbound* and *any* (default).
@@ -5921,9 +5920,9 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 ///   collection names. Only vertices from these collections will be considered as
 ///   end vertex of a path.
 ///   * *edgeExamples*                     : A filter example
-/// for the edges (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// for the edges (see [example](#short_explanation_of_the_example_parameter)).
 ///   * *neighborExamples*                 : An example for
-/// the desired neighbors (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// the desired neighbors (see [example](#short_explanation_of_the_example_parameter)).
 ///   * *minDepth*                         : Defines the minimal length of a path from an edge
 ///  to a vertex (default is 1, which means only the edges directly connected to a vertex would
 ///  be returned).
@@ -5992,7 +5991,7 @@ function GENERAL_GRAPH_EDGES (
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
-/// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *options* (optional)           : An object containing the following options::
 ///   * *direction*        : The direction of the edges as a string. Possible values are
 ///      *outbound*, *inbound* and *any* (default).
@@ -6188,9 +6187,9 @@ function GENERAL_GRAPH_COMMON_NEIGHBORS (
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertex1Example*     : An example for the desired
-/// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *vertex2Example*     : An example for the desired
-/// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *options* (optional)    : An object containing the following options::
 ///   * *vertex1CollectionRestriction* : One or multiple vertex
 ///   collection names. Only vertices from these collections will be considered.
@@ -6323,7 +6322,7 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
-/// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *options* (optional)    : An object containing the following options::
 ///   * *direction*                        : The direction of the edges as a string.
 /// Possible values are *outbound*, *inbound* and *any* (default).
@@ -6336,7 +6335,7 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 ///   collection names. Only vertices from these collections will be considered as
 ///   end vertex of a path.
 ///   * *edgeExamples*                     : A filter example for the edges in the
-///  shortest paths (see [example](#short_explaination_of_the_vertex_example_parameter)).
+///  shortest paths (see [example](#short_explanation_of_the_example_parameter)).
 ///   * *algorithm*                        : The algorithm to calculate
 ///  the shortest paths as a string. If vertex example is empty
 ///  [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) is
@@ -6505,7 +6504,7 @@ function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*     : An example for the desired
-/// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *options*     : An object containing the following options::
 ///   * *direction*                        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
@@ -6519,7 +6518,7 @@ function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
 ///   end vertex of a path.
 ///   * *edgeExamples*                     : A filter example for the
 /// edges in the shortest paths (
-/// see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// see [example](#short_explanation_of_the_example_parameter)).
 ///   * *algorithm*                        : The algorithm to calculate
 /// the shortest paths. Possible values are
 /// [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) (default)
