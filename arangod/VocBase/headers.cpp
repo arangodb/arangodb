@@ -123,8 +123,8 @@ void TRI_headers_t::moveBack (TRI_doc_mptr_t* header,
   int64_t oldSize = (int64_t) (((TRI_df_marker_t*) old->getDataPtr())->_size);  // ONLY IN HEADERS, PROTECTED by RUNTIME
 
   // we must adjust the size of the collection
-  _totalSize += TRI_DF_ALIGN_BLOCK(newSize);
-  _totalSize -= TRI_DF_ALIGN_BLOCK(oldSize);
+  _totalSize += (  TRI_DF_ALIGN_BLOCK(newSize)
+                 - TRI_DF_ALIGN_BLOCK(oldSize));
 
   if (_end == header) {
     // header is already at the end
@@ -217,7 +217,7 @@ void TRI_headers_t::unlink (TRI_doc_mptr_t* header) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief moves a header around in the list, using its previous position
-/// (specified in "old")
+/// (specified in "old"), note that this is only used in revert operations
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_headers_t::move (TRI_doc_mptr_t* header,
@@ -237,8 +237,12 @@ void TRI_headers_t::move (TRI_doc_mptr_t* header,
   int64_t newSize = (int64_t) (((TRI_df_marker_t*) header->getDataPtr())->_size); // ONLY IN HEADERS, PROTECTED by RUNTIME
   int64_t oldSize = (int64_t) (((TRI_df_marker_t*) old->getDataPtr())->_size); // ONLY IN HEADERS, PROTECTED by RUNTIME
 
-  _totalSize -= TRI_DF_ALIGN_BLOCK(newSize);
-  _totalSize += TRI_DF_ALIGN_BLOCK(oldSize);
+  // Please note the following: This operation is only used to revert an
+  // update operation. The "new" document is removed again and the "old"
+  // one is used once more. Therefore, the signs in the following statement
+  // are actually OK:
+  _totalSize -= (  TRI_DF_ALIGN_BLOCK(newSize)
+                 - TRI_DF_ALIGN_BLOCK(oldSize));
 
   // adjust list start and end pointers
   if (old->_prev == nullptr) {

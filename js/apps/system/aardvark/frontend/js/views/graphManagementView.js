@@ -45,6 +45,9 @@
         }
 
       }, true);
+
+      //decorate hash. is needed for router url management
+      window.location.hash = "#graphdetail";
     },
 
     handleResize: function(w) {
@@ -530,10 +533,12 @@
         "modalGraphTable.ejs", title, buttons, tableContent, null, this.events
       );
 
-      var i;
-      for (i = 0; i <= this.counter; i++) {
-        $('#row_fromCollections' + i).hide();
-        $('#row_toCollections' + i).hide();
+      if (graph) {
+        var i;
+        for (i = 0; i <= this.counter; i++) {
+          $('#row_fromCollections' + i).hide();
+          $('#row_toCollections' + i).hide();
+        }
       }
 
     },
