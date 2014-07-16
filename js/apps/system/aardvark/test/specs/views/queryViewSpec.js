@@ -37,6 +37,7 @@
 
     afterEach(function() {
       delete window.App;
+      delete window.modalView;
       document.body.removeChild(div);
     });
 
