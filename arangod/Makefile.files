@@ -169,18 +169,14 @@ FLEXXX_FILES += \
 ################################################################################
 
 BISON_FILES += \
-	arangod/Ahuacatl/ahuacatl-grammar.c
+	arangod/Ahuacatl/ahuacatl-grammar.cpp
 
 if ENABLE_MAINTAINER_MODE
 
 CLEANUP += \
 	arangod/Ahuacatl/ahuacatl-grammar.h \
-	arangod/Ahuacatl/ahuacatl-grammar.c \
 	arangod/Ahuacatl/ahuacatl-grammar.cpp
 endif
-
-arangod/Ahuacatl/ahuacatl-grammar.cpp: arangod/Ahuacatl/ahuacatl-grammar.c
-	cp arangod/Ahuacatl/ahuacatl-grammar.c arangod/Ahuacatl/ahuacatl-grammar.cpp
 
 ################################################################################
 ## --SECTION--                                                       END-OF-FILE
