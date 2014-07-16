@@ -13,6 +13,12 @@ def drop_graph(graph_name)
   return doc
 end
 
+def get_graph(graph_name)
+  cmd = URLPREFIX + "/" + graph_name
+  doc = ArangoDB.get(cmd)
+  return doc
+end
+
 def create_graph (name, edge_definitions) 
   cmd = URLPREFIX
   body = JSON.dump({:name => name, :edgeDefinitions => edge_definitions})
@@ -27,22 +33,33 @@ def create_graph_orphans (name, edge_definitions, orphans)
   return doc
 end
 
-def vertex_endpoint(graph_name, collection)
-  return URLPREFIX + "/" + graph_name + "/vertex/" + collection
+def endpoint(type, graph_name, collection, key)
+  result = URLPREFIX + "/" + graph_name + "/" + type;
+  if (collection != nil) 
+    result =  result + "/" + collection
+  end 
+  if (key != nil) 
+    result =  result + "/" + key
+  end 
+  return result;
 end
 
-def edge_endpoint(graph_name, collection)
-  return URLPREFIX + "/" + graph_name + "/edge/" + collection
+def vertex_endpoint(graph_name, collection = nil, key = nil)
+  return endpoint("vertex", graph_name, collection, key)
+end
+
+def edge_endpoint(graph_name, collection = nil, key = nil)
+  return endpoint("edge", graph_name, collection, key)
 end
 
 def list_edge_collections (graph_name) 
-  cmd = URLPREFIX + "/" + graph_name + "/edge"
+  cmd = edge_endpoint(graph_name)
   doc = ArangoDB.get(cmd)
   return doc
 end
 
 def additional_edge_definition (graph_name, edge_definitions) 
-  cmd = URLPREFIX + "/" + graph_name + "/edge"
+  cmd = edge_endpoint(graph_name)
   doc = ArangoDB.post(cmd, :body => JSON.dump(edge_definitions))
   return doc
 end
@@ -60,13 +77,13 @@ def delete_edge_definition (graph_name, definition_name)
 end
 
 def list_vertex_collections (graph_name) 
-  cmd = URLPREFIX + "/" + graph_name + "/vertex"
+  cmd = vertex_endpoint(graph_name)
   doc = ArangoDB.get(cmd)
   return doc
 end
 
 def additional_vertex_collection (graph_name, collection_name) 
-  cmd = URLPREFIX + "/" + graph_name + "/vertex"
+  cmd = vertex_endpoint(graph_name)
   body = { :collection => collection_name }
   doc = ArangoDB.post(cmd, :body => JSON.dump(body))
   return doc
@@ -85,14 +102,13 @@ def create_vertex (graph_name, collection, body)
 end
 
 def get_vertex (graph_name, collection, key) 
-  cmd = vertex_endpoint(graph_name, collection) + "/" + key
+  cmd = vertex_endpoint(graph_name, collection, key)
   doc = ArangoDB.get(cmd)
   return doc
 end
 
-def update_vertex (graph_name, collection, key, body, keepNull) 
-  cmd = vertex_endpoint(graph_name, collection)
-  cmd = cmd + "/" + key
+def update_vertex (graph_name, collection, key, body, keepNull = '') 
+  cmd = vertex_endpoint(graph_name, collection, key)
   if keepNull != '' then
     cmd = cmd + "?keepNull=#{keepNull}"
   end
@@ -101,15 +117,13 @@ def update_vertex (graph_name, collection, key, body, keepNull)
 end
 
 def replace_vertex (graph_name, collection, key, body) 
-  cmd = vertex_endpoint(graph_name, collection)
-  cmd = cmd + "/" + key
+  cmd = vertex_endpoint(graph_name, collection, key)
   doc = ArangoDB.put(cmd, :body => JSON.dump(body))
   return doc
 end
 
 def delete_vertex (graph_name, collection, key) 
-  cmd = vertex_endpoint(graph_name, collection)
-  cmd = cmd + "/" + key
+  cmd = vertex_endpoint(graph_name, collection, key)
   doc = ArangoDB.delete(cmd)
   return doc
 end
@@ -124,13 +138,13 @@ def create_edge (graph_name, collection, from, to, body)
 end
 
 def get_edge (graph_name, collection, key) 
-  cmd = edge_endpoint(graph_name, collection) + "/" + key
+  cmd = edge_endpoint(graph_name, collection, key)
   doc = ArangoDB.get(cmd)
   return doc
 end
 
-def update_edge (graph_name, collection, key, body, keepNull) 
-  cmd = edge_endpoint(graph_name, collection) + "/" + key
+def update_edge (graph_name, collection, key, body, keepNull = '') 
+  cmd = edge_endpoint(graph_name, collection, key)
   if keepNull != '' then
     cmd = cmd + "?keepNull=" + keepNull
   end
@@ -139,15 +153,13 @@ def update_edge (graph_name, collection, key, body, keepNull)
 end
 
 def replace_edge (graph_name, collection, key, body) 
-  cmd = edge_endpoint(graph_name, collection)
-  cmd = cmd + "/" + key
+  cmd = edge_endpoint(graph_name, collection, key)
   doc = ArangoDB.put(cmd, :body => JSON.dump(body))
   return doc
 end
 
 def delete_edge (graph_name, collection, key) 
-  cmd = edge_endpoint(graph_name, collection)
-  cmd = cmd + "/" + key
+  cmd = edge_endpoint(graph_name, collection, key)
   doc = ArangoDB.delete(cmd)
   return doc
 end
@@ -159,6 +171,7 @@ describe ArangoDB do
   friend_collection = "UnitTestFriends"
   bought_collection = "UnitTestBoughts"
   graph_name = "UnitTestGraph"
+  unknown_name = "UnitTestUnknown"
 
   context "testing general graph methods:" do
 
@@ -317,6 +330,21 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['errorMessage'].should eq("graph already exists")
         doc.parsed_response['code'].should eq(409)
+      end
+
+      it "can get a graph by name" do
+        orphans = [product_collection];
+        doc = create_graph_orphans( graph_name, [], orphans)
+        rev = doc.parsed_response['graph']['_rev']
+
+        doc = get_graph(graph_name)
+        doc.code.should eq(200)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(200)
+        doc.parsed_response['graph']['name'].should eq(graph_name)
+        doc.parsed_response['graph']['_rev'].should eq(rev)
+        doc.parsed_response['graph']['edgeDefinitions'].should eq([])
+        doc.parsed_response['graph']['orphanCollections'].should eq(orphans)
       end
 
       it "can get a list of vertex collections" do
@@ -634,6 +662,237 @@ describe ArangoDB do
         doc.parsed_response['errorMessage'].should include("document not found")
         doc.parsed_response['code'].should eq(404)
       end
+
+    end
+
+    context "check error codes" do
+
+      before do
+        drop_graph(graph_name)
+        definition = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
+        create_graph(graph_name, [definition])
+      end
+
+      after do
+        drop_graph(graph_name)
+      end
+
+      describe "should throw 404 if graph is unknown on route" do
+
+        def check404 (doc)
+          doc.code.should eq(404)
+          doc.parsed_response['error'].should eq(true)
+          doc.parsed_response['code'].should eq(404)
+          doc.parsed_response['errorNum'].should eq(1924)
+          doc.parsed_response['errorMessage'].should eq("graph not found")
+        end
+
+        it "get graph" do
+          check404(get_graph(unknown_name))
+        end
+
+        it "delete graph" do
+          check404(drop_graph(unknown_name))
+        end
+
+        it "list edge collections" do
+          check404(list_edge_collections(unknown_name))
+        end
+        
+        it "add edge definition" do
+          definition = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
+          check404(additional_edge_definition(unknown_name, definition))
+        end
+
+        it "change edge definition" do
+          definition = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
+          check404(change_edge_definition(unknown_name, friend_collection, definition))
+        end
+
+        it "delete edge definition" do
+          check404(delete_edge_definition(unknown_name, friend_collection))
+        end
+
+        it "list vertex collections" do
+          check404(list_vertex_collections(unknown_name))
+        end
+        
+        it "add vertex collection" do
+          check404(additional_vertex_collection(unknown_name, user_collection))
+        end
+
+        it "delete vertex collection" do
+          check404(delete_vertex_collection(unknown_name, user_collection))
+        end
+
+        it "create vertex" do
+          check404(create_vertex(unknown_name, unknown_name, {}))
+        end
+
+        it "get vertex" do
+          check404(get_vertex(unknown_name, unknown_name, unknown_name))
+        end
+
+        it "update vertex" do
+          check404(update_vertex(unknown_name, unknown_name, unknown_name, {}))
+        end
+
+        it "replace vertex" do
+          check404(replace_vertex(unknown_name, unknown_name, unknown_name, {}))
+        end
+
+        it "delete vertex" do
+          check404(delete_vertex(unknown_name, unknown_name, unknown_name))
+        end
+
+        it "create edge" do
+          check404(create_edge(unknown_name, unknown_name, unknown_name, unknown_name, {}))
+        end
+
+        it "get edge" do
+          check404(get_edge(unknown_name, unknown_name, unknown_name))
+        end
+
+        it "update edge" do
+          check404(update_edge(unknown_name, unknown_name, unknown_name, {}))
+        end
+
+        it "replace edge" do
+          check404(replace_edge(unknown_name, unknown_name, unknown_name, {}))
+        end
+
+        it "delete edge" do
+          check404(delete_edge(unknown_name, unknown_name, unknown_name))
+        end
+
+      end
+
+      describe "should throw 404 if collection is unknown on route" do
+
+        def check404 (doc)
+          doc.code.should eq(404)
+          doc.parsed_response['error'].should eq(true)
+          doc.parsed_response['code'].should eq(404)
+        end
+
+        def check404Edge (doc)
+          check404(doc)
+          doc.parsed_response['errorNum'].should eq(1930)
+          doc.parsed_response['errorMessage'].should eq("edge collection not used in graph")
+
+        end
+
+        def check404Vertex (doc)
+          check404(doc)
+          doc.parsed_response['errorNum'].should eq(1926)
+          doc.parsed_response['errorMessage'].should eq("collection does not exist")
+        end
+
+        def check404CRUD (doc)
+          check404(doc)
+          doc.parsed_response['errorNum'].should eq(1203)
+          doc.parsed_response['errorMessage'].should eq("collection not found")
+        end
+
+        it "change edge definition" do
+          definition = { "collection" => friend_collection, "from" => [user_collection], "to" => [user_collection] }
+          check404Edge(change_edge_definition(graph_name, unknown_name, definition))
+        end
+
+        it "delete edge definition" do
+          check404Edge(delete_edge_definition(graph_name, unknown_name))
+        end
+
+        it "delete vertex collection" do
+          check404Vertex(delete_vertex_collection(graph_name, unknown_name))
+        end
+
+        it "create vertex" do
+          check404CRUD(create_vertex(graph_name, unknown_name, {}))
+        end
+
+        it "get vertex" do
+          check404CRUD(get_vertex(graph_name, unknown_name, unknown_name))
+        end
+
+        it "update vertex" do
+          check404CRUD(update_vertex(graph_name, unknown_name, unknown_name, {}))
+        end
+
+        it "replace vertex" do
+          check404CRUD(replace_vertex(graph_name, unknown_name, unknown_name, {}))
+        end
+
+        it "delete vertex" do
+          check404CRUD(delete_vertex(graph_name, unknown_name, unknown_name))
+        end
+
+        it "create edge" do
+          check404CRUD(create_edge(graph_name, unknown_name, unknown_name, unknown_name, {}))
+        end
+
+        it "get edge" do
+          check404CRUD(get_edge(graph_name, unknown_name, unknown_name))
+        end
+
+        it "update edge" do
+          check404CRUD(update_edge(graph_name, unknown_name, unknown_name, {}))
+        end
+
+        it "replace edge" do
+          check404CRUD(replace_edge(graph_name, unknown_name, unknown_name, {}))
+        end
+
+        it "delete edge" do
+          check404CRUD(delete_edge(graph_name, unknown_name, unknown_name))
+        end
+
+      end
+
+      describe "should throw 404 if document is unknown on route" do
+
+        def check404 (doc)
+          doc.code.should eq(404)
+          doc.parsed_response['error'].should eq(true)
+          doc.parsed_response['code'].should eq(404)
+          doc.parsed_response['errorNum'].should eq(1202)
+          doc.parsed_response['errorMessage'].should eq("document not found")
+        end
+
+        it "get vertex" do
+          check404(get_vertex(graph_name, user_collection, unknown_name))
+        end
+
+        it "update vertex" do
+          check404(update_vertex(graph_name, user_collection, unknown_name, {}))
+        end
+
+        it "replace vertex" do
+          check404(replace_vertex(graph_name, user_collection, unknown_name, {}))
+        end
+
+        it "delete vertex" do
+          check404(delete_vertex(graph_name, user_collection, unknown_name))
+        end
+
+        it "get edge" do
+          check404(get_edge(graph_name, friend_collection, unknown_name))
+        end
+
+        it "update edge" do
+          check404(update_edge(graph_name, friend_collection, unknown_name, {}))
+        end
+
+        it "replace edge" do
+          check404(replace_edge(graph_name, friend_collection, unknown_name, {}))
+        end
+
+        it "delete edge" do
+          check404(delete_edge(graph_name, friend_collection, unknown_name))
+        end
+
+      end
+
 
     end
 
