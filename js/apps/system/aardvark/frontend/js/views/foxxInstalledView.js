@@ -19,7 +19,7 @@
     events: {
       //"click .install": "installDialog",
       //"click .purge": "removeDialog",
-      "click .icon_arangodb_settings3": "infoDialog"
+      "click .icon_arangodb_settings2": "infoDialog"
     },
 
     renderVersion: function(e) {
