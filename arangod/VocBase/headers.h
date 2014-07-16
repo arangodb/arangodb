@@ -161,7 +161,6 @@ class TRI_headers_t {
     TRI_doc_mptr_t*        _end;         // end pointer to list of allocated headers
     size_t                 _nrAllocated; // number of allocated headers
     size_t                 _nrLinked;    // number of linked headers
-    //std::atomic<int64_t>                _totalSize;   // total size of markers for linked headers
     int64_t                _totalSize;   // total size of markers for linked headers
 
     TRI_vector_pointer_t   _blocks;
