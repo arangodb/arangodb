@@ -89,6 +89,7 @@
     });
 
     afterEach(function () {
+      delete window.modalView;
       document.body.removeChild(div);
       document.body.removeChild(modalDiv);
     });
