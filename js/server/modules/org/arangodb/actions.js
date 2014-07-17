@@ -2065,7 +2065,7 @@ function addCookie (res, name, value, lifeTime, path, domain, secure, httpOnly) 
     cookie.path = path;
   }
   if (domain !== undefined && domain !== null) {
-    cookie.path = domain;
+    cookie.domain = domain;
   }
   if (secure !== undefined && secure !== null) {
     cookie.secure = (secure) ? true : false;
