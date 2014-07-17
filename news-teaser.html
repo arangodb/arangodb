@@ -16,9 +16,19 @@ dvew_checkbox:
 
 
 <script type="text/javascript">
+
+var position = 1;
+
+function iterateSlider(array, position) {
+  array.fadeOut();
+  $(array[position]).fadeIn();
+};
+
 $(document).ready(function() {
   var children = $('.arangodbSlider').children();
   var size = children.length;
-console.log(size);
+
+  iterateSlider(children, position);
+
 });
 </script>
