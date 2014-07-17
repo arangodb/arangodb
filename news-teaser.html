@@ -26,8 +26,8 @@ $(document).ready(function() {
   var children = $('.arangodbSlider').children();
   var size = children.length;
   window.setInterval(function(){
-    array.fadeOut();
-    $(array[position]).fadeIn();
+    children.fadeOut();
+    $(children[position]).fadeIn();
     position++;
   }, timeToDisplay);
 });
