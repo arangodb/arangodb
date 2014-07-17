@@ -856,7 +856,7 @@ describe ArangoDB do
           doc.parsed_response['error'].should eq(true)
           doc.parsed_response['code'].should eq(404)
           doc.parsed_response['errorNum'].should eq(1202)
-          doc.parsed_response['errorMessage'].should eq("document not found")
+          doc.parsed_response['errorMessage'].should include("document not found")
         end
 
         it "get vertex" do
