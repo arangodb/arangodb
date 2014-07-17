@@ -15,7 +15,7 @@ dvew_checkbox:
 </ul>
 
 <script type="text/javascript">
-var position = 0;
+var position = 1;
 $(document).ready(function() {
   var timeToDisplay = 5000;
   var children = $('.arangodbSlider').children();
@@ -23,7 +23,7 @@ $(document).ready(function() {
   window.setInterval(function(){
     children.hide();
     console.log("current position: " + position);
-    $(children[position]).fadeIn();
+    $(children[position]).fadeIn(2000);
     if (position === size-1) {
       position = 0;
     }
