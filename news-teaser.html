@@ -22,7 +22,7 @@ function iterateSlider(array, position) {
   position++;
 };
 $(document).ready(function() {
-  var timeToDisplay = 2000;
+  var timeToDisplay = 5000;
   var children = $('.arangodbSlider').children();
   var size = children.length;
   window.setInterval(iterateSlider(children, position), timeToDisplay);
