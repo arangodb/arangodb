@@ -25,6 +25,10 @@ $(document).ready(function() {
   var timeToDisplay = 5000;
   var children = $('.arangodbSlider').children();
   var size = children.length;
-  window.setInterval(iterateSlider(children, position), timeToDisplay);
+  window.setInterval(function(){
+    array.fadeOut();
+    $(array[position]).fadeIn();
+    position++;
+  }, timeToDisplay);
 });
 </script>
