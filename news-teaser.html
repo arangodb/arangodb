@@ -24,7 +24,7 @@ $(document).ready(function() {
     children.fadeOut();
     console.log("current position: " + position);
     $(children[position]).fadeIn();
-    if (position === size) {
+    if (position === size-1) {
       position = 1;
     }
     else {
