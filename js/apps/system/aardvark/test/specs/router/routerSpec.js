@@ -8,6 +8,8 @@
   describe("The router", function () {
 
     var
+    jQueryDummy,
+    width,
     fakeDB,
     storeDummy,
     naviDummy,
@@ -188,7 +190,21 @@
           throw "should be a spy";
         }
       };
+      width = 255;
+      jQueryDummy = {
+        id: "jquery",
+        css: function () {
+          throw "should be a spy";
+        },
+        width: function() {
+          return width;
+        },
+        resize: function (a) {
+          a();
+        }
+      };
 
+      spyOn(window, "$").andReturn(jQueryDummy);
       spyOn(window, "DocumentsView").andReturn(documentsViewDummy);
       spyOn(window, "GraphManagementView").andReturn(graphManagementView);
       spyOn(window, "DocumentView").andReturn(documentViewDummy);
@@ -226,6 +242,11 @@
       spyOn(window, "checkVersion");
     });
 
+    afterEach(function() {
+      // Remove all global values the router has created.
+      delete window.modalView;
+    });
+
     describe("initialisation", function () {
 
       var r;
@@ -247,11 +268,6 @@
       it("should bind a resize event and call the handle Resize Method", function () {
         var e = new window.Router();
         spyOn(e, "handleResize");
-        spyOn(window, "$").andReturn({
-          resize: function (a) {
-            a();
-          }
-        });
         e.initialize();
         //expect($(window).resize).toHaveBeenCalledWith(jasmine.any(Function));
         expect(e.handleResize).toHaveBeenCalled();
@@ -272,7 +288,6 @@
       });
 
       it("should handle resize", function () {
-        var width = 255;
         r.dashboardView = {
           resize : function () {
             return undefined;
@@ -283,11 +298,6 @@
             return undefined;
           }
         };
-        spyOn(window, "$").andReturn({
-          width: function() {
-            return width;
-          }
-        });
         spyOn(r.dashboardView , "resize");
         spyOn(r.graphManagementView , "handleResize");
         r.handleResize();
@@ -501,13 +511,6 @@
       it("should not route to databases and hide database navi", function () {
         spyOn(arangoHelper, "databaseAllowed").andReturn(false);
         spyOn(r, "navigate");
-        var jQueryDummy = {
-          id: "jquery",
-          css: function () {
-            throw "should be a spy";
-          }
-        };
-        spyOn(window, "$").andReturn(jQueryDummy);
         spyOn(jQueryDummy, "css");
 
         r.databases();
