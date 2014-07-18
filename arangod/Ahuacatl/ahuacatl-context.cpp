@@ -131,7 +131,7 @@ static void FreeNodes (TRI_aql_context_t* const context) {
     }
 
     // free node itself
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, node);
+    delete node;
   }
 
   TRI_DestroyVectorPointer(&context->_memory._nodes);

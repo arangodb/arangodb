@@ -60,7 +60,7 @@ static TRI_aql_node_t* DummyReturnEmptyNode;
 
 static inline TRI_aql_node_t* StatementAt (const TRI_aql_statement_list_t* const list,
                                            const size_t position) {
-  return (TRI_aql_node_t*) TRI_AtVectorPointer(&list->_statements, position);
+  return list->_statements[position];
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,7 +73,7 @@ static size_t InvalidateEmptyScope (TRI_aql_statement_list_t* const list,
   size_t scopes;
 
   TRI_ASSERT(list);
-  n = list->_statements._length;
+  n = list->_statements.size();
   i = position;
   scopes = 0;
 
@@ -83,10 +83,10 @@ static size_t InvalidateEmptyScope (TRI_aql_statement_list_t* const list,
 
     if (i == position) {
       TRI_ASSERT(type == TRI_AQL_NODE_SCOPE_START);
-      list->_statements._buffer[i] = DummyReturnEmptyNode;
+      list->_statements[i] = DummyReturnEmptyNode;
     }
     else {
-      list->_statements._buffer[i] = TRI_GetDummyNopNodeAql();
+      list->_statements[i] = TRI_GetDummyNopNodeAql();
     }
     ++i;
 
@@ -118,13 +118,17 @@ static size_t InvalidateEmptyScope (TRI_aql_statement_list_t* const list,
 TRI_aql_statement_list_t* TRI_CreateStatementListAql (void) {
   TRI_aql_statement_list_t* list;
 
-  list = (TRI_aql_statement_list_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_statement_list_t), false);
+  try {
+    list = new TRI_aql_statement_list_t();
+  }
+  catch (std::exception&) {
+    list = nullptr;
+  }
 
   if (list == NULL) {
     return NULL;
   }
 
-  TRI_InitVectorPointer(&list->_statements, TRI_UNKNOWN_MEM_ZONE);
   list->_currentLevel = 0;
 
   return list;
@@ -139,8 +143,7 @@ void TRI_FreeStatementListAql (TRI_aql_statement_list_t* const list) {
     return;
   }
 
-  TRI_DestroyVectorPointer(&list->_statements);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, list);
+  delete list;
 }
 
 // -----------------------------------------------------------------------------
@@ -163,17 +166,17 @@ void TRI_GlobalInitStatementListAql (void) {
 void TRI_GlobalFreeStatementListAql (void) {
   if (DummyNopNode != NULL) {
     TRI_DestroyVectorPointer(&DummyNopNode->_members);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, DummyNopNode);
+    delete DummyNopNode;
   }
 
   if (DummyReturnEmptyNode != NULL) {
     TRI_aql_node_t* list = TRI_AQL_NODE_MEMBER(DummyReturnEmptyNode, 0);
 
     TRI_DestroyVectorPointer(&list->_members);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, list);
+    delete list;
 
     TRI_DestroyVectorPointer(&DummyReturnEmptyNode->_members);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, DummyReturnEmptyNode);
+    delete DummyReturnEmptyNode;
   }
 }
 
@@ -200,7 +203,7 @@ void TRI_PulloutStatementListAql (TRI_aql_statement_list_t* const list) {
   TRI_ASSERT(list);
 
   i = 0;
-  n = list->_statements._length;
+  n = list->_statements.size();
 
   while (i < n) {
     TRI_aql_node_t* node = StatementAt(list, i);
@@ -245,7 +248,7 @@ void TRI_PulloutStatementListAql (TRI_aql_statement_list_t* const list) {
             }
 
             // insert a dummy node in place of the moved node
-            list->_statements._buffer[j + inserted + 1] = TRI_GetDummyNopNodeAql();
+            list->_statements[j + inserted + 1] = TRI_GetDummyNopNodeAql();
 
             // next
             ++j;
@@ -272,14 +275,16 @@ void TRI_PulloutStatementListAql (TRI_aql_statement_list_t* const list) {
 bool TRI_InsertStatementListAql (TRI_aql_statement_list_t* const list,
                                  TRI_aql_node_t* const node,
                                  const size_t position) {
-  int res;
-
   TRI_ASSERT(list != NULL);
   TRI_ASSERT(node != NULL);
 
-  res = TRI_InsertVectorPointer(&list->_statements, node, position);
-
-  return res == TRI_ERROR_NO_ERROR;
+  try {
+    list->_statements.insert(list->_statements.begin() + position, node);
+  }
+  catch (std::exception&) {
+    return false;
+  }
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -289,7 +294,6 @@ bool TRI_InsertStatementListAql (TRI_aql_statement_list_t* const list,
 bool TRI_AppendStatementListAql (TRI_aql_statement_list_t* const list,
                                  TRI_aql_node_t* const node) {
   TRI_aql_node_type_e type;
-  int res;
 
   TRI_ASSERT(list != NULL);
   TRI_ASSERT(node != NULL);
@@ -305,9 +309,13 @@ bool TRI_AppendStatementListAql (TRI_aql_statement_list_t* const list,
     --list->_currentLevel;
   }
 
-  res = TRI_PushBackVectorPointer(&list->_statements, node);
-
-  return res == TRI_ERROR_NO_ERROR;
+  try {
+    list->_statements.push_back(node);
+  }
+  catch (std::exception&) {
+    return false;
+  }
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -321,7 +329,7 @@ void TRI_CompactStatementListAql (TRI_aql_statement_list_t* const list) {
 
   i = 0;
   j = 0;
-  n = list->_statements._length;
+  n = list->_statements.size();
 
   while (i < n) {
     TRI_aql_node_t* node = StatementAt(list, i);
@@ -347,11 +355,11 @@ void TRI_CompactStatementListAql (TRI_aql_statement_list_t* const list) {
     }
     */
 
-    list->_statements._buffer[j++] = node;
+    list->_statements[j++] = node;
     ++i;
   }
 
-  list->_statements._length = j;
+  list->_statements.resize(j);
 }
 
 // -----------------------------------------------------------------------------

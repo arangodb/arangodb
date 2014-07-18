@@ -44,22 +44,32 @@
 /// @brief shortcut macro to create a new node or fail in case of OOM
 ////////////////////////////////////////////////////////////////////////////////
 
-#define CREATE_NODE(type)                                               \
-  TRI_aql_node_t* node = (TRI_aql_node_t*)                              \
-    TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_node_t), false);  \
-  if (node == NULL) {                                                   \
-    TRI_SetErrorContextAql(                                             \
-      __FILE__,                                                         \
-      __LINE__,                                                         \
-      context,                                                          \
-      TRI_ERROR_OUT_OF_MEMORY,                                          \
-      NULL);                                                            \
-    return NULL;                                                        \
-  }                                                                     \
-                                                                        \
-  node->_type = type;                                                   \
-  TRI_InitVectorPointer(&node->_members, TRI_UNKNOWN_MEM_ZONE);         \
+inline TRI_aql_node_t* CREATE_NODE_FUNC(TRI_aql_node_type_e type, 
+                                        TRI_aql_context_t* context) {
+  TRI_aql_node_t* node;
+  try {
+    node = new TRI_aql_node_t();
+  }
+  catch (std::exception&) {
+    node = nullptr;
+  }
+  if (node == nullptr) {
+    TRI_SetErrorContextAql(
+      __FILE__,
+      __LINE__,
+      context,
+      TRI_ERROR_OUT_OF_MEMORY,
+      nullptr);
+    return nullptr;
+  }
+  node->_type = type;
+  TRI_InitVectorPointer(&node->_members, TRI_UNKNOWN_MEM_ZONE);
   TRI_RegisterNodeContextAql(context, node);
+  return node;
+}
+
+#define CREATE_NODE(type) TRI_aql_node_t* node = CREATE_NODE_FUNC(type, context);
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a sub node to a node
@@ -206,10 +216,12 @@ static TRI_aql_node_t* CreateNodeUserFcall (TRI_aql_context_t* const context,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeNopAql (void) {
-  TRI_aql_node_t* node = (TRI_aql_node_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_node_t), false);
-
-  if (node == NULL) {
-    return NULL;
+  TRI_aql_node_t* node;
+  try {
+    node = new TRI_aql_node_t;
+  }
+  catch (std::exception&) {
+    return nullptr;
   }
 
   node->_type = TRI_AQL_NODE_NOP;
@@ -228,20 +240,29 @@ TRI_aql_node_t* TRI_CreateNodeReturnEmptyAql (void) {
   TRI_aql_node_t* list;
   int res;
 
-  node = (TRI_aql_node_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_node_t), false);
+  try {
+    node = new TRI_aql_node_t();
+  }
+  catch (std::exception&) {
+    node = nullptr;
+  }
 
-  if (node == NULL) {
-    return NULL;
+  if (node == nullptr) {
+    return nullptr;
   }
 
   node->_type = TRI_AQL_NODE_RETURN_EMPTY;
 
-  list = (TRI_aql_node_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_node_t), false);
+  try {
+    list = new TRI_aql_node_t();
+  }
+  catch (std::exception&) {
+    list = nullptr;
+  }
 
-  if (list == NULL) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, node);
-
-    return NULL;
+  if (list == nullptr) {
+    delete node;
+    return nullptr;
   }
 
   list->_type = TRI_AQL_NODE_LIST;
@@ -251,8 +272,8 @@ TRI_aql_node_t* TRI_CreateNodeReturnEmptyAql (void) {
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_DestroyVectorPointer(&list->_members);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, list);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, node);
+    delete list;
+    delete node;
 
     return NULL;
   }
@@ -262,8 +283,8 @@ TRI_aql_node_t* TRI_CreateNodeReturnEmptyAql (void) {
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_DestroyVectorPointer(&node->_members);
     TRI_DestroyVectorPointer(&list->_members);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, list);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, node);
+    delete list;
+    delete node;
 
     return NULL;
   }

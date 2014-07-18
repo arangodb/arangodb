@@ -37,7 +37,7 @@
 #include "Ahuacatl/ahuacatl-error.h"
 #include "Ahuacatl/ahuacatl-statementlist.h"
 
-struct TRI_aql_node_s;
+struct TRI_aql_node_t;
 struct TRI_aql_parser_s;
 struct TRI_json_s;
 struct TRI_vocbase_s;
@@ -94,7 +94,7 @@ typedef struct TRI_aql_context_s {
 
   TRI_aql_query_type_e        _type;
   char*                       _writeCollection;
-  struct TRI_aql_node_s*      _writeOptions;
+  struct TRI_aql_node_t*      _writeOptions;
 
   struct TRI_json_s*          _userOptions;
   bool                        _fullCount;
