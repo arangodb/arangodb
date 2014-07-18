@@ -211,12 +211,11 @@ TRI_aql_value_t;
 /// @brief an abstract AST node type
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_aql_node_s {
+struct TRI_aql_node_t {
   TRI_vector_pointer_t _members;
   TRI_aql_node_type_e _type;
   TRI_aql_value_t _value;
-}
-TRI_aql_node_t;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
