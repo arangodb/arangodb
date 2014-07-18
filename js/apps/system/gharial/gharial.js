@@ -492,14 +492,14 @@
     description: "flag to drop collection as well"
   })
   .errorResponse(
-    Error, actions.HTTP_NOT_FOUND, "The graph could not be found.", function(e) {
-      return buildError(e, actions.HTTP_NOT_FOUND);
-    }
-  )
-  .errorResponse(
     ArangoError, actions.HTTP_BAD,
     "The collection is not found or part of an edge definition.", function(e) {
       return buildError(e, actions.HTTP_BAD);
+    }
+  )
+  .errorResponse(
+    Error, actions.HTTP_NOT_FOUND, "The graph could not be found.", function(e) {
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 
