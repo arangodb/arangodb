@@ -200,6 +200,7 @@
           throw "should be a spy";
         },
         width: function() {
+          console.log("Peter");
           return width;
         },
         resize: function (a) {
@@ -272,7 +273,6 @@
         var e = new window.Router();
         spyOn(e, "handleResize");
         e.initialize();
-        //expect($(window).resize).toHaveBeenCalledWith(jasmine.any(Function));
         expect(e.handleResize).toHaveBeenCalled();
       });
 
@@ -291,6 +291,10 @@
       });
 
       it("should handle resize", function () {
+        spyOn(dashboardDummy , "render");
+        r.dashboard();
+        spyOn(graphManagementView, "render");
+        r.graphManagement();
         spyOn(dashboardDummy , "resize");
         spyOn(graphManagementView, "handleResize");
         r.handleResize();
