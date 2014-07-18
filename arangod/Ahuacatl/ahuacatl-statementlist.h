@@ -33,17 +33,16 @@
 #include "Basics/Common.h"
 #include "BasicsC/vector.h"
 
-struct TRI_aql_node_s;
+struct TRI_aql_node_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
-typedef struct TRI_aql_statement_list_s {
-  TRI_vector_pointer_t _statements;
+struct TRI_aql_statement_list_t {
+  std::vector<struct TRI_aql_node_t*> _statements;
   size_t _currentLevel;
-}
-TRI_aql_statement_list_t;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -81,7 +80,7 @@ void TRI_FreeStatementListAql (TRI_aql_statement_list_t* const);
 /// @brief get the address of the dummy non-op node
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_aql_node_s* TRI_GetDummyNopNodeAql (void);
+struct TRI_aql_node_t* TRI_GetDummyNopNodeAql (void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pull out subqueries in the statement list from the middle to the
@@ -104,7 +103,7 @@ void TRI_CompactStatementListAql (TRI_aql_statement_list_t* const);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_InsertStatementListAql (TRI_aql_statement_list_t* const,
-                                 struct TRI_aql_node_s* const,
+                                 struct TRI_aql_node_t* const,
                                  const size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -112,7 +111,7 @@ bool TRI_InsertStatementListAql (TRI_aql_statement_list_t* const,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_AppendStatementListAql (TRI_aql_statement_list_t* const,
-                                 struct TRI_aql_node_s* const);
+                                 struct TRI_aql_node_t* const);
 
 #endif
 

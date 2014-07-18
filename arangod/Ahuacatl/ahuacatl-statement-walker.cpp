@@ -53,7 +53,7 @@ static void VisitStatement (TRI_aql_statement_walker_t* const walker,
   TRI_aql_node_t* node;
   TRI_aql_node_t* modified;
 
-  node = (TRI_aql_node_t*) TRI_AtVectorPointer(&walker->_statements->_statements, position);
+  node = walker->_statements->_statements[position];
   TRI_ASSERT(node);
 
   modified = func(walker, node);
@@ -62,7 +62,7 @@ static void VisitStatement (TRI_aql_statement_walker_t* const walker,
       modified = TRI_GetDummyNopNodeAql();
     }
 
-    walker->_statements->_statements._buffer[position] = modified;
+    walker->_statements->_statements[position] = modified;
   }
 }
 
@@ -108,13 +108,13 @@ static void RunWalk (TRI_aql_statement_walker_t* const walker) {
   size_t i, n;
 
   TRI_ASSERT(walker);
-  n = walker->_statements->_statements._length;
+  n = walker->_statements->_statements.size();
 
   for (i = 0; i < n; ++i) {
     TRI_aql_node_t* node;
     TRI_aql_node_type_e nodeType;
 
-    node = (TRI_aql_node_t*) TRI_AtVectorPointer(&walker->_statements->_statements, i);
+    node = walker->_statements->_statements[i];
 
     if (! node) {
       continue;
@@ -131,8 +131,7 @@ static void RunWalk (TRI_aql_statement_walker_t* const walker) {
     if (walker->preVisitStatement != NULL) {
       // this might change the node ptr
       VisitStatement(walker, i, walker->preVisitStatement);
-      node = static_cast<TRI_aql_node_t*>
-                        (walker->_statements->_statements._buffer[i]);
+      node = walker->_statements->_statements[i];
     }
 
 
