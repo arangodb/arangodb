@@ -200,7 +200,6 @@
           throw "should be a spy";
         },
         width: function() {
-          console.log("Peter");
           return width;
         },
         resize: function (a) {
