@@ -216,10 +216,12 @@ static TRI_aql_node_t* CreateNodeUserFcall (TRI_aql_context_t* const context,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_CreateNodeNopAql (void) {
-  TRI_aql_node_t* node = (TRI_aql_node_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_aql_node_t), false);
-
-  if (node == NULL) {
-    return NULL;
+  TRI_aql_node_t* node;
+  try {
+    node = new TRI_aql_node_t;
+  }
+  catch (std::exception&) {
+    return nullptr;
   }
 
   node->_type = TRI_AQL_NODE_NOP;
