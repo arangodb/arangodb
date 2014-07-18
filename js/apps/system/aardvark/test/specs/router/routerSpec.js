@@ -104,7 +104,7 @@
         id: "dashboard",
         resize: function () {
           //This should throw as well however resizinge fails now and then
-          return;
+          return undefined;
         },
         stopUpdating: function () {
           throw "should be a spy";
@@ -177,6 +177,9 @@
       graphManagementView = {
         render: function () {
           throw "should be a spy";
+        },
+        handleResize : function () {
+          return undefined;
         }
       };
       documentsViewDummy = {
@@ -288,21 +291,11 @@
       });
 
       it("should handle resize", function () {
-        r.dashboardView = {
-          resize : function () {
-            return undefined;
-          }
-        };
-        r.graphManagementView = {
-          handleResize : function () {
-            return undefined;
-          }
-        };
-        spyOn(r.dashboardView , "resize");
-        spyOn(r.graphManagementView , "handleResize");
+        spyOn(dashboardDummy , "resize");
+        spyOn(graphManagementView, "handleResize");
         r.handleResize();
-        expect(r.dashboardView.resize).toHaveBeenCalled();
-        expect(r.graphManagementView.handleResize).toHaveBeenCalledWith(width);
+        expect(dashboardDummy.resize).toHaveBeenCalled();
+        expect(graphManagementView.handleResize).toHaveBeenCalledWith(width);
       });
     });
 
