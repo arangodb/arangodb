@@ -516,9 +516,6 @@
       });
 
       it("should navigate to the dashboard", function () {
-        delete r.statisticsDescriptionCollection;
-        delete r.statisticsCollection;
-        delete r.dashboardView;
         spyOn(dashboardDummy, "render");
         simpleNavigationCheck(
           "dashboard",
