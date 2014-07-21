@@ -57,7 +57,8 @@ V8TimerTask::V8TimerTask (string const& id,
                           string const& command,
                           TRI_json_t* parameters)
   : Task(id, name),
-    TimerTask(id, offset),
+    TimerTask(id, (offset <= 0.0 ? 0.00001 : offset)), // offset must be (at least slightly) greater than zero, otherwise
+                                                       // the timertask will not execute the task at all
     _vocbase(vocbase),
     _v8Dealer(v8Dealer),
     _dispatcher(dispatcher),
