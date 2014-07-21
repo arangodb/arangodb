@@ -467,16 +467,17 @@
     var name = req.params("graph");
     var def_name = req.params("collection");
     var g;
+    var err;
     try {
       g = Graph._graph(name);
     } catch (e) {
-      var err = new Error();
+      err = new Error();
       err.errorNum = e.errorNum;
       err.errorMessage = e.errorMessage;
       throw err;
     }
     if (g[def_name] === undefined) {
-      var err = new Error();
+      err = new Error();
       err.errorNum = errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
       err.errorMessage = errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message;
       throw err;
