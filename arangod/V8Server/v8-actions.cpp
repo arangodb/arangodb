@@ -1237,7 +1237,7 @@ static v8::Handle<v8::Value> JS_RegisterTask (v8::Arguments const& argv) {
     parameters = TRI_ObjectToJson(obj->Get(TRI_V8_SYMBOL("params")));
   }
 
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
   Task* task;
 
