@@ -475,6 +475,12 @@
       err.errorMessage = e.errorMessage;
       throw err;
     }
+    if (g[def_name] === undefined) {
+      var err = new Error();
+      err.errorNum = errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
+      err.errorMessage = errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message;
+      throw err;
+    }
     var drop = parseBooleanParameter(req, "dropCollection");
     g._removeVertexCollection(def_name, drop);
     setGraphResponse(res, g);
