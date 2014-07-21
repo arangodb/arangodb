@@ -1,6 +1,17 @@
 v2.2.1 (XXXX-XX-XX)
 -------------------
 
+* added startup option `--wal.suppress-shape-information`
+
+  Setting this option to `true` will reduce memory and disk space usage and require
+  less CPU time when modifying documents or edges. It should therefore be turned on
+  for standalone ArangoDB servers. However, for servers that are used as replication
+  masters, setting this option to `true` will effectively disable the usage of the
+  write-ahead log for replication, so it should be set to `false` for any replication
+  master servers.
+
+  The default value for this option is `false`. 
+
 * added optional `ttl` attribute to specify result cursor expiration for HTTP API method 
   `POST /_api/cursor` 
 
