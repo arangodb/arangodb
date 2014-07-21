@@ -1,11 +1,16 @@
 v2.2.1 (XXXX-XX-XX)
 -------------------
 
-* issue #947 Foxx applicationContext missing some properties
+* added optional `ttl` attribute to specify result cursor expiration for HTTP API method 
+  `POST /_api/cursor` 
+
+  The `ttl` attribute can be used to prevent cursor results from timing out too early.
+
+* issue #947: Foxx applicationContext missing some properties
 
 * (reported by Christian Neubauer): 
 
-  The problem was that in googles V8, signed and unsignet chars are not always declared cleanly.
+  The problem was that in Google's V8, signed and unsigned chars are not always declared cleanly.
   so we need to force v8 to compile with forced signed chars which is done by the Flag:
     -fsigned-char
   at least it is enough to follow the instructions of compiling arango on rasperry 

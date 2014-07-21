@@ -3486,9 +3486,10 @@ static v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* cont
 
 static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vocbase,
                                                          TRI_aql_context_t* const context,
-                                                         const TRI_json_t* const parameters,
-                                                         const bool doCount,
-                                                         const uint32_t batchSize) {
+                                                         TRI_json_t const* parameters,
+                                                         bool doCount,
+                                                         uint32_t batchSize,
+                                                         double cursorTtl) {
   v8::HandleScope scope;
   v8::TryCatch tryCatch;
 
@@ -3499,7 +3500,7 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
       return scope.Close(v8::ThrowException(tryCatch.Exception()));
     }
     else {
-      TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
       v8g->_canceled = true;
       return scope.Close(result);
@@ -3536,35 +3537,35 @@ static v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vo
   // transform the result into JSON first
   TRI_json_t* json = TRI_ObjectToJson(docs);
 
-  if (json == 0) {
+  if (json == nullptr) {
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   TRI_general_cursor_result_t* cursorResult = TRI_CreateResultAql(json);
 
-  if (cursorResult == 0) {
+  if (cursorResult == nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
   // extra return values
-  TRI_json_t* extra = 0;
+  TRI_json_t* extra = nullptr;
   if (resultObject->Has(TRI_V8_SYMBOL("extra"))) {
     extra = TRI_ObjectToJson(resultObject->Get(TRI_V8_SYMBOL("extra")));
   }
 
-  TRI_general_cursor_t* cursor = TRI_CreateGeneralCursor(vocbase, cursorResult, doCount, batchSize, extra);
+  TRI_general_cursor_t* cursor = TRI_CreateGeneralCursor(vocbase, cursorResult, doCount, batchSize, cursorTtl, extra);
 
-  if (cursor == 0) {
+  if (cursor == nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    if (extra != 0) {
+    if (extra != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, extra);
     }
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
-  TRI_ASSERT(cursor != 0);
+  TRI_ASSERT(cursor != nullptr);
 
   v8::Handle<v8::Value> cursorObject = WrapGeneralCursor(cursor);
 
@@ -4317,12 +4318,12 @@ static v8::Handle<v8::Value> JS_CreateCursor (v8::Arguments const& argv) {
 
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
-  if (vocbase == 0) {
+  if (vocbase == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   if (argv.Length() < 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "CREATE_CURSOR(<list>, <doCount>, <batchSize>)");
+    TRI_V8_EXCEPTION_USAGE(scope, "CREATE_CURSOR(<list>, <doCount>, <batchSize>, <ttl>)");
   }
 
   if (! argv[0]->IsArray()) {
@@ -4333,7 +4334,7 @@ static v8::Handle<v8::Value> JS_CreateCursor (v8::Arguments const& argv) {
   v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(argv[0]);
   TRI_json_t* json = TRI_ObjectToJson(array);
 
-  if (json == 0) {
+  if (json == nullptr) {
     TRI_V8_TYPE_ERROR(scope, "cannot convert <list> to JSON");
   }
 
@@ -4355,14 +4356,23 @@ static v8::Handle<v8::Value> JS_CreateCursor (v8::Arguments const& argv) {
     }
   }
 
+  double ttl = 0.0;
+  if (argv.Length() >= 4) {
+    ttl = TRI_ObjectToDouble(argv[3]);
+  }
+
+  if (ttl <= 0.0) {
+    ttl = 30.0; // default ttl
+  }
+
   // create a cursor
-  TRI_general_cursor_t* cursor = 0;
+  TRI_general_cursor_t* cursor = nullptr;
   TRI_general_cursor_result_t* cursorResult = TRI_CreateResultAql(json);
 
-  if (cursorResult != 0) {
-    cursor = TRI_CreateGeneralCursor(vocbase, cursorResult, doCount, batchSize, 0);
+  if (cursorResult != nullptr) {
+    cursor = TRI_CreateGeneralCursor(vocbase, cursorResult, doCount, batchSize, ttl, 0);
 
-    if (cursor == 0) {
+    if (cursor == nullptr) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
@@ -4371,7 +4381,7 @@ static v8::Handle<v8::Value> JS_CreateCursor (v8::Arguments const& argv) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   }
 
-  if (cursor == 0) {
+  if (cursor == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot create cursor");
   }
 
@@ -4517,7 +4527,7 @@ static v8::Handle<v8::Value> JS_PersistGeneralCursor (v8::Arguments const& argv)
     TRI_V8_EXCEPTION_USAGE(scope, "persist()");
   }
 
-  TRI_PersistGeneralCursor(UnwrapGeneralCursor(argv.Holder()), 30.0);
+  TRI_PersistGeneralCursor(UnwrapGeneralCursor(argv.Holder()));
   return scope.Close(v8::True());
 }
 
@@ -5370,6 +5380,9 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
 
   // maximum number of results to return at once
   uint32_t batchSize = UINT32_MAX;
+  
+  // ttl for cursor  
+  double ttl = 0.0;
 
   if (argc > 2 && argv[2]->IsObject()) {
     // treat the argument as an object from now on
@@ -5386,12 +5399,21 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
         batchSize = (uint32_t) maxValue;
       }
     }
+    
+    if (options->Has(TRI_V8_SYMBOL("ttl"))) {
+      ttl = TRI_ObjectToDouble(options->Get(TRI_V8_SYMBOL("ttl")));
+    }
+  }
+    
+  if (ttl <= 0.0) {
+    // default ttl
+    ttl = 30.0;
   }
 
   // user options
   // -------------------------------------------------
 
-  TRI_json_t* userOptions = 0;
+  TRI_json_t* userOptions = nullptr;
   if (argc > 3 && argv[3]->IsObject()) {
     // treat the argument as an object from now on
     v8::Handle<v8::Object> options = v8::Handle<v8::Object>::Cast(argv[3]);
@@ -5413,7 +5435,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
-  v8::Handle<v8::Value> result = ExecuteQueryCursorAhuacatl(vocbase, context.ptr(), parameters, doCount, batchSize);
+  v8::Handle<v8::Value> result = ExecuteQueryCursorAhuacatl(vocbase, context.ptr(), parameters, doCount, batchSize, ttl);
   int res = context.ptr()->_error._code;
 
   if (res == TRI_ERROR_REQUEST_CANCELED) {
@@ -5446,7 +5468,7 @@ static v8::Handle<v8::Value> JS_RunAhuacatl (v8::Arguments const& argv) {
       return scope.Close(v8::ThrowException(errorObject));
     }
     else {
-      TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
       v8g->_canceled = true;
       return scope.Close(result);
