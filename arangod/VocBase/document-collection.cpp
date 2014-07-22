@@ -5596,6 +5596,9 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     keyString = key;
   }
 
+  uint64_t const hash = TRI_HashKeyPrimaryIndex(keyString.c_str());
+
+
   int res = TRI_ERROR_NO_ERROR;
 
   if (marker == nullptr) {
@@ -5605,20 +5608,28 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     else {
       res = CreateMarkerWithLegend(marker, document, rid, trxCollection, keyString, shaped, edge);
     }
+  
+    if (res != TRI_ERROR_NO_ERROR) {
+      if (marker != nullptr) {
+        // avoid memleak
+        delete marker;
+      }
+
+      return res;
+    }
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-  
   TRI_ASSERT(marker != nullptr);
 
-  uint64_t hash = TRI_HashKeyPrimaryIndex(keyString.c_str());
-  
   // now insert into indexes
   {
     TRI_IF_FAILURE("InsertDocumentNoLock") {
       // test what happens if no lock can be acquired
+      
+      if (freeMarker) {
+        delete marker;
+      }
+
       return TRI_ERROR_DEBUG;
     }
 
@@ -5743,6 +5754,10 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
+        if (marker != nullptr) {
+          // avoid memleak
+          delete marker;
+        }
         return res;
       }
     }
