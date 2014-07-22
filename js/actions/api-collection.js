@@ -197,8 +197,8 @@ function parseBodyForCreateCollection (req, res) {
 /// - *doCompact* (optional, default is *true*): whether or not the collection
 ///   will be compacted.
 ///
-/// - *journalSize* (optional, default is a @ref
-///   CommandLineArangod "configuration parameter"): The maximal size of
+/// - *journalSize* (optional, default is a
+///   configuration parameter): The maximal size of
 ///   a journal or datafile.  
 /// **Note**: This also limits the maximal
 ///   size of a single object. Must be at least 1MB.

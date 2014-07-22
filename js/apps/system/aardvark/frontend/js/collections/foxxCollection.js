@@ -7,6 +7,8 @@
 
     url: "/_admin/aardvark/foxxes",
 
+    comparator: "name",
+
     installFoxxFromGithub: function (url, name, version) {
 
       var result, options = {
