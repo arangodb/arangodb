@@ -145,6 +145,7 @@ typedef struct TRI_general_cursor_s {
     uint32_t                   _refCount;
     bool                       _isDeleted;
   }                            _usage;
+  double                       _ttl;
   double                       _expires;
 
   struct TRI_json_s*           _extra;
@@ -177,6 +178,7 @@ TRI_general_cursor_t* TRI_CreateGeneralCursor (struct TRI_vocbase_s*,
                                                TRI_general_cursor_result_t*,
                                                const bool,
                                                const TRI_general_cursor_length_t,
+                                               double,
                                                struct TRI_json_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,8 +227,7 @@ size_t TRI_CountGeneralCursor (TRI_general_cursor_t*);
 /// @brief persist the cursor by setting a timeout
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PersistGeneralCursor (TRI_general_cursor_t*,
-                               double);
+void TRI_PersistGeneralCursor (TRI_general_cursor_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup a cursor by its id
