@@ -249,7 +249,8 @@ SlotInfo Slots::nextUnused (uint32_t size) {
 SlotInfo Slots::nextUnused (uint32_t size,
                             TRI_voc_cid_t cid,
                             TRI_shape_sid_t sid,
-                            uint32_t legendOffset) {
+                            uint32_t legendOffset,
+                            void*& oldLegend) {
                             // legendOffset 0 means no legend included
   // we need to use the aligned size for writing
   uint32_t alignedSize = TRI_DF_ALIGN_BLOCK(size);
@@ -330,6 +331,7 @@ SlotInfo Slots::nextUnused (uint32_t size,
             // Bad, we would need a legend for this marker
             return SlotInfo(TRI_ERROR_LEGEND_NOT_IN_WAL_FILE);
           }
+          oldLegend = legend;
         }
 
         char* mem = _logfile->reserve(alignedSize);
