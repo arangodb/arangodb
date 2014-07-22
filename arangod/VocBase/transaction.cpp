@@ -1037,7 +1037,8 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
       // (Note that the latter also works for edges!
       TRI_voc_cid_t cid = oldm->_collectionId;
       TRI_shape_sid_t sid = oldm->_shape;
-      triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(oldmarker, operation.marker->size(), waitForSync, cid, sid, 0);
+      void* oldLegend;
+      triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(oldmarker, operation.marker->size(), waitForSync, cid, sid, 0, oldLegend);
       if (slotInfo.errorCode == TRI_ERROR_LEGEND_NOT_IN_WAL_FILE) {
         // Oh dear, we have to build a legend and patch the marker:
         triagens::basics::JsonLegend legend(document->getShaper());  // PROTECTED by trx in trxCollection
@@ -1063,7 +1064,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
           auto newm = reinterpret_cast<triagens::wal::document_marker_t*>(newmarker);
           newm->_size = newMarkerSize;
           newm->_offsetJson = oldm->_offsetLegend + legend.getSize();
-          triagens::wal::SlotInfoCopy slotInfo2 = triagens::wal::LogfileManager::instance()->allocateAndWrite(newmarker, newMarkerSize, waitForSync, cid, sid, newm->_offsetLegend);
+          triagens::wal::SlotInfoCopy slotInfo2 = triagens::wal::LogfileManager::instance()->allocateAndWrite(newmarker, newMarkerSize, waitForSync, cid, sid, newm->_offsetLegend, oldLegend);
           delete[] newmarker;
           if (slotInfo2.errorCode != TRI_ERROR_NO_ERROR) {
             return slotInfo2.errorCode;
@@ -1077,6 +1078,12 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
         return slotInfo.errorCode;
       }
       else {
+        int64_t* legendPtr = reinterpret_cast<int64_t*>
+                             (oldmarker + oldm->_offsetLegend);
+        *legendPtr =  reinterpret_cast<char*>(oldLegend) 
+                     -reinterpret_cast<char*>(legendPtr);
+        // This means that we can find the old legend relative to
+        // the new position in the same WAL file.
         fid = slotInfo.logfileId;
         position = slotInfo.mem; 
       }

@@ -756,7 +756,8 @@ SlotInfo LogfileManager::allocate (void const* src,
                                    uint32_t size,
                                    TRI_voc_cid_t cid,
                                    TRI_shape_sid_t sid,
-                                   uint32_t legendOffset) {
+                                   uint32_t legendOffset,
+                                   void*& oldLegend) {
   if (! _allowWrites) {
     // no writes allowed
 #ifdef TRI_ENABLE_MAINTAINER_MODE    
@@ -776,7 +777,7 @@ SlotInfo LogfileManager::allocate (void const* src,
     return SlotInfo(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
   }
 
-  return _slots->nextUnused(size, cid, sid, legendOffset);
+  return _slots->nextUnused(size, cid, sid, legendOffset, oldLegend);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -798,9 +799,10 @@ SlotInfoCopy LogfileManager::allocateAndWrite (void* src,
                                                bool waitForSync,
                                                TRI_voc_cid_t cid,
                                                TRI_shape_sid_t sid,
-                                               uint32_t legendOffset) {
+                                               uint32_t legendOffset,
+                                               void*& oldLegend) {
 
-  SlotInfo slotInfo = allocate(src, size, cid, sid, legendOffset);
+  SlotInfo slotInfo = allocate(src, size, cid, sid, legendOffset, oldLegend);
 
   if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
     return SlotInfoCopy(slotInfo.errorCode);

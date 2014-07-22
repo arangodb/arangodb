@@ -436,7 +436,8 @@ namespace triagens {
                            uint32_t,
                            TRI_voc_cid_t cid,
                            TRI_shape_sid_t sid,
-                           uint32_t legendOffset);
+                           uint32_t legendOffset,
+                           void*& oldLegend);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finalise a log entry
@@ -464,7 +465,8 @@ namespace triagens {
                                        bool,
                                        TRI_voc_cid_t,
                                        TRI_shape_sid_t,
-                                       uint32_t);
+                                       uint32_t,
+                                       void*&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write data into the logfile

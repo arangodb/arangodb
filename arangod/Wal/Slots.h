@@ -169,7 +169,8 @@ namespace triagens {
         SlotInfo nextUnused (uint32_t size,
                              TRI_voc_cid_t cid,
                              TRI_shape_sid_t sid,
-                             uint32_t legendIncluded);
+                             uint32_t legendIncluded,
+                             void*& oldLegend);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a used slot, allowing its synchronisation
