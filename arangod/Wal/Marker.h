@@ -770,9 +770,9 @@ namespace triagens {
                         TRI_voc_rid_t,
                         TRI_voc_tid_t,
                         std::string const&,
-                        triagens::basics::JsonLegend&,
+                        size_t,
                         TRI_shaped_json_t const*);
-
+        
         ~DocumentMarker ();
 
       public:
@@ -814,6 +814,8 @@ namespace triagens {
           return static_cast<size_t>(size() - m->_offsetJson);
         }
 
+        void storeLegend (triagens::basics::JsonLegend&);
+
         void dump () const;
 
         static DocumentMarker* clone (TRI_df_marker_t const*,
@@ -839,9 +841,9 @@ namespace triagens {
                     TRI_voc_tid_t,
                     std::string const&,
                     TRI_document_edge_t const*,
-                    triagens::basics::JsonLegend&,
+                    size_t,
                     TRI_shaped_json_t const*);
-
+        
         ~EdgeMarker ();
 
         inline TRI_voc_rid_t revisionId () const {
@@ -892,6 +894,8 @@ namespace triagens {
           edge_marker_t const* m = reinterpret_cast<edge_marker_t const*>(begin());
           return static_cast<size_t>(size() - m->_offsetJson);
         }
+        
+        void storeLegend (triagens::basics::JsonLegend&);
 
         void dump () const;
 

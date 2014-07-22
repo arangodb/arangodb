@@ -1,11 +1,27 @@
 v2.2.1 (XXXX-XX-XX)
 -------------------
 
-* issue #947 Foxx applicationContext missing some properties
+* added startup option `--wal.suppress-shape-information`
+
+  Setting this option to `true` will reduce memory and disk space usage and require
+  less CPU time when modifying documents or edges. It should therefore be turned on
+  for standalone ArangoDB servers. However, for servers that are used as replication
+  masters, setting this option to `true` will effectively disable the usage of the
+  write-ahead log for replication, so it should be set to `false` for any replication
+  master servers.
+
+  The default value for this option is `false`. 
+
+* added optional `ttl` attribute to specify result cursor expiration for HTTP API method 
+  `POST /_api/cursor` 
+
+  The `ttl` attribute can be used to prevent cursor results from timing out too early.
+
+* issue #947: Foxx applicationContext missing some properties
 
 * (reported by Christian Neubauer): 
 
-  The problem was that in googles V8, signed and unsignet chars are not always declared cleanly.
+  The problem was that in Google's V8, signed and unsigned chars are not always declared cleanly.
   so we need to force v8 to compile with forced signed chars which is done by the Flag:
     -fsigned-char
   at least it is enough to follow the instructions of compiling arango on rasperry 

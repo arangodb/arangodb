@@ -287,7 +287,7 @@ function parseAuthorization (authorization) {
 ///
 /// @RESTDESCRIPTION Given a description of a cluster, this plans the details
 /// of a cluster and returns a JSON description of a plan to start up this
-/// cluster. See @ref JSF_Cluster_Planner_Constructor for details.
+/// cluster.
 ///
 /// @RESTRETURNCODES
 ///
