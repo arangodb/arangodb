@@ -135,7 +135,7 @@ var internal = require("internal");
 /// error occurs during query processing, the server will respond with *HTTP 400*.
 /// Again, the body of the response will contain details about the error.
 ///
-/// A list of query errors can be found @ref ArangoErrors here.
+/// A list of query errors can be found (../ArangoErrors/README.md) here.
 ///
 /// @RESTRETURNCODES
 /// 
