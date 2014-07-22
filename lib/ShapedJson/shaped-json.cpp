@@ -2283,11 +2283,7 @@ bool TRI_StringifyArrayShapedJson (TRI_shaper_t* shaper,
                                    TRI_string_buffer_t* buffer,
                                    TRI_shaped_json_t const* shaped,
                                    bool prepend) {
-  TRI_shape_t const* shape;
-  bool ok;
-  uint64_t num;
-
-  shape = shaper->lookupShapeId(shaper, shaped->_sid);
+  TRI_shape_t const* shape = shaper->lookupShapeId(shaper, shaped->_sid);
 
   if (shape == nullptr || shape->_type != TRI_SHAPE_ARRAY) {
     return false;
@@ -2302,7 +2298,8 @@ bool TRI_StringifyArrayShapedJson (TRI_shaper_t* shaper,
     }
   }
 
-  ok = StringifyJsonShapeDataArray(shaper, buffer, shape, shaped->_data.data, shaped->_data.length, false, &num);
+  uint64_t num;
+  bool ok = StringifyJsonShapeDataArray(shaper, buffer, shape, shaped->_data.data, shaped->_data.length, false, &num);
   return ok;
 }
 

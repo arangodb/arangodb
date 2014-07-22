@@ -730,6 +730,257 @@ static int UpdateDocument (TRI_transaction_collection_t* trxCollection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a document or edge marker, without using a legend
+////////////////////////////////////////////////////////////////////////////////
+      
+static int CreateMarkerNoLegend (triagens::wal::Marker*& marker,
+                                 TRI_document_collection_t* document,
+                                 TRI_voc_rid_t rid,
+                                 TRI_transaction_collection_t* trxCollection,
+                                 std::string const& keyString,
+                                 TRI_shaped_json_t const* shaped,
+                                 TRI_document_edge_t const* edge) {
+
+  TRI_ASSERT(marker == nullptr);
+  
+  TRI_IF_FAILURE("InsertDocumentNoLegend") {
+    // test what happens when no legend can be created
+    return TRI_ERROR_DEBUG;
+  }
+    
+  TRI_IF_FAILURE("InsertDocumentNoLegendExcept") {
+    // test what happens if no legend can be created
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  
+  TRI_IF_FAILURE("InsertDocumentNoMarker") {
+    // test what happens when no marker can be created
+    return TRI_ERROR_DEBUG;
+  }
+
+  TRI_IF_FAILURE("InsertDocumentNoMarkerExcept") {
+    // test what happens if no marker can be created
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+
+  if (edge == nullptr) {
+    // document
+    marker = new triagens::wal::DocumentMarker(document->_vocbase->_id,
+                                               document->_info._cid,
+                                               rid,
+                                               TRI_MarkerIdTransaction(trxCollection->_transaction),
+                                               keyString,
+                                               8,
+                                               shaped);
+  }
+  else {
+    // edge
+    marker = new triagens::wal::EdgeMarker(document->_vocbase->_id,
+                                           document->_info._cid,
+                                           rid,
+                                           TRI_MarkerIdTransaction(trxCollection->_transaction),
+                                           keyString,
+                                           edge,
+                                           8,
+                                           shaped);
+  }
+  
+  TRI_ASSERT(marker != nullptr);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a document or edge marker, with a legend
+////////////////////////////////////////////////////////////////////////////////
+      
+static int CreateMarkerWithLegend (triagens::wal::Marker*& marker,
+                                   TRI_document_collection_t* document,
+                                   TRI_voc_rid_t rid,
+                                   TRI_transaction_collection_t* trxCollection,
+                                   std::string const& keyString,
+                                   TRI_shaped_json_t const* shaped,
+                                   TRI_document_edge_t const* edge) {
+  // construct a legend for the shaped json
+  triagens::basics::JsonLegend legend(document->getShaper());  // PROTECTED by trx in trxCollection
+
+  TRI_IF_FAILURE("InsertDocumentNoLegend") {
+    // test what happens when no legend can be created
+    return TRI_ERROR_DEBUG;
+  }
+    
+  TRI_IF_FAILURE("InsertDocumentNoLegendExcept") {
+    // test what happens if no legend can be created
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  int res = legend.addShape(shaped->_sid, &shaped->_data);
+    
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+    
+  TRI_IF_FAILURE("InsertDocumentNoMarker") {
+    // test what happens when no marker can be created
+    return TRI_ERROR_DEBUG;
+  }
+
+  TRI_IF_FAILURE("InsertDocumentNoMarkerExcept") {
+    // test what happens if no marker can be created
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+    
+  if (edge == nullptr) {
+    // document
+    auto m = new triagens::wal::DocumentMarker(document->_vocbase->_id,
+                                               document->_info._cid,
+                                               rid,
+                                               TRI_MarkerIdTransaction(trxCollection->_transaction),
+                                               keyString,
+                                               legend.getSize(),
+                                               shaped);
+    
+    m->storeLegend(legend);
+    marker = m; // reinterpret_cast<triagens::wal::Marker*>(m);
+  }
+  else {
+    // edge
+    auto m = new triagens::wal::EdgeMarker(document->_vocbase->_id,
+                                           document->_info._cid,
+                                           rid,
+                                           TRI_MarkerIdTransaction(trxCollection->_transaction),
+                                           keyString,
+                                           edge,
+                                           legend.getSize(),
+                                           shaped);
+      
+    m->storeLegend(legend);
+
+    marker = m; //reinterpret_cast<triagens::wal::Marker*>(m);
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone a document or edge marker, without using a legend
+////////////////////////////////////////////////////////////////////////////////
+      
+static int CloneMarkerNoLegend (triagens::wal::Marker*& marker,
+                                TRI_df_marker_t const* original,
+                                TRI_document_collection_t* document,
+                                TRI_voc_rid_t rid,
+                                TRI_transaction_collection_t* trxCollection,
+                                TRI_shaped_json_t const* shaped) {
+
+  TRI_ASSERT(marker == nullptr);
+      
+  TRI_IF_FAILURE("UpdateDocumentNoLegend") {
+    // test what happens when no legend can be created
+    return TRI_ERROR_DEBUG;
+  }
+
+  TRI_IF_FAILURE("UpdateDocumentNoLegendExcept") {
+    // test what happens when no legend can be created
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  if (original->_type == TRI_WAL_MARKER_DOCUMENT ||
+      original->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
+    marker = triagens::wal::DocumentMarker::clone(original,
+                                                  document->_vocbase->_id,
+                                                  document->_info._cid,
+                                                  rid,
+                                                  TRI_MarkerIdTransaction(trxCollection->_transaction),
+                                                  8,
+                                                  shaped);
+
+    return TRI_ERROR_NO_ERROR;
+  }
+  else if (original->_type == TRI_WAL_MARKER_EDGE ||
+           original->_type == TRI_DOC_MARKER_KEY_EDGE) {
+    marker = triagens::wal::EdgeMarker::clone(original,
+                                              document->_vocbase->_id,
+                                              document->_info._cid,
+                                              rid,
+                                              TRI_MarkerIdTransaction(trxCollection->_transaction),
+                                              8,
+                                              shaped);
+    return TRI_ERROR_NO_ERROR;
+  }
+        
+  // invalid marker type
+  return TRI_ERROR_INTERNAL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone a document or edge marker, with a legend
+////////////////////////////////////////////////////////////////////////////////
+      
+static int CloneMarkerWithLegend (triagens::wal::Marker*& marker,
+                                  TRI_df_marker_t const* original,
+                                  TRI_document_collection_t* document,
+                                  TRI_voc_rid_t rid,
+                                  TRI_transaction_collection_t* trxCollection,
+                                  TRI_shaped_json_t const* shaped) {
+
+  TRI_ASSERT(marker == nullptr);
+  
+  TRI_IF_FAILURE("UpdateDocumentNoLegend") {
+    // test what happens when no legend can be created
+    return TRI_ERROR_DEBUG;
+  }
+
+  TRI_IF_FAILURE("UpdateDocumentNoLegendExcept") {
+    // test what happens when no legend can be created
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  triagens::basics::JsonLegend legend(document->getShaper());  // PROTECTED by trx in trxCollection
+  int res = legend.addShape(shaped->_sid, &shaped->_data);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  if (original->_type == TRI_WAL_MARKER_DOCUMENT ||
+      original->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
+    auto m = triagens::wal::DocumentMarker::clone(original,
+                                                  document->_vocbase->_id,
+                                                  document->_info._cid,
+                                                  rid,
+                                                  TRI_MarkerIdTransaction(trxCollection->_transaction),
+                                                  legend.getSize(),
+                                                  shaped);
+
+    m->storeLegend(legend);
+    marker = m;
+
+    return TRI_ERROR_NO_ERROR;
+  }
+  else if (original->_type == TRI_WAL_MARKER_EDGE ||
+           original->_type == TRI_DOC_MARKER_KEY_EDGE) {
+    auto m = triagens::wal::EdgeMarker::clone(original,
+                                              document->_vocbase->_id,
+                                              document->_info._cid,
+                                              rid,
+                                              TRI_MarkerIdTransaction(trxCollection->_transaction),
+                                              legend.getSize(),
+                                              shaped);
+
+    m->storeLegend(legend);
+    marker = m;
+
+    return TRI_ERROR_NO_ERROR;
+  }
+        
+  // invalid marker type
+  return TRI_ERROR_INTERNAL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief read locks a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -5298,130 +5549,6 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a document or edge marker, without using a legend
-////////////////////////////////////////////////////////////////////////////////
-      
-static int CreateMarkerNoLegend (triagens::wal::Marker*& marker,
-                                 TRI_document_collection_t* document,
-                                 TRI_voc_rid_t rid,
-                                 TRI_transaction_collection_t* trxCollection,
-                                 std::string const& keyString,
-                                 TRI_shaped_json_t const* shaped,
-                                 TRI_document_edge_t const* edge) {
-
-  TRI_ASSERT(marker == nullptr);
-  
-  TRI_IF_FAILURE("InsertDocumentNoMarker") {
-    // test what happens when no marker can be created
-    return TRI_ERROR_DEBUG;
-  }
-
-  TRI_IF_FAILURE("InsertDocumentNoMarkerExcept") {
-    // test what happens if no marker can be created
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-
-  if (edge == nullptr) {
-    // document
-    marker = new triagens::wal::DocumentMarker(document->_vocbase->_id,
-                                               document->_info._cid,
-                                               rid,
-                                               TRI_MarkerIdTransaction(trxCollection->_transaction),
-                                               keyString,
-                                               8,
-                                               shaped);
-  }
-  else {
-    // edge
-    marker = new triagens::wal::EdgeMarker(document->_vocbase->_id,
-                                           document->_info._cid,
-                                           rid,
-                                           TRI_MarkerIdTransaction(trxCollection->_transaction),
-                                           keyString,
-                                           edge,
-                                           8,
-                                           shaped);
-  }
-  
-  TRI_ASSERT(marker != nullptr);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a document or edge marker, with a legend
-////////////////////////////////////////////////////////////////////////////////
-      
-static int CreateMarkerWithLegend (triagens::wal::Marker*& marker,
-                                   TRI_document_collection_t* document,
-                                   TRI_voc_rid_t rid,
-                                   TRI_transaction_collection_t* trxCollection,
-                                   std::string const& keyString,
-                                   TRI_shaped_json_t const* shaped,
-                                   TRI_document_edge_t const* edge) {
-  // construct a legend for the shaped json
-  triagens::basics::JsonLegend legend(document->getShaper());  // PROTECTED by trx in trxCollection
-
-  TRI_IF_FAILURE("InsertDocumentNoLegend") {
-    // test what happens when no legend can be created
-    return TRI_ERROR_DEBUG;
-  }
-    
-  TRI_IF_FAILURE("InsertDocumentNoLegendExcept") {
-    // test what happens if no legend can be created
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  int res = legend.addShape(shaped->_sid, &shaped->_data);
-    
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-    
-  TRI_IF_FAILURE("InsertDocumentNoMarker") {
-    // test what happens when no marker can be created
-    return TRI_ERROR_DEBUG;
-  }
-
-  TRI_IF_FAILURE("InsertDocumentNoMarkerExcept") {
-    // test what happens if no marker can be created
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-    
-  if (edge == nullptr) {
-    // document
-    auto m = new triagens::wal::DocumentMarker(document->_vocbase->_id,
-                                               document->_info._cid,
-                                               rid,
-                                               TRI_MarkerIdTransaction(trxCollection->_transaction),
-                                               keyString,
-                                               legend.getSize(),
-                                               shaped);
-    
-    m->storeLegend(legend);
-    marker = m; // reinterpret_cast<triagens::wal::Marker*>(m);
-  }
-  else {
-    // edge
-    auto m = new triagens::wal::EdgeMarker(document->_vocbase->_id,
-                                           document->_info._cid,
-                                           rid,
-                                           TRI_MarkerIdTransaction(trxCollection->_transaction),
-                                           keyString,
-                                           edge,
-                                           legend.getSize(),
-                                           shaped);
-      
-    m->storeLegend(legend);
-
-    marker = m; //reinterpret_cast<triagens::wal::Marker*>(m);
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief insert a shaped-json document (or edge)
 /// note: key might be NULL. in this case, a key is auto-generated
 ////////////////////////////////////////////////////////////////////////////////
@@ -5600,7 +5727,7 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 
       // create legend
       triagens::basics::JsonLegend legend(document->getShaper());  // PROTECTED by trx in trxCollection
-      int res = legend.addShape(shaped->_sid, &shaped->_data);
+      res = legend.addShape(shaped->_sid, &shaped->_data);
 
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
@@ -5608,35 +5735,19 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
 
       TRI_df_marker_t const* original = static_cast<TRI_df_marker_t const*>(oldHeader->getDataPtr());  // PROTECTED by trx in trxCollection
 
-      if (original->_type == TRI_WAL_MARKER_DOCUMENT ||
-          original->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
-        // create a WAL document marker
-
-        marker = triagens::wal::DocumentMarker::clone(original,
-                                                      document->_vocbase->_id,
-                                                      document->_info._cid,
-                                                      rid,
-                                                      TRI_MarkerIdTransaction(trxCollection->_transaction),
-                                                      legend,
-                                                      shaped);
-      }
-      else if (original->_type == TRI_WAL_MARKER_EDGE ||
-               original->_type == TRI_DOC_MARKER_KEY_EDGE) {
-        // create a WAL edge marker
-
-        marker = triagens::wal::EdgeMarker::clone(original,
-                                                  document->_vocbase->_id,
-                                                  document->_info._cid,
-                                                  rid,
-                                                  TRI_MarkerIdTransaction(trxCollection->_transaction),
-                                                  legend,
-                                                  shaped);
+      if (triagens::wal::LogfileManager::instance()->suppressShapeInformation()) {
+        res = CloneMarkerNoLegend(marker, original, document, rid, trxCollection, shaped);
       }
       else {
-        // invalid marker type
-        return TRI_ERROR_INTERNAL;
+        res = CloneMarkerWithLegend(marker, original, document, rid, trxCollection, shaped);
+      }
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
       }
     }
+
+    TRI_ASSERT(marker != nullptr);
 
     triagens::wal::DocumentOperation operation(marker, freeMarker, trxCollection, TRI_VOC_DOCUMENT_OPERATION_UPDATE, rid);
     operation.header = oldHeader;

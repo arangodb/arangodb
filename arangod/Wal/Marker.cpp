@@ -1180,22 +1180,20 @@ DocumentMarker* DocumentMarker::clone (TRI_df_marker_t const* other,
                                        TRI_voc_cid_t collectionId,
                                        TRI_voc_rid_t revisionId,
                                        TRI_voc_tid_t transactionId,
-                                       triagens::basics::JsonLegend& legend,
+                                       size_t legendSize,
                                        TRI_shaped_json_t const* shapedJson) {
   char const* base = reinterpret_cast<char const*>(other);
 
   if (other->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
     TRI_doc_document_key_marker_t const* original = reinterpret_cast<TRI_doc_document_key_marker_t const*>(other);
 
-    auto marker = new DocumentMarker(databaseId,
-                                     collectionId,
-                                     revisionId,
-                                     transactionId,
-                                     std::string(base + original->_offsetKey),
-                                     legend.getSize(),
-                                     shapedJson);
-    marker->storeLegend(legend);
-    return marker;
+    return new DocumentMarker(databaseId,
+                              collectionId,
+                              revisionId,
+                              transactionId,
+                              std::string(base + original->_offsetKey),
+                              legendSize,
+                              shapedJson);
   }
   else {
     TRI_ASSERT(other->_type == TRI_WAL_MARKER_DOCUMENT);
@@ -1205,15 +1203,13 @@ DocumentMarker* DocumentMarker::clone (TRI_df_marker_t const* other,
     TRI_ASSERT(original->_databaseId == databaseId);
     TRI_ASSERT(original->_collectionId == collectionId);
 
-    auto marker = new DocumentMarker(original->_databaseId,
-                                     original->_collectionId,
-                                     revisionId,
-                                     transactionId,
-                                     std::string(base + original->_offsetKey),
-                                     legend.getSize(),
-                                     shapedJson);
-    marker->storeLegend(legend);
-    return marker;
+    return new DocumentMarker(original->_databaseId,
+                              original->_collectionId,
+                              revisionId,
+                              transactionId,
+                              std::string(base + original->_offsetKey),
+                              legendSize,
+                              shapedJson);
   }
 }
 
@@ -1336,7 +1332,7 @@ EdgeMarker* EdgeMarker::clone (TRI_df_marker_t const* other,
                                TRI_voc_cid_t collectionId,
                                TRI_voc_rid_t revisionId,
                                TRI_voc_tid_t transactionId,
-                               triagens::basics::JsonLegend& legend,
+                               size_t legendSize,
                                TRI_shaped_json_t const* shapedJson) {
   char const* base = reinterpret_cast<char const*>(other);
 
@@ -1349,17 +1345,14 @@ EdgeMarker* EdgeMarker::clone (TRI_df_marker_t const* other,
     edge._toKey   = (TRI_voc_key_t) base + original->_offsetToKey;
     edge._fromKey = (TRI_voc_key_t) base + original->_offsetFromKey;
 
-    auto marker = new EdgeMarker(databaseId,
-                                 collectionId,
-                                 revisionId,
-                                 transactionId,
-                                 std::string(base + original->base._offsetKey),
-                                 &edge,
-                                 legend.getSize(),
-                                 shapedJson);
-
-    marker->storeLegend(legend);
-    return marker;
+    return new EdgeMarker(databaseId,
+                          collectionId,
+                          revisionId,
+                          transactionId,
+                          std::string(base + original->base._offsetKey),
+                          &edge,
+                          legendSize,
+                          shapedJson);
   }
   else {
     TRI_ASSERT(other->_type == TRI_WAL_MARKER_EDGE);
@@ -1375,17 +1368,14 @@ EdgeMarker* EdgeMarker::clone (TRI_df_marker_t const* other,
     edge._toKey   = (TRI_voc_key_t) base + original->_offsetToKey;
     edge._fromKey = (TRI_voc_key_t) base + original->_offsetFromKey;
 
-    auto marker = new EdgeMarker(original->_databaseId,
-                                 original->_collectionId,
-                                 revisionId,
-                                 transactionId,
-                                 std::string(base + original->_offsetKey),
-                                 &edge,
-                                 legend.getSize(),
-                                 shapedJson);
-
-    marker->storeLegend(legend);
-    return marker;
+    return new EdgeMarker(original->_databaseId,
+                          original->_collectionId,
+                          revisionId,
+                          transactionId,
+                          std::string(base + original->_offsetKey),
+                          &edge,
+                          legendSize,
+                          shapedJson);
   }
 }
 
