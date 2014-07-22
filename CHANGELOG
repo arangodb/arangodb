@@ -1,6 +1,8 @@
 v2.2.1 (XXXX-XX-XX)
 -------------------
 
+* fixed issue with --check-version: when creating a new database the check failed
+
 * issue #947 Foxx applicationContext missing some properties
 
 * (reported by Christian Neubauer): 
