@@ -113,15 +113,19 @@ class KeyGenerator;
 struct TRI_doc_mptr_t {
     TRI_voc_rid_t          _rid;     // this is the revision identifier
     TRI_voc_fid_t          _fid;     // this is the datafile identifier
-  protected:
-    void const*            _dataptr; // this is the pointer to the beginning of the raw marker
-  public:
     uint64_t               _hash;    // the pre-calculated hash value of the key
     TRI_doc_mptr_t*        _prev;    // previous master pointer
     TRI_doc_mptr_t*        _next;    // next master pointer
+  protected:
+    void const*            _dataptr; // this is the pointer to the beginning of the raw marker
 
-    TRI_doc_mptr_t () : _rid(0), _fid(0), _dataptr(nullptr), _hash(0),
-                        _prev(nullptr), _next(nullptr) {
+  public:
+    TRI_doc_mptr_t () : _rid(0), 
+                        _fid(0), 
+                        _hash(0),
+                        _prev(nullptr),
+                        _next(nullptr),
+                        _dataptr(nullptr) {
     }
 
     void clear () {

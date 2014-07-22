@@ -823,7 +823,7 @@ namespace triagens {
                                       TRI_voc_cid_t,
                                       TRI_voc_rid_t,
                                       TRI_voc_tid_t,
-                                      triagens::basics::JsonLegend&,
+                                      size_t,
                                       TRI_shaped_json_t const*);
     };
 
@@ -904,7 +904,7 @@ namespace triagens {
                                   TRI_voc_cid_t,
                                   TRI_voc_rid_t,
                                   TRI_voc_tid_t,
-                                  triagens::basics::JsonLegend&,
+                                  size_t,
                                   TRI_shaped_json_t const*);
     };
 
