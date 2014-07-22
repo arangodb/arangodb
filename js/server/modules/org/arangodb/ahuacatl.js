@@ -4428,8 +4428,8 @@ function GENERAL_GRAPH_PATHS (graphName, options) {
 
   // check graph exists and load edgeDefintions
   var graph = DOCUMENT_HANDLE("_graphs/" + graphName);
-  if (!graph) {
-    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
+  if (! graph) {
+    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_PATHS");
   }
 
   var startCollections = [], edgeCollections = [];
@@ -5835,6 +5835,7 @@ function GRAPH_NEIGHBORS (vertexCollection,
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
+
 function GENERAL_GRAPH_NEIGHBORS (graphName,
                                   vertexExample,
                                   options) {
@@ -5844,7 +5845,7 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
     options = {  };
   }
   options.fromVertexExample = vertexExample;
-  if (!options.direction) {
+  if (! options.direction) {
     options.direction =  'any';
   }
 
@@ -5956,6 +5957,7 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
+
 function GENERAL_GRAPH_EDGES (
   graphName,
   vertexExample,
