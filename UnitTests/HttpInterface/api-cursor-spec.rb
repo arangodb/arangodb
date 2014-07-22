@@ -346,7 +346,7 @@ describe ArangoDB do
         doc.parsed_response['count'].should eq(5)
         doc.parsed_response['result'].length.should eq(1)
 
-        sleep 15 # this should delete the cursor on the server
+        sleep 24 # this should delete the cursor on the server
         doc = ArangoDB.log_put("#{prefix}-create-ttl", cmd)
         
         doc.code.should eq(404)
