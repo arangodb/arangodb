@@ -1021,17 +1021,77 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
   TRI_voc_fid_t fid = 0;
   void const* position = nullptr;
 
+  int64_t sizeChanged = 0;
+  TRI_document_collection_t* document = operation.trxCollection->_collection->_collection;
+
   if (operation.marker->fid() == 0) {
     // this is a "real" marker that must be written into the logfiles
-    triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(operation.marker->mem(), operation.marker->size(), waitForSync);
+    char* oldmarker = static_cast<char*>(operation.marker->mem());
+    auto oldm = reinterpret_cast<triagens::wal::document_marker_t*>(oldmarker);
+    if ((oldm->_type == TRI_WAL_MARKER_DOCUMENT ||
+         oldm->_type == TRI_WAL_MARKER_EDGE) &&
+        !triagens::wal::LogfileManager::instance()->suppressShapeInformation()) {
+      // In this case we have to take care of the legend, we know that the
+      // marker does not have a legend so far, so first try to get away 
+      // with this:
+      // (Note that the latter also works for edges!
+      TRI_voc_cid_t cid = oldm->_collectionId;
+      TRI_shape_sid_t sid = oldm->_shape;
+      triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(oldmarker, operation.marker->size(), waitForSync, cid, sid, 0);
+      if (slotInfo.errorCode == TRI_ERROR_LEGEND_NOT_IN_WAL_FILE) {
+        // Oh dear, we have to build a legend and patch the marker:
+        triagens::basics::JsonLegend legend(document->getShaper());  // PROTECTED by trx in trxCollection
+        int res = legend.addShape(sid, oldmarker + oldm->_offsetJson,
+                                       oldm->_size - oldm->_offsetJson);
+        if (res != TRI_ERROR_NO_ERROR) {
+          return res;
+        }
+        else {
+          sizeChanged =   legend.getSize() 
+                        - (oldm->_offsetJson - oldm->_offsetLegend);
+          TRI_voc_size_t newMarkerSize = oldm->_size + sizeChanged;
 
-    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
-      // some error occurred
-      return slotInfo.errorCode;
+          // Now construct the new marker on the heap:
+          char* newmarker = new char[newMarkerSize];
+          memcpy(newmarker, oldmarker, oldm->_offsetLegend);
+          legend.dump(newmarker + oldm->_offsetLegend);
+          memcpy(newmarker + oldm->_offsetLegend + legend.getSize(), 
+                 oldmarker + oldm->_offsetJson,
+                 oldm->_size - oldm->_offsetJson);
+
+          // And fix its entries:
+          auto newm = reinterpret_cast<triagens::wal::document_marker_t*>(newmarker);
+          newm->_size = newMarkerSize;
+          newm->_offsetJson = oldm->_offsetLegend + legend.getSize();
+          triagens::wal::SlotInfoCopy slotInfo2 = triagens::wal::LogfileManager::instance()->allocateAndWrite(newmarker, newMarkerSize, waitForSync, cid, sid, newm->_offsetLegend);
+          delete[] newmarker;
+          if (slotInfo2.errorCode != TRI_ERROR_NO_ERROR) {
+            return slotInfo2.errorCode;
+          }
+          fid = slotInfo2.logfileId;
+          position = slotInfo2.mem; 
+
+        }
+      }
+      else if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+        return slotInfo.errorCode;
+      }
+      else {
+        fid = slotInfo.logfileId;
+        position = slotInfo.mem; 
+      }
+
     }
-
-    fid = slotInfo.logfileId;
-    position = slotInfo.mem; 
+    else {  
+      // No document or edge marker, just append it to the WAL:
+      triagens::wal::SlotInfoCopy slotInfo = triagens::wal::LogfileManager::instance()->allocateAndWrite(operation.marker->mem(), operation.marker->size(), waitForSync);
+      if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+        // some error occurred
+        return slotInfo.errorCode;
+      }
+      fid = slotInfo.logfileId;
+      position = slotInfo.mem; 
+    }
   }
   else {
     // this is an envelope marker that has been written to the logfiles before
@@ -1047,14 +1107,15 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
       operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
     // adjust the data position in the header
     operation.header->setDataPtr(position);  // PROTECTED by ongoing trx from operation
+    if (sizeChanged) {
+      document->_headersPtr->adjustTotalSize(0, sizeChanged);
+    }
   }
 
   // set header file id
   operation.header->_fid = fid;
 
   TRI_ASSERT(operation.header->_fid > 0);
-
-  TRI_document_collection_t* document = trxCollection->_collection->_collection;
 
   if (isSingleOperationTransaction) {
     // operation is directly executed
