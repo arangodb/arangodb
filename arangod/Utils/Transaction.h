@@ -780,6 +780,7 @@ namespace triagens {
                              TRI_voc_size_t& internalSkip,
                              TRI_voc_size_t batchSize,
                              TRI_voc_ssize_t skip,
+                             TRI_voc_size_t limit,
                              uint32_t* total) {
 
           TRI_document_collection_t* document = documentCollection(trxCollection);
@@ -824,7 +825,9 @@ namespace triagens {
               }
               else {
                 docs.emplace_back(*d);
-                ++count;
+                if (++count >= limit) {
+                  break;
+                }
               }
             }
           }
