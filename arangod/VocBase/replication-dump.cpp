@@ -144,10 +144,10 @@ char const* NameFromCid (TRI_replication_dump_t* dump,
 /// @brief append a collection name or id to a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool AppendCollection (TRI_replication_dump_t* dump,
-                              TRI_voc_cid_t cid,
-                              bool translateCollectionIds,
-                              triagens::arango::CollectionNameResolver* resolver) {
+static int AppendCollection (TRI_replication_dump_t* dump,
+                             TRI_voc_cid_t cid,
+                             bool translateCollectionIds,
+                             triagens::arango::CollectionNameResolver* resolver) {
   if (translateCollectionIds) {
     if (cid > 0) {
       std::string name;
@@ -158,7 +158,7 @@ static bool AppendCollection (TRI_replication_dump_t* dump,
         name = resolver->getCollectionName(cid);
       }
       APPEND_STRING(dump->_buffer, name.c_str());
-      return true;
+      return TRI_ERROR_NO_ERROR;
     }
 
     APPEND_STRING(dump->_buffer, "_unknown");
@@ -167,7 +167,7 @@ static bool AppendCollection (TRI_replication_dump_t* dump,
     APPEND_UINT64(dump->_buffer, (uint64_t) cid);
   }
 
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -415,16 +415,21 @@ static int StringifyMarkerDump (TRI_replication_dump_t* dump,
         toCid = e->_toCid;
       }
 
+      int res;
       APPEND_STRING(buffer, ",\"" TRI_VOC_ATTRIBUTE_FROM "\":\"");
-      if (! AppendCollection(dump, fromCid, translateCollectionIds, resolver)) {
-        return TRI_ERROR_OUT_OF_MEMORY;
+      res = AppendCollection(dump, fromCid, translateCollectionIds, resolver);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
       }
 
       APPEND_STRING(buffer, "\\/");
       APPEND_STRING(buffer, fromKey);
       APPEND_STRING(buffer, "\",\"" TRI_VOC_ATTRIBUTE_TO "\":\"");
-      if (! AppendCollection(dump, toCid, translateCollectionIds, resolver)) {
-        return TRI_ERROR_OUT_OF_MEMORY;
+      res = AppendCollection(dump, toCid, translateCollectionIds, resolver);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
       }
 
       APPEND_STRING(buffer, "\\/");
@@ -442,8 +447,12 @@ static int StringifyMarkerDump (TRI_replication_dump_t* dump,
     else {   // isWal == true
       auto m = static_cast<wal::document_marker_t const*>(marker);
       TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, m);
-      basics::LegendReader legendReader
-                 (reinterpret_cast<char const*>(m) + m->_offsetLegend);
+      char const* legend = reinterpret_cast<char const*>(m) + m->_offsetLegend;
+      if (m->_offsetJson - m->_offsetLegend == 8) {
+        auto p = reinterpret_cast<int64_t const*>(legend);
+        legend += *p;
+      }
+      basics::LegendReader legendReader(legend);
       TRI_StringifyArrayShapedJson(&legendReader, buffer, &shaped, true);
     }
 
@@ -512,6 +521,10 @@ static int AppendDocument (triagens::wal::document_marker_t const* marker,
   }
   else {
     // marker has a legend, so use it
+    if (marker->_offsetJson - marker->_offsetLegend == 8) {
+      auto p = reinterpret_cast<int64_t const*>(legend);
+      legend += *p;
+    }
     triagens::basics::LegendReader lr(legend);
     if (! TRI_StringifyArrayShapedJson(&lr, dump->_buffer, &shaped, true)) {
       return TRI_ERROR_OUT_OF_MEMORY;

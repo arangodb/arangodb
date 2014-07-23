@@ -31,8 +31,13 @@
 #define ARANGODB_WAL_LOGFILE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/ReadWriteLock.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
 #include "BasicsC/logging.h"
+#include "VocBase/voc-types.h"
 #include "VocBase/datafile.h"
+#include "ShapedJson/shaped-json.h"
 #include "Wal/Marker.h"
 
 namespace triagens {
@@ -107,24 +112,24 @@ namespace triagens {
 /// @brief create a new logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-      static Logfile* createNew (std::string const&,
-                                 Logfile::IdType,
-                                 uint32_t);
+        static Logfile* createNew (std::string const&,
+                                   Logfile::IdType,
+                                   uint32_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief open an existing logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-      static Logfile* openExisting (std::string const&,
-                                    Logfile::IdType,
-                                    bool,
-                                    bool);
+        static Logfile* openExisting (std::string const&,
+                                      Logfile::IdType,
+                                      bool,
+                                      bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a logfile is empty
 ////////////////////////////////////////////////////////////////////////////////
 
-      static int judge (std::string const&);
+        static int judge (std::string const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -134,263 +139,292 @@ namespace triagens {
 /// @brief return the filename
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline std::string filename () const {
-        if (_df == nullptr) {
-          return "";
+        inline std::string filename () const {
+          if (_df == nullptr) {
+            return "";
+          }
+          return _df->getName(_df);
         }
-        return _df->getName(_df);
-      }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the datafile pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline TRI_datafile_t* df () const {
-        return _df;
-      }
+        inline TRI_datafile_t* df () const {
+          return _df;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the file descriptor
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline int fd () const {
-        return _df->_fd;
-      }
+        inline int fd () const {
+          return _df->_fd;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the logfile id
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline Logfile::IdType id () const {
-        return _id;
-      }
+        inline Logfile::IdType id () const {
+          return _id;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief update the logfile tick status
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline void update (TRI_df_marker_t const* marker) {
-        TRI_UpdateTicksDatafile(df(), marker);
-      }
+        inline void update (TRI_df_marker_t const* marker) {
+          TRI_UpdateTicksDatafile(df(), marker);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the logfile status
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline Logfile::StatusType status () const {
-        return _status;
-      }
+        inline Logfile::StatusType status () const {
+          return _status;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the allocated size of the logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline uint64_t allocatedSize () const {
-        return static_cast<uint64_t>(_df->_maximalSize);
-      }
+        inline uint64_t allocatedSize () const {
+          return static_cast<uint64_t>(_df->_maximalSize);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the size of the free space in the logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-      uint64_t freeSize () const {
-        if (isSealed()) {
-          return 0;
-        }
+        uint64_t freeSize () const {
+          if (isSealed()) {
+            return 0;
+          }
 
-        return static_cast<uint64_t>(allocatedSize() - _df->_currentSize - overhead());
-      }
+          return static_cast<uint64_t>(allocatedSize() - _df->_currentSize - overhead());
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a marker of the specified size can be written into
 /// the logfile
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool isWriteable (uint32_t size) const {
-        if (isSealed() || freeSize() < static_cast<uint64_t>(size)) {
-          return false;
-        }
+        bool isWriteable (uint32_t size) const {
+          if (isSealed() || freeSize() < static_cast<uint64_t>(size)) {
+            return false;
+          }
 
-        return true;
-      }
+          return true;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the logfile is sealed
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline bool isSealed () const {
-        return (_status == StatusType::SEAL_REQUESTED ||
-                _status == StatusType::SEALED ||
-                _status == StatusType::COLLECTION_REQUESTED ||
-                _status == StatusType::COLLECTED);
-      }
+        inline bool isSealed () const {
+          return (_status == StatusType::SEAL_REQUESTED ||
+                  _status == StatusType::SEALED ||
+                  _status == StatusType::COLLECTION_REQUESTED ||
+                  _status == StatusType::COLLECTED);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the logfile can be sealed
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline bool canBeSealed () const {
-        return (_status == StatusType::SEAL_REQUESTED);
-      }
+        inline bool canBeSealed () const {
+          return (_status == StatusType::SEAL_REQUESTED);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the logfile can be collected
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline bool canBeCollected () const {
-        return (_status == StatusType::SEALED ||
-                _status == StatusType::COLLECTION_REQUESTED);
-      }
+        inline bool canBeCollected () const {
+          return (_status == StatusType::SEALED ||
+                  _status == StatusType::COLLECTION_REQUESTED);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the logfile can be removed
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline bool canBeRemoved () const {
-        return (_status == StatusType::COLLECTED && 
-                _collectQueueSize == 0 && 
-                _users == 0);
-      }
+        inline bool canBeRemoved () const {
+          return (_status == StatusType::COLLECTED && 
+                  _collectQueueSize == 0 && 
+                  _users == 0);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the logfile overhead
 ////////////////////////////////////////////////////////////////////////////////
 
-      static inline uint32_t overhead () {
-        return TRI_JOURNAL_OVERHEAD;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the logfile status as a string
-////////////////////////////////////////////////////////////////////////////////
-
-      std::string statusText () const {
-        return statusText(status());
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the logfile status as a string
-////////////////////////////////////////////////////////////////////////////////
-
-      static std::string statusText (StatusType status) {
-        switch (status) {
-          case StatusType::EMPTY:
-            return "empty";
-          case StatusType::OPEN:
-            return "open";
-          case StatusType::SEAL_REQUESTED:
-            return "seal-requested";
-          case StatusType::SEALED:
-            return "sealed";
-          case StatusType::COLLECTION_REQUESTED:
-            return "collection-requested";
-          case StatusType::COLLECTED:
-            return "collected";
-          case StatusType::UNKNOWN:
-          default:
-            return "unknown";
+        static inline uint32_t overhead () {
+          return TRI_JOURNAL_OVERHEAD;
         }
-      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the logfile status as a string
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string statusText () const {
+          return statusText(status());
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the logfile status as a string
+////////////////////////////////////////////////////////////////////////////////
+
+        static std::string statusText (StatusType status) {
+          switch (status) {
+            case StatusType::EMPTY:
+              return "empty";
+            case StatusType::OPEN:
+              return "open";
+            case StatusType::SEAL_REQUESTED:
+              return "seal-requested";
+            case StatusType::SEALED:
+              return "sealed";
+            case StatusType::COLLECTION_REQUESTED:
+              return "collection-requested";
+            case StatusType::COLLECTED:
+              return "collected";
+            case StatusType::UNKNOWN:
+            default:
+              return "unknown";
+          }
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief change the logfile status, without assertions
 ////////////////////////////////////////////////////////////////////////////////
 
-      void forceStatus (StatusType status) {
-        _status = status;
-      }
+        void forceStatus (StatusType status) {
+          _status = status;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief change the logfile status, with assertions
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setStatus (StatusType status) {
-        switch (status) {
-          case StatusType::UNKNOWN:
-          case StatusType::EMPTY:
-            TRI_ASSERT(false);
-            break;
+        void setStatus (StatusType status) {
+          switch (status) {
+            case StatusType::UNKNOWN:
+            case StatusType::EMPTY:
+              TRI_ASSERT(false);
+              break;
 
-          case StatusType::OPEN:
-            TRI_ASSERT(_status == StatusType::EMPTY);
-            break;
+            case StatusType::OPEN:
+              TRI_ASSERT(_status == StatusType::EMPTY);
+              break;
 
-          case StatusType::SEAL_REQUESTED:
-            TRI_ASSERT(_status == StatusType::OPEN);
-            break;
+            case StatusType::SEAL_REQUESTED:
+              TRI_ASSERT(_status == StatusType::OPEN);
+              break;
 
-          case StatusType::SEALED:
-            TRI_ASSERT(_status == StatusType::SEAL_REQUESTED);
-            break;
+            case StatusType::SEALED:
+              TRI_ASSERT(_status == StatusType::SEAL_REQUESTED);
+              break;
 
-          case StatusType::COLLECTION_REQUESTED:
-            TRI_ASSERT(_status == StatusType::SEALED);
-            break;
+            case StatusType::COLLECTION_REQUESTED:
+              TRI_ASSERT(_status == StatusType::SEALED);
+              break;
 
-          case StatusType::COLLECTED:
-            TRI_ASSERT(_status == StatusType::COLLECTION_REQUESTED);
-            break;
+            case StatusType::COLLECTED:
+              TRI_ASSERT(_status == StatusType::COLLECTION_REQUESTED);
+              break;
+          }
+
+          LOG_TRACE("changing logfile status from %s to %s for logfile %llu",
+                    statusText(_status).c_str(),
+                    statusText(status).c_str(),
+                    (unsigned long long) id());
+          _status = status;
         }
-
-        LOG_TRACE("changing logfile status from %s to %s for logfile %llu",
-                  statusText(_status).c_str(),
-                  statusText(status).c_str(),
-                  (unsigned long long) id());
-        _status = status;
-      }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reserve space and update the current write position
 ////////////////////////////////////////////////////////////////////////////////
 
-      char* reserve (size_t);
+        char* reserve (size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a header marker
 ////////////////////////////////////////////////////////////////////////////////
 
-      TRI_df_header_marker_t getHeaderMarker () const;
+        TRI_df_header_marker_t getHeaderMarker () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a footer marker
 ////////////////////////////////////////////////////////////////////////////////
 
-      TRI_df_footer_marker_t getFooterMarker () const;
+        TRI_df_footer_marker_t getFooterMarker () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief increase the number of collect operations waiting
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline void increaseCollectQueueSize () {
-        ++_collectQueueSize;
-      }
+        inline void increaseCollectQueueSize () {
+          ++_collectQueueSize;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief decrease the number of collect operations waiting
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline void decreaseCollectQueueSize () {
-        --_collectQueueSize;
-      }
+        inline void decreaseCollectQueueSize () {
+          --_collectQueueSize;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief use a logfile - while there are users, the logfile cannot be 
 /// deleted
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline void use () {
-        ++_users;
-      }
+        inline void use () {
+          ++_users;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief release a logfile - while there are users, the logfile cannot be 
 /// deleted
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline void release () {
-        TRI_ASSERT_EXPENSIVE(_users > 0);
-        --_users;
-      }
+        inline void release () {
+          TRI_ASSERT_EXPENSIVE(_users > 0);
+          --_users;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup a legend in the cache
+////////////////////////////////////////////////////////////////////////////////
+
+        void* lookupLegend (TRI_voc_cid_t cid, TRI_shape_sid_t sid) {
+          CidSid cs(cid,sid);
+          READ_LOCKER(_legendCacheLock);
+          auto it = _legendCache.find(cs);
+          if (it != _legendCache.end()) {
+            return it->second;
+          }
+          else {
+            return nullptr;
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cache a legend
+////////////////////////////////////////////////////////////////////////////////
+
+        void cacheLegend (TRI_voc_cid_t cid, TRI_shape_sid_t sid, void* l) {
+          CidSid cs(cid,sid);
+          WRITE_LOCKER(_legendCacheLock);
+          auto it = _legendCache.find(cs);
+          if (it == _legendCache.end()) {
+            _legendCache.insert(make_pair(cs,l));
+          }
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
@@ -400,31 +434,70 @@ namespace triagens {
 /// @brief the logfile id
 ////////////////////////////////////////////////////////////////////////////////
 
-      Logfile::IdType const _id;
+        Logfile::IdType const _id;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the number of logfile users
 ////////////////////////////////////////////////////////////////////////////////
 
-      std::atomic<int32_t> _users;
+        std::atomic<int32_t> _users;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the datafile entry
 ////////////////////////////////////////////////////////////////////////////////
 
-      TRI_datafile_t* _df;
+        TRI_datafile_t* _df;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logfile status
 ////////////////////////////////////////////////////////////////////////////////
 
-      StatusType _status;
+        StatusType _status;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of collect operations waiting
 ////////////////////////////////////////////////////////////////////////////////
 
-      std::atomic<int64_t> _collectQueueSize;
+        std::atomic<int64_t> _collectQueueSize;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief legend cache, key type with hash function
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+        struct CidSid {
+          TRI_voc_cid_t cid;
+          TRI_shape_sid_t sid;
+          CidSid (TRI_voc_cid_t c, TRI_shape_sid_t s)
+            : cid(c), sid(s) {}
+          bool operator== (CidSid const& a) const {
+            return this->cid == a.cid && this->sid == a.sid;
+          }
+        };
+
+        struct CidSidHash {
+          size_t operator() (CidSid const& cs) const {
+            return   std::hash<TRI_voc_cid_t>()(cs.cid) 
+                   ^ std::hash<TRI_shape_sid_t>()(cs.sid);
+          }
+        };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief legend cache
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_map<CidSid, void*, CidSidHash> _legendCache;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief legend cache, lock
+////////////////////////////////////////////////////////////////////////////////
+
+        basics::ReadWriteLock _legendCacheLock;
 
     };
 

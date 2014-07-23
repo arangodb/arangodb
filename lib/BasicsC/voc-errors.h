@@ -8,7 +8,7 @@ extern "C" {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ArangoErrors Error codes and meanings
-/// @startDocuBlock errorCodes
+///
 /// The following errors might be raised when running ArangoDB:
 ///
 /// - 0: @LIT{no error}
@@ -65,6 +65,9 @@ extern "C" {
 ///   and some sids are in the data object (inhomogeneous lists).
 /// - 25: @LIT{IP address is invalid}
 ///   Will be raised when the structure of an IP address is invalid.
+/// - 26: @LIT{internal error if a legend for a marker does not yet exist in the same WAL file}
+///   Will be raised internally, then fixed internally, and never come out to
+///   the user.
 /// - 400: @LIT{bad parameter}
 ///   Will be raised when the HTTP request does not fulfill the requirements.
 /// - 401: @LIT{unauthorized}
@@ -582,8 +585,7 @@ extern "C" {
 /// - 10003: @LIT{element not found in structure}
 ///   Will be returned if the element was not found in the structure.
 /// - 20000: @LIT{newest version of app already installed}
-///   Newest version of app already installed
-/// @endDocuBlock
+///   newest version of app already installed
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -864,6 +866,18 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_IP_ADDRESS_INVALID                                      (25)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 26: ERROR_LEGEND_NOT_IN_WAL_FILE
+///
+/// internal error if a legend for a marker does not yet exist in the same WAL
+/// file
+///
+/// Will be raised internally, then fixed internally, and never come out to the
+/// user.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_LEGEND_NOT_IN_WAL_FILE                                  (26)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 400: ERROR_HTTP_BAD_PARAMETER
