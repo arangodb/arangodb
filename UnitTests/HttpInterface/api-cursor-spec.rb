@@ -346,14 +346,18 @@ describe ArangoDB do
         doc.parsed_response['count'].should eq(5)
         doc.parsed_response['result'].length.should eq(1)
 
-        sleep 24 # this should delete the cursor on the server
-        doc = ArangoDB.log_put("#{prefix}-create-ttl", cmd)
-        
-        doc.code.should eq(404)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['errorNum'].should eq(1600)
-        doc.parsed_response['code'].should eq(404)
+        # after this, the cursor might expire eventually
+        # the problem is that we cannot exactly determine the point in time
+        # when it really vanishes, as this depends on thread scheduling, state     
+        # of the cleanup thread etc.
+
+        # sleep 10 # this should delete the cursor on the server
+        # doc = ArangoDB.log_put("#{prefix}-create-ttl", cmd)
+        # doc.code.should eq(404)
+        # doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        # doc.parsed_response['error'].should eq(true)
+        # doc.parsed_response['errorNum'].should eq(1600)
+        # doc.parsed_response['code'].should eq(404)
       end
       
       it "creates a cursor that will not expire" do
