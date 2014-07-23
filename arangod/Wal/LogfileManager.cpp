@@ -750,6 +750,9 @@ SlotInfo LogfileManager::allocate (void const* src,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief allocate space in a logfile for later writing, version for legends
+///
+/// See explanations about legends in the corresponding allocateAndWrite
+/// convenience function.
 ////////////////////////////////////////////////////////////////////////////////
 
 SlotInfo LogfileManager::allocate (void const* src,
@@ -792,6 +795,14 @@ void LogfileManager::finalise (SlotInfo& slotInfo,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write data into the logfile
 /// this is a convenience function that combines allocate, memcpy and finalise
+///
+/// We need this version with cid, sid, legendOffset and oldLegend because
+/// there is a cache for each WAL file keeping track which legends are
+/// already in it. The decision whether or not an additional legend is
+/// needed therefore has to be taken in the allocation routine. This
+/// version is only used to write document or edge markers. If a previously
+/// written legend is found its address is returned in oldLegend such that
+/// the new marker can point to it with a relative reference.
 ////////////////////////////////////////////////////////////////////////////////
 
 SlotInfoCopy LogfileManager::allocateAndWrite (void* src,

@@ -244,6 +244,9 @@ SlotInfo Slots::nextUnused (uint32_t size) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the next unused slot, version for legends
+///
+/// See explanations in arangod/Wal/LogfileManager.cpp in the
+/// corresponding allocateAndWrite method.
 ////////////////////////////////////////////////////////////////////////////////
 
 SlotInfo Slots::nextUnused (uint32_t size,
