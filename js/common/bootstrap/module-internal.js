@@ -1117,7 +1117,7 @@
         else if (value instanceof Array) {
           printArray(value, context);
         }
-        else if (value.__proto__ === Object.prototype) {
+        else if (value.toString === Object.prototype.toString) {
           printObject(value, context);
 
           if (context.emit && context.output.length >= context.emit) {
