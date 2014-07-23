@@ -1619,7 +1619,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
 
-  if (col == 0) {
+  if (col == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
@@ -1692,7 +1692,7 @@ static v8::Handle<v8::Value> JS_OffsetQuery (v8::Arguments const& argv) {
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
 
-  if (col == 0) {
+  if (col == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
@@ -1717,7 +1717,7 @@ static v8::Handle<v8::Value> JS_OffsetQuery (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  res = trx.readOffset(docs, internalSkip, batchSize, skip, &total);
+  res = trx.readOffset(docs, internalSkip, batchSize, skip, limit, &total);
   TRI_ASSERT(docs.empty() || trx.hasBarrier());
 
   res = trx.finish(res);
@@ -1775,7 +1775,7 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
 
-  if (col == 0) {
+  if (col == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
@@ -1832,7 +1832,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
 
-  if (col == 0) {
+  if (col == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 

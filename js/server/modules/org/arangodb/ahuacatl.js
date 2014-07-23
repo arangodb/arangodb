@@ -1052,9 +1052,10 @@ function GET_DOCUMENTS_INCREMENTAL_INIT (collection, offset, limit) {
     limit = null;
   }
 
-  var batchSize = 2000;
+  var batchSize = 2000; // default value
+
   var c = COLLECTION(collection);
-  var state = c.OFFSET(0, batchSize, offset, null);
+  var state = c.OFFSET(0, batchSize, offset, limit);
   state.collection = c;
   state.batchSize  = batchSize;
   state.offset     = 0;

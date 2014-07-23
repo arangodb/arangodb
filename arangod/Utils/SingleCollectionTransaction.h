@@ -253,9 +253,10 @@ namespace triagens {
                   TRI_voc_size_t& internalSkip,
                   TRI_voc_size_t batchSize,
                   TRI_voc_ssize_t skip,
+                  TRI_voc_size_t limit,
                   uint32_t* total) {
 
-          return this->readIncremental(this->trxCollection(), docs, internalSkip, batchSize, skip, total);
+          return this->readIncremental(this->trxCollection(), docs, internalSkip, batchSize, skip, limit, total);
         }
 
 // -----------------------------------------------------------------------------
