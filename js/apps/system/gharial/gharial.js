@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, white: true, plusplus: true, unparam: true, regexp: true, vars: true, stupid: true */
+/*jslint es5: true, indent: 2, nomen: true, maxlen: 120, white: true, plusplus: true, unparam: true, regexp: true, vars: true, stupid: true */
 /*global require, applicationContext*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -148,15 +148,24 @@
       }, code);
     },
 
-    graphName = joi.string().description("Name of the graph."),
-    vertexCollectionName = joi.string().description("Name of the vertex collection."),
-    edgeCollectionName = joi.string().description("Name of the edge collection."),
-    dropCollectionFlag = joi.alternatives().try(joi.boolean(), joi.number().integer()).description("Flag to drop collection as well."),
-    definitionEdgeCollectionName = joi.string().description("Name of the edge collection in the definition."),
-    waitForSyncFlag = joi.alternatives().try(joi.boolean(), joi.number().integer()).description("define if the request should wait until synced to disk."),
-    vertexKey = joi.string().description("_key attribute of one specific vertex"),
-    edgeKey = joi.string().description("_key attribute of one specific edge."),
-    keepNullFlag = joi.alternatives().try(joi.boolean(), joi.number().integer()).description("define if null values should not be deleted.");
+    graphName = joi.string()
+    .description("Name of the graph."),
+    vertexCollectionName = joi.string()
+    .description("Name of the vertex collection."),
+    edgeCollectionName = joi.string()
+    .description("Name of the edge collection."),
+    dropCollectionFlag = joi.alternatives().try(joi.boolean(), joi.number().integer())
+    .description("Flag to drop collection as well."),
+    definitionEdgeCollectionName = joi.string()
+    .description("Name of the edge collection in the definition."),
+    waitForSyncFlag = joi.alternatives().try(joi.boolean(), joi.number().integer())
+    .description("define if the request should wait until synced to disk."),
+    vertexKey = joi.string()
+    .description("_key attribute of one specific vertex"),
+    edgeKey = joi.string()
+    .description("_key attribute of one specific edge."),
+    keepNullFlag = joi.alternatives().try(joi.boolean(), joi.number().integer())
+    .description("define if null values should not be deleted.");
 
 ////////////////////// Graph Creation /////////////////////////////////
 
