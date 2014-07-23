@@ -4778,7 +4778,7 @@ function transactionServerFailuresSuite () {
             // should not cause any problems
             internal.debugSetFailAt("LogfileManagerGetWriteableLogfile");
 
-            for (i = 0; i < 200000; ++i) {
+            for (i = 0; i < 500000; ++i) {
               c.save({ _key: "foo" + i, value: "the quick brown foxx jumped over the lazy dog" });
             }
 
