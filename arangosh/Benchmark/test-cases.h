@@ -1187,9 +1187,9 @@ struct TransactionCountTest : public BenchmarkOperation {
 
     TRI_AppendStringStringBuffer(buffer, "{ \"collections\": { \"write\": \"");
     TRI_AppendStringStringBuffer(buffer, Collection.c_str());
-    TRI_AppendStringStringBuffer(buffer, "\" }, \"action\": \"function () { var c = require(\\\"internal\\\").db._collection(\\\"");
+    TRI_AppendStringStringBuffer(buffer, "\" }, \"action\": \"function () { var c = require(\\\"internal\\\").db[\\\"");
     TRI_AppendStringStringBuffer(buffer, Collection.c_str());
-    TRI_AppendStringStringBuffer(buffer, "\\\"); var startcount = c.count(); for (var i = 0; i < 50; ++i) { if (startcount + i !== c.count()) { throw \\\"error\\\"; } c.save({ }); } }\" }");
+    TRI_AppendStringStringBuffer(buffer, "\\\"]; var startcount = c.count(); for (var i = 0; i < 50; ++i) { if (startcount + i !== c.count()) { throw \\\"error\\\"; } c.save({ }); } }\" }");
 
     *length = TRI_LengthStringBuffer(buffer);
     *mustFree = true;
@@ -1253,11 +1253,11 @@ struct TransactionMultiTest : public BenchmarkOperation {
     TRI_AppendStringStringBuffer(buffer, "\", \"");
     TRI_AppendStringStringBuffer(buffer, _c2.c_str());
     TRI_AppendStringStringBuffer(buffer, "\" ] }, \"action\": \"function () { ");
-    TRI_AppendStringStringBuffer(buffer, "var c1 = require(\\\"internal\\\").db._collection(\\\"");
+    TRI_AppendStringStringBuffer(buffer, "var c1 = require(\\\"internal\\\").db[\\\"");
     TRI_AppendStringStringBuffer(buffer, _c1.c_str());
-    TRI_AppendStringStringBuffer(buffer, "\\\"); var c2 = require(\\\"internal\\\").db._collection(\\\"");
+    TRI_AppendStringStringBuffer(buffer, "\\\"]; var c2 = require(\\\"internal\\\").db[\\\"");
     TRI_AppendStringStringBuffer(buffer, _c2.c_str());
-    TRI_AppendStringStringBuffer(buffer, "\\\"); ");
+    TRI_AppendStringStringBuffer(buffer, "\\\"]; ");
 
     if (mod == 0) {
       TRI_AppendStringStringBuffer(buffer, "var n = Math.floor(Math.random() * 25) + 1; c1.save({ count: n }); var d = c2.document(\\\"sum\\\"); c2.update(d, { count: d.count + n });");
@@ -1324,11 +1324,12 @@ struct TransactionMultiCollectionTest : public BenchmarkOperation {
     TRI_AppendStringStringBuffer(buffer, "\", \"");
     TRI_AppendStringStringBuffer(buffer, _c2.c_str());
     TRI_AppendStringStringBuffer(buffer, "\" ] }, \"action\": \"function () { ");
-    TRI_AppendStringStringBuffer(buffer, "var c1 = require(\\\"internal\\\").db._collection(\\\"");
+    
+    TRI_AppendStringStringBuffer(buffer, "var c1 = require(\\\"internal\\\").db[\\\"");
     TRI_AppendStringStringBuffer(buffer, _c1.c_str());
-    TRI_AppendStringStringBuffer(buffer, "\\\"); var c2 = require(\\\"internal\\\").db._collection(\\\"");
+    TRI_AppendStringStringBuffer(buffer, "\\\"]; var c2 = require(\\\"internal\\\").db[\\\"");
     TRI_AppendStringStringBuffer(buffer, _c2.c_str());
-    TRI_AppendStringStringBuffer(buffer, "\\\"); ");
+    TRI_AppendStringStringBuffer(buffer, "\\\"]; ");
 
     TRI_AppendStringStringBuffer(buffer, "var doc = {");
     const uint64_t n = Complexity;
@@ -1341,7 +1342,7 @@ struct TransactionMultiCollectionTest : public BenchmarkOperation {
       TRI_AppendStringStringBuffer(buffer, ": ");
       TRI_AppendUInt64StringBuffer(buffer, i);
     }
-    TRI_AppendStringStringBuffer(buffer, " };");
+    TRI_AppendStringStringBuffer(buffer, " }; ");
 
     TRI_AppendStringStringBuffer(buffer, "c1.save(doc); c2.save(doc); }\" }");
 
