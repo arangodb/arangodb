@@ -43,13 +43,6 @@
     toId = function(c, k) {
       return c + "/" + k;
     },
-    parseBooleanParameter = function(req, name, deflt) {
-      var testee = req.params(name);
-      if (testee === undefined) {
-        return deflt || false;
-      }
-      return testee.toLowerCase() === "true" || testee === "1";
-    },
     buildError = function(err, code) {
       return {
         error: true,
@@ -71,11 +64,11 @@
       var options = {
         code: actions.HTTP_ACCEPTED
       };
-      options.waitForSync = parseBooleanParameter(req, "waitForSync");
+      options.waitForSync = Boolean(req.params("waitForSync"));
       if (options.waitForSync) {
         options.code = actions.HTTP_OK;
       }
-      options.keepNull = parseBooleanParameter(req, "keepNull");
+      options.keepNull = Boolean(req.params("keepNull"));
       return options;
     },
     setResponse = function (res, name, body, code) {
@@ -158,12 +151,12 @@
     graphName = joi.string().description("Name of the graph."),
     vertexCollectionName = joi.string().description("Name of the vertex collection."),
     edgeCollectionName = joi.string().description("Name of the edge collection."),
-    dropCollectionFlag = joi.boolean().description("Flag to drop collection as well."),
+    dropCollectionFlag = joi.alternatives().try(joi.boolean(), joi.number().integer()).description("Flag to drop collection as well."),
     definitionEdgeCollectionName = joi.string().description("Name of the edge collection in the definition."),
-    waitForSyncFlag = joi.boolean().description("define if the request should wait until synced to disk."),
+    waitForSyncFlag = joi.alternatives().try(joi.boolean(), joi.number().integer()).description("define if the request should wait until synced to disk."),
     vertexKey = joi.string().description("_key attribute of one specific vertex"),
     edgeKey = joi.string().description("_key attribute of one specific edge."),
-    keepNullFlag = joi.boolean().description("define if null values should not be deleted.");
+    keepNullFlag = joi.alternatives().try(joi.boolean(), joi.number().integer()).description("define if null values should not be deleted.");
 
 ////////////////////// Graph Creation /////////////////////////////////
 
@@ -323,7 +316,7 @@
    */
   controller.del("/:graph", function(req, res) {
     var name = req.params("graph"),
-        drop = parseBooleanParameter(req, "dropCollections");
+        drop = Boolean(req.params("dropCollections"));
     Graph._drop(name, drop);
     setResponse(res, "removed", true, actions.HTTP_OK);
   })
@@ -492,7 +485,7 @@
       err.errorMessage = errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message;
       throw err;
     }
-    var drop = parseBooleanParameter(req, "dropCollection");
+    var drop = Boolean(req.params("dropCollection"));
     g._removeVertexCollection(def_name, drop);
     setGraphResponse(res, g);
   })
@@ -721,7 +714,7 @@
       err.errorMessage = e.errorMessage;
       throw err;
     }
-    var drop = parseBooleanParameter(req, "dropCollection");
+    var drop = Boolean(req.params("dropCollection"));
     g._deleteEdgeDefinition(def_name, drop);
     setGraphResponse(res, g);
   })
