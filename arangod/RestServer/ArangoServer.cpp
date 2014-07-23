@@ -765,8 +765,10 @@ int ArangoServer::startupServer () {
 
   openDatabases(checkVersion, performUpgrade, iterateMarkersOnOpen);
 
-  if (! wal::LogfileManager::instance()->open()) {
-    LOG_FATAL_AND_EXIT("Unable to finish WAL recovery procedure");
+  if (! checkVersion) {
+    if (! wal::LogfileManager::instance()->open()) {
+      LOG_FATAL_AND_EXIT("Unable to finish WAL recovery procedure");
+    }
   }
 
   // fetch the system database

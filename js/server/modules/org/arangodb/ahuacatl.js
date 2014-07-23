@@ -4793,49 +4793,42 @@ function DOCUMENTS_BY_EXAMPLE (collectionList, example) {
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief GET ALL EDGE and VERTEX COLLECTION ACCORDING TO DIRECTION
-////////////////////////////////////////////////////////////////////////////////
-
-function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
-  // check graph exists and load edgeDefintions
-
-  var graph = DOCUMENT_HANDLE("_graphs/" + graphname);
-  if (! graph) {
-    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
-  }
-  var fromCollections = [], toCollection = [],edgeCollections = [];
+function RESOLVE_GRAPH_TO_COLLECTIONS(graph, options) {
+  var collections = {};
+  collections.fromCollections = [];
+  collections.toCollection = [];
+  collections.edgeCollections = [];
   graph.edgeDefinitions.forEach(function (def) {
     if (options.direction === "outbound") {
-      edgeCollections = edgeCollections.concat(
+      collections.edgeCollections = collections.edgeCollections.concat(
         FILTER_RESTRICTION(def.collection, options.edgeCollectionRestriction)
       );
-      fromCollections = fromCollections.concat(
+      collections.fromCollections = collections.fromCollections.concat(
         FILTER_RESTRICTION(def.from, options.startVertexCollectionRestriction)
       );
-      toCollection = toCollection.concat(
+      collections.toCollection = collections.toCollection.concat(
         FILTER_RESTRICTION(def.to, options.endVertexCollectionRestriction)
       );
     }
     else if (options.direction === "inbound") {
-      edgeCollections = edgeCollections.concat(
+      collections.edgeCollections = collections.edgeCollections.concat(
         FILTER_RESTRICTION(def.collection, options.edgeCollectionRestriction)
       );
-      fromCollections = fromCollections.concat(
+      collections.fromCollections = collections.fromCollections.concat(
         FILTER_RESTRICTION(def.to, options.endVertexCollectionRestriction)
       );
-      toCollection = toCollection.concat(
+      collections.toCollection = collections.toCollection.concat(
         FILTER_RESTRICTION(def.from, options.startVertexCollectionRestriction)
       );
     }
     else if (options.direction === "any") {
-      edgeCollections = edgeCollections.concat(
+      collections.edgeCollections = collections.edgeCollections.concat(
         FILTER_RESTRICTION(def.collection, options.edgeCollectionRestriction)
       );
-      fromCollections = fromCollections.concat(
+      collections.fromCollections = collections.fromCollections.concat(
         FILTER_RESTRICTION(def.from.concat(def.to), options.startVertexCollectionRestriction)
       );
-      toCollection = toCollection.concat(
+      collections.toCollection = collections.toCollection.concat(
         FILTER_RESTRICTION(def.from.concat(def.to), options.endVertexCollectionRestriction)
       );
     }
@@ -4843,21 +4836,90 @@ function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
       THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "GRAPH_EDGES");
     }
   });
+
+  return collections;
+}
+
+
+function RESOLVE_GRAPH_TO_FROM_VERTICES (graphname, options) {
+  var graph = DOCUMENT_HANDLE("_graphs/" + graphname), collections ;
+  if (! graph) {
+    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
+  }
+
+  collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options);
+  var removeDuplicates = function(elem, pos, self) {
+    return self.indexOf(elem) === pos;
+  };
+
+  return DOCUMENTS_BY_EXAMPLE(
+      collections.fromCollections.filter(removeDuplicates), options.fromVertexExample
+  );
+}
+
+function RESOLVE_GRAPH_TO_TO_VERTICES (graphname, options) {
+  var graph = DOCUMENT_HANDLE("_graphs/" + graphname), collections ;
+  if (! graph) {
+    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
+  }
+
+  collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options);
+  var removeDuplicates = function(elem, pos, self) {
+    return self.indexOf(elem) === pos;
+  };
+
+  return DOCUMENTS_BY_EXAMPLE(
+    collections.toCollection.filter(removeDuplicates), options.toVertexExample
+  );
+}
+
+function RESOLVE_GRAPH_TO_EDGES (graphname, options) {
+  var graph = DOCUMENT_HANDLE("_graphs/" + graphname), collections ;
+  if (! graph) {
+    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
+  }
+
+  collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options);
+  var removeDuplicates = function(elem, pos, self) {
+    return self.indexOf(elem) === pos;
+  };
+
+  return DOCUMENTS_BY_EXAMPLE(
+    collections.edgeCollections.filter(removeDuplicates), options.edgeExamples
+  );
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET ALL EDGE and VERTEX COLLECTION ACCORDING TO DIRECTION
+////////////////////////////////////////////////////////////////////////////////
+
+function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
+  // check graph exists and load edgeDefintions
+
+  var graph = DOCUMENT_HANDLE("_graphs/" + graphname), collections ;
+  if (! graph) {
+    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
+  }
+
+  collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options);
   var removeDuplicates = function(elem, pos, self) {
     return self.indexOf(elem) === pos;
   };
 
   var result =  {
     fromVertices :DOCUMENTS_BY_EXAMPLE(
-      fromCollections.filter(removeDuplicates), options.fromVertexExample
+      collections.fromCollections.filter(removeDuplicates), options.fromVertexExample
     ),
     toVertices : DOCUMENTS_BY_EXAMPLE(
-      toCollection.filter(removeDuplicates), options.toVertexExample
+      collections.toCollection.filter(removeDuplicates), options.toVertexExample
     ),
-    edges : DOCUMENTS_BY_EXAMPLE(edgeCollections.filter(removeDuplicates), options.edgeExamples),
-    edgeCollections : edgeCollections,
-    fromCollections : fromCollections,
-    toCollection : toCollection
+    edges : DOCUMENTS_BY_EXAMPLE(
+      collections.edgeCollections.filter(removeDuplicates), options.edgeExamples
+    ),
+    edgeCollections : collections.edgeCollections,
+    fromCollections : collections.fromCollections,
+    toCollection : collections.toCollection
   };
 
   //ResolvedGraphCache[graphname + JSON.stringify(options)] = result;
@@ -5223,20 +5285,23 @@ function MERGE_EXAMPLES_WITH_EDGES (examples, edges) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief calculate shortest paths by dijkstra
 ////////////////////////////////////////////////////////////////////////////////
-function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, graphData, options) {
+function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, options) {
 
   var params = TRAVERSAL_PARAMS(), factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
   params.paths = true;
-  params.followEdges = MERGE_EXAMPLES_WITH_EDGES(options.edgeExamples, graphData.edges);
+  if (options.edgeExamples || options.edgeCollectionRestriction) {
+    params.followEdges = RESOLVE_GRAPH_TO_EDGES(graphName, options);
+  }
   params.weight = options.weight;
   params.defaultWeight = options.defaultWeight;
   params = SHORTEST_PATH_PARAMS(params);
   params.visitor =  TRAVERSAL_DIJSKTRA_VISITOR;
-  var result = [];
+  var result = [], fromVertices = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options),
+    toVertices = RESOLVE_GRAPH_TO_TO_VERTICES(graphName, options);
 
   var calculated = {};
-  graphData.fromVertices.forEach(function (v) {
-    graphData.toVertices.forEach(function (t) {
+  fromVertices.forEach(function (v) {
+    toVertices.forEach(function (t) {
       if (calculated[JSON.stringify({ from : TO_ID(v), to :  TO_ID(t)})]) {
         result.push(calculated[JSON.stringify({ from : TO_ID(v), to :  TO_ID(t)})]);
         return;
@@ -5379,7 +5444,6 @@ function GENERAL_GRAPH_SHORTEST_PATH (graphName,
   }
 
   options.edgeExamples = options.edgeExamples || {};
-  var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
 
   if (!options.algorithm) {
     if (!IS_EXAMPLE_SET(startVertexExample) && !IS_EXAMPLE_SET(endVertexExample)) {
@@ -5387,10 +5451,11 @@ function GENERAL_GRAPH_SHORTEST_PATH (graphName,
     }
   }
   if (options.algorithm === "Floyd-Warshall") {
+    var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
     return CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL(graph, options);
   }
   return CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA(
-    graphName, graph , options
+    graphName, options
   );
 
 }
@@ -5844,6 +5909,7 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
   if (! options) {
     options = {  };
   }
+
   options.fromVertexExample = vertexExample;
   if (! options.direction) {
     options.direction =  'any';
@@ -5859,18 +5925,16 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
   var neighbors = [],
     params = TRAVERSAL_PARAMS(), 
     factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
-
   params.minDepth = options.minDepth === undefined ? 1 : options.minDepth;
   params.maxDepth = options.maxDepth === undefined ? 1 : options.maxDepth;
   params.paths = true;
-  options.edgeExamples = options.edgeExamples || {};
   params.visitor = TRAVERSAL_NEIGHBOR_VISITOR;
-  var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
-  params.followEdges = MERGE_EXAMPLES_WITH_EDGES(options.edgeExamples, graph.edges);
-  if (params.followEdges.length === 0) {
-    return [];
+  var fromVertices = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options);
+
+  if (options.edgeExamples || options.edgeCollectionRestriction) {
+    params.followEdges = RESOLVE_GRAPH_TO_EDGES(graphName, options);
   }
-  graph.fromVertices.forEach(function (v) {
+  fromVertices.forEach(function (v) {
     var e = TRAVERSAL_FUNC("GRAPH_NEIGHBORS",
       factory,
       v._id,
@@ -5880,7 +5944,6 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 
     neighbors = neighbors.concat(e);
   });
-
   var result = [];
   neighbors.forEach(function (n) {
     if (FILTER([n.vertex], options.neighborExamples).length > 0) {
@@ -6049,8 +6112,7 @@ function GENERAL_GRAPH_VERTICES (
 
   options.fromVertexExample = vertexExamples;
 
-  var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
-  return graph.fromVertices;
+  return RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6243,10 +6305,11 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
   options.startVertexCollectionRestriction = options.vertex1CollectionRestriction;
   options.endVertexCollectionRestriction = options.vertex2CollectionRestriction;
 
-  var g = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
+  var g = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options);
+  var g2 = RESOLVE_GRAPH_TO_TO_VERTICES(graphName, options);
   var res = [];
   var t = {};
-  g.fromVertices.forEach(function (n1) {
+  g.forEach(function (n1) {
     Object.keys(n1).forEach(function (key) {
       if (key.indexOf("_") === 0 || options.ignoreProperties.indexOf(key) !== -1) {
         return;
@@ -6258,7 +6321,7 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
     });
   });
 
-  g.toVertices.forEach(function (n1) {
+  g2.forEach(function (n1) {
     Object.keys(n1).forEach(function (key) {
       if (key.indexOf("_") === 0) {
         return;

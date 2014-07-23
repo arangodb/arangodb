@@ -1,6 +1,8 @@
 v2.2.1 (XXXX-XX-XX)
 -------------------
 
+* fixed issue with --check-version: when creating a new database the check failed
+
 * added startup option `--wal.suppress-shape-information`
 
   Setting this option to `true` will reduce memory and disk space usage and require
