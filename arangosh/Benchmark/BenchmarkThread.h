@@ -196,6 +196,7 @@ namespace triagens {
             else {
               executeBatchRequest(numOps);
             }
+            _operationsCounter->done(_batchSize);
           }
         }
 
