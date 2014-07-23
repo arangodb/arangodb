@@ -1114,7 +1114,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
       operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
     // adjust the data position in the header
     operation.header->setDataPtr(position);  // PROTECTED by ongoing trx from operation
-    if (sizeChanged) {
+    if (operation.type == TRI_VOC_DOCUMENT_OPERATION_INSERT && sizeChanged) {
       document->_headersPtr->adjustTotalSize(0, sizeChanged);
     }
   }
