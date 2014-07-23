@@ -1,4 +1,4 @@
-v2.2.1 (2014-07-23)
+v2.2.1-rc1 (2014-07-23)
 -------------------
 
 * fixed issue with --check-version: when creating a new database the check failed
