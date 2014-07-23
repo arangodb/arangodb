@@ -442,8 +442,12 @@ static int StringifyMarkerDump (TRI_replication_dump_t* dump,
     else {   // isWal == true
       auto m = static_cast<wal::document_marker_t const*>(marker);
       TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, m);
-      basics::LegendReader legendReader
-                 (reinterpret_cast<char const*>(m) + m->_offsetLegend);
+      char const* legend = reinterpret_cast<char const*>(m) + m->_offsetLegend;
+      if (m->_offsetJson - m->_offsetLegend == 8) {
+        auto p = reinterpret_cast<int64_t const*>(legend);
+        legend += *p;
+      }
+      basics::LegendReader legendReader(legend);
       TRI_StringifyArrayShapedJson(&legendReader, buffer, &shaped, true);
     }
 
@@ -512,6 +516,10 @@ static int AppendDocument (triagens::wal::document_marker_t const* marker,
   }
   else {
     // marker has a legend, so use it
+    if (marker->_offsetJson - marker->_offsetLegend == 8) {
+      auto p = reinterpret_cast<int64_t const*>(legend);
+      legend += *p;
+    }
     triagens::basics::LegendReader lr(legend);
     if (! TRI_StringifyArrayShapedJson(&lr, dump->_buffer, &shaped, true)) {
       return TRI_ERROR_OUT_OF_MEMORY;

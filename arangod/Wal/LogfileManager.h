@@ -429,6 +429,17 @@ namespace triagens {
                            uint32_t);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief reserve space in a logfile, version for legends
+////////////////////////////////////////////////////////////////////////////////
+
+        SlotInfo allocate (void const*,
+                           uint32_t,
+                           TRI_voc_cid_t cid,
+                           TRI_shape_sid_t sid,
+                           uint32_t legendOffset,
+                           void*& oldLegend);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief finalise a log entry
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -442,6 +453,20 @@ namespace triagens {
         SlotInfoCopy allocateAndWrite (void*,
                                        uint32_t,
                                        bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write data into the logfile
+/// this is a convenience function that combines allocate, memcpy and finalise,
+/// this version is for markers with legends
+////////////////////////////////////////////////////////////////////////////////
+
+        SlotInfoCopy allocateAndWrite (void*,
+                                       uint32_t,
+                                       bool,
+                                       TRI_voc_cid_t,
+                                       TRI_shape_sid_t,
+                                       uint32_t,
+                                       void*&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write data into the logfile
