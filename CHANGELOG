@@ -1,6 +1,9 @@
 v2.2.1 (XXXX-XX-XX)
 -------------------
 
+* fixed hanging write-ahead log recovery for certain cases that involved dropping
+  databases
+
 * fixed issue with --check-version: when creating a new database the check failed
 
 * added startup option `--wal.suppress-shape-information`
