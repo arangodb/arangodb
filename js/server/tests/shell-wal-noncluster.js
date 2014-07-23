@@ -105,7 +105,7 @@ function walFailureSuite () {
         
       internal.debugSetFailAt("LogfileManagerGetWriteableLogfile");
       try {
-        for (i = 0; i < 200000; ++i) {
+        for (i = 0; i < 500000; ++i) {
           c.save({ _key: "foo" + i, value: "the quick brown foxx jumped over the lazy dog" });
         }
 
