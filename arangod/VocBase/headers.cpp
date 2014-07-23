@@ -447,7 +447,6 @@ void TRI_headers_t::adjustTotalSize (int64_t oldSize,
   // oldSize = size of marker in WAL
   // newSize = size of marker in datafile
 
-  TRI_ASSERT(oldSize >= newSize);
   _totalSize -= (  TRI_DF_ALIGN_BLOCK(oldSize) 
                  - TRI_DF_ALIGN_BLOCK(newSize));
 }
