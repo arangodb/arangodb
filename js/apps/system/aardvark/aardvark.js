@@ -35,8 +35,13 @@ var FoxxController = require("org/arangodb/foxx").Controller,
   controller = new FoxxController(applicationContext),
   ArangoError = require("org/arangodb").ArangoError,
   underscore = require("underscore"),
+  joi = require("joi"),
   notifications = require("org/arangodb/configuration").notifications,
-  db = require("internal").db;
+  db = require("internal").db,
+  foxxInstallKey = joi.string().required().description(
+    "The _key attribute, where the information of this Foxx-Install is stored."
+  ),
+  appname = joi.string().required();
 
 var foxxes = new (require("lib/foxxes").Foxxes)();
 var FoxxManager = require("org/arangodb/foxx/manager");
@@ -128,9 +133,7 @@ controller.post("/foxxes/gitinstall", function (req, res) {
 controller.del("/foxxes/purge/:key", function (req, res) {
   res.json(FoxxManager.purge(req.params("key")));
 }).pathParam("key", {
-  description: "The _key attribute, where the information of this Foxx-Install is stored.",
-  type: "string",
-  required: true,
+  type: foxxInstallKey,
   allowMultiple: false
 }).summary("Remove a Foxx.")
 .notes("This function is used to remove a foxx.");
@@ -158,9 +161,7 @@ controller.del("/foxxes/purgeall/:key", function (req, res) {
 
   res.json({res: true});
 }).pathParam("key", {
-  description: "The _key attribute, where the information of this Foxx-Install is stored.",
-  type: "string",
-  required: true,
+  type: foxxInstallKey,
   allowMultiple: false
 }).summary("Remove a all existing Foxx versions .")
 .notes("This function is used to remove all versions of a foxx.");
@@ -173,9 +174,7 @@ controller.del("/foxxes/purgeall/:key", function (req, res) {
 controller.get("/foxxes/gitinfo/:key", function (req, res) {
   res.json(FoxxManager.gitinfo(req.params("key")));
 }).pathParam("key", {
-  description: "The _key attribute, where the information of this Foxx-Install is stored.",
-  type: "string",
-  required: true,
+  type: foxxInstallKey,
   allowMultiple: false
 }).summary("List git information of a Foxx")
 .notes("This function is used to display all available github information of a foxx");
@@ -189,9 +188,7 @@ controller.get("/foxxes/gitinfo/:key", function (req, res) {
 controller.get("/foxxes/mountinfo/:key", function (req, res) {
   res.json(FoxxManager.mountinfo(req.params("key")));
 }).pathParam("key", {
-  description: "The _key attribute, where the information of this Foxx-Install is stored.",
-  type: "string",
-  required: true,
+  type: foxxInstallKey,
   allowMultiple: false
 }).summary("List mount points of a Foxx")
 .notes("This function is used to display all available mount points of a foxx");
@@ -204,9 +201,7 @@ controller.get("/foxxes/mountinfo/:key", function (req, res) {
 controller.get("/foxxes/mountinfo/", function (req, res) {
   res.json(FoxxManager.mountinfo());
 }).pathParam("key", {
-  description: "The _key attribute, where the information of this Foxx-Install is stored.",
-  type: "string",
-  required: true,
+  type: foxxInstallKey,
   allowMultiple: false
 }).summary("List mount points of all Foxx")
 .notes("This function is used to display all available mount points of all foxxes");
@@ -220,9 +215,7 @@ controller.get("/foxxes/mountinfo/", function (req, res) {
 controller.del("/foxxes/:key", function (req, res) {
   res.json(foxxes.uninstall(req.params("key")));
 }).pathParam("key", {
-  description: "The _key attribute, where the information of this Foxx-Install is stored.",
-  type: "string",
-  required: true,
+  type: foxxInstallKey,
   allowMultiple: false
 }).summary("Uninstall a Foxx.")
 .notes("This function is used to uninstall a foxx.");
@@ -242,9 +235,7 @@ controller.put("/foxxes/:key", function (req, res) {
     res.json(foxxes.deactivate());
   }
 }).pathParam("key", {
-  description: "The _key attribute, where the information of this Foxx-Install is stored.",
-  type: "string",
-  required: true,
+  type: foxxInstallKey,
   allowMultiple: false
 }).summary("Update a foxx.")
   .notes("Used to either activate/deactivate a foxx, or change the mount point.");
@@ -264,9 +255,9 @@ controller.get("/foxxes/thumbnail/:app", function (req, res) {
     res.contentType = "image/png";
   }
 }).pathParam("app", {
-  description: "The appname which is used to identify the foxx in the list of available foxxes.",
-  type: "string",
-  required: true,
+  type: appname.description(
+    "The appname which is used to identify the foxx in the list of available foxxes."
+  ),
   allowMultiple: false
 }).summary("Get the thumbnail of a foxx.")
   .notes("Used to request the thumbnail of the given Foxx in order to display it on the screen.");
@@ -315,12 +306,7 @@ controller.get('/docu/:key/*', function(req, res) {
     underscore.each(req.suffix, function(part) {
       mountPoint += "/" + part;
     });
-  res.json(docus.show(mountPoint))
-}).pathParam("appname", {
-  description: "The mount point of the App the documentation should be requested for",
-  type: "string",
-  required: true,
-  allowMultiple: false
+  res.json(docus.show(mountPoint));
 }).summary("List the API for one foxx")
   .notes("This function lists the API of the foxx"
        + " running under the given mount point");
