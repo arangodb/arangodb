@@ -74,12 +74,6 @@
 # -*- mode: Makefile; -*-
 
 ################################################################################
-### @brief built sources
-################################################################################
-
-# -*- mode: Makefile; -*-
-
-################################################################################
 ### @brief ICU
 ################################################################################
 
@@ -203,7 +197,7 @@ DIST_COMMON = $(srcdir)/lib/Makefile.files \
 	$(srcdir)/UnitTests/Makefile.unittests \
 	$(srcdir)/Documentation/Makefile.files \
 	$(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby \
-	$(srcdir)/lib/Makefile.flex $(srcdir)/lib/Makefile.bison \
+	$(srcdir)/lib/Makefile.flex \
 	$(srcdir)/3rdParty/Makefile.all-in-one-icu \
 	$(srcdir)/3rdParty/Makefile.all-in-one-libev \
 	$(srcdir)/3rdParty/Makefile.all-in-one-mruby \
@@ -238,7 +232,6 @@ DIST_COMMON = $(srcdir)/lib/Makefile.files \
 
 @ENABLE_MAINTAINER_MODE_TRUE@am__append_11 = \
 @ENABLE_MAINTAINER_MODE_TRUE@	arangod/Ahuacatl/ahuacatl-grammar.h \
-@ENABLE_MAINTAINER_MODE_TRUE@	arangod/Ahuacatl/ahuacatl-grammar.c \
 @ENABLE_MAINTAINER_MODE_TRUE@	arangod/Ahuacatl/ahuacatl-grammar.cpp
 
 @ENABLE_MAINTAINER_MODE_TRUE@am__append_12 = UnitTests/basics_suite UnitTests/geo_suite
@@ -294,6 +287,14 @@ DIST_COMMON = $(srcdir)/lib/Makefile.files \
 ### @brief generate readme
 ################################################################################
 @ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@am__append_16 = README
+
+################################################################################
+### @brief generate all flex files
+################################################################################
+
+################################################################################
+### @brief generate all bison files
+################################################################################
 @ENABLE_MAINTAINER_MODE_TRUE@am__append_17 = $(FLEX_FILES) \
 @ENABLE_MAINTAINER_MODE_TRUE@	$(FLEXXX_FILES) $(BISON_FILES) \
 @ENABLE_MAINTAINER_MODE_TRUE@	$(BISONXX_FILES)
@@ -1215,7 +1216,7 @@ FLEXXX_FILES = lib/JsonParser/json-parser.cpp lib/V8/v8-json.cpp \
 ################################################################################
 ### @brief bison
 ################################################################################
-BISON_FILES = arangod/Ahuacatl/ahuacatl-grammar.c
+BISON_FILES = arangod/Ahuacatl/ahuacatl-grammar.cpp
 
 ################################################################################
 ### @brief bison++ files
@@ -1313,7 +1314,7 @@ nobase_pkgdataCOMMON_DATA = $(shell find @srcdir@/js/common -name "*.js" -print)
 nobase_pkgdataSERVER_DATA = $(shell find @srcdir@/js/server -name "*.js" -print)
 nobase_pkgdataCLIENT_DATA = $(shell find @srcdir@/js/client -name "*.js" -print)
 nobase_pkgdataNODE_DATA = $(shell find @srcdir@/js/node -type f "(" -name .travis.yml -o -name .npmignore -o -print ")")
-nobase_pkgdataAPPS_DATA = $(shell find @srcdir@/js/apps/system -type f "(" -path "*/test/*" -o -path "*/test_data/*" -o -print ")")
+nobase_pkgdataAPPS_DATA = $(shell find @srcdir@/js/apps/system -type f "(" -path "*/test/*" -o -path "*/test_data/*" -o -path "*/coverage/*" -o -print ")")
 @ENABLE_MRUBY_TRUE@nobase_pkgdataMRUBY_DATA = \
 @ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/client -name "*.rb" -print) \
 @ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/common -name "*.rb" -print) 
@@ -2000,7 +2001,7 @@ all: $(BUILT_SOURCES)
 .SUFFIXES: .c .cpp .o .obj
 am--refresh: Makefile
 	@:
-$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/UnitTests/Makefile.unittests $(srcdir)/Documentation/Makefile.files $(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby $(srcdir)/lib/Makefile.flex $(srcdir)/lib/Makefile.bison $(srcdir)/3rdParty/Makefile.all-in-one-icu $(srcdir)/3rdParty/Makefile.all-in-one-libev $(srcdir)/3rdParty/Makefile.all-in-one-mruby $(srcdir)/3rdParty/Makefile.all-in-one-v8 $(srcdir)/3rdParty/Makefile.zlib $(srcdir)/3rdParty/Makefile.etcd $(am__configure_deps)
+$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am $(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/UnitTests/Makefile.unittests $(srcdir)/Documentation/Makefile.files $(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby $(srcdir)/lib/Makefile.flex $(srcdir)/3rdParty/Makefile.all-in-one-icu $(srcdir)/3rdParty/Makefile.all-in-one-libev $(srcdir)/3rdParty/Makefile.all-in-one-mruby $(srcdir)/3rdParty/Makefile.all-in-one-v8 $(srcdir)/3rdParty/Makefile.zlib $(srcdir)/3rdParty/Makefile.etcd $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -2023,7 +2024,7 @@ Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	    echo ' cd $(top_builddir) && $(SHELL) ./config.status $@ $(am__depfiles_maybe)'; \
 	    cd $(top_builddir) && $(SHELL) ./config.status $@ $(am__depfiles_maybe);; \
 	esac;
-$(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/UnitTests/Makefile.unittests $(srcdir)/Documentation/Makefile.files $(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby $(srcdir)/lib/Makefile.flex $(srcdir)/lib/Makefile.bison $(srcdir)/3rdParty/Makefile.all-in-one-icu $(srcdir)/3rdParty/Makefile.all-in-one-libev $(srcdir)/3rdParty/Makefile.all-in-one-mruby $(srcdir)/3rdParty/Makefile.all-in-one-v8 $(srcdir)/3rdParty/Makefile.zlib $(srcdir)/3rdParty/Makefile.etcd:
+$(srcdir)/lib/Makefile.files $(srcdir)/arangod/Makefile.files $(srcdir)/arangosh/Makefile.files $(srcdir)/etc/Makefile.files $(srcdir)/arangoirb/Makefile.files $(srcdir)/UnitTests/Makefile.unittests $(srcdir)/Documentation/Makefile.files $(srcdir)/js/Makefile.files $(srcdir)/mr/Makefile.mruby $(srcdir)/lib/Makefile.flex $(srcdir)/3rdParty/Makefile.all-in-one-icu $(srcdir)/3rdParty/Makefile.all-in-one-libev $(srcdir)/3rdParty/Makefile.all-in-one-mruby $(srcdir)/3rdParty/Makefile.all-in-one-v8 $(srcdir)/3rdParty/Makefile.zlib $(srcdir)/3rdParty/Makefile.etcd:
 
 $(top_builddir)/config.status: $(top_srcdir)/configure $(CONFIG_STATUS_DEPENDENCIES)
 	$(SHELL) ./config.status --recheck
@@ -7926,9 +7927,6 @@ install-exec-hook:
 build.h: configure.ac
 	@echo '#define TRI_VERSION "@PACKAGE_VERSION@"' > build.h
 
-arangod/Ahuacatl/ahuacatl-grammar.cpp: arangod/Ahuacatl/ahuacatl-grammar.c
-	cp arangod/Ahuacatl/ahuacatl-grammar.c arangod/Ahuacatl/ahuacatl-grammar.cpp
-
 ################################################################################
 ################################################################################
 
@@ -8925,16 +8923,8 @@ js/apps/system/aardvark/frontend/js/modules/underscore.js: @srcdir@/js/node/node
 @ENABLE_MAINTAINER_MODE_TRUE@%.cpp: %.ll
 @ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/utils/flex-c++.sh $(LEX) $@ $<
 
-################################################################################
-### @brief BISON
-################################################################################
-
-@ENABLE_MAINTAINER_MODE_TRUE@%.c: %.y
+@ENABLE_MAINTAINER_MODE_TRUE@%.cpp: %.y
 @ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/utils/bison-c.sh $(BISON) $@ $<
-
-################################################################################
-### @brief BISON++
-################################################################################
 
 @ENABLE_MAINTAINER_MODE_TRUE@%.cpp: %.yy
 @ENABLE_MAINTAINER_MODE_TRUE@	@top_srcdir@/utils/bison-c++.sh $(BISON) $@ $<
@@ -9033,9 +9023,8 @@ js/apps/system/aardvark/frontend/js/modules/underscore.js: @srcdir@/js/node/node
 @ENABLE_ALL_IN_ONE_V8_TRUE@	@echo
 
 @ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@	cd @top_srcdir@/3rdParty/V8 \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@		&& CFLAGS="-O2 -g" \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@		   CXXFLAGS="-O2 -g" \
-@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@		   GYP_DEFINES="armv7=0" \
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@		&& CFLAGS="-O2 -g -fsigned-char" \
+@ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@		   CXXFLAGS="-O2 -g -fsigned-char" \
 @ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_TRUE@		   $(MAKE) CXX=$(CXX) LINK=$(CXX) library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
 @ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@	cd @top_srcdir@/3rdParty/V8 \
 @ENABLE_ALL_IN_ONE_V8_TRUE@@ENABLE_ARM_FALSE@		&& CFLAGS="-O2 -g" \
@@ -9108,14 +9097,6 @@ clean-zlib:
 @ENABLE_ALL_IN_ONE_ETCD_TRUE@clean-etcd:
 @ENABLE_ALL_IN_ONE_ETCD_TRUE@	cd @top_srcdir@/3rdParty/etcd && ./clean
 @ENABLE_ALL_IN_ONE_ETCD_TRUE@	rm -f @top_srcdir@/bin/etcd-arango
-
-################################################################################
-### @brief generate all flex files
-################################################################################
-
-################################################################################
-### @brief generate all bison files
-################################################################################
 
 ################################################################################
 ### @brief ICU

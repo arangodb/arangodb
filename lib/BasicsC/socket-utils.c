@@ -207,7 +207,7 @@ int TRI_InetPton4 (const char *src, unsigned char *dst) {
     const char *pch;
 
     if ((pch = strchr(digits, ch)) != NULL) {
-      unsigned int nw = *tp * 10 + (pch - digits);
+      unsigned int nw = (unsigned int) (*tp * 10 + (pch - digits));
 
       if (saw_digit && *tp == 0) {
         return TRI_ERROR_IP_ADDRESS_INVALID;
@@ -357,7 +357,7 @@ int TRI_InetPton6 (const char *src, unsigned char *dst) {
      * Since some memmove()'s erroneously fail to handle
      * overlapping regions, we'll do the shift by hand.
      */
-    const int n = tp - colonp;
+    const int n = (const int) (tp - colonp);
     int i;
 
     if (tp == endp) {

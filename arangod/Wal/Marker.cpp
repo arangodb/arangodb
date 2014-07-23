@@ -1092,10 +1092,10 @@ DocumentMarker::DocumentMarker (TRI_voc_tick_t databaseId,
                                 TRI_voc_rid_t revisionId,
                                 TRI_voc_tid_t transactionId,
                                 std::string const& key,
-                                triagens::basics::JsonLegend& legend,
+                                size_t legendSize,
                                 TRI_shaped_json_t const* shapedJson)
   : Marker(TRI_WAL_MARKER_DOCUMENT,
-    sizeof(document_marker_t) + alignedSize(key.size() + 1) + legend.getSize() + shapedJson->_data.length) {
+    sizeof(document_marker_t) + alignedSize(key.size() + 1) + legendSize + shapedJson->_data.length) {
   document_marker_t* m = reinterpret_cast<document_marker_t*>(begin());
   m->_databaseId    = databaseId;
   m->_collectionId  = collectionId;
@@ -1105,14 +1105,16 @@ DocumentMarker::DocumentMarker (TRI_voc_tick_t databaseId,
 
   m->_offsetKey     = sizeof(document_marker_t); // start position of key
   m->_offsetLegend  = static_cast<uint16_t>(m->_offsetKey + alignedSize(key.size() + 1));
-  m->_offsetJson    = static_cast<uint32_t>(m->_offsetLegend + alignedSize(legend.getSize()));
+  m->_offsetJson    = static_cast<uint32_t>(m->_offsetLegend + alignedSize(legendSize));
 
   storeSizedString(m->_offsetKey, key);
 
   // store legend
   {
+    TRI_ASSERT(legendSize >= 8);
+
     char* p = static_cast<char*>(begin()) + m->_offsetLegend;
-    legend.dump(p);
+    memset(p, 0, 8); // initialise initial bytes of legend with 0s
   }
 
   // store shapedJson
@@ -1131,6 +1133,14 @@ DocumentMarker::DocumentMarker (TRI_voc_tick_t databaseId,
 ////////////////////////////////////////////////////////////////////////////////
 
 DocumentMarker::~DocumentMarker () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief store legend in marker
+////////////////////////////////////////////////////////////////////////////////
+
+void DocumentMarker::storeLegend (triagens::basics::JsonLegend& legend) {
+  legend.dump((void*) this->legend());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1153,8 +1163,6 @@ void DocumentMarker::dump () const {
             << "\n";
 
 #ifdef DEBUG_WAL_DETAIL
-  std::cout << "LEGEND:     '" << stringifyPart(legend(), legendLength()) << "'\n";
-  std::cout << "LEGEND HEX: '" << hexifyPart(legend(), legendLength()) << "'\n";
   std::cout << "JSON:       '" << stringifyPart(json(), jsonLength()) << "'\n";
   std::cout << "JSON HEX:   '" << hexifyPart(json(), jsonLength()) << "'\n";
 
@@ -1172,7 +1180,7 @@ DocumentMarker* DocumentMarker::clone (TRI_df_marker_t const* other,
                                        TRI_voc_cid_t collectionId,
                                        TRI_voc_rid_t revisionId,
                                        TRI_voc_tid_t transactionId,
-                                       triagens::basics::JsonLegend& legend,
+                                       size_t legendSize,
                                        TRI_shaped_json_t const* shapedJson) {
   char const* base = reinterpret_cast<char const*>(other);
 
@@ -1184,7 +1192,7 @@ DocumentMarker* DocumentMarker::clone (TRI_df_marker_t const* other,
                               revisionId,
                               transactionId,
                               std::string(base + original->_offsetKey),
-                              legend,
+                              legendSize,
                               shapedJson);
   }
   else {
@@ -1200,7 +1208,7 @@ DocumentMarker* DocumentMarker::clone (TRI_df_marker_t const* other,
                               revisionId,
                               transactionId,
                               std::string(base + original->_offsetKey),
-                              legend,
+                              legendSize,
                               shapedJson);
   }
 }
@@ -1223,10 +1231,10 @@ EdgeMarker::EdgeMarker (TRI_voc_tick_t databaseId,
                         TRI_voc_tid_t transactionId,
                         std::string const& key,
                         TRI_document_edge_t const* edge,
-                        triagens::basics::JsonLegend& legend,
+                        size_t legendSize,
                         TRI_shaped_json_t const* shapedJson)
   : Marker(TRI_WAL_MARKER_EDGE,
-    sizeof(edge_marker_t) + alignedSize(key.size() + 1) + alignedSize(strlen(edge->_fromKey) + 1) + alignedSize(strlen(edge->_toKey) + 1) + legend.getSize() + shapedJson->_data.length) {
+    sizeof(edge_marker_t) + alignedSize(key.size() + 1) + alignedSize(strlen(edge->_fromKey) + 1) + alignedSize(strlen(edge->_toKey) + 1) + legendSize + shapedJson->_data.length) {
 
   edge_marker_t* m = reinterpret_cast<edge_marker_t*>(begin());
 
@@ -1241,7 +1249,7 @@ EdgeMarker::EdgeMarker (TRI_voc_tick_t databaseId,
   m->_offsetToKey   = static_cast<uint16_t>(m->_offsetKey + alignedSize(key.size() + 1));
   m->_offsetFromKey = static_cast<uint16_t>(m->_offsetToKey + alignedSize(strlen(edge->_toKey) + 1));
   m->_offsetLegend  = static_cast<uint16_t>(m->_offsetFromKey + alignedSize(strlen(edge->_fromKey) + 1));
-  m->_offsetJson    = static_cast<uint32_t>(m->_offsetLegend + alignedSize(legend.getSize()));
+  m->_offsetJson    = static_cast<uint32_t>(m->_offsetLegend + alignedSize(legendSize));
 
   // store keys
   storeSizedString(m->_offsetKey, key.c_str());
@@ -1250,8 +1258,9 @@ EdgeMarker::EdgeMarker (TRI_voc_tick_t databaseId,
 
   // store legend
   {
+    TRI_ASSERT(legendSize >= 8);
     char* p = static_cast<char*>(begin()) + m->_offsetLegend;
-    legend.dump(p);
+    memset(p, 0, 8); // initialise initial bytes of legend with 0s
   }
 
   // store shapedJson
@@ -1270,6 +1279,14 @@ EdgeMarker::EdgeMarker (TRI_voc_tick_t databaseId,
 ////////////////////////////////////////////////////////////////////////////////
 
 EdgeMarker::~EdgeMarker () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief store legend in marker
+////////////////////////////////////////////////////////////////////////////////
+
+void EdgeMarker::storeLegend (triagens::basics::JsonLegend& legend) {
+  legend.dump((void*) this->legend());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1298,8 +1315,6 @@ void EdgeMarker::dump () const {
             << "\n";
 
 #ifdef DEBUG_WAL_DETAIL
-  std::cout << "LEGEND:     '" << stringifyPart(legend(), legendLength()) << "'\n";
-  std::cout << "LEGEND HEX: '" << hexifyPart(legend(), legendLength()) << "'\n";
   std::cout << "JSON:       '" << stringifyPart(json(), jsonLength()) << "'\n";
   std::cout << "JSON HEX:   '" << hexifyPart(json(), jsonLength()) << "'\n";
 
@@ -1317,7 +1332,7 @@ EdgeMarker* EdgeMarker::clone (TRI_df_marker_t const* other,
                                TRI_voc_cid_t collectionId,
                                TRI_voc_rid_t revisionId,
                                TRI_voc_tid_t transactionId,
-                               triagens::basics::JsonLegend& legend,
+                               size_t legendSize,
                                TRI_shaped_json_t const* shapedJson) {
   char const* base = reinterpret_cast<char const*>(other);
 
@@ -1336,7 +1351,7 @@ EdgeMarker* EdgeMarker::clone (TRI_df_marker_t const* other,
                           transactionId,
                           std::string(base + original->base._offsetKey),
                           &edge,
-                          legend,
+                          legendSize,
                           shapedJson);
   }
   else {
@@ -1359,7 +1374,7 @@ EdgeMarker* EdgeMarker::clone (TRI_df_marker_t const* other,
                           transactionId,
                           std::string(base + original->_offsetKey),
                           &edge,
-                          legend,
+                          legendSize,
                           shapedJson);
   }
 }

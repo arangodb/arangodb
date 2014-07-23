@@ -290,6 +290,7 @@ typedef struct TRI_vocbase_s {
     bool                     _isDeleted;          // flag if database is marked as deleted
   }                          _usage;
 
+  struct TRI_server_s*       _server;
   TRI_vocbase_defaults_t     _settings;
 
   TRI_read_write_lock_t      _lock;               // collection iterator lock
@@ -405,7 +406,8 @@ void TRI_FreeCollectionsVocBase (struct TRI_vector_pointer_s*);
 /// @brief create a vocbase object, without threads and some other attributes
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_vocbase_type_e,
+TRI_vocbase_t* TRI_CreateInitialVocBase (struct TRI_server_s*,
+                                         TRI_vocbase_type_e,
                                          char const*,
                                          TRI_voc_tick_t,
                                          char const*,

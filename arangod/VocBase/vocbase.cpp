@@ -1309,7 +1309,8 @@ void TRI_FreeCollectionsVocBase (TRI_vector_pointer_t* collections) {
 /// @brief create a vocbase object, without threads and some other attributes
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_vocbase_type_e type,
+TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_server_t* server,
+                                         TRI_vocbase_type_e type,
                                          char const* path,
                                          TRI_voc_tick_t id,
                                          char const* name,
@@ -1322,6 +1323,7 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_vocbase_type_e type,
     return nullptr;
   }
 
+  vocbase->_server             = server;
   vocbase->_type               = type;
   vocbase->_id                 = id;
   vocbase->_path               = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, path);
@@ -1448,7 +1450,7 @@ TRI_vocbase_t* TRI_OpenVocBase (TRI_server_t* server,
   TRI_ASSERT(path != nullptr);
   TRI_ASSERT(defaults != nullptr);
 
-  TRI_vocbase_t* vocbase = TRI_CreateInitialVocBase(TRI_VOCBASE_TYPE_NORMAL, path, id, name, defaults);
+  TRI_vocbase_t* vocbase = TRI_CreateInitialVocBase(server, TRI_VOCBASE_TYPE_NORMAL, path, id, name, defaults);
 
   if (vocbase == nullptr) {
     return nullptr;

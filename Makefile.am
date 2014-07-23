@@ -256,7 +256,7 @@ nobase_pkgdataCOMMON_DATA = $(shell find @srcdir@/js/common -name "*.js" -print)
 nobase_pkgdataSERVER_DATA = $(shell find @srcdir@/js/server -name "*.js" -print)
 nobase_pkgdataCLIENT_DATA = $(shell find @srcdir@/js/client -name "*.js" -print)
 nobase_pkgdataNODE_DATA = $(shell find @srcdir@/js/node -type f "(" -name .travis.yml -o -name .npmignore -o -print ")")
-nobase_pkgdataAPPS_DATA = $(shell find @srcdir@/js/apps/system -type f "(" -path "*/test/*" -o -path "*/test_data/*" -o -print ")")
+nobase_pkgdataAPPS_DATA = $(shell find @srcdir@/js/apps/system -type f "(" -path "*/test/*" -o -path "*/test_data/*" -o -path "*/coverage/*" -o -print ")")
 
 if ENABLE_MRUBY
 
@@ -475,7 +475,15 @@ endif
 ################################################################################
 
 if ENABLE_MAINTAINER_MODE
-include lib/Makefile.bison
+
+BUILT_SOURCES += $(BISON_FILES) $(BISONXX_FILES)
+
+%.cpp: %.y
+	@top_srcdir@/utils/bison-c.sh $(BISON) $@ $<
+
+%.cpp: %.yy
+	@top_srcdir@/utils/bison-c++.sh $(BISON) $@ $<
+
 endif
 
 ## -----------------------------------------------------------------------------

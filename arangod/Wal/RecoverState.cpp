@@ -93,11 +93,17 @@ static std::string GetCollectionDirectory (TRI_vocbase_t* vocbase,
 
 static int WaitForDeletion (TRI_server_t* server,
                             TRI_voc_tick_t databaseId) {
-  std::string result = GetDatabaseDirectory(server, databaseId);
+  std::string const result = GetDatabaseDirectory(server, databaseId);
  
   int iterations = 0;
-  while (TRI_IsDirectory(result.c_str()) && iterations++ < 90 * 100) {
-    usleep(10000);
+  // wait for at most 30 seconds for the directory to be removed
+  while (TRI_IsDirectory(result.c_str())) {
+    if (++iterations >= 30 * 10) {
+      LOG_WARNING("unable to remove database directory '%s'", result.c_str());
+      return TRI_ERROR_INTERNAL;
+    }
+
+    usleep(100000);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -109,11 +115,17 @@ static int WaitForDeletion (TRI_server_t* server,
 
 static int WaitForDeletion (TRI_vocbase_t* vocbase,
                             TRI_voc_cid_t collectionId) {
-  std::string result = GetCollectionDirectory(vocbase, collectionId);
+  std::string const result = GetCollectionDirectory(vocbase, collectionId);
 
   int iterations = 0;
-  while (TRI_IsDirectory(result.c_str()) && iterations++ < 90 * 100) {
-    usleep(10000);
+  // wait for at most 30 seconds for the directory to be removed
+  while (TRI_IsDirectory(result.c_str())) {
+    if (++iterations >= 30 * 10) {
+      LOG_WARNING("unable to remove collection directory '%s'", result.c_str());
+      return TRI_ERROR_INTERNAL;
+    }
+
+    usleep(100000);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -240,6 +252,31 @@ TRI_vocbase_t* RecoverState::releaseDatabase (TRI_voc_tick_t databaseId) {
   }
   
   TRI_vocbase_t* vocbase = (*it).second;
+
+  TRI_ASSERT(vocbase != nullptr);
+
+  // release all collections we ourselves have opened for this database
+  auto it2 = openedCollections.begin();
+
+  while (it2 != openedCollections.end()) {
+    TRI_vocbase_col_t* collection = (*it2).second;
+  
+    TRI_ASSERT(collection != nullptr);
+
+    if (collection->_vocbase->_id == databaseId) {
+      // correct database, now release the collection
+      TRI_ASSERT(vocbase == collection->_vocbase);
+
+      TRI_ReleaseCollectionVocBase(vocbase, collection);
+      // get new iterator position
+      it2 = openedCollections.erase(it2);
+    }
+    else {
+      // collection not found, advance in the loop
+      ++it2;
+    }
+  }
+  
   TRI_ReleaseDatabaseServer(server, vocbase);
   openedDatabases.erase(databaseId);
         
@@ -258,6 +295,8 @@ TRI_vocbase_col_t* RecoverState::releaseCollection (TRI_voc_cid_t collectionId) 
   }
   
   TRI_vocbase_col_t* collection = (*it).second;
+  
+  TRI_ASSERT(collection != nullptr);
   TRI_ReleaseCollectionVocBase(collection->_vocbase, collection);
   openedCollections.erase(collectionId);
 
@@ -1263,6 +1302,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       if (vocbase != nullptr) {
         // remove already existing database
         TRI_DropByIdDatabaseServer(state->server, databaseId, false, false);
+
         WaitForDeletion(state->server, databaseId);
       }
 
@@ -1293,6 +1333,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
 
       if (vocbase != nullptr) {
         TRI_voc_tick_t otherId = vocbase->_id;
+
         state->releaseDatabase(otherId);
         TRI_DropDatabaseServer(state->server, nameString.c_str(), false, false);
         WaitForDeletion(state->server, otherId);

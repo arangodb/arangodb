@@ -30,8 +30,8 @@
    This special exception was added by the Free Software Foundation in
    version 2.2 of Bison.  */
 
-#ifndef YY_AHUACATL_ARANGOD_AHUACATL_AHUACATL_GRAMMAR_H_INCLUDED
-# define YY_AHUACATL_ARANGOD_AHUACATL_AHUACATL_GRAMMAR_H_INCLUDED
+#ifndef YY_AHUACATL_ARANGOD_AHUACATL_AHUACATL_GRAMMAR_HPP_INCLUDED
+# define YY_AHUACATL_ARANGOD_AHUACATL_AHUACATL_GRAMMAR_HPP_INCLUDED
 /* Debug traces.  */
 #ifndef YYDEBUG
 # define YYDEBUG 0
@@ -117,7 +117,7 @@ union YYSTYPE
   bool boolval;
   int64_t intval;
 
-#line 121 "arangod/Ahuacatl/ahuacatl-grammar.h" /* yacc.c:1915  */
+#line 121 "arangod/Ahuacatl/ahuacatl-grammar.hpp" /* yacc.c:1915  */
 };
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
@@ -141,4 +141,4 @@ struct YYLTYPE
 
 int Ahuacatlparse (TRI_aql_context_t* const context);
 
-#endif /* !YY_AHUACATL_ARANGOD_AHUACATL_AHUACATL_GRAMMAR_H_INCLUDED  */
+#endif /* !YY_AHUACATL_ARANGOD_AHUACATL_AHUACATL_GRAMMAR_HPP_INCLUDED  */

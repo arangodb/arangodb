@@ -19,8 +19,9 @@ ${BISON} -d -ra -o ${OUTPUT} ${INPUT}
 ## sanity checks
 #############################################################################
 
-PREFIX=`echo ${OUTPUT} | sed -e 's:\.c$::'`
+PREFIX=`echo ${OUTPUT} | sed -e 's:\.cpp$::'`
 
-test -f ${PREFIX}.h || exit 1
-test -f ${PREFIX}.c || exit 1
+test -f ${PREFIX}.hpp || exit 1
+test -f ${PREFIX}.cpp || exit 1
 
+cp ${PREFIX}.hpp ${PREFIX}.h

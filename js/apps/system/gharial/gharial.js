@@ -217,12 +217,21 @@
    */
   controller.post("/", function(req, res) {
     var infos = req.params("graph");
+    var options = setOptions(req);
+    if (options.code === actions.HTTP_OK) {
+      options.code = actions.HTTP_CREATED;
+    }
     var g = Graph._create(
       infos.get("name"),
       infos.get("edgeDefinitions"),
-      infos.get("orphanCollections")
+      infos.get("orphanCollections"),
+      options
     );
     setGraphResponse(res, g, actions.HTTP_CREATED);
+  })
+  .queryParam("waitForSync", {
+    type: "boolean",
+    description: "define if the request should wait until synced to disk."
   })
   .errorResponse(
     ArangoError, actions.HTTP_CONFLICT, "Graph creation error.", function(e) {
@@ -385,7 +394,15 @@
   controller.post("/:graph/vertex", function(req, res) {
     var name = req.params("graph");
     var body = req.params("collection");
-    var g = Graph._graph(name);
+    var g;
+    try {
+      g = Graph._graph(name);
+    } catch (e) {
+      var err = new Error();
+      err.errorNum = e.errorNum;
+      err.errorMessage = e.errorMessage;
+      throw err;
+    }
     g._addVertexCollection(body.get("collection"));
     setGraphResponse(res, g, actions.HTTP_CREATED);
   })
@@ -395,6 +412,11 @@
   })
   .bodyParam(
     "collection", "The vertex collection to be stored.", Model
+  )
+  .errorResponse(
+    Error, actions.HTTP_NOT_FOUND, "The graph could not be found.", function(e) {
+      return buildError(e, actions.HTTP_NOT_FOUND);
+    }
   )
   .errorResponse(
     ArangoError, actions.HTTP_BAD, "The vertex collection is invalid.", function(e) {
@@ -444,7 +466,22 @@
   controller.del("/:graph/vertex/:collection", function(req, res) {
     var name = req.params("graph");
     var def_name = req.params("collection");
-    var g = Graph._graph(name);
+    var g;
+    var err;
+    try {
+      g = Graph._graph(name);
+    } catch (e) {
+      err = new Error();
+      err.errorNum = e.errorNum;
+      err.errorMessage = e.errorMessage;
+      throw err;
+    }
+    if (g[def_name] === undefined) {
+      err = new Error();
+      err.errorNum = errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
+      err.errorMessage = errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message;
+      throw err;
+    }
     var drop = parseBooleanParameter(req, "dropCollection");
     g._removeVertexCollection(def_name, drop);
     setGraphResponse(res, g);
@@ -465,6 +502,11 @@
     ArangoError, actions.HTTP_BAD,
     "The collection is not found or part of an edge definition.", function(e) {
       return buildError(e, actions.HTTP_BAD);
+    }
+  )
+  .errorResponse(
+    Error, actions.HTTP_NOT_FOUND, "The graph could not be found.", function(e) {
+      return buildError(e, actions.HTTP_NOT_FOUND);
     }
   );
 
@@ -535,7 +577,15 @@
   controller.post("/:graph/edge", function(req, res) {
     var name = req.params("graph");
     var body = req.params("edgeDefinition");
-    var g = Graph._graph(name);
+    var g;
+    try {
+      g = Graph._graph(name);
+    } catch (e) {
+      var err = new Error();
+      err.errorNum = e.errorNum;
+      err.errorMessage = e.errorMessage;
+      throw err;
+    }
     g._extendEdgeDefinitions(body.forDB());
     setGraphResponse(res, g, actions.HTTP_CREATED);
   })
@@ -545,6 +595,11 @@
   })
   .bodyParam(
     "edgeDefinition", "The edge definition to be stored.", Model
+  )
+  .errorResponse(
+    Error, actions.HTTP_NOT_FOUND, "The graph could not be found.", function(e) {
+      return buildError(e, actions.HTTP_NOT_FOUND);
+    }
   )
   .errorResponse(
     ArangoError, actions.HTTP_BAD, "The edge definition is invalid.", function(e) {
@@ -586,9 +641,18 @@
     var name = req.params("graph");
     var def_name = req.params("definition");
     var body = req.params("edgeDefinition");
-    var g = Graph._graph(name);
+    var g;
+    var err;
+    try {
+      g = Graph._graph(name);
+    } catch (e) {
+      err = new Error();
+      err.errorNum = e.errorNum;
+      err.errorMessage = e.errorMessage;
+      throw err;
+    }
     if (def_name !== body.get("collection")) {
-      var err = new ArangoError();
+      err = new ArangoError();
       err.errorNum = errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.code;
       err.errorMessage = errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.message;
       throw err;
@@ -606,6 +670,11 @@
   })
   .bodyParam(
     "edgeDefinition", "The edge definition to be stored.", Model
+  )
+  .errorResponse(
+    Error, actions.HTTP_NOT_FOUND, "The graph could not be found.", function(e) {
+      return buildError(e, actions.HTTP_NOT_FOUND);
+    }
   )
   .errorResponse(
     ArangoError, actions.HTTP_BAD, "The edge definition is invalid.", function(e) {
@@ -638,7 +707,15 @@
   controller.del("/:graph/edge/:definition", function(req, res) {
     var name = req.params("graph");
     var def_name = req.params("definition");
-    var g = Graph._graph(name);
+    var g;
+    try {
+      g = Graph._graph(name);
+    } catch (e) {
+      var err = new Error();
+      err.errorNum = e.errorNum;
+      err.errorMessage = e.errorMessage;
+      throw err;
+    }
     var drop = parseBooleanParameter(req, "dropCollection");
     g._deleteEdgeDefinition(def_name, drop);
     setGraphResponse(res, g);
@@ -655,6 +732,11 @@
     type: "boolean",
     description: "flag to drop collection as well"
   })
+  .errorResponse(
+    Error, actions.HTTP_NOT_FOUND, "The graph could not be found.", function(e) {
+      return buildError(e, actions.HTTP_NOT_FOUND);
+    }
+  )
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The edge definition is invalid.", function(e) {
       return buildError(e, actions.HTTP_NOT_FOUND);
@@ -710,6 +792,11 @@
     type: "boolean",
     description: "define if the request should wait until synced to disk."
   })
+  .errorResponse(
+    ArangoError, actions.HTTP_NOT_FOUND, "Graph or collection not found.", function(e) {
+      return buildError(e, actions.HTTP_NOT_FOUND);
+    }
+  )
   .bodyParam("vertex", "The document to be stored", Model);
 
 ////////////////////////////////////////////////////////////////////////////////

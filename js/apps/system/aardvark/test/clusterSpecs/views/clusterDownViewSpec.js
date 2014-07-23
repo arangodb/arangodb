@@ -16,6 +16,9 @@
         planScenario : function () {
           throw "This should be a spy";
         },
+        registerForUpdate: function() {
+          expect("registered").toEqual("broxen");
+        },
         clusterPlan : {
           isTestSetup : function () {
             return undefined;
@@ -28,6 +31,7 @@
           }
         }
       };
+      spyOn(window.App, "navigate");
       view = new window.ClusterDownView();
     });
 
@@ -133,7 +137,6 @@
     });
 
     it("assert relaunchCluster", function () {
-      spyOn(window.App, "navigate");
       spyOn($, "ajax").andCallFake(function (opt) {
         expect(opt.url).toEqual("cluster/relaunch");
         expect(opt.type).toEqual("GET");
@@ -159,7 +162,6 @@
           return jquerydummy;
         }
       });
-      spyOn(window.App, "navigate");
       spyOn(window.App.clusterPlan, "isTestSetup").andReturn(false);
       spyOn(window.App.clusterPlan, "cleanUp");
       spyOn(jquerydummy, "modal");
@@ -181,7 +183,6 @@
           return jquerydummy;
         }
       });
-      spyOn(window.App, "navigate");
       spyOn(window.App.clusterPlan, "isTestSetup").andReturn(true);
       spyOn(window.App.clusterPlan, "cleanUp");
       spyOn(jquerydummy, "modal");
@@ -206,7 +207,6 @@
         }
       });
       spyOn(window, "ClusterPlan").andReturn(window.App.clusterPlan);
-      spyOn(window.App, "navigate");
       spyOn(window.App, "planScenario");
       spyOn(window.App.clusterPlan, "cleanUp");
       spyOn(window.App.clusterPlan, "destroy");

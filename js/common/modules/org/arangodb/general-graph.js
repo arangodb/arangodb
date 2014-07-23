@@ -1661,7 +1661,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-var _create = function (graphName, edgeDefinitions, orphanCollections) {
+var _create = function (graphName, edgeDefinitions, orphanCollections, options) {
 
   if (! Array.isArray(orphanCollections) ) {
     orphanCollections = [];
@@ -1755,7 +1755,7 @@ var _create = function (graphName, edgeDefinitions, orphanCollections) {
     'orphanCollections' : orphanCollections,
     'edgeDefinitions' : edgeDefinitions,
     '_key' : graphName
-  });
+  }, options);
 
   result = new Graph(graphName, edgeDefinitions, collections[0], collections[1],
     orphanCollections, data._rev , data._id);

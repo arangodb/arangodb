@@ -634,7 +634,23 @@
             };
           };
         });
+
+        it("should determine to store edges in lonely edge collection", function() {
+          expect(adapter.getSelectedEdgeCollection()).toEqual(edgeCollectionForGraph(graphName));
+        });
+
+        it("should determine to store nodes in lonely node collection", function() {
+          expect(adapter.getSelectedNodeCollection()).toEqual(nodeCollectionForGraph(graphName));
+        });
         
+        it("should know the graph name", function() {
+          expect(adapter.getGraphName()).toEqual(graphName);
+        });
+
+        it("the default direction should be outbound", function() {
+          expect(adapter.getDirection()).toEqual("outbound");
+        });
+
         it('should be able to load a tree node from ' 
         + 'ArangoDB by internal _id attribute', function() {
       

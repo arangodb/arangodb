@@ -4428,8 +4428,8 @@ function GENERAL_GRAPH_PATHS (graphName, options) {
 
   // check graph exists and load edgeDefintions
   var graph = DOCUMENT_HANDLE("_graphs/" + graphName);
-  if (!graph) {
-    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
+  if (! graph) {
+    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_PATHS");
   }
 
   var startCollections = [], edgeCollections = [];
@@ -4793,49 +4793,42 @@ function DOCUMENTS_BY_EXAMPLE (collectionList, example) {
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief GET ALL EDGE and VERTEX COLLECTION ACCORDING TO DIRECTION
-////////////////////////////////////////////////////////////////////////////////
-
-function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
-  // check graph exists and load edgeDefintions
-
-  var graph = DOCUMENT_HANDLE("_graphs/" + graphname);
-  if (! graph) {
-    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
-  }
-  var fromCollections = [], toCollection = [],edgeCollections = [];
+function RESOLVE_GRAPH_TO_COLLECTIONS(graph, options) {
+  var collections = {};
+  collections.fromCollections = [];
+  collections.toCollection = [];
+  collections.edgeCollections = [];
   graph.edgeDefinitions.forEach(function (def) {
     if (options.direction === "outbound") {
-      edgeCollections = edgeCollections.concat(
+      collections.edgeCollections = collections.edgeCollections.concat(
         FILTER_RESTRICTION(def.collection, options.edgeCollectionRestriction)
       );
-      fromCollections = fromCollections.concat(
+      collections.fromCollections = collections.fromCollections.concat(
         FILTER_RESTRICTION(def.from, options.startVertexCollectionRestriction)
       );
-      toCollection = toCollection.concat(
+      collections.toCollection = collections.toCollection.concat(
         FILTER_RESTRICTION(def.to, options.endVertexCollectionRestriction)
       );
     }
     else if (options.direction === "inbound") {
-      edgeCollections = edgeCollections.concat(
+      collections.edgeCollections = collections.edgeCollections.concat(
         FILTER_RESTRICTION(def.collection, options.edgeCollectionRestriction)
       );
-      fromCollections = fromCollections.concat(
+      collections.fromCollections = collections.fromCollections.concat(
         FILTER_RESTRICTION(def.to, options.endVertexCollectionRestriction)
       );
-      toCollection = toCollection.concat(
+      collections.toCollection = collections.toCollection.concat(
         FILTER_RESTRICTION(def.from, options.startVertexCollectionRestriction)
       );
     }
     else if (options.direction === "any") {
-      edgeCollections = edgeCollections.concat(
+      collections.edgeCollections = collections.edgeCollections.concat(
         FILTER_RESTRICTION(def.collection, options.edgeCollectionRestriction)
       );
-      fromCollections = fromCollections.concat(
+      collections.fromCollections = collections.fromCollections.concat(
         FILTER_RESTRICTION(def.from.concat(def.to), options.startVertexCollectionRestriction)
       );
-      toCollection = toCollection.concat(
+      collections.toCollection = collections.toCollection.concat(
         FILTER_RESTRICTION(def.from.concat(def.to), options.endVertexCollectionRestriction)
       );
     }
@@ -4843,21 +4836,90 @@ function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
       THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "GRAPH_EDGES");
     }
   });
+
+  return collections;
+}
+
+
+function RESOLVE_GRAPH_TO_FROM_VERTICES (graphname, options) {
+  var graph = DOCUMENT_HANDLE("_graphs/" + graphname), collections ;
+  if (! graph) {
+    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
+  }
+
+  collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options);
+  var removeDuplicates = function(elem, pos, self) {
+    return self.indexOf(elem) === pos;
+  };
+
+  return DOCUMENTS_BY_EXAMPLE(
+      collections.fromCollections.filter(removeDuplicates), options.fromVertexExample
+  );
+}
+
+function RESOLVE_GRAPH_TO_TO_VERTICES (graphname, options) {
+  var graph = DOCUMENT_HANDLE("_graphs/" + graphname), collections ;
+  if (! graph) {
+    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
+  }
+
+  collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options);
+  var removeDuplicates = function(elem, pos, self) {
+    return self.indexOf(elem) === pos;
+  };
+
+  return DOCUMENTS_BY_EXAMPLE(
+    collections.toCollection.filter(removeDuplicates), options.toVertexExample
+  );
+}
+
+function RESOLVE_GRAPH_TO_EDGES (graphname, options) {
+  var graph = DOCUMENT_HANDLE("_graphs/" + graphname), collections ;
+  if (! graph) {
+    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
+  }
+
+  collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options);
+  var removeDuplicates = function(elem, pos, self) {
+    return self.indexOf(elem) === pos;
+  };
+
+  return DOCUMENTS_BY_EXAMPLE(
+    collections.edgeCollections.filter(removeDuplicates), options.edgeExamples
+  );
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET ALL EDGE and VERTEX COLLECTION ACCORDING TO DIRECTION
+////////////////////////////////////////////////////////////////////////////////
+
+function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
+  // check graph exists and load edgeDefintions
+
+  var graph = DOCUMENT_HANDLE("_graphs/" + graphname), collections ;
+  if (! graph) {
+    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
+  }
+
+  collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options);
   var removeDuplicates = function(elem, pos, self) {
     return self.indexOf(elem) === pos;
   };
 
   var result =  {
     fromVertices :DOCUMENTS_BY_EXAMPLE(
-      fromCollections.filter(removeDuplicates), options.fromVertexExample
+      collections.fromCollections.filter(removeDuplicates), options.fromVertexExample
     ),
     toVertices : DOCUMENTS_BY_EXAMPLE(
-      toCollection.filter(removeDuplicates), options.toVertexExample
+      collections.toCollection.filter(removeDuplicates), options.toVertexExample
     ),
-    edges : DOCUMENTS_BY_EXAMPLE(edgeCollections.filter(removeDuplicates), options.edgeExamples),
-    edgeCollections : edgeCollections,
-    fromCollections : fromCollections,
-    toCollection : toCollection
+    edges : DOCUMENTS_BY_EXAMPLE(
+      collections.edgeCollections.filter(removeDuplicates), options.edgeExamples
+    ),
+    edgeCollections : collections.edgeCollections,
+    fromCollections : collections.fromCollections,
+    toCollection : collections.toCollection
   };
 
   //ResolvedGraphCache[graphname + JSON.stringify(options)] = result;
@@ -5223,20 +5285,23 @@ function MERGE_EXAMPLES_WITH_EDGES (examples, edges) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief calculate shortest paths by dijkstra
 ////////////////////////////////////////////////////////////////////////////////
-function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, graphData, options) {
+function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, options) {
 
   var params = TRAVERSAL_PARAMS(), factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
   params.paths = true;
-  params.followEdges = MERGE_EXAMPLES_WITH_EDGES(options.edgeExamples, graphData.edges);
+  if (options.edgeExamples || options.edgeCollectionRestriction) {
+    params.followEdges = RESOLVE_GRAPH_TO_EDGES(graphName, options);
+  }
   params.weight = options.weight;
   params.defaultWeight = options.defaultWeight;
   params = SHORTEST_PATH_PARAMS(params);
   params.visitor =  TRAVERSAL_DIJSKTRA_VISITOR;
-  var result = [];
+  var result = [], fromVertices = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options),
+    toVertices = RESOLVE_GRAPH_TO_TO_VERTICES(graphName, options);
 
   var calculated = {};
-  graphData.fromVertices.forEach(function (v) {
-    graphData.toVertices.forEach(function (t) {
+  fromVertices.forEach(function (v) {
+    toVertices.forEach(function (t) {
       if (calculated[JSON.stringify({ from : TO_ID(v), to :  TO_ID(t)})]) {
         result.push(calculated[JSON.stringify({ from : TO_ID(v), to :  TO_ID(t)})]);
         return;
@@ -5303,9 +5368,9 @@ function IS_EXAMPLE_SET (example) {
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *startVertexExample* : An example for the desired start Vertices
-/// (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// (see [example](#short_explanation_of_the_example_parameter)).
 /// * *endVertexExample*   : An example for the desired
-/// end Vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// end Vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *options* (optional) : An object containing the following options::
 ///   * *direction*                        : The direction of the edges as a string.
 ///   Possible values are *outbound*, *inbound* and *any* (default).
@@ -5319,7 +5384,7 @@ function IS_EXAMPLE_SET (example) {
 ///   end vertex of a path.
 ///   * *edgeExamples*                     : A filter example for the
 ///   edges in the shortest paths
-///   (see [example](#short_explaination_of_the_vertex_example_parameter)).
+///   (see [example](#short_explanation_of_the_example_parameter)).
 ///   * *algorithm*                        : The algorithm to calculate
 ///   the shortest paths. If both start and end vertex examples are empty
 ///   [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) is
@@ -5379,7 +5444,6 @@ function GENERAL_GRAPH_SHORTEST_PATH (graphName,
   }
 
   options.edgeExamples = options.edgeExamples || {};
-  var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
 
   if (!options.algorithm) {
     if (!IS_EXAMPLE_SET(startVertexExample) && !IS_EXAMPLE_SET(endVertexExample)) {
@@ -5387,10 +5451,11 @@ function GENERAL_GRAPH_SHORTEST_PATH (graphName,
     }
   }
   if (options.algorithm === "Floyd-Warshall") {
+    var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
     return CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL(graph, options);
   }
   return CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA(
-    graphName, graph , options
+    graphName, options
   );
 
 }
@@ -5432,7 +5497,7 @@ function GRAPH_TRAVERSAL (vertexCollection,
 /// *Parameters*
 /// * *graphName*          : The name of the graph as a string.
 /// * *startVertexExample*        : An example for the desired
-/// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *direction*          : The direction of the edges as a string. Possible values
 /// are *outbound*, *inbound* and *any* (default).
 /// * *options* (optional) : Object containing optional options, see
@@ -5622,7 +5687,7 @@ function GENERAL_GRAPH_DISTANCE_TO (graphName,
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *startVertexExample*         : An example for the desired
-/// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *direction*          : The direction of the edges as a string.
 ///  Possible values are *outbound*, *inbound* and *any* (default).
 /// * *connectName*        : The result attribute which
@@ -5790,14 +5855,14 @@ function GRAPH_NEIGHBORS (vertexCollection,
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
-/// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *options*            : An object containing the following options::
 ///   * *direction*                        : The direction
 ///      of the edges. Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeExamples*                     : A filter example for the edges to
-///      the neighbors (see [example](#short_explaination_of_the_vertex_example_parameter)).
+///      the neighbors (see [example](#short_explanation_of_the_example_parameter)).
 ///   * *neighborExamples*                 : An example for the desired neighbors
-///      (see [example](#short_explaination_of_the_vertex_example_parameter)).
+///      (see [example](#short_explanation_of_the_example_parameter)).
 ///   * *edgeCollectionRestriction*        : One or multiple edge
 ///   collection names. Only edges from these collections will be considered for the path.
 ///   * *vertexCollectionRestriction* : One or multiple vertex
@@ -5835,6 +5900,7 @@ function GRAPH_NEIGHBORS (vertexCollection,
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
+
 function GENERAL_GRAPH_NEIGHBORS (graphName,
                                   vertexExample,
                                   options) {
@@ -5843,8 +5909,9 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
   if (! options) {
     options = {  };
   }
+
   options.fromVertexExample = vertexExample;
-  if (!options.direction) {
+  if (! options.direction) {
     options.direction =  'any';
   }
 
@@ -5855,22 +5922,19 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
       options.startVertexCollectionRestriction = options.vertexCollectionRestriction;
     }
   }
-
   var neighbors = [],
     params = TRAVERSAL_PARAMS(), 
     factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
-
   params.minDepth = options.minDepth === undefined ? 1 : options.minDepth;
   params.maxDepth = options.maxDepth === undefined ? 1 : options.maxDepth;
   params.paths = true;
-  options.edgeExamples = options.edgeExamples || {};
   params.visitor = TRAVERSAL_NEIGHBOR_VISITOR;
+  var fromVertices = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options);
 
-  var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
-
-  params.followEdges = MERGE_EXAMPLES_WITH_EDGES(options.edgeExamples, graph.edges);
-
-  graph.fromVertices.forEach(function (v) {
+  if (options.edgeExamples || options.edgeCollectionRestriction) {
+    params.followEdges = RESOLVE_GRAPH_TO_EDGES(graphName, options);
+  }
+  fromVertices.forEach(function (v) {
     var e = TRAVERSAL_FUNC("GRAPH_NEIGHBORS",
       factory,
       v._id,
@@ -5880,7 +5944,6 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 
     neighbors = neighbors.concat(e);
   });
-
   var result = [];
   neighbors.forEach(function (n) {
     if (FILTER([n.vertex], options.neighborExamples).length > 0) {
@@ -5908,7 +5971,7 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
-/// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *options* (optional) : An object containing the following options::
 ///   * *direction*                        : The direction
 /// of the edges as a string. Possible values are *outbound*, *inbound* and *any* (default).
@@ -5921,9 +5984,9 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 ///   collection names. Only vertices from these collections will be considered as
 ///   end vertex of a path.
 ///   * *edgeExamples*                     : A filter example
-/// for the edges (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// for the edges (see [example](#short_explanation_of_the_example_parameter)).
 ///   * *neighborExamples*                 : An example for
-/// the desired neighbors (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// the desired neighbors (see [example](#short_explanation_of_the_example_parameter)).
 ///   * *minDepth*                         : Defines the minimal length of a path from an edge
 ///  to a vertex (default is 1, which means only the edges directly connected to a vertex would
 ///  be returned).
@@ -5957,6 +6020,7 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
+
 function GENERAL_GRAPH_EDGES (
   graphName,
   vertexExample,
@@ -5992,7 +6056,7 @@ function GENERAL_GRAPH_EDGES (
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
-/// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *options* (optional)           : An object containing the following options::
 ///   * *direction*        : The direction of the edges as a string. Possible values are
 ///      *outbound*, *inbound* and *any* (default).
@@ -6048,8 +6112,7 @@ function GENERAL_GRAPH_VERTICES (
 
   options.fromVertexExample = vertexExamples;
 
-  var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
-  return graph.fromVertices;
+  return RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6188,9 +6251,9 @@ function GENERAL_GRAPH_COMMON_NEIGHBORS (
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertex1Example*     : An example for the desired
-/// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *vertex2Example*     : An example for the desired
-/// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *options* (optional)    : An object containing the following options::
 ///   * *vertex1CollectionRestriction* : One or multiple vertex
 ///   collection names. Only vertices from these collections will be considered.
@@ -6242,10 +6305,11 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
   options.startVertexCollectionRestriction = options.vertex1CollectionRestriction;
   options.endVertexCollectionRestriction = options.vertex2CollectionRestriction;
 
-  var g = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
+  var g = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options);
+  var g2 = RESOLVE_GRAPH_TO_TO_VERTICES(graphName, options);
   var res = [];
   var t = {};
-  g.fromVertices.forEach(function (n1) {
+  g.forEach(function (n1) {
     Object.keys(n1).forEach(function (key) {
       if (key.indexOf("_") === 0 || options.ignoreProperties.indexOf(key) !== -1) {
         return;
@@ -6257,7 +6321,7 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
     });
   });
 
-  g.toVertices.forEach(function (n1) {
+  g2.forEach(function (n1) {
     Object.keys(n1).forEach(function (key) {
       if (key.indexOf("_") === 0) {
         return;
@@ -6323,7 +6387,7 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
-/// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *options* (optional)    : An object containing the following options::
 ///   * *direction*                        : The direction of the edges as a string.
 /// Possible values are *outbound*, *inbound* and *any* (default).
@@ -6336,7 +6400,7 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 ///   collection names. Only vertices from these collections will be considered as
 ///   end vertex of a path.
 ///   * *edgeExamples*                     : A filter example for the edges in the
-///  shortest paths (see [example](#short_explaination_of_the_vertex_example_parameter)).
+///  shortest paths (see [example](#short_explanation_of_the_example_parameter)).
 ///   * *algorithm*                        : The algorithm to calculate
 ///  the shortest paths as a string. If vertex example is empty
 ///  [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) is
@@ -6505,7 +6569,7 @@ function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
 ///
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*     : An example for the desired
-/// vertices (see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *options*     : An object containing the following options::
 ///   * *direction*                        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
@@ -6519,7 +6583,7 @@ function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
 ///   end vertex of a path.
 ///   * *edgeExamples*                     : A filter example for the
 /// edges in the shortest paths (
-/// see [example](#short_explaination_of_the_vertex_example_parameter)).
+/// see [example](#short_explanation_of_the_example_parameter)).
 ///   * *algorithm*                        : The algorithm to calculate
 /// the shortest paths. Possible values are
 /// [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) (default)

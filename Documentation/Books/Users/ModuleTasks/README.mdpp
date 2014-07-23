@@ -128,6 +128,9 @@ tasks.register({
 });
 ```
 
+Note that when specifying an *offset* value of 0, ArangoDB will internally add 
+a very small value to the offset so will be slightly greater than zero.
+
 !SUBSECTION Unregister a task
 
 After a task has been registered, it can be unregistered using its id:
