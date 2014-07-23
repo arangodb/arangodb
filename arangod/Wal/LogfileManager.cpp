@@ -749,6 +749,41 @@ SlotInfo LogfileManager::allocate (void const* src,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief allocate space in a logfile for later writing, version for legends
+///
+/// See explanations about legends in the corresponding allocateAndWrite
+/// convenience function.
+////////////////////////////////////////////////////////////////////////////////
+
+SlotInfo LogfileManager::allocate (void const* src,
+                                   uint32_t size,
+                                   TRI_voc_cid_t cid,
+                                   TRI_shape_sid_t sid,
+                                   uint32_t legendOffset,
+                                   void*& oldLegend) {
+  if (! _allowWrites) {
+    // no writes allowed
+#ifdef TRI_ENABLE_MAINTAINER_MODE    
+    TRI_ASSERT(false);
+#endif
+     
+    return SlotInfo(TRI_ERROR_ARANGO_READ_ONLY);
+  }
+
+  if (size > MaxEntrySize()) {
+    // entry is too big
+    return SlotInfo(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
+  }
+
+  if (size > _filesize && ! _allowOversizeEntries) {
+    // entry is too big for a logfile
+    return SlotInfo(TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE);
+  }
+
+  return _slots->nextUnused(size, cid, sid, legendOffset, oldLegend);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief finalise a log entry
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -760,7 +795,48 @@ void LogfileManager::finalise (SlotInfo& slotInfo,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write data into the logfile
 /// this is a convenience function that combines allocate, memcpy and finalise
+///
+/// We need this version with cid, sid, legendOffset and oldLegend because
+/// there is a cache for each WAL file keeping track which legends are
+/// already in it. The decision whether or not an additional legend is
+/// needed therefore has to be taken in the allocation routine. This
+/// version is only used to write document or edge markers. If a previously
+/// written legend is found its address is returned in oldLegend such that
+/// the new marker can point to it with a relative reference.
 ////////////////////////////////////////////////////////////////////////////////
+
+SlotInfoCopy LogfileManager::allocateAndWrite (void* src,
+                                               uint32_t size,
+                                               bool waitForSync,
+                                               TRI_voc_cid_t cid,
+                                               TRI_shape_sid_t sid,
+                                               uint32_t legendOffset,
+                                               void*& oldLegend) {
+
+  SlotInfo slotInfo = allocate(src, size, cid, sid, legendOffset, oldLegend);
+
+  if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+    return SlotInfoCopy(slotInfo.errorCode);
+  }
+
+  TRI_ASSERT(slotInfo.slot != nullptr);
+
+  try {
+    slotInfo.slot->fill(src, size);
+
+    // we must copy the slotinfo because finalise() will set its internal to 0 again
+    SlotInfoCopy copy(slotInfo.slot);
+
+    finalise(slotInfo, waitForSync);
+    return copy;
+  }
+  catch (...) {
+    // if we don't return the slot we'll run into serious problems later
+    finalise(slotInfo, false);
+
+    return SlotInfoCopy(TRI_ERROR_INTERNAL);
+  }
+}
 
 SlotInfoCopy LogfileManager::allocateAndWrite (void* src,
                                                uint32_t size,
