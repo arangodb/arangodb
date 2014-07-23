@@ -24,4 +24,4 @@ PREFIX=`echo ${OUTPUT} | sed -e 's:\.cpp$::'`
 test -f ${PREFIX}.hpp || exit 1
 test -f ${PREFIX}.cpp || exit 1
 
-cp ${PREFIX}.hpp ${PREFIX}.h
+mv ${PREFIX}.hpp ${PREFIX}.h
