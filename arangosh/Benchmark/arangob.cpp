@@ -389,7 +389,7 @@ int main (int argc, char* argv[]) {
   }
 
   while (1) {
-    const size_t numOperations = operationsCounter.getValue();
+    const size_t numOperations = operationsCounter.getDone();
 
     if (numOperations >= (size_t) Operations) {
       break;
