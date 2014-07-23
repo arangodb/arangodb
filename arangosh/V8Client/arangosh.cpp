@@ -87,7 +87,7 @@ ArangoClient BaseClient;
 /// @brief the initial default connection
 ////////////////////////////////////////////////////////////////////////////////
 
-V8ClientConnection* ClientConnection = 0;
+V8ClientConnection* ClientConnection = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Windows console codepage
@@ -620,7 +620,7 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
 
   V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(argv.Holder(), WRAP_TYPE_CONNECTION);
 
-  if (connection == 0) {
+  if (connection == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "connection class corrupted");
   }
 
@@ -664,7 +664,7 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
   string const oldPassword     = BaseClient.password();
 
   delete connection;
-  ClientConnection = 0;
+  ClientConnection = nullptr;
 
   BaseClient.setEndpointString(definition);
   BaseClient.setDatabaseName(databaseName);
@@ -674,7 +674,7 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
   // re-connect using new options
   BaseClient.createEndpoint();
 
-  if (BaseClient.endpointServer() == 0) {
+  if (BaseClient.endpointServer() == nullptr) {
     BaseClient.setEndpointString(oldDefinition);
     BaseClient.setDatabaseName(oldDatabaseName);
     BaseClient.setUsername(oldUsername);
@@ -708,6 +708,8 @@ static v8::Handle<v8::Value> ClientConnection_reconnect (v8::Arguments const& ar
         func->Call(dbObj, 0, args);
       }
     }
+
+    ClientConnection = newConnection;
 
     // ok
     return scope.Close(v8::True());
@@ -2259,7 +2261,7 @@ int main (int argc, char* argv[]) {
 
   BaseClient.closeLog();
 
-  if (ClientConnection != 0) {
+  if (ClientConnection != nullptr) {
     delete ClientConnection;
   }
 

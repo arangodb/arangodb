@@ -1281,6 +1281,83 @@ struct TransactionMultiTest : public BenchmarkOperation {
 };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                  transaction test
+// -----------------------------------------------------------------------------
+
+struct TransactionMultiCollectionTest : public BenchmarkOperation {
+  TransactionMultiCollectionTest ()
+    : BenchmarkOperation () {
+  }
+
+  ~TransactionMultiCollectionTest () {
+  }
+
+  bool setUp (SimpleHttpClient* client) {
+    _c1 = std::string(Collection + "1");
+    _c2 = std::string(Collection + "2");
+
+    return DeleteCollection(client, _c1) &&
+           DeleteCollection(client, _c2) &&
+           CreateCollection(client, _c1, 2) &&
+           CreateCollection(client, _c2, 2);
+  }
+
+  void tearDown () {
+  }
+
+  std::string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    return std::string("/_api/transaction");
+  }
+
+  HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
+    return HttpRequest::HTTP_REQUEST_POST;
+  }
+
+  const char* payload (size_t* length, const int threadNumber, const size_t threadCounter, const size_t globalCounter, bool* mustFree) {
+    TRI_string_buffer_t* buffer;
+    buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+
+    TRI_AppendStringStringBuffer(buffer, "{ \"collections\": { ");
+
+    TRI_AppendStringStringBuffer(buffer, "\"write\": [ \"");
+    TRI_AppendStringStringBuffer(buffer, _c1.c_str());
+    TRI_AppendStringStringBuffer(buffer, "\", \"");
+    TRI_AppendStringStringBuffer(buffer, _c2.c_str());
+    TRI_AppendStringStringBuffer(buffer, "\" ] }, \"action\": \"function () { ");
+    TRI_AppendStringStringBuffer(buffer, "var c1 = require(\\\"internal\\\").db._collection(\\\"");
+    TRI_AppendStringStringBuffer(buffer, _c1.c_str());
+    TRI_AppendStringStringBuffer(buffer, "\\\"); var c2 = require(\\\"internal\\\").db._collection(\\\"");
+    TRI_AppendStringStringBuffer(buffer, _c2.c_str());
+    TRI_AppendStringStringBuffer(buffer, "\\\"); ");
+
+    TRI_AppendStringStringBuffer(buffer, "var doc = {");
+    const uint64_t n = Complexity;
+    for (uint64_t i = 0; i < n; ++i) {
+      if (i > 0) {
+        TRI_AppendStringStringBuffer(buffer, ", ");
+      }
+      TRI_AppendStringStringBuffer(buffer, "value");
+      TRI_AppendUInt64StringBuffer(buffer, i);
+      TRI_AppendStringStringBuffer(buffer, ": ");
+      TRI_AppendUInt64StringBuffer(buffer, i);
+    }
+    TRI_AppendStringStringBuffer(buffer, " };");
+
+    TRI_AppendStringStringBuffer(buffer, "c1.save(doc); c2.save(doc); }\" }");
+
+    *length = TRI_LengthStringBuffer(buffer);
+    *mustFree = true;
+    char* ptr = TRI_StealStringBuffer(buffer);
+    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+
+    return (const char*) ptr;
+  }
+
+  std::string _c1;
+  std::string _c2;
+};
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -1453,6 +1530,9 @@ static BenchmarkOperation* GetTestCase (const std::string& name) {
   }
   if (name == "multitrx") {
     return new TransactionMultiTest();
+  }
+  if (name == "multi-collection") {
+    return new TransactionMultiCollectionTest();
   }
 
   return 0;
