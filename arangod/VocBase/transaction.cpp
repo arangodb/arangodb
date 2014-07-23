@@ -1050,7 +1050,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
         else {
           sizeChanged =   legend.getSize() 
                         - (oldm->_offsetJson - oldm->_offsetLegend);
-          TRI_voc_size_t newMarkerSize = oldm->_size + sizeChanged;
+          TRI_voc_size_t newMarkerSize = (TRI_voc_size_t) (oldm->_size + sizeChanged);
 
           // Now construct the new marker on the heap:
           char* newmarker = new char[newMarkerSize];
@@ -1063,7 +1063,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
           // And fix its entries:
           auto newm = reinterpret_cast<triagens::wal::document_marker_t*>(newmarker);
           newm->_size = newMarkerSize;
-          newm->_offsetJson = oldm->_offsetLegend + legend.getSize();
+          newm->_offsetJson = (uint32_t) (oldm->_offsetLegend + legend.getSize());
           triagens::wal::SlotInfoCopy slotInfo2 = triagens::wal::LogfileManager::instance()->allocateAndWrite(newmarker, newMarkerSize, waitForSync, cid, sid, newm->_offsetLegend, oldLegend);
           delete[] newmarker;
           if (slotInfo2.errorCode != TRI_ERROR_NO_ERROR) {
