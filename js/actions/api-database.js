@@ -226,7 +226,7 @@ function get_api_database (req, res) {
 /// Creates a new database
 ///
 /// The request body must be a JSON object with the attribute *name*. *name* must
-/// contain a valid @ref DatabaseNames "database name".
+/// contain a valid database name.
 ///
 /// The request body can optionally contain an attribute *users*, which then 
 /// must be a list of user objects to initially create for the new database.

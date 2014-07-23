@@ -37,6 +37,7 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_AID_NOT_FOUND, "internal error with attribute ID in shaper");
   REG_ERROR(ERROR_LEGEND_INCOMPLETE, "internal error if a legend could not be created");
   REG_ERROR(ERROR_IP_ADDRESS_INVALID, "IP address is invalid");
+  REG_ERROR(ERROR_LEGEND_NOT_IN_WAL_FILE, "internal error if a legend for a marker does not yet exist in the same WAL file");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_UNAUTHORIZED, "unauthorized");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");

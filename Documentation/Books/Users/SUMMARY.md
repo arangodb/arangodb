@@ -6,7 +6,7 @@
   * [Windows](Installing/Windows.md)
   * [Compiling](Installing/Compiling.md)
   * [Upgrading in general](Installing/Upgrading.md)
-  * [Upgrading to new version](Upgrading/Upgrading22.md)
+  * [Upgrading to new version](Upgrading/UpgradingNewVersion.md)
   * [Set up Cluster](Installing/Cluster.md)
 <!-- 2 -->
 * [First Steps](FirstSteps/README.md)

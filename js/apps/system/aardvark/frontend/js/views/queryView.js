@@ -326,6 +326,7 @@
       e.stopPropagation();
       var inputEditor = ace.edit("aqlEditor");
       var saveName = $('#new-query-name').val();
+      var isUpdate = $('#modalButton1').text() === 'Update';
 
       if ($('#new-query-name').hasClass('invalid-input')) {
         return;
@@ -343,7 +344,7 @@
       $.each(this.customQueries, function (k, v) {
           if (v.name === saveName) {
             v.value = content;
-            quit = true;
+            quit = !isUpdate;
             return;
           }
         });
@@ -354,10 +355,12 @@
         return;
       }
 
-      this.customQueries.push({
-        name: saveName,
-        value: content
-      });
+      if (!isUpdate) {
+        this.customQueries.push({
+          name: saveName,
+          value: content
+        });
+      }
 
       window.modalView.hide();
 
@@ -453,12 +456,15 @@
       this.customQueries = _.sortBy(this.customQueries, 'name');
     },
     submitQuery: function () {
-      this.switchTab("result-switch");
       var self = this;
-      var sizeBox = $('#querySize');
       var inputEditor = ace.edit("aqlEditor");
+      var selectedText = inputEditor.session.getTextRange(inputEditor.getSelectionRange());
+      
+      this.switchTab("result-switch");
+      
+      var sizeBox = $('#querySize');
       var data = {
-        query: inputEditor.getValue(),
+        query: selectedText || inputEditor.getValue(),
         batchSize: parseInt(sizeBox.val(), 10)
       };
       var outputEditor = ace.edit("queryOutput");

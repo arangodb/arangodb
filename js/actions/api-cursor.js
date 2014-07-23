@@ -42,11 +42,6 @@ var internal = require("internal");
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_post_api_cursor
 /// @brief create a cursor and return the first results
 ///
@@ -73,6 +68,11 @@ var internal = require("internal");
 /// - *batchSize*: maximum number of result documents to be transferred from
 ///   the server to the client in one roundtrip (optional). If this attribute is
 ///   not set, a server-controlled default value will be used.
+///
+/// - *ttl*: an optional time-to-live for the cursor (in seconds). The cursor will be 
+///   removed on the server automatically after the specified amount of time. This
+///   is useful to ensure garbage collection of cursors that are not fully fetched 
+///   by clients. If not set, a server-defined value will be used.
 ///
 /// - *bindVars*: key/value list of bind parameters (optional). 
 ///
@@ -135,7 +135,7 @@ var internal = require("internal");
 /// error occurs during query processing, the server will respond with *HTTP 400*.
 /// Again, the body of the response will contain details about the error.
 ///
-/// A list of query errors can be found @ref ArangoErrors here.
+/// A list of query errors can be found (../ArangoErrors/README.md) here.
 ///
 /// @RESTRETURNCODES
 /// 
@@ -349,7 +349,8 @@ function post_api_cursor(req, res) {
                                 json.bindVars, 
                                 { 
                                   count : json.count || false,
-                                  batchSize: json.batchSize || 1000
+                                  batchSize: json.batchSize || 1000,
+                                  ttl: json.ttl 
                                 },
                                 json.options);
   }
@@ -612,10 +613,6 @@ actions.defineHttp({
     }
   }
 });
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // Local Variables:
 // mode: outline-minor

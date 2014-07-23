@@ -2985,7 +2985,7 @@ static void ProcessNode (TRI_aql_codegen_js_t* const generator, const TRI_aql_no
 
 static TRI_aql_codegen_register_t CreateCode (TRI_aql_codegen_js_t* generator) {
   TRI_aql_codegen_register_t startRegister = IncRegister(generator);
-  TRI_vector_pointer_t* statements;
+  std::vector<TRI_aql_node_t*>* statements;
   size_t i, n;
 
   StartScope(generator, &generator->_buffer, TRI_AQL_SCOPE_MAIN, 0, 0, 0, startRegister, NULL);
@@ -2997,11 +2997,11 @@ static TRI_aql_codegen_register_t CreateCode (TRI_aql_codegen_js_t* generator) {
   InitList(generator, startRegister);
 
   statements = &generator->_context->_statements->_statements;
-  n = statements->_length;
+  n = statements->size();
   for (i = 0; i < n; ++i) {
     TRI_aql_node_t* node;
 
-    node = static_cast<TRI_aql_node_t*>(TRI_AtVectorPointer(statements, i));
+    node = statements->at(i);
     ProcessNode(generator, node);
   }
 

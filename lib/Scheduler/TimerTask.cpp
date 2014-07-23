@@ -65,6 +65,10 @@ void TimerTask::getDescription (TRI_json_t* json) {
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "offset", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, seconds));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up task
+////////////////////////////////////////////////////////////////////////////////
+
 bool TimerTask::setup (Scheduler* scheduler, EventLoop loop) {
   this->_scheduler = scheduler;
   this->_loop = loop;
@@ -81,7 +85,7 @@ bool TimerTask::setup (Scheduler* scheduler, EventLoop loop) {
 }
 
 void TimerTask::cleanup () {
-  if (_scheduler == 0) {
+  if (_scheduler == nullptr) {
     LOG_WARNING("In TimerTask::cleanup the scheduler has disappeared -- invalid pointer");
     watcher = 0;
     return;

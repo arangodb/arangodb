@@ -32,7 +32,7 @@
 
 #include "Basics/Common.h"
 
-struct TRI_aql_statement_list_s;
+struct TRI_aql_statement_list_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -55,7 +55,7 @@ TRI_aql_dump_t;
 /// @brief dump statement list
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DumpStatementsAql (struct TRI_aql_statement_list_s* const);
+void TRI_DumpStatementsAql (struct TRI_aql_statement_list_t* const);
 
 #endif
 

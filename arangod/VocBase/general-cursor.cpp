@@ -64,16 +64,15 @@ TRI_general_cursor_result_t* TRI_CreateCursorResult (void* data,
   TRI_general_cursor_row_t (*getAt)(TRI_general_cursor_result_t const*, const TRI_general_cursor_length_t),
   TRI_general_cursor_length_t (*getLength)(TRI_general_cursor_result_t const*)) {
 
-  TRI_general_cursor_result_t* result;
 
-  if (data == NULL) {
-    return NULL;
+  if (data == nullptr) {
+    return nullptr;
   }
 
-  result = (TRI_general_cursor_result_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_general_cursor_result_t), false);
+  TRI_general_cursor_result_t* result = static_cast<TRI_general_cursor_result_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_general_cursor_result_t), false));
 
-  if (result == NULL) {
-    return NULL;
+  if (result == nullptr) {
+    return nullptr;
   }
 
   result->_data     = data;
@@ -104,7 +103,7 @@ void TRI_DestroyCursorResult (TRI_general_cursor_result_t* const result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeCursorResult (TRI_general_cursor_result_t* const result) {
-  if (result != NULL) {
+  if (result != nullptr) {
     TRI_DestroyCursorResult(result);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, result);
   }
@@ -161,7 +160,7 @@ static inline TRI_general_cursor_row_t NextGeneralCursor (TRI_general_cursor_t* 
     cursor->_result->freeData(cursor->_result);
   }
 
-  return NULL;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -205,7 +204,7 @@ static TRI_json_t* GetExtraGeneralCursor (const TRI_general_cursor_t* const curs
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeGeneralCursor (TRI_general_cursor_t* cursor) {
-  if (cursor->_extra != NULL) {
+  if (cursor->_extra != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, cursor->_extra);
   }
 
@@ -225,15 +224,21 @@ TRI_general_cursor_t* TRI_CreateGeneralCursor (TRI_vocbase_t* vocbase,
                                                TRI_general_cursor_result_t* result,
                                                const bool doCount,
                                                const TRI_general_cursor_length_t batchSize,
+                                               double ttl,
                                                TRI_json_t* extra) {
-  TRI_general_cursor_t* cursor;
+  TRI_ASSERT(vocbase != nullptr);
 
-  TRI_ASSERT(vocbase != NULL);
+  TRI_general_cursor_t* cursor = static_cast<TRI_general_cursor_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_general_cursor_t), false));
 
-  cursor = (TRI_general_cursor_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_general_cursor_t), false);
+  if (cursor == nullptr) {
+    return nullptr;
+  }
 
-  if (cursor == NULL) {
-    return NULL;
+  if (ttl <= 0.0) {
+    ttl = 30.0; // default ttl
+  }
+  else if (ttl >= 3600.0) {
+    ttl = 3600.0; // max ttl
   }
 
   cursor->_vocbase     = vocbase;
@@ -242,9 +247,10 @@ TRI_general_cursor_t* TRI_CreateGeneralCursor (TRI_vocbase_t* vocbase,
   cursor->_result      = result;
   cursor->_extra       = extra; // might be NULL
 
-  cursor->_expires     = TRI_microtime() + 3600; // default lifetime: 1h
+  cursor->_ttl         = ttl;
+  cursor->_expires     = TRI_microtime() + ttl; 
   cursor->_id          = TRI_NewTickServer();
-
+    
   // state
   cursor->_currentRow  = 0;
   cursor->_length      = result->getLength(result);
@@ -299,12 +305,13 @@ TRI_general_cursor_t* TRI_UseGeneralCursor (TRI_general_cursor_t* cursor) {
   TRI_LockSpin(&store->_lock);
   cursor = static_cast<TRI_general_cursor_t*>(TRI_LookupByKeyAssociativePointer(&store->_ids, &cursor->_id));
 
-  if (cursor != NULL) {
+  if (cursor != nullptr) {
     if (cursor->_usage._isDeleted) {
-      cursor = NULL;
+      cursor = nullptr;
     }
     else {
       ++cursor->_usage._refCount;
+      cursor->_expires = TRI_microtime() + cursor->_ttl;
     }
   }
   TRI_UnlockSpin(&store->_lock);
@@ -321,7 +328,7 @@ void TRI_ReleaseGeneralCursor (TRI_general_cursor_t* cursor) {
 
   TRI_LockSpin(&store->_lock);
   cursor = static_cast<TRI_general_cursor_t*>(TRI_LookupByKeyAssociativePointer(&store->_ids, &cursor->_id));
-  if (cursor != NULL) {
+  if (cursor != nullptr) {
     --cursor->_usage._refCount;
   }
   TRI_UnlockSpin(&store->_lock);
@@ -338,7 +345,7 @@ bool TRI_DropGeneralCursor (TRI_general_cursor_t* cursor) {
   TRI_LockSpin(&store->_lock);
   cursor = static_cast<TRI_general_cursor_t*>(TRI_LookupByKeyAssociativePointer(&store->_ids, &cursor->_id));
 
-  if (cursor != NULL && ! cursor->_usage._isDeleted) {
+  if (cursor != nullptr && ! cursor->_usage._isDeleted) {
     cursor->_usage._isDeleted = true;
     result = true;
   }
@@ -370,9 +377,8 @@ size_t TRI_CountGeneralCursor (TRI_general_cursor_t* cursor) {
 /// @brief persist the cursor by setting a timeout
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_PersistGeneralCursor (TRI_general_cursor_t* cursor,
-                               double ttl) {
-  cursor->_expires = TRI_microtime() + ttl;
+void TRI_PersistGeneralCursor (TRI_general_cursor_t* cursor) {
+  cursor->_expires = TRI_microtime() + cursor->_ttl;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -385,8 +391,8 @@ TRI_general_cursor_t* TRI_FindGeneralCursor (TRI_vocbase_t* vocbase,
 
   TRI_LockSpin(&store->_lock);
   TRI_general_cursor_t* cursor = static_cast<TRI_general_cursor_t*>(TRI_LookupByKeyAssociativePointer(&store->_ids, &id));
-  if (cursor == NULL || cursor->_usage._isDeleted) {
-    cursor = NULL;
+  if (cursor == nullptr || cursor->_usage._isDeleted) {
+    cursor = nullptr;
   }
   TRI_UnlockSpin(&store->_lock);
 
@@ -404,7 +410,7 @@ bool TRI_RemoveGeneralCursor (TRI_vocbase_t* vocbase,
 
   TRI_LockSpin(&store->_lock);
   TRI_general_cursor_t* cursor = static_cast<TRI_general_cursor_t*>(TRI_LookupByKeyAssociativePointer(&store->_ids, &id));
-  if (cursor == NULL || cursor->_usage._isDeleted) {
+  if (cursor == nullptr || cursor->_usage._isDeleted) {
     result = false;
   }
   else {
@@ -423,8 +429,8 @@ bool TRI_RemoveGeneralCursor (TRI_vocbase_t* vocbase,
 TRI_general_cursor_store_t* TRI_CreateStoreGeneralCursor (void) {
   TRI_general_cursor_store_t* store = static_cast<TRI_general_cursor_store_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_general_cursor_t), false));
 
-  if (store == NULL) {
-    return NULL;
+  if (store == nullptr) {
+    return nullptr;
   }
 
   int res = TRI_InitAssociativePointer(&store->_ids,
@@ -432,12 +438,12 @@ TRI_general_cursor_store_t* TRI_CreateStoreGeneralCursor (void) {
                                        HashKeyId,
                                        HashElementId,
                                        EqualKeyId,
-                                       NULL);
+                                       nullptr);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, store);
 
-    return NULL;
+    return nullptr;
   }
 
   TRI_InitSpin(&store->_lock);
@@ -485,13 +491,12 @@ void TRI_CleanupGeneralCursor (TRI_general_cursor_store_t* store,
   // we have deleted CURSOR_MAX_DELETE elements
   while (deleteCount++ < CURSOR_MAX_DELETE || force) {
     bool deleted = false;
-    size_t i;
 
-    for (i = 0; i < store->_ids._nrAlloc; i++) {
+    for (size_t i = 0; i < store->_ids._nrAlloc; i++) {
       // enum all cursors
-      TRI_general_cursor_t* cursor = (TRI_general_cursor_t*) store->_ids._table[i];
+      TRI_general_cursor_t* cursor = static_cast<TRI_general_cursor_t*>(store->_ids._table[i]);
 
-      if (cursor == NULL) {
+      if (cursor == nullptr) {
         continue;
       }
 
@@ -500,6 +505,7 @@ void TRI_CleanupGeneralCursor (TRI_general_cursor_store_t* store,
       if (force ||
           (cursor->_usage._refCount == 0 &&
            (cursor->_usage._isDeleted || cursor->_expires < compareStamp))) {
+
         LOG_TRACE("cleaning cursor %p, id: %llu, rc: %d, expires: %d, deleted: %d",
                   cursor,
                   (unsigned long long) cursor->_id,

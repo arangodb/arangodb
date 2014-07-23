@@ -230,6 +230,15 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not shape information should be suppress when writing
+/// markers into the write-ahead log
+////////////////////////////////////////////////////////////////////////////////
+        
+        inline bool suppressShapeInformation () const {
+          return _suppressShapeInformation;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not there was a SHUTDOWN file with a tick value
 /// at server start
 ////////////////////////////////////////////////////////////////////////////////
@@ -420,6 +429,17 @@ namespace triagens {
                            uint32_t);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief reserve space in a logfile, version for legends
+////////////////////////////////////////////////////////////////////////////////
+
+        SlotInfo allocate (void const*,
+                           uint32_t,
+                           TRI_voc_cid_t cid,
+                           TRI_shape_sid_t sid,
+                           uint32_t legendOffset,
+                           void*& oldLegend);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief finalise a log entry
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -433,6 +453,20 @@ namespace triagens {
         SlotInfoCopy allocateAndWrite (void*,
                                        uint32_t,
                                        bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write data into the logfile
+/// this is a convenience function that combines allocate, memcpy and finalise,
+/// this version is for markers with legends
+////////////////////////////////////////////////////////////////////////////////
+
+        SlotInfoCopy allocateAndWrite (void*,
+                                       uint32_t,
+                                       bool,
+                                       TRI_voc_cid_t,
+                                       TRI_shape_sid_t,
+                                       uint32_t,
+                                       void*&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write data into the logfile
@@ -959,6 +993,24 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _ignoreRecoveryErrors;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief suppress shape information
+/// @startDocuBlock WalLogfileSuppressShapeInformation
+/// `--wal.suppress-shape-information`
+///
+/// Setting this variable to *true* will lead to no shape information being 
+/// written into the write-ahead logfiles for documents or edges. While this is 
+/// a good optimization for a single server to save memory (and disk space), it
+/// it will effectively disable using the write-ahead log as a source for 
+/// replicating changes to other servers. 
+///
+/// **Do not set this variable to *true* on a server that you plan to use as a 
+/// replication master!**
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _suppressShapeInformation;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not writes to the WAL are allowed

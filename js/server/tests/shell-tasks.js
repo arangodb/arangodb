@@ -42,7 +42,11 @@ function TaskSuite () {
   var cleanTasks = function () {
     tasks.get().forEach(function(task) {
       if (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/)) {
-        tasks.unregister(task);
+        try {
+          tasks.unregister(task);
+        }
+        catch (err) {
+        }
       }
     });
   };
@@ -389,6 +393,109 @@ function TaskSuite () {
       t = getTasks();
 
       assertEqual(0, t.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a task with an offset and run it
+////////////////////////////////////////////////////////////////////////////////
+
+    testOffsetTaskNoExec : function () {
+      db._drop(cn);
+      db._create(cn);
+
+      assertEqual(0, db[cn].count());
+
+      var command = "require('internal').db." + cn + ".save({ value: params });";
+
+      var task = tasks.register({ 
+        id: "UnitTests1", 
+        name: "UnitTests1", 
+        command: command, 
+        offset: 10,
+        params: 42 
+      });
+
+      assertEqual("UnitTests1", task.id);
+      assertEqual("UnitTests1", task.name);
+      assertEqual("timed", task.type);
+      assertEqual(10, task.offset);
+      assertEqual("_system", task.database);
+      
+      t = getTasks();
+      assertEqual(1, t.length);
+
+      internal.wait(2);
+
+      assertEqual(0, db[cn].count());
+      tasks.unregister(task);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a task with an offset and run it
+////////////////////////////////////////////////////////////////////////////////
+
+    testOffsetTaskExec : function () {
+      db._drop(cn);
+      db._create(cn);
+
+      assertEqual(0, db[cn].count());
+
+      var command = "require('internal').db." + cn + ".save({ value: params });";
+
+      var task = tasks.register({ 
+        id: "UnitTests1", 
+        name: "UnitTests1", 
+        command: command, 
+        offset: 2,
+        params: 42 
+      });
+
+      assertEqual("UnitTests1", task.id);
+      assertEqual("UnitTests1", task.name);
+      assertEqual("timed", task.type);
+      assertEqual(2, task.offset);
+      assertEqual("_system", task.database);
+      
+      t = getTasks();
+      assertEqual(1, t.length);
+
+      internal.wait(5);
+
+      assertEqual(1, db[cn].count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a task with an offset and run it
+////////////////////////////////////////////////////////////////////////////////
+
+    testOffsetTaskImmediate : function () {
+      db._drop(cn);
+      db._create(cn);
+
+      assertEqual(0, db[cn].count());
+
+      var command = "require('internal').db." + cn + ".save({ value: params });";
+
+      var task = tasks.register({ 
+        id: "UnitTests1", 
+        name: "UnitTests1", 
+        command: command, 
+        offset: 0,
+        params: 42 
+      });
+
+      assertEqual("UnitTests1", task.id);
+      assertEqual("UnitTests1", task.name);
+      assertEqual("timed", task.type);
+      assertEqual(0, Math.round(task.offset, 3));
+      assertEqual("_system", task.database);
+      
+      t = getTasks();
+      assertEqual(1, t.length);
+
+      internal.wait(5);
+
+      assertEqual(1, db[cn].count());
     },
 
 ////////////////////////////////////////////////////////////////////////////////

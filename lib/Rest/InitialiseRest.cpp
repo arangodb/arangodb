@@ -64,19 +64,21 @@ namespace {
   }
 
 #else
-
   // The compiler chooses the right one from the following two,
   // according to the type of the return value of pthread_self():
-  static inline void setter (CRYPTO_THREADID* id, void* p) {
+
+  template<typename T> void setter (CRYPTO_THREADID* id, T p) {
     CRYPTO_THREADID_set_pointer(id, p);
   }
-
-  static inline void setter (CRYPTO_THREADID* id, unsigned long val) {
+  
+  template<> void setter (CRYPTO_THREADID* id, unsigned long val) {
     CRYPTO_THREADID_set_numeric(id, val);
   }
 
   static void arango_threadid_func (CRYPTO_THREADID *id) {
-    setter(id, pthread_self());
+    auto self = pthread_self();
+
+    setter<decltype(self)>(id, self);
   }
 
 #endif

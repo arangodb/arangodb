@@ -243,6 +243,140 @@ SlotInfo Slots::nextUnused (uint32_t size) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the next unused slot, version for legends
+///
+/// See explanations in arangod/Wal/LogfileManager.cpp in the
+/// corresponding allocateAndWrite method.
+////////////////////////////////////////////////////////////////////////////////
+
+SlotInfo Slots::nextUnused (uint32_t size,
+                            TRI_voc_cid_t cid,
+                            TRI_shape_sid_t sid,
+                            uint32_t legendOffset,
+                            void*& oldLegend) {
+                            // legendOffset 0 means no legend included
+  // we need to use the aligned size for writing
+  uint32_t alignedSize = TRI_DF_ALIGN_BLOCK(size);
+  int iterations = 0;
+  bool hasWaited = false;
+
+  TRI_ASSERT(size > 0);
+
+  while (++iterations < 1000) {
+    {
+      MUTEX_LOCKER(_lock);
+
+      Slot* slot = &_slots[_handoutIndex];
+      TRI_ASSERT(slot != nullptr);
+
+      if (slot->isUnused()) {
+        if (hasWaited) {
+          CONDITION_LOCKER(guard, _condition);
+          TRI_ASSERT(_waiting > 0);
+          --_waiting;
+          hasWaited = false;
+        }
+
+        // cycle until we have a valid logfile
+        while (_logfile == nullptr ||
+               _logfile->freeSize() < static_cast<uint64_t>(alignedSize)) {
+
+          if (_logfile != nullptr) {
+            // seal existing logfile by creating a footer marker
+            int res = writeFooter(slot);
+
+            if (res != TRI_ERROR_NO_ERROR) {
+              return SlotInfo(res);
+            }
+
+            // advance to next slot
+            slot = &_slots[_handoutIndex];
+            _logfileManager->setLogfileSealRequested(_logfile);
+
+            _logfile = nullptr;
+          }
+
+          // fetch the next free logfile (this may create a new one)
+          Logfile::StatusType status = newLogfile(alignedSize);
+
+          if (_logfile == nullptr) {
+            usleep(10 * 1000);
+
+            TRI_IF_FAILURE("LogfileManagerGetWriteableLogfile") {
+              return SlotInfo(TRI_ERROR_ARANGO_NO_JOURNAL);
+            }
+
+            // try again in next iteration
+          }
+          else if (status == Logfile::StatusType::EMPTY) {
+            // inititialise the empty logfile by writing a header marker
+            int res = writeHeader(slot);
+
+            if (res != TRI_ERROR_NO_ERROR) {
+              return SlotInfo(res);
+            }
+
+            // advance to next slot
+            slot = &_slots[_handoutIndex];
+            _logfileManager->setLogfileOpen(_logfile);
+          }
+          else {
+            TRI_ASSERT(status == Logfile::StatusType::OPEN);
+          }
+        }
+
+        // if we get here, we got a free slot for the actual data...
+        
+        // Now sort out the legend business:
+        if (legendOffset == 0) {
+          void* legend = _logfile->lookupLegend(cid, sid);
+          if (nullptr == legend) {
+            // Bad, we would need a legend for this marker
+            return SlotInfo(TRI_ERROR_LEGEND_NOT_IN_WAL_FILE);
+          }
+          oldLegend = legend;
+        }
+
+        char* mem = _logfile->reserve(alignedSize);
+
+        if (mem == nullptr) {
+          return SlotInfo(TRI_ERROR_INTERNAL);
+        }
+
+        if (legendOffset != 0) {
+          void* legend = static_cast<void*>(mem + legendOffset);
+          _logfile->cacheLegend(cid, sid, legend);
+        }
+
+        // only in this case we return a valid slot
+        slot->setUsed(static_cast<void*>(mem), size, _logfile->id(), handout());
+
+        return SlotInfo(slot);
+      }
+    }
+
+    // if we get here, all slots are busy
+    CONDITION_LOCKER(guard, _condition);
+    if (! hasWaited) {
+      ++_waiting;
+      hasWaited = true;
+    }
+
+    bool mustWait;
+    {
+      MUTEX_LOCKER(_lock);
+      mustWait = (_freeSlots == 0);
+    }
+
+    if (mustWait) {
+      guard.wait(10 * 1000);
+    }
+  }
+
+  return SlotInfo(TRI_ERROR_ARANGO_NO_JOURNAL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return a used slot, allowing its synchronisation
 ////////////////////////////////////////////////////////////////////////////////
 

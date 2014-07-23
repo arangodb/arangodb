@@ -73,7 +73,9 @@ describe("Arango Helper", function () {
           window.arangoHelper.allHotkeys = [1];
           arangoHelper.hotkeysFunctions.showHotkeysModal();
           expect(window.modalView.show).toHaveBeenCalledWith(
-            "modalHotkeys.ejs", "Keyboard Shortcuts", [], [1]);
+            "modalHotkeys.ejs", "Keyboard Shortcuts", [], [1]
+          );
+          delete window.modalView;
         });
 
         it("check enabling keyboard hotkeys scrollUp function", function() {
@@ -185,8 +187,9 @@ describe("Arango Helper", function () {
         });
 
         it("arangoNotification", function () {
-            var res, notificationList = {
+            var notificationList = {
                 add: function () {
+                  return undefined;
                 }
             };
             window.App = {
@@ -197,6 +200,7 @@ describe("Arango Helper", function () {
             expect(notificationList.add).toHaveBeenCalledWith({title: "bla", content: "blub"});
             arangoHelper.arangoError("bla", "blub");
             expect(notificationList.add).toHaveBeenCalledWith({title: "bla", content: "blub"});
+            delete window.App;
         });
 
         it("randomToken", function () {

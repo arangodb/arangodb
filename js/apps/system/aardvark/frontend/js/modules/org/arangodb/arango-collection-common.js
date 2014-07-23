@@ -1,5 +1,5 @@
 module.define("org/arangodb/arango-collection-common", function(exports, module) {
-/*jslint indent: 2, nomen: true, maxlen: 160, sloppy: true, vars: true, white: true, plusplus: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -615,22 +615,32 @@ ArangoCollection.prototype.closedRange = function (name, left, right) {
 /// 
 /// arango> db.complex.ensureGeoIndex(""home"");
 /// arango> db.complex.near(0, 170).limit(5).toArray();
-/// [ { "_id" : "complex/74655276", "_key" : "74655276", "_rev" : "74655276", "name" : "Name/0/170", "home" : [ 0, 170 ], "work" : [ 0, -170 ] },
-///   { "_id" : "complex/74720812", "_key" : "74720812", "_rev" : "74720812", "name" : "Name/0/180", "home" : [ 0, 180 ], "work" : [ 0, -180 ] }, 
-///   { "_id" : "complex/77080108", "_key" : "77080108", "_rev" : "77080108", "name" : "Name/10/170", "home" : [ 10, 170 ], "work" : [ -10, -170 ] },
-///   { "_id" : "complex/72230444", "_key" : "72230444", "_rev" : "72230444", "name" : "Name/-10/170", "home" : [ -10, 170 ], "work" : [ 10, -170 ] },
-///   { "_id" : "complex/72361516", "_key" : "72361516", "_rev" : "72361516", "name" : "Name/0/-180", "home" : [ 0, -180 ], "work" : [ 0, 180 ] } ]      
+/// [ { "_id" : "complex/74655276", "_key" : "74655276", "_rev" : "74655276", "name" : 
+/// "Name/0/170", "home" : [ 0, 170 ], "work" : [ 0, -170 ] },
+///   { "_id" : "complex/74720812", "_key" : "74720812", "_rev" : "74720812", "name" : 
+/// "Name/0/180", "home" : [ 0, 180 ], "work" : [ 0, -180 ] }, 
+///   { "_id" : "complex/77080108", "_key" : "77080108", "_rev" : "77080108", "name" : 
+/// "Name/10/170", "home" : [ 10, 170 ], "work" : [ -10, -170 ] },
+///   { "_id" : "complex/72230444", "_key" : "72230444", "_rev" : "72230444", "name" : 
+/// "Name/-10/170", "home" : [ -10, 170 ], "work" : [ 10, -170 ] },
+///   { "_id" : "complex/72361516", "_key" : "72361516", "_rev" : "72361516", "name" : 
+/// "Name/0/-180", "home" : [ 0, -180 ], "work" : [ 0, 180 ] } ]      
 /// 
 /// arango> db.complex.geo("work").near(0, 170).limit(5);
 /// exception in file '/simple-query' at 1018,5: a geo-index must be known
 /// 
 /// arango> db.complex.ensureGeoIndex("work");
 /// arango> db.complex.geo("work").near(0, 170).limit(5).toArray();
-/// [ { "_id" : "complex/72427052", "_key" : "72427052", "_rev" : "72427052", "name" : "Name/0/-170", "home" : [ 0, -170 ], "work" : [ 0, 170 ] }, 
-///   { "_id" : "complex/72361516", "_key" : "72361516", "_rev" : "72361516", "name" : "Name/0/-180", "home" : [ 0, -180 ], "work" : [ 0, 180 ] }, 
-///   { "_id" : "complex/70002220", "_key" : "70002220", "_rev" : "70002220", "name" : "Name/-10/-170", "home" : [ -10, -170 ], "work" : [ 10, 170 ] }, 
-///   { "_id" : "complex/74851884", "_key" : "74851884", "_rev" : "74851884", "name" : "Name/10/-170", "home" : [ 10, -170 ], "work" : [ -10, 170 ] }, 
-///   { "_id" : "complex/74720812", "_key" : "74720812", "_rev" : "74720812", "name" : "Name/0/180", "home" : [ 0, 180 ], "work" : [ 0, -180 ] } ]
+/// [ { "_id" : "complex/72427052", "_key" : "72427052", "_rev" : "72427052", "name" : 
+/// "Name/0/-170", "home" : [ 0, -170 ], "work" : [ 0, 170 ] }, 
+///   { "_id" : "complex/72361516", "_key" : "72361516", "_rev" : "72361516", "name" : 
+/// "Name/0/-180", "home" : [ 0, -180 ], "work" : [ 0, 180 ] }, 
+///   { "_id" : "complex/70002220", "_key" : "70002220", "_rev" : "70002220", "name" : 
+/// "Name/-10/-170", "home" : [ -10, -170 ], "work" : [ 10, 170 ] }, 
+///   { "_id" : "complex/74851884", "_key" : "74851884", "_rev" : "74851884", "name" : 
+/// "Name/10/-170", "home" : [ 10, -170 ], "work" : [ -10, 170 ] }, 
+///   { "_id" : "complex/74720812", "_key" : "74720812", "_rev" : "74720812", "name" : 
+/// "Name/0/180", "home" : [ 0, 180 ], "work" : [ 0, -180 ] } ]
 /// ```
 ///
 /// @endDocuBlock

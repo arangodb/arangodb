@@ -22,17 +22,17 @@
     });
 
     describe("showing the dialog", function() {
-      var fakeRequest, current, modalDiv;
+      var fakeRequest, current, modalDiv, data;
 
       beforeEach(function() {
         modalDiv = document.createElement("div");
         modalDiv.id = "modalPlaceholder";
         document.body.appendChild(modalDiv);
         current = "2.0.2";
-        var successCallback,
-          data = {
-            version: current
-          };
+        var successCallback;
+        data = {
+          version: current
+        };
         fakeRequest = function(opts) {
           successCallback = opts.success;
         };
@@ -70,6 +70,15 @@
 
       it("should not show a dialog if no new version is available", function() {
         window.parseVersions({});
+        expect(window.modalView.show).not.toHaveBeenCalled();
+      });
+
+      it("should not show a dialog for devel version", function() {
+        current = "1.0.4-devel";
+        data.version = current;
+        window.parseVersions({
+          major: "3.0.1"
+        });
         expect(window.modalView.show).not.toHaveBeenCalled();
       });
 
