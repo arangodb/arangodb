@@ -73,7 +73,26 @@ exports.executeTestSuite = function (specFileNames, options) {
 
   _.each(specFileNames, function (specFileName) {
     var spec = fs.read(specFileName);
-    internal.executeScript(spec, sandbox, specFileName);
+    var content = "(function (__myenv__) {";
+    var key;
+
+    for (key in sandbox) {
+      if (sandbox.hasOwnProperty(key)) {
+        content += "var " + key + " = __myenv__['" + key + "'];";
+      }
+    }
+
+    content += "delete __myenv__;"
+             + spec
+             + "\n});";
+
+    var fun = internal.executeScript(content, undefined, specFileName);
+
+    if (fun === undefined) {
+      throw new Error("execute jasmine script: " + content);
+    }
+
+    fun(sandbox);
   });
 
   sandbox.execute();
