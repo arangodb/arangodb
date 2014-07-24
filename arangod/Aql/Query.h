@@ -31,8 +31,8 @@
 #define ARANGODB_AQL_QUERY_H 1
 
 #include "Basics/Common.h"
+#include "Aql/QueryAst.h"
 #include "Aql/QueryError.h"
-#include "Aql/Scopes.h"
 
 struct TRI_json_s;
 struct TRI_vocbase_s;
@@ -86,11 +86,11 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the query scopes
+/// @brief get the AST
 ////////////////////////////////////////////////////////////////////////////////
-
-        inline Scopes* scopes () {
-          return &_scopes;
+ 
+        inline QueryAst* ast () {
+          return &_ast;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -190,8 +190,7 @@ namespace triagens {
         struct TRI_json_s*     _bindParameters;
 
         QueryError             _error;
-
-        Scopes                 _scopes;
+        QueryAst               _ast;
     };
 
   }

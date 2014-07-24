@@ -234,16 +234,14 @@ statement_block_statement:
 for_statement:
     T_FOR variable_name T_IN expression {
       TRI_aql_context_t* context = nullptr;
-      parser->scopes()->start(triagens::aql::AQL_SCOPE_FOR);
+      parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_FOR);
       
       TRI_aql_node_t* node = TRI_CreateNodeForAql(context, $2, $4);
       if (node == nullptr) {
         ABORT_OOM
       }
 
-      if (! TRI_AppendStatementListAql(context->_statements, node)) {
-        ABORT_OOM
-      }
+      parser->ast()->addOperation(node);
     }
   ;
 
@@ -256,9 +254,7 @@ filter_statement:
         ABORT_OOM
       }
       
-      if (! TRI_AppendStatementListAql(context->_statements, node)) {
-        ABORT_OOM
-      }
+      parser->ast()->addOperation(node);
     }
   ;
 
@@ -283,9 +279,7 @@ let_element:
         ABORT_OOM
       }
       
-      if (! TRI_AppendStatementListAql(context->_statements, node)) {
-        ABORT_OOM
-      }
+      parser->ast()->addOperation(node);
     }
   ;
 
@@ -306,9 +300,7 @@ collect_statement:
         ABORT_OOM
       }
       
-      if (! TRI_AppendStatementListAql(context->_statements, node)) {
-        ABORT_OOM
-      }
+      parser->ast()->addOperation(node);
     }
   ;
 
@@ -360,9 +352,7 @@ sort_statement:
         ABORT_OOM
       }
       
-      if (! TRI_AppendStatementListAql(context->_statements, node)) {
-        ABORT_OOM
-      }
+      parser->ast()->addOperation(node);
     }
   ;
 
@@ -413,10 +403,7 @@ limit_statement:
         ABORT_OOM
       }
       
-      if (! TRI_AppendStatementListAql(context->_statements, node)) {
-        ABORT_OOM
-      }
-      
+      parser->ast()->addOperation(node);
     }
   | T_LIMIT atomic_value T_COMMA atomic_value {
       TRI_aql_context_t* context = nullptr;
@@ -425,9 +412,7 @@ limit_statement:
         ABORT_OOM
       }
       
-      if (! TRI_AppendStatementListAql(context->_statements, node)) {
-        ABORT_OOM
-      }
+      parser->ast()->addOperation(node);
     }
   ;
 
@@ -439,11 +424,8 @@ return_statement:
         ABORT_OOM
       }
       
-      if (! TRI_AppendStatementListAql(context->_statements, node)) {
-        ABORT_OOM
-      }
-      
-      parser->scopes()->endNested();
+      parser->ast()->addOperation(node);
+      parser->ast()->scopes()->endNested();
     }
   ;
 
@@ -464,11 +446,8 @@ remove_statement:
         ABORT_OOM
       }
       
-      if (! TRI_AppendStatementListAql(context->_statements, node)) {
-        ABORT_OOM
-      }
-      
-      parser->scopes()->endNested();
+      parser->ast()->addOperation(node);
+      parser->ast()->scopes()->endNested();
     }
   ;
 
@@ -480,11 +459,8 @@ insert_statement:
         ABORT_OOM
       }
       
-      if (! TRI_AppendStatementListAql(context->_statements, node)) {
-        ABORT_OOM
-      }
-      
-      parser->scopes()->endNested();
+      parser->ast()->addOperation(node);
+      parser->ast()->scopes()->endNested();
     }
   ;
 
@@ -496,11 +472,8 @@ update_statement:
         ABORT_OOM
       }
       
-      if (! TRI_AppendStatementListAql(context->_statements, node)) {
-        ABORT_OOM
-      }
-      
-      parser->scopes()->endNested();
+      parser->ast()->addOperation(node);
+      parser->ast()->scopes()->endNested();
     }
   | T_UPDATE expression T_WITH expression in_or_into_collection query_options {
       TRI_aql_context_t* context = nullptr;
@@ -509,11 +482,8 @@ update_statement:
         ABORT_OOM
       }
       
-      if (! TRI_AppendStatementListAql(context->_statements, node)) {
-        ABORT_OOM
-      }
-      
-      parser->scopes()->endNested();
+      parser->ast()->addOperation(node);
+      parser->ast()->scopes()->endNested();
     }
   ;
 
@@ -525,11 +495,8 @@ replace_statement:
         ABORT_OOM
       }
       
-      if (! TRI_AppendStatementListAql(context->_statements, node)) {
-        ABORT_OOM
-      }
-      
-      parser->scopes()->endNested();
+      parser->ast()->addOperation(node);
+      parser->ast()->scopes()->endNested();
     }
   | T_REPLACE expression T_WITH expression in_or_into_collection query_options {
       TRI_aql_context_t* context = nullptr;
@@ -538,11 +505,8 @@ replace_statement:
         ABORT_OOM
       }
       
-      if (! TRI_AppendStatementListAql(context->_statements, node)) {
-        ABORT_OOM
-      }
-      
-      parser->scopes()->endNested();
+      parser->ast()->addOperation(node);
+      parser->ast()->scopes()->endNested();
     }
   ;
 
@@ -552,7 +516,7 @@ expression:
     }
   | T_OPEN {
       TRI_aql_context_t* context = nullptr;
-      parser->scopes()->start(triagens::aql::AQL_SCOPE_SUBQUERY);
+      parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_SUBQUERY);
 
       context->_subQueries++;
 
@@ -564,7 +528,7 @@ expression:
       
       context->_subQueries--;
 
-      if (! parser->scopes()->endCurrent()) {
+      if (! parser->ast()->scopes()->endCurrent()) {
         ABORT_OOM
       }
 
@@ -574,9 +538,7 @@ expression:
         ABORT_OOM
       }
       
-      if (! TRI_AppendStatementListAql(context->_statements, subQuery)) {
-        ABORT_OOM
-      }
+      parser->ast()->addOperation(subQuery);
 
       nameNode = TRI_AQL_NODE_MEMBER(subQuery, 0);
       if (nameNode == nullptr) {
@@ -1021,9 +983,7 @@ reference:
         ABORT_OOM
       }
       
-      if (! TRI_AppendStatementListAql(context->_statements, expand)) {
-        ABORT_OOM
-      }
+      parser->ast()->addOperation(expand);
 
       TRI_aql_node_t* nameNode = TRI_AQL_NODE_MEMBER(expand, 1);
 
@@ -1046,7 +1006,7 @@ single_reference:
       TRI_aql_context_t* context = nullptr;
       TRI_aql_node_t* node;
       
-      if (parser->scopes()->existsVariable($1)) {
+      if (parser->ast()->scopes()->existsVariable($1)) {
         node = TRI_CreateNodeReferenceAql(context, $1);
       }
       else {
