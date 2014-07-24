@@ -133,15 +133,22 @@ std::string Query::extractRegion (int line,
 ////////////////////////////////////////////////////////////////////////////////
 
 void Query::registerError (int errorCode,
-                           std::string const& explanation,
-                           char const* file,
-                           int line) {
+                           std::string const& explanation) {
   TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
 
   _error.code        = errorCode;
-  _error.explanation = std::string(explanation);
-  _error.file        = file;
-  _error.line        = line;
+  _error.explanation = explanation;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register an error
+////////////////////////////////////////////////////////////////////////////////
+
+void Query::registerError (int errorCode) {
+  TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
+
+  _error.code        = errorCode;
+  _error.explanation = "";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -178,6 +185,9 @@ void Query::explain () {
 
 void Query::parseQuery () {
   Parser parser(this);
+
+  // TODO: handle result
+  bool result = parser.parse();
 }
 
 /*

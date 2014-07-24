@@ -965,7 +965,7 @@ query_options:
       }
 
       if (! TRI_CaseEqualString($1, "OPTIONS")) {
-/* TODO  TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, nullptr); */
+        parser->registerError(TRI_ERROR_QUERY_PARSE);
         YYABORT;
       }
 
@@ -1212,7 +1212,7 @@ numeric_value:
       double value = TRI_DoubleString($1);
 
       if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-/* TODO TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, nullptr); */
+        parser->registerError(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE);
         YYABORT;
       }
       
@@ -1308,7 +1308,7 @@ collection_name:
       }
       
       if (strlen($1) < 2 || $1[0] != '@') {
-/* TODO TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, $1); */
+        parser->registerError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, $1);
         YYABORT;
       }
 
@@ -1367,7 +1367,7 @@ integer_value:
 
       int64_t value = TRI_Int64String($1);
       if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-/* TODO TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, NULL); */
+        parser->registerError(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE);
         YYABORT;
       }
 
