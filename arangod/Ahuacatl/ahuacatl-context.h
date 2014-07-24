@@ -160,14 +160,6 @@ char* TRI_RegisterStringAql (TRI_aql_context_t* const,
 /// @brief register a combined string
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_RegisterString2Aql (TRI_aql_context_t* const,
-                              const char* const,
-                              const char* const);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register a combined string
-////////////////////////////////////////////////////////////////////////////////
-
 char* TRI_RegisterString3Aql (TRI_aql_context_t* const,
                               const char* const,
                               const char* const,

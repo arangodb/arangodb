@@ -61,6 +61,7 @@ add_executable(
     Aql/grammar.cpp
     Aql/Parser.cpp
     Aql/Query.cpp
+    Aql/Scopes.cpp
     Aql/tokens.cpp
     BitIndexes/bitarray.cpp
     BitIndexes/bitarrayIndex.cpp
