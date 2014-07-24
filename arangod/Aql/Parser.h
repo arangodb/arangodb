@@ -32,6 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/Query.h"
+#include "Aql/Scopes.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          forwards
@@ -106,6 +107,14 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the scopes during parsing
+////////////////////////////////////////////////////////////////////////////////
+        
+        inline Scopes* scopes () {
+          return _query->scopes();
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the scanner
@@ -200,6 +209,12 @@ namespace triagens {
         bool parse ();
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generate a new unique name
+////////////////////////////////////////////////////////////////////////////////
+
+        char* generateName ();
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief register a parse error, position is specified as line / column
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -214,6 +229,24 @@ namespace triagens {
         void registerError (int,
                             char const* = nullptr);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief push a temporary value on the parser's stack
+////////////////////////////////////////////////////////////////////////////////
+
+        void pushStack (void*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pop a temporary value from the parser's stack
+////////////////////////////////////////////////////////////////////////////////
+        
+        void* popStack ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief peek at a temporary value from the parser's stack
+////////////////////////////////////////////////////////////////////////////////
+        
+        void* peekStack ();
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -227,6 +260,11 @@ namespace triagens {
         size_t        _remainingLength; // remaining length of the query string, modified during parsing
         size_t        _offset;          // current parse position
         char const*   _marker;          // a position used temporarily during parsing
+
+        size_t        _uniqueId;        // a counter to generate unique (temporary) variable names
+
+
+        std::vector<void*> _stack;
     };
 
   }

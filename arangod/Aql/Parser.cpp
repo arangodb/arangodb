@@ -45,10 +45,14 @@ Parser::Parser (Query* query)
     _buffer(query->queryString()),
     _remainingLength(query->queryLength()),
     _offset(0),
-    _marker(nullptr) {
+    _marker(nullptr),
+    _uniqueId(0),
+    _stack() {
   
-  //Aqlllex_init(&context->_parser->_scanner);
-  //Aqlset_extra(context, context->_parser->_scanner);
+  Aqllex_init(&_scanner);
+  Aqlset_extra(this, _scanner);
+
+  _stack.reserve(16);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -56,7 +60,7 @@ Parser::Parser (Query* query)
 ////////////////////////////////////////////////////////////////////////////////
 
 Parser::~Parser () {
-//  Aqllex_destroy(parser->_scanner);
+  Aqllex_destroy(_scanner);
 }
 
 // -----------------------------------------------------------------------------
@@ -64,7 +68,36 @@ Parser::~Parser () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief register a parse error
+/// @brief parse the query
+////////////////////////////////////////////////////////////////////////////////
+
+bool Parser::parse () {
+  scopes()->start(AQL_SCOPE_MAIN);
+
+  if (Aqlparse(this)) {
+    // lexing/parsing failed
+    return false;
+  }
+  
+  scopes()->endCurrent();
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate a new unique name
+////////////////////////////////////////////////////////////////////////////////
+  
+char* Parser::generateName () {
+  char buffer[16];
+  int n = snprintf(buffer, sizeof(buffer) - 1, "_%d", (int) ++_uniqueId);
+
+  // register the string and return a copy of it
+  return registerString(buffer, static_cast<size_t>(n), false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a parse error, position is specified as line / column
 ////////////////////////////////////////////////////////////////////////////////
 
 void Parser::registerError (char const* message,
@@ -85,7 +118,52 @@ void Parser::registerError (char const* message,
            line,
            column + 1);
 
-  _query->registerError(TRI_ERROR_QUERY_PARSE, std::string(buffer), __FILE__, __LINE__);
+  _query->registerError(TRI_ERROR_QUERY_PARSE, std::string(buffer));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a non-parse error
+////////////////////////////////////////////////////////////////////////////////
+
+void Parser::registerError (int code,
+                            char const* message) {
+ 
+  if (message == nullptr) { 
+    _query->registerError(code);
+  }
+  else {
+    _query->registerError(code, std::string(message));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief push a temporary value on the parser's stack
+////////////////////////////////////////////////////////////////////////////////
+
+void Parser::pushStack (void* value) {
+  _stack.push_back(value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pop a temporary value from the parser's stack
+////////////////////////////////////////////////////////////////////////////////
+        
+void* Parser::popStack () {
+  TRI_ASSERT(! _stack.empty());
+
+  void* result = _stack.back();
+  _stack.pop_back();
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief peek at a temporary value from the parser's stack
+////////////////////////////////////////////////////////////////////////////////
+        
+void* Parser::peekStack () {
+  TRI_ASSERT(! _stack.empty());
+
+  return _stack.back();
 }
 
 // -----------------------------------------------------------------------------
