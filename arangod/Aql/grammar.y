@@ -26,9 +26,9 @@
 
 %union {
   struct TRI_aql_node_t* node;
-  char* strval;
-  bool boolval;
-  int64_t intval;
+  char*                  strval;
+  bool                   boolval;
+  int64_t                intval;
 }
 
 %{
@@ -47,8 +47,8 @@ int Aqllex (YYSTYPE*,
 
 void Aqlerror (YYLTYPE* locp, 
                triagens::aql::Parser* parser,
-               const char* err) {
-  // TODO: fix this   TRI_SetErrorParseAql(context, err, locp->first_line, locp->first_column);
+               const char* message) {
+  parser->registerError(message, locp->first_line, locp->first_column);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
