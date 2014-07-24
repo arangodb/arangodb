@@ -163,8 +163,7 @@ queues._manager = {
         write: ['_jobs']
       },
       action: function () {
-        db._queues.all().toArray()
-        .forEach(function (queue) {
+        db._queues.all().toArray().forEach(function (queue) {
           var numBusy = db._jobs.byExample({
             queue: queue._key,
             status: 'progress'
