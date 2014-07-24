@@ -50,18 +50,14 @@ namespace triagens {
 
       QueryError () 
         : code(TRI_ERROR_NO_ERROR),
-          line(0),
-          explanation(),
-          file(nullptr) {
+          explanation() {
       }
 
       ~QueryError () {
       }
 
       int         code;
-      int         line;
       std::string explanation;
-      char const* file;
     };
 
   }
