@@ -5334,6 +5334,52 @@ static v8::Handle<v8::Value> JS_ForgetApplierReplication (v8::Arguments const& a
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                               AQL
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes an AQL query
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() < 1 || argv.Length() > 3) {
+    TRI_V8_EXCEPTION_USAGE(scope, "AQL_EXECUTE(<querystring>, <bindvalues>, <options>)");
+  }
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  if (vocbase == nullptr) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  // get the query string
+  if (! argv[0]->IsString()) {
+    TRI_V8_TYPE_ERROR(scope, "expecting string for <querystring>");
+  }
+
+  string const&& queryString = TRI_ObjectToString(argv[0]);
+
+  // bind parameters
+  TRI_json_t* parameters = nullptr;
+
+  if (argv.Length() > 1 && argv[1]->IsObject()) {
+    parameters = TRI_ObjectToJson(argv[1]);
+  }
+
+  // execute the query
+  std::cout << "ABOUT TO EXECUTE AQL QUERY '" << queryString << "'" << std::endl;
+  v8::Handle<v8::Object> result = v8::Object::New();
+
+  if (parameters != nullptr) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
+  }
+
+  return scope.Close(result);
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                          AHUACATL
 // -----------------------------------------------------------------------------
 
@@ -10597,6 +10643,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "AHUACATL_RUN", JS_RunAhuacatl, true);
   TRI_AddGlobalFunctionVocbase(context, "AHUACATL_EXPLAIN", JS_ExplainAhuacatl, true);
   TRI_AddGlobalFunctionVocbase(context, "AHUACATL_PARSE", JS_ParseAhuacatl, true);
+  
+  // new AQL functions. not intended to be used directly by end users
+  TRI_AddGlobalFunctionVocbase(context, "AQL_EXECUTE", JS_ExecuteAql, true);
 
   // cursor functions. not intended to be used by end users
   TRI_AddGlobalFunctionVocbase(context, "CURSOR", JS_Cursor, true);
