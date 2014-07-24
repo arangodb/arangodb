@@ -43,38 +43,25 @@ namespace triagens {
 /// @brief query error structure
 ///
 /// This struct is used to hold information about errors that happen during
-/// query execution. The data will be passed to the end user.
+/// query parsing or execution. The data will be passed to the end user.
 ////////////////////////////////////////////////////////////////////////////////
 
     struct QueryError {
 
       QueryError () 
-        : _code(TRI_ERROR_NO_ERROR),
-          _data(nullptr) {
+        : code(TRI_ERROR_NO_ERROR),
+          line(0),
+          explanation(),
+          file(nullptr) {
       }
 
       ~QueryError () {
-        if (_data != nullptr) {
-          TRI_Free(TRI_UNKNOWN_MEM_ZONE, _data);
-        }
       }
 
-      inline int getCode () const {
-        return _code;
-      }
-
-      char* getMessage () const;
-
-      char* getContextError (char const*,
-                             size_t,
-                             size_t,
-                             size_t) const;
-
-      int _code;
-      char* _message;
-      char* _data;
-      const char* _file;
-      int _line;
+      int         code;
+      int         line;
+      std::string explanation;
+      char const* file;
     };
 
   }

@@ -63,6 +63,31 @@ Parser::~Parser () {
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a parse error
+////////////////////////////////////////////////////////////////////////////////
+
+void Parser::registerError (char const* message,
+                            int line,
+                            int column) {
+  TRI_ASSERT(message != nullptr);
+
+  // extract the query string part where the error happened
+  std::string const region(_query->extractRegion(line, column));
+
+  // note: line numbers reported by bison/flex start at 1, columns start at 0
+  char buffer[512];
+  snprintf(buffer,
+           sizeof(buffer),
+           "%s near '%s' at position %d:%d",
+           message,
+           region.c_str(),
+           line,
+           column + 1);
+
+  _query->registerError(TRI_ERROR_QUERY_PARSE, std::string(buffer), __FILE__, __LINE__);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

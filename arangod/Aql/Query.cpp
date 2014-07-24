@@ -69,6 +69,82 @@ Query::~Query () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extract a region from the query
+////////////////////////////////////////////////////////////////////////////////
+
+std::string Query::extractRegion (int line, 
+                                  int column) const {
+  // note: line numbers reported by bison/flex start at 1, columns start at 0
+  int currentLine   = 1;
+  int currentColumn = 0;
+
+  char c;
+  char const* p = _queryString;
+
+  while ((c = *p)) {
+    if (currentLine > line || 
+        (currentLine >= line && currentColumn >= column)) {
+      break;
+    }
+
+    if (c == '\n') {
+      ++p;
+      ++currentLine;
+      currentColumn = 0;
+    }
+    else if (c == '\r') {
+      ++p;
+      ++currentLine;
+      currentColumn = 0;
+
+      // eat a following newline
+      if (*p == '\n') {
+        ++p;
+      }
+    }
+    else {
+      ++currentColumn;
+      ++p;
+    }
+  }
+
+  // p is pointing at the position in the query the parse error occurred at
+  TRI_ASSERT(p >= _queryString);
+
+  size_t offset = static_cast<size_t>(p - _queryString);
+
+  static int const   SNIPPET_LENGTH = 32;
+  static char const* SNIPPET_SUFFIX = "...";
+
+  if (_queryLength < offset + SNIPPET_LENGTH) {
+    // return a copy of the region
+    return std::string(_queryString + offset, _queryLength - offset);
+  }
+
+  // copy query part
+  std::string result(_queryString + offset, SNIPPET_LENGTH);
+  result.append(SNIPPET_SUFFIX);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register an error
+////////////////////////////////////////////////////////////////////////////////
+
+void Query::registerError (int errorCode,
+                           std::string const& explanation,
+                           char const* file,
+                           int line) {
+  TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
+
+  _error.code        = errorCode;
+  _error.explanation = std::string(explanation);
+  _error.file        = file;
+  _error.line        = line;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an AQL query - TODO: implement and determine return type
 ////////////////////////////////////////////////////////////////////////////////
 
