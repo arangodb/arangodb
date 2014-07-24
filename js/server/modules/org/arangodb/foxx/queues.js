@@ -30,36 +30,57 @@
 
 var _ = require('underscore'),
   db = require('org/arangodb').db,
-  jobs = require('org/arangodb/tasks'),
-  tasks,
+  workers = require('org/arangodb/tasks'),
   taskDefaults,
   queues,
-  worker,
-  Queue;
+  run,
+  Queue,
+  worker;
 
-tasks = {};
-
-taskDefaults = {
-  period: 0.1,
-  maxFailures: 0
-};
-
-queues = Object.create({
-  get _tasks() {
+queues = {
+  _tasks: Object.create(null),
+  get: function (key) {
     'use strict';
-    return tasks;
+    if (!db._queues.exists(key)) {
+      throw new Error('Queue does not exist: ' + key);
+    }
+    return new Queue(key);
   },
-  set _tasks(value) {
+  create: function (key, maxWorkers) {
     'use strict';
-    throw new Error('_tasks is not mutable');
+    db._executeTransaction({
+      collections: {
+        read: ['_queues'],
+        write: ['_queues']
+      },
+      action: function () {
+        if (db._queues.exists(key)) {
+          db._queues.update(key, {maxWorkers: maxWorkers});
+        } else {
+          db._queues.save({_key: key, maxWorkers: maxWorkers});
+        }
+      }
+    });
+    return new Queue(key);
   },
-  _create: function (name) {
+  destroy: function (key) {
     'use strict';
-    var instance = new Queue(name);
-    queues[name] = instance;
-    return instance;
+    var result = false;
+    db._executeTransaction({
+      collections: {
+        read: ['_queues'],
+        write: ['_queues']
+      },
+      action: function () {
+        if (db._queues.exists(key)) {
+          db._queues.delete(key);
+          result = true;
+        }
+      }
+    });
+    return result;
   },
-  _registerTask: function (name, opts) {
+  registerTask: function (name, opts) {
     'use strict';
     if (typeof opts === 'function') {
       opts = {execute: opts};
@@ -71,9 +92,9 @@ queues = Object.create({
     if (task.maxFailures < 0) {
       task.maxFailures = Infinity;
     }
-    tasks[name] = task;
+    queues._tasks[name] = task;
   }
-});
+};
 
 Queue = function Queue(name) {
   'use strict';
@@ -87,101 +108,82 @@ Queue = function Queue(name) {
     configurable: false,
     enumerable: true
   });
-  this._workers = {};
 };
 
-Queue.prototype = {
-  _period: 0.1, // 100ms
-  addWorker: function (name, count) {
-    'use strict';
-    var workers;
-    if (count === undefined) {
-      count = 1;
-    }
-    workers = this._workers[name];
-    if (!_.isArray(workers)) {
-      workers = [];
-      this._workers[name] = workers;
-    }
-    _.times(count, function () {
-      workers.push(jobs.register({
-        command: worker,
-        params: [this._name, name],
-        period: this._period
-      }));
-    }, this);
-  },
-  push: function (name, data) {
-    'use strict';
-    db._queue.save({
-      status: 'pending',
-      queue: this.name,
-      task: name,
-      failures: 0,
-      data: data
-    });
-  }
-};
-
-worker = function (queueName, taskName) {
+Queue.prototype.push = function (name, data) {
   'use strict';
-  var queues = require('org/arangodb/foxx/queue'),
-    db = require('org/arangodb').db,
-    console = require('console'),
-    tasks = queues._tasks,
-    numWorkers = queues[queueName]._workers[taskName].length,
-    job = null,
-    task;
+  db._queue.save({
+    status: 'pending',
+    queue: this.name,
+    task: name,
+    failures: 0,
+    data: data
+  });
+};
+
+run = function () {
+  'use strict';
+  var db = require('org/arangodb').db,
+    console = require('console');
 
   db._executeTransaction({
     collections: {
-      read: ['_queue'],
-      write: ['_queue']
+      read: ['_queues', '_jobs'],
+      write: ['_jobs']
     },
     action: function () {
-      var numBusy = db._queue.byExample({
-        queue: queueName,
-        task: taskName,
-        status: 'progress'
-      }).count();
-
-      if (numBusy < numWorkers) {
-        job = db._queue.firstExample({
-          queue: queueName,
-          task: taskName,
+      var queues = db._queues.all().toArray();
+      queues.forEach(function (queue) {
+        var numBusy = db._jobs.byExample({
+          queue: queue._key,
+          status: 'progress'
+        }).count();
+        if (numBusy >= queue.maxWorkers) {
+          return;
+        }
+        db._jobs.byExample({
+          queue: queue._key,
           status: 'pending'
+        }).limit(queue.maxWorkers - numBusy).toArray().forEach(function (job) {
+          db._jobs.update(job, {status: 'progress'});
+          workers.register({
+            command: worker,
+            params: _.extend(job._shallowCopy, {status: 'progress'}),
+            offset: 0
+          });
         });
-      }
-
-      if (!job) {
-        return;
-      }
-
-      db._queue.update(job._key, {
-        status: 'progress'
       });
     }
   });
+};
 
-  if (!job) {
+worker = function (job) {
+  'use strict';
+  var db = require('org/arangodb').db,
+    queues = require('org/arangodb/foxx').queues,
+    console = require('console'),
+    task = queues._tasks[job.task],
+    failed = false;
+
+  if (!task) {
+    console.warn('Unknown task for job ' + job._key + ':', job.task);
+    db._jobs.update(job, {status: 'pending'});
     return;
   }
 
-  task = tasks[job.task];
-
   try {
-    task.execute(job.data);
-    db._queue.update(job._key, {status: 'complete'});
+    queues._tasks[job.task].execute(job.data);
   } catch (err) {
-    console.error(err.stack || String(err));
-    db._queue.update(job._key, {
-      status: (job.failures >= task.maxFailures) ? 'failed' : 'pending',
-      failures: job.failures + 1
-    });
+    console.error('Job ' + job._key + ' failed:', err);
+    failed = true;
   }
+  db._jobs.update(job, failed ? {
+    failures: job.failures + 1,
+    status: (job.failures + 1 > task.maxFailures) ? 'failed' : 'pending'
+  } : {status: 'complete'});
 };
 
-queues._create('default');
+queues._create('default', 1);
 
 module.exports = queues;
 
