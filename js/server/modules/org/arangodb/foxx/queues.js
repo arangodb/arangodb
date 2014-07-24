@@ -87,7 +87,7 @@ queues = {
     if (typeof opts.execute !== 'function') {
       throw new Error('Must provide a function to execute!');
     }
-    var task = _.extend({}, taskDefaults, opts);
+    var task = _.extend({maxFailures: 0}, opts);
     if (task.maxFailures < 0) {
       task.maxFailures = Infinity;
     }
@@ -111,7 +111,10 @@ Queue = function Queue(name) {
 
 Queue.prototype.push = function (name, data) {
   'use strict';
-  db._queue.save({
+  if (typeof name !== 'string') {
+    throw new Error('Must pass a task name!');
+  }
+  db._jobs.save({
     status: 'pending',
     queue: this.name,
     task: name,
@@ -184,7 +187,7 @@ worker = function (job) {
   } : {status: 'complete'});
 };
 
-queues._create('default', 1);
+queues.create('default', 1);
 
 module.exports = queues;
 
