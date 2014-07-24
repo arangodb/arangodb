@@ -129,6 +129,20 @@ void testExecutionPlans () {
   delete f;  // should not leave a leak
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, for EnumerateCollectionPlan
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* EnumerateCollectionPlan::toJson (TRI_memory_zone_t* zone) {
+  auto ep = static_cast<ExecutionPlan*>(this);
+  TRI_json_t* json = ep->toJson(zone);
+  if (nullptr == json) {
+    return nullptr;
+  }
+  // Now put info about vocbase and cid in there
+  return json;
+}
+
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
