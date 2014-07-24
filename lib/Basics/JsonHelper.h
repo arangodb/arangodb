@@ -215,6 +215,324 @@ namespace triagens {
                                      bool);
 
     };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Json, a class to fabricate TRI_json_t* conveniently
+////////////////////////////////////////////////////////////////////////////////
+
+    class JsonException : std::exception {
+        std::string _msg;
+      public:
+        JsonException () : _msg("Json exception") {
+        }
+        JsonException (string msg) : _msg(msg) {
+        }
+        char const* what () const throw() {
+          return _msg.c_str();
+        }
+    };
+
+    class Json {
+
+      public:
+
+        enum type_e {
+          Null,
+          Bool,
+          Number,
+          String,
+          List,
+          Array
+        };
+
+        enum autofree_e {
+          AUTOFREE,
+          NOFREE
+        };
+
+      private:
+
+        void make (type_e t, size_t size_hint) {
+          switch (t) {
+            case Null:
+              _json = TRI_CreateNullJson(_zone);
+              break;
+            case Bool:
+              _json = TRI_CreateBooleanJson(_zone, true);
+              break;
+            case Number:
+              _json = TRI_CreateNumberJson(_zone, 0.0);
+              break;
+            case String:
+              _json = TRI_CreateString2CopyJson(_zone, "", 0);
+              break;
+            case List:
+              _json = TRI_CreateList2Json(_zone, size_hint);
+              break;
+            case Array:
+              _json = TRI_CreateArray2Json(_zone, 2*size_hint);
+              break;
+          }
+          if (_json == nullptr) {
+            throw JsonException("Json: out of memory");
+          }
+        }
+
+      public:
+
+        Json (type_e t, autofree_e autofree = AUTOFREE) 
+          : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
+          make(t, 0);
+        }
+
+        Json (TRI_memory_zone_t* z, type_e t, autofree_e autofree = AUTOFREE)
+          : _zone(z), _json(nullptr), _autofree(autofree) {
+          make(t, 0);
+        }
+          
+        Json (type_e t, size_t size_hint, autofree_e autofree = AUTOFREE)
+          : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
+          make(t, size_hint);
+        }
+
+        Json (TRI_memory_zone_t* z, type_e t, size_t size_hint, 
+              autofree_e autofree = AUTOFREE)
+          : _zone(z), _json(nullptr), _autofree(autofree) {
+          make(t, size_hint);
+        }
+
+        Json (bool x, autofree_e autofree = AUTOFREE) 
+          : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
+          _json = TRI_CreateBooleanJson(_zone, x);
+          if (_json == nullptr) {
+            throw JsonException("Json: out of memory");
+          }
+        }
+
+        Json (TRI_memory_zone_t* z, bool x, autofree_e autofree = AUTOFREE) 
+          : _zone(z), _json(nullptr), _autofree(autofree) {
+          _json = TRI_CreateBooleanJson(_zone, x);
+          if (_json == nullptr) {
+            throw JsonException("Json: out of memory");
+          }
+        }
+
+        Json (int32_t x, autofree_e autofree = AUTOFREE) 
+          : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
+          _json = TRI_CreateNumberJson(_zone, static_cast<double>(x));
+          if (_json == nullptr) {
+            throw JsonException("Json: out of memory");
+          }
+        }
+
+        Json (TRI_memory_zone_t* z, int32_t x, autofree_e autofree = AUTOFREE) 
+          : _zone(z), _json(nullptr), _autofree(autofree) {
+          _json = TRI_CreateNumberJson(_zone, static_cast<double>(x));
+          if (_json == nullptr) {
+            throw JsonException("Json: out of memory");
+          }
+        }
+
+        Json (double x, autofree_e autofree = AUTOFREE) 
+          : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
+          _json = TRI_CreateNumberJson(_zone, x);
+          if (_json == nullptr) {
+            throw JsonException("Json: out of memory");
+          }
+        }
+
+        Json (TRI_memory_zone_t* z, double x, autofree_e autofree = AUTOFREE) 
+          : _zone(z), _json(nullptr), _autofree(autofree) {
+          _json = TRI_CreateNumberJson(_zone, x);
+          if (_json == nullptr) {
+            throw JsonException("Json: out of memory");
+          }
+        }
+
+        Json (char const* x, autofree_e autofree = AUTOFREE) 
+          : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
+          _json = TRI_CreateStringCopyJson(_zone, x);
+          if (_json == nullptr) {
+            throw JsonException("Json: out of memory");
+          }
+        }
+
+        Json (TRI_memory_zone_t* z, char const* x, autofree_e autofree = AUTOFREE) 
+          : _zone(z), _json(nullptr), _autofree(autofree) {
+          _json = TRI_CreateStringCopyJson(_zone, x);
+          if (_json == nullptr) {
+            throw JsonException("Json: out of memory");
+          }
+        }
+
+        Json (std::string const x, autofree_e autofree = AUTOFREE) 
+          : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
+          _json = TRI_CreateString2CopyJson(_zone, x.c_str(), x.size());
+          if (_json == nullptr) {
+            throw JsonException("Json: out of memory");
+          }
+        }
+
+        Json (TRI_memory_zone_t* z, std::string const x, autofree_e autofree = AUTOFREE) 
+          : _zone(z), _json(nullptr), _autofree(autofree) {
+          _json = TRI_CreateString2CopyJson(_zone, x.c_str(), x.size());
+          if (_json == nullptr) {
+            throw JsonException("Json: out of memory");
+          }
+        }
+
+        Json (TRI_memory_zone_t* z, TRI_json_t* j, autofree_e autofree = AUTOFREE)
+          : _zone(z), _json(j), _autofree(autofree) {
+        }
+
+        Json (Json const& j)
+          : _zone(j._zone), _json(nullptr), _autofree(j._autofree) {
+          std::cout << "Copy constructor called!" << std::endl;
+          if (_autofree == AUTOFREE) {
+            _json = TRI_CopyJson(_zone, j._json);
+          }
+          else {
+            _json = j._json;
+          }
+        }
+
+        ~Json () throw() {
+          if (_json != nullptr && _autofree == AUTOFREE) {
+            TRI_FreeJson(_zone, _json);
+          }
+        }
+
+        TRI_json_t* json () throw() {
+          return _json;
+        }
+
+        operator TRI_json_t* () throw() {
+          TRI_json_t* res = _json;
+          if (_autofree == AUTOFREE) {
+            _json = nullptr;
+          }
+          return res;
+        }
+
+        Json& operator= (Json const& j) {
+          if (_json != nullptr && _autofree == AUTOFREE) {
+            TRI_FreeJson(_zone, _json);
+          }
+          _zone = j._zone;
+          _autofree = j._autofree;
+          if (j._autofree == AUTOFREE) {
+            _json = TRI_CopyJson(_zone, j._json);
+          }
+          else {
+            _json = j._json;
+          }
+
+          return *this;
+        }
+        
+        Json& set (char const* name, TRI_json_t* sub) {
+          if (! TRI_IsArrayJson(_json)) {
+            throw JsonException("Json is no array");
+          }
+          TRI_Insert3ArrayJson(_zone, _json, name, sub);
+          return *this;
+        }
+
+        Json& operator() (char const* name, TRI_json_t* sub) {
+          if (! TRI_IsArrayJson(_json)) {
+            throw JsonException("Json is no array");
+          }
+          TRI_Insert3ArrayJson(_zone, _json, name, sub);
+          return *this;
+        }
+
+        Json& add (TRI_json_t* sub) {
+          if (! TRI_IsListJson(_json)) {
+            throw JsonException("Json is no list");
+          }
+          TRI_PushBack3ListJson(_zone, _json, sub);
+          return *this;
+        }
+
+        Json& operator() (TRI_json_t* sub) {
+          if (! TRI_IsListJson(_json)) {
+            throw JsonException("Json is no list");
+          }
+          TRI_PushBack3ListJson(_zone, _json, sub);
+          return *this;
+        }
+ 
+        Json get (char const* name) {
+          if (! TRI_IsArrayJson(_json)) {
+            throw JsonException("Json is no array");
+          }
+          return Json(_zone, TRI_LookupArrayJson(_json, name), NOFREE);
+        }
+
+        Json at (int pos) {
+          if (! TRI_IsListJson(_json)) {
+            throw JsonException("Json is no list");
+          }
+          TRI_json_t* j;
+          if (pos >= 0) {
+            j = TRI_LookupListJson(_json, pos);
+            if (j != nullptr) {
+              return Json(_zone, j, NOFREE);
+            }
+            else {
+              return Json(_zone, Json::Null, true);
+            }
+          }
+          else {
+            size_t pos2 = -pos;
+            size_t len = TRI_LengthVector(&_json->_value._objects);
+            if (pos2 > len) {
+              return Json(_zone, Json::Null, AUTOFREE);
+            }
+            j = TRI_LookupListJson(_json, len-pos2);
+            if (j != nullptr) {
+              return Json(_zone, j, NOFREE);
+            }
+            else {
+              return Json(_zone, Json::Null, AUTOFREE);
+            }
+          }
+        }
+
+        bool isNull () throw() {
+          return _json != nullptr && _json->_type == TRI_JSON_NULL;
+        }
+
+        bool isBoolean () throw() {
+          return TRI_IsBooleanJson(_json);
+        }
+
+        bool isNumber () throw() {
+          return TRI_IsNumberJson(_json);
+        }
+
+        bool isString () throw() {
+          return TRI_IsStringJson(_json);
+        }
+
+        bool isArray () throw() {
+          return TRI_IsArrayJson(_json);
+        }
+
+        bool isList () throw() {
+          return TRI_IsListJson(_json);
+        }
+
+        string toString () {
+          return JsonHelper::toString(_json);
+        }
+
+      private:
+        TRI_memory_zone_t* _zone;
+        TRI_json_t* _json;
+        autofree_e _autofree;
+    };
+
   }
 }
 
