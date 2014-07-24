@@ -52,7 +52,7 @@ Query::Query (TRI_vocbase_t* vocbase,
     _type(AQL_QUERY_READ),
     _bindParameters(bindParameters),
     _error(),
-    _scopes() {
+    _ast() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

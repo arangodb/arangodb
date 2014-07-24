@@ -72,14 +72,15 @@ Parser::~Parser () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Parser::parse () {
-  scopes()->start(AQL_SCOPE_MAIN);
+  auto scopes = ast()->scopes();
+  scopes->start(AQL_SCOPE_MAIN);
 
   if (Aqlparse(this)) {
     // lexing/parsing failed
     return false;
   }
   
-  scopes()->endCurrent();
+  scopes->endCurrent();
 
   return true;
 }

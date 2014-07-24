@@ -32,7 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/Query.h"
-#include "Aql/Scopes.h"
+#include "Aql/QueryAst.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          forwards
@@ -109,11 +109,11 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the scopes during parsing
+/// @brief return the ast during parsing
 ////////////////////////////////////////////////////////////////////////////////
         
-        inline Scopes* scopes () {
-          return _query->scopes();
+        inline QueryAst* ast () {
+          return _query->ast();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
