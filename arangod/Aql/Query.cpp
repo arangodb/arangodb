@@ -49,7 +49,7 @@ Query::Query (TRI_vocbase_t* vocbase,
   : _vocbase(vocbase),
     _queryString(queryString),
     _queryLength(queryLength),
-    _queryType(QUERY_READ),
+    _type(AQL_QUERY_READ),
     _bindParameters(bindParameters),
     _error() {
 }
@@ -101,7 +101,7 @@ void Query::explain () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Query::parseQuery () {
-  Parser parser;
+  Parser parser(this);
 }
 
 /*
