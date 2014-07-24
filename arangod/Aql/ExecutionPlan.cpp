@@ -29,6 +29,7 @@
 
 #include <Basics/JsonHelper.h>
 
+using namespace triagens::basics;
 using namespace triagens::aql;
 
 // -----------------------------------------------------------------------------
@@ -40,36 +41,28 @@ using namespace triagens::aql;
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* ExecutionPlan::toJson (TRI_memory_zone_t* zone) {
-  TRI_json_t* json = TRI_CreateArray2Json(zone, 2);
-  if (nullptr == json) {
+  Json json;
+  try {
+    json = Json(Json::Array,2)
+             ("type", Json(getTypeString()));
+  }
+  catch (std::exception& e) {
     return nullptr;
   }
-
-  std::string type = getTypeString();
-  TRI_json_t* sub = TRI_CreateString2CopyJson(zone, type.c_str(), type.size());
-  if (nullptr == sub) {
-    TRI_FreeJson(zone, json);
-    return nullptr;
-  }
-  TRI_Insert3ArrayJson(zone, json, "type", sub);
-
   if (_dependencies.size() != 0) {
-    sub = TRI_CreateList2Json(zone, _dependencies.size());
-    if (nullptr == sub) {
-      TRI_FreeJson(zone, json);
+    Json deps;
+    try {
+      deps = Json(Json::List, _dependencies.size());
+      for (size_t i = 0; i < _dependencies.size(); i++) {
+        deps(_dependencies[i]->toJson(zone));
+      }
+      json("dependencies", deps);
+    }
+    catch (std::exception& e) {
       return nullptr;
     }
-    for (size_t i = 0; i < _dependencies.size(); i++) {
-      TRI_json_t* subsub = _dependencies[i]->toJson(zone);
-      if (subsub == nullptr) {
-        TRI_FreeJson(zone, json);
-        return nullptr;
-      }
-      TRI_PushBack3ListJson(zone, sub, subsub);
-    }
-    TRI_Insert3ArrayJson(zone, json, "dependencies", sub);
   }
-  return json;
+  return json.steal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -107,12 +100,21 @@ void ExecutionPlan::appendAsString (std::string& st, int indent) {
 
 TRI_json_t* EnumerateCollectionPlan::toJson (TRI_memory_zone_t* zone) {
   auto ep = static_cast<ExecutionPlan*>(this);
-  TRI_json_t* json = ep->toJson(zone);
-  if (nullptr == json) {
+  Json json(zone, ep->toJson(zone));
+  if (json.isEmpty()) {
     return nullptr;
   }
   // Now put info about vocbase and cid in there
-  return json;
+  try {
+    json("vocbase", Json(_vocbase->_name))
+        ("cid", JsonHelper::uint64String(zone, _cid));
+  }
+  catch (std::exception& e) {
+    return nullptr;
+  }
+
+  // And return it:
+  return json.steal();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
