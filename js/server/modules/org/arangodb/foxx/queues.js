@@ -33,7 +33,6 @@ var _ = require('underscore'),
   workers = require('org/arangodb/tasks'),
   taskDefaults,
   queues,
-  run,
   Queue,
   worker;
 
@@ -121,40 +120,42 @@ Queue.prototype.push = function (name, data) {
   });
 };
 
-run = function () {
-  'use strict';
-  var db = require('org/arangodb').db,
-    console = require('console');
+queues._manager = {
+  run: function () {
+    'use strict';
+    var db = require('org/arangodb').db,
+      console = require('console');
 
-  db._executeTransaction({
-    collections: {
-      read: ['_queues', '_jobs'],
-      write: ['_jobs']
-    },
-    action: function () {
-      var queues = db._queues.all().toArray();
-      queues.forEach(function (queue) {
-        var numBusy = db._jobs.byExample({
-          queue: queue._key,
-          status: 'progress'
-        }).count();
-        if (numBusy >= queue.maxWorkers) {
-          return;
-        }
-        db._jobs.byExample({
-          queue: queue._key,
-          status: 'pending'
-        }).limit(queue.maxWorkers - numBusy).toArray().forEach(function (job) {
-          db._jobs.update(job, {status: 'progress'});
-          workers.register({
-            command: worker,
-            params: _.extend(job._shallowCopy, {status: 'progress'}),
-            offset: 0
+    db._executeTransaction({
+      collections: {
+        read: ['_queues', '_jobs'],
+        write: ['_jobs']
+      },
+      action: function () {
+        var queues = db._queues.all().toArray();
+        queues.forEach(function (queue) {
+          var numBusy = db._jobs.byExample({
+            queue: queue._key,
+            status: 'progress'
+          }).count();
+          if (numBusy >= queue.maxWorkers) {
+            return;
+          }
+          db._jobs.byExample({
+            queue: queue._key,
+            status: 'pending'
+          }).limit(queue.maxWorkers - numBusy).toArray().forEach(function (job) {
+            db._jobs.update(job, {status: 'progress'});
+            workers.register({
+              command: worker,
+              params: _.extend(job._shallowCopy, {status: 'progress'}),
+              offset: 0
+            });
           });
         });
-      });
-    }
-  });
+      }
+    });
+  }
 };
 
 worker = function (job) {
