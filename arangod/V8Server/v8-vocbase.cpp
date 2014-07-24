@@ -34,6 +34,7 @@
 #include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-explain.h"
 #include "Ahuacatl/ahuacatl-result.h"
+#include "Aql/Query.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "BasicsC/conversions.h"
@@ -5370,11 +5371,13 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
 
   // execute the query
   std::cout << "ABOUT TO EXECUTE AQL QUERY '" << queryString << "'" << std::endl;
-  v8::Handle<v8::Object> result = v8::Object::New();
 
-  if (parameters != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
-  }
+  // bind parameters will be freed by context...
+  triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), parameters);
+
+  query.execute();
+
+  v8::Handle<v8::Object> result = v8::Object::New();
 
   return scope.Close(result);
 }
