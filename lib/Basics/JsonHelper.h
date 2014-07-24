@@ -280,6 +280,10 @@ namespace triagens {
 
       public:
 
+        Json ()
+          : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(AUTOFREE) {
+        }
+         
         Json (type_e t, autofree_e autofree = AUTOFREE) 
           : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
           make(t, 0);
@@ -406,12 +410,16 @@ namespace triagens {
           return _json;
         }
 
-        operator TRI_json_t* () throw() {
+        TRI_json_t* steal () throw() {
           TRI_json_t* res = _json;
           if (_autofree == AUTOFREE) {
             _json = nullptr;
           }
           return res;
+        }
+   
+        operator TRI_json_t* () throw() {
+          return steal();
         }
 
         Json& operator= (Json const& j) {
