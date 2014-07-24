@@ -420,13 +420,10 @@ namespace triagens {
           }
           _zone = j._zone;
           _autofree = j._autofree;
+          _json = j._json;
           if (j._autofree == AUTOFREE) {
-            _json = TRI_CopyJson(_zone, j._json);
+            j._autofree = NOFREE;
           }
-          else {
-            _json = j._json;
-          }
-
           return *this;
         }
         
@@ -523,6 +520,10 @@ namespace triagens {
           return TRI_IsListJson(_json);
         }
 
+        bool isEmpty () throw() {
+          return _json == nullptr;
+        }
+
         string toString () {
           return JsonHelper::toString(_json);
         }
@@ -530,7 +531,7 @@ namespace triagens {
       private:
         TRI_memory_zone_t* _zone;
         TRI_json_t* _json;
-        autofree_e _autofree;
+        mutable autofree_e _autofree;
     };
 
   }
