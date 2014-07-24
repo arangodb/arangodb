@@ -39,6 +39,8 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Ahuacatl/ahuacatl-tokens.cpp \
 	arangod/Ahuacatl/ahuacatl-variable.cpp \
 	arangod/Aql/ExecutionPlan.cpp \
+	arangod/Aql/Query.cpp \
+	arangod/Aql/QueryError.cpp \
 	arangod/BitIndexes/bitarray.cpp \
 	arangod/BitIndexes/bitarrayIndex.cpp \
 	arangod/CapConstraint/cap-constraint.cpp \
