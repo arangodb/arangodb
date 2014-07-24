@@ -455,13 +455,14 @@ function ControllerInjectionSpec () {
 }
 
 function DocumentationAndConstraintsSpec () {
-  var app, routes, models;
+  var app, routes, models, Model;
 
   return {
     setUp: function () {
       app = new FoxxController(fakeContext);
       routes = app.routingInfo.routes;
       models = app.models;
+      Model = require('org/arangodb/foxx').Model;
     },
 
     testDefinePathParam: function () {
@@ -669,6 +670,62 @@ function DocumentationAndConstraintsSpec () {
 
       assertTrue(called);
       ModelPrototype.assertIsSatisfied();
+    },
+
+    testSetParamForUndocumentedBodyParam: function () {
+      var reqBody = '{"foo": "bar"}',
+        req = {
+          parameters: {},
+          body: function () { return JSON.parse(this.rawBody()); },
+          rawBody: function () { return reqBody; }
+        },
+        res = {},
+        paramName = stub(),
+        description = stub(),
+        requestBody = stub(),
+        ModelPrototype = stub(),
+        jsonSchemaId = stub(),
+        receivedParam = false,
+        receivedRawBody = null;
+
+      app.post('/foxx', function (providedReq) {
+        receivedParam = providedReq.parameters["undocumented body"];
+        receivedRawBody = providedReq.rawBody();
+      });
+
+      routes[0].action.callback(req, res);
+
+      assertTrue(receivedParam instanceof Model);
+      assertEqual(receivedParam.forDB(), {foo: "bar"});
+      assertEqual(receivedRawBody, reqBody);
+    },
+
+    testSetParamForNonJsonUndocumentedBodyParam: function () {
+      var reqBody = '{:foo "bar"}',
+        req = {
+          parameters: {},
+          body: function () { return JSON.parse(this.rawBody()); },
+          rawBody: function () { return reqBody; }
+        },
+        res = {},
+        paramName = stub(),
+        description = stub(),
+        requestBody = stub(),
+        ModelPrototype = stub(),
+        jsonSchemaId = stub(),
+        receivedParam = false,
+        receivedRawBody = null;
+
+      app.post('/foxx', function (providedReq) {
+        receivedParam = providedReq.parameters["undocumented body"];
+        receivedRawBody = providedReq.rawBody();
+      });
+
+      routes[0].action.callback(req, res);
+
+      assertTrue(receivedParam instanceof Model);
+      assertEqual(receivedParam.forDB(), {});
+      assertEqual(receivedRawBody, reqBody);
     },
 
     testSetParamForBodyParamWithMultipleItems: function () {
