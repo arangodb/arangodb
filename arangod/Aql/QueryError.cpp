@@ -27,7 +27,7 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/ContextError.h"
+#include "Aql/QueryError.h"
 
 #include "BasicsC/tri-strings.h"
 
@@ -41,7 +41,7 @@ using namespace triagens::aql;
 /// @brief get the error string registered last
 ////////////////////////////////////////////////////////////////////////////////
 
-char* ContextError::getMessage () const {
+char* QueryError::getMessage () const {
   if (getCode() == TRI_ERROR_NO_ERROR) {
     return nullptr;
   }
@@ -65,10 +65,10 @@ char* ContextError::getMessage () const {
 /// @brief get a formatted query error message
 ////////////////////////////////////////////////////////////////////////////////
 
-char* ContextError::getContextError (char const* query,
-                                     size_t queryLength,
-                                     size_t line,
-                                     size_t column) const {
+char* QueryError::getContextError (char const* query,
+                                    size_t queryLength,
+                                    size_t line,
+                                    size_t column) const {
   const char* p;
   char* q;
   char* result;

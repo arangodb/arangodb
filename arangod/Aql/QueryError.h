@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_CONTEXTERROR_H
-#define ARANGODB_AQL_CONTEXTERROR_H 1
+#ifndef ARANGODB_AQL_QUERYERROR_H
+#define ARANGODB_AQL_QUERYERROR_H 1
 
 #include "Basics/Common.h"
 
@@ -46,14 +46,14 @@ namespace triagens {
 /// query execution. The data will be passed to the end user.
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct ContextError {
+    struct QueryError {
 
-      ContextError () 
+      QueryError () 
         : _code(TRI_ERROR_NO_ERROR),
           _data(nullptr) {
       }
 
-      ~ContextError () {
+      ~QueryError () {
         if (_data != nullptr) {
           TRI_Free(TRI_UNKNOWN_MEM_ZONE, _data);
         }
