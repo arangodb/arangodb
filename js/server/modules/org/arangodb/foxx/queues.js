@@ -28,9 +28,11 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var _ = require('underscore'),
-  db = require('org/arangodb').db,
+var QUEUE_MANAGER_PERIOD = 1000, // in ms
+  _ = require('underscore'),
   workers = require('org/arangodb/tasks'),
+  arangodb = require('org/arangodb'),
+  db = arangodb.db,
   taskDefaults,
   queues,
   Queue,
@@ -47,19 +49,15 @@ queues = {
   },
   create: function (key, maxWorkers) {
     'use strict';
-    db._executeTransaction({
-      collections: {
-        read: ['_queues'],
-        write: ['_queues']
-      },
-      action: function () {
-        if (db._queues.exists(key)) {
-          db._queues.update(key, {maxWorkers: maxWorkers});
-        } else {
-          db._queues.save({_key: key, maxWorkers: maxWorkers});
-        }
+    try {
+      db._queues.save({_key: key, maxWorkers: maxWorkers});
+    } catch (err) {
+      if (!err instanceof arangodb.ArangoError ||
+          err.errorNum !== arangodb.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+        throw err;
       }
-    });
+      db._queues.update(key, {maxWorkers: maxWorkers});
+    }
     return new Queue(key);
   },
   destroy: function (key) {
@@ -123,11 +121,41 @@ Queue.prototype.push = function (name, data) {
   });
 };
 
-queues._manager = {
-  run: function () {
+queues._worker = {
+  work: function (job) {
     'use strict';
     var db = require('org/arangodb').db,
-      console = require('console');
+      queues = require('org/arangodb/foxx').queues,
+      console = require('console'),
+      task = queues._tasks[job.task],
+      failed = false;
+
+    if (!task) {
+      console.warn('Unknown task for job ' + job._key + ':', job.task);
+      db._jobs.update(job._key, {status: 'pending'});
+      return;
+    }
+
+    try {
+      queues._tasks[job.task].execute(job.data);
+    } catch (err) {
+      console.error('Job ' + job._key + ' failed:', err);
+      failed = true;
+    }
+    db._jobs.update(job._key, failed ? {
+      failures: job.failures + 1,
+      status: (job.failures + 1 > task.maxFailures) ? 'failed' : 'pending'
+    } : {status: 'complete'});
+  }
+};
+
+queues._manager = {
+  manage: function () {
+    'use strict';
+    var _ = require('underscore'),
+      db = require('org/arangodb').db,
+      queues = require('org/arangodb/foxx').queues,
+      workers = require('org/arangodb/tasks');
 
     db._executeTransaction({
       collections: {
@@ -135,8 +163,8 @@ queues._manager = {
         write: ['_jobs']
       },
       action: function () {
-        var queues = db._queues.all().toArray();
-        queues.forEach(function (queue) {
+        db._queues.all().toArray()
+        .forEach(function (queue) {
           var numBusy = db._jobs.byExample({
             queue: queue._key,
             status: 'progress'
@@ -147,44 +175,27 @@ queues._manager = {
           db._jobs.byExample({
             queue: queue._key,
             status: 'pending'
-          }).limit(queue.maxWorkers - numBusy).toArray().forEach(function (job) {
-            db._jobs.update(job, {status: 'progress'});
+          }).limit(queue.maxWorkers - numBusy).toArray().forEach(function (doc) {
+            db._jobs.update(doc, {status: 'progress'});
             workers.register({
-              command: worker,
-              params: _.extend(job._shallowCopy, {status: 'progress'}),
+              command: queues._worker.work,
+              params: _.extend({}, doc, {status: 'progress'}),
               offset: 0
             });
           });
         });
       }
     });
-  }
-};
+  },
+  run: function () {
+    'use strict';
+    var db = require('org/arangodb').db,
+      queues = require('org/arangodb/foxx').queues,
+      workers = require('org/arangodb/tasks');
 
-worker = function (job) {
-  'use strict';
-  var db = require('org/arangodb').db,
-    queues = require('org/arangodb/foxx').queues,
-    console = require('console'),
-    task = queues._tasks[job.task],
-    failed = false;
-
-  if (!task) {
-    console.warn('Unknown task for job ' + job._key + ':', job.task);
-    db._jobs.update(job, {status: 'pending'});
-    return;
+    db._jobs.updateByExample({status: 'progress'}, {status: 'pending'});
+    workers.register({command: queues._manager.manage, period: QUEUE_MANAGER_PERIOD / 1000});
   }
-
-  try {
-    queues._tasks[job.task].execute(job.data);
-  } catch (err) {
-    console.error('Job ' + job._key + ' failed:', err);
-    failed = true;
-  }
-  db._jobs.update(job, failed ? {
-    failures: job.failures + 1,
-    status: (job.failures + 1 > task.maxFailures) ? 'failed' : 'pending'
-  } : {status: 'complete'});
 };
 
 queues.create('default', 1);
