@@ -102,8 +102,24 @@ void ExecutionPlan::appendAsString (std::string& st, int indent) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, for EnumerateCollectionPlan
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* EnumerateCollectionPlan::toJson (TRI_memory_zone_t* zone) {
+  auto ep = static_cast<ExecutionPlan*>(this);
+  TRI_json_t* json = ep->toJson(zone);
+  if (nullptr == json) {
+    return nullptr;
+  }
+  // Now put info about vocbase and cid in there
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test function
 ////////////////////////////////////////////////////////////////////////////////
+
+using namespace triagens::basics;
 
 void testExecutionPlans () {
   ExecutionPlan* e = new ExecutionPlan();
@@ -117,30 +133,72 @@ void testExecutionPlans () {
   TRI_json_t* json = e->toJson(TRI_UNKNOWN_MEM_ZONE);
   if (json != nullptr) {
     std::cout << "e as JSON:\n" << 
-              triagens::basics::JsonHelper::toString(json) << std::endl;
+              JsonHelper::toString(json) << std::endl;
   }
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   json = f->toJson(TRI_UNKNOWN_MEM_ZONE);
   if (json != nullptr) {
     std::cout << "f as JSON:\n" << 
-              triagens::basics::JsonHelper::toString(json) << std::endl;
+              JsonHelper::toString(json) << std::endl;
   }
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   delete f;  // should not leave a leak
-}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for EnumerateCollectionPlan
-////////////////////////////////////////////////////////////////////////////////
+  json = Json(12);
+  std::cout << JsonHelper::toString(json) << std::endl;
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  
+  json = Json(true);
+  std::cout << JsonHelper::toString(json) << std::endl;
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-TRI_json_t* EnumerateCollectionPlan::toJson (TRI_memory_zone_t* zone) {
-  auto ep = static_cast<ExecutionPlan*>(this);
-  TRI_json_t* json = ep->toJson(zone);
-  if (nullptr == json) {
-    return nullptr;
-  }
-  // Now put info about vocbase and cid in there
-  return json;
+  json = Json(Json::Null);
+  std::cout << JsonHelper::toString(json) << std::endl;
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  json = Json(Json::String);
+  std::cout << JsonHelper::toString(json) << std::endl;
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  json = Json(Json::List);
+  std::cout << JsonHelper::toString(json) << std::endl;
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  json = Json(Json::Array);
+  std::cout << JsonHelper::toString(json) << std::endl;
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  json = Json(Json::Array, 10)
+           ("myinteger", Json(12))
+           ("mystring", Json("hallo"))
+           ("mybool", Json(false))
+           ("mynull", Json(Json::Null))
+           ("mylist", Json(Json::List, 3)
+                            (Json(1))
+                            (Json(2))
+                            (Json(3)))
+           ("myarray", Json(Json::Array, 2)
+                            ("a",Json("hallo"))
+                            ("b",Json(13)));
+  std::cout << JsonHelper::toString(json) << std::endl;
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  Json j(Json::Array);
+       j("a", Json(12))
+        ("b", Json(true))
+        ("c", Json(Json::List) 
+                (Json(1))(Json(2))(Json(3)))
+        ("d", Json(Json::Array)
+                ("x", Json(12))
+                ("y", Json(true)));
+  std::cout << j.toString() << std::endl;
+
+  std::cout << j.get("a").toString() << std::endl;
+
+  Json k = j.get("c");
+  Json l = k.at(2);
+
+  std::cout << l.toString() << std::endl;
 }
 
 // Local Variables:
