@@ -48,11 +48,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     enum QueryType {
-      QUERY_READ,
-      QUERY_REMOVE,
-      QUERY_INSERT,
-      QUERY_UPDATE,
-      QUERY_REPLACE
+      AQL_QUERY_READ,
+      AQL_QUERY_REMOVE,
+      AQL_QUERY_INSERT,
+      AQL_QUERY_UPDATE,
+      AQL_QUERY_REPLACE
     };
 
 // -----------------------------------------------------------------------------
@@ -83,6 +83,38 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the query type
+////////////////////////////////////////////////////////////////////////////////
+
+        inline QueryType type () const {
+          return _type;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the query type
+////////////////////////////////////////////////////////////////////////////////
+
+        void type (QueryType type) {
+          _type = type;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the query string
+////////////////////////////////////////////////////////////////////////////////
+
+        char const* queryString () const {
+          return _queryString;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the length of the query string
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t queryLength () const {
+          return _queryLength;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an AQL query - TODO: implement and determine return type
@@ -124,7 +156,7 @@ namespace triagens {
 
         char const*            _queryString;
         size_t const           _queryLength;
-        QueryType              _queryType;
+        QueryType              _type;
 
         struct TRI_json_s*     _bindParameters;
 

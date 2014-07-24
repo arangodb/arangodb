@@ -39,7 +39,16 @@ using namespace triagens::aql;
 /// @brief create the parser
 ////////////////////////////////////////////////////////////////////////////////
 
-Parser::Parser () {
+Parser::Parser (Query* query)
+  : _query(query),
+    _scanner(nullptr),
+    _buffer(query->queryString()),
+    _remainingLength(query->queryLength()),
+    _offset(0),
+    _marker(nullptr) {
+  
+  //Aqlllex_init(&context->_parser->_scanner);
+  //Aqlset_extra(context, context->_parser->_scanner);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,6 +56,7 @@ Parser::Parser () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Parser::~Parser () {
+//  Aqllex_destroy(parser->_scanner);
 }
 
 // -----------------------------------------------------------------------------

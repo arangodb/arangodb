@@ -58,9 +58,11 @@ add_executable(
     Ahuacatl/ahuacatl-tokens.cpp
     Ahuacatl/ahuacatl-variable.cpp
     Aql/ExecutionPlan.cpp
+    Aql/grammar.cpp
     Aql/Parser.cpp
     Aql/Query.cpp
     Aql/QueryError.cpp
+    Aql/tokens.cpp
     BitIndexes/bitarray.cpp
     BitIndexes/bitarrayIndex.cpp
     CapConstraint/cap-constraint.cpp
