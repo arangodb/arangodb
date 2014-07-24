@@ -27,27 +27,11 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/error.h"
+#include "Aql/ContextError.h"
 
 #include "BasicsC/tri-strings.h"
 
 using namespace triagens::aql;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           defines
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief error snippet length
-////////////////////////////////////////////////////////////////////////////////
-
-#define SNIPPET_LENGTH 32
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief error snippet suffix
-////////////////////////////////////////////////////////////////////////////////
-
-#define SNIPPET_SUFFIX "..."
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -57,7 +41,7 @@ using namespace triagens::aql;
 /// @brief get the error string registered last
 ////////////////////////////////////////////////////////////////////////////////
 
-char* query_error_t::getMessage () const {
+char* ContextError::getMessage () const {
   if (getCode() == TRI_ERROR_NO_ERROR) {
     return nullptr;
   }
@@ -81,10 +65,10 @@ char* query_error_t::getMessage () const {
 /// @brief get a formatted query error message
 ////////////////////////////////////////////////////////////////////////////////
 
-char* query_error_t::getContextError (char const* query,
-                                      size_t queryLength,
-                                      size_t line,
-                                      size_t column) const {
+char* ContextError::getContextError (char const* query,
+                                     size_t queryLength,
+                                     size_t line,
+                                     size_t column) const {
   const char* p;
   char* q;
   char* result;
@@ -126,6 +110,9 @@ char* query_error_t::getContextError (char const* query,
   TRI_ASSERT(p >= query);
 
   offset = (size_t) (p - query);
+
+  static int const SNIPPET_LENGTH = 32;
+  static char const* SNIPPET_SUFFIX =  "...";
 
   if (queryLength < offset + SNIPPET_LENGTH) {
     return TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, query + offset, queryLength - offset);

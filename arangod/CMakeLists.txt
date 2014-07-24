@@ -57,6 +57,7 @@ add_executable(
     Ahuacatl/ahuacatl-statementlist.cpp
     Ahuacatl/ahuacatl-tokens.cpp
     Ahuacatl/ahuacatl-variable.cpp
+    Aql/ContextError.cpp
     BitIndexes/bitarray.cpp
     BitIndexes/bitarrayIndex.cpp
     CapConstraint/cap-constraint.cpp
