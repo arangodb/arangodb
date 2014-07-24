@@ -10527,6 +10527,9 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(3);
 
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  TRI_AddMethodVocbase(rt, "checkPointers", JS_CheckPointersVocbaseCol);
+#endif  
   TRI_AddMethodVocbase(rt, "count", JS_CountVocbaseCol);
   TRI_AddMethodVocbase(rt, "datafiles", JS_DatafilesVocbaseCol);
   TRI_AddMethodVocbase(rt, "datafileScan", JS_DatafileScanVocbaseCol);
@@ -10546,20 +10549,16 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(rt, "remove", JS_RemoveVocbaseCol);
   TRI_AddMethodVocbase(rt, "revision", JS_RevisionVocbaseCol);
   TRI_AddMethodVocbase(rt, "rename", JS_RenameVocbaseCol);
+  TRI_AddMethodVocbase(rt, "replace", JS_ReplaceVocbaseCol);
   TRI_AddMethodVocbase(rt, "rotate", JS_RotateVocbaseCol);
+  TRI_AddMethodVocbase(rt, "save", JS_InsertVocbaseCol); // note: save is now an alias for insert
   TRI_AddMethodVocbase(rt, "status", JS_StatusVocbaseCol);
   TRI_AddMethodVocbase(rt, "TRUNCATE", JS_TruncateVocbaseCol, true);
   TRI_AddMethodVocbase(rt, "truncateDatafile", JS_TruncateDatafileVocbaseCol);
   TRI_AddMethodVocbase(rt, "type", JS_TypeVocbaseCol);
   TRI_AddMethodVocbase(rt, "unload", JS_UnloadVocbaseCol);
-  TRI_AddMethodVocbase(rt, "version", JS_VersionVocbaseCol);
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-  TRI_AddMethodVocbase(rt, "checkPointers", JS_CheckPointersVocbaseCol);
-#endif  
-
-  TRI_AddMethodVocbase(rt, "replace", JS_ReplaceVocbaseCol);
-  TRI_AddMethodVocbase(rt, "save", JS_InsertVocbaseCol); // note: save is now an alias for insert
   TRI_AddMethodVocbase(rt, "update", JS_UpdateVocbaseCol);
+  TRI_AddMethodVocbase(rt, "version", JS_VersionVocbaseCol);
 
   v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ArangoCollection", ft->GetFunction());

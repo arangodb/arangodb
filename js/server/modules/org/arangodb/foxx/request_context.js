@@ -36,11 +36,13 @@ var RequestContext,
   internal = require("org/arangodb/foxx/internals"),
   is = require("org/arangodb/is"),
   UnauthorizedError = require("org/arangodb/foxx/authentication").UnauthorizedError,
+  elementExtractFactory,
+  bubbleWrapFactory,
   createErrorBubbleWrap,
   createBodyParamBubbleWrap,
   addCheck;
 
-var elementExtractFactory = function (paramName, rootElement) {
+elementExtractFactory = function (paramName, rootElement) {
   'use strict';
   var extractElement;
 
@@ -57,7 +59,7 @@ var elementExtractFactory = function (paramName, rootElement) {
   return extractElement;
 };
 
-var bubbleWrapFactory = function (handler, paramName, Proto, extractElement, multiple) {
+bubbleWrapFactory = function (handler, paramName, Proto, extractElement, multiple) {
   'use strict';
   if (multiple) {
     Proto = Proto[0];
@@ -75,10 +77,20 @@ var bubbleWrapFactory = function (handler, paramName, Proto, extractElement, mul
   };
 };
 
-createBodyParamBubbleWrap = function (handler, paramName, Proto, rootElement) {
+createBodyParamBubbleWrap = function (handler, paramName, Proto, allowInvalid, rootElement) {
   'use strict';
-  var extractElement = elementExtractFactory(paramName, rootElement);
-  return bubbleWrapFactory(handler, paramName, Proto, extractElement, is.array(Proto));
+  var extractElement = elementExtractFactory(paramName, rootElement, allowInvalid),
+    wrappedExtractElement = extractElement;
+  if (allowInvalid) {
+    wrappedExtractElement = function (req) {
+      try {
+        return extractElement(req);
+      } catch (err) {
+        return {};
+      }
+    };
+  }
+  return bubbleWrapFactory(handler, paramName, Proto, wrappedExtractElement, is.array(Proto));
 };
 
 createErrorBubbleWrap = function (handler, errorClass, code, reason, errorHandler) {
@@ -380,8 +392,6 @@ extend(RequestContext.prototype, {
 
   bodyParam: function (paramName, attributes, Proto) {
     'use strict';
-    var handler = this.route.action.callback;
-
     if (Proto !== undefined) {
       // deprecated
       attributes = {
@@ -395,7 +405,13 @@ extend(RequestContext.prototype, {
     } else {
       this.docs.addBodyParam(paramName, attributes.description, attributes.type.toJSONSchema(paramName));
     }
-    this.route.action.callback = createBodyParamBubbleWrap(handler, paramName, attributes.type, this.rootElement);
+    this.route.action.callback = createBodyParamBubbleWrap(
+      this.route.action.callback,
+      paramName,
+      attributes.type,
+      attributes.allowInvalid,
+      this.rootElement
+    );
 
     return this;
   },
