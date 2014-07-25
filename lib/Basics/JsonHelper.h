@@ -479,7 +479,7 @@ namespace triagens {
 /// copying the whole structure.
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json (Json const& j)
+        Json (Json& j)
           : _zone(j._zone), _json(j.steal()), _autofree(j._autofree) {
           std::cout << "Hallo copy constructor" << std::endl;
         }
@@ -490,7 +490,7 @@ namespace triagens {
 /// copying the whole structure.
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json (Json const&& j)
+        Json (Json&& j)
           : _zone(j._zone), _json(j.steal()), _autofree(j._autofree) {
           std::cout << "Hallo, move constructor at work for "
                     << this->toString() << std::endl;
@@ -522,16 +522,17 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief steal the TRI_json_t*, that is, in the AUTOFREE case the object
-/// is changed into a NOFREE one. This is used in the copy constructor
-/// and in the cast operator to TRI_json_t*.
+/// @brief steal the TRI_json_t*, that is, in the AUTOFREE case the pointer
+/// _json is changed to a nullptr. This is used in the copy and the move 
+/// constructor and in the cast operator to TRI_json_t*.
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_json_t* steal () const throw() {
+        TRI_json_t* steal () throw() {
+          TRI_json_t* res = _json;
           if (_autofree == AUTOFREE) {
-            _autofree = NOFREE;
+            _json = nullptr;
           }
-          return _json;
+          return res;
         }
    
 ////////////////////////////////////////////////////////////////////////////////
@@ -548,7 +549,7 @@ namespace triagens {
 /// people will use. If you need an actual copy, use the copy method.
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json& operator= (Json const& j) {
+        Json& operator= (Json& j) {
           std::cout << "= called" << std::endl;
           if (_json != nullptr && _autofree == AUTOFREE) {
             TRI_FreeJson(_zone, _json);
@@ -563,7 +564,7 @@ namespace triagens {
 /// @brief move assignment operator, this has steal semantics.
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json& operator= (Json const&& j) {
+        Json& operator= (Json&& j) {
           std::cout << "= move called" << std::endl;
           if (_json != nullptr && _autofree == AUTOFREE) {
             TRI_FreeJson(_zone, _json);
@@ -582,7 +583,12 @@ namespace triagens {
           Json c;
           std::cout << "ATTENTION: recursive JSON copy performed!!!" << std::endl;
           c._zone = _zone;
-          c._json = TRI_CopyJson(_zone, _json);
+          if (_json != nullptr) {
+            c._json = TRI_CopyJson(_zone, _json);
+          }
+          else {
+            c._json = nullptr;
+          }
           c._autofree = _autofree;
           return c;
         }
@@ -763,7 +769,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string toString () {
-          return JsonHelper::toString(_json);
+          if (_json != nullptr) {
+            return JsonHelper::toString(_json);
+          }
+          else {
+            return std::string("");
+          }
         }
 
       private:
@@ -784,7 +795,7 @@ namespace triagens {
 /// @brief flag, whether we automatically free the TRI_json_t*.
 ////////////////////////////////////////////////////////////////////////////////
 
-        mutable autofree_e _autofree;
+        autofree_e _autofree;
     };
 
   }
