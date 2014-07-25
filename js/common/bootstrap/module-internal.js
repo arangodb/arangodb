@@ -1100,12 +1100,9 @@
       context.output += context.names[p];
     }
     else {
-      if (value instanceof Object || value.__proto__ === null) {
+      if (value && (value instanceof Object || value.__proto__ === null)) {
         context.seen.push(value);
         context.names.push(context.path);
-      }
-
-      if (value instanceof Object || value.__proto__ === null) {
         if (customInspect && typeof value._PRINT === "function") {
           value._PRINT(context);
 

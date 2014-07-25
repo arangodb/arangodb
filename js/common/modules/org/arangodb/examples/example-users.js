@@ -39,7 +39,6 @@ var db = require("org/arangodb").db;
 ////////////////////////////////////////////////////////////////////////////////
 
 var data = [
-
   {"name":{"first":"Lue","last":"Laserna"},
    "gender":"female",
    "birthday":"1983-09-18",
@@ -48,6 +47,7 @@ var data = [
               "region":"310","phone":["310-8268551","310-7618427"]},
    "likes":["chatting"],
    "memberSince":"2011-05-05"},
+
   {"name":{"first":"Jasper","last":"Grebel"},
    "gender":"male",
    "birthday":"1989-04-29",
@@ -56,6 +56,7 @@ var data = [
               "region":"316","phone":["316-2417120","316-2767391"]},
    "likes":["shopping"],
    "memberSince":"2011-11-10"},
+
   {"name":{"first":"Kandra","last":"Beichner"},
    "gender":"female",
    "birthday":"1963-11-21",
@@ -64,6 +65,7 @@ var data = [
               "region":"253","phone":["253-0405964"]},
    "likes":["swimming"],
    "memberSince":"2012-03-18"},
+
   {"name":{"first":"Jeff","last":"Schmith"},
    "gender":"male",
    "birthday":"1977-10-14",
@@ -72,6 +74,7 @@ var data = [
               "region":"870","phone":[]},
    "likes":["chatting","boxing","reading"],
    "memberSince":"2011-02-10"},
+
   {"name":{"first":"Tuan","last":"Climer"},
    "gender":"male",
    "birthday":"1951-04-06",
@@ -80,6 +83,7 @@ var data = [
               "region":"908","phone":["908-8376478"]},
    "likes":["ironing"],
    "memberSince":"2011-02-06"},
+
   {"name":{"first":"Warner","last":"Lemaire"},
    "gender":"male",
    "birthday":"1953-05-01",
@@ -88,6 +92,7 @@ var data = [
               "region":"540","phone":[]},
    "likes":["driving"],
    "memberSince":"2008-10-20"},
+
   {"name":{"first":"Hugh","last":"Potash"},
    "gender":"male",
    "birthday":"1971-02-17",
@@ -96,6 +101,7 @@ var data = [
               "region":"607","phone":["607-5183546"]},
    "likes":[],
    "memberSince":"2011-10-28"},
+
   {"name":{"first":"Jennefer","last":"Menning"},
    "gender":"female",
    "birthday":"1972-09-11",
@@ -104,6 +110,7 @@ var data = [
               "region":"320","phone":[]},
    "likes":[],
    "memberSince":"2010-09-11"},
+
   {"name":{"first":"Claude","last":"Willcott"},
    "gender":"female",
    "birthday":"1979-01-08",
@@ -112,6 +119,7 @@ var data = [
               "region":"712","phone":["712-3896363"]},
    "likes":["chess","driving"],
    "memberSince":"2010-03-27"},
+
   {"name":{"first":"Maximina","last":"Kilzer"},
    "gender":"female",
    "birthday":"1992-03-10",
@@ -120,6 +128,7 @@ var data = [
               "region":"580","phone":["580-7678062"]},
    "likes":["shopping","travelling"],
    "memberSince":"2007-09-12"},
+
   {"name":{"first":"Calvin","last":"Porro"},
    "gender":"male",
    "birthday":"1940-03-31",
@@ -128,6 +137,7 @@ var data = [
               "region":"406","phone":["406-7464035"]},
    "likes":[],
    "memberSince":"2009-10-17"},
+
   {"name":{"first":"Diedre","last":"Clinton"},
    "gender":"female",
    "birthday":"1959-11-06",
@@ -136,6 +146,7 @@ var data = [
               "region":"719","phone":["719-7055896"]},
    "likes":["swimming"],
    "memberSince":"2009-03-14"},
+
   {"name":{"first":"Lavone","last":"Peery"},
    "gender":"female",
    "birthday":"1960-07-23",
@@ -144,6 +155,7 @@ var data = [
               "region":"208","phone":["208-6845728","208-9763317"]},
    "likes":[],
    "memberSince":"2010-07-17"},
+
   {"name":{"first":"Stephen","last":"Jakovac"},
    "gender":"male",
    "birthday":"1985-08-11",
@@ -152,6 +164,7 @@ var data = [
               "region":"320","phone":["320-2503176","320-9515697"]},
    "likes":[],
    "memberSince":"2010-07-21"},
+
   {"name":{"first":"Cleveland","last":"Bejcek"},
    "gender":"male",
    "birthday":"1944-07-30",
@@ -160,6 +173,7 @@ var data = [
               "region":"831","phone":[]},
    "likes":["chess","checkers"],
    "memberSince":"2011-12-26"},
+
   {"name":{"first":"Mickie","last":"Menchaca"},
    "gender":"female",
    "birthday":"1960-02-08",
@@ -168,6 +182,7 @@ var data = [
               "region":"732","phone":["732-1143581"]},
    "likes":[],
    "memberSince":"2011-05-06"},
+
   {"name":{"first":"Jason","last":"Meneley"},
    "gender":"male",
    "birthday":"1971-02-24",
@@ -176,6 +191,7 @@ var data = [
               "region":"315","phone":["315-7142142","315-0405535"]},
    "likes":["climbing"],
    "memberSince":"2009-08-15"},
+
   {"name":{"first":"Fredda","last":"Persten"},
    "gender":"female",
    "birthday":"1944-07-25",
@@ -184,6 +200,7 @@ var data = [
               "region":"915","phone":["915-7112133","915-5032376"]},
    "likes":[],
    "memberSince":"2009-11-12"},
+
   {"name":{"first":"Ann","last":"Skaar"},
    "gender":"female",
    "birthday":"1971-10-03",
@@ -192,6 +209,7 @@ var data = [
               "region":"406","phone":[]},
    "likes":["boxing"],
    "memberSince":"2009-10-11"},
+
   {"name":{"first":"Corey","last":"Shiroma"},
    "gender":"male",
    "birthday":"1989-06-08",
@@ -200,6 +218,7 @@ var data = [
               "region":"314","phone":[]},
    "likes":["swimming","driving"],
    "memberSince":"2009-02-05"},
+
   {"name":{"first":"Graig","last":"Flax"},
    "gender":"male",
    "birthday":"1944-10-03",
@@ -208,6 +227,7 @@ var data = [
               "region":"802","phone":["802-4827967"]},
    "likes":["skiing","climbing"],
    "memberSince":"2011-07-01"},
+
   {"name":{"first":"Nydia","last":"Weeden"},
    "gender":"female",
    "birthday":"1962-05-30",
@@ -216,6 +236,7 @@ var data = [
               "region":"813","phone":["813-5324600","813-4712316"]},
    "likes":[],
    "memberSince":"2007-10-12"},
+
   {"name":{"first":"Minerva","last":"Reinbold"},
    "gender":"female",
    "birthday":"1957-12-24",
@@ -224,6 +245,7 @@ var data = [
               "region":"505","phone":[]},
    "likes":["chess","climbing"],
    "memberSince":"2007-06-10"},
+
   {"name":{"first":"Lou","last":"Cheroki"},
    "gender":"male",
    "birthday":"1975-06-27",
@@ -232,6 +254,7 @@ var data = [
               "region":"318","phone":["318-5241811"]},
    "likes":[],
    "memberSince":"2009-01-22"},
+
   {"name":{"first":"Frank","last":"Sedano"},
    "gender":"male",
    "birthday":"1988-09-10",
@@ -240,6 +263,7 @@ var data = [
               "region":"316","phone":[]},
    "likes":["ironing"],
    "memberSince":"2009-10-22"},
+
   {"name":{"first":"Tracey","last":"Braylock"},
    "gender":"male",
    "birthday":"1941-10-17",
@@ -248,6 +272,7 @@ var data = [
               "region":"309","phone":[]},
    "likes":[],
    "memberSince":"2010-12-21"},
+
   {"name":{"first":"Hayden","last":"Daniel"},
    "gender":"male",
    "birthday":"1990-06-15",
@@ -256,6 +281,7 @@ var data = [
               "region":"785","phone":["785-4595093","785-9794490"]},
    "likes":["travelling"],
    "memberSince":"2010-05-11"},
+
   {"name":{"first":"Jene","last":"Sance"},
    "gender":"female",
    "birthday":"1960-01-10",
@@ -264,6 +290,7 @@ var data = [
               "region":"423","phone":[]},
    "likes":[],
    "memberSince":"2008-02-28"},
+
   {"name":{"first":"Toccara","last":"Damato"},
    "gender":"female",
    "birthday":"1983-02-21",
@@ -272,6 +299,7 @@ var data = [
               "region":"406","phone":["406-4971630"]},
    "likes":["running","snowboarding"],
    "memberSince":"2008-07-19"},
+
   {"name":{"first":"Josefina","last":"Hams"},
    "gender":"female",
    "birthday":"1984-07-29",
@@ -280,6 +308,7 @@ var data = [
               "region":"215","phone":["215-9059514","215-9507320"]},
    "likes":["chess","boxing"],
    "memberSince":"2007-09-28"},
+
   {"name":{"first":"Randy","last":"Klenovich"},
    "gender":"male",
    "birthday":"1984-01-28",
@@ -288,6 +317,7 @@ var data = [
               "region":"252","phone":["252-4611502","252-6980326"]},
    "likes":["chess","boxing"],
    "memberSince":"2010-03-11"},
+
   {"name":{"first":"Gonzalo","last":"Boeshore"},
    "gender":"male",
    "birthday":"1942-10-07",
@@ -296,6 +326,7 @@ var data = [
               "region":"810","phone":["810-6542772"]},
    "likes":[],
    "memberSince":"2009-10-26"},
+
   {"name":{"first":"Hai","last":"Treamer"},
    "gender":"male",
    "birthday":"1944-04-09",
@@ -304,6 +335,7 @@ var data = [
               "region":"712","phone":["712-5347242","712-7460448"]},
    "likes":[],
    "memberSince":"2010-09-30"},
+
   {"name":{"first":"Sammy","last":"Coldivar"},
    "gender":"female",
    "birthday":"1982-04-07",
@@ -312,6 +344,7 @@ var data = [
               "region":"505","phone":["505-1394678"]},
    "likes":[],
    "memberSince":"2012-04-30"},
+
   {"name":{"first":"Son","last":"Dabe"},
    "gender":"female",
    "birthday":"1943-11-20",
@@ -320,6 +353,7 @@ var data = [
               "region":"785","phone":["785-4240372"]},
    "likes":["checkers"],
    "memberSince":"2011-05-25"},
+
   {"name":{"first":"Carlee","last":"Degenfelder"},
    "gender":"female",
    "birthday":"1981-06-24",
@@ -329,6 +363,7 @@ var data = [
               "region":"626","phone":["626-4051264","626-2789580"]},
    "likes":[],
    "memberSince":"2010-09-21"},
+
   {"name":{"first":"Mose","last":"Backlund"},
    "gender":"male",
    "birthday":"1951-08-03",
@@ -337,6 +372,7 @@ var data = [
               "region":"706","phone":[]},
    "likes":["biking","travelling"],
    "memberSince":"2011-10-25"},
+
   {"name":{"first":"Clayton","last":"Hilda"},
    "gender":"male",
    "birthday":"1940-01-03",
@@ -345,6 +381,7 @@ var data = [
               "region":"716","phone":["716-0043859","716-7107175"]},
    "likes":[],
    "memberSince":"2011-02-09"},
+
   {"name":{"first":"Charley","last":"Demora"},
    "gender":"male",
    "birthday":"1955-08-06",
@@ -353,6 +390,7 @@ var data = [
               "region":"508","phone":["508-9084206","508-1037607"]},
    "likes":[],
    "memberSince":"2007-07-24"},
+
   {"name":{"first":"Dorene","last":"Gunther"},
    "gender":"female",
    "birthday":"1955-01-26",
@@ -361,6 +399,7 @@ var data = [
               "region":"781","phone":["781-5720472"]},
    "likes":["chatting","boxing","driving","ironing"],
    "memberSince":"2010-01-28"},
+
   {"name":{"first":"Alane","last":"Goldade"},
    "gender":"female",
    "birthday":"1991-11-20",
@@ -369,6 +408,7 @@ var data = [
               "region":"503","phone":["503-3482925","503-9205542"]},
    "likes":[],
    "memberSince":"2011-02-09"},
+
   {"name":{"first":"Salina","last":"Sue"},
    "gender":"female",
    "birthday":"1962-11-08",
@@ -377,6 +417,7 @@ var data = [
               "region":"309","phone":["309-7368050"]},
    "likes":["running","shopping"],
    "memberSince":"2012-05-02"},
+
   {"name":{"first":"Rico","last":"Hoopengardner"},
    "gender":"male",
    "birthday":"1961-12-22",
@@ -385,6 +426,7 @@ var data = [
               "region":"562","phone":["562-1439117"]},
    "likes":["biking"],
    "memberSince":"2007-07-16"},
+
   {"name":{"first":"Laurence","last":"Vahena"},
    "gender":"female",
    "birthday":"1987-03-25",
@@ -393,6 +435,7 @@ var data = [
               "region":"830","phone":["830-1060061"]},
    "likes":["running"],
    "memberSince":"2009-02-27"},
+
   {"name":{"first":"Jasper","last":"Okorududu"},
    "gender":"male",
    "birthday":"1955-02-12",
@@ -401,6 +444,7 @@ var data = [
               "region":"501","phone":["501-7977106","501-7138486"]},
    "likes":["boxing","climbing"],
    "memberSince":"2011-02-12"},
+
   {"name":{"first":"Tyesha","last":"Loehrer"},
    "gender":"female",
    "birthday":"1959-01-30",
@@ -409,6 +453,7 @@ var data = [
               "region":"636","phone":[]},
    "likes":["boxing"],
    "memberSince":"2010-12-19"},
+
   {"name":{"first":"Murray","last":"Zirk"},
    "gender":"male",
    "birthday":"1946-07-14",
@@ -417,6 +462,7 @@ var data = [
               "region":"787","phone":["787-5001534","787-8378996"]},
    "likes":[],
    "memberSince":"2009-06-02"},
+
   {"name":{"first":"Virgil","last":"Mulneix"},
    "gender":"female",
    "birthday":"1978-03-29",
@@ -425,6 +471,7 @@ var data = [
               "region":"205","phone":["205-9970849"]},
    "likes":["chatting","boxing"],
    "memberSince":"2010-07-09"},
+
   {"name":{"first":"Miles","last":"Norden"},
    "gender":"male",
    "birthday":"1988-01-14",
@@ -433,6 +480,7 @@ var data = [
               "region":"914","phone":["914-3581265","914-5948065"]},
    "likes":[],
    "memberSince":"2011-03-15"},
+
   {"name":{"first":"Quinn","last":"Cote"},
    "gender":"female",
    "birthday":"1969-09-01",
@@ -441,6 +489,7 @@ var data = [
               "region":"540","phone":["540-4505047","540-3769551"]},
    "likes":["chatting"],
    "memberSince":"2012-01-04"},
+
   {"name":{"first":"Shavonne","last":"Finchum"},
    "gender":"female",
    "birthday":"1962-02-12",
@@ -449,6 +498,7 @@ var data = [
               "region":"914","phone":["914-8440818"]},
    "likes":[],
    "memberSince":"2011-01-07"},
+
   {"name":{"first":"Justine","last":"Girone"},
    "gender":"female",
    "birthday":"1993-11-22",
@@ -457,6 +507,7 @@ var data = [
               "region":"660","phone":[]},
    "likes":[],
    "memberSince":"2010-10-10"},
+
   {"name":{"first":"Dorthea","last":"Visnic"},
    "gender":"female",
    "birthday":"1948-11-06",
@@ -465,6 +516,7 @@ var data = [
               "region":"909","phone":["909-1143770"]},
    "likes":[],
    "memberSince":"2010-03-27"},
+
   {"name":{"first":"Rolland","last":"Rodrigres"},
    "gender":"male",
    "birthday":"1965-06-07",
@@ -473,6 +525,7 @@ var data = [
               "region":"860","phone":["860-8120488"]},
    "likes":[],
    "memberSince":"2009-03-27"},
+
   {"name":{"first":"Elias","last":"Morch"},
    "gender":"male",
    "birthday":"1955-08-02",
@@ -481,6 +534,7 @@ var data = [
               "region":"713","phone":["713-2682695"]},
    "likes":[],
    "memberSince":"2011-07-26"},
+
   {"name":{"first":"Ashley","last":"Byczek"},
    "gender":"male",
    "birthday":"1981-03-13",
@@ -489,6 +543,7 @@ var data = [
               "region":"732","phone":["732-7878019","732-1294501"]},
    "likes":["chess","boxing","reading","snowboarding","ironing"],
    "memberSince":"2010-10-30"},
+
   {"name":{"first":"Rosella","last":"Anastos"},
    "gender":"female",
    "birthday":"1971-09-04",
@@ -497,6 +552,7 @@ var data = [
               "region":"903","phone":[]},
    "likes":["chatting"],
    "memberSince":"2008-06-27"},
+
   {"name":{"first":"Nicky","last":"Hopkins"},
    "gender":"male",
    "birthday":"1943-08-03",
@@ -505,6 +561,7 @@ var data = [
               "region":"914","phone":[]},
    "likes":["shopping"],
    "memberSince":"2011-03-25"},
+
   {"name":{"first":"Marcy","last":"Bloem"},
    "gender":"female",
    "birthday":"1974-05-26",
@@ -513,6 +570,7 @@ var data = [
               "region":"304","phone":[]},
    "likes":[],
    "memberSince":"2011-03-11"},
+
   {"name":{"first":"Long","last":"Mulinix"},
    "gender":"male",
    "birthday":"1968-04-01",
@@ -521,6 +579,7 @@ var data = [
               "region":"419","phone":[]},
    "likes":["travelling","climbing"],
    "memberSince":"2009-09-11"},
+
   {"name":{"first":"Marlen","last":"Heusner"},
    "gender":"female",
    "birthday":"1979-04-24",
@@ -529,6 +588,7 @@ var data = [
               "region":"802","phone":["802-6968411","802-9326817"]},
    "likes":["chatting"],
    "memberSince":"2009-11-07"},
+
   {"name":{"first":"Tonie","last":"Mauro"},
    "gender":"female",
    "birthday":"1992-05-09",
@@ -537,6 +597,7 @@ var data = [
               "region":"573","phone":["573-7582822"]},
    "likes":["snowboarding"],
    "memberSince":"2008-11-20"},
+
   {"name":{"first":"Gerard","last":"Shroyer"},
    "gender":"male",
    "birthday":"1949-11-17",
@@ -545,6 +606,7 @@ var data = [
               "region":"580","phone":["580-9002737","580-2706148"]},
    "likes":["chatting"],
    "memberSince":"2008-08-15"},
+
   {"name":{"first":"Rosina","last":"Leinen"},
    "gender":"female",
    "birthday":"1968-12-25",
@@ -553,6 +615,7 @@ var data = [
               "region":"760","phone":["760-2596242"]},
    "likes":["chatting","reading"],
    "memberSince":"2008-11-28"},
+
   {"name":{"first":"Abe","last":"Troiani"},
    "gender":"male",
    "birthday":"1993-07-26",
@@ -561,6 +624,7 @@ var data = [
               "region":"309","phone":["309-4888909","309-3260513"]},
    "likes":["shopping"],
    "memberSince":"2010-07-16"},
+
   {"name":{"first":"Carri","last":"Mickler"},
    "gender":"female",
    "birthday":"1952-12-11",
@@ -569,6 +633,7 @@ var data = [
               "region":"775","phone":["775-3352309"]},
    "likes":[],
    "memberSince":"2011-09-15"},
+
   {"name":{"first":"Julissa","last":"Filosa"},
    "gender":"female",
    "birthday":"1956-03-13",
@@ -577,6 +642,7 @@ var data = [
               "region":"515","phone":["515-0629512","515-7012469"]},
    "likes":["ironing"],
    "memberSince":"2012-02-25"},
+
   {"name":{"first":"Dusty","last":"Sistrunk"},
    "gender":"female",
    "birthday":"1952-08-15",
@@ -585,6 +651,7 @@ var data = [
               "region":"515","phone":["515-0638915","515-6682501"]},
    "likes":["travelling"],
    "memberSince":"2011-12-29"},
+
   {"name":{"first":"Brandon","last":"Ulibarri"},
    "gender":"male",
    "birthday":"1951-06-25",
@@ -593,6 +660,7 @@ var data = [
               "region":"410","phone":[]},
    "likes":[],
    "memberSince":"2011-07-05"},
+
   {"name":{"first":"Angelina","last":"Mcadoo"},
    "gender":"female",
    "birthday":"1989-04-05",
@@ -601,6 +669,7 @@ var data = [
               "region":"765","phone":["765-1949397","765-4847931"]},
    "likes":[],
    "memberSince":"2010-08-07"},
+
   {"name":{"first":"Julio","last":"Schwanebeck"},
    "gender":"female",
    "birthday":"1993-05-01",
@@ -609,6 +678,7 @@ var data = [
               "region":"702","phone":["702-0808220"]},
    "likes":["checkers"],
    "memberSince":"2008-03-22"},
+
   {"name":{"first":"Mirian","last":"Guzzardo"},
    "gender":"female",
    "birthday":"1993-02-25",
@@ -617,6 +687,7 @@ var data = [
               "region":"661","phone":["661-4619498"]},
    "likes":["swimming"],
    "memberSince":"2011-04-07"},
+
   {"name":{"first":"Sharri","last":"Pletsch"},
    "gender":"female",
    "birthday":"1975-05-27",
@@ -625,6 +696,7 @@ var data = [
               "region":"415","phone":["415-0144394"]},
    "likes":[],
    "memberSince":"2012-04-02"},
+
   {"name":{"first":"Brenton","last":"Lynskey"},
    "gender":"male",
    "birthday":"1961-03-28",
@@ -633,6 +705,7 @@ var data = [
               "region":"706","phone":["706-9360969"]},
    "likes":[],
    "memberSince":"2008-01-15"},
+
   {"name":{"first":"Lavern","last":"Hamlet"},
    "gender":"male",
    "birthday":"1967-02-12",
@@ -641,6 +714,7 @@ var data = [
               "region":"775","phone":["775-6709905","775-9088264"]},
    "likes":["running"],
    "memberSince":"2012-01-20"},
+
   {"name":{"first":"Monte","last":"Mihlfeld"},
    "gender":"male",
    "birthday":"1941-09-22",
@@ -649,6 +723,7 @@ var data = [
               "region":"612","phone":["612-6706220"]},
    "likes":["swimming"],
    "memberSince":"2010-03-01"},
+
   {"name":{"first":"Bradford","last":"Imperial"},
    "gender":"male",
    "birthday":"1942-08-01",
@@ -657,6 +732,7 @@ var data = [
               "region":"314","phone":["314-9336935"]},
    "likes":["ironing"],
    "memberSince":"2008-03-26"},
+
   {"name":{"first":"Eryn","last":"Daquilante"},
    "gender":"female",
    "birthday":"1975-11-28",
@@ -665,6 +741,7 @@ var data = [
               "region":"781","phone":["781-6373282"]},
    "likes":[],
    "memberSince":"2011-03-19"},
+
   {"name":{"first":"Roslyn","last":"Aerni"},
    "gender":"female",
    "birthday":"1956-06-19",
@@ -673,6 +750,7 @@ var data = [
               "region":"207","phone":[]},
    "likes":["shopping","reading"],
    "memberSince":"2008-06-08"},
+
   {"name":{"first":"Chas","last":"Cefalu"},
    "gender":"male",
    "birthday":"1983-05-07",
@@ -681,6 +759,7 @@ var data = [
               "region":"606","phone":["606-5073368"]},
    "likes":[],
    "memberSince":"2011-06-12"},
+
   {"name":{"first":"Berneice","last":"Migliori"},
    "gender":"female",
    "birthday":"1944-12-31",
@@ -689,6 +768,7 @@ var data = [
               "region":"608","phone":[]},
    "likes":["swimming"],
    "memberSince":"2008-08-30"},
+
   {"name":{"first":"Patricia","last":"Shoji"},
    "gender":"male",
    "birthday":"1970-04-13",
@@ -697,6 +777,7 @@ var data = [
               "region":"662","phone":["662-2743361","662-7499550"]},
    "likes":[],
    "memberSince":"2009-06-12"},
+
   {"name":{"first":"Kenton","last":"Bagent"},
    "gender":"male",
    "birthday":"1944-10-20",
@@ -705,6 +786,7 @@ var data = [
               "region":"402","phone":[]},
    "likes":["running","snowboarding","skiing"],
    "memberSince":"2009-10-12"},
+
   {"name":{"first":"Elyse","last":"Leis"},
    "gender":"female",
    "birthday":"1974-04-23",
@@ -713,6 +795,7 @@ var data = [
               "region":"812","phone":[]},
    "likes":["running"],
    "memberSince":"2008-06-29"},
+
   {"name":{"first":"Maryjo","last":"Tariq"},
    "gender":"female",
    "birthday":"1977-02-09",
@@ -721,6 +804,7 @@ var data = [
               "region":"540","phone":["540-7768397"]},
    "likes":["swimming","snowboarding","skiing","ironing"],
    "memberSince":"2010-11-07"},
+
   {"name":{"first":"Margaretta","last":"Ogwynn"},
    "gender":"female",
    "birthday":"1965-07-04",
@@ -729,6 +813,7 @@ var data = [
               "region":"605","phone":["605-3511227"]},
    "likes":[],
    "memberSince":"2010-12-28"},
+
   {"name":{"first":"Glory","last":"Mollenkopf"},
    "gender":"female",
    "birthday":"1963-10-04",
@@ -737,6 +822,7 @@ var data = [
               "region":"718","phone":[]},
    "likes":[],
    "memberSince":"2011-09-06"},
+
   {"name":{"first":"Janette","last":"Nicholes"},
    "gender":"female",
    "birthday":"1988-07-09",
@@ -745,6 +831,7 @@ var data = [
               "region":"212","phone":["212-6481067"]},
    "likes":["checkers"],
    "memberSince":"2011-05-27"},
+
   {"name":{"first":"Brandon","last":"Laidlaw"},
    "gender":"male",
    "birthday":"1948-01-07",
@@ -753,6 +840,7 @@ var data = [
               "region":"205","phone":["205-1673400","205-0536483"]},
    "likes":[],
    "memberSince":"2009-12-26"},
+
   {"name":{"first":"Arturo","last":"Kinatyan"},
    "gender":"male",
    "birthday":"1962-01-18",
@@ -761,6 +849,7 @@ var data = [
               "region":"520","phone":[]},
    "likes":["chatting"],
    "memberSince":"2009-06-23"},
+
   {"name":{"first":"Eddie","last":"Colangelo"},
    "gender":"male",
    "birthday":"1959-04-14",
@@ -769,6 +858,7 @@ var data = [
               "region":"518","phone":["518-1453490"]},
    "likes":[],
    "memberSince":"2012-03-09"},
+
   {"name":{"first":"Margrett","last":"Heartz"},
    "gender":"female",
    "birthday":"1948-01-08",
@@ -777,6 +867,7 @@ var data = [
               "region":"608","phone":[]},
    "likes":[],
    "memberSince":"2010-07-01"},
+
   {"name":{"first":"Verna","last":"Wigfield"},
    "gender":"female",
    "birthday":"1973-02-14",
@@ -785,6 +876,7 @@ var data = [
               "region":"318","phone":["318-5784855","318-8625864"]},
    "likes":[],
    "memberSince":"2010-07-22"},
+
   {"name":{"first":"Jarrod","last":"Litwiler"},
    "gender":"male",
    "birthday":"1988-12-27",
@@ -793,6 +885,7 @@ var data = [
               "region":"814","phone":["814-7395320","814-1794652"]},
    "likes":["running"],
    "memberSince":"2010-09-23"},
+
   {"name":{"first":"Kelley","last":"Wala"},
    "gender":"female",
    "birthday":"1954-07-17",
@@ -801,6 +894,7 @@ var data = [
               "region":"918","phone":["918-1081617","918-4968318"]},
    "likes":[],
    "memberSince":"2009-05-25"},
+
   {"name":{"first":"Shaunta","last":"Geringer"},
    "gender":"female",
    "birthday":"1984-05-04",
@@ -809,6 +903,7 @@ var data = [
               "region":"570","phone":["570-4850697"]},
    "likes":["snowboarding","travelling"],
    "memberSince":"2009-07-07"},
+
   {"name":{"first":"Ira","last":"Rechel"},
    "gender":"male",
    "birthday":"1968-11-17",
@@ -817,6 +912,7 @@ var data = [
               "region":"804","phone":["804-3225311","804-7803572"]},
    "likes":["running","shopping","skiing"],
    "memberSince":"2008-07-14"},
+
   {"name":{"first":"Concetta","last":"Rotondo"},
    "gender":"female",
    "birthday":"1992-09-19",
@@ -825,6 +921,7 @@ var data = [
               "region":"573","phone":[]},
    "likes":[],
    "memberSince":"2011-11-10"},
+
   {"name":{"first":"Georgetta","last":"Kolding"},
    "gender":"female",
    "birthday":"1958-12-20",
@@ -833,6 +930,7 @@ var data = [
               "region":"330","phone":["330-6429454"]},
    "likes":["running","boxing","reading"],
    "memberSince":"2011-12-08"},
+
   {"name":{"first":"Rickie","last":"Bakaler"},
    "gender":"female",
    "birthday":"1990-09-22",
@@ -841,7 +939,6 @@ var data = [
               "region":"785","phone":["785-8179421","785-2447694"]},
    "likes":["biking"],
    "memberSince":"2008-01-11"}
-
 ];
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -936,10 +1033,9 @@ var regions = {
 exports.createUsers = function (name) {
   'use strict';
 
-  var collection;
   var i;
 
-  collection = db._collection(name);
+  var collection = db._collection(name);
 
   if (collection === null) {
     collection = db._create(name);
@@ -962,10 +1058,9 @@ exports.createUsers = function (name) {
 exports.createRegions = function (name) {
   'use strict';
 
-  var collection;
   var i;
 
-  collection = db._collection(name);
+  var collection = db._collection(name);
 
   if (collection === null) {
     collection = db._create(name);
@@ -978,6 +1073,46 @@ exports.createRegions = function (name) {
     if (regions.hasOwnProperty(i)) {
       collection.save({ region: i, name: regions[i] });
     }
+  }
+
+  return collection;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates locations for users
+////////////////////////////////////////////////////////////////////////////////
+
+exports.createLocations = function (name, usersCollection, limit) {
+  'use strict';
+
+  var i;
+
+  if (limit === null || limit === undefined) {
+    limit = usersCollection.count();
+  }
+
+  var collection = db._collection(name);
+
+  if (collection === null) {
+    collection = db._create(name);
+  }
+  else {
+    collection.truncate();
+  }
+
+  collection.ensureGeoIndex("location");
+
+  var cursor = usersCollection.all();
+  var lat = 59;
+  var lon = 18;
+
+  for (i = 0;  cursor.hasNext() && i < limit;  ++i) {
+    var doc = cursor.next();
+
+    var la = lat + (Math.random() - 0.5);
+    var lo = lon + (Math.random() - 0.5);
+
+    collection.save({ userId: doc._key, location: [la, lo] });
   }
 
   return collection;
