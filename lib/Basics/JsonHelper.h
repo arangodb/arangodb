@@ -217,7 +217,7 @@ namespace triagens {
     };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Json, a class to fabricate TRI_json_t* conveniently
+/// @brief JsonException, an exception class for the Json class
 ////////////////////////////////////////////////////////////////////////////////
 
     class JsonException : std::exception {
@@ -232,9 +232,17 @@ namespace triagens {
         }
     };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Json, a class to fabricate TRI_json_t* conveniently
+////////////////////////////////////////////////////////////////////////////////
+
     class Json {
 
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enum for the type of a Json structure
+////////////////////////////////////////////////////////////////////////////////
 
         enum type_e {
           Null,
@@ -245,10 +253,18 @@ namespace triagens {
           Array
         };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enum to say whether we are automatically freeing the TRI_json_t*
+////////////////////////////////////////////////////////////////////////////////
+
         enum autofree_e {
           AUTOFREE,
           NOFREE
         };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal helper for the generic constructor
+////////////////////////////////////////////////////////////////////////////////
 
       private:
 
@@ -278,32 +294,60 @@ namespace triagens {
           }
         }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                               public constructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default constructor making an empty Json
+////////////////////////////////////////////////////////////////////////////////
+
       public:
 
         Json ()
           : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(AUTOFREE) {
         }
          
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generic constructor for a type_e
+////////////////////////////////////////////////////////////////////////////////
+
         Json (type_e t, autofree_e autofree = AUTOFREE) 
           : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
           make(t, 0);
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generic constructor for a memzone and a type_e
+////////////////////////////////////////////////////////////////////////////////
 
         Json (TRI_memory_zone_t* z, type_e t, autofree_e autofree = AUTOFREE)
           : _zone(z), _json(nullptr), _autofree(autofree) {
           make(t, 0);
         }
           
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generic constructor for a type_e with a size hint
+////////////////////////////////////////////////////////////////////////////////
+
         Json (type_e t, size_t size_hint, autofree_e autofree = AUTOFREE)
           : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
           make(t, size_hint);
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generic constructor for a memzone, a type_e and a size hint
+////////////////////////////////////////////////////////////////////////////////
 
         Json (TRI_memory_zone_t* z, type_e t, size_t size_hint, 
               autofree_e autofree = AUTOFREE)
           : _zone(z), _json(nullptr), _autofree(autofree) {
           make(t, size_hint);
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor for a bool
+////////////////////////////////////////////////////////////////////////////////
 
         Json (bool x, autofree_e autofree = AUTOFREE) 
           : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
@@ -313,6 +357,10 @@ namespace triagens {
           }
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor for a memzone and a bool
+////////////////////////////////////////////////////////////////////////////////
+
         Json (TRI_memory_zone_t* z, bool x, autofree_e autofree = AUTOFREE) 
           : _zone(z), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateBooleanJson(_zone, x);
@@ -320,6 +368,10 @@ namespace triagens {
             throw JsonException("Json: out of memory");
           }
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor for an int32_t
+////////////////////////////////////////////////////////////////////////////////
 
         Json (int32_t x, autofree_e autofree = AUTOFREE) 
           : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
@@ -329,6 +381,10 @@ namespace triagens {
           }
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor for a memzone and an int32_t
+////////////////////////////////////////////////////////////////////////////////
+
         Json (TRI_memory_zone_t* z, int32_t x, autofree_e autofree = AUTOFREE) 
           : _zone(z), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateNumberJson(_zone, static_cast<double>(x));
@@ -336,6 +392,10 @@ namespace triagens {
             throw JsonException("Json: out of memory");
           }
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor for a double
+////////////////////////////////////////////////////////////////////////////////
 
         Json (double x, autofree_e autofree = AUTOFREE) 
           : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
@@ -345,6 +405,10 @@ namespace triagens {
           }
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor for a memzone and a double
+////////////////////////////////////////////////////////////////////////////////
+
         Json (TRI_memory_zone_t* z, double x, autofree_e autofree = AUTOFREE) 
           : _zone(z), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateNumberJson(_zone, x);
@@ -352,6 +416,10 @@ namespace triagens {
             throw JsonException("Json: out of memory");
           }
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor for a char const*
+////////////////////////////////////////////////////////////////////////////////
 
         Json (char const* x, autofree_e autofree = AUTOFREE) 
           : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
@@ -361,6 +429,10 @@ namespace triagens {
           }
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor for a memzone and a char const*
+////////////////////////////////////////////////////////////////////////////////
+
         Json (TRI_memory_zone_t* z, char const* x, autofree_e autofree = AUTOFREE) 
           : _zone(z), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateStringCopyJson(_zone, x);
@@ -368,6 +440,10 @@ namespace triagens {
             throw JsonException("Json: out of memory");
           }
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor for a string
+////////////////////////////////////////////////////////////////////////////////
 
         Json (std::string const x, autofree_e autofree = AUTOFREE) 
           : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
@@ -377,6 +453,10 @@ namespace triagens {
           }
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor for a memzone and a string
+////////////////////////////////////////////////////////////////////////////////
+
         Json (TRI_memory_zone_t* z, std::string const x, autofree_e autofree = AUTOFREE) 
           : _zone(z), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateString2CopyJson(_zone, x.c_str(), x.size());
@@ -385,20 +465,37 @@ namespace triagens {
           }
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor for a memzone and a TRI_json_t*
+////////////////////////////////////////////////////////////////////////////////
+
         Json (TRI_memory_zone_t* z, TRI_json_t* j, autofree_e autofree = AUTOFREE)
           : _zone(z), _json(j), _autofree(autofree) {
         }
 
-        Json (Json const& j)
-          : _zone(j._zone), _json(nullptr), _autofree(j._autofree) {
-          std::cout << "Copy constructor called!" << std::endl;
-          if (_autofree == AUTOFREE) {
-            _json = TRI_CopyJson(_zone, j._json);
-          }
-          else {
-            _json = j._json;
-          }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "copy" constructor, note that in the AUTOFREE case this steals
+/// the structure from j to allow returning Json objects by value without
+/// copying the whole structure.
+////////////////////////////////////////////////////////////////////////////////
+
+        Json (Json& j)
+          : _zone(j._zone), _json(j.steal()), _autofree(j._autofree) {
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief move constructor, note that in the AUTOFREE case this steals
+/// the structure from j to allow returning Json objects by value without
+/// copying the whole structure.
+////////////////////////////////////////////////////////////////////////////////
+
+        Json (Json&& j)
+          : _zone(j._zone), _json(j.steal()), _autofree(j._autofree) {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
 
         ~Json () throw() {
           if (_json != nullptr && _autofree == AUTOFREE) {
@@ -406,9 +503,24 @@ namespace triagens {
           }
         }
 
-        TRI_json_t* json () throw() {
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return internal TRI_json_t*, this does not change the ownership
+/// of the pointer
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_json_t* json () const throw() {
           return _json;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief steal the TRI_json_t*, that is, in the AUTOFREE case the pointer
+/// _json is changed to a nullptr. This is used in the copy and the move 
+/// constructor and in the cast operator to TRI_json_t*.
+////////////////////////////////////////////////////////////////////////////////
 
         TRI_json_t* steal () throw() {
           TRI_json_t* res = _json;
@@ -418,23 +530,70 @@ namespace triagens {
           return res;
         }
    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief type cast operator to TRI_json_t*, this steals the pointer
+////////////////////////////////////////////////////////////////////////////////
+
         operator TRI_json_t* () throw() {
           return steal();
         }
 
-        Json& operator= (Json const& j) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief assignment operator, note that, as the copy constructor, this 
+/// has steal semantics, which avoids deep copies in situations that 
+/// people will use. If you need an actual copy, use the copy method.
+////////////////////////////////////////////////////////////////////////////////
+
+        Json& operator= (Json& j) {
           if (_json != nullptr && _autofree == AUTOFREE) {
             TRI_FreeJson(_zone, _json);
           }
           _zone = j._zone;
           _autofree = j._autofree;
-          _json = j._json;
-          if (j._autofree == AUTOFREE) {
-            j._autofree = NOFREE;
-          }
+          _json = j.steal();
           return *this;
         }
         
+////////////////////////////////////////////////////////////////////////////////
+/// @brief move assignment operator, this has steal semantics.
+////////////////////////////////////////////////////////////////////////////////
+
+        Json& operator= (Json&& j) {
+          if (_json != nullptr && _autofree == AUTOFREE) {
+            TRI_FreeJson(_zone, _json);
+          }
+          _zone = j._zone;
+          _autofree = j._autofree;
+          _json = j.steal();
+          return *this;
+        }
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copy recursively, even if NOFREE is set!
+////////////////////////////////////////////////////////////////////////////////
+
+        Json copy () {
+          Json c;
+          c._zone = _zone;
+          if (_json != nullptr) {
+            c._json = TRI_CopyJson(_zone, _json);
+          }
+          else {
+            c._json = nullptr;
+          }
+          c._autofree = _autofree;
+          return c;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set an attribute value in an array, an exception is thrown
+/// if *this is not a Json array. Note that you can call this with
+/// a Json as second argument because of the automatic type conversion
+/// to TRI_json_t* with steal semantics. Therefore
+///   Json(Json::Array).set("a",Json(12)).set("b",Json(true))
+/// is both legal and efficient.
+////////////////////////////////////////////////////////////////////////////////
+
         Json& set (char const* name, TRI_json_t* sub) {
           if (! TRI_IsArrayJson(_json)) {
             throw JsonException("Json is no array");
@@ -442,6 +601,10 @@ namespace triagens {
           TRI_Insert3ArrayJson(_zone, _json, name, sub);
           return *this;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief this is a syntactic shortcut for the set method using operator()
+////////////////////////////////////////////////////////////////////////////////
 
         Json& operator() (char const* name, TRI_json_t* sub) {
           if (! TRI_IsArrayJson(_json)) {
@@ -451,6 +614,16 @@ namespace triagens {
           return *this;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append an Json value to the end of a Json list, an exception
+/// is thrown if *this is not a Json list. Note that you can call this with
+/// a Json as argument because of the automatic type conversion
+/// to TRI_json_t* with steal semantics. Therefore
+///   Json(Json::List).add(Json(12)).add(Json(13))
+/// is both legal and efficient.
+
+////////////////////////////////////////////////////////////////////////////////
+
         Json& add (TRI_json_t* sub) {
           if (! TRI_IsListJson(_json)) {
             throw JsonException("Json is no list");
@@ -458,6 +631,10 @@ namespace triagens {
           TRI_PushBack3ListJson(_zone, _json, sub);
           return *this;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief this is a syntactic shortcut for the add method using operator()
+////////////////////////////////////////////////////////////////////////////////
 
         Json& operator() (TRI_json_t* sub) {
           if (! TRI_IsListJson(_json)) {
@@ -467,12 +644,31 @@ namespace triagens {
           return *this;
         }
  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief this gets an attribute value of a Json array. An exception is
+/// thrown if *this is not a Json array. The resulting TRI_json_t* is
+/// wrapped in a NOFREE Json to allow things like
+///   j.get("a").get("b")
+/// to access j.a.b. The ownership of the whole structure remains with
+/// *this.
+////////////////////////////////////////////////////////////////////////////////
+
         Json get (char const* name) {
           if (! TRI_IsArrayJson(_json)) {
             throw JsonException("Json is no array");
           }
           return Json(_zone, TRI_LookupArrayJson(_json, name), NOFREE);
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief this gets a list entry of a Json list. An exception is
+/// thrown if *this is not a Json list. The resulting TRI_json_t* is
+/// wrapped in a NOFREE Json to allow things like
+///   j.at(0).at(1)
+/// to access j[0][1]. The ownership of the whole structure remains with
+/// *this. If the position given is not bound, then an empty Json is
+/// returned.
+////////////////////////////////////////////////////////////////////////////////
 
         Json at (int pos) {
           if (! TRI_IsListJson(_json)) {
@@ -504,42 +700,94 @@ namespace triagens {
           }
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether *this is a Json that is equal to null.
+////////////////////////////////////////////////////////////////////////////////
+
         bool isNull () throw() {
           return _json != nullptr && _json->_type == TRI_JSON_NULL;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether *this is a boolean Json.
+////////////////////////////////////////////////////////////////////////////////
 
         bool isBoolean () throw() {
           return TRI_IsBooleanJson(_json);
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether *this is a number Json.
+////////////////////////////////////////////////////////////////////////////////
+
         bool isNumber () throw() {
           return TRI_IsNumberJson(_json);
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether *this is a string Json.
+////////////////////////////////////////////////////////////////////////////////
 
         bool isString () throw() {
           return TRI_IsStringJson(_json);
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether *this is an array Json.
+////////////////////////////////////////////////////////////////////////////////
+
         bool isArray () throw() {
           return TRI_IsArrayJson(_json);
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether *this is a list Json.
+////////////////////////////////////////////////////////////////////////////////
 
         bool isList () throw() {
           return TRI_IsListJson(_json);
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether *this is an empty Json (not even null).
+////////////////////////////////////////////////////////////////////////////////
+
         bool isEmpty () throw() {
           return _json == nullptr;
         }
 
-        string toString () {
-          return JsonHelper::toString(_json);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts the Json recursively into a string.
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string toString () {
+          if (_json != nullptr) {
+            return JsonHelper::toString(_json);
+          }
+          else {
+            return std::string("");
+          }
         }
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief store the memory zone used
+////////////////////////////////////////////////////////////////////////////////
+
         TRI_memory_zone_t* _zone;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the actual TRI_json_t*
+////////////////////////////////////////////////////////////////////////////////
+
         TRI_json_t* _json;
-        mutable autofree_e _autofree;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flag, whether we automatically free the TRI_json_t*.
+////////////////////////////////////////////////////////////////////////////////
+
+        autofree_e _autofree;
     };
 
   }
