@@ -903,6 +903,10 @@
   .queryParam("waitForSync", {
     type: waitForSyncFlag
   })
+  .bodyParam("vertex", {
+    description: "The document to be stored",
+    type: Model
+  })
   .errorResponse(
     ArangoError, actions.HTTP_NOT_FOUND, "The vertex does not exist.", function(e) {
       return buildError(e, actions.HTTP_NOT_FOUND);
@@ -1077,6 +1081,10 @@
       }
       throw e;
     }
+  })
+  .bodyParam("edge", {
+    description: "The edge to be stored. Has to contain _from and _to attributes.",
+    type: Model
   })
   .pathParam("graph", {
     type: graphName
