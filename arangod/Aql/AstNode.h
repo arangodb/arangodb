@@ -60,7 +60,6 @@ namespace triagens {
         double      _double;
         bool        _bool;
         char const* _string;
-        // void*       _data; // TODO: decide if still needed
       } value;
       AstNodeValueType type;
     };
