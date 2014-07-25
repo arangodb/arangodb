@@ -26,6 +26,7 @@ namespace triagens {
 }
 
 
+#include "Aql/AstNode.h"
 #include "Aql/grammar.h"
 #include "Aql/Parser.h"
 

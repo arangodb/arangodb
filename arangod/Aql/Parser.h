@@ -41,6 +41,7 @@
 namespace triagens {
   namespace aql {
 
+    struct AstNode;
     class Query;
     class Parser;
   }
@@ -190,7 +191,8 @@ namespace triagens {
         char* registerString (char const* p, 
                               size_t length,
                               bool mustEscape) {
-          // TODO
+          // TODO: IMPLEMENT
+          // TODO: throw exception in case of OOM
           return nullptr;
         }
 
@@ -228,6 +230,19 @@ namespace triagens {
 
         void registerError (int,
                             char const* = nullptr);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief push an AstNode into the list element on top of the stack
+////////////////////////////////////////////////////////////////////////////////
+
+        void pushList (AstNode*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief push an AstNode into the array element on top of the stack
+////////////////////////////////////////////////////////////////////////////////
+
+        void pushArray (char const*,
+                        AstNode*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief push a temporary value on the parser's stack
