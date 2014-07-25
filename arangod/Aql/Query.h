@@ -31,6 +31,7 @@
 #define ARANGODB_AQL_QUERY_H 1
 
 #include "Basics/Common.h"
+#include "Aql/ParseResult.h"
 #include "Aql/QueryAst.h"
 #include "Aql/QueryError.h"
 
@@ -86,11 +87,11 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the AST
+/// @brief get the query error
 ////////////////////////////////////////////////////////////////////////////////
- 
-        inline QueryAst* ast () {
-          return &_ast;
+
+        inline QueryError* error () {
+          return &_error;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,10 +153,10 @@ namespace triagens {
         void execute ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parse an AQL query - TODO: implement and determine return type
+/// @brief parse an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
-        void parse ();
+        ParseResult parse ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief explain an AQL query - TODO: implement and determine return type
@@ -168,12 +169,6 @@ namespace triagens {
 // -----------------------------------------------------------------------------
       
       private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parse an AQL query - TODO: implement and determine return type
-////////////////////////////////////////////////////////////////////////////////
-
-        void parseQuery ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
@@ -190,7 +185,6 @@ namespace triagens {
         struct TRI_json_s*     _bindParameters;
 
         QueryError             _error;
-        QueryAst               _ast;
     };
 
   }

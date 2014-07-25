@@ -267,7 +267,13 @@ collect_statement:
       parser->pushStack(node);
     } collect_list optional_into {
       auto list = static_cast<AstNode const*>(parser->popStack());
+
+      // TODO: check if the following two lines are valid here
+      parser->ast()->scopes()->endNested();
+      parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_COLLECT);
+      
       auto node = parser->ast()->createNodeCollect(list, $4);
+
       parser->ast()->addOperation(node);
     }
   ;
@@ -433,7 +439,8 @@ expression:
       parser->endSubQuery();
       parser->ast()->scopes()->endCurrent();
 
-      auto subQuery = parser->ast()->createNodeSubquery();
+      char const* tempName = parser->generateName();
+      auto subQuery = parser->ast()->createNodeSubquery(tempName);
       parser->ast()->addOperation(subQuery);
 
       auto nameNode = subQuery->getMember(0);
@@ -694,7 +701,8 @@ reference:
       char const* varname = static_cast<char const*>(parser->popStack());
 
       // push the actual expand node into the statement list
-      auto expand = parser->ast()->createNodeExpand(varname, expanded, $4);
+      char const* tempName = parser->generateName();
+      auto expand = parser->ast()->createNodeExpand(varname, tempName, expanded, $4);
       parser->ast()->addOperation(expand);
 
       auto nameNode = expand->getMember(1);
