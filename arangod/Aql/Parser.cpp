@@ -119,7 +119,7 @@ bool Parser::configureWriteQuery (QueryType type,
 ParseResult Parser::parse () {
   auto error = _query->error();
 
-  ParseResult result;
+  ParseResult result(TRI_UNKNOWN_MEM_ZONE);
 
   try {
     auto scopes = _ast->scopes();
@@ -135,6 +135,7 @@ ParseResult Parser::parse () {
     scopes->endCurrent();
     result.collectionNames = _ast->collectionNames();
     result.bindParameters  = _ast->bindParameters();
+    result.json            = _ast->toJson(TRI_UNKNOWN_MEM_ZONE);
   }
   catch (triagens::arango::Exception const& ex) {
     registerError(ex.code());

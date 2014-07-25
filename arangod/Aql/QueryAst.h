@@ -33,6 +33,9 @@
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
 #include "Aql/Scopes.h"
+#include "BasicsC/json.h"
+
+struct TRI_json_s;
 
 namespace triagens {
   namespace aql {
@@ -114,6 +117,12 @@ namespace triagens {
         inline void setWriteOptions (AstNode const* node) {
           _writeOptions = node;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert the AST into JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        struct TRI_json_s* toJson (TRI_memory_zone_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add an operation to the root node

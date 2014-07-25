@@ -31,6 +31,7 @@
 #define ARANGODB_AQL_PARSE_RESULT_H 1
 
 #include "Basics/Common.h"
+#include "BasicsC/json.h"
 
 namespace triagens {
   namespace aql {
@@ -40,10 +41,31 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     struct ParseResult {
+      ParseResult (ParseResult&& other) {
+        json = other.json;
+        zone = other.zone;
+        other.json = nullptr;
+      }
+
+      ParseResult& operator= (ParseResult const& other) = delete;
+
+      ParseResult (TRI_memory_zone_t* zone) 
+        : zone(zone),
+          json(nullptr) {
+      }
+
+      ~ParseResult () {
+        if (json != nullptr) {
+          TRI_FreeJson(zone, json);
+        }
+      }
+
       int                             code;
       std::string                     explanation;
       std::unordered_set<std::string> bindParameters;
       std::unordered_set<std::string> collectionNames;
+      TRI_memory_zone_t*              zone;
+      TRI_json_t*                     json;
     };
 
   }

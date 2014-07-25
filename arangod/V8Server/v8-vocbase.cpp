@@ -5384,6 +5384,8 @@ static v8::Handle<v8::Value> JS_ParseAql (v8::Arguments const& argv) {
     bindVars->Set(i++, v8::String::New((*it).c_str()));
   }
   result->Set(TRI_V8_STRING("bindVars"), bindVars); 
+  
+  result->Set(TRI_V8_STRING("ast"), TRI_ObjectJson(parseResult.json));
 
   return scope.Close(result);
 }
