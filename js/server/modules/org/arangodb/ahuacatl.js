@@ -5308,7 +5308,7 @@ function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, options) {
     params.followEdges = options.edgeExamples;
   }
   if (options.edgeCollectionRestriction) {
-    params.edgeCollectionRestriction = options.edgeCollectionRestriction
+    params.edgeCollectionRestriction = options.edgeCollectionRestriction;
   }
   params.weight = options.weight;
   params.defaultWeight = options.defaultWeight;
@@ -5951,7 +5951,7 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
     params.followEdges = options.edgeExamples;
   }
   if (options.edgeCollectionRestriction) {
-    params.edgeCollectionRestriction = options.edgeCollectionRestriction
+    params.edgeCollectionRestriction = options.edgeCollectionRestriction;
   }
 
   fromVertices.forEach(function (v) {
