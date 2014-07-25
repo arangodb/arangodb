@@ -4,8 +4,8 @@
 (function() {
   "use strict";
   function splitSnakeCase(snakeCase) {
-    var str = snakeCase.replace(/([a-z])([A-Z])/g, "$1 $3");
-    str = str.replace(/([a-z])([0-9])/gi, "$1 $3");
+    var str = snakeCase.replace(/([a-z])([A-Z])/g, "$1 $2");
+    str = str.replace(/([a-z])([0-9])/gi, "$1 $2");
     str = str.replace(/_+/, " ");
     return _.map(str.split(/\s+/), function(s) {
       return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
@@ -218,7 +218,7 @@
             list.push(window.modalView.createTextEntry(
               "foxx_configs_" + key,
               prettyKey,
-              opt.default || "",
+              opt.default === undefined ? "" : opt.default,
               opt.description,
               splitSnakeCase(key).toLowerCase().replace(/\s+/g, "-"),
               opt.default === undefined
