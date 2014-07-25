@@ -31,6 +31,7 @@
 #define ARANGODB_AQL_ASTNODE_H 1
 
 #include "Basics/Common.h"
+#include "BasicsC/json.h"
 #include "BasicsC/vector.h"
 #include "Utils/Exception.h"
 
@@ -158,6 +159,58 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief convert the node into JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        void toJson (TRI_json_t* json,
+                     TRI_memory_zone_t* zone) {
+          TRI_ASSERT(TRI_IsListJson(json));
+
+          TRI_json_t* node = TRI_CreateArrayJson(zone);
+
+          if (node == nullptr) {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+          }
+
+          TRI_Insert3ArrayJson(zone, node, "type", TRI_CreateStringCopyJson(zone, typeString().c_str()));
+          if (type == NODE_TYPE_VARIABLE ||
+              type == NODE_TYPE_REFERENCE ||
+              type == NODE_TYPE_COLLECTION ||
+              type == NODE_TYPE_PARAMETER ||
+              type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+              type == NODE_TYPE_FCALL ||
+              type == NODE_TYPE_FCALL_USER) {
+            TRI_Insert3ArrayJson(zone, node, "name", TRI_CreateStringCopyJson(zone, getStringValue()));
+          }
+          
+          size_t const n = members._length;
+          if (n > 0) {
+            TRI_json_t* subNodes = TRI_CreateListJson(zone);
+
+            if (subNodes == nullptr) {
+              TRI_FreeJson(zone, node);
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+            }
+
+            try {
+              for (size_t i = 0; i < n; ++i) {
+                auto member = getMember(i);
+                member->toJson(subNodes, zone);
+              }
+            }
+            catch (...) {
+              TRI_FreeJson(zone, subNodes);
+              TRI_FreeJson(zone, node);
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+            }
+            
+            TRI_Insert3ArrayJson(zone, node, "subNodes", subNodes);
+          }
+
+          TRI_PushBack3ListJson(zone, json, node);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add a member to the node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -264,6 +317,116 @@ namespace triagens {
           value.value._string = v;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type name of a node
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string typeString () const {
+          switch (type) {
+            case NODE_TYPE_ROOT:
+              return "root";
+            case NODE_TYPE_FOR:
+              return "for";
+            case NODE_TYPE_LET:
+              return "let";
+            case NODE_TYPE_FILTER:
+              return "filter";
+            case NODE_TYPE_RETURN:
+              return "return";
+            case NODE_TYPE_REMOVE:
+              return "remove";
+            case NODE_TYPE_INSERT:
+              return "insert";
+            case NODE_TYPE_UPDATE:
+              return "update";
+            case NODE_TYPE_REPLACE:
+              return "replace";
+            case NODE_TYPE_COLLECT:
+              return "collect";
+            case NODE_TYPE_SORT:
+              return "sort";
+            case NODE_TYPE_SORT_ELEMENT:
+              return "sort element";
+            case NODE_TYPE_LIMIT:
+              return "limit";
+            case NODE_TYPE_VARIABLE:
+              return "variable";
+            case NODE_TYPE_ASSIGN:
+              return "assign";
+            case NODE_TYPE_OPERATOR_UNARY_PLUS:
+              return "unary plus";
+            case NODE_TYPE_OPERATOR_UNARY_MINUS:
+              return "unary minus";
+            case NODE_TYPE_OPERATOR_UNARY_NOT:
+              return "unary not";
+            case NODE_TYPE_OPERATOR_BINARY_AND:
+              return "logical and";
+            case NODE_TYPE_OPERATOR_BINARY_OR:
+              return "logical or";
+            case NODE_TYPE_OPERATOR_BINARY_PLUS:
+              return "plus";
+            case NODE_TYPE_OPERATOR_BINARY_MINUS:
+              return "minus";
+            case NODE_TYPE_OPERATOR_BINARY_TIMES:
+              return "times";
+            case NODE_TYPE_OPERATOR_BINARY_DIV:
+              return "division";
+            case NODE_TYPE_OPERATOR_BINARY_MOD:
+              return "modulus";
+            case NODE_TYPE_OPERATOR_BINARY_EQ:
+              return "compare ==";
+            case NODE_TYPE_OPERATOR_BINARY_NE:
+              return "compare !=";
+            case NODE_TYPE_OPERATOR_BINARY_LT:
+              return "compare <";
+            case NODE_TYPE_OPERATOR_BINARY_LE:
+              return "compare <=";
+            case NODE_TYPE_OPERATOR_BINARY_GT:
+              return "compare >";
+            case NODE_TYPE_OPERATOR_BINARY_GE:
+              return "compare >=";
+            case NODE_TYPE_OPERATOR_BINARY_IN:
+              return "compare in";
+            case NODE_TYPE_OPERATOR_TERNARY:
+              return "ternary";
+            case NODE_TYPE_SUBQUERY:
+              return "subquery";
+            case NODE_TYPE_ATTRIBUTE_ACCESS:
+              return "attribute access";
+            case NODE_TYPE_BOUND_ATTRIBUTE_ACCESS:
+              return "bound attribute access";
+            case NODE_TYPE_INDEXED_ACCESS:
+              return "indexed access";
+            case NODE_TYPE_EXPAND:
+              return "expand";
+            case NODE_TYPE_VALUE:
+              return "value";
+            case NODE_TYPE_LIST:
+              return "list";
+            case NODE_TYPE_ARRAY:
+              return "array";
+            case NODE_TYPE_ARRAY_ELEMENT:
+              return "array element";
+            case NODE_TYPE_COLLECTION:
+              return "collection";
+            case NODE_TYPE_REFERENCE:
+              return "reference";
+            case NODE_TYPE_ATTRIBUTE:
+              return "attribute";
+            case NODE_TYPE_PARAMETER:
+              return "parameter";
+            case NODE_TYPE_FCALL:
+              return "function call";
+            case NODE_TYPE_FCALL_USER:
+              return "user function call";
+            default: {
+            }
+          }
+
+          TRI_ASSERT(false);
+          return "";
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
@@ -273,7 +436,6 @@ namespace triagens {
         TRI_vector_pointer_t  members;
         AstNodeType const     type;
         AstNodeValue          value;
-
     };
 
   }
