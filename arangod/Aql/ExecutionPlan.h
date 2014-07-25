@@ -31,6 +31,7 @@
 #include <Basics/Common.h>
 
 #include <BasicsC/json.h>
+#include <Basics/JsonHelper.h>
 #include <VocBase/voc-types.h>
 #include <VocBase/vocbase.h>
 
@@ -160,10 +161,11 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief export to JSON
+/// @brief export to JSON, returns an AUTOFREE Json object
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual TRI_json_t* toJson (TRI_memory_zone_t* zone);
+        virtual triagens::basics::Json toJson (
+                         TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to a string, basically for debugging purposes
@@ -195,8 +197,10 @@ namespace triagens {
 /// @brief constructor with just a collection ID
 ////////////////////////////////////////////////////////////////////////////////
 
-        EnumerateCollectionPlan (TRI_vocbase_t* vocbase, TRI_voc_cid_t cid) 
-          : ExecutionPlan(), _vocbase(vocbase), _cid(cid) {
+      public:
+
+        EnumerateCollectionPlan (TRI_vocbase_t* vocbase, std::string collname) 
+          : ExecutionPlan(), _vocbase(vocbase), _collname(collname) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -219,20 +223,21 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual TRI_json_t* toJson (TRI_memory_zone_t* zone);
+        virtual triagens::basics::Json toJson (
+               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief our dependent nodes
+/// @brief we need to know the database and the collection
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
 
         TRI_vocbase_t* _vocbase;
-        TRI_voc_cid_t _cid;
+        std::string _collname;
 
     };
   }   // namespace triagens::aql

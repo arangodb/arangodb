@@ -27,8 +27,6 @@
 
 #include "Aql/ExecutionPlan.h"
 
-#include <Basics/JsonHelper.h>
-
 using namespace triagens::basics;
 using namespace triagens::aql;
 
@@ -40,29 +38,28 @@ using namespace triagens::aql;
 /// @brief toJson, export an ExecutionPlan to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* ExecutionPlan::toJson (TRI_memory_zone_t* zone) {
+Json ExecutionPlan::toJson (TRI_memory_zone_t* zone) {
   Json json;
   try {
     json = Json(Json::Array,2)
              ("type", Json(getTypeString()));
   }
   catch (std::exception& e) {
-    return nullptr;
+    return json;
   }
   if (_dependencies.size() != 0) {
-    Json deps;
     try {
-      deps = Json(Json::List, _dependencies.size());
+      Json deps(Json::List, _dependencies.size());
       for (size_t i = 0; i < _dependencies.size(); i++) {
         deps(_dependencies[i]->toJson(zone));
       }
       json("dependencies", deps);
     }
     catch (std::exception& e) {
-      return nullptr;
+      return Json();  // returns an empty one
     }
   }
-  return json.steal();
+  return json;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,27 +91,35 @@ void ExecutionPlan::appendAsString (std::string& st, int indent) {
   st.push_back('>');
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                methods of EnumerateCollectionPlan
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, for EnumerateCollectionPlan
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* EnumerateCollectionPlan::toJson (TRI_memory_zone_t* zone) {
-  auto ep = static_cast<ExecutionPlan*>(this);
-  Json json(zone, ep->toJson(zone));
+Json EnumerateCollectionPlan::toJson (TRI_memory_zone_t* zone) {
+  Json json(ExecutionPlan::toJson(zone));  // call base class method
   if (json.isEmpty()) {
-    return nullptr;
+    return json;
   }
   // Now put info about vocbase and cid in there
   try {
-    json("vocbase", Json(_vocbase->_name))
-        ("cid", JsonHelper::uint64String(zone, _cid));
+    if (_vocbase == nullptr) {
+      json("vocbase", Json("<nullptr>"));
+    }
+    else {
+      json("vocbase", Json(_vocbase->_name));
+    }
+    json("collection", Json(_collname));
   }
   catch (std::exception& e) {
-    return nullptr;
+    return Json();
   }
 
   // And return it:
-  return json.steal();
+  return json;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -123,51 +128,63 @@ TRI_json_t* EnumerateCollectionPlan::toJson (TRI_memory_zone_t* zone) {
 
 using namespace triagens::basics;
 
+using namespace std;
+
 void testExecutionPlans () {
+  Json a(12);
+  Json b(Json::Array);
+  b("a",a);
+  std::cout << b.toString() << std::endl;
+  std::cout << a.toString() << std::endl;
+  std::cout << "Got here" << std::endl;
   ExecutionPlan* e = new ExecutionPlan();
   ExecutionPlan* f = new ExecutionPlan(e);
-  std::string st;
+  string st;
   e->appendAsString(st, 0);
-  std::cout << "e as string:\n" << st << std::endl;
+  cout << "e as string:\n" << st << endl;
   st.clear();
   f->appendAsString(st, 0);
-  std::cout << "f as string:\n" << st << std::endl;
+  cout << "f as string:\n" << st << endl;
   TRI_json_t* json = e->toJson(TRI_UNKNOWN_MEM_ZONE);
   if (json != nullptr) {
-    std::cout << "e as JSON:\n" << 
-              JsonHelper::toString(json) << std::endl;
+    cout << "e as JSON:\n" << 
+              JsonHelper::toString(json) << endl;
   }
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   json = f->toJson(TRI_UNKNOWN_MEM_ZONE);
   if (json != nullptr) {
-    std::cout << "f as JSON:\n" << 
-              JsonHelper::toString(json) << std::endl;
+    cout << "f as JSON:\n" << 
+              JsonHelper::toString(json) << endl;
   }
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   delete f;  // should not leave a leak
 
+  auto ec = new EnumerateCollectionPlan(nullptr, "guck");
+  Json jjj(ec->toJson());
+  cout << jjj.toString() << endl;
+
   json = Json(12);
-  std::cout << JsonHelper::toString(json) << std::endl;
+  cout << JsonHelper::toString(json) << endl;
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   
   json = Json(true);
-  std::cout << JsonHelper::toString(json) << std::endl;
+  cout << JsonHelper::toString(json) << endl;
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   json = Json(Json::Null);
-  std::cout << JsonHelper::toString(json) << std::endl;
+  cout << JsonHelper::toString(json) << endl;
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   json = Json(Json::String);
-  std::cout << JsonHelper::toString(json) << std::endl;
+  cout << JsonHelper::toString(json) << endl;
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   json = Json(Json::List);
-  std::cout << JsonHelper::toString(json) << std::endl;
+  cout << JsonHelper::toString(json) << endl;
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   json = Json(Json::Array);
-  std::cout << JsonHelper::toString(json) << std::endl;
+  cout << JsonHelper::toString(json) << endl;
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   json = Json(Json::Array, 10)
@@ -182,7 +199,7 @@ void testExecutionPlans () {
            ("myarray", Json(Json::Array, 2)
                             ("a",Json("hallo"))
                             ("b",Json(13)));
-  std::cout << JsonHelper::toString(json) << std::endl;
+  cout << JsonHelper::toString(json) << endl;
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   Json j(Json::Array);
@@ -193,14 +210,26 @@ void testExecutionPlans () {
         ("d", Json(Json::Array)
                 ("x", Json(12))
                 ("y", Json(true)));
-  std::cout << j.toString() << std::endl;
+  cout << j.toString() << endl;
 
-  std::cout << j.get("a").toString() << std::endl;
+  // We expect to see exactly two copies here:
+  Json jjjj = j.copy();  // create an explicit copy
+  Json jj(12);
+  
+  cout << "Before assignment" << jj.toString() << endl;
+  jj = j;  // this steals the pointer from j
+
+  cout << "Before copy" << jj.toString() << endl;
+  jj = j.copy();  // this does a copy, but both are now NOFREE
+
+  cout << j.get("a").toString() << endl;
+  cout << jjjj.toString();
+  cout << jj.toString();
 
   Json k = j.get("c");
   Json l = k.at(2);
 
-  std::cout << l.toString() << std::endl;
+  cout << l.toString() << endl;
 }
 
 // Local Variables:
