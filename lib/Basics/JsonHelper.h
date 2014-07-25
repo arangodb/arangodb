@@ -481,6 +481,19 @@ namespace triagens {
 
         Json (Json const& j)
           : _zone(j._zone), _json(j.steal()), _autofree(j._autofree) {
+          std::cout << "Hallo copy constructor" << std::endl;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief move constructor, note that in the AUTOFREE case this steals
+/// the structure from j to allow returning Json objects by value without
+/// copying the whole structure.
+////////////////////////////////////////////////////////////////////////////////
+
+        Json (Json const&& j)
+          : _zone(j._zone), _json(j.steal()), _autofree(j._autofree) {
+          std::cout << "Hallo, move constructor at work for "
+                    << this->toString() << std::endl;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -488,7 +501,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~Json () throw() {
+          std::cout << "Destructor for " << this->toString() << std::endl;
           if (_json != nullptr && _autofree == AUTOFREE) {
+            std::cout << "Actually TRI_FreeJson called" << std::endl;
             TRI_FreeJson(_zone, _json);
           }
         }
@@ -528,43 +543,50 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief assignment operator, note that this does an actual recursive copy,
-/// if AUTOFREE is set for j. If you need steal semantics, for example
-/// when assigning a temporary object, then use "assign"
+/// @brief assignment operator, note that, as the copy constructor, this 
+/// has steal semantics, which avoids deep copies in situations that 
+/// people will use. If you need an actual copy, use the copy method.
 ////////////////////////////////////////////////////////////////////////////////
 
         Json& operator= (Json const& j) {
-          if (_json != nullptr && _autofree == AUTOFREE) {
-            TRI_FreeJson(_zone, _json);
-          }
-          _zone = j._zone;
-          _autofree = j._autofree;
-          if (_autofree == AUTOFREE) {
-            std::cout << "ATTENTION: recursive JSON copy performed!!!" << std::endl;
-            _json = TRI_CopyJson(_zone, j._json);
-          }
-          else {
-            _json = j._json;
-          }
-          return *this;
-        }
-        
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assignment operator, note that this does never produce an actual 
-/// recursive copy of j, even if AUTOFREE is set for j. That is, you get
-/// steal semantics, this is for example useful when assigning a
-/// temporary object.
-////////////////////////////////////////////////////////////////////////////////
-
-        void assign (Json const& j) {
+          std::cout << "= called" << std::endl;
           if (_json != nullptr && _autofree == AUTOFREE) {
             TRI_FreeJson(_zone, _json);
           }
           _zone = j._zone;
           _autofree = j._autofree;
           _json = j.steal();
+          return *this;
         }
         
+////////////////////////////////////////////////////////////////////////////////
+/// @brief move assignment operator, this has steal semantics.
+////////////////////////////////////////////////////////////////////////////////
+
+        Json& operator= (Json const&& j) {
+          std::cout << "= move called" << std::endl;
+          if (_json != nullptr && _autofree == AUTOFREE) {
+            TRI_FreeJson(_zone, _json);
+          }
+          _zone = j._zone;
+          _autofree = j._autofree;
+          _json = j.steal();
+          return *this;
+        }
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copy recursively, even if NOFREE is set!
+////////////////////////////////////////////////////////////////////////////////
+
+        Json copy () {
+          Json c;
+          std::cout << "ATTENTION: recursive JSON copy performed!!!" << std::endl;
+          c._zone = _zone;
+          c._json = TRI_CopyJson(_zone, _json);
+          c._autofree = _autofree;
+          return c;
+        }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set an attribute value in an array, an exception is thrown
 /// if *this is not a Json array. Note that you can call this with
