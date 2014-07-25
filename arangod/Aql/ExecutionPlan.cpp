@@ -219,14 +219,10 @@ void testExecutionPlans () {
   cout << "Before assignment" << jj.toString() << endl;
   jj = j;  // this steals the pointer from j
 
-  cout << "Before copy" << jj.toString() << endl;
-  jj = j.copy();  // this does a copy, but both are now NOFREE
-
-  cout << j.get("a").toString() << endl;
   cout << jjjj.toString();
   cout << jj.toString();
 
-  Json k = j.get("c");
+  Json k = jj.get("c");
   Json l = k.at(2);
 
   cout << l.toString() << endl;
