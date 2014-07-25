@@ -187,14 +187,18 @@ namespace triagens {
 
     };
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                     class EnumerateCollectionPlan
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class EnumerateCollectionPlan, derived from ExecutionPlan
 ////////////////////////////////////////////////////////////////////////////////
 
-    class EnumerateCollectionPlan : ExecutionPlan {
+    class EnumerateCollectionPlan : public ExecutionPlan {
       
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor with just a collection ID
+/// @brief constructor with a vocbase and a collection name
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
@@ -238,6 +242,76 @@ namespace triagens {
 
         TRI_vocbase_t* _vocbase;
         std::string _collname;
+
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                     class EnumerateCollectionPlan
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class LimitPlan, derived from ExecutionPlan
+////////////////////////////////////////////////////////////////////////////////
+
+    class LimitPlan : public ExecutionPlan {
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructors for various arguments, always with offset and limit
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+        LimitPlan (size_t o, size_t l) 
+          : ExecutionPlan(), _offset(o), _limit(l) {
+        }
+
+        LimitPlan (ExecutionPlan* ep, size_t o, size_t l) 
+          : ExecutionPlan(ep), _offset(o), _limit(l) {
+        }
+
+        LimitPlan (size_t l) 
+          : ExecutionPlan(), _offset(0), _limit(l) {
+        }
+
+        LimitPlan (ExecutionPlan* ep, size_t l) 
+          : ExecutionPlan(ep), _offset(0), _limit(l) {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual NodeType getType () {
+          return LIMIT;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node as a string
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::string getTypeString () {
+          return std::string("LimitPlan");
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual triagens::basics::Json toJson (
+               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief we need to know the offset and limit
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+        size_t _offset;
+        size_t _limit;
 
     };
   }   // namespace triagens::aql
