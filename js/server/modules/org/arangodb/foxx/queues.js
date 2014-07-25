@@ -30,7 +30,7 @@
 
 var QUEUE_MANAGER_PERIOD = 1000, // in ms
   _ = require('underscore'),
-  workers = require('org/arangodb/tasks'),
+  tasks = require('org/arangodb/tasks'),
   arangodb = require('org/arangodb'),
   db = arangodb.db,
   queues,
@@ -38,7 +38,7 @@ var QUEUE_MANAGER_PERIOD = 1000, // in ms
   worker;
 
 queues = {
-  _tasks: Object.create(null),
+  _jobTypes: Object.create(null),
   get: function (key) {
     'use strict';
     if (!db._queues.exists(key)) {
@@ -76,7 +76,7 @@ queues = {
     });
     return result;
   },
-  registerTask: function (name, opts) {
+  registerJobType: function (type, opts) {
     'use strict';
     if (typeof opts === 'function') {
       opts = {execute: opts};
@@ -84,11 +84,11 @@ queues = {
     if (typeof opts.execute !== 'function') {
       throw new Error('Must provide a function to execute!');
     }
-    var task = _.extend({maxFailures: 0}, opts);
-    if (task.maxFailures < 0) {
-      task.maxFailures = Infinity;
+    var cfg = _.extend({maxFailures: 0}, opts);
+    if (cfg.maxFailures < 0) {
+      cfg.maxFailures = Infinity;
     }
-    queues._tasks[name] = task;
+    queues._jobTypes[type] = cfg;
   }
 };
 
@@ -106,15 +106,15 @@ Queue = function Queue(name) {
   });
 };
 
-Queue.prototype.push = function (name, data) {
+Queue.prototype.push = function (type, data) {
   'use strict';
-  if (typeof name !== 'string') {
-    throw new Error('Must pass a task name!');
+  if (typeof type !== 'string') {
+    throw new Error('Must pass a job type!');
   }
   db._jobs.save({
     status: 'pending',
     queue: this.name,
-    task: name,
+    type: type,
     failures: 0,
     data: data
   });
@@ -126,24 +126,24 @@ queues._worker = {
     var db = require('org/arangodb').db,
       queues = require('org/arangodb/foxx').queues,
       console = require('console'),
-      task = queues._tasks[job.task],
+      cfg = queues._jobTypes[job.type],
       failed = false;
 
-    if (!task) {
-      console.warn('Unknown task for job ' + job._key + ':', job.task);
+    if (!cfg) {
+      console.warn('Unknown job type for job ' + job._key + ':', job.type);
       db._jobs.update(job._key, {status: 'pending'});
       return;
     }
 
     try {
-      queues._tasks[job.task].execute(job.data);
+      cfg.execute(job.data);
     } catch (err) {
       console.error('Job ' + job._key + ' failed:', err);
       failed = true;
     }
     db._jobs.update(job._key, failed ? {
       failures: job.failures + 1,
-      status: (job.failures + 1 > task.maxFailures) ? 'failed' : 'pending'
+      status: (job.failures + 1 > cfg.maxFailures) ? 'failed' : 'pending'
     } : {status: 'complete'});
   }
 };
@@ -154,7 +154,7 @@ queues._manager = {
     var _ = require('underscore'),
       db = require('org/arangodb').db,
       queues = require('org/arangodb/foxx').queues,
-      workers = require('org/arangodb/tasks');
+      tasks = require('org/arangodb/tasks');
 
     db._executeTransaction({
       collections: {
@@ -175,7 +175,7 @@ queues._manager = {
             status: 'pending'
           }).limit(queue.maxWorkers - numBusy).toArray().forEach(function (doc) {
             db._jobs.update(doc, {status: 'progress'});
-            workers.register({
+            tasks.register({
               command: queues._worker.work,
               params: _.extend({}, doc, {status: 'progress'}),
               offset: 0
@@ -187,12 +187,8 @@ queues._manager = {
   },
   run: function () {
     'use strict';
-    var db = require('org/arangodb').db,
-      queues = require('org/arangodb/foxx').queues,
-      workers = require('org/arangodb/tasks');
-
     db._jobs.updateByExample({status: 'progress'}, {status: 'pending'});
-    workers.register({command: queues._manager.manage, period: QUEUE_MANAGER_PERIOD / 1000});
+    tasks.register({command: queues._manager.manage, period: QUEUE_MANAGER_PERIOD / 1000});
   }
 };
 
