@@ -3866,7 +3866,6 @@ function MATCHES (element, examples, returnIndex) {
 
   returnIndex = returnIndex || false;
   var i;
-
   for (i = 0; i < examples.length; ++i) {
     var example = examples[i];
     var result = true;
@@ -4573,8 +4572,19 @@ function TRAVERSAL_TREE_VISITOR (config, result, vertex, path) {
 
 function TRAVERSAL_EDGE_EXAMPLE_FILTER (config, vertex, edge, path) {
   "use strict";
-
-  return MATCHES(edge, config.expandEdgeExamples);
+  if (config.edgeCollectionRestriction) {
+    if (typeof config.edgeCollectionRestriction === "string" ) {
+      config.edgeCollectionRestriction = [config.edgeCollectionRestriction];
+    }
+    if (config.edgeCollectionRestriction.indexOf(edge._id.split("/")[0]) === -1) {
+      return false;
+    }
+  }
+  if (config.expandEdgeExamples) {
+    var e = MATCHES(edge, config.expandEdgeExamples);
+    return MATCHES(edge, config.expandEdgeExamples);
+  }
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4700,6 +4710,10 @@ function TRAVERSAL_FUNC (func,
       config.expandFilter = TRAVERSAL_EDGE_EXAMPLE_FILTER;
       config.expandEdgeExamples = params.followEdges;  
     }
+  }
+  if (params.edgeCollectionRestriction) {
+    config.expandFilter = TRAVERSAL_EDGE_EXAMPLE_FILTER;
+    config.edgeCollectionRestriction = params.edgeCollectionRestriction;
   }
 
   if (params.filterVertices) {
@@ -5308,8 +5322,11 @@ function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, options) {
 
   var params = TRAVERSAL_PARAMS(), factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
   params.paths = true;
-  if (options.edgeExamples || options.edgeCollectionRestriction) {
-    params.followEdges = RESOLVE_GRAPH_TO_EDGES(graphName, options);
+  if (options.edgeExamples) {
+    params.followEdges = options.edgeExamples;
+  }
+  if (options.edgeCollectionRestriction) {
+    params.edgeCollectionRestriction = options.edgeCollectionRestriction
   }
   params.weight = options.weight;
   params.defaultWeight = options.defaultWeight;
@@ -5461,8 +5478,6 @@ function GENERAL_GRAPH_SHORTEST_PATH (graphName,
   if (!options.direction) {
     options.direction =  'any';
   }
-
-  options.edgeExamples = options.edgeExamples || {};
 
   if (!options.algorithm) {
     if (!IS_EXAMPLE_SET(startVertexExample) && !IS_EXAMPLE_SET(endVertexExample)) {
@@ -5950,9 +5965,13 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
   params.visitor = TRAVERSAL_NEIGHBOR_VISITOR;
   var fromVertices = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options);
 
-  if (options.edgeExamples || options.edgeCollectionRestriction) {
-    params.followEdges = RESOLVE_GRAPH_TO_EDGES(graphName, options);
+  if (options.edgeExamples) {
+    params.followEdges = options.edgeExamples;
   }
+  if (options.edgeCollectionRestriction) {
+    params.edgeCollectionRestriction = options.edgeCollectionRestriction
+  }
+
   fromVertices.forEach(function (v) {
     var e = TRAVERSAL_FUNC("GRAPH_NEIGHBORS",
       factory,
