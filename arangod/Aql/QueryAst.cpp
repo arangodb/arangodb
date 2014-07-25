@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/QueryAst.h"
+#include "BasicsC/tri-strings.h"
 #include "Utils/Exception.h"
 
 using namespace triagens::aql;
@@ -42,8 +43,11 @@ using namespace triagens::aql;
 
 QueryAst::QueryAst () 
   : _nodes(),
+    _strings(),
     _scopes(),
-    _root(nullptr) {
+    _root(nullptr),
+    _writeCollection(nullptr),
+    _writeOptions(nullptr) {
 
   _nodes.reserve(32);
   _root = createNode(NODE_TYPE_ROOT);
@@ -54,6 +58,12 @@ QueryAst::QueryAst ()
 ////////////////////////////////////////////////////////////////////////////////
 
 QueryAst::~QueryAst () {
+  // free strings
+  for (auto it = _strings.begin(); it != _strings.end(); ++it) {
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, const_cast<char*>(*it));
+  }
+
+  // free nodes
   for (auto it = _nodes.begin(); it != _nodes.end(); ++it) {
     delete (*it);
   }
@@ -71,6 +81,41 @@ void QueryAst::addOperation (AstNode* node) {
   TRI_ASSERT(_root != nullptr);
 
   TRI_PushBackVectorPointer(&_root->members, (void*) node);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a string
+////////////////////////////////////////////////////////////////////////////////
+
+char* QueryAst::registerString (char const* p, 
+                                size_t length,
+                                bool mustUnescape) {
+
+  if (p == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  char* copy = nullptr;
+  if (mustUnescape && length > 0) {
+    size_t outLength;
+    copy = TRI_UnescapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, p, length, &outLength);
+  }
+  else {
+    copy = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, p, length);
+  }
+
+  if (copy == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  try {
+    _strings.push_back(copy);
+  }
+  catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  return copy;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -167,9 +212,6 @@ AstNode* QueryAst::createNodeRemove (AstNode const* expression,
   AstNode* node = createNode(NODE_TYPE_REMOVE);
   node->addMember(expression);
 
-/* TODO
-  SetWriteOperation(context, collection, TRI_AQL_QUERY_REMOVE, options);
-*/
   return node;
 }
 
@@ -182,9 +224,7 @@ AstNode* QueryAst::createNodeInsert (AstNode const* expression,
                                      AstNode* options) {
   AstNode* node = createNode(NODE_TYPE_INSERT);
   node->addMember(expression);
-/* TODO
-  SetWriteOperation(context, collection, TRI_AQL_QUERY_INSERT, options);
-*/
+  
   return node;
 }
 
@@ -203,9 +243,6 @@ AstNode* QueryAst::createNodeUpdate (AstNode const* keyExpression,
     node->addMember(keyExpression);
   }
 
-/* TODO
-  SetWriteOperation(context, collection, TRI_AQL_QUERY_UPDATE, options);
-*/
   return node;
 }
 
@@ -224,9 +261,6 @@ AstNode* QueryAst::createNodeReplace (AstNode const* keyExpression,
     node->addMember(keyExpression);
   }
 
-/* TODO
-  SetWriteOperation(context, collection, TRI_AQL_QUERY_REPLACE, options);
-*/
   return node;
 }
 

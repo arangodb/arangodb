@@ -52,8 +52,8 @@ void Aqlerror (YYLTYPE* locp,
 /// @brief shortcut macro for signalling out of memory
 ////////////////////////////////////////////////////////////////////////////////
 
-#define ABORT_OOM                                                                     \
-  /* TODO: TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_OUT_OF_MEMORY, NULL); */ \
+#define ABORT_OOM                                   \
+  parser->registerError(TRI_ERROR_OUT_OF_MEMORY);   \
   YYABORT;
 
 #define scanner parser->scanner()
@@ -193,19 +193,14 @@ void Aqlerror (YYLTYPE* locp,
 
 query: 
     optional_statement_block_statements return_statement {
-      parser->type(triagens::aql::AQL_QUERY_READ);
     }
   | optional_statement_block_statements remove_statement {
-      parser->type(triagens::aql::AQL_QUERY_REMOVE);
     }
   | optional_statement_block_statements insert_statement {
-      parser->type(triagens::aql::AQL_QUERY_INSERT);
     }
   | optional_statement_block_statements update_statement {
-      parser->type(triagens::aql::AQL_QUERY_UPDATE);
     }
   | optional_statement_block_statements replace_statement {
-      parser->type(triagens::aql::AQL_QUERY_REPLACE);
     }
   ;
 
@@ -369,6 +364,9 @@ in_or_into_collection:
 
 remove_statement:
     T_REMOVE expression in_or_into_collection query_options {
+      if (! parser->configureWriteQuery(AQL_QUERY_REMOVE, $3, $4)) {
+        YYABORT;
+      }
       auto node = parser->ast()->createNodeRemove($2, $3, $4);
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
@@ -377,6 +375,9 @@ remove_statement:
 
 insert_statement:
     T_INSERT expression in_or_into_collection query_options {
+      if (! parser->configureWriteQuery(AQL_QUERY_INSERT, $3, $4)) {
+        YYABORT;
+      }
       auto node = parser->ast()->createNodeInsert($2, $3, $4);
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
@@ -385,11 +386,17 @@ insert_statement:
 
 update_statement:
     T_UPDATE expression in_or_into_collection query_options {
+      if (! parser->configureWriteQuery(AQL_QUERY_UPDATE, $3, $4)) {
+        YYABORT;
+      }
       auto node = parser->ast()->createNodeUpdate(nullptr, $2, $3, $4);
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
     }
   | T_UPDATE expression T_WITH expression in_or_into_collection query_options {
+      if (! parser->configureWriteQuery(AQL_QUERY_UPDATE, $5, $6)) {
+        YYABORT;
+      }
       auto node = parser->ast()->createNodeUpdate($2, $4, $5, $6);
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
@@ -398,11 +405,17 @@ update_statement:
 
 replace_statement:
     T_REPLACE expression in_or_into_collection query_options {
+      if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, $3, $4)) {
+        YYABORT;
+      }
       auto node = parser->ast()->createNodeReplace(nullptr, $2, $3, $4);
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
     }
   | T_REPLACE expression T_WITH expression in_or_into_collection query_options {
+      if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, $5, $6)) {
+        YYABORT;
+      }
       auto node = parser->ast()->createNodeReplace($2, $4, $5, $6);
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
@@ -415,13 +428,10 @@ expression:
     }
   | T_OPEN {
       parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_SUBQUERY);
-      /* TODO: context->_subQueries++; */
+      parser->startSubQuery();
     } query T_CLOSE {
-      /* TODO: context->_subQueries--; */
-
-      if (! parser->ast()->scopes()->endCurrent()) {
-        ABORT_OOM
-      }
+      parser->endSubQuery();
+      parser->ast()->scopes()->endCurrent();
 
       auto subQuery = parser->ast()->createNodeSubquery();
       parser->ast()->addOperation(subQuery);
@@ -479,7 +489,7 @@ function_name:
       std::string temp($1);
       temp.append("::");
       temp.append($3);
-      $$ = parser->registerString(temp.c_str(), temp.size(), false);
+      $$ = parser->ast()->registerString(temp.c_str(), temp.size(), false);
 
       if ($$ == nullptr) {
         ABORT_OOM

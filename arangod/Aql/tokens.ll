@@ -259,7 +259,7 @@ namespace triagens {
 
 ([a-zA-Z][_a-zA-Z0-9]*|_+[a-zA-Z]+[_a-zA-Z0-9]*) { 
   /* unquoted string */
-  yylval->strval = yyextra->registerString(yytext, yyleng, false);
+  yylval->strval = yyextra->ast()->registerString(yytext, yyleng, false);
   return T_STRING; 
 }
 
@@ -272,7 +272,7 @@ namespace triagens {
 <BACKTICK>` {
   /* end of backtick-enclosed string */
   BEGIN(INITIAL);
-  yylval->strval = yyextra->registerString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, true);
+  yylval->strval = yyextra->ast()->registerString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, true);
   return T_STRING;
 }
 
@@ -299,7 +299,7 @@ namespace triagens {
 <DOUBLE_QUOTE>\" {
   /* end of quote-enclosed string */
   BEGIN(INITIAL);
-  yylval->strval = yyextra->registerString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, true);
+  yylval->strval = yyextra->ast()->registerString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, true);
   return T_QUOTED_STRING;
 }
 
@@ -326,7 +326,7 @@ namespace triagens {
 <SINGLE_QUOTE>' {
   /* end of quote-enclosed string */
   BEGIN(INITIAL);
-  yylval->strval = yyextra->registerString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, true);
+  yylval->strval = yyextra->ast()->registerString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, true);
   return T_QUOTED_STRING;
 }
 
@@ -347,13 +347,13 @@ namespace triagens {
 
 (0|[1-9][0-9]*) {  
   /* a numeric integer value */
-  yylval->strval = yyextra->registerString(yytext, yyleng, false); 
+  yylval->strval = yyextra->ast()->registerString(yytext, yyleng, false); 
   return T_INTEGER;
 }
 
 (0|[1-9][0-9]*)(\.[0-9]+([eE]([\-\+])?[0-9]+)?) {  
   /* a numeric double value */
-  yylval->strval = yyextra->registerString(yytext, yyleng, false); 
+  yylval->strval = yyextra->ast()->registerString(yytext, yyleng, false); 
   return T_DOUBLE;
 }
 
@@ -364,7 +364,7 @@ namespace triagens {
 @@?[a-zA-Z0-9][a-zA-Z0-9_]* {
   /* bind parameters must start with a @
      if followed by another @, this is a collection name parameter */
-  yylval->strval = yyextra->registerString(yytext + 1, yyleng - 1, false); 
+  yylval->strval = yyextra->ast()->registerString(yytext + 1, yyleng - 1, false); 
   return T_PARAMETER;
 }
 
