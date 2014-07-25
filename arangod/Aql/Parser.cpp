@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Parser.h"
+#include "Aql/AstNode.h"
 
 using namespace triagens::aql;
 
@@ -46,6 +47,7 @@ Parser::Parser (Query* query)
     _remainingLength(query->queryLength()),
     _offset(0),
     _marker(nullptr),
+    _subQueryCount(0),
     _uniqueId(0),
     _stack() {
   
@@ -66,6 +68,41 @@ Parser::~Parser () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set data for write queries
+////////////////////////////////////////////////////////////////////////////////
+
+bool Parser::configureWriteQuery (QueryType type,
+                                  AstNode const* collectionNode,
+                                  AstNode* optionNode) {
+  TRI_ASSERT(type != AQL_QUERY_READ);
+
+  // check if we currently are in a subquery
+  if (isInSubQuery()) {
+    // data modification not allowed in sub-queries
+    registerError(TRI_ERROR_QUERY_MODIFY_IN_SUBQUERY);
+    return false;
+  }
+
+  // check current query type
+  auto oldType = _query->type();
+
+  if (oldType != AQL_QUERY_READ) {
+    // already a data-modification query, cannot have two data-modification operations in one query
+    registerError(TRI_ERROR_QUERY_MULTI_MODIFY);
+    return false;
+  }
+
+  // now track which collection is going to be modified
+  ast()->setWriteCollection(collectionNode);
+  ast()->setWriteOptions(optionNode);
+
+  // register type 
+  _query->type(type);
+  return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse the query
@@ -94,7 +131,7 @@ char* Parser::generateName () {
   int n = snprintf(buffer, sizeof(buffer) - 1, "_%d", (int) ++_uniqueId);
 
   // register the string and return a copy of it
-  return registerString(buffer, static_cast<size_t>(n), false);
+  return ast()->registerString(buffer, static_cast<size_t>(n), false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,6 +172,28 @@ void Parser::registerError (int code,
   else {
     _query->registerError(code, std::string(message));
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief push an AstNode into the list element on top of the stack
+////////////////////////////////////////////////////////////////////////////////
+
+void Parser::pushList (AstNode* node) {
+  auto list = static_cast<AstNode*>(peekStack());
+  TRI_ASSERT(list->type == NODE_TYPE_LIST);
+  list->addMember(node);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief push an AstNode into the array element on top of the stack
+////////////////////////////////////////////////////////////////////////////////
+
+void Parser::pushArray (char const* attributeName,
+                        AstNode* node) {
+  auto array = static_cast<AstNode*>(peekStack());
+  TRI_ASSERT(array->type == NODE_TYPE_ARRAY);
+  auto element = ast()->createNodeArrayElement(attributeName, node);
+  array->addMember(element);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
