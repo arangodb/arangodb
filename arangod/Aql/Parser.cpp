@@ -29,6 +29,7 @@
 
 #include "Aql/Parser.h"
 #include "Aql/AstNode.h"
+#include "Basics/StringUtils.h"
 
 using namespace triagens::aql;
 
@@ -42,6 +43,7 @@ using namespace triagens::aql;
 
 Parser::Parser (Query* query)
   : _query(query),
+    _ast(nullptr),
     _scanner(nullptr),
     _buffer(query->queryString()),
     _remainingLength(query->queryLength()),
@@ -53,6 +55,8 @@ Parser::Parser (Query* query)
   
   Aqllex_init(&_scanner);
   Aqlset_extra(this, _scanner);
+  
+  _ast = new QueryAst(this);
 
   _stack.reserve(16);
 }
@@ -63,6 +67,10 @@ Parser::Parser (Query* query)
 
 Parser::~Parser () {
   Aqllex_destroy(_scanner);
+
+  if (_ast != nullptr) {
+    delete _ast;
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -96,8 +104,8 @@ bool Parser::configureWriteQuery (QueryType type,
   }
 
   // now track which collection is going to be modified
-  ast()->setWriteCollection(collectionNode);
-  ast()->setWriteOptions(optionNode);
+  _ast->setWriteCollection(collectionNode);
+  _ast->setWriteOptions(optionNode);
 
   // register type 
   _query->type(type);
@@ -108,18 +116,37 @@ bool Parser::configureWriteQuery (QueryType type,
 /// @brief parse the query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Parser::parse () {
-  auto scopes = ast()->scopes();
-  scopes->start(AQL_SCOPE_MAIN);
+ParseResult Parser::parse () {
+  auto error = _query->error();
 
-  if (Aqlparse(this)) {
-    // lexing/parsing failed
-    return false;
+  ParseResult result;
+
+  try {
+    auto scopes = _ast->scopes();
+    scopes->start(AQL_SCOPE_MAIN);
+
+    if (Aqlparse(this)) {
+      // lexing/parsing failed
+      result.code        = error->code;
+      result.explanation = error->explanation;
+      return result;
+    }
+
+    scopes->endCurrent();
+    result.collectionNames = _ast->collectionNames();
+    result.bindParameters  = _ast->bindParameters();
   }
-  
-  scopes->endCurrent();
+  catch (triagens::arango::Exception const& ex) {
+    registerError(ex.code());
+  }
+  catch (...) {
+    registerError(TRI_ERROR_OUT_OF_MEMORY);
+  }
+      
+  result.code        = error->code;
+  result.explanation = error->explanation;
 
-  return true;
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,17 +158,17 @@ char* Parser::generateName () {
   int n = snprintf(buffer, sizeof(buffer) - 1, "_%d", (int) ++_uniqueId);
 
   // register the string and return a copy of it
-  return ast()->registerString(buffer, static_cast<size_t>(n), false);
+  return _ast->registerString(buffer, static_cast<size_t>(n), false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register a parse error, position is specified as line / column
 ////////////////////////////////////////////////////////////////////////////////
 
-void Parser::registerError (char const* message,
+void Parser::registerError (char const* data,
                             int line,
                             int column) {
-  TRI_ASSERT(message != nullptr);
+  TRI_ASSERT(data != nullptr);
 
   // extract the query string part where the error happened
   std::string const region(_query->extractRegion(line, column));
@@ -151,7 +178,7 @@ void Parser::registerError (char const* message,
   snprintf(buffer,
            sizeof(buffer),
            "%s near '%s' at position %d:%d",
-           message,
+           data,
            region.c_str(),
            line,
            column + 1);
@@ -164,13 +191,16 @@ void Parser::registerError (char const* message,
 ////////////////////////////////////////////////////////////////////////////////
 
 void Parser::registerError (int code,
-                            char const* message) {
+                            char const* data) {
  
-  if (message == nullptr) { 
-    _query->registerError(code);
+  TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
+  char const* errorMessage = TRI_errno_string(code);
+
+  if (data != nullptr && strstr(errorMessage, "%s") != nullptr) {
+    _query->registerError(code, triagens::basics::StringUtils::replace(std::string(errorMessage), "%s", data));
   }
   else {
-    _query->registerError(code, std::string(message));
+    _query->registerError(code, std::string(errorMessage));
   }
 }
 
@@ -192,7 +222,7 @@ void Parser::pushArray (char const* attributeName,
                         AstNode* node) {
   auto array = static_cast<AstNode*>(peekStack());
   TRI_ASSERT(array->type == NODE_TYPE_ARRAY);
-  auto element = ast()->createNodeArrayElement(attributeName, node);
+  auto element = _ast->createNodeArrayElement(attributeName, node);
   array->addMember(element);
 }
 

@@ -70,8 +70,6 @@ namespace triagens {
 
     enum AstNodeType {
       NODE_TYPE_ROOT,
-      NODE_TYPE_SCOPE_START,
-      NODE_TYPE_SCOPE_END,
       NODE_TYPE_FOR,
       NODE_TYPE_LET,
       NODE_TYPE_FILTER,
@@ -164,7 +162,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void addMember (AstNode* node) {
-          TRI_ASSERT(node != nullptr);
+          if (node == nullptr) {
+            return;
+          }
 
           int res = TRI_PushBackVectorPointer(&members, static_cast<void*>(node));
 

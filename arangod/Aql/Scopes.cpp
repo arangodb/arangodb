@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Scopes.h"
+#include "Utils/Exception.h"
 
 using namespace triagens::aql;
 
@@ -39,10 +40,9 @@ using namespace triagens::aql;
 /// @brief create the scope
 ////////////////////////////////////////////////////////////////////////////////
 
-Scope::Scope (ScopeType type,
-              size_t level) 
+Scope::Scope (ScopeType type) 
   : _type(type),
-    _level(level) {
+    _variables() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -50,6 +50,9 @@ Scope::Scope (ScopeType type,
 ////////////////////////////////////////////////////////////////////////////////
 
 Scope::~Scope () {
+  for (auto it = _variables.begin(); it != _variables.end(); ++it) {
+    delete (*it).second;
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -57,11 +60,41 @@ Scope::~Scope () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the name of a scope type
+////////////////////////////////////////////////////////////////////////////////
+
+std::string Scope::typeName () const {
+  switch (_type) {
+    case AQL_SCOPE_MAIN:
+      return "main";
+    case AQL_SCOPE_SUBQUERY:
+      return "subquery";
+    case AQL_SCOPE_FOR:
+      return "for";
+    case AQL_SCOPE_COLLECT:
+      return "collection";
+  }
+  TRI_ASSERT(false);
+  return "unknown";
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a variable to the scope
 ////////////////////////////////////////////////////////////////////////////////
 
-void Scope::addVariable (char const* name) {
-  _variables.insert(std::make_pair(std::string(name), std::string(name)));
+void Scope::addVariable (std::string const& name,
+                         size_t id,
+                         bool isUserDefined) {
+  auto variable = new Variable(name, id, isUserDefined);
+
+  try {
+    _variables.insert(std::make_pair(name, variable));
+  }
+  catch (...) {
+    // prevent memleak
+    delete variable;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }   
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,6 +106,7 @@ void Scope::addVariable (char const* name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Scope::existsVariable (char const* name) const {
+  TRI_ASSERT(name != nullptr);
   auto it = _variables.find(std::string(name));
 
   return (it != _variables.end());
@@ -87,9 +121,9 @@ bool Scope::existsVariable (char const* name) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 Scopes::Scopes () 
-  : _level(0),
-    _activeScopes(),
-    _allScopes() {
+  : _activeScopes(),
+    _allScopes(),
+    _variableId(0) {
 
   _allScopes.reserve(8);
 }
@@ -113,21 +147,9 @@ Scopes::~Scopes () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Scopes::start (ScopeType type) {
-  if (type == AQL_SCOPE_FOR && ! _activeScopes.empty()) {
-    // check if a FOR scope must be converted in a FOR_NESTED scope
-    auto last = _activeScopes.back();
-
-    if (last->type() == AQL_SCOPE_FOR ||
-        last->type() == AQL_SCOPE_FOR_NESTED) {
-      type = AQL_SCOPE_FOR_NESTED;
-    }
-  }
-
-  auto scope = new Scope(type, _level);
+  auto scope = new Scope(type);
   _allScopes.push_back(scope);
-
   _activeScopes.push_back(scope);
-  ++_level;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -138,8 +160,9 @@ Scope* Scopes::endCurrent () {
   TRI_ASSERT(! _activeScopes.empty());
 
   Scope* result = _activeScopes.back();
+  TRI_ASSERT(result != nullptr);
+
   _activeScopes.pop_back();
-  --_level;
 
   return result;
 }
@@ -150,20 +173,24 @@ Scope* Scopes::endCurrent () {
 
 void Scopes::endNested () {
   TRI_ASSERT(! _activeScopes.empty());
-
-  auto scope = _activeScopes.back();
-  if (scope->type() == AQL_SCOPE_MAIN ||
-      scope->type() == AQL_SCOPE_SUBQUERY) {
-    // nothing to do
-    return;
-  }
+  int iterations = 0;
 
   while (! _activeScopes.empty()) {
-    scope = endCurrent();
+    auto scope = _activeScopes.back();
+    TRI_ASSERT(scope != nullptr);
+    ScopeType type = scope->type();
 
-    if (scope->type() != AQL_SCOPE_FOR_NESTED) {
-      break;
+    if (type == AQL_SCOPE_MAIN) {
+      // main scope cannot be closed here
+      return;
     }
+    
+    if (type != AQL_SCOPE_FOR && ++iterations < 2) {
+      // do not close anything but for scopes
+      return;
+    }
+
+    endCurrent();
   }
 }
 
@@ -171,10 +198,11 @@ void Scopes::endNested () {
 /// @brief adds a variable to the current scope
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Scopes::addVariable (char const* name) {
+bool Scopes::addVariable (char const* name,
+                          bool isUserDefined) {
   TRI_ASSERT(! _activeScopes.empty());
 
-  for (auto it = _activeScopes.rend(); it != _activeScopes.rbegin(); ++it) {
+  for (auto it = _activeScopes.rbegin(); it != _activeScopes.rend(); ++it) {
     auto scope = (*it);
 
     if (scope->existsVariable(name)) {
@@ -183,7 +211,7 @@ bool Scopes::addVariable (char const* name) {
     }
   }
 
-  _activeScopes.back()->addVariable(name);
+  _activeScopes.back()->addVariable(std::string(name), ++_variableId, isUserDefined);
   return true;
 }
 
@@ -194,7 +222,7 @@ bool Scopes::addVariable (char const* name) {
 bool Scopes::existsVariable (char const* name) const {
   TRI_ASSERT(! _activeScopes.empty());
 
-  for (auto it = _activeScopes.rend(); it != _activeScopes.rbegin(); ++it) {
+  for (auto it = _activeScopes.rbegin(); it != _activeScopes.rend(); ++it) {
     auto scope = (*it);
 
     if (scope->existsVariable(name)) {

@@ -35,6 +35,34 @@
 namespace triagens {
   namespace aql {
 
+    template<typename T> 
+    struct CharComparer : public binary_function<T, T, bool> {
+      bool operator () (T const& lhs, T const& rhs) const {
+        return strcmp(lhs, rhs) == 0;
+      }
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   struct Variable
+// -----------------------------------------------------------------------------
+
+    struct Variable {
+      Variable (std::string const& name,
+                size_t id,
+                bool isUserDefined)
+        : name(name),
+          id(id),
+          isUserDefined(isUserDefined) {
+      }
+
+      ~Variable () {
+      }
+
+      std::string const  name;
+      size_t const       id;
+      bool const         isUserDefined;
+    };
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
@@ -43,7 +71,7 @@ namespace triagens {
       AQL_SCOPE_MAIN,
       AQL_SCOPE_SUBQUERY,
       AQL_SCOPE_FOR,
-      AQL_SCOPE_FOR_NESTED
+      AQL_SCOPE_COLLECT
     };
 
 // -----------------------------------------------------------------------------
@@ -62,8 +90,7 @@ namespace triagens {
 /// @brief create a scope
 ////////////////////////////////////////////////////////////////////////////////
 
-        Scope (ScopeType,
-               size_t);
+        Scope (ScopeType);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the scope
@@ -78,6 +105,12 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the name of a scope type
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string typeName () const;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the scope type
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -89,7 +122,9 @@ namespace triagens {
 /// @brief adds a variable to the scope
 ////////////////////////////////////////////////////////////////////////////////
 
-        void addVariable (char const*);
+        void addVariable (std::string const&,
+                          size_t,
+                          bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a variable exists in the scope
@@ -103,11 +138,17 @@ namespace triagens {
 
       private:
 
-        ScopeType const                     _type;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief scope type
+////////////////////////////////////////////////////////////////////////////////
 
-        size_t const                        _level;
+        ScopeType const                               _type;
 
-        std::unordered_map<std::string, std::string>  _variables;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief variables introduced by the scope
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_map<std::string, Variable*>    _variables;
     };
 
 // -----------------------------------------------------------------------------
@@ -166,7 +207,8 @@ namespace triagens {
 /// @brief adds a variable to the current scope
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool addVariable (char const*);
+        bool addVariable (char const*,
+                          bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether a variable exists in any scope
@@ -181,12 +223,6 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief current nesting level
-////////////////////////////////////////////////////////////////////////////////
-
-        size_t              _level;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief currently active scopes
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -197,6 +233,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<Scope*> _allScopes;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief next variable id
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t              _variableId;
 
     };
 

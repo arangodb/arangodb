@@ -5339,20 +5339,70 @@ static v8::Handle<v8::Value> JS_ForgetApplierReplication (v8::Arguments const& a
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief parses an AQL query
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ParseAql (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  if (vocbase == nullptr) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
+  if (argv.Length() != 1) {
+    TRI_V8_EXCEPTION_USAGE(scope, "AQL_PARSE(<querystring>)");
+  }
+
+  // get the query string
+  if (! argv[0]->IsString()) {
+    TRI_V8_TYPE_ERROR(scope, "expecting string for <querystring>");
+  }
+
+  string const&& queryString = TRI_ObjectToString(argv[0]);
+
+  triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), nullptr);
+
+  auto parseResult = query.parse();
+
+  if (parseResult.code != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, parseResult.code, parseResult.explanation);
+  }
+
+  v8::Handle<v8::Object> result = v8::Object::New();
+  v8::Handle<v8::Array> collections = v8::Array::New();
+  result->Set(TRI_V8_STRING("collections"), collections);
+  uint32_t i = 0;
+  for (auto it = parseResult.collectionNames.begin(); it != parseResult.collectionNames.end(); ++it) {
+    collections->Set(i++, v8::String::New((*it).c_str()));
+  }
+
+  v8::Handle<v8::Array> bindVars = v8::Array::New();
+  i = 0;
+  for (auto it = parseResult.bindParameters.begin(); it != parseResult.bindParameters.end(); ++it) {
+    bindVars->Set(i++, v8::String::New((*it).c_str()));
+  }
+  result->Set(TRI_V8_STRING("bindVars"), bindVars); 
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
-  if (argv.Length() < 1 || argv.Length() > 3) {
-    TRI_V8_EXCEPTION_USAGE(scope, "AQL_EXECUTE(<querystring>, <bindvalues>, <options>)");
-  }
-
   TRI_vocbase_t* vocbase = GetContextVocBase();
 
   if (vocbase == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
+  if (argv.Length() < 1 || argv.Length() > 3) {
+    TRI_V8_EXCEPTION_USAGE(scope, "AQL_EXECUTE(<querystring>, <bindvalues>, <options>)");
   }
 
   // get the query string
@@ -5368,9 +5418,6 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
   if (argv.Length() > 1 && argv[1]->IsObject()) {
     parameters = TRI_ObjectToJson(argv[1]);
   }
-
-  // execute the query
-  std::cout << "ABOUT TO EXECUTE AQL QUERY '" << queryString << "'" << std::endl;
 
   // bind parameters will be freed by context...
   triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), parameters);
@@ -10649,6 +10696,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   
   // new AQL functions. not intended to be used directly by end users
   TRI_AddGlobalFunctionVocbase(context, "AQL_EXECUTE", JS_ExecuteAql, true);
+  TRI_AddGlobalFunctionVocbase(context, "AQL_PARSE", JS_ParseAql, true);
 
   // cursor functions. not intended to be used by end users
   TRI_AddGlobalFunctionVocbase(context, "CURSOR", JS_Cursor, true);

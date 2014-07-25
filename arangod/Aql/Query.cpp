@@ -51,8 +51,7 @@ Query::Query (TRI_vocbase_t* vocbase,
     _queryLength(queryLength),
     _type(AQL_QUERY_READ),
     _bindParameters(bindParameters),
-    _error(),
-    _ast() {
+    _error() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -137,6 +136,11 @@ void Query::registerError (int errorCode,
                            std::string const& explanation) {
   TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
 
+  if (_error.code != TRI_ERROR_NO_ERROR) {
+    // there's already an error registered. do not overwrite it
+    return;
+  }
+
   _error.code        = errorCode;
   _error.explanation = explanation;
 }
@@ -146,10 +150,7 @@ void Query::registerError (int errorCode,
 ////////////////////////////////////////////////////////////////////////////////
 
 void Query::registerError (int errorCode) {
-  TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
-
-  _error.code        = errorCode;
-  _error.explanation = "";
+  registerError(errorCode, "");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -157,15 +158,17 @@ void Query::registerError (int errorCode) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Query::execute () {
-  parseQuery();
+  // TODO 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parse an AQL query - TODO: implement and determine return type
+/// @brief parse an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
-void Query::parse () {
-  parseQuery();
+ParseResult Query::parse () {
+  Parser parser(this);
+  
+  return parser.parse();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -173,28 +176,6 @@ void Query::parse () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Query::explain () {
-  parseQuery();
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parse an AQL query - TODO: implement and determine return type
-////////////////////////////////////////////////////////////////////////////////
-
-void Query::parseQuery () {
-  Parser parser(this);
-
-  bool result = parser.parse();
-
-  if (! result) {
-    std::cout << "PARSE ERROR IN QUERY" << std::endl;
-  }
-  else {
-    std::cout << "QUERY PARSED SUCCESSFULLY" << std::endl;
-  }
 }
 
 // -----------------------------------------------------------------------------

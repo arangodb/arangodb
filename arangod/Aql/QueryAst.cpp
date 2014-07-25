@@ -28,8 +28,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/QueryAst.h"
+#include "Aql/Parser.h"
 #include "BasicsC/tri-strings.h"
 #include "Utils/Exception.h"
+#include "VocBase/collection.h"
 
 using namespace triagens::aql;
 
@@ -41,10 +43,13 @@ using namespace triagens::aql;
 /// @brief create the AST
 ////////////////////////////////////////////////////////////////////////////////
 
-QueryAst::QueryAst () 
-  : _nodes(),
+QueryAst::QueryAst (Parser* parser) 
+  : _parser(parser),
+    _nodes(),
     _strings(),
     _scopes(),
+    _bindParameters(),
+    _collectionNames(),
     _root(nullptr),
     _writeCollection(nullptr),
     _writeOptions(nullptr) {
@@ -95,8 +100,14 @@ char* QueryAst::registerString (char const* p,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
+  if (length == 0) {
+    static char const* empty = "";
+    // optimisation for the empty string
+    return const_cast<char*>(empty);
+  }
+
   char* copy = nullptr;
-  if (mustUnescape && length > 0) {
+  if (mustUnescape) {
     size_t outLength;
     copy = TRI_UnescapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, p, length, &outLength);
   }
@@ -119,39 +130,14 @@ char* QueryAst::registerString (char const* p,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST scope start node
-////////////////////////////////////////////////////////////////////////////////
-
-AstNode* QueryAst::createNodeScopeStart () {
-  // TODO: re-add hint?? 
-  return createNode(NODE_TYPE_SCOPE_START);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST scope end node
-////////////////////////////////////////////////////////////////////////////////
-
-AstNode* QueryAst::createNodeScopeEnd () {
-  // TODO: re-add hint?? 
-  return createNode(NODE_TYPE_SCOPE_END);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST for node
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* QueryAst::createNodeFor (char const* variableName,
                                   AstNode const* expression) {
-
-// TODO:
-/*
-  if (! TRI_IsValidVariableNameAql(variableName)) {
-    // TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name);
-  }
-*/
   AstNode* node = createNode(NODE_TYPE_FOR);
 
-  AstNode* variable = createNodeVariable(variableName);
+  AstNode* variable = createNodeVariable(variableName, true);
   node->addMember(variable);
   node->addMember(expression);
 
@@ -164,16 +150,9 @@ AstNode* QueryAst::createNodeFor (char const* variableName,
 
 AstNode* QueryAst::createNodeLet (char const* variableName,
                                   AstNode const* expression) {
-
-// TODO:
-/*
-  if (! TRI_IsValidVariableNameAql(variableName)) {
-    // TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name);
-  }
-*/
   AstNode* node = createNode(NODE_TYPE_LET);
 
-  AstNode* variable = createNodeVariable(variableName);
+  AstNode* variable = createNodeVariable(variableName, true);
   node->addMember(variable);
   node->addMember(expression);
 
@@ -274,7 +253,7 @@ AstNode* QueryAst::createNodeCollect (AstNode const* list,
   node->addMember(list);
 
   if (name != nullptr) {
-    AstNode* variable = createNodeVariable(name);
+    AstNode* variable = createNodeVariable(name, true);
     node->addMember(variable);
   }
 
@@ -319,14 +298,13 @@ AstNode* QueryAst::createNodeLimit (AstNode const* offset,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST assign node
+/// @brief create an AST assign node, used in COLLECT statements
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* QueryAst::createNodeAssign (char const* name,
                                      AstNode const* expression) {
-  // TODO: look up what an assign node is!!!!!!!!!
   AstNode* node = createNode(NODE_TYPE_ASSIGN);
-  AstNode* variable = createNodeVariable(name);
+  AstNode* variable = createNodeVariable(name, true);
   node->addMember(variable);
   node->addMember(expression);
 
@@ -337,11 +315,26 @@ AstNode* QueryAst::createNodeAssign (char const* name,
 /// @brief create an AST variable node
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* QueryAst::createNodeVariable (char const* name) {
-  // TODO: check for duplicate names here!!
-  // TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_QUERY_VARIABLE_REDECLARED, name);
+AstNode* QueryAst::createNodeVariable (char const* name, 
+                                       bool isUserDefined) {
+  if (name == nullptr || *name == '\0') {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  if (isUserDefined && *name == '_') {
+    _parser->registerError(TRI_ERROR_QUERY_VARIABLE_NAME_INVALID);
+    return nullptr;
+  }
+
+  if (_scopes.existsVariable(name)) {
+    _parser->registerError(TRI_ERROR_QUERY_VARIABLE_REDECLARED, name);
+    return nullptr;
+  }
+  
   AstNode* node = createNode(NODE_TYPE_VARIABLE);
   node->setStringValue(name);
+
+  _scopes.addVariable(name, isUserDefined);
 
   return node;
 }
@@ -352,23 +345,18 @@ AstNode* QueryAst::createNodeVariable (char const* name) {
 
 AstNode* QueryAst::createNodeCollection (char const* name) {
   if (name == nullptr || *name == '\0') {
-    // TODO
-    // TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
-    return nullptr;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-/*
-  if (! TRI_IsAllowedNameCollection(true, name)) {
-    // TODO
-    // TRI_SetErrorContextAql(__FILE__, __LINE__, context, TRI_ERROR_ARANGO_ILLEGAL_NAME, name);
-    return nullptr;
-  }
-*/  
-  AstNode* node = createNode(NODE_TYPE_COLLECTION);
-  AstNode* nameNode = createNodeValueString(name);
 
-  // TODO: check if we can store the name inline 
-  // TODO: add the collection to the query
-  node->addMember(nameNode);
+  if (! TRI_IsAllowedNameCollection(true, name)) {
+    _parser->registerError(TRI_ERROR_ARANGO_ILLEGAL_NAME, name);
+    return nullptr;
+  }
+
+  AstNode* node = createNode(NODE_TYPE_COLLECTION);
+  node->setStringValue(name);
+
+  _collectionNames.insert(std::string(name));
 
   return node;
 }
@@ -390,10 +378,11 @@ AstNode* QueryAst::createNodeReference (char const* name) {
 
 AstNode* QueryAst::createNodeParameter (char const* name) {
   AstNode* node = createNode(NODE_TYPE_PARAMETER);
-
-  // TODO: insert bind parameter name into list of found parameters
-  // (so we can check which ones are missing)
+ 
   node->setStringValue(name);
+
+  // insert bind parameter name into list of found parameters
+  _bindParameters.insert(std::string(name));
 
   return node;
 }
@@ -443,10 +432,9 @@ AstNode* QueryAst::createNodeTernaryOperator (AstNode const* condition,
 /// @brief create an AST subquery node
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* QueryAst::createNodeSubquery () {
+AstNode* QueryAst::createNodeSubquery (char const* tempName) {
   AstNode* node = createNode(NODE_TYPE_SUBQUERY);
-  // TODO: let the parser create a dynamic name here
-  AstNode* variable = createNodeVariable("tempName");
+  AstNode* variable = createNodeVariable(tempName, false);
   node->addMember(variable);
 
   return node;
@@ -496,12 +484,12 @@ AstNode* QueryAst::createNodeIndexedAccess (AstNode const* accessed,
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* QueryAst::createNodeExpand (char const* variableName,
+                                     char const* tempName,
                                      AstNode const* expanded,
                                      AstNode const* expansion) {
   AstNode* node = createNode(NODE_TYPE_EXPAND);
-  AstNode* variable = createNodeVariable(variableName);
-  // TODO: let the parser create a temporary variable name
-  AstNode* temp = createNodeVariable("temp");
+  AstNode* variable = createNodeVariable(variableName, false);
+  AstNode* temp = createNodeVariable(tempName, false);
   node->addMember(variable);
   node->addMember(temp);
   node->addMember(expanded);
@@ -609,14 +597,55 @@ AstNode* QueryAst::createNodeArrayElement (char const* attributeName,
 AstNode* QueryAst::createNodeFunctionCall (char const* functionName,
                                            AstNode const* parameters) {
 
-  // TODO: support function calls!
-  TRI_ASSERT(false);
-  return nullptr;
+  std::string const normalizedName = normalizeFunctionName(functionName);
+  char* fname = registerString(normalizedName.c_str(), normalizedName.size(), false);
+
+  AstNode* node;
+
+  if (normalizedName[0] == '_') {
+    // built-in function
+    node = createNode(NODE_TYPE_FCALL);
+  }
+  else {
+    // user-defined function
+    node = createNode(NODE_TYPE_FCALL_USER);
+  }
+
+  node->setStringValue(fname);
+  node->addMember(parameters);
+  
+  return node;
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalize a function name
+////////////////////////////////////////////////////////////////////////////////
+
+std::string QueryAst::normalizeFunctionName (char const* name) {
+  if (name == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  char* upperName = TRI_UpperAsciiStringZ(TRI_UNKNOWN_MEM_ZONE, name);
+  if (upperName == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  std::string functionName(upperName);
+
+  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, upperName);
+
+  if (functionName.find(':') == std::string::npos) {
+    // prepend default namespace for internal functions
+    functionName = "_AQL:" + functionName;
+  }
+
+  return functionName;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a node of the specified type
