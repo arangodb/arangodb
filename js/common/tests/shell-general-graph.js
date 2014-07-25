@@ -1459,6 +1459,27 @@ function ChainedFluentAQLResultsSuite() {
       findFriends(result, [ud1, ud2]);
     },
 
+    test_getEdgesForSelectedVertexWithoutEdges: function() {
+      var result = g._vertices({name: p1Name})
+        .edges()
+        .restrict(isFriend)
+        .toArray();
+      assertEqual(result.length, 0);
+    },
+
+    test_getEdgesWithRestrictionIfThereAreNone: function() {
+      var emptyGN = "UnitTestEmptyGraph";
+      var emptyEdges = "UnitTestEmptyEdges";
+      var emptyVertices = "UnitTestEmptyVertices";
+      var g2 = graph._create(emptyGN, [
+        graph._undirectedRelation(emptyEdges, emptyVertices)
+      ]);
+      g2[emptyVertices].save({_key: "highlander"});
+      var res = g2._vertices(emptyVertices + "/highlander").edges().restrict(emptyEdges).toArray();
+      assertEqual(res, []);
+      graph._drop(emptyGN, true);
+    },
+
     test_getInEdgesForSelectedVertexResultingAQL: function() {
       var query = g._vertices({name: ubName})
         .inEdges();
