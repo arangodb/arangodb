@@ -625,6 +625,7 @@ namespace triagens {
   }
 }
 
+#include "Aql/AstNode.h"
 #include "Aql/grammar.h"
 #include "Aql/Parser.h"
 
@@ -1283,7 +1284,7 @@ case 47:
 YY_RULE_SETUP
 { 
   /* unquoted string */
-  yylval->strval = yyextra->registerString(yytext, yyleng, false);
+  yylval->strval = yyextra->ast()->registerString(yytext, yyleng, false);
   return T_STRING; 
 }
 	YY_BREAK
@@ -1300,7 +1301,7 @@ YY_RULE_SETUP
 {
   /* end of backtick-enclosed string */
   BEGIN(INITIAL);
-  yylval->strval = yyextra->registerString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, true);
+  yylval->strval = yyextra->ast()->registerString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, true);
   return T_STRING;
 }
 	YY_BREAK
@@ -1338,7 +1339,7 @@ YY_RULE_SETUP
 {
   /* end of quote-enclosed string */
   BEGIN(INITIAL);
-  yylval->strval = yyextra->registerString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, true);
+  yylval->strval = yyextra->ast()->registerString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, true);
   return T_QUOTED_STRING;
 }
 	YY_BREAK
@@ -1376,7 +1377,7 @@ YY_RULE_SETUP
 {
   /* end of quote-enclosed string */
   BEGIN(INITIAL);
-  yylval->strval = yyextra->registerString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, true);
+  yylval->strval = yyextra->ast()->registerString(yyextra->marker(), yyextra->offset() - (yyextra->marker() - yyextra->queryString()) - 1, true);
   return T_QUOTED_STRING;
 }
 	YY_BREAK
@@ -1406,7 +1407,7 @@ case 63:
 YY_RULE_SETUP
 {  
   /* a numeric integer value */
-  yylval->strval = yyextra->registerString(yytext, yyleng, false); 
+  yylval->strval = yyextra->ast()->registerString(yytext, yyleng, false); 
   return T_INTEGER;
 }
 	YY_BREAK
@@ -1414,7 +1415,7 @@ case 64:
 YY_RULE_SETUP
 {  
   /* a numeric double value */
-  yylval->strval = yyextra->registerString(yytext, yyleng, false); 
+  yylval->strval = yyextra->ast()->registerString(yytext, yyleng, false); 
   return T_DOUBLE;
 }
 	YY_BREAK
@@ -1426,7 +1427,7 @@ YY_RULE_SETUP
 {
   /* bind parameters must start with a @
      if followed by another @, this is a collection name parameter */
-  yylval->strval = yyextra->registerString(yytext + 1, yyleng - 1, false); 
+  yylval->strval = yyextra->ast()->registerString(yytext + 1, yyleng - 1, false); 
   return T_PARAMETER;
 }
 	YY_BREAK
