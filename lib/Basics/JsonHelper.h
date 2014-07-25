@@ -481,7 +481,6 @@ namespace triagens {
 
         Json (Json& j)
           : _zone(j._zone), _json(j.steal()), _autofree(j._autofree) {
-          std::cout << "Hallo copy constructor" << std::endl;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -492,8 +491,6 @@ namespace triagens {
 
         Json (Json&& j)
           : _zone(j._zone), _json(j.steal()), _autofree(j._autofree) {
-          std::cout << "Hallo, move constructor at work for "
-                    << this->toString() << std::endl;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -501,9 +498,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~Json () throw() {
-          std::cout << "Destructor for " << this->toString() << std::endl;
           if (_json != nullptr && _autofree == AUTOFREE) {
-            std::cout << "Actually TRI_FreeJson called" << std::endl;
             TRI_FreeJson(_zone, _json);
           }
         }
@@ -550,7 +545,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Json& operator= (Json& j) {
-          std::cout << "= called" << std::endl;
           if (_json != nullptr && _autofree == AUTOFREE) {
             TRI_FreeJson(_zone, _json);
           }
@@ -565,7 +559,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Json& operator= (Json&& j) {
-          std::cout << "= move called" << std::endl;
           if (_json != nullptr && _autofree == AUTOFREE) {
             TRI_FreeJson(_zone, _json);
           }
@@ -581,7 +574,6 @@ namespace triagens {
 
         Json copy () {
           Json c;
-          std::cout << "ATTENTION: recursive JSON copy performed!!!" << std::endl;
           c._zone = _zone;
           if (_json != nullptr) {
             c._json = TRI_CopyJson(_zone, _json);
