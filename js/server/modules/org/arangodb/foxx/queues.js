@@ -33,7 +33,6 @@ var QUEUE_MANAGER_PERIOD = 1000, // in ms
   workers = require('org/arangodb/tasks'),
   arangodb = require('org/arangodb'),
   db = arangodb.db,
-  taskDefaults,
   queues,
   Queue,
   worker;
