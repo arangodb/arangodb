@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Parser.h"
+#include "Aql/AstNode.h"
 
 using namespace triagens::aql;
 
@@ -135,6 +136,28 @@ void Parser::registerError (int code,
   else {
     _query->registerError(code, std::string(message));
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief push an AstNode into the list element on top of the stack
+////////////////////////////////////////////////////////////////////////////////
+
+void Parser::pushList (AstNode* node) {
+  auto list = static_cast<AstNode*>(peekStack());
+  TRI_ASSERT(list->type == NODE_TYPE_LIST);
+  list->addMember(node);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief push an AstNode into the array element on top of the stack
+////////////////////////////////////////////////////////////////////////////////
+
+void Parser::pushArray (char const* attributeName,
+                        AstNode* node) {
+  auto array = static_cast<AstNode*>(peekStack());
+  TRI_ASSERT(array->type == NODE_TYPE_ARRAY);
+  auto element = ast()->createNodeArrayElement(attributeName, node);
+  array->addMember(element);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
