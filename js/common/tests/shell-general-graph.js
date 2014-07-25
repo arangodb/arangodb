@@ -1471,6 +1471,10 @@ function ChainedFluentAQLResultsSuite() {
       var emptyGN = "UnitTestEmptyGraph";
       var emptyEdges = "UnitTestEmptyEdges";
       var emptyVertices = "UnitTestEmptyVertices";
+      try {
+        graph._drop(emptyGN, true);
+      } catch (ignore) {
+      }
       var g2 = graph._create(emptyGN, [
         graph._undirectedRelation(emptyEdges, emptyVertices)
       ]);
