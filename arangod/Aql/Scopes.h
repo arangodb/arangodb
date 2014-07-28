@@ -35,13 +35,6 @@
 namespace triagens {
   namespace aql {
 
-    template<typename T> 
-    struct CharComparer : public binary_function<T, T, bool> {
-      bool operator () (T const& lhs, T const& rhs) const {
-        return strcmp(lhs, rhs) == 0;
-      }
-    };
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   struct Variable
 // -----------------------------------------------------------------------------
@@ -122,9 +115,9 @@ namespace triagens {
 /// @brief adds a variable to the scope
 ////////////////////////////////////////////////////////////////////////////////
 
-        void addVariable (std::string const&,
-                          size_t,
-                          bool);
+        Variable* addVariable (std::string const&,
+                               size_t,
+                               bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a variable exists in the scope
@@ -207,8 +200,8 @@ namespace triagens {
 /// @brief adds a variable to the current scope
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool addVariable (char const*,
-                          bool);
+        Variable* addVariable (char const*,
+                               bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether a variable exists in any scope

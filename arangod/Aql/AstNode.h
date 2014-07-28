@@ -61,6 +61,7 @@ namespace triagens {
         double      _double;
         bool        _bool;
         char const* _string;
+        void*       _data;
       } value;
       AstNodeValueType type;
     };
@@ -288,6 +289,22 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the data value of a node
+////////////////////////////////////////////////////////////////////////////////
+
+        inline void* getData () const {
+          return value.value._data;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the data value of a node
+////////////////////////////////////////////////////////////////////////////////
+
+        inline void setData (void* v) {
+          value.value._data = v;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type name of a node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -299,9 +316,12 @@ namespace triagens {
 
       public:
   
-        TRI_vector_pointer_t  members;
         AstNodeType const     type;
         AstNodeValue          value;
+        
+      private:
+      
+        TRI_vector_pointer_t  members;
     };
 
   }
