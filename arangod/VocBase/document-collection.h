@@ -128,6 +128,9 @@ struct TRI_doc_mptr_t {
                         _dataptr(nullptr) {
     }
 
+    virtual ~TRI_doc_mptr_t () {
+    }
+
     void clear () {
       _rid = 0;
       _fid = 0;
