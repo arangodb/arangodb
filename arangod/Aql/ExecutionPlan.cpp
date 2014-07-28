@@ -199,6 +199,31 @@ Json CalculationPlan::toJson (TRI_memory_zone_t* zone) {
   return json;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                        methods of RootPlan
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, for RootPlan
+////////////////////////////////////////////////////////////////////////////////
+
+Json RootPlan::toJson (TRI_memory_zone_t* zone) {
+  Json json(ExecutionPlan::toJson(zone));  // call base class method
+  if (json.isEmpty()) {
+    return json;
+  }
+  // Now put info about ...
+  try {
+    // TODO: add specific stuff
+  }
+  catch (std::exception& e) {
+    return Json();
+  }
+
+  // And return it:
+  return json;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test function
 ////////////////////////////////////////////////////////////////////////////////
