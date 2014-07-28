@@ -103,7 +103,7 @@ TRI_json_t* QueryAst::toJson (TRI_memory_zone_t* zone) {
 void QueryAst::addOperation (AstNode* node) {
   TRI_ASSERT(_root != nullptr);
 
-  TRI_PushBackVectorPointer(&_root->members, (void*) node);
+  _root->addMember(node);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -352,7 +352,8 @@ AstNode* QueryAst::createNodeVariable (char const* name,
   AstNode* node = createNode(NODE_TYPE_VARIABLE);
   node->setStringValue(name);
 
-  _scopes.addVariable(name, isUserDefined);
+  auto variable = _scopes.addVariable(name, isUserDefined);
+  node->setData(static_cast<void*>(variable));
 
   return node;
 }
@@ -666,10 +667,23 @@ void QueryAst::injectBindParameters (BindParameters& parameters) {
       if (*param == '@') {
         // collection parameter
         TRI_ASSERT(TRI_IsStringJson(value));
-       
+
+        bool isWriteCollection = false;
+        if (_writeCollection != nullptr && 
+            _writeCollection->type == NODE_TYPE_PARAMETER &&
+            strcmp(param, _writeCollection->getStringValue()) == 0) {
+          isWriteCollection = true;
+        }
+
         // turn node into a collection node
         char const* name = registerString(value->_value._string.data, value->_value._string.length - 1, false);
+
         node = createNodeCollection(name);
+
+        if (isWriteCollection) {
+          // this was the bind parameter that contained the collection to update 
+          _writeCollection = node;
+        }
       }
       else {
         node = nodeFromJson((*it).second);

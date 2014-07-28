@@ -128,6 +128,7 @@ ParseResult Parser::parse () {
     auto error         = _query->error();
     result.code        = error->code;
     result.explanation = error->explanation;
+
     return result;
   }
 

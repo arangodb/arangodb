@@ -82,9 +82,9 @@ std::string Scope::typeName () const {
 /// @brief adds a variable to the scope
 ////////////////////////////////////////////////////////////////////////////////
 
-void Scope::addVariable (std::string const& name,
-                         size_t id,
-                         bool isUserDefined) {
+Variable* Scope::addVariable (std::string const& name,
+                              size_t id,
+                              bool isUserDefined) {
   auto variable = new Variable(name, id, isUserDefined);
 
   try {
@@ -94,7 +94,9 @@ void Scope::addVariable (std::string const& name,
     // prevent memleak
     delete variable;
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }   
+  }  
+  
+  return variable; 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -198,8 +200,8 @@ void Scopes::endNested () {
 /// @brief adds a variable to the current scope
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Scopes::addVariable (char const* name,
-                          bool isUserDefined) {
+Variable* Scopes::addVariable (char const* name,
+                               bool isUserDefined) {
   TRI_ASSERT(! _activeScopes.empty());
 
   for (auto it = _activeScopes.rbegin(); it != _activeScopes.rend(); ++it) {
@@ -207,12 +209,13 @@ bool Scopes::addVariable (char const* name,
 
     if (scope->existsVariable(name)) {
       // duplicate variable name
-      return false;
+      return 0;
     }
   }
 
-  _activeScopes.back()->addVariable(std::string(name), ++_variableId, isUserDefined);
-  return true;
+  size_t id = ++_variableId;
+
+  return _activeScopes.back()->addVariable(std::string(name), id, isUserDefined);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
