@@ -193,7 +193,8 @@ void testExecutionPlans () {
   auto ec = new EnumerateCollectionPlan(nullptr, "guck");
   Json jjj(ec->toJson());
   cout << jjj.toString() << endl;
-  auto li = new LimitPlan(ec, 12, 17);
+  auto li = new LimitPlan(12, 17);
+  li->addDependency(ec);
   jjj = li->toJson();
   cout << jjj.toString() << endl;
 
