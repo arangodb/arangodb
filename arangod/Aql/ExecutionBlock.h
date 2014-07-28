@@ -32,6 +32,7 @@
 
 #include "Aql/Types.h"
 #include "Aql/ExecutionPlan.h"
+#include "Utils/transactions.h"
 
 struct TRI_json_s;
 
@@ -51,19 +52,19 @@ namespace triagens {
         }
           
         // Methods for execution:
-        int initialise () {
+        virtual int initialise () {
           return TRI_ERROR_NO_ERROR;
         }
 
-        int bind (std::map<std::string, struct TRI_json_s*>* params);
+        virtual int bind (std::map<std::string, struct TRI_json_s*>* params);
 
         std::map<std::string, struct TRI_json_s*>* getParameters ();
 
-        int execute () {
+        virtual int execute () {
           return TRI_ERROR_NO_ERROR;
         }
 
-        int shutdown () {
+        virtual int shutdown () {
           return TRI_ERROR_NO_ERROR;
         }
 
@@ -90,16 +91,40 @@ namespace triagens {
 
         EnumerateCollectionBlock (EnumerateCollectionPlan const* ep)
           : ExecutionBlock(ep) {
-
         }
 
         ~EnumerateCollectionBlock () {
           std::cout << "ENUMERATECOLLECTIONBLOCK DTOR\n";
-        } 
+        }
+        
+        int initialize () {
+          // this is very very inefficient
+          // it must be implemented properly for production
+          auto p = reinterpret_cast<EnumerateCollectionPlan const*>(_exePlan);
+
+          V8ReadTransaction trx(p->_vocbase, p->_collname);
+  
+          int res = trx.begin();
+          
+          vector<TRI_doc_mptr_t*> docs;
+          res = trx.read(docs);
+          size_t const n = docs.size();
+
+          for (size_t i = 0; i < n; ++i) {
+            _buffer.push_back(new AqlValue(docs[i]));
+          }
+          
+          res = trx.finish(res);
+          return res;
+        }
+
+        int shutdown () {
+          return TRI_ERROR_NO_ERROR;
+        }
 
         AqlValue* getOne () {
           if (_buffer.empty()) {
-              
+            return nullptr;  
           }
 
           auto value = _buffer.front();
