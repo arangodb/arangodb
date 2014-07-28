@@ -49,6 +49,14 @@ namespace triagens {
 
       ParseResult& operator= (ParseResult const& other) = delete;
 
+      ParseResult (int code,
+                   std::string const& explanation) 
+        : code(code),
+          explanation(explanation),
+          zone(TRI_UNKNOWN_MEM_ZONE),
+          json(nullptr) {
+      }
+
       ParseResult (TRI_memory_zone_t* zone) 
         : zone(zone),
           json(nullptr) {

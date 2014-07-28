@@ -635,9 +635,139 @@ AstNode* QueryAst::createNodeFunctionCall (char const* functionName,
   return node;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief injects bind parameters into the AST
+////////////////////////////////////////////////////////////////////////////////
+
+void QueryAst::injectBindParameters (BindParameters& parameters) {
+  auto p = parameters();
+
+  if (p.empty()) {
+    return;
+  }
+
+  auto func = [&](AstNode* node, void* data) -> AstNode* {
+    if (node->type == NODE_TYPE_PARAMETER) {
+      char const* param = node->getStringValue();
+
+      if (param == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
+        
+      auto it = p.find(std::string(param));
+
+      if (it == p.end()) {
+        _parser->registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param);
+        return nullptr;
+      }
+
+      auto value = (*it).second;
+
+      if (*param == '@') {
+        // collection parameter
+        TRI_ASSERT(TRI_IsStringJson(value));
+       
+        // turn node into a collection node
+        char const* name = registerString(value->_value._string.data, value->_value._string.length - 1, false);
+        node = createNodeCollection(name);
+      }
+      else {
+        node = nodeFromJson((*it).second);
+      }
+    }
+
+    return node;
+  };
+
+  _root = traverse(_root, func, &p); 
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST node from JSON
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* QueryAst::nodeFromJson (TRI_json_t const* json) {
+  TRI_ASSERT(json != nullptr);
+
+  if (json->_type == TRI_JSON_BOOLEAN) {
+    return createNodeValueBool(json->_value._boolean);
+  }
+
+  if (json->_type == TRI_JSON_NUMBER) {
+    return createNodeValueDouble(json->_value._number);
+  }
+
+  if (json->_type == TRI_JSON_STRING) {
+    char const* value = registerString(json->_value._string.data, json->_value._string.length - 1, false);
+    return createNodeValueString(value);
+  }
+
+  if (json->_type == TRI_JSON_LIST) {
+    auto node = createNodeList();
+    size_t const n = json->_value._objects._length;
+
+    for (size_t i = 0; i < n; ++i) {
+      node->addMember(nodeFromJson(static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i)))); 
+    }
+
+    return node;
+  }
+
+  if (json->_type == TRI_JSON_ARRAY) {
+    auto node = createNodeArray();
+    size_t const n = json->_value._objects._length;
+
+    for (size_t i = 0; i < n; i += 2) {
+      TRI_json_t const* key = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
+      TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i + 1));
+
+      if (! TRI_IsStringJson(key) || value == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+
+      char const* attributeName = registerString(key->_value._string.data, key->_value._string.length - 1, false);
+      
+      node->addMember(createNodeArrayElement(attributeName, nodeFromJson(value)));
+    }
+
+    return node;
+  }
+  
+  return createNodeValueNull();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief traverse the AST
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* QueryAst::traverse (AstNode* node, 
+                             std::function<AstNode*(AstNode*, void*)> func,
+                             void* data) {
+  if (node == nullptr) {
+    return nullptr;
+  }
+  
+  // dump sub-nodes 
+  size_t const n = node->numMembers();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto member = node->getMember(i);
+
+    if (member != nullptr) {
+      AstNode* result = traverse(member, func, data);
+
+      if (result != node) {
+        node->changeMember(i, result);
+      }
+    }
+  }
+
+  return func(node, data);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize a function name

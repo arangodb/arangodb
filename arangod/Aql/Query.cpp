@@ -30,7 +30,10 @@
 #include "Aql/Query.h"
 #include "Aql/Parser.h"
 #include "BasicsC/json.h"
+#include "Utils/Exception.h"
 #include "VocBase/vocbase.h"
+
+#include "Basics/JsonHelper.h"
 
 using namespace triagens::aql;
 
@@ -59,9 +62,6 @@ Query::Query (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 Query::~Query () {
-  if (_bindParameters != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _bindParameters);
-  }
 }
 
 // -----------------------------------------------------------------------------
@@ -143,6 +143,8 @@ void Query::registerError (int errorCode,
 
   _error.code        = errorCode;
   _error.explanation = explanation;
+
+  THROW_ARANGO_EXCEPTION(errorCode);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -157,8 +159,25 @@ void Query::registerError (int errorCode) {
 /// @brief execute an AQL query - TODO: implement and determine return type
 ////////////////////////////////////////////////////////////////////////////////
 
-void Query::execute () {
-  // TODO 
+ParseResult Query::execute () {
+  try {
+    Parser parser(this);
+    parser.parse();
+    parser.ast()->injectBindParameters(_bindParameters);
+  
+    // TODO: remove
+    std::cout << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
+  }
+  catch (triagens::arango::Exception const& ex) {
+    registerError(ex.code());
+  }
+  catch (...) {
+    registerError(TRI_ERROR_OUT_OF_MEMORY);
+  }
+  
+  ParseResult result(_error.code, _error.explanation);   
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -166,9 +185,20 @@ void Query::execute () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ParseResult Query::parse () {
-  Parser parser(this);
+  try {
+    Parser parser(this);
+    return parser.parse();
+  }
+  catch (triagens::arango::Exception const& ex) {
+    registerError(ex.code());
+  }
+  catch (...) {
+    registerError(TRI_ERROR_OUT_OF_MEMORY);
+  }
   
-  return parser.parse();
+  ParseResult result(_error.code, _error.explanation);   
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
