@@ -40,6 +40,8 @@
 namespace triagens {
   namespace aql {
 
+    class ExecutionBlock;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class ExecutionPlan, abstract base class of all execution plans
 ////////////////////////////////////////////////////////////////////////////////
@@ -202,6 +204,9 @@ namespace triagens {
 
         virtual void appendAsString (std::string& st, int indent = 0);
 
+
+        virtual ExecutionBlock* instanciate () = 0;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -217,6 +222,84 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                    class RootPlan
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class RootPlan, derived from ExecutionPlan
+////////////////////////////////////////////////////////////////////////////////
+
+    class RootPlan : public ExecutionPlan {
+      
+      friend class RootBlock;
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor 
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+        RootPlan ()
+          : ExecutionPlan() {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual NodeType getType () {
+          return ROOT;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node as a string
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::string getTypeString () {
+          return std::string("RootPlan");
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual triagens::basics::Json toJson (
+               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone execution plan recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ExecutionPlan* clone () {
+          auto c = new RootPlan();
+          cloneDependencies(c);
+          return static_cast<ExecutionPlan*>(c);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief turn the plan node into an execution block node
+////////////////////////////////////////////////////////////////////////////////
+        
+        ExecutionBlock* instanciate () {
+          return nullptr;
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief we need to know the database and the collection
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+        TRI_vocbase_t* _vocbase;
+        std::string _collname;
+
+    };
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                     class EnumerateCollectionPlan
 // -----------------------------------------------------------------------------
 
@@ -225,6 +308,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     class EnumerateCollectionPlan : public ExecutionPlan {
+      
+      friend class EnumerateCollectionBlock;
       
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor with a vocbase and a collection name
@@ -267,6 +352,14 @@ namespace triagens {
           auto c = new EnumerateCollectionPlan(_vocbase, _collname);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief turn the plan node into an execution block node
+////////////////////////////////////////////////////////////////////////////////
+        
+        ExecutionBlock* instanciate () {
+          return nullptr;
         }
 
 // -----------------------------------------------------------------------------
@@ -342,6 +435,14 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief turn the plan node into an execution block node
+////////////////////////////////////////////////////////////////////////////////
+        
+        ExecutionBlock* instanciate () {
+          return nullptr;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief we need to know the offset and limit
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -406,6 +507,14 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief turn the plan node into an execution block node
+////////////////////////////////////////////////////////////////////////////////
+        
+        ExecutionBlock* instanciate () {
+          return nullptr;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief we need to know the offset and limit
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -467,6 +576,14 @@ namespace triagens {
           auto c = new CalculationPlan(_aqlExpression->clone());
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief turn the plan node into an execution block node
+////////////////////////////////////////////////////////////////////////////////
+        
+        ExecutionBlock* instanciate () {
+          return nullptr;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
