@@ -37,12 +37,12 @@ namespace triagens {
   namespace aql {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      AqlDocuments
+// --SECTION--                                                      AqlValues
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief struct AqlDocument, used to pipe documents through executions
-/// the execution engine keeps one AqlDocument struct for each document
+/// @brief struct AqlValue, used to pipe documents through executions
+/// the execution engine keeps one AqlValue struct for each document
 /// that is piped through the engine. Note that the document can exist
 /// in one of two formats throughout its lifetime in the engine.
 /// When it resides originally in the WAl or a datafile, it stays
@@ -60,25 +60,24 @@ namespace triagens {
 /// Note that both Json subobjects are constructed as AUTOFREE.
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct AqlDocument {
+    struct AqlValue {
       triagens::basics::Json      _json;
-      TRI_doc_mptr_copy_t*        _mptr;
+      TRI_doc_mptr_t*             _mptr;
       triagens::basics::Json      _vars;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convenience constructors
 ////////////////////////////////////////////////////////////////////////////////
 
-      AqlDocument ()
+      AqlValue ()
         : _json(), _mptr(nullptr), _vars() {
       }
 
-      AqlDocument (TRI_doc_mptr_t* mptr)
-        : _json(), _vars() {
-        _mptr = new TRI_doc_mptr_copy_t(*mptr);
+      AqlValue (TRI_doc_mptr_t* mptr)
+        : _json(), _mptr(mptr), _vars() {
       }
 
-      AqlDocument (triagens::basics::Json json)
+      AqlValue (triagens::basics::Json json)
         : _json(json), _mptr(nullptr), _vars() {
       }
 
@@ -86,10 +85,30 @@ namespace triagens {
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-      ~AqlDocument () {
+      ~AqlValue () {
         if (_mptr != nullptr) {
           delete _mptr;
         }
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a string representation of the value
+////////////////////////////////////////////////////////////////////////////////
+
+      std::string toString () const {
+        std::string out;
+        if (! _json.isEmpty()) {
+          out += _json.toString();
+        }
+        else if (_mptr != nullptr) {
+          out.append("got a master pointer");
+        }
+
+        if (! _vars.isEmpty()) {
+          out += _vars.toString();
+        }
+
+        return out;
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -157,7 +176,7 @@ namespace triagens {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::basics::Json execute (AqlDocument* aqldoc);
+        triagens::basics::Json execute (AqlValue* aqldoc);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief private members

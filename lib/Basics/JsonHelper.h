@@ -615,7 +615,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief append an Json value to the end of a Json list, an exception
+/// @brief append a Json value to the end of a Json list, an exception
 /// is thrown if *this is not a Json list. Note that you can call this with
 /// a Json as argument because of the automatic type conversion
 /// to TRI_json_t* with steal semantics. Therefore
@@ -752,7 +752,7 @@ namespace triagens {
 /// @brief checks whether *this is an empty Json (not even null).
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isEmpty () throw() {
+        bool isEmpty () const throw() {
           return _json == nullptr;
         }
 
@@ -760,7 +760,7 @@ namespace triagens {
 /// @brief converts the Json recursively into a string.
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string toString () {
+        std::string toString () const {
           if (_json != nullptr) {
             return JsonHelper::toString(_json);
           }
