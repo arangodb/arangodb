@@ -5418,7 +5418,8 @@ static v8::Handle<v8::Value> JS_PengAql (v8::Arguments const& argv) {
   triagens::aql::ExecutionPlan* rootPlan = new triagens::aql::RootPlan(); 
   rootPlan->addDependency(enumPlan);
 
-  triagens::aql::ExecutionBlock* exec = rootPlan->instanciate();
+  triagens::aql::ExecutionBlock* exec = triagens::aql::ExecutionBlock::instanciatePlan (rootPlan);
+
   exec->initialise();
   exec->execute();
  

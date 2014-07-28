@@ -115,7 +115,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual NodeType getType () {
+        virtual NodeType getType () const {
           return ILLEGAL;
         }
 
@@ -123,7 +123,7 @@ namespace triagens {
 /// @brief return the type of the node as a string
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::string getTypeString () {
+        virtual std::string getTypeString () const {
           return std::string("ExecutionPlan (abstract)");
         }
 
@@ -139,7 +139,7 @@ namespace triagens {
 /// @brief get all dependencies
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<ExecutionPlan*> getDependencies () {
+        vector<ExecutionPlan*> getDependencies () const {
           return _dependencies;
         }
 
@@ -164,7 +164,7 @@ namespace triagens {
 /// @brief access the pos-th dependency
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionPlan* operator[] (size_t pos) {
+        ExecutionPlan* operator[] (size_t pos) const {
           if (pos > _dependencies.size()) {
             return nullptr;
           }
@@ -177,13 +177,13 @@ namespace triagens {
 /// @brief clone execution plan recursively, this makes the class abstract
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionPlan* clone () = 0;   // make class abstract
+        virtual ExecutionPlan* clone () const = 0;   // make class abstract
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper for cloning, use virtual clone methods for dependencies
 ////////////////////////////////////////////////////////////////////////////////
 
-        void cloneDependencies (ExecutionPlan* theClone) {
+        void cloneDependencies (ExecutionPlan* theClone) const {
           auto it = _dependencies.begin();
           while (it != _dependencies.end()) {
             theClone->_dependencies.push_back((*it)->clone());
@@ -196,16 +196,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual triagens::basics::Json toJson (
-                         TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+                         TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to a string, basically for debugging purposes
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual void appendAsString (std::string& st, int indent = 0);
-
-
-        virtual ExecutionBlock* instanciate () = 0;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -215,87 +212,9 @@ namespace triagens {
 /// @brief our dependent nodes
 ////////////////////////////////////////////////////////////////////////////////
 
-      private:
+      protected:
 
         std::vector<ExecutionPlan*> _dependencies;
-
-    };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    class RootPlan
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief class RootPlan, derived from ExecutionPlan
-////////////////////////////////////////////////////////////////////////////////
-
-    class RootPlan : public ExecutionPlan {
-      
-      friend class RootBlock;
-      
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor 
-////////////////////////////////////////////////////////////////////////////////
-
-      public:
-
-        RootPlan ()
-          : ExecutionPlan() {
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual NodeType getType () {
-          return ROOT;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::string getTypeString () {
-          return std::string("RootPlan");
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief export to JSON
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual triagens::basics::Json toJson (
-               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clone execution plan recursively
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual ExecutionPlan* clone () {
-          auto c = new RootPlan();
-          cloneDependencies(c);
-          return static_cast<ExecutionPlan*>(c);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief turn the plan node into an execution block node
-////////////////////////////////////////////////////////////////////////////////
-        
-        ExecutionBlock* instanciate () {
-          return nullptr;
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief we need to know the database and the collection
-////////////////////////////////////////////////////////////////////////////////
-
-      private:
-
-        TRI_vocbase_t* _vocbase;
-        std::string _collname;
 
     };
 
@@ -325,7 +244,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual NodeType getType () {
+        virtual NodeType getType () const {
           return ENUMERATE_COLLECTION;
         }
 
@@ -333,7 +252,7 @@ namespace triagens {
 /// @brief return the type of the node as a string
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::string getTypeString () {
+        virtual std::string getTypeString () const {
           return std::string("EnumerateCollectionPlan");
         }
 
@@ -342,24 +261,16 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual triagens::basics::Json toJson (
-               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone execution plan recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionPlan* clone () {
+        virtual ExecutionPlan* clone () const {
           auto c = new EnumerateCollectionPlan(_vocbase, _collname);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief turn the plan node into an execution block node
-////////////////////////////////////////////////////////////////////////////////
-        
-        ExecutionBlock* instanciate () {
-          return nullptr;
         }
 
 // -----------------------------------------------------------------------------
@@ -405,7 +316,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual NodeType getType () {
+        virtual NodeType getType () const {
           return LIMIT;
         }
 
@@ -413,7 +324,7 @@ namespace triagens {
 /// @brief return the type of the node as a string
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::string getTypeString () {
+        virtual std::string getTypeString () const {
           return std::string("LimitPlan");
         }
 
@@ -422,24 +333,16 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual triagens::basics::Json toJson (
-               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone execution plan recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionPlan* clone () {
+        virtual ExecutionPlan* clone () const {
           auto c = new LimitPlan(_offset, _limit);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief turn the plan node into an execution block node
-////////////////////////////////////////////////////////////////////////////////
-        
-        ExecutionBlock* instanciate () {
-          return nullptr;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -477,7 +380,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual NodeType getType () {
+        virtual NodeType getType () const {
           return FILTER;
         }
 
@@ -485,7 +388,7 @@ namespace triagens {
 /// @brief return the type of the node as a string
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::string getTypeString () {
+        virtual std::string getTypeString () const {
           return std::string("FilterPlan");
         }
 
@@ -494,24 +397,16 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual triagens::basics::Json toJson (
-               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone execution plan recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionPlan* clone () {
+        virtual ExecutionPlan* clone () const {
           auto c = new FilterPlan(_attribute, _value.copy());
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief turn the plan node into an execution block node
-////////////////////////////////////////////////////////////////////////////////
-        
-        ExecutionBlock* instanciate () {
-          return nullptr;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -549,7 +444,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual NodeType getType () {
+        virtual NodeType getType () const {
           return CALCULATION;
         }
 
@@ -557,7 +452,7 @@ namespace triagens {
 /// @brief return the type of the node as a string
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::string getTypeString () {
+        virtual std::string getTypeString () const {
           return std::string("CalculationPlan");
         }
 
@@ -566,25 +461,17 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual triagens::basics::Json toJson (
-               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone execution plan recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionPlan* clone () {
+        virtual ExecutionPlan* clone () const {
           auto c = new CalculationPlan(//_aqlExpression->clone());
                                        _aqlExpression);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief turn the plan node into an execution block node
-////////////////////////////////////////////////////////////////////////////////
-        
-        ExecutionBlock* instanciate () {
-          return nullptr;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -608,6 +495,8 @@ namespace triagens {
 
     class RootPlan : public ExecutionPlan {
       
+      friend class RootBlock;
+      
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructors for various arguments, always with offset and limit
 ////////////////////////////////////////////////////////////////////////////////
@@ -622,7 +511,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual NodeType getType () {
+        virtual NodeType getType () const {
           return ROOT;
         }
 
@@ -630,7 +519,7 @@ namespace triagens {
 /// @brief return the type of the node as a string
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::string getTypeString () {
+        virtual std::string getTypeString () const {
           return std::string("RootPlan");
         }
 
@@ -639,13 +528,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual triagens::basics::Json toJson (
-               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone execution plan recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionPlan* clone () {
+        virtual ExecutionPlan* clone () const {
           auto c = new RootPlan();
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
