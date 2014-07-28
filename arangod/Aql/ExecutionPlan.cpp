@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Infrastructure for ExecutionPlans
 ///
-/// @file arangod/Aql/ExecutionPlan.h
+/// @file arangod/Aql/ExecutionPlan.cpp
 ///
 /// DISCLAIMER
 ///
@@ -163,27 +163,6 @@ void testExecutionPlans () {
   std::cout << b.toString() << std::endl;
   std::cout << a.toString() << std::endl;
   std::cout << "Got here" << std::endl;
-  ExecutionPlan* e = new ExecutionPlan();
-  ExecutionPlan* f = new ExecutionPlan(e);
-  string st;
-  e->appendAsString(st, 0);
-  cout << "e as string:\n" << st << endl;
-  st.clear();
-  f->appendAsString(st, 0);
-  cout << "f as string:\n" << st << endl;
-  TRI_json_t* json = e->toJson(TRI_UNKNOWN_MEM_ZONE);
-  if (json != nullptr) {
-    cout << "e as JSON:\n" << 
-              JsonHelper::toString(json) << endl;
-  }
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-  json = f->toJson(TRI_UNKNOWN_MEM_ZONE);
-  if (json != nullptr) {
-    cout << "f as JSON:\n" << 
-              JsonHelper::toString(json) << endl;
-  }
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-  delete f;  // should not leave a leak
 
   auto ec = new EnumerateCollectionPlan(nullptr, "guck");
   Json jjj(ec->toJson());
@@ -192,7 +171,7 @@ void testExecutionPlans () {
   jjj = li->toJson();
   cout << jjj.toString() << endl;
 
-  json = Json(12);
+  TRI_json_t* json = Json(12);
   cout << JsonHelper::toString(json) << endl;
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   
