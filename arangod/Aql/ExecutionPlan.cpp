@@ -174,6 +174,31 @@ Json FilterPlan::toJson (TRI_memory_zone_t* zone) {
   return json;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                        methods of CalculationPlan
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, for CalculationPlan
+////////////////////////////////////////////////////////////////////////////////
+
+Json CalculationPlan::toJson (TRI_memory_zone_t* zone) {
+  Json json(ExecutionPlan::toJson(zone));  // call base class method
+  if (json.isEmpty()) {
+    return json;
+  }
+  // Now put info about ...
+  try {
+    // TODO: add specific stuff
+  }
+  catch (std::exception& e) {
+    return Json();
+  }
+
+  // And return it:
+  return json;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test function
 ////////////////////////////////////////////////////////////////////////////////

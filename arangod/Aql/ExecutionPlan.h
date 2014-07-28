@@ -573,7 +573,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionPlan* clone () {
-          auto c = new CalculationPlan(_aqlExpression->clone());
+          auto c = new CalculationPlan(//_aqlExpression->clone());
+                                       _aqlExpression);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
         }
