@@ -5420,16 +5420,20 @@ static v8::Handle<v8::Value> JS_PengAql (v8::Arguments const& argv) {
 
   triagens::aql::ExecutionBlock* exec = triagens::aql::ExecutionBlock::instanciatePlan (rootPlan);
 
-  exec->initialise();
+  exec->initialize();
   exec->execute();
  
   triagens::aql::AqlValue* value;
   while (nullptr != (value = exec->getOne())) {
+    std::cout << "Peng" << std::endl;
     std::cout << value->toString();
     delete value;
   }
 
   exec->shutdown();
+
+  delete exec;
+  delete rootPlan;
 
   return scope.Close(v8::Undefined());
 }

@@ -29,6 +29,7 @@
 #define ARANGODB_AQL_EXECUTION_BLOCK_H 1
 
 #include <Basics/JsonHelper.h>
+#include <ShapedJson/shaped-json.h>
 
 #include "Aql/Types.h"
 #include "Aql/ExecutionPlan.h"
@@ -94,7 +95,10 @@ namespace triagens {
 
 
         // Methods for execution:
-        virtual int initialise () {
+        virtual int initialize () {
+          for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
+            (*it)->initialize();
+          }
           return TRI_ERROR_NO_ERROR;
         }
 
@@ -103,10 +107,16 @@ namespace triagens {
         std::map<std::string, struct TRI_json_s*>* getParameters ();
 
         virtual int execute () {
+          for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
+            (*it)->execute();
+          }
           return TRI_ERROR_NO_ERROR;
         }
 
         virtual int shutdown () {
+          for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
+            (*it)->shutdown();
+          }
           return TRI_ERROR_NO_ERROR;
         }
 
@@ -157,8 +167,13 @@ namespace triagens {
           res = trx.read(docs);
           size_t const n = docs.size();
 
+          auto shaper = trx.documentCollection()->getShaper();
+
           for (size_t i = 0; i < n; ++i) {
-            _buffer.push_back(new AqlValue(docs[i]));
+            TRI_shaped_json_t shaped;
+            TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, docs[i]->getDataPtr());
+            triagens::basics::Json json(TRI_JsonShapedJson(shaper, &shaped));
+            _buffer.push_back(new AqlValue(json));
           }
           
           res = trx.finish(res);
@@ -170,6 +185,7 @@ namespace triagens {
         }
 
         AqlValue* getOne () {
+          std::cout << "getOne of EnumerateCollectionBlock" << std::endl;
           if (_buffer.empty()) {
             return nullptr;  
           }
@@ -195,6 +211,7 @@ namespace triagens {
         } 
 
         AqlValue* getOne () {
+          std::cout << "getOne of RootBlock" << std::endl;
           return _dependencies[0]->getOne();
         }
         
