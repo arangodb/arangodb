@@ -38,6 +38,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Ahuacatl/ahuacatl-statementlist.cpp \
 	arangod/Ahuacatl/ahuacatl-tokens.cpp \
 	arangod/Ahuacatl/ahuacatl-variable.cpp \
+	arangod/Aql/AstNode.cpp \
 	arangod/Aql/ExecutionBlock.cpp \
 	arangod/Aql/ExecutionPlan.cpp \
 	arangod/Aql/grammar.cpp \
