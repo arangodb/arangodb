@@ -572,7 +572,7 @@ namespace triagens {
 /// @brief copy recursively, even if NOFREE is set!
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json copy () {
+        Json copy () const {
           Json c;
           c._zone = _zone;
           if (_json != nullptr) {
