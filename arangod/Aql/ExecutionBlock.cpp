@@ -30,6 +30,17 @@
 using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace triagens::aql;
+         
+ExecutionBlock::~ExecutionBlock () {        
+  std::cout << "EXECUTIONBLOCK DTOR\n";
+  for (auto i = _dependencies.begin(); i != _dependencies.end(); ++i) {
+    delete *i;
+  }
+}
+
+int ExecutionBlock::bind (std::map<std::string, struct TRI_json_s*>* params) {
+  return TRI_ERROR_NO_ERROR;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                factory for instanciation of plans

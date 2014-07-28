@@ -44,12 +44,7 @@ namespace triagens {
         ExecutionBlock (ExecutionPlan const* ep)
           : _exePlan(ep) { }
 
-        virtual ~ExecutionBlock () { 
-          std::cout << "EXECUTIONBLOCK DTOR\n";
-          for (auto i = _dependencies.begin(); i != _dependencies.end(); ++i) {
-            delete *i;
-          }
-        }
+        virtual ~ExecutionBlock ();
           
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a dependency
