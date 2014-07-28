@@ -148,6 +148,32 @@ Json LimitPlan::toJson (TRI_memory_zone_t* zone) {
   return json;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                             methods of FilterPlan
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, for FilterPlan
+////////////////////////////////////////////////////////////////////////////////
+
+Json FilterPlan::toJson (TRI_memory_zone_t* zone) {
+  Json json(ExecutionPlan::toJson(zone));  // call base class method
+  if (json.isEmpty()) {
+    return json;
+  }
+  // Now put info about offset and limit in
+  try {
+    json("attribute", Json(_attribute))
+        ("value", Json(_value.copy()));
+  }
+  catch (std::exception& e) {
+    return Json();
+  }
+
+  // And return it:
+  return json;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test function
 ////////////////////////////////////////////////////////////////////////////////
