@@ -56,6 +56,45 @@ var getAddrPort = require("org/arangodb/cluster/planner").getAddrPort;
 var getPort = require("org/arangodb/cluster/planner").getPort;
 var endpointToURL = require("org/arangodb/cluster/planner").endpointToURL;
 
+function extractErrorMessage (result) {
+  if (result === undefined) {
+    return "unknown error";
+  }
+
+  if (result.hasOwnProperty("body") && result.body !== undefined) {
+    try {
+      var e =  JSON.parse(result.body);
+
+      if (e.hasOwnProperty("errorMessage")) {
+        return e.errorMessage;
+      }
+
+      if (e.hasOwnProperty("errorNum")) {
+        return e.errorNum;
+      }
+
+      if (result.body !== "") {
+        return result.body;
+      }
+    }
+    catch (err) {
+      if (result.body !== "") {
+        return result.body;
+      }
+    }
+  }
+
+  if (result.hasOwnProperty("message")) {
+    return result.message;
+  }
+
+  if (result.hasOwnProperty("code")) {
+    return String(result.code);
+  }
+
+  return "unknown error";
+}
+
 function makePath (path) {
   return fs.join.apply(null,path.split("/"));
 }
@@ -363,38 +402,71 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
           "pids": pids, "endpoints": endpoints, "roles": roles};
 };
 
-launchActions.createSystemColls = function (dispatchers, cmd, isRelaunch) {
-  if (isRelaunch) {
-    return {"error":false, "isCreateSystemColls":true};
+launchActions.bootstrapServers = function (dispatchers, cmd, isRelaunch,
+                                           username, password) {
+  var coordinators = cmd.coordinators;
+
+  if (username === undefined && password === undefined) {
+    username = "root";
+    password = "";
   }
 
-  // We wait another half second (we have already waited for all servers
-  // until they responded!), just to be on the safe side:
-  wait(0.5);
+  // we need at least one coordinator
+  if (0 === coordinators.length) {
+    return {"error": true, "bootstrapServers": true};
+  }
 
+  // autorization header for coordinator
   var hdrs = {
-    Authorization: getAuthorizationHeader("root", "") 
-    // default username and passwd, this will work just after cluster creation
+    Authorization: getAuthorizationHeader(username, password) 
   };
 
-  console.info("Creating system collections...");
-  var url = cmd.url + "/_admin/execute?returnAsJSON=true";
-  var body = 'load=require("internal").load;\n'+
-             'UPGRADE_ARGS=undefined;\n'+
-             'return load('+JSON.stringify(
-                                fs.join(ArangoServerState.javaScriptPath(),
-                                        makePath("server/version-check.js")))+
-             ');\n';
-  var o = { method: "POST", timeout: 90, headers: hdrs };
-  var r = download(url, body, o);
-  if (r.code === 200) {
-    r = JSON.parse(r.body);
-    r.isCreateSystemColls = true;
-    return r;
+  // default options
+  var options = {
+    method: "POST",
+    timeout: 90,
+    headers: hdrs,
+    returnBodyOnError: true
+  };
+
+  // execute bootstrap command on first server
+  var url = coordinators[0] + "/_admin/cluster/bootstrapDbServers";
+  var body = '{"isRelaunch": ' + (isRelaunch ? "true" : "false") + '}';
+
+  var result = download(url, body, options);
+
+  if (result.code !== 200) {
+    console.error("bootstrapping DB servers failed: %s", extractErrorMessage(result));
+    return {"error": true, "bootstrapServers": true};
   }
-  r.error = true;
-  r.isCreateSystemColls = true;
-  return r;
+
+  // execute cluster database upgrade
+  url = coordinators[0] + "/_admin/cluster/upgradeClusterDatabase";
+
+  result = download(url, body, options);
+
+  if (result.code !== 200) {
+    console.error("upgrading cluster database failed: %s", extractErrorMessage(result));
+    return {"error": true, "bootstrapServers": true};
+  }
+  
+  // bootstrap coordinators
+  var i;
+
+  for (i = 0;  i < coordinators.length;  ++i) {
+    url = coordinators[i] + "/_admin/cluster/bootstrapCoordinator";
+
+    result = download(url, body, options);
+
+    if (result.code !== 200) {
+      console.error("bootstrapping coordinator %s failed: %s",
+                    coordinators[i],
+                    extractErrorMessage(result));
+      return {"error": true, "bootstrapServers": true};
+    }
+  }
+
+  return {"error": false, "bootstrapServers": true};
 };
 
 shutdownActions.startAgent = function (dispatchers, cmd, run) {
@@ -720,38 +792,74 @@ upgradeActions.startServers = function (dispatchers, cmd, isRelaunch) {
 };
 
 
-// Upgrade for the version-check as in launch:
+// Upgrade for the upgrade-database as in launch:
 
-upgradeActions.createSystemColls = function (dispatchers, cmd, isRelaunch,
+upgradeActions.bootstrapServers = function (dispatchers, cmd, isRelaunch,
                                              username, password) {
+  var coordinators = cmd.coordinators;
+
+  // we need at least one coordinator
+  if (0 === coordinators.length) {
+    return {"error": true, "bootstrapServers": true};
+  }
+
   // We wait another half second (we have already waited for all servers
   // until they responded!), just to be on the safe side:
   wait(0.5);
 
+  // autorization header for coordinator
   var hdrs = {
     Authorization: getAuthorizationHeader(username, password) 
-    // default username and passwd, this will work just after cluster creation
-    // for upgrade we document that this credentials have to work
   };
 
-  console.info("Running upgrade script on whole cluster...");
-  var url = cmd.url + "/_admin/execute?returnAsJSON=true";
-  var body = 'load=require("internal").load;\n'+
-             'UPGRADE_ARGS=undefined;\n'+
-             'return load('+JSON.stringify(
-                                fs.join(ArangoServerState.javaScriptPath(),
-                                        makePath("server/version-check.js")))+
-             ');\n';
-  var o = { method: "POST", timeout: 90, headers: hdrs };
-  var r = download(url, body, o);
-  if (r.code === 200) {
-    r = JSON.parse(r.body);
-    r.isCreateSystemColls = true;
-    return r;
+  // default options
+  var options = {
+    method: "POST",
+    timeout: 90,
+    headers: hdrs,
+    returnBodyOnError: true
+  };
+
+  // execute bootstrap command on first server
+  var url = coordinators[0] + "/_admin/cluster/bootstrapDbServers";
+  var body = '{"isRelaunch": false, "upgrade": true}';
+
+  var result = download(url, body, options);
+
+  if (result.code !== 200) {
+    console.error("bootstrapping DB servers failed: %s", extractErrorMessage(result));
+    return {"error": true, "bootstrapServers": true};
   }
-  r.error = true;
-  r.isCreateSystemColls = true;
-  return r;
+
+  // execute cluster database upgrade
+  console.info("Running upgrade script on whole cluster...");
+
+  url = coordinators[0] + "/_admin/cluster/upgradeClusterDatabase";
+
+  result = download(url, body, options);
+
+  if (result.code !== 200) {
+    console.error("upgrading cluster database failed: %s", extractErrorMessage(result));
+    return {"error": true, "bootstrapServers": true};
+  }
+  
+  // bootstrap coordinators
+  var i;
+
+  for (i = 0;  i < coordinators.length;  ++i) {
+    url = coordinators[i] + "/_admin/cluster/bootstrapCoordinator";
+
+    result = download(url, body, options);
+
+    if (result.code !== 200) {
+      console.error("bootstrapping coordinator %s failed: %s",
+                    coordinators[i],
+                    extractErrorMessage(result));
+      return {"error": true, "bootstrapServers": true};
+    }
+  }
+
+  return {"error": false, "bootstrapServers": true};
 };
 
 
@@ -906,13 +1014,18 @@ Kickstarter.prototype.launch = function () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-Kickstarter.prototype.relaunch = function () {
+Kickstarter.prototype.relaunch = function (username, password) {
   var clusterPlan = this.clusterPlan;
   var myname = this.myname;
   var dispatchers = clusterPlan.dispatchers;
   var cmds = clusterPlan.commands;
   var results = [];
   var cmd;
+
+  if (username === undefined && password === undefined) {
+    username = "root";
+    password = "";
+  }
 
   var error = false;
   var i;
@@ -921,7 +1034,8 @@ Kickstarter.prototype.relaunch = function () {
     cmd = cmds[i];
     if (cmd.dispatcher === undefined || cmd.dispatcher === myname) {
       if (launchActions.hasOwnProperty(cmd.action)) {
-        res = launchActions[cmd.action](dispatchers, cmd, true);
+        res = launchActions[cmd.action](dispatchers, cmd, true,
+                                        username, password);
         results.push(res);
         if (res.error === true) {
           error = true;
@@ -938,7 +1052,9 @@ Kickstarter.prototype.relaunch = function () {
                                   "clusterPlan": {
                                         "dispatchers": dispatchers,
                                         "commands": [cmd] },
-                                  "myname": cmd.dispatcher });
+                                  "myname": cmd.dispatcher,
+                                  "username": username,
+                                  "password": password});
       var url = endpointToURL(ep) + "/_admin/clusterDispatch";
       var hdrs = {};
       if (dispatchers[cmd.dispatcher].username !== undefined &&
@@ -1218,7 +1334,7 @@ Kickstarter.prototype.isHealthy = function() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_Kickstarter_prototype_upgrade
 ///
-/// `Kickstarter.upgrade()`
+/// `Kickstarter.upgrade(username, passwd)`
 ///
 /// This performs an upgrade procedure on a cluster as described in
 /// the plan which was given to the constructor. To this end, other
@@ -1227,7 +1343,7 @@ Kickstarter.prototype.isHealthy = function() {
 /// upgrade is as follows: The agency is started first (exactly as
 /// in relaunch), no configuration is sent there (exactly as in the
 /// relaunch action), all servers are first started with the option
-/// "--upgrade" and then normally. In the end, the version-check.js
+/// "--upgrade" and then normally. In the end, the upgrade-database.js
 /// script is run on one of the coordinators, as in the launch action.
 ///
 /// The result is an object that contains information about the started

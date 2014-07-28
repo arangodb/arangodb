@@ -1,12 +1,10 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, evil: true */
-/*global require, exports, module, ArangoServerState */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief open actions
+/// @brief initialize routing
 ///
 /// @file
-/// Actions that are mapped under the "_open" path. Allowing to execute the
-/// actions without authorization.
 ///
 /// DISCLAIMER
 ///
@@ -27,37 +25,44 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var actions = require("org/arangodb/actions");
-var console = require("console");
-
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                initialize routing
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ceberus password manager
+/// @brief initialize routing
 ////////////////////////////////////////////////////////////////////////////////
 
-actions.defineHttp({
-  url: "_open/cerberus",
-  prefix : true,
+(function () {
+  return {
+    startup: function () {
+      var internal = require("internal");
+      var db = internal.db;
 
-  callback : function (req, res) {
-    req.user = null;
-    req.database = "_system";
+      db._useDatabase("_system");
 
-    var suffix = "system/cerberus";
-    suffix = suffix.split("/");
-    suffix = suffix.concat(req.suffix);
+      var databases = db._listDatabases();
+      var i;
 
-    req.suffix = suffix;
+      try {
+        for (i = 0;  i < databases.length;  ++i) {
+          db._useDatabase(databases[i]);
 
-    actions.routeRequest(req, res);
-  }
-});
+          require("org/arangodb/actions").reloadRouting();
+        }
+      }
+      catch (err) {
+        db._useDatabase("_system");
+        throw err;
+      }
+
+      return true;
+    }
+  };
+}());
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

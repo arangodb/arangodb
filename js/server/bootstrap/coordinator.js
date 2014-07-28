@@ -1,12 +1,10 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, evil: true */
-/*global require, exports, module, ArangoServerState */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, ArangoServerState */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief open actions
+/// @brief initialise a new database
 ///
 /// @file
-/// Actions that are mapped under the "_open" path. Allowing to execute the
-/// actions without authorization.
 ///
 /// DISCLAIMER
 ///
@@ -27,37 +25,37 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var actions = require("org/arangodb/actions");
-var console = require("console");
-
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                         initialise a new database
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ceberus password manager
+/// @brief initialise a new database
 ////////////////////////////////////////////////////////////////////////////////
 
-actions.defineHttp({
-  url: "_open/cerberus",
-  prefix : true,
+(function () {
+  return function () {
+    var internal = require("internal");
+    var console = require("console");
 
-  callback : function (req, res) {
-    req.user = null;
-    req.database = "_system";
+    // statistics can be turned off
+    if (internal.enableStatistics) {
+      require("org/arangodb/statistics").startup();
+    }
 
-    var suffix = "system/cerberus";
-    suffix = suffix.split("/");
-    suffix = suffix.concat(req.suffix);
+    // load all foxxes
+    internal.loadStartup("server/bootstrap/foxxes.js").foxxes();
 
-    req.suffix = suffix;
+    // autoload all modules and reload routing information in all threads
+    internal.executeGlobalContextFunction("bootstrapCoordinator");
 
-    actions.routeRequest(req, res);
-  }
-});
+    console.info("bootstraped coordinator %s", ArangoServerState.id());
+    return true;
+  };
+}());
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

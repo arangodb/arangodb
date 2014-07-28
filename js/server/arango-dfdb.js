@@ -5,7 +5,8 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,9 +20,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -150,7 +152,7 @@ function PrintEntries (entries, amount) {
 
   if (amount > 0) {
     start = 0;
-    end = amount; 
+    end = amount;
     if (end > entries.length) {
       end = entries.length;
     }
@@ -238,7 +240,7 @@ function CheckDatafile (collection, type, datafile, issues, details) {
   printf("  isSealed: %s\n", scan.isSealed ? "yes" : "no");
 
   // set default value to unknown
-  var statusMessage = "UNKNOWN (" + scan.status + ")"; 
+  var statusMessage = "UNKNOWN (" + scan.status + ")";
   var color = internal.COLORS.COLOR_YELLOW;
 
   switch (scan.status) {
@@ -276,13 +278,13 @@ function CheckDatafile (collection, type, datafile, issues, details) {
   printf(internal.COLORS.COLOR_RESET);
 
   if (scan.status !== 1) {
-    issues.push({ 
-      collection: collection.name(), 
-      path: datafile, 
-      type: type, 
-      status: scan.status, 
-      message: statusMessage, 
-      color: color 
+    issues.push({
+      collection: collection.name(),
+      path: datafile,
+      type: type,
+      status: scan.status,
+      message: statusMessage,
+      color: color
     });
   }
 
@@ -291,12 +293,12 @@ function CheckDatafile (collection, type, datafile, issues, details) {
     color = internal.COLORS.COLOR_YELLOW;
 
     issues.push({
-      collection: collection.name(), 
-      path: datafile, 
-      type: type, 
-      status: scan.status, 
+      collection: collection.name(),
+      path: datafile,
+      type: type,
+      status: scan.status,
       message: statusMessage,
-      color: color 
+      color: color
     });
 
     printf(color);
@@ -312,12 +314,12 @@ function CheckDatafile (collection, type, datafile, issues, details) {
     color = internal.COLORS.COLOR_YELLOW;
 
     issues.push({
-      collection: collection.name(), 
-      path: datafile, 
-      type: type, 
-      status: scan.status, 
+      collection: collection.name(),
+      path: datafile,
+      type: type,
+      status: scan.status,
       message: statusMessage,
-      color: color 
+      color: color
     });
 
     printf(color);
@@ -333,10 +335,10 @@ function CheckDatafile (collection, type, datafile, issues, details) {
     color = internal.COLORS.COLOR_YELLOW;
 
     issues.push({
-      collection: collection.name(), 
-      path: datafile, 
-      type: type, 
-      status: scan.status, 
+      collection: collection.name(),
+      path: datafile,
+      type: type,
+      status: scan.status,
       message: statusMessage,
       color: color
     });
@@ -347,17 +349,17 @@ function CheckDatafile (collection, type, datafile, issues, details) {
     RemoveDatafile(collection, type, datafile);
     return;
   }
-  
+
   if (type !== "journal" && scan.entries.length === 3 && scan.entries[2].type === 0) {
     // got the two initial header markers but nothing else...
     statusMessage = "datafile is empty but not sealed";
     color = internal.COLORS.COLOR_YELLOW;
 
     issues.push({
-      collection: collection.name(), 
-      path: datafile, 
-      type: type, 
-      status: scan.status, 
+      collection: collection.name(),
+      path: datafile,
+      type: type,
+      status: scan.status,
       message: statusMessage,
       color: color
     });
@@ -368,7 +370,7 @@ function CheckDatafile (collection, type, datafile, issues, details) {
     RemoveDatafile(collection, type, datafile);
     return;
   }
-  
+
   if (details) {
     // print details
     printf("Entries\n");
@@ -426,7 +428,7 @@ function CheckCollection (collection, issues, details) {
 function main (argv) {
   var databases = internal.db._listDatabases();
   var i;
-  
+
   var collectionSorter = function (l, r) {
     var lName = l.name().toLowerCase();
     var rName = r.name().toLowerCase();
@@ -437,7 +439,7 @@ function main (argv) {
 
     return 0;
   };
-  
+
   printf("%s\n", "    ___      _         __ _ _           ___  ___    ___ ");
   printf("%s\n", "   /   \\__ _| |_ __ _ / _(_) | ___     /   \\/ __\\  / _ \\");
   printf("%s\n", "  / /\\ / _` | __/ _` | |_| | |/ _ \\   / /\\ /__\\// / /_\\/");
@@ -449,20 +451,20 @@ function main (argv) {
     printf("No databases available. Exiting\n");
     return;
   }
-  
+
   databases.sort();
   printf("Available databases:\n");
 
   for (i = 0;  i < databases.length;  ++i) {
     printf("  %d: %s\n", i, databases[i]);
   }
-  
+
   var line;
-  
+
   printf("Database to check: ");
   while (true) {
     line = console.getline();
-   
+
     if (line == "") {
       printf("Exiting. Please wait.\n");
       return;
@@ -504,7 +506,7 @@ function main (argv) {
 
   printf("Collection to check: ");
   var a = [];
-  
+
   while (true) {
     line = console.getline();
 
@@ -532,7 +534,7 @@ function main (argv) {
       }
     }
   }
-  
+
   printf("\n");
   printf("Prints details (Y/N)? ");
 
@@ -567,7 +569,7 @@ function main (argv) {
     CheckCollection(collection, issues, details);
   }
 
- 
+
   if (issues.length > 0) {
     // report issues
     printf("\n%d issue(s) found:\n------------------------------------------\n", issues.length);
@@ -597,5 +599,5 @@ function main (argv) {
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

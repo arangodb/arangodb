@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
 /*jslint sloppy: true, regexp: true */
 /*global require, module, Module, ArangoError, SleepAndRequeue,
-  CONFIGURE_ENDPOINT, REMOVE_ENDPOINT, LIST_ENDPOINTS,
+  CONFIGURE_ENDPOINT, REMOVE_ENDPOINT, LIST_ENDPOINTS, STARTUP_PATH,
   SYS_BASE64DECODE, SYS_BASE64ENCODE, SYS_DEBUG_SEGFAULT,
   SYS_DEBUG_CAN_USE_FAILAT, SYS_DEBUG_SET_FAILAT, SYS_DEBUG_REMOVE_FAILAT, SYS_DEBUG_CLEAR_FAILAT,
   SYS_DOWNLOAD, SYS_EXECUTE, SYS_GET_CURRENT_REQUEST, SYS_GET_CURRENT_RESPONSE,
@@ -256,6 +256,21 @@
   if (typeof REQUEST_TIME_DISTRIBUTION !== "undefined") {
     exports.requestTimeDistribution = REQUEST_TIME_DISTRIBUTION;
     delete REQUEST_TIME_DISTRIBUTION;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief startupPath
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.startupPath = "";
+
+  if (typeof STARTUP_PATH !== "undefined") {
+    exports.startupPath = STARTUP_PATH;
+    delete STARTUP_PATH;
+  }
+
+  if (exports.startupPath === "") {
+    exports.startupPath = ".";
   }
 
 // -----------------------------------------------------------------------------

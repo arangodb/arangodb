@@ -15,7 +15,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2013 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -29,9 +29,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -49,10 +50,6 @@ var checkedIndex = false;
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 /*
 
 Configuration example document:
@@ -184,7 +181,7 @@ Configuration example document:
 
  "arrayTypes": {                       <- Array type definitions
   "number_list_type": {                <- Name of type
-   "type": "number",                  
+   "type": "number",
    "formatter": {
     "default": {
      "args": {
@@ -232,7 +229,7 @@ Configuration example document:
  "objectTypes": {                       <- Object type definitions
   "complex_type1": {                    <- Name of type
    "attributes": {                      <- Attributes of the object type
-    "aNumber": {                        
+    "aNumber": {
      "type": "number"
     },
     "aList": {
@@ -273,7 +270,7 @@ function stringToBoolean (string){
   if (undefined === string || null === string) {
     return false;
   }
-  
+
 	switch(string.toLowerCase()){
 		case "true": case "yes": case "1": return true;
 		case "false": case "no": case "0": case null: return false;
@@ -282,36 +279,36 @@ function stringToBoolean (string){
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a (OK) result 
+/// @brief returns a (OK) result
 ////////////////////////////////////////////////////////////////////////////////
 
-function resultOk (req, res, httpReturnCode, keyvals, headers) {  
+function resultOk (req, res, httpReturnCode, keyvals, headers) {
   'use strict';
 
   res.responseCode = httpReturnCode;
   res.contentType = "application/json; charset=utf-8";
-  
+
   if (undefined !== keyvals) {
     res.body = JSON.stringify(keyvals);
   }
 
   if (headers !== undefined && headers !== null) {
-    res.headers = headers;    
+    res.headers = headers;
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a (error) result 
+/// @brief returns a (error) result
 ////////////////////////////////////////////////////////////////////////////////
 
-function resultError (req, res, httpReturnCode, errorNum, errorMessage, keyvals, headers) {  
+function resultError (req, res, httpReturnCode, errorNum, errorMessage, keyvals, headers) {
   'use strict';
 
   var i;
 
   res.responseCode = httpReturnCode;
   res.contentType = "application/json; charset=utf-8";
-  
+
   var result = {};
 
   if (keyvals !== undefined) {
@@ -328,20 +325,20 @@ function resultError (req, res, httpReturnCode, errorNum, errorMessage, keyvals,
     result.errorNum = errorMessage.errorNum;
   }
   else {
-    result.errorNum     = errorNum;    
+    result.errorNum     = errorNum;
   }
   if (undefined !== errorMessage.errorMessage) {
     result.errorMessage = errorMessage.errorMessage;
   }
   else {
-    result.errorMessage = errorMessage;    
+    result.errorMessage = errorMessage;
   }
-  
-  
+
+
   res.body = JSON.stringify(result);
 
   if (headers !== undefined && headers !== null) {
-    res.headers = headers;    
+    res.headers = headers;
   }
 }
 
@@ -350,39 +347,39 @@ function resultError (req, res, httpReturnCode, errorNum, errorMessage, keyvals,
 /// @brief returns true if a "if-match" or "if-none-match" errer happens
 ////////////////////////////////////////////////////////////////////////////////
 
-function matchError (req, res, doc) {  
+function matchError (req, res, doc) {
 
   if (req.headers["if-none-match"] !== undefined) {
     if (doc._rev === req.headers["if-none-match"]) {
-      // error      
+      // error
       res.responseCode = actions.HTTP_NOT_MODIFIED;
       res.contentType = "application/json; charset=utf-8";
       res.body = '';
-      res.headers = {};      
+      res.headers = {};
       return true;
     }
-  }  
+  }
 
   if (req.headers["if-match"] !== undefined) {
     if (doc._rev !== req.headers["if-match"]) {
       // error
-      resultError(req, res, actions.HTTP_PRECONDITION_FAILED, 
-          arangodb.ERROR_ARANGO_CONFLICT, "wrong revision", 
+      resultError(req, res, actions.HTTP_PRECONDITION_FAILED,
+          arangodb.ERROR_ARANGO_CONFLICT, "wrong revision",
           {'_id': doc._id, '_rev': doc._rev, '_key': doc._key});
       return true;
     }
-  }  
+  }
 
   var rev = req.parameters.rev;
   if (rev !== undefined) {
     if (doc._rev !== rev) {
       // error
-      resultError(req, res, actions.HTTP_PRECONDITION_FAILED, 
-          arangodb.ERROR_ARANGO_CONFLICT, "wrong revision", 
+      resultError(req, res, actions.HTTP_PRECONDITION_FAILED,
+          arangodb.ERROR_ARANGO_CONFLICT, "wrong revision",
           {'_id': doc._id, '_rev': doc._rev, '_key': doc._key});
       return true;
     }
-  }  
+  }
 
   return false;
 }
@@ -392,10 +389,10 @@ function matchError (req, res, doc) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function getCollectionByRequest(req, res)  {
-  
+
   if (req.suffix.length === 0) {
     // GET /_api/structure (missing collection)
-    resultError(req, res, actions.HTTP_BAD, 
+    resultError(req, res, actions.HTTP_BAD,
         arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND, "collection not found");
     return;
   }
@@ -410,13 +407,13 @@ function getCollectionByRequest(req, res)  {
 ////////////////////////////////////////////////////////////////////////////////
 
 function getOverwritePolicy(req)  {
-  
+
   var policy = req.parameters.policy;
-  
+
   if (undefined !== policy && "error" === policy) {
     return false;
   }
-  
+
   return true;
 }
 
@@ -424,7 +421,7 @@ function getOverwritePolicy(req)  {
 /// @brief returns the overwite policy
 ////////////////////////////////////////////////////////////////////////////////
 
-function getKeepNull(req)  {  
+function getKeepNull(req)  {
   return stringToBoolean(req.parameters.keepNull);
 }
 
@@ -432,11 +429,11 @@ function getKeepNull(req)  {
 /// @brief returns wait for sync
 ////////////////////////////////////////////////////////////////////////////////
 
-function getWaitForSync(req, collection)  {  
+function getWaitForSync(req, collection)  {
   if (collection.properties().waitForSync) {
     return true;
   }
-  
+
   return stringToBoolean(req.parameters.waitForSync);
 }
 
@@ -447,13 +444,13 @@ function getWaitForSync(req, collection)  {
 function saveDocument(req, res, collection, document)  {
   var doc;
   var waitForSync = getWaitForSync(req, collection);
-    
+
   try {
     doc = collection.save(document, waitForSync);
   }
   catch(err) {
-    resultError(req, res, actions.HTTP_BAD, 
-        arangodb.ERROR_FAILED, 
+    resultError(req, res, actions.HTTP_BAD,
+        arangodb.ERROR_FAILED,
         err);
     return;
   }
@@ -462,16 +459,16 @@ function saveDocument(req, res, collection, document)  {
     "Etag" :  doc._rev,
     "location" : "/_api/structure/" + doc._id
   };
-  
+
   if (req.hasOwnProperty('compatibility') && req.compatibility >= 10400) {
     // 1.4+ style location header
     headers.location = "/_db/" + encodeURIComponent(arangodb.db._name()) + headers.location;
   }
 
   var returnCode = waitForSync ? actions.HTTP_CREATED : actions.HTTP_ACCEPTED;
-  
+
   doc.error = false;
-  
+
   resultOk(req, res, returnCode, doc, headers);
 }
 
@@ -483,22 +480,22 @@ function replaceDocument(req, res, collection, oldDocument, newDocument)  {
   var doc;
   var waitForSync = getWaitForSync(req, collection);
   var overwrite = getOverwritePolicy(req);
-  
-  if (! overwrite && 
-       undefined !== newDocument._rev && 
+
+  if (! overwrite &&
+       undefined !== newDocument._rev &&
        oldDocument._rev !== newDocument._rev) {
-    resultError(req, res, actions.HTTP_BAD, 
-        arangodb.ERROR_FAILED, 
+    resultError(req, res, actions.HTTP_BAD,
+        arangodb.ERROR_FAILED,
         "wrong version");
-    return;    
+    return;
   }
 
   try {
     doc = collection.replace(oldDocument, newDocument, true, waitForSync);
   }
   catch(err) {
-    resultError(req, res, actions.HTTP_BAD, 
-        arangodb.ERROR_FAILED, 
+    resultError(req, res, actions.HTTP_BAD,
+        arangodb.ERROR_FAILED,
         err);
     return;
   }
@@ -508,7 +505,7 @@ function replaceDocument(req, res, collection, oldDocument, newDocument)  {
   };
 
   var returnCode = waitForSync ? actions.HTTP_CREATED : actions.HTTP_ACCEPTED;
-  
+
   resultOk(req, res, returnCode, doc, headers);
 }
 
@@ -521,22 +518,22 @@ function patchDocument(req, res, collection, oldDocument, newDocument)  {
   var waitForSync = getWaitForSync(req, collection);
   var overwrite = getOverwritePolicy(req);
   var keepNull = getKeepNull(req);
-  
-  if (!overwrite && 
-      undefined !== newDocument._rev && 
+
+  if (!overwrite &&
+      undefined !== newDocument._rev &&
       oldDocument._rev !== newDocument._rev) {
-    resultError(req, res, actions.HTTP_BAD, 
-        arangodb.ERROR_FAILED, 
+    resultError(req, res, actions.HTTP_BAD,
+        arangodb.ERROR_FAILED,
         "wrong version");
-    return;    
+    return;
   }
-  
+
   try {
     doc = collection.update(oldDocument, newDocument, true, keepNull, waitForSync);
   }
   catch(err) {
-    resultError(req, res, actions.HTTP_BAD, 
-        arangodb.ERROR_FAILED, 
+    resultError(req, res, actions.HTTP_BAD,
+        arangodb.ERROR_FAILED,
         err);
     return;
   }
@@ -546,7 +543,7 @@ function patchDocument(req, res, collection, oldDocument, newDocument)  {
   };
 
   var returnCode = waitForSync ? actions.HTTP_CREATED : actions.HTTP_ACCEPTED;
-  
+
   resultOk(req, res, returnCode, doc, headers);
 }
 
@@ -555,10 +552,10 @@ function patchDocument(req, res, collection, oldDocument, newDocument)  {
 ////////////////////////////////////////////////////////////////////////////////
 
 function getDocumentByRequest(req, res, collection)  {
-  
+
   if (req.suffix.length < 2) {
-    resultError(req, res, actions.HTTP_BAD, 
-        arangodb.ERROR_ARANGO_DOCUMENT_HANDLE_BAD, 
+    resultError(req, res, actions.HTTP_BAD,
+        arangodb.ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
         "expecting GET /_api/structure/<document-handle>");
     return;
   }
@@ -567,11 +564,11 @@ function getDocumentByRequest(req, res, collection)  {
     return collection.document(req.suffix[1]);
   }
   catch (err) {
-    resultError(req, res, actions.HTTP_NOT_FOUND, 
-        arangodb.ERROR_ARANGO_DOCUMENT_NOT_FOUND, 
-        "document /_api/structure/" + req.suffix[0] + "/" + req.suffix[1] + 
-        " not found"); 
-  }    
+    resultError(req, res, actions.HTTP_NOT_FOUND,
+        arangodb.ERROR_ARANGO_DOCUMENT_NOT_FOUND,
+        "document /_api/structure/" + req.suffix[0] + "/" + req.suffix[1] +
+        " not found");
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -595,11 +592,11 @@ function getTypes (structure) {
     "arrayTypes" : {},
     "objectTypes" : {}
   };
-  
+
   if (undefined !== structure.arrayTypes) {
     types.arrayTypes = structure.arrayTypes;
   }
-  
+
   if (undefined !== structure.objectTypes) {
     types.objectTypes = structure.objectTypes;
   }
@@ -614,7 +611,7 @@ function getLang (req) {
   if (undefined !== req.parameters.lang) {
     return req.parameters.lang;
   }
-  
+
   return null;
 }
 
@@ -622,7 +619,7 @@ function getLang (req) {
 /// @brief returns formatter
 ////////////////////////////////////////////////////////////////////////////////
 
-function selectFormatter (formatter1, formatter2, lang) {  
+function selectFormatter (formatter1, formatter2, lang) {
    var formatter = formatter1;
    if (undefined === formatter1 || JSON.stringify(formatter1) === "{}") {
      formatter = formatter2;
@@ -632,10 +629,10 @@ function selectFormatter (formatter1, formatter2, lang) {
      if (undefined === lang) {
        return formatter[DEFAULT_KEY];
      }
-     
+
      if (undefined === formatter[lang]) {
        return formatter[DEFAULT_KEY];
-     }     
+     }
      return formatter[lang];
    }
 }
@@ -644,7 +641,7 @@ function selectFormatter (formatter1, formatter2, lang) {
 /// @brief returns the parser
 ////////////////////////////////////////////////////////////////////////////////
 
-function selectParser (parser1, parser2, lang) {  
+function selectParser (parser1, parser2, lang) {
  var parser = parser1;
  if (undefined === parser1 || JSON.stringify(parser1) === "{}") {
    parser = parser2;
@@ -654,10 +651,10 @@ function selectParser (parser1, parser2, lang) {
    if (undefined === lang) {
      return parser[DEFAULT_KEY];
    }
-     
+
    if (undefined === parser[lang]) {
      return parser[DEFAULT_KEY];
-   }     
+   }
    return parser[lang];
  }
 }
@@ -666,18 +663,18 @@ function selectParser (parser1, parser2, lang) {
 /// @brief call a module function
 ////////////////////////////////////////////////////////////////////////////////
 
-function callModuleFunction(value, moduleName, functionName, functionArgs) {  
+function callModuleFunction(value, moduleName, functionName, functionArgs) {
   if (undefined === moduleName) {
     return value;
   }
-  
+
   try {
     var formatModule = require(moduleName);
     if (formatModule.hasOwnProperty(functionName)) {
       // call the function
-      return formatModule[functionName].call(null, value, functionArgs);      
+      return formatModule[functionName].call(null, value, functionArgs);
     }
-  }  
+  }
   catch (err) {
     // could not load module
     console.warn("module error for module: " + moduleName + " error: " + err);
@@ -685,10 +682,10 @@ function callModuleFunction(value, moduleName, functionName, functionArgs) {
   }
 
   // function not found
-  console.warn("module function '" + functionName + "' of module '" + moduleName 
+  console.warn("module function '" + functionName + "' of module '" + moduleName
           + "' not found.");
-  
-  return value;        
+
+  return value;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -703,38 +700,38 @@ function formatValue (value, structure, types, lang) {
   try {
     var type = types.predefinedTypes[structure.type];
     if (type) {
-      //console.warn("predefined type found: " + structure.type);    
-      
-      section = selectFormatter(structure.formatter, 
+      //console.warn("predefined type found: " + structure.type);
+
+      section = selectFormatter(structure.formatter,
           types.predefinedTypes[structure.type].formatter, lang);
-        
+
       if (undefined === section) {
         return value;
       }
-      
-      return callModuleFunction(value, 
-              section.module, 
-              section['do'], 
+
+      return callModuleFunction(value,
+              section.module,
+              section['do'],
               section.args);
     }
-    
+
     // array types
     type = types.arrayTypes[structure.type];
     if (type) {
       //console.warn("array type found: " + structure.type);
-      
+
       // check for array formatter
-      section = selectFormatter(structure.formatter, undefined, lang);        
+      section = selectFormatter(structure.formatter, undefined, lang);
       if (undefined !== section) {
-        return callModuleFunction(value, 
-              section.module, 
-              section['do'], 
+        return callModuleFunction(value,
+              section.module,
+              section['do'],
               section.args);
       }
-      
+
       // format each element
       result = [];
-      
+
       if(value instanceof Array) {
         for (key = 0; key < value.length; ++key) {
           result[key] = formatValue(value[key], type, types, lang);
@@ -742,8 +739,8 @@ function formatValue (value, structure, types, lang) {
       }
       return result;
     }
-    
-    // object types    
+
+    // object types
     type = types.objectTypes[structure.type];
     if (type) {
       //console.warn("object type found: " + structure.type);
@@ -751,11 +748,11 @@ function formatValue (value, structure, types, lang) {
       // TODO check type of value
 
       // check for object formatter
-      section = selectFormatter(structure.formatter, undefined, lang);        
+      section = selectFormatter(structure.formatter, undefined, lang);
       if (undefined !== section) {
-        return callModuleFunction(value, 
-              section.module, 
-              section['do'], 
+        return callModuleFunction(value,
+              section.module,
+              section['do'],
               section.args);
       }
 
@@ -764,14 +761,14 @@ function formatValue (value, structure, types, lang) {
         // no attributes
         return null;
       }
-      
+
       // TODO check type of attribute
-      
+
       // format each property
       result = {};
       for (key in attributes) {
         if (attributes.hasOwnProperty(key)) {
-          if (value.hasOwnProperty(key)) {                    
+          if (value.hasOwnProperty(key)) {
             var subStructure = attributes[key];
             if (undefined === subStructure) {
               result[key] = value[key];
@@ -792,7 +789,7 @@ function formatValue (value, structure, types, lang) {
     //console.warn("error = " + err);
   }
 
-  return value;  
+  return value;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -804,16 +801,16 @@ function parseValue (value, structure, types, lang) {
   var key;
   var section;
 
-  // console.warn("in parseValue");    
+  // console.warn("in parseValue");
 
   try {
     var type = types.predefinedTypes[structure.type];
     if (type) {
-      // console.warn("predefined type found: " + structure.type);    
-      
+      // console.warn("predefined type found: " + structure.type);
+
       // TODO check type of value
-      
-      section = selectParser(structure.parser, 
+
+      section = selectParser(structure.parser,
           types.predefinedTypes[structure.type].parser, lang);
 
       if (undefined === section) {
@@ -821,30 +818,30 @@ function parseValue (value, structure, types, lang) {
         return value;
       }
 
-      var x = callModuleFunction(value, 
-              section.module, 
-              section['do'], 
+      var x = callModuleFunction(value,
+              section.module,
+              section['do'],
               section.args);
-              
+
       // console.warn("parsing " + value + " to " + x );
-              
+
       return x;
     }
-    
+
     // array types
     type = types.arrayTypes[structure.type];
     if (type) {
       //console.warn("array type found: " + structure.type);
-      
+
       // check for array formatter
-      section = selectParser(structure.parser, undefined, lang);        
+      section = selectParser(structure.parser, undefined, lang);
       if (undefined !== section) {
-        return callModuleFunction(value, 
-              section.module, 
-              section['do'], 
+        return callModuleFunction(value,
+              section.module,
+              section['do'],
               section.args);
       }
-      
+
       // parse each element
       result = [];
       if(value instanceof Array) {
@@ -854,8 +851,8 @@ function parseValue (value, structure, types, lang) {
       }
       return result;
     }
-    
-    // object types    
+
+    // object types
     type = types.objectTypes[structure.type];
     if (type) {
       //console.warn("object type found: " + structure.type);
@@ -863,11 +860,11 @@ function parseValue (value, structure, types, lang) {
       // TODO check type of value
 
       // check for object parser
-      section = selectParser(structure.parser, undefined, lang);        
+      section = selectParser(structure.parser, undefined, lang);
       if (undefined !== section) {
-        return callModuleFunction(value, 
-              section.module, 
-              section['do'], 
+        return callModuleFunction(value,
+              section.module,
+              section['do'],
               section.args);
       }
 
@@ -876,15 +873,15 @@ function parseValue (value, structure, types, lang) {
         // no attributes
         return null;
       }
-      
+
       // TODO check type of attribute
-      
+
       // parse each property
       result = {};
       for (key in attributes) {
         if (attributes.hasOwnProperty(key)) {
           if (value.hasOwnProperty(key)) {
-          
+
             var subStructure = attributes[key];
             if (undefined === subStructure) {
              result[key] = value[key];
@@ -906,7 +903,7 @@ function parseValue (value, structure, types, lang) {
     //console.warn("error = " + err);
   }
 
-  return value;  
+  return value;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -918,70 +915,70 @@ function validateValue (value, structure, types, lang) {
   var key;
   var validators;
   var v;
-  
-  //console.warn("in validateValue(): " + structure.type);    
+
+  //console.warn("in validateValue(): " + structure.type);
 
   try {
     var type = types.predefinedTypes[structure.type];
     if (type) {
-      //console.warn("predefined type found: " + structure.type);    
-      
+      //console.warn("predefined type found: " + structure.type);
+
       // TODO check type of value
-      
-      validators = structure.validators;        
-      if (undefined !== validators) {        
+
+      validators = structure.validators;
+      if (undefined !== validators) {
         for (key = 0; key < validators.length; ++key) {
 
-          //console.warn("call function: " + validators[key]['do']);    
-          
-          result = callModuleFunction(value, 
-              validators[key].module, 
-              validators[key]['do'], 
+          //console.warn("call function: " + validators[key]['do']);
+
+          result = callModuleFunction(value,
+              validators[key].module,
+              validators[key]['do'],
               validators[key].args);
-              
+
           if (!result) {
             return false;
           }
-        }        
+        }
       }
 
       validators = types.predefinedTypes[structure.type].validators;
-      if (undefined !== validators) {        
+      if (undefined !== validators) {
         for (key = 0; key < validators.length; ++key) {
 
-          //console.warn("call function: " + validators[key]['do']);    
-          
-          result = callModuleFunction(value, 
-              validators[key].module, 
-              validators[key]['do'], 
+          //console.warn("call function: " + validators[key]['do']);
+
+          result = callModuleFunction(value,
+              validators[key].module,
+              validators[key]['do'],
               validators[key].args);
-              
+
           if (!result) {
             return false;
           }
-        }        
+        }
       }
 
-      return true;      
+      return true;
     }
-    
+
     // array types
     type = types.arrayTypes[structure.type];
     if (type) {
       //console.warn("array type found: " + structure.type);
-      
+
       // TODO check type of value
-      
+
       // check for array validator
-      validators = structure.validators;        
-      if (undefined !== validators) {        
+      validators = structure.validators;
+      if (undefined !== validators) {
         for (key = 0; key < validators.length; ++key) {
-          
-          result = callModuleFunction(value, 
-              validators[key].module, 
-              validators[key]['do'], 
+
+          result = callModuleFunction(value,
+              validators[key].module,
+              validators[key]['do'],
               validators[key].args);
-              
+
           if (!result) {
             return false;
           }
@@ -998,8 +995,8 @@ function validateValue (value, structure, types, lang) {
       }
       return true;
     }
-    
-    // object types    
+
+    // object types
     type = types.objectTypes[structure.type];
     if (type) {
       //console.warn("object type found: " + structure.type);
@@ -1007,15 +1004,15 @@ function validateValue (value, structure, types, lang) {
       // TODO check type of value
 
       // check for object validator
-      validators = structure.validators;        
-      if (undefined !== validators) {        
+      validators = structure.validators;
+      if (undefined !== validators) {
         for (key = 0; key < validators.length; ++key) {
-          
-          result = callModuleFunction(value, 
-              validators[key].module, 
-              validators[key]['do'], 
+
+          result = callModuleFunction(value,
+              validators[key].module,
+              validators[key]['do'],
               validators[key].args);
-              
+
           if (!result) {
             return false;
           }
@@ -1027,20 +1024,20 @@ function validateValue (value, structure, types, lang) {
         // no attributes
         return true;
       }
-            
+
       // validate each property
       for (key in attributes) {
         if (attributes.hasOwnProperty(key)) {
-          
+
           if (value.hasOwnProperty(key)) {
             v = value[key];
           }
           else {
             v = null;
           }
-        
+
           var subStructure = attributes[key];
-        
+
           if (undefined !== subStructure) {
             if (!validateValue(v, subStructure, types, lang)) {
               return false;
@@ -1048,7 +1045,7 @@ function validateValue (value, structure, types, lang) {
           }
         }
       }
-      
+
       return true;
     }
   }
@@ -1056,7 +1053,7 @@ function validateValue (value, structure, types, lang) {
     //console.warn("error = " + err);
   }
 
-  return false;  
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1074,12 +1071,12 @@ function resultStructure (req, res, doc, structure, headers) {
   if (undefined !== req.parameters.format) {
     format = stringToBoolean(req.parameters.format);
   }
-  
+
   if (structure.attributes !== undefined) {
     for (key in structure.attributes) {
       if (structure.attributes.hasOwnProperty(key)) {
         var value = doc[key];
-        
+
         // format value
         if (format) {
           result[key] = formatValue(value, structure.attributes[key], types, lang);
@@ -1087,14 +1084,14 @@ function resultStructure (req, res, doc, structure, headers) {
         else {
           result[key] = value;
         }
-      }      
+      }
     }
   }
 
   result._id = doc._id;
   result._rev = doc._rev;
   result._key = doc._key;
-  
+
   resultOk(req, res, actions.HTTP_OK, result, headers);
 }
 
@@ -1115,7 +1112,7 @@ function parseDocumentByStructure(req, res, structure, body, isPatch) {
   if (undefined !== req.parameters.format) {
     format = stringToBoolean(req.parameters.format);
   }
-    
+
   for (key in structure.attributes) {
     if (structure.attributes.hasOwnProperty(key)) {
       value = body[key];
@@ -1144,8 +1141,8 @@ function parseDocumentByStructure(req, res, structure, body, isPatch) {
   }
   if (undefined !== body._key) {
     document._key = body._key;
-  }  
-  
+  }
+
   return document;
 }
 
@@ -1159,8 +1156,8 @@ function saveDocumentByStructure(req, res, collection, structure, body) {
     saveDocument(req, res, collection, document);
   }
   catch(err) {
-    resultError(req, res, actions.HTTP_BAD, 
-        arangodb.ERROR_FAILED, 
+    resultError(req, res, actions.HTTP_BAD,
+        arangodb.ERROR_FAILED,
         err);
     return;
   }
@@ -1176,8 +1173,8 @@ function replaceDocumentByStructure(req, res, collection, structure, oldDocument
     replaceDocument(req, res, collection, oldDocument, document);
   }
   catch(err) {
-    resultError(req, res, actions.HTTP_BAD, 
-        arangodb.ERROR_FAILED, 
+    resultError(req, res, actions.HTTP_BAD,
+        arangodb.ERROR_FAILED,
         err);
     return;
   }
@@ -1193,25 +1190,16 @@ function patchDocumentByStructure(req, res, collection, structure, oldDocument, 
     patchDocument(req, res, collection, oldDocument, document);
   }
   catch(err) {
-    resultError(req, res, actions.HTTP_BAD, 
-        arangodb.ERROR_FAILED, 
+    resultError(req, res, actions.HTTP_BAD,
+        arangodb.ERROR_FAILED,
         err);
     return;
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads a single document
@@ -1226,7 +1214,7 @@ function patchDocumentByStructure(req, res, collection, structure, oldDocument, 
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally select a document based on a target revision id by
 /// using the `rev` URL parameter.
-/// 
+///
 /// @RESTQUERYPARAM{lang,string,optional}
 /// Language of the data.
 ///
@@ -1252,7 +1240,7 @@ function patchDocumentByStructure(req, res, collection, structure, oldDocument, 
 /// handle and `_rev` containing the revision.
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{200}
 /// is returned if the document was found
 ///
@@ -1271,7 +1259,7 @@ function patchDocumentByStructure(req, res, collection, structure, oldDocument, 
 
 function get_api_structure(req, res)  {
   var structure;
-  
+
   var collection = getCollectionByRequest(req, res);
   if (undefined === collection) {
     return;
@@ -1317,20 +1305,20 @@ function get_api_structure(req, res)  {
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally select a document based on a target revision id by
 /// using the `rev` URL parameter.
-/// 
+///
 /// @RESTHEADERPARAMETERS
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
 /// You can conditionally get a document based on a target revision id by
 /// using the `if-match` HTTP header.
-/// 
+///
 /// @RESTDESCRIPTION
 /// Like `GET`, but only returns the header fields and not the body. You
 /// can use this call to get the current revision of a document or check if
 /// the document was deleted.
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{200}
 /// is returned if the document was found
 ///
@@ -1377,14 +1365,14 @@ function head_api_structure(req, res)  {
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{document-handle,string,required}
-/// Deletes the document identified by `document-handle`. 
-/// 
+/// Deletes the document identified by `document-handle`.
+///
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally delete a document based on a target revision id by
 /// using the `rev` URL parameter.
-/// 
+///
 /// @RESTQUERYPARAM{policy,string,optional}
 /// To control the update behavior in case there is a revision mismatch, you
 /// can use the `policy` parameter. This is the same as when replacing
@@ -1398,7 +1386,7 @@ function head_api_structure(req, res)  {
 /// @RESTHEADERPARAM{If-Match,string,optional}
 /// You can conditionally delete a document based on a target revision id by
 /// using the `if-match` HTTP header.
-/// 
+///
 /// @RESTDESCRIPTION
 /// The body of the response contains a JSON object with the information about
 /// the handle and the revision.  The attribute `_id` contains the known
@@ -1432,7 +1420,7 @@ function head_api_structure(req, res)  {
 ////////////////////////////////////////////////////////////////////////////////
 
 function delete_api_structure (req, res) {
-  
+
   var collection = getCollectionByRequest(req, res);
   if (undefined === collection) {
     return;
@@ -1451,13 +1439,13 @@ function delete_api_structure (req, res) {
 
   try {
     collection.remove( doc, true, waitForSync);
-    resultOk(req, res, 
-      waitForSync ? actions.HTTP_OK : actions.HTTP_ACCEPTED, 
-      { "deleted" : true });    
+    resultOk(req, res,
+      waitForSync ? actions.HTTP_OK : actions.HTTP_ACCEPTED,
+      { "deleted" : true });
   }
   catch(err) {
-    resultError(req, res, actions.HTTP_BAD, 
-        arangodb.ERROR_FAILED, 
+    resultError(req, res, actions.HTTP_BAD,
+        arangodb.ERROR_FAILED,
         err);
     return;
   }
@@ -1476,7 +1464,7 @@ function delete_api_structure (req, res) {
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{keepNull,boolean,optional}
-/// If the intention is to delete existing attributes with the patch command, 
+/// If the intention is to delete existing attributes with the patch command,
 /// the URL query parameter `keepNull` can be used with a value of `false`.
 /// This will modify the behavior of the patch command to remove any attributes
 /// from the existing document that are contained in the patch document with an
@@ -1488,7 +1476,7 @@ function delete_api_structure (req, res) {
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally patch a document based on a target revision id by
 /// using the `rev` URL parameter.
-/// 
+///
 /// @RESTQUERYPARAM{policy,string,optional}
 /// To control the update behavior in case there is a revision mismatch, you
 /// can use the `policy` parameter.
@@ -1504,7 +1492,7 @@ function delete_api_structure (req, res) {
 /// @RESTHEADERPARAM{If-Match,string,optional}
 /// You can conditionally delete a document based on a target revision id by
 /// using the `if-match` HTTP header.
-/// 
+///
 /// @RESTDESCRIPTION
 /// Partially updates the document identified by `document-handle`.
 /// The body of the request must contain a JSON document with the attributes
@@ -1513,7 +1501,7 @@ function delete_api_structure (req, res) {
 /// in the existing document if they do exist there.
 ///
 /// Setting an attribute value to `null` in the patch document will cause a
-/// value of `null` be saved for the attribute by default. 
+/// value of `null` be saved for the attribute by default.
 ///
 /// Optionally, the URL parameter `waitForSync` can be used to force
 /// synchronisation of the document update operation to disk even in case
@@ -1566,7 +1554,7 @@ function delete_api_structure (req, res) {
 function patch_api_structure (req, res) {
   var body;
   var structure;
-  
+
   var collection = getCollectionByRequest(req, res);
   if (undefined === collection) {
     return;
@@ -1584,7 +1572,7 @@ function patch_api_structure (req, res) {
   body = actions.getJsonBody(req, res);
 
   if (body === undefined) {
-    resultError(req, res, actions.HTTP_BAD, 
+    resultError(req, res, actions.HTTP_BAD,
         arangodb.ERROR_FAILED, "no body data");
     return;
   }
@@ -1607,7 +1595,7 @@ function patch_api_structure (req, res) {
 ///
 /// @RESTURLPARAM{document-handle,string,required}
 /// The Handle of the Document.
-/// 
+///
 /// @RESTQUERYPARAMETERS
 ///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
@@ -1616,7 +1604,7 @@ function patch_api_structure (req, res) {
 /// @RESTQUERYPARAM{rev,string,optional}
 /// You can conditionally replace a document based on a target revision id by
 /// using the `rev` URL parameter.
-/// 
+///
 /// @RESTQUERYPARAM{policy,string,optional}
 /// To control the update behavior in case there is a revision mismatch, you
 /// can use the `policy` parameter. This is the same as when replacing
@@ -1633,7 +1621,7 @@ function patch_api_structure (req, res) {
 /// @RESTHEADERPARAM{If-Match,string,optional}
 /// You can conditionally replace a document based on a target revision id by
 /// using the `if-match` HTTP header.
-/// 
+///
 /// @RESTDESCRIPTION
 /// Completely updates (i.e. replaces) the document identified by `document-handle`.
 /// If the document exists and can be updated, then a `HTTP 201` is returned
@@ -1679,7 +1667,7 @@ function patch_api_structure (req, res) {
 ///
 /// For example, to conditionally replace a document based on a specific revision
 /// id, you the following request:
-/// 
+///
 /// - PUT /_api/document/`document-handle`?rev=`etag`
 ///
 /// If a target revision id is provided in the request (e.g. via the `etag` value
@@ -1727,7 +1715,7 @@ function patch_api_structure (req, res) {
 function put_api_structure (req, res) {
   var body;
   var structure;
-  
+
   var collection = getCollectionByRequest(req, res);
   if (undefined === collection) {
     return;
@@ -1745,7 +1733,7 @@ function put_api_structure (req, res) {
   body = actions.getJsonBody(req, res);
 
   if (body === undefined) {
-    resultError(req, res, actions.HTTP_BAD, 
+    resultError(req, res, actions.HTTP_BAD,
         arangodb.ERROR_FAILED, "no body data");
     return;
   }
@@ -1843,9 +1831,9 @@ function post_api_structure (req, res) {
 
   var collectionName = req.parameters.collection;
   if (undefined === collectionName) {
-    resultError(req, res, actions.HTTP_NOT_FOUND, 
+    resultError(req, res, actions.HTTP_NOT_FOUND,
         arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND, "collection not found");
-    return;    
+    return;
   }
 
   try {
@@ -1853,7 +1841,7 @@ function post_api_structure (req, res) {
   }
   catch (err) {
   }
-  
+
   if (null === collection) {
     var createCollection = stringToBoolean(req.parameters.createCollection);
     if (createCollection) {
@@ -1861,24 +1849,24 @@ function post_api_structure (req, res) {
         db._create(collectionName);
         collection = db._collection(collectionName);
       }
-      catch(err2) {        
-        resultError(req, res, actions.HTTP_NOT_FOUND, 
+      catch(err2) {
+        resultError(req, res, actions.HTTP_NOT_FOUND,
           arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND, err2);
-        return;             
+        return;
       }
-    }    
-  } 
-  
-  if (undefined === collection || null === collection) {
-    resultError(req, res, actions.HTTP_NOT_FOUND, 
-        arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND, "collection not found");
-    return;    
+    }
   }
-  
+
+  if (undefined === collection || null === collection) {
+    resultError(req, res, actions.HTTP_NOT_FOUND,
+        arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND, "collection not found");
+    return;
+  }
+
   body = actions.getJsonBody(req, res);
 
   if (body === undefined) {
-    resultError(req, res, actions.HTTP_BAD, 
+    resultError(req, res, actions.HTTP_BAD,
         arangodb.ERROR_FAILED, "no body data");
     return;
   }
@@ -1898,7 +1886,6 @@ function post_api_structure (req, res) {
 
 actions.defineHttp({
   url : API,
-  context : "api",
 
   callback : function (req, res) {
     try {
@@ -1930,15 +1917,11 @@ actions.defineHttp({
   }
 });
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

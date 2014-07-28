@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,9 +22,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -35,11 +36,6 @@ var aqlfunctions = require("org/arangodb/aql/functions");
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_get_api_aqlfunction
@@ -113,9 +109,9 @@ function get_api_aqlfunction (req, res) {
 /// - *name*: the fully qualified name of the user functions.
 ///
 /// - *code*: a string representation of the function body.
-/// 
+///
 /// - *isDeterministic*: an optional boolean value to indicate that the function
-///   results are fully deterministic (function return value solely depends on 
+///   results are fully deterministic (function return value solely depends on
 ///   the input value and return value is the same for repeated calls with same
 ///   input). The *isDeterministic* attribute is currently not used but may be
 ///   used later for optimisations.
@@ -145,7 +141,7 @@ function get_api_aqlfunction (req, res) {
 /// call, the server will respond with *HTTP 200*.
 ///
 /// @RESTRETURNCODE{201}
-/// If the function can be registered by the server, the server will respond with 
+/// If the function can be registered by the server, the server will respond with
 /// *HTTP 201*.
 ///
 /// @RESTRETURNCODE{400}
@@ -156,7 +152,7 @@ function get_api_aqlfunction (req, res) {
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestAqlfunctionCreate}
 ///     var url = "/_api/aqlfunction";
-///     var body = '{ ' + 
+///     var body = '{ ' +
 ///       '"name" : "myfunctions::temperature::celsiustofahrenheit", ' +
 ///       '"code" : "function (celsius) { return celsius * 1.8 + 32; }" ' +
 ///     '}';
@@ -167,7 +163,7 @@ function get_api_aqlfunction (req, res) {
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock 
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_api_aqlfunction (req, res) {
@@ -198,12 +194,12 @@ function post_api_aqlfunction (req, res) {
 /// @RESTQUERYPARAM{group,string,optional}
 /// If set to *true*, then the function name provided in *name* is treated as
 /// a namespace prefix, and all functions in the specified namespace will be deleted.
-/// If set to *false*, the function name provided in *name* must be fully 
+/// If set to *false*, the function name provided in *name* must be fully
 /// qualified, including any namespaces.
 ///
 /// @RESTDESCRIPTION
 ///
-/// Removes an existing AQL user function, identified by *name*. 
+/// Removes an existing AQL user function, identified by *name*.
 ///
 /// In case of success, the returned JSON object has the following properties:
 ///
@@ -226,7 +222,7 @@ function post_api_aqlfunction (req, res) {
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// If the function can be removed by the server, the server will respond with 
+/// If the function can be removed by the server, the server will respond with
 /// *HTTP 200*.
 ///
 /// @RESTRETURNCODE{400}
@@ -297,26 +293,25 @@ function delete_api_aqlfunction (req, res) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gateway 
+/// @brief gateway
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
   url : "_api/aqlfunction",
-  context : "api",
 
   callback : function (req, res) {
     try {
       switch (req.requestType) {
-        case actions.GET: 
-          get_api_aqlfunction(req, res); 
+        case actions.GET:
+          get_api_aqlfunction(req, res);
           break;
 
-        case actions.POST: 
-          post_api_aqlfunction(req, res); 
+        case actions.POST:
+          post_api_aqlfunction(req, res);
           break;
 
-        case actions.DELETE:  
-          delete_api_aqlfunction(req, res); 
+        case actions.DELETE:
+          delete_api_aqlfunction(req, res);
           break;
 
         default:
@@ -329,11 +324,11 @@ actions.defineHttp({
   }
 });
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

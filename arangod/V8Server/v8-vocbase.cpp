@@ -9007,7 +9007,8 @@ static v8::Handle<v8::Value> JS_UpdateVocbase (v8::Arguments const& argv) {
 /// @startDocuBlock databaseVersion
 /// `db._version()`
 ///
-/// Returns the server version string.
+/// Returns the server version string. Note that this is not the version of the
+/// database.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -9373,13 +9374,13 @@ static v8::Handle<v8::Value> CreateDatabaseCoordinator (v8::Arguments const& arg
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
   // now wait for heartbeat thread to create the database object
-  TRI_vocbase_t* vocbase = 0;
+  TRI_vocbase_t* database = 0;
   int tries = 0;
 
   while (++tries <= 6000) {
-    vocbase = TRI_UseByIdCoordinatorDatabaseServer((TRI_server_t*) v8g->_server, id);
+    database = TRI_UseByIdCoordinatorDatabaseServer((TRI_server_t*) v8g->_server, id);
 
-    if (vocbase != 0) {
+    if (database != 0) {
       break;
     }
 
@@ -9387,7 +9388,7 @@ static v8::Handle<v8::Value> CreateDatabaseCoordinator (v8::Arguments const& arg
     usleep(10000);
   }
 
-  if (vocbase == 0) {
+  if (database == 0) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
 
@@ -9402,12 +9403,24 @@ static v8::Handle<v8::Value> CreateDatabaseCoordinator (v8::Arguments const& arg
     v8::Context::GetCurrent()->Global()->Set(v8::String::New("UPGRADE_ARGS"), v8::Object::New());
   }
 
-  if (TRI_V8RunVersionCheck(vocbase, static_cast<JSLoader*>(v8g->_loader), v8::Context::GetCurrent())) {
-    // version check ok
-    TRI_V8InitialiseFoxx(vocbase, v8::Context::GetCurrent());
-  }
+  // switch databases
+  TRI_vocbase_t* orig = v8g->_vocbase;
+  TRI_ASSERT(orig != nullptr);
 
-  TRI_ReleaseVocBase(vocbase);
+  v8g->_vocbase = database;
+
+  // initalise database
+  bool allowUseDatabase = v8g->_allowUseDatabase;
+  v8g->_allowUseDatabase = true;
+
+  v8g->_loader->executeGlobalScript(v8::Context::GetCurrent(), "server/bootstrap/coordinator-database.js");
+  
+  v8g->_allowUseDatabase = allowUseDatabase;
+
+  // and switch back
+  v8g->_vocbase = orig;
+
+  TRI_ReleaseVocBase(database);
 
   return scope.Close(v8::True());
 }
@@ -9541,10 +9554,17 @@ static v8::Handle<v8::Value> JS_CreateDatabase (v8::Arguments const& argv) {
     v8::Context::GetCurrent()->Global()->Set(v8::String::New("UPGRADE_ARGS"), v8::Object::New());
   }
 
-  if (TRI_V8RunVersionCheck(database, static_cast<JSLoader*>(v8g->_loader), v8::Context::GetCurrent())) {
-    // version check ok
-    TRI_V8InitialiseFoxx(database, v8::Context::GetCurrent());
-  }
+  // switch databases
+  TRI_vocbase_t* orig = v8g->_vocbase;
+  TRI_ASSERT(orig != nullptr);
+
+  v8g->_vocbase = database;
+
+  // initalise database
+  v8g->_loader->executeGlobalScript(v8::Context::GetCurrent(), "server/bootstrap/local-database.js");
+
+  // and switch back
+  v8g->_vocbase = orig;
 
   // populate the authentication cache. otherwise no one can access the new database
   TRI_ReloadAuthInfo(database);
@@ -10356,17 +10376,17 @@ int32_t TRI_GetVocBaseColType () {
 /// @brief run version check
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_V8RunVersionCheck (void* vocbase,
-                            JSLoader* startupLoader,
-                            v8::Handle<v8::Context> context) {
+bool TRI_UpgradeDatabase (TRI_vocbase_t* vocbase,
+                          JSLoader* startupLoader,
+                          v8::Handle<v8::Context> context) {
   TRI_ASSERT(startupLoader != nullptr);
 
   v8::HandleScope scope;
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
-  void* orig = v8g->_vocbase;
+  TRI_vocbase_t* orig = v8g->_vocbase;
   v8g->_vocbase = vocbase;
 
-  v8::Handle<v8::Value> result = startupLoader->executeGlobalScript(context, "server/version-check.js");
+  v8::Handle<v8::Value> result = startupLoader->executeGlobalScript(context, "server/upgrade-database.js");
   bool ok = TRI_ObjectToBoolean(result);
 
   if (! ok) {
@@ -10382,49 +10402,22 @@ bool TRI_V8RunVersionCheck (void* vocbase,
 /// @brief run upgrade check
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_V8RunUpgradeCheck (void* vocbase,
-                           JSLoader* startupLoader,
-                           v8::Handle<v8::Context> context) {
+int TRI_CheckDatabaseVersion (TRI_vocbase_t* vocbase,
+                              JSLoader* startupLoader,
+                              v8::Handle<v8::Context> context) {
   TRI_ASSERT(startupLoader != nullptr);
 
   v8::HandleScope scope;
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
-  void* orig = v8g->_vocbase;
+  TRI_vocbase_t* orig = v8g->_vocbase;
   v8g->_vocbase = vocbase;
 
-  v8::Handle<v8::Value> result = startupLoader->executeGlobalScript(context, "server/upgrade-check.js");
+  v8::Handle<v8::Value> result = startupLoader->executeGlobalScript(context, "server/version-check.js");
   int code = (int) TRI_ObjectToInt64(result);
 
   v8g->_vocbase = orig;
 
   return code;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize foxx
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_V8InitialiseFoxx (void* vocbase,
-                           v8::Handle<v8::Context> context) {
-  void* orig = nullptr;
-
-  {
-    v8::HandleScope scope;
-    TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
-    orig = v8g->_vocbase;
-    v8g->_vocbase = vocbase;
-  }
-
-  v8::HandleScope scope;
-  TRI_ExecuteJavaScriptString(context,
-                              v8::String::New("require(\"internal\").initializeFoxx()"),
-                              v8::String::New("initialize foxx"),
-                              false);
-  {
-    v8::HandleScope scope;
-    TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
-    v8g->_vocbase = orig;
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -10464,7 +10457,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // register the startup loader
   v8g->_loader = loader;
 
-
+  // create templates
   v8::Handle<v8::ObjectTemplate> rt;
   v8::Handle<v8::FunctionTemplate> ft;
   v8::Handle<v8::Template> pt;
