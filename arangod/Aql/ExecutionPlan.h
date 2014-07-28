@@ -406,6 +406,75 @@ namespace triagens {
         size_t _limit;
 
     };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   class LimitPlan
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class FilterPlan, derived from ExecutionPlan
+////////////////////////////////////////////////////////////////////////////////
+
+    class FilterPlan : public ExecutionPlan {
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructors for various arguments, always with offset and limit
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+        FilterPlan (std::string attribute, triagens::basics::Json value) 
+          : ExecutionPlan(), _attribute(attribute), _value(value) {
+        }
+
+        FilterPlan (ExecutionPlan* ep, std::string attribute, 
+                    triagens::basics::Json value) 
+          : ExecutionPlan(ep), _attribute(attribute), _value(value) {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual NodeType getType () {
+          return FILTER;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node as a string
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::string getTypeString () {
+          return std::string("FilterPlan");
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual triagens::basics::Json toJson (
+               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone execution plan recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ExecutionPlan* clone () {
+          auto c = new FilterPlan(_attribute, _value.copy());
+          cloneDependencies(c);
+          return static_cast<ExecutionPlan*>(c);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief we need to know the offset and limit
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+        std::string            _attribute;
+        triagens::basics::Json _value;
+
+    };
   }   // namespace triagens::aql
 }  // namespace triagens
 
