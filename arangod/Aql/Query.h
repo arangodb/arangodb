@@ -31,6 +31,7 @@
 #define ARANGODB_AQL_QUERY_H 1
 
 #include "Basics/Common.h"
+#include "Aql/BindParameters.h"
 #include "Aql/ParseResult.h"
 #include "Aql/QueryAst.h"
 #include "Aql/QueryError.h"
@@ -150,7 +151,7 @@ namespace triagens {
 /// @brief execute an AQL query - TODO: implement and determine return type
 ////////////////////////////////////////////////////////////////////////////////
 
-        void execute ();
+        ParseResult execute ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse an AQL query
@@ -182,7 +183,7 @@ namespace triagens {
         size_t const           _queryLength;
         QueryType              _type;
 
-        struct TRI_json_s*     _bindParameters;
+        BindParameters         _bindParameters;
 
         QueryError             _error;
     };
