@@ -32,8 +32,31 @@ using namespace triagens::arango;
 using namespace triagens::aql;
 
 // -----------------------------------------------------------------------------
-// --SECTION--
+// --SECTION--                                factory for instanciation of plans
 // -----------------------------------------------------------------------------
+
+ExecutionBlock* ExecutionBlock::instanciatePlan (ExecutionPlan const* ep) {
+  ExecutionBlock* eb;
+  switch (ep->getType()) {
+    case ExecutionPlan::ENUMERATE_COLLECTION: {
+      eb = new EnumerateCollectionBlock(static_cast<EnumerateCollectionPlan const*>(ep));
+      break;
+    }
+    case ExecutionPlan::ROOT: {
+      eb = new RootBlock(static_cast<RootPlan const*>(ep));
+      break;
+    }
+    default: {
+      TRI_ASSERT(false);
+      break;
+    }
+  }
+  vector<ExecutionPlan*> deps = ep->getDependencies();
+  for (auto it = deps.begin(); it != deps.end();++it) {
+    eb->addDependency(instanciatePlan(*it));
+  }
+  return eb;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief

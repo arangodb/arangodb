@@ -38,7 +38,7 @@ using namespace triagens::aql;
 /// @brief toJson, export an ExecutionPlan to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-Json ExecutionPlan::toJson (TRI_memory_zone_t* zone) {
+Json ExecutionPlan::toJson (TRI_memory_zone_t* zone) const {
   Json json;
   try {
     json = Json(Json::Array,2)
@@ -99,7 +99,7 @@ void ExecutionPlan::appendAsString (std::string& st, int indent) {
 /// @brief toJson, for EnumerateCollectionPlan
 ////////////////////////////////////////////////////////////////////////////////
 
-Json EnumerateCollectionPlan::toJson (TRI_memory_zone_t* zone) {
+Json EnumerateCollectionPlan::toJson (TRI_memory_zone_t* zone) const {
   Json json(ExecutionPlan::toJson(zone));  // call base class method
   if (json.isEmpty()) {
     return json;
@@ -130,7 +130,7 @@ Json EnumerateCollectionPlan::toJson (TRI_memory_zone_t* zone) {
 /// @brief toJson, for LimitPlan
 ////////////////////////////////////////////////////////////////////////////////
 
-Json LimitPlan::toJson (TRI_memory_zone_t* zone) {
+Json LimitPlan::toJson (TRI_memory_zone_t* zone) const {
   Json json(ExecutionPlan::toJson(zone));  // call base class method
   if (json.isEmpty()) {
     return json;
@@ -156,7 +156,7 @@ Json LimitPlan::toJson (TRI_memory_zone_t* zone) {
 /// @brief toJson, for FilterPlan
 ////////////////////////////////////////////////////////////////////////////////
 
-Json FilterPlan::toJson (TRI_memory_zone_t* zone) {
+Json FilterPlan::toJson (TRI_memory_zone_t* zone) const {
   Json json(ExecutionPlan::toJson(zone));  // call base class method
   if (json.isEmpty()) {
     return json;
@@ -182,7 +182,7 @@ Json FilterPlan::toJson (TRI_memory_zone_t* zone) {
 /// @brief toJson, for CalculationPlan
 ////////////////////////////////////////////////////////////////////////////////
 
-Json CalculationPlan::toJson (TRI_memory_zone_t* zone) {
+Json CalculationPlan::toJson (TRI_memory_zone_t* zone) const {
   Json json(ExecutionPlan::toJson(zone));  // call base class method
   if (json.isEmpty()) {
     return json;
@@ -207,7 +207,7 @@ Json CalculationPlan::toJson (TRI_memory_zone_t* zone) {
 /// @brief toJson, for RootPlan
 ////////////////////////////////////////////////////////////////////////////////
 
-Json RootPlan::toJson (TRI_memory_zone_t* zone) {
+Json RootPlan::toJson (TRI_memory_zone_t* zone) const {
   Json json(ExecutionPlan::toJson(zone));  // call base class method
   if (json.isEmpty()) {
     return json;

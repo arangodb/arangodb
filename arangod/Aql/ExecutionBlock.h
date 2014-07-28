@@ -50,6 +50,53 @@ namespace triagens {
           }
         }
           
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a dependency
+////////////////////////////////////////////////////////////////////////////////
+
+        void addDependency (ExecutionBlock* ep) {
+          _dependencies.push_back(ep);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get all dependencies
+////////////////////////////////////////////////////////////////////////////////
+
+        vector<ExecutionBlock*> getDependencies () {
+          return _dependencies;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a dependency, returns true if the pointer was found and 
+/// removed, please note that this does not delete ep!
+////////////////////////////////////////////////////////////////////////////////
+
+        bool removeDependency (ExecutionBlock* ep) {
+          auto it = _dependencies.begin();
+          while (it != _dependencies.end()) {
+            if (*it == ep) {
+              _dependencies.erase(it);
+              return true;
+            }
+            ++it;
+          }
+          return false;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief access the pos-th dependency
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionBlock* operator[] (size_t pos) {
+          if (pos > _dependencies.size()) {
+            return nullptr;
+          }
+          else {
+            return _dependencies.at(pos);
+          }
+        }
+
+
         // Methods for execution:
         int initialise () {
           return TRI_ERROR_NO_ERROR;
@@ -81,6 +128,11 @@ namespace triagens {
         ExecutionPlan const* _exePlan;
         std::vector<ExecutionBlock*> _dependencies;
         std::deque<AqlValue*> _buffer;
+
+      public:
+
+        static ExecutionBlock* instanciatePlan (ExecutionPlan const* ep);
+
     };
 
 
@@ -105,6 +157,25 @@ namespace triagens {
           auto value = _buffer.front();
           _buffer.pop_front();
           return value;
+        }
+        
+    };
+
+    class RootBlock : public ExecutionBlock {
+
+      public:
+
+        RootBlock (RootPlan const* ep)
+          : ExecutionBlock(ep) {
+
+        }
+
+        ~RootBlock () {
+          std::cout << "ROOTBLOCK DTOR\n";
+        } 
+
+        AqlValue* getOne () {
+          return _dependencies[0]->getOne();
         }
         
     };
