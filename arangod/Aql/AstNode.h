@@ -45,9 +45,9 @@ namespace triagens {
     enum AstNodeValueType {
       VALUE_TYPE_FAIL = 0,
       VALUE_TYPE_NULL,
+      VALUE_TYPE_BOOL,
       VALUE_TYPE_INT,
       VALUE_TYPE_DOUBLE,
-      VALUE_TYPE_BOOL,
       VALUE_TYPE_STRING
     };
 
@@ -172,7 +172,9 @@ namespace triagens {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
           }
 
+          // dump node type
           TRI_Insert3ArrayJson(zone, node, "type", TRI_CreateStringCopyJson(zone, typeString().c_str()));
+
           if (type == NODE_TYPE_VARIABLE ||
               type == NODE_TYPE_REFERENCE ||
               type == NODE_TYPE_COLLECTION ||
@@ -180,10 +182,36 @@ namespace triagens {
               type == NODE_TYPE_ATTRIBUTE_ACCESS ||
               type == NODE_TYPE_FCALL ||
               type == NODE_TYPE_FCALL_USER) {
+            // dump "name" of node
             TRI_Insert3ArrayJson(zone, node, "name", TRI_CreateStringCopyJson(zone, getStringValue()));
           }
-          
+
+          if (type == NODE_TYPE_VALUE) {
+            // dump value of "value" node
+            switch (value.type) {
+              case VALUE_TYPE_NULL:
+                TRI_Insert3ArrayJson(zone, node, "value", TRI_CreateStringCopyJson(zone, "null"));
+                break;
+              case VALUE_TYPE_BOOL:
+                TRI_Insert3ArrayJson(zone, node, "value", TRI_CreateStringCopyJson(zone, value.value._bool ? "true" : "false"));
+                break;
+              case VALUE_TYPE_INT:
+                TRI_Insert3ArrayJson(zone, node, "value", TRI_CreateNumberJson(zone, static_cast<double>(value.value._int)));
+                break;
+              case VALUE_TYPE_DOUBLE:
+                TRI_Insert3ArrayJson(zone, node, "value", TRI_CreateNumberJson(zone, value.value._int));
+                break;
+              case VALUE_TYPE_STRING:
+                TRI_Insert3ArrayJson(zone, node, "value", TRI_CreateStringCopyJson(zone, value.value._string));
+                break;
+              default: {
+              }
+            }
+          }
+         
+          // dump sub-nodes 
           size_t const n = members._length;
+
           if (n > 0) {
             TRI_json_t* subNodes = TRI_CreateListJson(zone);
 
