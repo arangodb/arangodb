@@ -98,7 +98,7 @@ void AstNode::toJson (TRI_json_t* json,
         TRI_Insert3ArrayJson(zone, node, "value", TRI_CreateNumberJson(zone, static_cast<double>(value.value._int)));
         break;
       case VALUE_TYPE_DOUBLE:
-        TRI_Insert3ArrayJson(zone, node, "value", TRI_CreateNumberJson(zone, value.value._int));
+        TRI_Insert3ArrayJson(zone, node, "value", TRI_CreateNumberJson(zone, value.value._double));
         break;
       case VALUE_TYPE_STRING:
         TRI_Insert3ArrayJson(zone, node, "value", TRI_CreateStringCopyJson(zone, value.value._string));
@@ -122,7 +122,9 @@ void AstNode::toJson (TRI_json_t* json,
     try {
       for (size_t i = 0; i < n; ++i) {
         auto member = getMember(i);
-        member->toJson(subNodes, zone);
+        if (member != nullptr) {
+          member->toJson(subNodes, zone);
+        }
       }
     }
     catch (...) {

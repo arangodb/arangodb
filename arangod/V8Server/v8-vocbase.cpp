@@ -5371,20 +5371,25 @@ static v8::Handle<v8::Value> JS_ParseAql (v8::Arguments const& argv) {
   }
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  v8::Handle<v8::Array> collections = v8::Array::New();
-  result->Set(TRI_V8_STRING("collections"), collections);
-  uint32_t i = 0;
-  for (auto it = parseResult.collectionNames.begin(); it != parseResult.collectionNames.end(); ++it) {
-    collections->Set(i++, v8::String::New((*it).c_str()));
+
+  {
+    v8::Handle<v8::Array> collections = v8::Array::New();
+    result->Set(TRI_V8_STRING("collections"), collections);
+    uint32_t i = 0;
+    for (auto it = parseResult.collectionNames.begin(); it != parseResult.collectionNames.end(); ++it) {
+      collections->Set(i++, v8::String::New((*it).c_str()));
+    }
   }
 
-  v8::Handle<v8::Array> bindVars = v8::Array::New();
-  i = 0;
-  for (auto it = parseResult.bindParameters.begin(); it != parseResult.bindParameters.end(); ++it) {
-    bindVars->Set(i++, v8::String::New((*it).c_str()));
+  {
+    v8::Handle<v8::Array> bindVars = v8::Array::New();
+    uint32_t i = 0;
+    for (auto it = parseResult.bindParameters.begin(); it != parseResult.bindParameters.end(); ++it) {
+      bindVars->Set(i++, v8::String::New((*it).c_str()));
+    }
+    result->Set(TRI_V8_STRING("bindVars"), bindVars); 
   }
-  result->Set(TRI_V8_STRING("bindVars"), bindVars); 
-  
+
   result->Set(TRI_V8_STRING("ast"), TRI_ObjectJson(parseResult.json));
 
   return scope.Close(result);
@@ -5417,14 +5422,21 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
   // bind parameters
   TRI_json_t* parameters = nullptr;
 
-  if (argv.Length() > 1 && argv[1]->IsObject()) {
+  if (argv.Length() > 1) {
+    if (! argv[1]->IsObject()) {
+      TRI_V8_TYPE_ERROR(scope, "expecting object for <bindvalues>");
+    }
     parameters = TRI_ObjectToJson(argv[1]);
   }
 
   // bind parameters will be freed by context...
   triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), parameters);
+  
+  auto parseResult = query.execute();
 
-  query.execute();
+  if (parseResult.code != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_MESSAGE(scope, parseResult.code, parseResult.explanation);
+  }
 
   v8::Handle<v8::Object> result = v8::Object::New();
 
