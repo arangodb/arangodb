@@ -770,6 +770,50 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief read all master pointers
+////////////////////////////////////////////////////////////////////////////////
+
+        int readSlice (TRI_transaction_collection_t* trxCollection,
+                       std::vector<TRI_doc_mptr_t*>& docs) {
+
+          TRI_document_collection_t* document = documentCollection(trxCollection);
+
+          // READ-LOCK START
+          int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
+
+          if (document->_primaryIndex._nrUsed == 0) {
+            // nothing to do
+            this->unlock(trxCollection, TRI_TRANSACTION_READ);
+            // READ-LOCK END
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          if (orderBarrier(trxCollection) == nullptr) {
+            return TRI_ERROR_OUT_OF_MEMORY;
+          }
+
+          void** ptr = document->_primaryIndex._table;
+          void** end = ptr + document->_primaryIndex._nrAlloc;
+
+          // fetch documents, taking limit into account
+          for (; ptr < end; ++ptr) {
+            if (*ptr) {
+              TRI_doc_mptr_t* d = (TRI_doc_mptr_t*) *ptr;
+              docs.push_back(d);
+            }
+          }
+
+          this->unlock(trxCollection, TRI_TRANSACTION_READ);
+          // READ-LOCK END
+
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief read all master pointers, using skip and limit and an internal
 /// offset into the primary index. this can be used for incremental access to
 /// the documents without restarting the index scan at the begin
