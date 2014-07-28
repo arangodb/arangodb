@@ -98,7 +98,7 @@ namespace triagens {
         }
         
         int initialize () {
-          // this is very very inefficient
+          // TODO: this is very very inefficient
           // it must be implemented properly for production
           auto p = reinterpret_cast<EnumerateCollectionPlan const*>(_exePlan);
 
