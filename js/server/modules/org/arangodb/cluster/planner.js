@@ -637,11 +637,33 @@ Planner.prototype.makePlan = function() {
                 "useSSLonDBservers": config.useSSLonDBservers,
                 "useSSLonCoordinators": config.useSSLonCoordinators } );
   }
-  var c = coordinators[0];
-  var e = exchangePort(dispatchers[c.dispatcher].endpoint,c.port);
-  e = exchangeProtocol(e, config.useSSLonCoordinators);
-  tmp.push( { "action": "createSystemColls",
-              "url": endpointToURL(e) });
+
+  var cc = [];
+  var c;
+  var e;
+
+  for (i = 0; i < coordinators.length; i++) {
+    c = coordinators[i];
+    e = exchangePort(dispatchers[c.dispatcher].endpoint, c.port);
+    e = exchangeProtocol(e, config.useSSLonCoordinators);
+
+    cc.push(endpointToURL(e));
+  }
+
+  var dd = [];
+
+  for (i = 0; i < DBservers.length; i++) {
+    c = DBservers[i];
+    e = exchangePort(dispatchers[c.dispatcher].endpoint, c.port);
+    e = exchangeProtocol(e, config.useSSLonDBservers);
+
+    dd.push(endpointToURL(e));
+  }
+
+  tmp.push( { "action": "bootstrapServers",
+              "dbServers": dd,
+              "coordinators": cc });
+
   this.myname = "me";
 };
 

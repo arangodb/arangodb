@@ -1,14 +1,15 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, ENABLE_STATISTICS */
+/*global require, ArangoAgency */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief JavaScript server functions
+/// @brief server initialisation
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2011-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,68 +23,50 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-// extend prototypes for internally defined classes
-require("org/arangodb");
-
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  global functions
+// --SECTION--                                             server initialisation
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief global 'Buffer'
-////////////////////////////////////////////////////////////////////////////////
-
-var Buffer = require("buffer").Buffer;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        statistics
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief installs a period statistics handler
+/// @brief server start
+///
+/// Note that all the initialisation has been done. E. g. "upgrade-database.js"
+/// has been executed.
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  if (! ENABLE_STATISTICS) {
-    // statistics are turned off
-    return;
-  }
-
   var internal = require("internal");
-  var interval = require('org/arangodb/statistics').STATISTICS_INTERVAL;
-  var interval15 = require('org/arangodb/statistics').STATISTICS_HISTORY_INTERVAL;
+  var db = internal.db;
 
-  if (internal.threadNumber === 0 && typeof internal.registerTask === "function") {
-    internal.registerTask({ 
-      id: "statistics-collector", 
-      name: "statistics-collector",
-      offset: interval / 10, 
-      period: interval, 
-      command: "require('org/arangodb/statistics').historian();"
-    });
-
-    internal.registerTask({ 
-      id: "statistics-average-collector", 
-      name: "statistics-average-collector",
-      offset: 2 * interval, 
-      period: interval15, 
-      command: "require('org/arangodb/statistics').historianAverage();"
-    });
-
-    internal.registerTask({ 
-      id: "statistics-gc", 
-      name: "statistics-gc",
-      offset: Math.random() * interval15 / 2, 
-      period: interval15 / 2, 
-      command: "require('org/arangodb/statistics').garbageCollector();"
-    });
+  // one the cluster the kickstarter will call boostrap-role.js
+  if (ArangoAgency.prefix() !== "") {
+    return true;
   }
+
+  // statistics can be turned off
+  if (internal.enableStatistics && internal.threadNumber === 0) {
+    require("org/arangodb/statistics").startup();
+  }
+
+  // load all foxxes
+  if (internal.threadNumber === 0) {
+    internal.loadStartup("server/bootstrap/foxxes.js").foxxes();
+  }
+
+  // autoload all modules
+  internal.loadStartup("server/bootstrap/autoload.js").startup();
+
+  // reload routing information
+  internal.loadStartup("server/bootstrap/routing.js").startup();
+
+  return true;
 }());
 
 
@@ -93,5 +76,5 @@ var Buffer = require("buffer").Buffer;
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

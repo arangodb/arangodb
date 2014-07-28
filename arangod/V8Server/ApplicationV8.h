@@ -75,7 +75,8 @@ namespace triagens {
           TYPE_UNKNOWN = 0,
           TYPE_RELOAD_ROUTING,
           TYPE_FLUSH_MODULE_CACHE,
-          TYPE_RELOAD_AQL
+          TYPE_RELOAD_AQL,
+          TYPE_BOOTSTRAP_COORDINATOR
         };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,6 +92,9 @@ namespace triagens {
           }
           if (type == "reloadAql") {
             return TYPE_RELOAD_AQL;
+          }
+          if (type == "bootstrapCoordinator") {
+            return TYPE_BOOTSTRAP_COORDINATOR;
           }
 
           return TYPE_UNKNOWN;
@@ -108,6 +112,8 @@ namespace triagens {
               return CodeFlushModuleCache;
             case TYPE_RELOAD_AQL:
               return CodeReloadAql;
+            case TYPE_BOOTSTRAP_COORDINATOR:
+              return CodeBootstrapCoordinator;
             case TYPE_UNKNOWN:
             default:
               return "";
@@ -121,6 +127,7 @@ namespace triagens {
         static std::string const CodeReloadRouting;
         static std::string const CodeFlushModuleCache;
         static std::string const CodeReloadAql;
+        static std::string const CodeBootstrapCoordinator;
     };
 
 // -----------------------------------------------------------------------------
@@ -325,30 +332,22 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief upgrades the database
+////////////////////////////////////////////////////////////////////////////////
+
+        void upgradeDatabase (bool skip, bool perform);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief runs the version check
 ////////////////////////////////////////////////////////////////////////////////
 
-        void runVersionCheck (bool skip, bool perform);
+        void versionCheck ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief runs the upgrade check
+/// @brief prepares the server
 ////////////////////////////////////////////////////////////////////////////////
 
-        void runUpgradeCheck ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prepares the actions
-////////////////////////////////////////////////////////////////////////////////
-
-        void prepareActions ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets an alternate init file
-///
-/// Normally "server.js" will be used. Pass empty string to disable.
-////////////////////////////////////////////////////////////////////////////////
-
-        void setStartupFile (const string&);
+        void prepareServer ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        ApplicationFeature methods
@@ -411,10 +410,10 @@ namespace triagens {
         bool prepareV8Instance (size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief prepares the V8 actions
+/// @brief prepares the V8 server
 ////////////////////////////////////////////////////////////////////////////////
 
-        void prepareV8Actions (size_t);
+        void prepareV8Server (size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shut downs a V8 instances
@@ -442,24 +441,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         string _startupPath;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief semicolon separated list of module directories
-/// 
-/// This variable is automatically set based on the value of
-/// `--javascript.startup-directory`.
-////////////////////////////////////////////////////////////////////////////////
-
-        string _modulesPath;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief path to the system action directory
-///
-/// This variable is automatically set based on the value of
-/// `--javascript.startup-directory`.
-////////////////////////////////////////////////////////////////////////////////
-
-        string _actionPath;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief semicolon separated list of application directories
@@ -565,12 +546,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         JSLoader _startupLoader;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 action loader
-////////////////////////////////////////////////////////////////////////////////
-
-        JSLoader _actionLoader;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief system database

@@ -83,7 +83,7 @@ using namespace triagens::rest;
 using namespace triagens::admin;
 using namespace triagens::arango;
 
-bool allowUseDatabaseInRESTActions;
+bool ALLOW_USE_DATABASE_IN_REST_ACTIONS;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -532,7 +532,7 @@ void ArangoServer::buildApplicationServer () {
     ("server.disable-authentication-unix-sockets", &_disableAuthenticationUnixSockets, "disable authentication for requests via UNIX domain sockets")
 #endif
     ("server.disable-replication-applier", &_disableReplicationApplier, "start with replication applier turned off")
-    ("server.allow-use-database", &allowUseDatabaseInRESTActions, "allow change of database in REST actions, only needed for unittests")
+    ("server.allow-use-database", &ALLOW_USE_DATABASE_IN_REST_ACTIONS, "allow change of database in REST actions, only needed for unittests")
   ;
 
   bool disableStatistics = false;
@@ -799,7 +799,6 @@ int ArangoServer::startupServer () {
   _applicationV8->setVocbase(vocbase);
   _applicationV8->setConcurrency(concurrency);
 
-
   // .............................................................................
   // prepare everything
   // .............................................................................
@@ -809,7 +808,6 @@ int ArangoServer::startupServer () {
     _applicationDispatcher->disable();
     _applicationEndpointServer->disable();
     _applicationV8->disableActions();
-    _applicationV8->setStartupFile("");
   }
 
   // prepare scheduler and dispatcher
@@ -823,20 +821,16 @@ int ArangoServer::startupServer () {
   // and finish prepare
   _applicationServer->prepare2();
 
-  // run version check
+  // run version check (will exit!)
   if (checkVersion) {
-    _applicationV8->runUpgradeCheck();
+    _applicationV8->versionCheck();
   }
 
-  _applicationV8->runVersionCheck(skipUpgrade, performUpgrade);
-
-  // finally flush the write-ahead log so all data in the WAL goes into the collections
-
-  // WAL recovery done after here
+  _applicationV8->upgradeDatabase(skipUpgrade, performUpgrade);
 
   // setup the V8 actions
   if (startServer) {
-    _applicationV8->prepareActions();
+    _applicationV8->prepareServer();
   }
 
   // .............................................................................
@@ -849,11 +843,6 @@ int ArangoServer::startupServer () {
   httpOptions._queue = "STANDARD";
 
   if (startServer) {
-
-    // create the handlers
-    httpOptions._contexts.insert("user");
-    httpOptions._contexts.insert("api");
-    httpOptions._contexts.insert("admin");
 
     // create the server
     _applicationEndpointServer->buildServers();
@@ -876,10 +865,15 @@ int ArangoServer::startupServer () {
 
   _applicationServer->start();
 
-  // if the authentication info could not be loaded, but authentication is turned on,
-  // then we refuse to start
-  if (! vocbase->_authInfoLoaded && ! _disableAuthentication) {
-    LOG_FATAL_AND_EXIT("could not load required authentication information");
+  // for a cluster coordinator, the users are loaded at a later stage;
+  // the kickstarter will trigger a bootstrap process
+  if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
+
+    // if the authentication info could not be loaded, but authentication is turned on,
+    // then we refuse to start
+    if (! vocbase->_authInfoLoaded && ! _disableAuthentication) {
+      LOG_FATAL_AND_EXIT("could not load required authentication information");
+    }
   }
 
   if (_disableAuthentication) {

@@ -1036,6 +1036,11 @@ exports.scanAppDirectory = function () {
 
   var aal = getStorage();
 
+  // only initialize global collections
+  if (aal === null) {
+    return;
+  }
+
   // remove all loaded apps first
   aal.removeByExample({ type: "app" });
 
@@ -1726,7 +1731,7 @@ exports.initializeFoxx = function () {
     exports.scanAppDirectory();
   }
   catch (err) {
-    console.error("cannot initialize Foxx application: %s", String(err));
+    console.errorLines("cannot initialize Foxx application: %s", String(err.stack || err));
   }
 
   var aal = getStorage();

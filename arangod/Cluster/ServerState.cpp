@@ -48,6 +48,14 @@ using namespace triagens::arango;
 
 ServerState::ServerState ()
   : _id(),
+    _dataPath(),
+    _logPath(),
+    _agentPath(),
+    _arangodPath(),
+    _dbserverConfig(),
+    _coordinatorConfig(),
+    _disableDispatcherFrontend(),
+    _disableDispatcherKickstarter(),
     _address(),
     _authentication(),
     _lock(),

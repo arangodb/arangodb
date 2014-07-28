@@ -1,7 +1,7 @@
 /*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
 /*jslint sloppy: true, regexp: true */
 /*global require, module, Module, ArangoError, SleepAndRequeue,
-  CONFIGURE_ENDPOINT, REMOVE_ENDPOINT, LIST_ENDPOINTS,
+  CONFIGURE_ENDPOINT, REMOVE_ENDPOINT, LIST_ENDPOINTS, STARTUP_PATH,
   SYS_BASE64DECODE, SYS_BASE64ENCODE, SYS_DEBUG_SEGFAULT,
   SYS_DEBUG_CAN_USE_FAILAT, SYS_DEBUG_SET_FAILAT, SYS_DEBUG_REMOVE_FAILAT, SYS_DEBUG_CLEAR_FAILAT,
   SYS_DOWNLOAD, SYS_EXECUTE, SYS_GET_CURRENT_REQUEST, SYS_GET_CURRENT_RESPONSE,
@@ -256,6 +256,21 @@
   if (typeof REQUEST_TIME_DISTRIBUTION !== "undefined") {
     exports.requestTimeDistribution = REQUEST_TIME_DISTRIBUTION;
     delete REQUEST_TIME_DISTRIBUTION;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief startupPath
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.startupPath = "";
+
+  if (typeof STARTUP_PATH !== "undefined") {
+    exports.startupPath = STARTUP_PATH;
+    delete STARTUP_PATH;
+  }
+
+  if (exports.startupPath === "") {
+    exports.startupPath = ".";
   }
 
 // -----------------------------------------------------------------------------
@@ -1100,12 +1115,9 @@
       context.output += context.names[p];
     }
     else {
-      if (value instanceof Object || value.__proto__ === null) {
+      if (value && (value instanceof Object || value.__proto__ === null)) {
         context.seen.push(value);
         context.names.push(context.path);
-      }
-
-      if (value instanceof Object || value.__proto__ === null) {
         if (customInspect && typeof value._PRINT === "function") {
           value._PRINT(context);
 
@@ -1345,6 +1357,78 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief flatten
+////////////////////////////////////////////////////////////////////////////////
+
+  var hasOwnProperty = Function.prototype.call.bind(Object.prototype.hasOwnProperty);
+
+  exports.flatten = function (obj, seen) {
+    'use strict';
+
+    if (!obj || (typeof obj !== 'object' && typeof obj !== 'function')) {
+      return obj;
+    }
+
+    if (obj instanceof Date) {
+      return obj.toJSON();
+    }
+
+    if (!seen) {
+      seen = [];
+    }
+
+    var result = Object.create(null),
+      src = obj,
+      keys,
+      i,
+      key,
+      val;
+
+    if (typeof obj === 'function') {
+      result.__exec = String(obj);
+    }
+
+    while (src) {
+      if (
+        seen.indexOf(src) !== -1
+          || (obj.constructor && src === obj.constructor.prototype)
+      ) {
+        break;
+      }
+      seen.push(src);
+      keys = Object.getOwnPropertyNames(src);
+      for (i = 0; i < keys.length; i++) {
+        key = keys[i];
+        if (typeof src !== 'function' || (
+          key !== 'arguments' && key !== 'caller' && key !== 'callee'
+        )) {
+          if (key.charAt(0) !== '_' && !hasOwnProperty(result, key)) {
+            val = obj[key];
+            if (seen.indexOf(val) !== -1 && (
+              typeof val === 'object' || typeof val === 'function'
+            )) {
+              result[key] = '[Circular]';
+            } else {
+              result[key] = exports.flatten(val, seen);
+            }
+          }
+        }
+      }
+      src = Object.getPrototypeOf(src);
+    }
+
+    if (obj.constructor && obj.constructor.name) {
+      if (obj instanceof Error && obj.name === Error.name) {
+        result.name = obj.constructor.name;
+      } else if (!hasOwnProperty(result, 'constructor')) {
+        result.constructor = {name: obj.constructor.name};
+      }
+    }
+
+    return result;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief inspect
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1562,6 +1646,28 @@
     }
 
     useColor = false;
+  };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          public utility functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief exponentialBackoff
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.exponentialBackOff = function (n, i) {
+    'use strict';
+    if (i === 0) {
+      return 0;
+    }
+    if (n === 0) {
+      return 0;
+    }
+    if (n === 1) {
+      return Math.random() < 0.5 ? 0 : i;
+    }
+    return Math.floor(Math.random() * (n + 1)) * i;
   };
 
 }());

@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,10 +22,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Achim Brandt
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -61,34 +62,34 @@ var internal = require("internal");
 ///
 /// - *count*: boolean flag that indicates whether the number of documents
 ///   in the result set should be returned in the "count" attribute of the result (optional).
-///   Calculating the "count" attribute might in the future have a performance 
-///   impact for some queries so this option is turned off by default, and "count" 
+///   Calculating the "count" attribute might in the future have a performance
+///   impact for some queries so this option is turned off by default, and "count"
 ///   is only returned when requested.
 ///
 /// - *batchSize*: maximum number of result documents to be transferred from
 ///   the server to the client in one roundtrip (optional). If this attribute is
 ///   not set, a server-controlled default value will be used.
 ///
-/// - *ttl*: an optional time-to-live for the cursor (in seconds). The cursor will be 
+/// - *ttl*: an optional time-to-live for the cursor (in seconds). The cursor will be
 ///   removed on the server automatically after the specified amount of time. This
-///   is useful to ensure garbage collection of cursors that are not fully fetched 
+///   is useful to ensure garbage collection of cursors that are not fully fetched
 ///   by clients. If not set, a server-defined value will be used.
 ///
-/// - *bindVars*: key/value list of bind parameters (optional). 
+/// - *bindVars*: key/value list of bind parameters (optional).
 ///
 /// - *options*: key/value list of extra options for the query (optional).
 ///
 /// The following options are supported at the moment:
-/// 
+///
 /// - *fullCount*: if set to *true* and the query contains a *LIMIT* clause, then the
-///   result will contain an extra attribute *extra* with a sub-attribute *fullCount*. 
+///   result will contain an extra attribute *extra* with a sub-attribute *fullCount*.
 ///   This sub-attribute will contain the number of documents in the result before the
 ///   last LIMIT in the query was applied. It can be used to count the number of documents that
-///   match certain filter criteria, but only return a subset of them, in one go. 
-///   It is thus similar to MySQL's *SQL_CALC_FOUND_ROWS* hint. Note that setting the option 
+///   match certain filter criteria, but only return a subset of them, in one go.
+///   It is thus similar to MySQL's *SQL_CALC_FOUND_ROWS* hint. Note that setting the option
 ///   will disable a few LIMIT optimizations and may lead to more documents being processed,
 ///   and thus make queries run longer. Note that the *fullCount* sub-attribute will only
-///   be present in the result if the query has a LIMIT clause and the LIMIT clause is 
+///   be present in the result if the query has a LIMIT clause and the LIMIT clause is
 ///   actually used in the query.
 ///
 /// If the result set can be created by the server, the server will respond with
@@ -104,7 +105,7 @@ var internal = require("internal");
 ///
 /// - *result*: an array of result documents (might be empty if query has no results)
 ///
-/// - *hasMore*: a boolean indicator whether there are more results 
+/// - *hasMore*: a boolean indicator whether there are more results
 ///   available for the cursor on the server
 ///
 /// - *count*: the total number of result documents available (only
@@ -138,7 +139,7 @@ var internal = require("internal");
 /// A list of query errors can be found (../ArangoErrors/README.md) here.
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{201}
 /// is returned if the result set can be created by the server.
 ///
@@ -161,21 +162,21 @@ var internal = require("internal");
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
-/// 
+///
 ///     db.products.save({"hello1":"world1"});
 ///     db.products.save({"hello2":"world1"});
 ///
 ///     var url = "/_api/cursor";
 ///     var body = {
 ///       query: "FOR p IN products LIMIT 2 RETURN p",
-///       count: true, 
+///       count: true,
 ///       batchSize: 2
 ///     };
-/// 
+///
 ///     var response = logCurlRequest('POST', url, JSON.stringify(body));
-/// 
+///
 ///     assert(response.code === 201);
-/// 
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
@@ -185,7 +186,7 @@ var internal = require("internal");
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
-/// 
+///
 ///     db.products.save({"hello1":"world1"});
 ///     db.products.save({"hello2":"world1"});
 ///     db.products.save({"hello3":"world1"});
@@ -193,16 +194,16 @@ var internal = require("internal");
 ///     db.products.save({"hello5":"world1"});
 ///
 ///     var url = "/_api/cursor";
-///     var body = { 
+///     var body = {
 ///       query: "FOR p IN products LIMIT 5 RETURN p",
 ///       count: true,
 ///       batchSize: 2
 ///     };
-/// 
+///
 ///     var response = logCurlRequest('POST', url, JSON.stringify(body));
-/// 
+///
 ///     assert(response.code === 201);
-/// 
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
@@ -210,29 +211,29 @@ var internal = require("internal");
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorOption}
 ///     var url = "/_api/cursor";
-///     var body = { 
+///     var body = {
 ///       query: "FOR i IN 1..1000 FILTER i > 500 LIMIT 10 RETURN i",
 ///       count: true,
 ///       options: {
 ///         fullCount: true
 ///       }
 ///     };
-/// 
+///
 ///     var response = logCurlRequest('POST', url, JSON.stringify(body));
-/// 
+///
 ///     assert(response.code === 201);
-/// 
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Executes a data-modification query and retrieves the number of 
+/// Executes a data-modification query and retrieves the number of
 /// modified documents:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorDeleteQuery}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
-/// 
+///
 ///     db.products.save({"hello1":"world1"});
 ///     db.products.save({"hello2":"world1"});
 ///
@@ -240,13 +241,13 @@ var internal = require("internal");
 ///     var body = {
 ///       query: "FOR p IN products REMOVE p IN products"
 ///     };
-/// 
+///
 ///     var response = logCurlRequest('POST', url, JSON.stringify(body));
-/// 
+///
 ///     assert(response.code === 201);
 ///     assert(JSON.parse(response.body).extra.operations.executed === 2);
 ///     assert(JSON.parse(response.body).extra.operations.ignored === 0);
-/// 
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
@@ -256,20 +257,20 @@ var internal = require("internal");
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
-/// 
+///
 ///     db.products.save({ _key: "foo" });
 ///
 ///     var url = "/_api/cursor";
 ///     var body = {
 ///       query: "REMOVE 'bar' IN products OPTIONS { ignoreErrors: true }"
 ///     };
-/// 
+///
 ///     var response = logCurlRequest('POST', url, JSON.stringify(body));
-/// 
+///
 ///     assert(response.code === 201);
 ///     assert(JSON.parse(response.body).extra.operations.executed === 0);
 ///     assert(JSON.parse(response.body).extra.operations.ignored === 1);
-/// 
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
@@ -279,11 +280,11 @@ var internal = require("internal");
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorMissingBody}
 ///     var url = "/_api/cursor";
-/// 
+///
 ///     var response = logCurlRequest('POST', url, '');
-/// 
+///
 ///     assert(response.code === 400);
-/// 
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
@@ -291,16 +292,16 @@ var internal = require("internal");
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorUnknownCollection}
 ///     var url = "/_api/cursor";
-///     var body = { 
-///       query: "FOR u IN unknowncoll LIMIT 2 RETURN u", 
-///       count: true, 
-///       batchSize: 2 
+///     var body = {
+///       query: "FOR u IN unknowncoll LIMIT 2 RETURN u",
+///       count: true,
+///       batchSize: 2
 ///     };
-/// 
+///
 ///     var response = logCurlRequest('POST', url, JSON.stringify(body));
-/// 
+///
 ///     assert(response.code === 404);
-/// 
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
@@ -311,18 +312,18 @@ var internal = require("internal");
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
-/// 
+///
 ///     db.products.save({ _key: "bar" });
 ///
 ///     var url = "/_api/cursor";
 ///     var body = {
 ///       query: "REMOVE 'foo' IN products"
 ///     };
-/// 
+///
 ///     var response = logCurlRequest('POST', url, JSON.stringify(body));
-/// 
+///
 ///     assert(response.code === 404);
-/// 
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
@@ -345,12 +346,12 @@ function post_api_cursor(req, res) {
   var cursor;
 
   if (json.query !== undefined) {
-    cursor = internal.AQL_QUERY(json.query, 
-                                json.bindVars, 
-                                { 
+    cursor = internal.AQL_QUERY(json.query,
+                                json.bindVars,
+                                {
                                   count : json.count || false,
                                   batchSize: json.batchSize || 1000,
-                                  ttl: json.ttl 
+                                  ttl: json.ttl
                                 },
                                 json.options);
   }
@@ -358,7 +359,7 @@ function post_api_cursor(req, res) {
     actions.resultBad(req, res, arangodb.ERROR_QUERY_EMPTY);
     return;
   }
-   
+
   // error occurred
   if (cursor instanceof Error) {
     actions.resultException(req, res, cursor, undefined, false);
@@ -366,11 +367,11 @@ function post_api_cursor(req, res) {
   }
 
   // this might dispose or persist the cursor
-  actions.resultCursor(req, 
-                       res, 
-                       cursor, 
-                       actions.HTTP_CREATED, 
-                       { 
+  actions.resultCursor(req,
+                       res,
+                       cursor,
+                       actions.HTTP_CREATED,
+                       {
                          countRequested: json.count ? true : false
                        });
 }
@@ -402,9 +403,9 @@ function post_api_cursor(req, res) {
 /// *false*, the client can stop.
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{200}
-/// The server will respond with *HTTP 200* in case of success. 
+/// The server will respond with *HTTP 200* in case of success.
 ///
 /// @RESTRETURNCODE{400}
 /// If the cursor identifier is omitted, the server will respond with *HTTP 404*.
@@ -422,7 +423,7 @@ function post_api_cursor(req, res) {
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
-/// 
+///
 ///     db.products.save({"hello1":"world1"});
 ///     db.products.save({"hello2":"world1"});
 ///     db.products.save({"hello3":"world1"});
@@ -431,9 +432,9 @@ function post_api_cursor(req, res) {
 ///
 ///     var url = "/_api/cursor";
 ///     var body = {
-///       query: "FOR p IN products LIMIT 5 RETURN p", 
-///       count: true, 
-///       batchSize: 2 
+///       query: "FOR p IN products LIMIT 5 RETURN p",
+///       count: true,
+///       batchSize: 2
 ///     };
 ///     var response = logCurlRequest('POST', url, JSON.stringify(body));
 ///
@@ -441,7 +442,7 @@ function post_api_cursor(req, res) {
 ///     var _id = JSON.parse(body).id;
 ///     response = logCurlRequest('PUT', url + '/' + _id, '');
 ///     assert(response.code === 200);
-/// 
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
@@ -449,11 +450,11 @@ function post_api_cursor(req, res) {
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorMissingCursorIdentifier}
 ///     var url = "/_api/cursor";
-/// 
+///
 ///     var response = logCurlRequest('PUT', url, '');
-/// 
+///
 ///     assert(response.code === 400);
-/// 
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
@@ -461,11 +462,11 @@ function post_api_cursor(req, res) {
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCursorInvalidCursorIdentifier}
 ///     var url = "/_api/cursor/123123";
-/// 
+///
 ///     var response = logCurlRequest('PUT', url, '');
-/// 
+///
 ///     assert(response.code === 404);
-/// 
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
@@ -477,15 +478,15 @@ function put_api_cursor (req, res) {
     return;
   }
 
-  var cursorId = decodeURIComponent(req.suffix[0]); 
+  var cursorId = decodeURIComponent(req.suffix[0]);
   var cursor = CURSOR(cursorId);
 
   if (! (cursor instanceof arangodb.ArangoCursor)) {
     actions.resultBad(req, res, arangodb.ERROR_CURSOR_NOT_FOUND);
     return;
   }
-    
-  try { 
+
+  try {
     // note: this might dispose or persist the cursor
     actions.resultCursor(req, res, cursor, actions.HTTP_OK);
   }
@@ -509,18 +510,18 @@ function put_api_cursor (req, res) {
 /// The name of the cursor
 ///
 /// @RESTDESCRIPTION
-/// Deletes the cursor and frees the resources associated with it. 
+/// Deletes the cursor and frees the resources associated with it.
 ///
 /// The cursor will automatically be destroyed on the server when the client has
 /// retrieved all documents from it. The client can also explicitly destroy the
 /// cursor at any earlier time using an HTTP DELETE request. The cursor id must
 /// be included as part of the URL.
-/// 
-/// Note: the server will also destroy abandoned cursors automatically after a 
+///
+/// Note: the server will also destroy abandoned cursors automatically after a
 /// certain server-controlled timeout to avoid resource leakage.
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{202}
 /// is returned if the server is aware of the cursor.
 ///
@@ -535,7 +536,7 @@ function put_api_cursor (req, res) {
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
-/// 
+///
 ///     db.products.save({"hello1":"world1"});
 ///     db.products.save({"hello2":"world1"});
 ///     db.products.save({"hello3":"world1"});
@@ -544,7 +545,7 @@ function put_api_cursor (req, res) {
 ///
 ///     var url = "/_api/cursor";
 ///     var body = {
-///       query: "FOR p IN products LIMIT 5 RETURN p", 
+///       query: "FOR p IN products LIMIT 5 RETURN p",
 ///       count: true,
 ///       batchSize: 2
 ///     };
@@ -553,7 +554,7 @@ function put_api_cursor (req, res) {
 ///     var body = response.body.replace(/\\/g, '');
 ///     var _id = JSON.parse(body).id;
 ///     response = logCurlRequest('DELETE', url + '/' + _id);
-/// 
+///
 ///     assert(response.code === 202);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
@@ -582,26 +583,25 @@ function delete_api_cursor(req, res) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief cursor actions gateway 
+/// @brief cursor actions gateway
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
   url : "_api/cursor",
-  context : "api",
 
   callback : function (req, res) {
     try {
       switch (req.requestType) {
-        case actions.POST: 
-          post_api_cursor(req, res); 
+        case actions.POST:
+          post_api_cursor(req, res);
           break;
 
-        case actions.PUT:  
-          put_api_cursor(req, res); 
+        case actions.PUT:
+          put_api_cursor(req, res);
           break;
 
-        case actions.DELETE:  
-          delete_api_cursor(req, res); 
+        case actions.DELETE:
+          delete_api_cursor(req, res);
           break;
 
         default:
@@ -614,7 +614,11 @@ actions.defineHttp({
   }
 });
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
