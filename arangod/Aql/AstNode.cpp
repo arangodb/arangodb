@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/AstNode.h"
+#include "Aql/Scopes.h"
 
 using namespace triagens::aql;
 
@@ -74,8 +75,7 @@ void AstNode::toJson (TRI_json_t* json,
   // dump node type
   TRI_Insert3ArrayJson(zone, node, "type", TRI_CreateStringCopyJson(zone, typeString().c_str()));
 
-  if (type == NODE_TYPE_VARIABLE ||
-      type == NODE_TYPE_REFERENCE ||
+  if (type == NODE_TYPE_REFERENCE ||
       type == NODE_TYPE_COLLECTION ||
       type == NODE_TYPE_PARAMETER ||
       type == NODE_TYPE_ATTRIBUTE_ACCESS ||
@@ -106,6 +106,13 @@ void AstNode::toJson (TRI_json_t* json,
       default: {
       }
     }
+  }
+
+  if (type == NODE_TYPE_VARIABLE) {
+    auto variable = static_cast<Variable*>(getData());
+
+    TRI_Insert3ArrayJson(zone, node, "name", TRI_CreateStringCopyJson(zone, variable->name.c_str()));
+    TRI_Insert3ArrayJson(zone, node, "id", TRI_CreateNumberJson(zone, static_cast<double>(variable->id)));
   }
   
   // dump sub-nodes 
