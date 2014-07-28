@@ -39,7 +39,7 @@ namespace triagens {
   namespace aql {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class ExecutionPlan, abstract base class
+/// @brief class ExecutionPlan, abstract base class of all execution plans
 ////////////////////////////////////////////////////////////////////////////////
 
     class ExecutionPlan {
@@ -140,6 +140,23 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a dependency, returns true if the pointer was found and 
+/// removed, please note that this does not delete ep!
+////////////////////////////////////////////////////////////////////////////////
+
+        bool removeDependency (ExecutionPlan* ep) {
+          auto it = _dependencies.begin(); 
+          while (it != _dependencies.end()) {
+            if (*it == ep) {
+              _dependencies.erase(it);
+              return true;
+            }
+            ++it;
+          }
+          return false;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief access the pos-th dependency
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -156,8 +173,18 @@ namespace triagens {
 /// @brief clone execution plan recursively, this makes the class abstract
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionPlan* clone () { // = 0;   make this abstract later
-          return this;
+        virtual ExecutionPlan* clone () = 0;   // make class abstract
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper for cloning, use virtual clone methods for dependencies
+////////////////////////////////////////////////////////////////////////////////
+
+        void cloneDependencies (ExecutionPlan* theClone) {
+          auto it = _dependencies.begin();
+          while (it != _dependencies.end()) {
+            theClone->_dependencies.push_back((*it)->clone());
+            ++it;
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -230,6 +257,16 @@ namespace triagens {
         virtual triagens::basics::Json toJson (
                TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone execution plan recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ExecutionPlan* clone () {
+          auto c = new EnumerateCollectionPlan(_vocbase, _collname);
+          cloneDependencies(c);
+          return static_cast<ExecutionPlan*>(c);
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -246,7 +283,7 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                     class EnumerateCollectionPlan
+// --SECTION--                                                   class LimitPlan
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -300,9 +337,15 @@ namespace triagens {
         virtual triagens::basics::Json toJson (
                TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone execution plan recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ExecutionPlan* clone () {
+          auto c = new LimitPlan(_offset, _limit);
+          cloneDependencies(c);
+          return static_cast<ExecutionPlan*>(c);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief we need to know the offset and limit
