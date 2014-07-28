@@ -118,7 +118,9 @@ namespace triagens {
       NODE_TYPE_ATTRIBUTE,
       NODE_TYPE_PARAMETER,
       NODE_TYPE_FCALL,
-      NODE_TYPE_FCALL_USER
+      NODE_TYPE_FCALL_USER,
+      NODE_TYPE_RANGE,
+      NODE_TYPE_NOP,
     };
 
 // -----------------------------------------------------------------------------
@@ -161,10 +163,33 @@ namespace triagens {
                      TRI_memory_zone_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a value node is of numeric type
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool isNumericValue () const {
+          return (type == NODE_TYPE_VALUE &&
+                 (value.type == VALUE_TYPE_INT || value.type == VALUE_TYPE_DOUBLE)); 
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a value node is of bool type
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool isBoolValue () const {
+          return (type == NODE_TYPE_VALUE && value.type == VALUE_TYPE_BOOL);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a node has a constant value
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isConstant () const;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the number of members
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t numMembers () const {
+        inline size_t numMembers () const {
           return members._length;
         }
 
@@ -209,7 +234,7 @@ namespace triagens {
 /// @brief return a member of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline AstNode* getMember (size_t i) {
+        inline AstNode* getMember (size_t i) const {
           if (i >= members._length) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
           }
@@ -245,6 +270,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline int64_t getIntValue () const {
+          TRI_ASSERT(type == NODE_TYPE_VALUE);
+          TRI_ASSERT(value.type == VALUE_TYPE_INT || 
+                     value.type == VALUE_TYPE_DOUBLE);
+
+          if (value.type == VALUE_TYPE_DOUBLE) {
+            return static_cast<int64_t>(value.value._double);
+          }
+
           return value.value._int;
         }
 
@@ -261,6 +294,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline double getDoubleValue () const {
+          TRI_ASSERT(type == NODE_TYPE_VALUE);
+          TRI_ASSERT(value.type == VALUE_TYPE_INT || 
+                     value.type == VALUE_TYPE_DOUBLE);
+
+          if (value.type == VALUE_TYPE_INT) {
+            return static_cast<double>(value.value._int);
+          }
+
           return value.value._double;
         }
 

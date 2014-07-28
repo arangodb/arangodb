@@ -147,6 +147,56 @@ void AstNode::toJson (TRI_json_t* json,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a node has a constant value
+////////////////////////////////////////////////////////////////////////////////
+
+bool AstNode::isConstant () const {
+  if (type == NODE_TYPE_VALUE) {
+    return true;
+  }
+
+  if (type == NODE_TYPE_LIST) {
+    size_t const n = numMembers();
+
+    for (size_t i = 0; i < n; ++i) {
+      auto member = getMember(i);
+
+      if (member != nullptr) {
+        if (! member->isConstant()) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  if (type == NODE_TYPE_ARRAY) {
+    size_t const n = numMembers();
+
+    for (size_t i = 0; i < n; ++i) {
+      auto member = getMember(i);
+
+      if (member != nullptr) {
+        auto value = member->getMember(0);
+
+        if (value == nullptr) {
+          continue;
+        }
+
+        if (! value->isConstant()) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type name of a node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -248,6 +298,10 @@ std::string AstNode::typeString () const {
       return "function call";
     case NODE_TYPE_FCALL_USER:
       return "user function call";
+    case NODE_TYPE_RANGE:
+      return "range";
+    case NODE_TYPE_NOP:
+      return "no-op";
     default: {
     }
   }
