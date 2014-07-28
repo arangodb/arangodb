@@ -32,8 +32,11 @@
 
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
+#include "Aql/BindParameters.h"
 #include "Aql/Scopes.h"
 #include "BasicsC/json.h"
+
+#include <functional>
 
 struct TRI_json_s;
 
@@ -76,8 +79,10 @@ namespace triagens {
 
       public:
 
+        
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a copy of our bind parameters
+/// @brief return a copy of our own bind parameters
 ////////////////////////////////////////////////////////////////////////////////
 
         std::unordered_set<std::string> bindParameters () const {
@@ -372,11 +377,32 @@ namespace triagens {
         AstNode* createNodeFunctionCall (char const*,
                                          AstNode const*);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief injects bind parameters into the AST
+////////////////////////////////////////////////////////////////////////////////
+
+        void injectBindParameters (BindParameters&);
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST node from JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNode* nodeFromJson (TRI_json_t const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief traverse the AST
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNode* traverse (AstNode*,
+                           std::function<AstNode*(AstNode*, void*)>,
+                           void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize a function name

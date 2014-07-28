@@ -77,7 +77,6 @@ Parser::~Parser () {
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set data for write queries
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,35 +116,27 @@ bool Parser::configureWriteQuery (QueryType type,
 ////////////////////////////////////////////////////////////////////////////////
 
 ParseResult Parser::parse () {
-  auto error = _query->error();
-
   ParseResult result(TRI_UNKNOWN_MEM_ZONE);
 
-  try {
-    auto scopes = _ast->scopes();
-    scopes->start(AQL_SCOPE_MAIN);
+  // start main scope
+  auto scopes = _ast->scopes();
+  scopes->start(AQL_SCOPE_MAIN);
 
-    if (Aqlparse(this)) {
-      // lexing/parsing failed
-      result.code        = error->code;
-      result.explanation = error->explanation;
-      return result;
-    }
+  // parse the query string
+  if (Aqlparse(this)) {
+    // lexing/parsing failed
+    auto error         = _query->error();
+    result.code        = error->code;
+    result.explanation = error->explanation;
+    return result;
+  }
 
-    scopes->endCurrent();
-    result.collectionNames = _ast->collectionNames();
-    result.bindParameters  = _ast->bindParameters();
-    result.json            = _ast->toJson(TRI_UNKNOWN_MEM_ZONE);
-  }
-  catch (triagens::arango::Exception const& ex) {
-    registerError(ex.code());
-  }
-  catch (...) {
-    registerError(TRI_ERROR_OUT_OF_MEMORY);
-  }
-      
-  result.code        = error->code;
-  result.explanation = error->explanation;
+  // end main scope
+  scopes->endCurrent();
+
+  result.collectionNames = _ast->collectionNames();
+  result.bindParameters  = _ast->bindParameters();
+  result.json            = _ast->toJson(TRI_UNKNOWN_MEM_ZONE);
 
   return result;
 }
