@@ -35,57 +35,10 @@
 #include <VocBase/voc-types.h>
 #include <VocBase/vocbase.h>
 
-#include "Aql/AstNode.h"
+#include "Aql/Types.h"
 
 namespace triagens {
   namespace aql {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief class AqlExpression, used in execution plans and execution blocks
-////////////////////////////////////////////////////////////////////////////////
-
-    class AqlExpression {
-      
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief default constructor, creating an empty expression
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlExpression () : _ast(nullptr) {
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor, using an abstract syntax tree
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlExpression (AstNode* ast) : _ast(ast) {
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
-
-        ~AqlExpression () {
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getAst, get the underlying abstract syntax tree
-////////////////////////////////////////////////////////////////////////////////
-
-        AstNode* getAst () {
-          return _ast;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief private members
-////////////////////////////////////////////////////////////////////////////////
-
-      private:
-
-        AstNode* _ast;
-
-    };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class ExecutionPlan, abstract base class of all execution plans
@@ -351,16 +304,8 @@ namespace triagens {
           : ExecutionPlan(), _offset(o), _limit(l) {
         }
 
-        LimitPlan (ExecutionPlan* ep, size_t o, size_t l) 
-          : ExecutionPlan(ep), _offset(o), _limit(l) {
-        }
-
         LimitPlan (size_t l) 
           : ExecutionPlan(), _offset(0), _limit(l) {
-        }
-
-        LimitPlan (ExecutionPlan* ep, size_t l) 
-          : ExecutionPlan(ep), _offset(0), _limit(l) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -408,7 +353,7 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   class LimitPlan
+// --SECTION--                                                  class FilterPlan
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -425,11 +370,6 @@ namespace triagens {
 
         FilterPlan (std::string attribute, triagens::basics::Json value) 
           : ExecutionPlan(), _attribute(attribute), _value(value) {
-        }
-
-        FilterPlan (ExecutionPlan* ep, std::string attribute, 
-                    triagens::basics::Json value) 
-          : ExecutionPlan(ep), _attribute(attribute), _value(value) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -473,6 +413,69 @@ namespace triagens {
 
         std::string            _attribute;
         triagens::basics::Json _value;
+
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             class CalculationPlan
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class CalculationPlan, derived from ExecutionPlan
+////////////////////////////////////////////////////////////////////////////////
+
+    class CalculationPlan : public ExecutionPlan {
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructors for various arguments, always with offset and limit
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+        CalculationPlan (AqlExpression* aqlExpression) 
+          : ExecutionPlan(), _aqlExpression(aqlExpression) {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual NodeType getType () {
+          return CALCULATION;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node as a string
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::string getTypeString () {
+          return std::string("CalculationPlan");
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual triagens::basics::Json toJson (
+               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone execution plan recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ExecutionPlan* clone () {
+          auto c = new CalculationPlan(_aqlExpression->clone());
+          cloneDependencies(c);
+          return static_cast<ExecutionPlan*>(c);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief we need to know the offset and limit
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+        AqlExpression* _aqlExpression;
 
     };
   }   // namespace triagens::aql

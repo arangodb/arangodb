@@ -30,69 +30,11 @@
 
 #include <Basics/JsonHelper.h>
 
-#include "VocBase/document-collection.h"
-
+#include "Aql/Types.h"
 #include "Aql/ExecutionPlan.h"
 
 namespace triagens {
   namespace aql {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      AqlDocuments
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief struct AqlDocument, used to pipe documents through executions
-/// the execution engine keeps one AqlDocument struct for each document
-/// that is piped through the engine. Note that the document can exist in
-/// one of two formats throughout its lifetime in the engine. When it resides
-/// originally in a datafile, it stays there unchanged and we only store
-/// a (pointer to) a copy of the TRI_doc_mptr_t struct. As soon as it is 
-/// modified (or created on the fly anyway), or if it originally resides
-/// in the WAL, we keep the document as a TRI_json_t, wrapped by a Json
-/// struct. That is, the following struct has the following invariant:
-/// Either the whole struct is empty and thus _json is empty and _mptr is
-/// a nullptr. Otherwise, either _json is empty and _mptr is not a nullptr,
-/// or _json is non-empty and _mptr is anullptr.
-/// Additionally, the struct contains another TRI_json_t holding the
-/// current state of the LET variables (and possibly some other
-/// computations). This is the _vars attribute.
-/// Note that both Json subobjects are constructed as AUTOFREE.
-////////////////////////////////////////////////////////////////////////////////
-
-    struct AqlDocument {
-      triagens::basics::Json      _json;
-      TRI_doc_mptr_copy_t*        _mptr;
-      triagens::basics::Json      _vars;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convenience constructors
-////////////////////////////////////////////////////////////////////////////////
-
-      AqlDocument ()
-        : _json(), _mptr(nullptr), _vars() {
-      }
-
-      AqlDocument (TRI_doc_mptr_t* mptr)
-        : _json(), _vars() {
-        _mptr = new TRI_doc_mptr_copy_t(*mptr);
-      }
-
-      AqlDocument (triagens::basics::Json json)
-        : _json(json), _mptr(nullptr), _vars() {
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
-
-      ~AqlDocument () {
-        if (_mptr != nullptr) {
-          delete _mptr;
-        }
-      }
-
-    };
 
   }  // namespace triagens::aql
 }  // namespace triagens
