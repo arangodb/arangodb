@@ -52,7 +52,8 @@ QueryAst::QueryAst (Parser* parser)
     _collectionNames(),
     _root(nullptr),
     _writeCollection(nullptr),
-    _writeOptions(nullptr) {
+    _writeOptions(nullptr),
+    _nopNode() {
 
   _nodes.reserve(32);
   _root = createNode(NODE_TYPE_ROOT);
@@ -637,6 +638,32 @@ AstNode* QueryAst::createNodeFunctionCall (char const* functionName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST range node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* QueryAst::createNodeRange (AstNode const* start,
+                                    AstNode const* end) {
+  AstNode* node = createNode(NODE_TYPE_RANGE);
+  node->addMember(start);
+  node->addMember(end);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a no-op node
+/// note: the same no-op node can be returned multiple times
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* QueryAst::createNodeNop () {
+  if (_nopNode == nullptr) {
+    _nopNode == createNode(NODE_TYPE_NOP);
+  }
+
+  return _nopNode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief injects bind parameters into the AST
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -696,9 +723,382 @@ void QueryAst::injectBindParameters (BindParameters& parameters) {
   _root = traverse(_root, func, &p); 
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizes the AST
+////////////////////////////////////////////////////////////////////////////////
+
+void QueryAst::optimize () {
+  auto func = [&](AstNode* node, void* data) -> AstNode* {
+    if (node == nullptr) {
+      return nullptr;
+    }
+
+    // FILTER
+    if (node->type == NODE_TYPE_FILTER) {
+      return optimizeFilter(node);
+    }
+
+    // unary operators
+    if (node->type == NODE_TYPE_OPERATOR_UNARY_PLUS ||
+        node->type == NODE_TYPE_OPERATOR_UNARY_MINUS) {
+      return optimizeUnaryOperatorArithmetic(node);
+    }
+
+    if (node->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
+      return optimizeUnaryOperatorLogical(node);
+    }
+
+    // binary operators
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+      return optimizeBinaryOperatorLogical(node);
+    }
+    
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_NE ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_LT ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_GT ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
+      return optimizeBinaryOperatorRelational(node);
+    }
+    
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_PLUS ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_MINUS ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_TIMES ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_DIV ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
+      return optimizeBinaryOperatorArithmetic(node);
+    }
+      
+    // ternary operator
+    if (node->type == NODE_TYPE_OPERATOR_TERNARY) {
+      return optimizeTernaryOperator(node);
+    }
+
+    return node;
+  };
+
+  _root = traverse(_root, func, nullptr); 
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizes a FILTER node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* QueryAst::optimizeFilter (AstNode* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_FILTER);
+  TRI_ASSERT(node->numMembers() == 1);
+  
+  AstNode* operand = node->getMember(0);
+  if (! operand->isConstant()) {
+    // unable to optimize non-constant expression
+    return node;
+  }
+
+  if (! operand->isBoolValue()) {
+    _parser->registerError(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
+    return node;
+  }
+
+  if (operand->getBoolValue()) {
+    // FILTER is always true, optimise it away
+    return createNodeNop();
+  }
+
+  return node;
+}  
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizes the unary operators + and -
+/// the unary plus will be converted into a simple value node if the operand of
+/// the operation is a constant number
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* QueryAst::optimizeUnaryOperatorArithmetic (AstNode* node) {
+  TRI_ASSERT(node != nullptr);
+
+  TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_UNARY_PLUS ||
+             node->type == NODE_TYPE_OPERATOR_UNARY_MINUS);
+  TRI_ASSERT(node->numMembers() == 1);
+
+  AstNode* operand = node->getMember(0);
+  if (! operand->isConstant()) {
+    // operand is dynamic, cannot statically optimize it
+    return node;
+  }
+
+  if (! operand->isNumericValue()) {
+    _parser->registerError(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    return node;
+  }
+
+  TRI_ASSERT(operand->value.type == VALUE_TYPE_INT ||
+             operand->value.type == VALUE_TYPE_DOUBLE);
+
+  if (node->type == NODE_TYPE_OPERATOR_UNARY_PLUS) {
+    // + number => number
+    return operand;
+  }
+  else {
+    // - number
+    if (operand->value.type == VALUE_TYPE_INT) {
+      // int64
+      return createNodeValueInt(- operand->getIntValue());
+    }
+    else {
+      // double
+      double const value = - operand->getDoubleValue();
+      
+      if (value != value || 
+          value == HUGE_VAL || 
+          value == - HUGE_VAL) {
+        // IEEE754 NaN values have an interesting property that we can exploit...
+        // if the architecture does not use IEEE754 values then this shouldn't do
+        // any harm either
+        _parser->registerError(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE);
+        return node;
+      }
+
+      return createNodeValueDouble(value);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizes the unary operator NOT
+/// the unary NOT operation will be replaced with the result of the operation
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* QueryAst::optimizeUnaryOperatorLogical (AstNode* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_UNARY_NOT);
+  TRI_ASSERT(node->numMembers() == 1);
+
+  AstNode* operand = node->getMember(0);
+  if (! operand->isConstant()) {
+    // operand is dynamic, cannot statically optimize it
+    return node;
+  }
+
+  if (! operand->isBoolValue()) {
+    _parser->registerError(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
+    return node;
+  }
+
+  // replace unary negation operation with result of negation
+  return createNodeValueBool(! operand->getBoolValue());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizes the binary logical operators && and ||
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* QueryAst::optimizeBinaryOperatorLogical (AstNode* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
+             node->type == NODE_TYPE_OPERATOR_BINARY_OR);
+  TRI_ASSERT(node->numMembers() == 2);
+
+  auto lhs = node->getMember(0);
+  auto rhs = node->getMember(1);
+
+  if (lhs == nullptr || rhs == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  bool const lhsIsConst = lhs->isConstant();
+  bool const rhsIsConst = rhs->isConstant();
+
+  if (lhsIsConst && ! lhs->isBoolValue()) {
+    // left operand is a constant value, but no boolean
+    _parser->registerError(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
+    return node;
+  }
+
+  if (rhsIsConst && ! rhs->isBoolValue()) {
+    // right operand is a constant value, but no boolean
+    _parser->registerError(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
+    return node;
+  }
+
+  if (! lhsIsConst || ! rhsIsConst) {
+    return node;
+  }
+
+  if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+    // logical and
+
+    if (lhs->getBoolValue()) {
+      // (true && rhs) => rhs
+      return rhs;
+    }
+
+    // (false && rhs) => false
+    return lhs;
+  }
+  else {
+    // logical or
+
+    if (lhs->getBoolValue()) {
+      // (true || rhs) => true
+      return lhs;
+    }
+
+    // (false || rhs) => rhs
+    return rhs;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizes the binary relational operators <, <=, >, >=, ==, != and IN
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* QueryAst::optimizeBinaryOperatorRelational (AstNode* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->numMembers() == 2);
+
+  AstNode* lhs = node->getMember(0);
+  AstNode* rhs = node->getMember(1);
+
+  if (lhs == nullptr || rhs == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+ /* 
+  bool const lhsIsConst = lhs->isConstant(); 
+  bool const rhsIsConst = rhs->isConstant(); 
+
+  // TODO
+*/
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizes the binary arithmetic operators +, -, *, / and %
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* QueryAst::optimizeBinaryOperatorArithmetic (AstNode* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->numMembers() == 2);
+
+  AstNode* lhs = node->getMember(0);
+  AstNode* rhs = node->getMember(1);
+
+  if (lhs == nullptr || rhs == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  bool const lhsIsConst = lhs->isConstant(); 
+  bool const rhsIsConst = rhs->isConstant(); 
+
+  if (lhsIsConst && ! lhs->isNumericValue()) {
+    // lhs is not a number
+    _parser->registerError(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    return node;
+  }
+  
+  if (rhsIsConst && ! rhs->isNumericValue()) {
+    // rhs is not a number
+    _parser->registerError(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    return node;
+  }
+
+  if (! lhsIsConst || ! rhsIsConst) {
+    return node;
+  }
+
+  // now calculate the expression result
+
+  double value;
+  double const l = lhs->getDoubleValue();
+  double const r = rhs->getDoubleValue();
+
+  if (node->type == NODE_TYPE_OPERATOR_BINARY_PLUS) {
+    value = l + r;
+  }
+  else if (node->type == NODE_TYPE_OPERATOR_BINARY_MINUS) {
+    value = l - r;
+  }
+  else if (node->type == NODE_TYPE_OPERATOR_BINARY_TIMES) {
+    value = l * r;
+  }
+  else if (node->type == NODE_TYPE_OPERATOR_BINARY_DIV) {
+    if (r == 0.0) {
+      _parser->registerError(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+      return node;
+    }
+
+    value = l / r;
+  }
+  else if (node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
+    if (r == 0.0) {
+      _parser->registerError(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+      return node;
+    }
+
+    value = fmod(l, r);
+  }
+  else {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+      
+  if (value != value || 
+      value == HUGE_VAL || 
+      value == - HUGE_VAL) {
+    // IEEE754 NaN values have an interesting property that we can exploit...
+    // if the architecture does not use IEEE754 values then this shouldn't do
+    // any harm either
+    _parser->registerError(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE);
+    return node;
+  }
+
+  return createNodeValueDouble(value);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizes the ternary operator
+/// if the condition is constant, the operator will be replaced with either the
+/// true part or the false part
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* QueryAst::optimizeTernaryOperator (AstNode* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_TERNARY);
+  TRI_ASSERT(node->numMembers() == 3);
+
+  AstNode* condition = node->getMember(0);
+  AstNode* truePart  = node->getMember(1);
+  AstNode* falsePart = node->getMember(2);
+
+  if (condition == nullptr || 
+      truePart == nullptr || 
+      falsePart == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  if (! condition->isConstant()) {
+    return node;
+  }
+
+  if (! condition->isBoolValue()) {
+    _parser->registerError(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
+    return node;
+  }
+
+  if (condition->getBoolValue()) {
+    // condition is always true, replace ternary operation with true part
+    return truePart;
+  }
+
+  // condition is always false, replace ternary operation with false part
+  return falsePart;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST node from JSON

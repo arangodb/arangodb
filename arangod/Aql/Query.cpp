@@ -164,6 +164,7 @@ ParseResult Query::execute () {
     Parser parser(this);
     parser.parse();
     parser.ast()->injectBindParameters(_bindParameters);
+    parser.ast()->optimize();
   
     // TODO: remove
     std::cout << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";

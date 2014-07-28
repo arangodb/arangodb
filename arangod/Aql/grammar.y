@@ -468,15 +468,7 @@ expression:
       $$ = $1;
     }
   | expression T_RANGE expression {
-      if ($1 == nullptr || $3 == nullptr) {
-        ABORT_OOM
-      }
-     
-      auto list = parser->ast()->createNodeList();
-      list->addMember($1);
-      list->addMember($3);
-     
-      $$ = parser->ast()->createNodeFunctionCall("RANGE", list);
+      $$ = parser->ast()->createNodeRange($1, $3);
     }
   ;
 
