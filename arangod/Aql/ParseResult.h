@@ -41,13 +41,17 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     struct ParseResult {
+      ParseResult () = delete;
+
+      ParseResult& operator= (ParseResult const& other) = delete;
+      
       ParseResult (ParseResult&& other) {
+        code = other.code;
+        explanation = other.explanation;
         json = other.json;
         zone = other.zone;
         other.json = nullptr;
       }
-
-      ParseResult& operator= (ParseResult const& other) = delete;
 
       ParseResult (int code,
                    std::string const& explanation) 
@@ -58,7 +62,9 @@ namespace triagens {
       }
 
       ParseResult (TRI_memory_zone_t* zone) 
-        : zone(zone),
+        : code(TRI_ERROR_NO_ERROR),
+          explanation(),
+          zone(zone),
           json(nullptr) {
       }
 

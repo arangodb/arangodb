@@ -112,6 +112,7 @@ namespace triagens {
         inline void setWriteCollection (AstNode const* node) {
           TRI_ASSERT(node->type == NODE_TYPE_COLLECTION ||
                      node->type == NODE_TYPE_PARAMETER);
+
           _writeCollection = node;
         }
 
