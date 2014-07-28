@@ -34,6 +34,8 @@
 #include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-explain.h"
 #include "Ahuacatl/ahuacatl-result.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/ExecutionBlock.h"
 #include "Aql/Query.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
@@ -5396,6 +5398,42 @@ static v8::Handle<v8::Value> JS_ParseAql (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief peng an AQL query
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_PengAql (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  if (vocbase == nullptr) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
+  if (argv.Length() != 0) {
+    TRI_V8_EXCEPTION_USAGE(scope, "AQL_PENG()");
+  }
+
+  triagens::aql::ExecutionPlan* enumPlan = new triagens::aql::EnumerateCollectionPlan(vocbase, "fuxx");
+  triagens::aql::ExecutionPlan* rootPlan = new triagens::aql::RootPlan(); 
+  rootPlan->addDependency(enumPlan);
+
+  triagens::aql::ExecutionBlock* exec = rootPlan->instanciate();
+  exec->initialise();
+  exec->execute();
+ 
+  triagens::aql::AqlValue* value;
+  while (nullptr != (value = exec->getOne())) {
+    std::cout << value->toString();
+    delete value;
+  }
+
+  exec->shutdown();
+
+  return scope.Close(v8::Undefined());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -10710,6 +10748,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // new AQL functions. not intended to be used directly by end users
   TRI_AddGlobalFunctionVocbase(context, "AQL_EXECUTE", JS_ExecuteAql, true);
   TRI_AddGlobalFunctionVocbase(context, "AQL_PARSE", JS_ParseAql, true);
+  TRI_AddGlobalFunctionVocbase(context, "AQL_PENG", JS_PengAql, true);
 
   // cursor functions. not intended to be used by end users
   TRI_AddGlobalFunctionVocbase(context, "CURSOR", JS_Cursor, true);
