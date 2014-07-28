@@ -269,10 +269,6 @@ namespace triagens {
           return static_cast<ExecutionPlan*>(c);
         }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief we need to know the database and the collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -464,7 +460,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionPlan* clone () {
-          auto c = new CalculationPlan(_aqlExpression->clone());
+          auto c = new CalculationPlan(//_aqlExpression->clone());
+                                       _aqlExpression);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
         }
