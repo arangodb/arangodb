@@ -5426,7 +5426,7 @@ static v8::Handle<v8::Value> JS_PengAql (v8::Arguments const& argv) {
   triagens::aql::AqlValue* value;
   while (nullptr != (value = exec->getOne())) {
     std::cout << "Peng" << std::endl;
-    std::cout << value->toString();
+    std::cout << value->toString() << std::endl;
     delete value;
   }
 
