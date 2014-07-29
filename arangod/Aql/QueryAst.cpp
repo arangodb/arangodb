@@ -657,7 +657,7 @@ AstNode* QueryAst::createNodeRange (AstNode const* start,
 
 AstNode* QueryAst::createNodeNop () {
   if (_nopNode == nullptr) {
-    _nopNode == createNode(NODE_TYPE_NOP);
+    _nopNode = createNode(NODE_TYPE_NOP);
   }
 
   return _nopNode;
