@@ -76,8 +76,7 @@ void AstNode::toJson (TRI_json_t* json,
   // dump node type
   TRI_Insert3ArrayJson(zone, node, "type", TRI_CreateStringCopyJson(zone, typeString().c_str()));
 
-  if (type == NODE_TYPE_REFERENCE ||
-      type == NODE_TYPE_COLLECTION ||
+  if (type == NODE_TYPE_COLLECTION ||
       type == NODE_TYPE_PARAMETER ||
       type == NODE_TYPE_ATTRIBUTE_ACCESS ||
       type == NODE_TYPE_FCALL ||
@@ -109,7 +108,8 @@ void AstNode::toJson (TRI_json_t* json,
     }
   }
 
-  if (type == NODE_TYPE_VARIABLE) {
+  if (type == NODE_TYPE_VARIABLE ||
+      type == NODE_TYPE_REFERENCE) {
     auto variable = static_cast<Variable*>(getData());
 
     TRI_Insert3ArrayJson(zone, node, "name", TRI_CreateStringCopyJson(zone, variable->name.c_str()));
@@ -301,8 +301,6 @@ std::string AstNode::typeString () const {
       return "user function call";
     case NODE_TYPE_RANGE:
       return "range";
-    case NODE_TYPE_NOP:
-      return "no-op";
     default: {
     }
   }
