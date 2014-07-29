@@ -41,8 +41,6 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     struct ParseResult {
-      ParseResult () = delete;
-
       ParseResult& operator= (ParseResult const& other) = delete;
       
       ParseResult (ParseResult&& other) {
@@ -60,11 +58,18 @@ namespace triagens {
           zone(TRI_UNKNOWN_MEM_ZONE),
           json(nullptr) {
       }
+      
+      explicit ParseResult (int code)
+        : code(code),
+          explanation(""),
+          zone(TRI_UNKNOWN_MEM_ZONE),
+          json(nullptr) {
+      }
 
-      ParseResult (TRI_memory_zone_t* zone) 
+      ParseResult ()
         : code(TRI_ERROR_NO_ERROR),
           explanation(),
-          zone(zone),
+          zone(TRI_UNKNOWN_MEM_ZONE),
           json(nullptr) {
       }
 

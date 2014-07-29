@@ -174,19 +174,20 @@ ParseResult Query::execute () {
     parser.ast()->injectBindParameters(_bindParameters);
     parser.ast()->optimize();
   
-    // TODO: remove
-    std::cout << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
+    ParseResult result(_error.code, _error.explanation);   
+    result.json = parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE);
+
+    return result;
   }
   catch (triagens::arango::Exception const& ex) {
-    registerError(ex.code());
+    _error.code = ex.code();
+    _error.explanation = "";
+    
+    return ParseResult(ex.code());
   }
   catch (...) {
-    registerError(TRI_ERROR_OUT_OF_MEMORY);
+    return ParseResult(TRI_ERROR_OUT_OF_MEMORY);
   }
-  
-  ParseResult result(_error.code, _error.explanation);   
-
-  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -199,10 +200,12 @@ ParseResult Query::parse () {
     return parser.parse();
   }
   catch (triagens::arango::Exception const& ex) {
-    registerError(ex.code());
+    _error.code = ex.code();
+    _error.explanation = "";
   }
   catch (...) {
-    registerError(TRI_ERROR_OUT_OF_MEMORY);
+    _error.code = TRI_ERROR_OUT_OF_MEMORY;
+    _error.explanation = "";
   }
   
   ParseResult result(_error.code, _error.explanation);   

@@ -88,6 +88,57 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief begin a subquery
+////////////////////////////////////////////////////////////////////////////////
+
+        void startSubQuery () {
+          // insert a new root node
+          AstNodeType type;
+
+          if (_queries.empty()) {
+            // root node of query
+            type = NODE_TYPE_ROOT;
+          }
+          else {
+            // sub query node
+            type = NODE_TYPE_SUBQUERY;
+          }
+
+          auto root = createNode(type);
+
+          // save the root node
+          _queries.push_back(root);
+
+          // set the current root node if everything went well
+          _root = root;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief end a subquery
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNode* endSubQuery () {
+          // get the current root node
+          AstNode* root = _queries.back();
+          // remove it from the stack
+          _queries.pop_back();
+
+          // set root node to previous root node
+          _root = _queries.back();
+
+          // return the root node we just popped from the stack
+          return root;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not we currently are in a subquery
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isInSubQuery () const {
+          return (_queries.size() > 1);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return a copy of our own bind parameters
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -162,7 +213,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AstNode* createNodeLet (char const*,
-                                AstNode const*);
+                                AstNode const*,
+                                bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST filter node
@@ -296,7 +348,8 @@ namespace triagens {
 /// @brief create an AST subquery node
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode* createNodeSubquery (char const*);
+        AstNode* createNodeSubquery (char const*,
+                                     AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST attribute access node
@@ -323,10 +376,7 @@ namespace triagens {
 /// @brief create an AST expand node
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode* createNodeExpand (char const*,
-                                   char const*,
-                                   AstNode const*,
-                                   AstNode const*);
+        AstNode* createNodeExpand (AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST null value node
@@ -564,6 +614,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AstNode*                         _root;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief root nodes of queries and subqueries
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<AstNode*>            _queries;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief which collection is going to be modified in the query 
