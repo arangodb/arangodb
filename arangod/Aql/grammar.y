@@ -671,13 +671,19 @@ reference:
     }
   | reference {
       // expanded variable access, e.g. variable[*]
-      
-      // push on the stack what's going to be expanded (will be popped by the "expansion" subrule)
-      parser->pushStack($1);
+
+      // create a temporary iterator variable
+      char const* iteratorName = parser->generateName();
+      auto iterator = parser->ast()->createNodeIterator(iteratorName, $1);
+
+      parser->pushStack(iterator);
+      parser->pushStack(parser->ast()->createNodeReference(iteratorName));
     } T_EXPAND expansion {
       // return from the "expansion" subrule
+
       // push the expand node into the statement list
-      auto expand = parser->ast()->createNodeExpand($4);
+      auto iterator = static_cast<AstNode*>(parser->popStack());
+      auto expand = parser->ast()->createNodeExpand(iterator, $4);
       
       char const* variableName = parser->generateName();
       auto let = parser->ast()->createNodeLet(variableName, expand, false);
