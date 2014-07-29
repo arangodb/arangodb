@@ -162,7 +162,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AstNode* createNodeLet (char const*,
-                                AstNode const*);
+                                AstNode const*,
+                                bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST filter node
@@ -323,10 +324,7 @@ namespace triagens {
 /// @brief create an AST expand node
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode* createNodeExpand (char const*,
-                                   char const*,
-                                   AstNode const*,
-                                   AstNode const*);
+        AstNode* createNodeExpand (AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST null value node
