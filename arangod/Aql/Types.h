@@ -96,10 +96,13 @@ namespace triagens {
             return _json->toString();
           case DOCVEC:
             return "I am a DOCVEC.";
-          case RANGE:
+          case RANGE: {
             std::stringstream s;
             s << "I am a range: " << _range._low << " .. " << _range._high;
             return s.str();
+          }
+          default:
+            return std::string("");
         }
       }
 
@@ -107,12 +110,12 @@ namespace triagens {
 
     struct AqlItem {
       AqlItem*   _outer;
-      int32_t    _refcount;
+      int32_t    _refCount;
       int32_t    _nrvars;
       AqlValue** _vars;
 
       AqlItem (int nrvars)
-        : _outer(nullptr), _refcount(1), _nrvars(nrvars) {
+        : _outer(nullptr), _refCount(1), _nrvars(nrvars) {
         if (nrvars > 0) {
           _vars = new AqlValue* [nrvars];
         }
@@ -122,8 +125,8 @@ namespace triagens {
       }
 
       AqlItem (AqlItem* outer, int nrvars)
-        : _outer(outer), _refcount(1), _nrvars(nrvars) {
-        outer->_refcount++;
+        : _outer(outer), _refCount(1), _nrvars(nrvars) {
+        outer->_refCount++;
         if (nrvars > 0) {
           _vars = new AqlValue* [nrvars];
           for (int i = 0; i < nrvars; i++) {
@@ -141,8 +144,8 @@ namespace triagens {
 
       ~AqlItem () {
         if (_outer != nullptr) {
-          _outer->_refcount--;
-          if (_outer->_refcount == 0) {
+          _outer->_refCount--;
+          if (_outer->_refCount == 0) {
             delete _outer;
           }
           _outer = nullptr;
