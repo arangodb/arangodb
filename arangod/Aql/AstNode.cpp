@@ -279,6 +279,8 @@ std::string AstNode::typeString () const {
       return "indexed access";
     case NODE_TYPE_EXPAND:
       return "expand";
+    case NODE_TYPE_ITERATOR:
+      return "iterator";
     case NODE_TYPE_VALUE:
       return "value";
     case NODE_TYPE_LIST:

@@ -350,14 +350,14 @@ AstNode* QueryAst::createNodeLimit (AstNode const* offset,
 /// @brief create an AST assign node, used in COLLECT statements
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* QueryAst::createNodeAssign (char const* name,
+AstNode* QueryAst::createNodeAssign (char const* variableName,
                                      AstNode const* expression) {
-  if (name == nullptr) {
+  if (variableName == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   AstNode* node = createNode(NODE_TYPE_ASSIGN);
-  AstNode* variable = createNodeVariable(name, true);
+  AstNode* variable = createNodeVariable(variableName, true);
   node->addMember(variable);
   node->addMember(expression);
 
@@ -562,12 +562,34 @@ AstNode* QueryAst::createNodeIndexedAccess (AstNode const* accessed,
 /// @brief create an AST expand node
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* QueryAst::createNodeExpand (AstNode const* expanded) {
+AstNode* QueryAst::createNodeExpand (AstNode const* iterator,
+                                     AstNode const* expansion) {
   AstNode* node = createNode(NODE_TYPE_EXPAND);
+  node->addMember(iterator);
+  node->addMember(expansion);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST iterator node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* QueryAst::createNodeIterator (char const* variableName,
+                                       AstNode const* expanded) {
+  if (variableName == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  AstNode* node = createNode(NODE_TYPE_ITERATOR);
+
+  AstNode* variable = createNodeVariable(variableName, false);
+  node->addMember(variable);
   node->addMember(expanded);
 
   return node;
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST null value node
