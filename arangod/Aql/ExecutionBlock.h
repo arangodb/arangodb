@@ -126,20 +126,69 @@ namespace triagens {
           return TRI_ERROR_NO_ERROR;
         }
 
-        virtual AqlItem* getOne () = 0;
+      protected:
+        bool bufferMore (size_t atLeast, size_t atMost) {
+          std::vector<shared_ptr<AqlItem> > docs 
+            = _dependencies[0]->getSome(atLeast, atMost);
+          if (docs.size() == 0) {
+            return false;
+          }
+          for (auto it = docs.begin(); it != docs.end(); ++it) {
+            _buffer.push_back(*it);
+          }
+          return true;
+        }
 
-        std::vector<AqlItem*> getSome (int atLeast, int atMost);
+      public:
+        virtual shared_ptr<AqlItem> getOne () {
+          shared_ptr<AqlItem> res;
+          if (_buffer.size() != 0) {
+            res = _buffer.front();
+            _buffer.pop_front();
+            return res;
+          }
+          return _dependencies[0]->getOne();
+        }
+
+        virtual std::vector<shared_ptr<AqlItem> > getSome (size_t atLeast, 
+                                                           size_t atMost) {
+          std::vector<shared_ptr<AqlItem> > res;
+          if (_done) {
+            return res;
+          }
+          if (_buffer.size() < atLeast) {
+            if (! bufferMore(atLeast-_buffer.size(), atMost-_buffer.size()) &&
+                _buffer.size() == 0) {
+              _done = true;
+              return res;
+            }
+          }
+          size_t nr = _buffer.size();
+          if (nr > atMost) {
+            nr = atMost;
+          }
+          while (nr-- > 0) {
+            res.push_back(_buffer.front());
+            _buffer.pop_front();
+          }
+          return res;
+        }
+
 
         bool skip (int number);
 
-        int64_t count ();
+        virtual int64_t count () {
+          return _dependencies[0]->count();
+        }
 
-        int64_t remaining ();
+        virtual int64_t remaining () {
+          return _dependencies[0]->remaining() + _buffer.size();
+        }
 
       protected:
         ExecutionPlan const* _exePlan;
         std::vector<ExecutionBlock*> _dependencies;
-        std::deque<AqlItem*> _buffer;
+        std::deque<shared_ptr<AqlItem> > _buffer;
         bool _done;
 
       public:
@@ -174,13 +223,26 @@ namespace triagens {
           return TRI_ERROR_NO_ERROR;
         }
 
-        AqlItem* getOne () {
+        shared_ptr<AqlItem> getOne () {
           if (_done) {
             return nullptr;
           }
 
           auto p = reinterpret_cast<SingletonPlan const*>(_exePlan);
-          AqlItem* res = new AqlItem(p->_nrVars);
+          shared_ptr<AqlItem> res(new AqlItem(p->_nrVars));
+          _done = true;
+          return res;
+        }
+
+        vector<shared_ptr<AqlItem> > getSome (size_t atLeast, size_t atMost) {
+          vector<shared_ptr<AqlItem> > res;
+
+          if (_done) {
+            return res;
+          }
+
+          auto p = reinterpret_cast<SingletonPlan const*>(_exePlan);
+          res.emplace_back(new AqlItem(p->_nrVars));
           _done = true;
           return res;
         }
@@ -192,7 +254,7 @@ namespace triagens {
       public:
 
         EnumerateCollectionBlock (EnumerateCollectionPlan const* ep)
-          : ExecutionBlock(ep), _input(nullptr) {
+          : ExecutionBlock(ep) {
         }
 
         ~EnumerateCollectionBlock () {
@@ -229,11 +291,10 @@ namespace triagens {
           
           res = trx.finish(res);
 
-          _pos = 0;
           if (_allDocs.size() == 0) {
             _done = true;
           }
-          _input = nullptr;
+          _buffer.clear();
 
           return res;
         }
@@ -244,32 +305,26 @@ namespace triagens {
           return res;
         }
 
-        AqlItem* getOne () {
-          std::cout << "getOne of EnumerateCollectionBlock" << std::endl;
+        shared_ptr<AqlItem> getOne () {
           if (_done) {
             return nullptr;
           }
-          if (_input == nullptr) {
-            _input = _dependencies[0]->getOne();
-            if (_input == nullptr) {
+          if (_buffer.size() == 0) {
+            if (! bufferMore(1,1)) {
               _done = true;
               return nullptr;
             }
             _pos = 0;
-            if (_allDocs.size() == 0) {
+            if (_allDocs.size() == 0) {  // just in case
               _done = true;
               return nullptr;
             }
           }
-          AqlItem* res = new AqlItem(_input, 1);
+          shared_ptr<AqlItem> res(new AqlItem(_buffer.front(), 1));
           res->setValue(0,0,new AqlValue( new Json(_allDocs[_pos]->copy())));
           if (++_pos >= _allDocs.size()) {
-            if (--_input->_refCount == 0) {
-              delete _input;
-            }
-            _input = nullptr;  // get a new item next time
+            _buffer.pop_front();
           }
-
           return res;
         }
 
@@ -277,7 +332,6 @@ namespace triagens {
 
         vector<Json*> _allDocs;
         size_t _pos;
-        AqlItem* _input;
     };
 
     class RootBlock : public ExecutionBlock {
@@ -292,11 +346,6 @@ namespace triagens {
         ~RootBlock () {
         } 
 
-        AqlItem* getOne () {
-          std::cout << "getOne of RootBlock" << std::endl;
-          return _dependencies[0]->getOne();
-        }
-        
     };
 
   }  // namespace triagens::aql
