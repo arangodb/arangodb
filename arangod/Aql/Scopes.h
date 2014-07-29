@@ -44,6 +44,7 @@ namespace triagens {
                 size_t id,
                 bool isUserDefined)
         : name(name),
+          value(nullptr),
           id(id),
           isUserDefined(isUserDefined) {
       }
@@ -51,7 +52,29 @@ namespace triagens {
       ~Variable () {
       }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief registers a constant value for the variable
+/// this constant value is used for constant propagation in optimizations
+////////////////////////////////////////////////////////////////////////////////
+
+      void constValue (void* node) {
+        value = node;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a constant value registered for this variable
+////////////////////////////////////////////////////////////////////////////////
+
+      void* constValue () const {
+        return value;
+      }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public variables
+// -----------------------------------------------------------------------------
+
       std::string const  name;
+      void*              value;
       size_t const       id;
       bool const         isUserDefined;
     };
@@ -124,6 +147,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool existsVariable (char const*) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a variable
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable* getVariable (char const*) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -208,6 +237,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool existsVariable (char const*) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a variable 
+////////////////////////////////////////////////////////////////////////////////
+        
+        Variable* getVariable (char const*) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

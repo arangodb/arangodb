@@ -65,8 +65,7 @@ QueryAst::QueryAst (Query* query,
     _collectionNames(),
     _root(nullptr),
     _writeCollection(nullptr),
-    _writeOptions(nullptr),
-    _nopNode() {
+    _writeOptions(nullptr) {
 
   TRI_ASSERT(_query != nullptr);
   TRI_ASSERT(_parser != nullptr);
@@ -200,6 +199,7 @@ AstNode* QueryAst::createNodeLet (char const* variableName,
 
 AstNode* QueryAst::createNodeFilter (AstNode const* expression) {
   AstNode* node = createNode(NODE_TYPE_FILTER);
+  node->setIntValue(static_cast<int64_t>(FILTER_UNKNOWN));
   node->addMember(expression);
 
   return node;
@@ -403,7 +403,14 @@ AstNode* QueryAst::createNodeCollection (char const* name) {
 
 AstNode* QueryAst::createNodeReference (char const* name) {
   AstNode* node = createNode(NODE_TYPE_REFERENCE);
-  node->setStringValue(name);
+
+  auto variable = _scopes.getVariable(name);
+
+  if (variable == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
+  node->setData(variable);
 
   return node;
 }
@@ -667,20 +674,6 @@ AstNode* QueryAst::createNodeRange (AstNode const* start,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a no-op node
-/// note: the same no-op node can be returned multiple times
-////////////////////////////////////////////////////////////////////////////////
-
-AstNode* QueryAst::createNodeNop () {
-  // the nop node is a singleton inside a query
-  if (_nopNode == nullptr) {
-    _nopNode = createNode(NODE_TYPE_NOP);
-  }
-
-  return _nopNode;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief injects bind parameters into the AST
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -793,11 +786,28 @@ void QueryAst::optimize () {
     if (node->type == NODE_TYPE_OPERATOR_TERNARY) {
       return optimizeTernaryOperator(node);
     }
+    
+    // reference to a variable
+    if (node->type == NODE_TYPE_REFERENCE) {
+      return optimizeReference(node);
+    }
+    
+    // range
+    if (node->type == NODE_TYPE_RANGE) {
+      return optimizeRange(node);
+    }
+    
+    // LET
+    if (node->type == NODE_TYPE_LET) {
+      return optimizeLet(node);
+    }
 
     return node;
   };
 
   _root = traverse(_root, func, nullptr); 
+
+  optimizeRoot();
 }
 
 // -----------------------------------------------------------------------------
@@ -853,12 +863,16 @@ AstNode* QueryAst::optimizeFilter (AstNode* node) {
     return node;
   }
 
-  if (operand->getBoolValue()) {
-    // FILTER is always true, optimize it away
-    return createNodeNop();
-  }
+  TRI_ASSERT(node->getIntValue(true) == static_cast<int64_t>(FILTER_UNKNOWN));
 
-  // TODO: optimize FILTERs that are always false
+  if (operand->getBoolValue()) {
+    // FILTER is always true
+    node->setIntValue(static_cast<int64_t>(FILTER_TRUE));
+  }
+  else {
+    // FILTER is always false
+    node->setIntValue(static_cast<int64_t>(FILTER_FALSE));
+  }
 
   return node;
 }  
@@ -1162,6 +1176,130 @@ AstNode* QueryAst::optimizeTernaryOperator (AstNode* node) {
 
   // condition is always false, replace ternary operation with false part
   return falsePart;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizes a reference to a variable
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* QueryAst::optimizeReference (AstNode* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_REFERENCE);
+  
+  auto variable = static_cast<Variable*>(node->getData());
+
+  if (variable == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  if (variable->constValue() == nullptr) {
+    return node;
+  }
+
+  return static_cast<AstNode*>(variable->constValue());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizes the range operator
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* QueryAst::optimizeRange (AstNode* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_RANGE);
+  TRI_ASSERT(node->numMembers() == 2);
+
+  AstNode* lhs = node->getMember(0);
+  AstNode* rhs  = node->getMember(1);
+
+  if (lhs == nullptr || rhs == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  if (! lhs->isConstant() || ! rhs->isConstant()) {
+    return node;
+  }
+
+  if (! lhs->isNumericValue() || ! rhs->isNumericValue()) {
+    _parser->registerError(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    return node;
+  }
+
+  double const l = lhs->getDoubleValue(); 
+  double const r = rhs->getDoubleValue(); 
+
+  if (l < r) {
+    return node;
+  }
+
+  // x..y with x > y, replace with empty list
+
+  return createNodeList();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizes the LET statement 
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* QueryAst::optimizeLet (AstNode* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_LET);
+  TRI_ASSERT(node->numMembers() == 2);
+
+  AstNode* variable = node->getMember(0);
+  AstNode* expression = node->getMember(1);
+
+  if (expression->isConstant()) {
+    // if the expression assigned to the LET variable is constant, we'll store
+    // a pointer to the const value in the variable
+    // further optimizations can then use this pointer and optimize further, e.g.
+    // LET a = 1 LET b = a + 1, c = b + a can be optimized to LET a = 1 LET b = 2 LET c = 4
+    auto v = static_cast<Variable*>(variable->getData());
+
+    TRI_ASSERT(v != nullptr);
+    v->constValue(static_cast<void*>(expression));
+  }
+ 
+  return node; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizes the top-level statements
+////////////////////////////////////////////////////////////////////////////////
+  
+void QueryAst::optimizeRoot() {
+  TRI_ASSERT(_root != nullptr);
+  TRI_ASSERT(_root->type == NODE_TYPE_ROOT);
+
+  size_t const n = _root->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    AstNode* member = _root->getMember(i);
+
+    if (member == nullptr) {
+      continue;
+    }
+
+    if (member->type == NODE_TYPE_FOR) {
+      // peek forward and check if the for contains a FILTER that is always false
+      bool isEmpty = false;
+
+      for (size_t j = i + 1; j < n; ++j) {
+        AstNode* sub = _root->getMember(j);
+
+        if (sub == nullptr) {
+          continue;
+        }
+
+        if (sub->type == NODE_TYPE_FILTER) {
+          // TODO: found a FILTER that is always false
+          isEmpty = true;
+        }
+
+        if (sub->type == NODE_TYPE_RETURN) {
+        }
+      }
+    }
+     
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
