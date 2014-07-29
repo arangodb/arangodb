@@ -49,7 +49,6 @@ Parser::Parser (Query* query)
     _remainingLength(query->queryLength()),
     _offset(0),
     _marker(nullptr),
-    _subQueryCount(0),
     _uniqueId(0),
     _stack() {
   
@@ -87,7 +86,7 @@ bool Parser::configureWriteQuery (QueryType type,
   TRI_ASSERT(type != AQL_QUERY_READ);
 
   // check if we currently are in a subquery
-  if (isInSubQuery()) {
+  if (_ast->isInSubQuery()) {
     // data modification not allowed in sub-queries
     registerError(TRI_ERROR_QUERY_MODIFY_IN_SUBQUERY);
     return false;

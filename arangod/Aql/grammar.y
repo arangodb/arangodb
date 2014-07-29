@@ -434,16 +434,16 @@ expression:
     }
   | T_OPEN {
       parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_SUBQUERY);
-      parser->startSubQuery();
+      parser->ast()->startSubQuery();
     } query T_CLOSE {
-      parser->endSubQuery();
+      AstNode* node = parser->ast()->endSubQuery();
       parser->ast()->scopes()->endCurrent();
 
-      char const* tempName = parser->generateName();
-      auto subQuery = parser->ast()->createNodeSubquery(tempName);
+      char const* variableName = parser->generateName();
+      auto subQuery = parser->ast()->createNodeLet(variableName, node, false);
       parser->ast()->addOperation(subQuery);
 
-      $$ = parser->ast()->createNodeReference(tempName);
+      $$ = parser->ast()->createNodeReference(variableName);
     } 
   | operator_unary {
       $$ = $1;
