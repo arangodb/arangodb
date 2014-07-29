@@ -443,11 +443,7 @@ expression:
       auto subQuery = parser->ast()->createNodeSubquery(tempName);
       parser->ast()->addOperation(subQuery);
 
-      auto nameNode = subQuery->getMember(0);
-      auto result = parser->ast()->createNodeReference(nameNode->getStringValue());
-
-      // return the result
-      $$ = result;
+      $$ = parser->ast()->createNodeReference(tempName);
     } 
   | operator_unary {
       $$ = $1;
@@ -683,6 +679,7 @@ reference:
       parser->pushStack($1);
 
       // create a temporary variable for the row iterator (will be popped by "expansion" rule")
+      // TODO:
       auto node = parser->ast()->createNodeReference(varname);
       
       // push the variable
@@ -700,6 +697,7 @@ reference:
       auto nameNode = expand->getMember(1);
 
       // return a reference only
+      // TODO:
       $$ = parser->ast()->createNodeReference(nameNode->getStringValue());
     }
   ;
