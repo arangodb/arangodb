@@ -5425,11 +5425,11 @@ static v8::Handle<v8::Value> JS_PengAql (v8::Arguments const& argv) {
   exec->initialize();
   exec->execute();
  
-  triagens::aql::AqlItem* value;
+  shared_ptr<triagens::aql::AqlItem> value;
   while (nullptr != (value = exec->getOne())) {
     std::cout << "Peng" << std::endl;
     std::cout << value->getValue(0,0)->toString() << std::endl;
-    delete value;
+    value.reset();
   }
 
   exec->shutdown();

@@ -59,7 +59,7 @@ namespace triagens {
 
       union {
         triagens::basics::Json* _json;
-        std::vector<AqlItem*>*  _vector;
+        std::vector<shared_ptr<AqlItem> >*  _vector;
         Range                   _range;
       };
       
@@ -69,7 +69,7 @@ namespace triagens {
         : _json(json), _type(JSON) {
       }
 
-      AqlValue (std::vector<AqlItem*>* vector)
+      AqlValue (std::vector<shared_ptr<AqlItem> >* vector)
         : _vector(vector), _type(DOCVEC) {
       }
 
@@ -94,8 +94,11 @@ namespace triagens {
         switch (_type) {
           case JSON:
             return _json->toString();
-          case DOCVEC:
-            return "I am a DOCVEC.";
+          case DOCVEC: {
+            std::stringstream s;
+            s << "I am a DOCVEC of length " << _vector->size() << ".";
+            return s.str();
+          }
           case RANGE: {
             std::stringstream s;
             s << "I am a range: " << _range._low << " .. " << _range._high;
@@ -109,13 +112,12 @@ namespace triagens {
     };
 
     struct AqlItem {
-      AqlItem*   _outer;
-      int32_t    _refCount;
-      int32_t    _nrvars;
-      AqlValue** _vars;
+      shared_ptr<AqlItem> _outer;
+      AqlValue**          _vars;
+      int32_t             _nrvars;
 
       AqlItem (int nrvars)
-        : _outer(nullptr), _refCount(1), _nrvars(nrvars) {
+        : _outer(nullptr), _nrvars(nrvars) {
         if (nrvars > 0) {
           _vars = new AqlValue* [nrvars];
         }
@@ -124,9 +126,8 @@ namespace triagens {
         }
       }
 
-      AqlItem (AqlItem* outer, int nrvars)
-        : _outer(outer), _refCount(1), _nrvars(nrvars) {
-        outer->_refCount++;
+      AqlItem (shared_ptr<AqlItem> outer, int nrvars)
+        : _outer(outer), _nrvars(nrvars) {
         if (nrvars > 0) {
           _vars = new AqlValue* [nrvars];
           for (int i = 0; i < nrvars; i++) {
@@ -143,13 +144,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       ~AqlItem () {
-        if (_outer != nullptr) {
-          _outer->_refCount--;
-          if (_outer->_refCount == 0) {
-            delete _outer;
-          }
-          _outer = nullptr;
-        }
         if (_vars != nullptr) {
           for (int i = 0; i < _nrvars; i++) {
             delete _vars[i];
@@ -165,7 +159,7 @@ namespace triagens {
       AqlValue* getValue (int up, int index) {
         AqlItem* p = this;
         for (int i = 0; i < up; i++) {
-          p = p->_outer;
+          p = p->_outer.get();
         }
         return p->_vars[index];
       }
@@ -177,7 +171,7 @@ namespace triagens {
       void setValue (int up, int index, AqlValue* zeug) {
         AqlItem* p = this;
         for (int i = 0; i < up; i++) {
-          p = p->_outer;
+          p = p->_outer.get();
         }
         p->_vars[index] = zeug;
       }
