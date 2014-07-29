@@ -37,88 +37,147 @@ namespace triagens {
   namespace aql {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      AqlValues
+// --SECTION--                                                            AqlDoc
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief struct AqlValue, used to pipe documents through executions
-/// the execution engine keeps one AqlValue struct for each document
-/// that is piped through the engine. Note that the document can exist
-/// in one of two formats throughout its lifetime in the engine.
-/// When it resides originally in the WAl or a datafile, it stays
-/// there unchanged and we only store a (pointer to) a copy of the
-/// TRI_doc_mptr_t struct. Sometimes, when it is modified (or created
-/// on the fly anyway), we keep the document as a TRI_json_t, wrapped
-/// by a Json struct. That is, the following struct has the following
-/// invariant:
-/// Either the whole struct is empty and thus _json is empty and _mptr
-/// is a nullptr. Otherwise, either _json is empty and _mptr is not a
-/// nullptr, or _json is non-empty and _mptr is anullptr.
-/// Additionally, the struct contains another TRI_json_t holding
-/// the current state of the LET variables (and possibly some other
-/// computations). This is the _vars attribute.
-/// Note that both Json subobjects are constructed as AUTOFREE.
-////////////////////////////////////////////////////////////////////////////////
+
+    struct AqlItem;
 
     struct AqlValue {
-      triagens::basics::Json      _json;
-      TRI_doc_mptr_t*             _mptr;
-      triagens::basics::Json      _vars;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convenience constructors
-////////////////////////////////////////////////////////////////////////////////
+      enum AqlValueType {
+        JSON,
+        DOCVEC,
+        RANGE
+      };
 
-      AqlValue ()
-        : _json(), _mptr(nullptr), _vars() {
+      struct Range {
+        int64_t _low;
+        int64_t _high;
+        Range(int64_t low, int64_t high) : _low(low), _high(high) {}
+      };
+
+      union {
+        triagens::basics::Json* _json;
+        std::vector<AqlItem*>*  _vector;
+        Range                   _range;
+      };
+      
+      AqlValueType _type;
+
+      AqlValue (triagens::basics::Json* json)
+        : _json(json), _type(JSON) {
       }
 
-      AqlValue (TRI_doc_mptr_t* mptr)
-        : _json(), _mptr(mptr), _vars() {
+      AqlValue (std::vector<AqlItem*>* vector)
+        : _vector(vector), _type(DOCVEC) {
       }
 
-      AqlValue (triagens::basics::Json json)
-        : _json(json), _mptr(nullptr), _vars() {
+      AqlValue (int64_t low, int64_t high) 
+        : _range(low, high), _type(RANGE) {
+      }
+
+      ~AqlValue () {
+        switch (_type) {
+          case JSON:
+            delete _json;
+            break;
+          case DOCVEC:
+            delete _vector;
+            break;
+          case RANGE:
+            break;
+        }
+      }
+
+      std::string toString () {
+        switch (_type) {
+          case JSON:
+            return _json->toString();
+          case DOCVEC:
+            return "I am a DOCVEC.";
+          case RANGE:
+            std::stringstream s;
+            s << "I am a range: " << _range._low << " .. " << _range._high;
+            return s.str();
+        }
+      }
+
+    };
+
+    struct AqlItem {
+      AqlItem*   _outer;
+      int32_t    _refcount;
+      int32_t    _nrvars;
+      AqlValue** _vars;
+
+      AqlItem (int nrvars)
+        : _outer(nullptr), _refcount(1), _nrvars(nrvars) {
+        if (nrvars > 0) {
+          _vars = new AqlValue* [nrvars];
+        }
+        else {
+          _vars = nullptr;
+        }
+      }
+
+      AqlItem (AqlItem* outer, int nrvars)
+        : _outer(outer), _refcount(1), _nrvars(nrvars) {
+        outer->_refcount++;
+        if (nrvars > 0) {
+          _vars = new AqlValue* [nrvars];
+          for (int i = 0; i < nrvars; i++) {
+            _vars[i] = nullptr;
+          }
+        }
+        else {
+          _vars = nullptr;
+        }
       }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-      ~AqlValue () {
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a string representation of the value
-////////////////////////////////////////////////////////////////////////////////
-
-      std::string toString () const {
-        std::string out;
-        if (! _json.isEmpty()) {
-          out += _json.toString();
+      ~AqlItem () {
+        if (_outer != nullptr) {
+          _outer->_refcount--;
+          if (_outer->_refcount == 0) {
+            delete _outer;
+          }
+          _outer = nullptr;
         }
-        else if (_mptr != nullptr) {
-          out.append("got a master pointer");
+        if (_vars != nullptr) {
+          for (int i = 0; i < _nrvars; i++) {
+            delete _vars[i];
+          }
+          delete[] _vars;
         }
-
-        if (! _vars.isEmpty()) {
-          out += _vars.toString();
-        }
-
-        return out;
       }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getValue, get the current value of a variable or attribute
 ////////////////////////////////////////////////////////////////////////////////
 
-      triagens::basics::Json getValue (std::string name);
+      AqlValue* getValue (int up, int index) {
+        AqlItem* p = this;
+        for (int i = 0; i < up; i++) {
+          p = p->_outer;
+        }
+        return p->_vars[index];
+      }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setValue, set the current value of a variable or attribute
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setValue (std::string name, triagens::basics::Json json);
+      void setValue (int up, int index, AqlValue* zeug) {
+        AqlItem* p = this;
+        for (int i = 0; i < up; i++) {
+          p = p->_outer;
+        }
+        p->_vars[index] = zeug;
+      }
 
     };
 
@@ -173,7 +232,7 @@ namespace triagens {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::basics::Json execute (AqlValue* aqldoc);
+        AqlValue* execute (AqlItem* aqldoc);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief private members
