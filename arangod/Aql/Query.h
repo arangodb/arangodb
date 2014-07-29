@@ -42,6 +42,8 @@ struct TRI_vocbase_s;
 namespace triagens {
   namespace aql {
 
+    class V8Executor;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
@@ -165,6 +167,12 @@ namespace triagens {
 
         void explain ();
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get v8 executor
+////////////////////////////////////////////////////////////////////////////////
+
+        V8Executor* getExecutor ();
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -178,6 +186,8 @@ namespace triagens {
       private:
 
         struct TRI_vocbase_s*  _vocbase;
+        
+        V8Executor*            _executor;
 
         char const*            _queryString;
         size_t const           _queryLength;

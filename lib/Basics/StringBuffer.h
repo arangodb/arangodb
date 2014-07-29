@@ -111,7 +111,7 @@ namespace triagens {
 /// @brief ensure the string buffer has a specific capacity
 ////////////////////////////////////////////////////////////////////////////////
 
-        int reserve (const size_t length) {
+        int reserve (size_t length) {
           return TRI_ReserveStringBuffer(&_buffer, length);
         }
 
@@ -442,6 +442,15 @@ namespace triagens {
 
         StringBuffer& appendChar (char chr) {
           TRI_AppendCharStringBuffer(&_buffer, chr);
+          return *this;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief appends as json-encoded
+////////////////////////////////////////////////////////////////////////////////
+
+        StringBuffer& appendJsonEncoded (const char * str) {
+          TRI_AppendJsonEncodedStringStringBuffer(&_buffer, str, true);
           return *this;
         }
 
