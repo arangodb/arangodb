@@ -41,11 +41,12 @@ namespace triagens {
 
     struct Variable {
       Variable (std::string const& name,
-                size_t id,
+                int64_t id,
                 bool isUserDefined)
         : name(name),
           value(nullptr),
           id(id),
+          refCount(0),
           isUserDefined(isUserDefined) {
       }
 
@@ -65,8 +66,33 @@ namespace triagens {
 /// @brief returns a constant value registered for this variable
 ////////////////////////////////////////////////////////////////////////////////
 
-      void* constValue () const {
+      inline void* constValue () const {
         return value;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the variable is reference counted
+////////////////////////////////////////////////////////////////////////////////
+
+      inline bool isReferenceCounted () const {
+        return (refCount > 0);
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief increase the variable's reference counter
+////////////////////////////////////////////////////////////////////////////////
+
+      inline void increaseReferenceCount () {
+        ++refCount;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief decrease the variable's reference counter
+////////////////////////////////////////////////////////////////////////////////
+
+      inline void decreaseReferenceCount () {
+        TRI_ASSERT(refCount > 0);
+        --refCount;
       }
 
 // -----------------------------------------------------------------------------
@@ -75,7 +101,8 @@ namespace triagens {
 
       std::string const  name;
       void*              value;
-      size_t const       id;
+      int64_t const      id;
+      uint32_t           refCount;
       bool const         isUserDefined;
     };
 
@@ -138,9 +165,8 @@ namespace triagens {
 /// @brief adds a variable to the scope
 ////////////////////////////////////////////////////////////////////////////////
 
-        Variable* addVariable (std::string const&,
-                               size_t,
-                               bool);
+        void addVariable (std::string const&,
+                          Variable*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a variable exists in the scope
@@ -164,13 +190,13 @@ namespace triagens {
 /// @brief scope type
 ////////////////////////////////////////////////////////////////////////////////
 
-        ScopeType const                               _type;
+        ScopeType const                             _type;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief variables introduced by the scope
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_map<std::string, Variable*>    _variables;
+        std::unordered_map<std::string, Variable*>  _variables;
     };
 
 // -----------------------------------------------------------------------------
@@ -217,7 +243,7 @@ namespace triagens {
 /// @brief end the current scope
 ////////////////////////////////////////////////////////////////////////////////
 
-        Scope* endCurrent ();
+        void endCurrent ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief end the current scope plus any FOR scopes it is nested in
@@ -239,10 +265,16 @@ namespace triagens {
         bool existsVariable (char const*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a variable 
+/// @brief return a variable by name - this respects the current scopes
 ////////////////////////////////////////////////////////////////////////////////
         
         Variable* getVariable (char const*) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a variable by id - this does not respect the scopes!
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable* getVariable (int64_t) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -251,22 +283,28 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief all variables used in the query
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_map<int64_t, Variable*>  _variables;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief currently active scopes
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<Scope*> _activeScopes;
+        std::vector<Scope*>                     _activeScopes;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief all scopes
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<Scope*> _allScopes;
+        std::vector<Scope*>                     _allScopes;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief next variable id
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t              _variableId;
+        int64_t                                 _nextId;
 
     };
 
