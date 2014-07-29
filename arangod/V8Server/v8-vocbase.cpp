@@ -5484,6 +5484,7 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
   }
 
   v8::Handle<v8::Object> result = v8::Object::New();
+  result->Set(TRI_V8_STRING("ast"), TRI_ObjectJson(parseResult.json));
 
   return scope.Close(result);
 }
