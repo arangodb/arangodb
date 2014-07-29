@@ -130,7 +130,7 @@ void AstNode::toJson (TRI_json_t* json,
     try {
       for (size_t i = 0; i < n; ++i) {
         auto member = getMember(i);
-        if (member != nullptr) {
+        if (member != nullptr && member->type != NODE_TYPE_NOP) {
           member->toJson(subNodes, zone);
         }
       }
@@ -303,6 +303,8 @@ std::string AstNode::typeString () const {
       return "user function call";
     case NODE_TYPE_RANGE:
       return "range";
+    case NODE_TYPE_NOP:
+      return "no-op";
     default: {
     }
   }

@@ -735,6 +735,16 @@ AstNode* QueryAst::createNodeRange (AstNode const* start,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST nop node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* QueryAst::createNodeNop () {
+  AstNode* node = createNode(NODE_TYPE_NOP);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief injects bind parameters into the AST
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -860,13 +870,21 @@ void QueryAst::optimize () {
     
     // LET
     if (node->type == NODE_TYPE_LET) {
-      return optimizeLet(node);
+      return optimizeLet(node, *static_cast<int*>(data));
     }
 
     return node;
   };
 
-  _root = traverse(_root, func, nullptr); 
+  int pass;
+
+  // optimization pass 0
+  pass = 0;
+  _root = traverse(_root, func, &pass);
+
+  // optimization pass 1
+  pass = 1;
+  _root = traverse(_root, func, &pass); 
 
   optimizeRoot();
 }
@@ -1247,7 +1265,7 @@ AstNode* QueryAst::optimizeTernaryOperator (AstNode* node) {
 AstNode* QueryAst::optimizeReference (AstNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_REFERENCE);
-  
+ 
   auto variable = static_cast<Variable*>(node->getData());
 
   if (variable == nullptr) {
@@ -1255,6 +1273,9 @@ AstNode* QueryAst::optimizeReference (AstNode* node) {
   }
 
   if (variable->constValue() == nullptr) {
+    // note which variables we are reading
+    variable->increaseReferenceCount();
+
     return node;
   }
 
@@ -1302,25 +1323,44 @@ AstNode* QueryAst::optimizeRange (AstNode* node) {
 /// @brief optimizes the LET statement 
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* QueryAst::optimizeLet (AstNode* node) {
+AstNode* QueryAst::optimizeLet (AstNode* node,
+                                int pass) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_LET);
   TRI_ASSERT(node->numMembers() == 2);
 
   AstNode* variable = node->getMember(0);
   AstNode* expression = node->getMember(1);
+    
+  auto v = static_cast<Variable*>(variable->getData());
+  TRI_ASSERT(v != nullptr);
 
-  if (expression->isConstant()) {
-    // if the expression assigned to the LET variable is constant, we'll store
-    // a pointer to the const value in the variable
-    // further optimizations can then use this pointer and optimize further, e.g.
-    // LET a = 1 LET b = a + 1, c = b + a can be optimized to LET a = 1 LET b = 2 LET c = 4
-    auto v = static_cast<Variable*>(variable->getData());
-
-    TRI_ASSERT(v != nullptr);
-    v->constValue(static_cast<void*>(expression));
+  if (pass == 0) {  
+    if (expression->isConstant()) {
+      // if the expression assigned to the LET variable is constant, we'll store
+      // a pointer to the const value in the variable
+      // further optimizations can then use this pointer and optimize further, e.g.
+      // LET a = 1 LET b = a + 1, c = b + a can be optimized to LET a = 1 LET b = 2 LET c = 4
+      v->constValue(static_cast<void*>(expression));
+    }  
   }
- 
+  else if (pass == 1) {
+    if (! v->isReferenceCounted()) {
+      // this optimizes away the assignment of variables which are never read
+      // (i.e. assigned-only variables). this is currently not free of side-effects:
+      // for example, in the following query, the variable 'x' would be optimized 
+      // away, but actually the query should fail with an error: 
+      // LET x = SUM("foobar") RETURN 1
+      // TODO: check whether the right-hand side of the assignment produces an
+      // error and only throw away the variable if it is side-effects-free.
+
+      // TODO: also decrease the refcount of all variables used in the expression
+      // (i.e. getReferencedVariables(expression)). this might produce further unused
+      // variables
+      return createNodeNop();
+    }
+  }
+
   return node; 
 }
 
@@ -1332,6 +1372,7 @@ void QueryAst::optimizeRoot() {
   TRI_ASSERT(_root != nullptr);
   TRI_ASSERT(_root->type == NODE_TYPE_ROOT);
 
+/* not yet ready for prime time...
   size_t const n = _root->numMembers();
   for (size_t i = 0; i < n; ++i) {
     AstNode* member = _root->getMember(i);
@@ -1362,6 +1403,7 @@ void QueryAst::optimizeRoot() {
     }
      
   }
+*/
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1445,6 +1487,37 @@ AstNode* QueryAst::traverse (AstNode* node,
   }
 
   return func(node, data);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determines the variables referenced in an expression
+////////////////////////////////////////////////////////////////////////////////
+
+std::unordered_set<int64_t> QueryAst::getReferencedVariables (AstNode const* node) {
+  auto func = [&](AstNode* node, void* data) -> AstNode* {
+    if (node == nullptr) {
+      return nullptr;
+    }
+
+    // reference to a variable
+    if (node->type == NODE_TYPE_REFERENCE) {
+      auto variable = static_cast<Variable*>(node->getData());
+
+      if (variable == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
+
+      auto vars = static_cast<unordered_set<int64_t>*>(data);
+      vars->insert(variable->id);
+    }
+    
+    return node;
+  };
+
+  std::unordered_set<int64_t> vars;  
+  traverse(_root, func, &vars); 
+
+  return vars;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

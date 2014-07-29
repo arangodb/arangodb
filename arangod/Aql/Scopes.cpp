@@ -50,9 +50,6 @@ Scope::Scope (ScopeType type)
 ////////////////////////////////////////////////////////////////////////////////
 
 Scope::~Scope () {
-  for (auto it = _variables.begin(); it != _variables.end(); ++it) {
-    delete (*it).second;
-  }
 }
 
 // -----------------------------------------------------------------------------
@@ -82,21 +79,9 @@ std::string Scope::typeName () const {
 /// @brief adds a variable to the scope
 ////////////////////////////////////////////////////////////////////////////////
 
-Variable* Scope::addVariable (std::string const& name,
-                              size_t id,
-                              bool isUserDefined) {
-  auto variable = new Variable(name, id, isUserDefined);
-
-  try {
-    _variables.insert(std::make_pair(name, variable));
-  }
-  catch (...) {
-    // prevent memleak
-    delete variable;
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }  
-  
-  return variable; 
+void Scope::addVariable (std::string const& name,
+                         Variable* variable) {
+  _variables.insert(std::make_pair(name, variable));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,11 +117,11 @@ Variable* Scope::getVariable (char const* name) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 Scopes::Scopes () 
-  : _activeScopes(),
-    _allScopes(),
-    _variableId(0) {
+  : _variables(),
+    _activeScopes(),
+    _nextId(0) {
 
-  _allScopes.reserve(8);
+  _activeScopes.reserve(4);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -144,8 +129,12 @@ Scopes::Scopes ()
 ////////////////////////////////////////////////////////////////////////////////
 
 Scopes::~Scopes () {
-  for (auto it = _allScopes.begin(); it != _allScopes.end(); ++it) {
+  for (auto it = _activeScopes.begin(); it != _activeScopes.end(); ++it) {
     delete (*it);
+  }
+
+  for (auto it = _variables.begin(); it != _variables.end(); ++it) {
+    delete (*it).second;
   }
 }
 
@@ -159,23 +148,28 @@ Scopes::~Scopes () {
 
 void Scopes::start (ScopeType type) {
   auto scope = new Scope(type);
-  _allScopes.push_back(scope);
-  _activeScopes.push_back(scope);
+  try {
+    _activeScopes.push_back(scope);
+  }
+  catch (...) {
+    delete scope;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief end the current scope
 ////////////////////////////////////////////////////////////////////////////////
 
-Scope* Scopes::endCurrent () {
+void Scopes::endCurrent () {
   TRI_ASSERT(! _activeScopes.empty());
 
-  Scope* result = _activeScopes.back();
-  TRI_ASSERT(result != nullptr);
+  Scope* scope = _activeScopes.back();
+  TRI_ASSERT(scope != nullptr);
 
   _activeScopes.pop_back();
-
-  return result;
+  
+  delete scope;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -223,9 +217,25 @@ Variable* Scopes::addVariable (char const* name,
     }
   }
 
-  size_t id = ++_variableId;
+  int64_t id = ++_nextId;
 
-  return _activeScopes.back()->addVariable(std::string(name), id, isUserDefined);
+  // if this fails, the exception will propagate and be caught somewhere else
+  auto variable = new Variable(name, id, isUserDefined);
+
+  try {
+    // if this fails, we have to delete the variable
+    _variables.insert(std::make_pair(id, variable));
+  }
+  catch (...) {
+    // prevent memleak
+    delete variable;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  // if this fails, there won't be a memleak
+  _activeScopes.back()->addVariable(std::string(name), variable);
+
+  return variable;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -237,7 +247,7 @@ bool Scopes::existsVariable (char const* name) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a variable
+/// @brief return a variable by name - this respects the current scopes
 ////////////////////////////////////////////////////////////////////////////////
         
 Variable* Scopes::getVariable (char const* name) const {
@@ -252,6 +262,20 @@ Variable* Scopes::getVariable (char const* name) const {
   }
 
   return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a variable by id - this does not respect the scopes!
+////////////////////////////////////////////////////////////////////////////////
+        
+Variable* Scopes::getVariable (int64_t id) const {
+  auto it = _variables.find(id);
+
+  if (it == _variables.end()) {
+    return nullptr;
+  }
+
+  return (*it).second;
 }
 
 // -----------------------------------------------------------------------------

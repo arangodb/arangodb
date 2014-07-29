@@ -124,7 +124,8 @@ namespace triagens {
       NODE_TYPE_PARAMETER,
       NODE_TYPE_FCALL,
       NODE_TYPE_FCALL_USER,
-      NODE_TYPE_RANGE
+      NODE_TYPE_RANGE,
+      NODE_TYPE_NOP
     };
 
 // -----------------------------------------------------------------------------
