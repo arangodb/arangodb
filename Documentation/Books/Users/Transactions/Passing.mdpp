@@ -12,7 +12,7 @@ A basic example:
       params: [ 1, 2, 3 ]
     });
 
-The above example will return *1*.
+The above example will return *2*.
 
 Some example that uses collections:
 
