@@ -256,7 +256,7 @@ let_list:
 
 let_element:
     variable_name T_ASSIGN expression {
-      auto node = parser->ast()->createNodeLet($1, $3);
+      auto node = parser->ast()->createNodeLet($1, $3, true);
       parser->ast()->addOperation(node);
     }
   ;
@@ -671,34 +671,20 @@ reference:
     }
   | reference {
       // expanded variable access, e.g. variable[*]
-      char* varname = parser->generateName();
-      // push the varname onto the stack
-      parser->pushStack(varname);
       
-      // push on the stack what's going to be expanded (will be popped when we come back) 
+      // push on the stack what's going to be expanded (will be popped by the "expansion" subrule)
       parser->pushStack($1);
-
-      // create a temporary variable for the row iterator (will be popped by "expansion" rule")
-      // TODO:
-      auto node = parser->ast()->createNodeReference(varname);
-      
-      // push the variable
-      parser->pushStack(node);
     } T_EXPAND expansion {
       // return from the "expansion" subrule
-      auto expanded = static_cast<AstNode*>(parser->popStack());
-      char const* varname = static_cast<char const*>(parser->popStack());
-
-      // push the actual expand node into the statement list
-      char const* tempName = parser->generateName();
-      auto expand = parser->ast()->createNodeExpand(varname, tempName, expanded, $4);
-      parser->ast()->addOperation(expand);
-
-      auto nameNode = expand->getMember(1);
-
+      // push the expand node into the statement list
+      auto expand = parser->ast()->createNodeExpand($4);
+      
+      char const* variableName = parser->generateName();
+      auto let = parser->ast()->createNodeLet(variableName, expand, false);
+      parser->ast()->addOperation(let);
+      
       // return a reference only
-      // TODO:
-      $$ = parser->ast()->createNodeReference(nameNode->getStringValue());
+      $$ = parser->ast()->createNodeReference(variableName);
     }
   ;
 

@@ -169,6 +169,10 @@ char* QueryAst::registerString (char const* p,
 
 AstNode* QueryAst::createNodeFor (char const* variableName,
                                   AstNode const* expression) {
+  if (variableName == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
   AstNode* node = createNode(NODE_TYPE_FOR);
 
   AstNode* variable = createNodeVariable(variableName, true);
@@ -183,10 +187,15 @@ AstNode* QueryAst::createNodeFor (char const* variableName,
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* QueryAst::createNodeLet (char const* variableName,
-                                  AstNode const* expression) {
+                                  AstNode const* expression,
+                                  bool isUserDefinedVariable) {
+  if (variableName == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
   AstNode* node = createNode(NODE_TYPE_LET);
 
-  AstNode* variable = createNodeVariable(variableName, true);
+  AstNode* variable = createNodeVariable(variableName, isUserDefinedVariable);
   node->addMember(variable);
   node->addMember(expression);
 
@@ -338,6 +347,10 @@ AstNode* QueryAst::createNodeLimit (AstNode const* offset,
 
 AstNode* QueryAst::createNodeAssign (char const* name,
                                      AstNode const* expression) {
+  if (name == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
   AstNode* node = createNode(NODE_TYPE_ASSIGN);
   AstNode* variable = createNodeVariable(name, true);
   node->addMember(variable);
@@ -402,6 +415,10 @@ AstNode* QueryAst::createNodeCollection (char const* name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* QueryAst::createNodeReference (char const* name) {
+  if (name == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
   AstNode* node = createNode(NODE_TYPE_REFERENCE);
 
   auto variable = _scopes.getVariable(name);
@@ -420,6 +437,10 @@ AstNode* QueryAst::createNodeReference (char const* name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* QueryAst::createNodeParameter (char const* name) {
+  if (name == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
   AstNode* node = createNode(NODE_TYPE_PARAMETER);
  
   node->setStringValue(name);
@@ -476,6 +497,10 @@ AstNode* QueryAst::createNodeTernaryOperator (AstNode const* condition,
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* QueryAst::createNodeSubquery (char const* tempName) {
+  if (tempName == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
   AstNode* node = createNode(NODE_TYPE_SUBQUERY);
   AstNode* variable = createNodeVariable(tempName, false);
   node->addMember(variable);
@@ -489,6 +514,10 @@ AstNode* QueryAst::createNodeSubquery (char const* tempName) {
 
 AstNode* QueryAst::createNodeAttributeAccess (AstNode const* accessed,
                                               char const* attributeName) {
+  if (attributeName == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
   AstNode* node = createNode(NODE_TYPE_ATTRIBUTE_ACCESS);
   node->addMember(accessed);
   node->setStringValue(attributeName);
@@ -526,17 +555,9 @@ AstNode* QueryAst::createNodeIndexedAccess (AstNode const* accessed,
 /// @brief create an AST expand node
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* QueryAst::createNodeExpand (char const* variableName,
-                                     char const* tempName,
-                                     AstNode const* expanded,
-                                     AstNode const* expansion) {
+AstNode* QueryAst::createNodeExpand (AstNode const* expanded) {
   AstNode* node = createNode(NODE_TYPE_EXPAND);
-  AstNode* variable = createNodeVariable(variableName, false);
-  AstNode* temp = createNodeVariable(tempName, false);
-  node->addMember(variable);
-  node->addMember(temp);
   node->addMember(expanded);
-  node->addMember(expansion);
 
   return node;
 }
@@ -593,6 +614,10 @@ AstNode* QueryAst::createNodeValueDouble (double value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* QueryAst::createNodeValueString (char const* value) {
+  if (value == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
   AstNode* node = createNode(NODE_TYPE_VALUE);
   node->setValueType(VALUE_TYPE_STRING);
   node->setStringValue(value);
@@ -626,6 +651,10 @@ AstNode* QueryAst::createNodeArray () {
 
 AstNode* QueryAst::createNodeArrayElement (char const* attributeName,
                                            AstNode const* expression) {
+  if (attributeName == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
   AstNode* node = createNode(NODE_TYPE_ARRAY_ELEMENT);
   node->setStringValue(attributeName);
   node->addMember(expression);
@@ -639,6 +668,9 @@ AstNode* QueryAst::createNodeArrayElement (char const* attributeName,
 
 AstNode* QueryAst::createNodeFunctionCall (char const* functionName,
                                            AstNode const* parameters) {
+  if (functionName == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 
   std::string const normalizedName = normalizeFunctionName(functionName);
   char* fname = registerString(normalizedName.c_str(), normalizedName.size(), false);
@@ -1041,6 +1073,7 @@ AstNode* QueryAst::optimizeBinaryOperatorRelational (AstNode* node) {
   }
 
   auto it = FunctionNames.find(static_cast<int>(node->type));
+
   if (it == FunctionNames.end()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
@@ -1390,11 +1423,10 @@ AstNode* QueryAst::traverse (AstNode* node,
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string QueryAst::normalizeFunctionName (char const* name) {
-  if (name == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  TRI_ASSERT(name != nullptr);
 
   char* upperName = TRI_UpperAsciiStringZ(TRI_UNKNOWN_MEM_ZONE, name);
+
   if (upperName == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }

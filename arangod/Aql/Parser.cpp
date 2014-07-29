@@ -116,7 +116,7 @@ bool Parser::configureWriteQuery (QueryType type,
 ////////////////////////////////////////////////////////////////////////////////
 
 ParseResult Parser::parse () {
-  ParseResult result(TRI_UNKNOWN_MEM_ZONE);
+  ParseResult result;
 
   // start main scope
   auto scopes = _ast->scopes();
