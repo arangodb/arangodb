@@ -56,6 +56,7 @@ namespace triagens {
 
         enum NodeType {
           ILLEGAL,
+          SINGLETON,
           ENUMERATE_COLLECTION,
           INDEX_RANGE,
           STATIC_LIST,
@@ -219,6 +220,71 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                               class SingletonPlan
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class SingletonPlan, derived from ExecutionPlan
+////////////////////////////////////////////////////////////////////////////////
+
+    class SingletonPlan : public ExecutionPlan {
+      
+      friend class SingletonBlock;
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor with a vocbase and a collection name
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+        SingletonPlan (int32_t nrvars) 
+          : ExecutionPlan(), _nrVars(nrvars) {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual NodeType getType () const {
+          return SINGLETON;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node as a string
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::string getTypeString () const {
+          return std::string("SingletonPlan");
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual triagens::basics::Json toJson (
+               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone execution plan recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ExecutionPlan* clone () const {
+          auto c = new SingletonPlan(_nrVars);
+          cloneDependencies(c);
+          return static_cast<ExecutionPlan*>(c);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief we need to know how many variables we have in this scope
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+        int32_t _nrVars;
+
+    };
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                     class EnumerateCollectionPlan
 // -----------------------------------------------------------------------------
 
@@ -236,8 +302,11 @@ namespace triagens {
 
       public:
 
-        EnumerateCollectionPlan (TRI_vocbase_t* vocbase, std::string collname) 
-          : ExecutionPlan(), _vocbase(vocbase), _collname(collname) {
+        EnumerateCollectionPlan (TRI_vocbase_t* vocbase, 
+                                 std::string collname,
+                                 int32_t nrVars) 
+          : ExecutionPlan(), _vocbase(vocbase), _collname(collname), 
+            _nrVars(nrVars) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -268,14 +337,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionPlan* clone () const {
-          auto c = new EnumerateCollectionPlan(_vocbase, _collname);
+          auto c = new EnumerateCollectionPlan(_vocbase, _collname, _nrVars);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
         }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief we need to know the database and the collection
@@ -285,6 +350,7 @@ namespace triagens {
 
         TRI_vocbase_t* _vocbase;
         std::string _collname;
+        int32_t _nrVars;
 
     };
 

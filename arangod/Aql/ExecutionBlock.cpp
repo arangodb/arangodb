@@ -48,6 +48,10 @@ int ExecutionBlock::bind (std::map<std::string, struct TRI_json_s*>* params) {
 ExecutionBlock* ExecutionBlock::instanciatePlan (ExecutionPlan const* ep) {
   ExecutionBlock* eb;
   switch (ep->getType()) {
+    case ExecutionPlan::SINGLETON: {
+      eb = new SingletonBlock(static_cast<SingletonPlan const*>(ep));
+      break;
+    }
     case ExecutionPlan::ENUMERATE_COLLECTION: {
       eb = new EnumerateCollectionBlock(static_cast<EnumerateCollectionPlan const*>(ep));
       break;

@@ -35,6 +35,8 @@
 #include "Aql/ExecutionPlan.h"
 #include "Utils/transactions.h"
 
+using namespace triagens::basics;
+
 struct TRI_json_s;
 
 namespace triagens {
@@ -43,7 +45,7 @@ namespace triagens {
     class ExecutionBlock {
       public:
         ExecutionBlock (ExecutionPlan const* ep)
-          : _exePlan(ep) { }
+          : _exePlan(ep), _done(false) { }
 
         virtual ~ExecutionBlock ();
           
@@ -99,6 +101,7 @@ namespace triagens {
           for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
             (*it)->initialize();
           }
+          // FIXME: report errors from above
           return TRI_ERROR_NO_ERROR;
         }
 
@@ -110,6 +113,8 @@ namespace triagens {
           for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
             (*it)->execute();
           }
+          // FIXME: report errors from above
+          _done = false;
           return TRI_ERROR_NO_ERROR;
         }
 
@@ -117,12 +122,13 @@ namespace triagens {
           for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
             (*it)->shutdown();
           }
+          // FIXME: report errors from above
           return TRI_ERROR_NO_ERROR;
         }
 
-        virtual AqlValue* getOne () = 0;
+        virtual AqlItem* getOne () = 0;
 
-        std::vector<AqlValue*> getSome (int atLeast, int atMost);
+        std::vector<AqlItem*> getSome (int atLeast, int atMost);
 
         bool skip (int number);
 
@@ -133,7 +139,8 @@ namespace triagens {
       protected:
         ExecutionPlan const* _exePlan;
         std::vector<ExecutionBlock*> _dependencies;
-        std::deque<AqlValue*> _buffer;
+        std::deque<AqlItem*> _buffer;
+        bool _done;
 
       public:
 
@@ -142,12 +149,49 @@ namespace triagens {
     };
 
 
+    class SingletonBlock : public ExecutionBlock {
+
+      public:
+
+        SingletonBlock (SingletonPlan const* ep)
+          : ExecutionBlock(ep) {
+        }
+
+        ~SingletonBlock () {
+        }
+
+        int initialize () {
+          ExecutionBlock::initialize();
+          return TRI_ERROR_NO_ERROR;
+        }
+
+        int execute () {
+          ExecutionBlock::execute();
+          return TRI_ERROR_NO_ERROR;
+        }
+
+        int shutdown () {
+          return TRI_ERROR_NO_ERROR;
+        }
+
+        AqlItem* getOne () {
+          if (_done) {
+            return nullptr;
+          }
+
+          auto p = reinterpret_cast<SingletonPlan const*>(_exePlan);
+          AqlItem* res = new AqlItem(p->_nrVars);
+          return res;
+        }
+
+    };
+
     class EnumerateCollectionBlock : public ExecutionBlock {
 
       public:
 
         EnumerateCollectionBlock (EnumerateCollectionPlan const* ep)
-          : ExecutionBlock(ep) {
+          : ExecutionBlock(ep), _input(nullptr) {
         }
 
         ~EnumerateCollectionBlock () {
@@ -156,11 +200,17 @@ namespace triagens {
         int initialize () {
           // TODO: this is very very inefficient
           // it must be implemented properly for production
+
+          int res = ExecutionBlock::initialize();
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
+
           auto p = reinterpret_cast<EnumerateCollectionPlan const*>(_exePlan);
 
           V8ReadTransaction trx(p->_vocbase, p->_collname);
   
-          int res = trx.begin();
+          res = trx.begin();
           
           vector<TRI_doc_mptr_t*> docs;
           res = trx.read(docs);
@@ -168,33 +218,63 @@ namespace triagens {
 
           auto shaper = trx.documentCollection()->getShaper();
 
+          _allDocs.clear();
           for (size_t i = 0; i < n; ++i) {
             TRI_shaped_json_t shaped;
             TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, docs[i]->getDataPtr());
-            triagens::basics::Json* json 
-              = new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_JsonShapedJson(shaper, &shaped));
-            _buffer.push_back(new AqlValue(json));
+            _allDocs.push_back(new Json(TRI_UNKNOWN_MEM_ZONE, 
+                                        TRI_JsonShapedJson(shaper, &shaped)));
           }
           
           res = trx.finish(res);
+
+          _pos = 0;
+          if (_allDocs.size() == 0) {
+            _done = true;
+          }
+          _input = nullptr;
+
           return res;
         }
 
         int shutdown () {
-          return TRI_ERROR_NO_ERROR;
+          int res = ExecutionBlock::shutdown();  // Tell all dependencies
+          _allDocs.clear();
+          return res;
         }
 
-        AqlValue* getOne () {
+        AqlItem* getOne () {
           std::cout << "getOne of EnumerateCollectionBlock" << std::endl;
-          if (_buffer.empty()) {
-            return nullptr;  
+          if (_done) {
+            return nullptr;
+          }
+          if (_input == nullptr) {
+            _input = _dependencies[0]->getOne();
+            if (_input == nullptr) {
+              _done = true;
+              return nullptr;
+            }
+            _pos = 0;
+            if (_allDocs.size() == 0) {
+              _done = true;
+              return nullptr;
+            }
+          }
+          AqlItem* res = new AqlItem(_input, 1);
+          res->setValue(0,0,new AqlValue(_allDocs[_pos]));
+          if (++_pos >= _allDocs.size()) {
+            _input = nullptr;  // get a new item next time
           }
 
-          auto value = _buffer.front();
-          _buffer.pop_front();
-          return value;
+          return res;
         }
-        
+
+      private:
+
+        vector<Json*> _allDocs;
+        size_t _pos;
+        AqlItem* _input;
+        bool _done;
     };
 
     class RootBlock : public ExecutionBlock {
@@ -209,7 +289,7 @@ namespace triagens {
         ~RootBlock () {
         } 
 
-        AqlValue* getOne () {
+        AqlItem* getOne () {
           std::cout << "getOne of RootBlock" << std::endl;
           return _dependencies[0]->getOne();
         }
