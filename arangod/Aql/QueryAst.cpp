@@ -64,6 +64,7 @@ QueryAst::QueryAst (Query* query,
     _bindParameters(),
     _collectionNames(),
     _root(nullptr),
+    _queries(),
     _writeCollection(nullptr),
     _writeOptions(nullptr) {
 
@@ -71,7 +72,11 @@ QueryAst::QueryAst (Query* query,
   TRI_ASSERT(_parser != nullptr);
 
   _nodes.reserve(32);
-  _root = createNode(NODE_TYPE_ROOT);
+  _strings.reserve(32);
+
+  startSubQuery();
+
+  TRI_ASSERT(_root != nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -496,14 +501,16 @@ AstNode* QueryAst::createNodeTernaryOperator (AstNode const* condition,
 /// @brief create an AST subquery node
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* QueryAst::createNodeSubquery (char const* tempName) {
-  if (tempName == nullptr) {
+AstNode* QueryAst::createNodeSubquery (char const* variableName,
+                                       AstNode const* subQuery) {
+  if (variableName == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   AstNode* node = createNode(NODE_TYPE_SUBQUERY);
-  AstNode* variable = createNodeVariable(tempName, false);
+  AstNode* variable = createNodeVariable(variableName, false);
   node->addMember(variable);
+  node->addMember(subQuery);
 
   return node;
 }

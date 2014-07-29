@@ -92,7 +92,7 @@ void AstNode::toJson (TRI_json_t* json,
         TRI_Insert3ArrayJson(zone, node, "value", TRI_CreateStringCopyJson(zone, "null"));
         break;
       case VALUE_TYPE_BOOL:
-        TRI_Insert3ArrayJson(zone, node, "value", TRI_CreateStringCopyJson(zone, value.value._bool ? "true" : "false"));
+        TRI_Insert3ArrayJson(zone, node, "value", TRI_CreateBooleanJson(zone, value.value._bool));
         break;
       case VALUE_TYPE_INT:
         TRI_Insert3ArrayJson(zone, node, "value", TRI_CreateNumberJson(zone, static_cast<double>(value.value._int)));
