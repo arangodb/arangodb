@@ -29,6 +29,7 @@
 
 #include "Aql/Query.h"
 #include "Aql/Parser.h"
+#include "Aql/V8Executor.h"
 #include "BasicsC/json.h"
 #include "Utils/Exception.h"
 #include "VocBase/vocbase.h"
@@ -50,11 +51,14 @@ Query::Query (TRI_vocbase_t* vocbase,
               size_t queryLength,
               TRI_json_t* bindParameters)
   : _vocbase(vocbase),
+    _executor(nullptr),
     _queryString(queryString),
     _queryLength(queryLength),
     _type(AQL_QUERY_READ),
     _bindParameters(bindParameters),
     _error() {
+
+  TRI_ASSERT(_vocbase != nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,6 +66,10 @@ Query::Query (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 Query::~Query () {
+  if (_executor != nullptr) {
+    delete _executor;
+    _executor = nullptr;
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -207,6 +215,19 @@ ParseResult Query::parse () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Query::explain () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get v8 executor
+////////////////////////////////////////////////////////////////////////////////
+
+V8Executor* Query::getExecutor () {
+  if (_executor == nullptr) {
+    _executor = new V8Executor;
+  }
+
+  TRI_ASSERT(_executor != nullptr);
+  return _executor;
 }
 
 // -----------------------------------------------------------------------------

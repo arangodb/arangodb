@@ -29,11 +29,22 @@
 
 #include "Aql/QueryAst.h"
 #include "Aql/Parser.h"
+#include "Aql/V8Executor.h"
 #include "BasicsC/tri-strings.h"
 #include "Utils/Exception.h"
 #include "VocBase/collection.h"
 
 using namespace triagens::aql;
+  
+std::unordered_map<int, std::string> const QueryAst::FunctionNames{ 
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_EQ), "EQUAL" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NE), "UNEQUAL" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT), "GREATER" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE), "GREATEREQUAL" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LT), "LESS" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE), "LESSEQUAL" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_IN), "IN" }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -43,8 +54,10 @@ using namespace triagens::aql;
 /// @brief create the AST
 ////////////////////////////////////////////////////////////////////////////////
 
-QueryAst::QueryAst (Parser* parser) 
-  : _parser(parser),
+QueryAst::QueryAst (Query* query,
+                    Parser* parser)
+  : _query(query),
+    _parser(parser),
     _nodes(),
     _strings(),
     _scopes(),
@@ -54,6 +67,9 @@ QueryAst::QueryAst (Parser* parser)
     _writeCollection(nullptr),
     _writeOptions(nullptr),
     _nopNode() {
+
+  TRI_ASSERT(_query != nullptr);
+  TRI_ASSERT(_parser != nullptr);
 
   _nodes.reserve(32);
   _root = createNode(NODE_TYPE_ROOT);
@@ -656,6 +672,7 @@ AstNode* QueryAst::createNodeRange (AstNode const* start,
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* QueryAst::createNodeNop () {
+  // the nop node is a singleton inside a query
   if (_nopNode == nullptr) {
     _nopNode = createNode(NODE_TYPE_NOP);
   }
@@ -788,6 +805,35 @@ void QueryAst::optimize () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a comparison function using two constant values
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* QueryAst::executeConstComparison (std::string const& func,
+                                           AstNode const* lhs,
+                                           AstNode const* rhs) {
+  TRI_json_t* result = _query->getExecutor()->executeComparison(func, lhs, rhs); 
+
+  if (result == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  AstNode* node = nullptr;
+  try {
+    node = nodeFromJson(result);
+  }
+  catch (...) {
+  }
+  
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, result);
+
+  if (node == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief optimizes a FILTER node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -808,9 +854,11 @@ AstNode* QueryAst::optimizeFilter (AstNode* node) {
   }
 
   if (operand->getBoolValue()) {
-    // FILTER is always true, optimise it away
+    // FILTER is always true, optimize it away
     return createNodeNop();
   }
+
+  // TODO: optimize FILTERs that are always false
 
   return node;
 }  
@@ -970,13 +1018,29 @@ AstNode* QueryAst::optimizeBinaryOperatorRelational (AstNode* node) {
   if (lhs == nullptr || rhs == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
- /* 
+  
   bool const lhsIsConst = lhs->isConstant(); 
   bool const rhsIsConst = rhs->isConstant(); 
 
-  // TODO
-*/
-  return node;
+  if (! lhsIsConst || ! rhsIsConst) {
+    return node;
+  }
+
+  auto it = FunctionNames.find(static_cast<int>(node->type));
+  if (it == FunctionNames.end()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
+  if (node->type == NODE_TYPE_OPERATOR_BINARY_IN &&
+      rhs->type != NODE_TYPE_LIST) {
+    // right operand of IN must be a list
+    _parser->registerError(TRI_ERROR_QUERY_LIST_EXPECTED);
+    return node;
+  }
+  
+  std::string const& func((*it).second);
+
+  return executeConstComparison(func, lhs, rhs);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
