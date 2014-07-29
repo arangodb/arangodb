@@ -181,6 +181,7 @@ namespace triagens {
 
           auto p = reinterpret_cast<SingletonPlan const*>(_exePlan);
           AqlItem* res = new AqlItem(p->_nrVars);
+          _done = true;
           return res;
         }
 
@@ -222,7 +223,7 @@ namespace triagens {
           for (size_t i = 0; i < n; ++i) {
             TRI_shaped_json_t shaped;
             TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, docs[i]->getDataPtr());
-            _allDocs.push_back(new Json(TRI_UNKNOWN_MEM_ZONE, 
+            _allDocs.push_back(new Json(shaper->_memoryZone,
                                         TRI_JsonShapedJson(shaper, &shaped)));
           }
           
@@ -261,8 +262,11 @@ namespace triagens {
             }
           }
           AqlItem* res = new AqlItem(_input, 1);
-          res->setValue(0,0,new AqlValue(_allDocs[_pos]));
+          res->setValue(0,0,new AqlValue( new Json(_allDocs[_pos]->copy())));
           if (++_pos >= _allDocs.size()) {
+            if (--_input->_refCount == 0) {
+              delete _input;
+            }
             _input = nullptr;  // get a new item next time
           }
 
@@ -274,7 +278,6 @@ namespace triagens {
         vector<Json*> _allDocs;
         size_t _pos;
         AqlItem* _input;
-        bool _done;
     };
 
     class RootBlock : public ExecutionBlock {
