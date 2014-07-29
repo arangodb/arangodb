@@ -151,7 +151,6 @@ namespace triagens {
         }
 
         ~EnumerateCollectionBlock () {
-          std::cout << "ENUMERATECOLLECTIONBLOCK DTOR\n";
         }
         
         int initialize () {
@@ -172,7 +171,7 @@ namespace triagens {
           for (size_t i = 0; i < n; ++i) {
             TRI_shaped_json_t shaped;
             TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, docs[i]->getDataPtr());
-            triagens::basics::Json json(TRI_JsonShapedJson(shaper, &shaped));
+            triagens::basics::Json json(TRI_UNKNOWN_MEM_ZONE, TRI_JsonShapedJson(shaper, &shaped));
             _buffer.push_back(new AqlValue(json));
           }
           
@@ -207,7 +206,6 @@ namespace triagens {
         }
 
         ~RootBlock () {
-          std::cout << "ROOTBLOCK DTOR\n";
         } 
 
         AqlValue* getOne () {
