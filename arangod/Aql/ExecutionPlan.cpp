@@ -92,6 +92,31 @@ void ExecutionPlan::appendAsString (std::string& st, int indent) {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                methods of SingletonPlan
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, for SingletonPlan
+////////////////////////////////////////////////////////////////////////////////
+
+Json SingletonPlan::toJson (TRI_memory_zone_t* zone) const {
+  Json json(ExecutionPlan::toJson(zone));  // call base class method
+  if (json.isEmpty()) {
+    return json;
+  }
+  // Now put info about number of vars:
+  try {
+    json("nrVariables", Json(_nrVars));
+  }
+  catch (std::exception& e) {
+    return Json();
+  }
+
+  // And return it:
+  return json;
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                methods of EnumerateCollectionPlan
 // -----------------------------------------------------------------------------
 
@@ -112,7 +137,8 @@ Json EnumerateCollectionPlan::toJson (TRI_memory_zone_t* zone) const {
     else {
       json("vocbase", Json(_vocbase->_name));
     }
-    json("collection", Json(_collname));
+    json("collection", Json(_collname))
+        ("nrVariables", Json(_nrVars));
   }
   catch (std::exception& e) {
     return Json();
@@ -240,7 +266,7 @@ void testExecutionPlans () {
   std::cout << a.toString() << std::endl;
   std::cout << "Got here" << std::endl;
 
-  auto ec = new EnumerateCollectionPlan(nullptr, "guck");
+  auto ec = new EnumerateCollectionPlan(nullptr, "guck", 1);
   Json jjj(ec->toJson());
   cout << jjj.toString() << endl;
   auto li = new LimitPlan(12, 17);
