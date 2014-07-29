@@ -29,6 +29,7 @@
 
 #include "Aql/AstNode.h"
 #include "Aql/Scopes.h"
+#include "Basics/StringBuffer.h"
 
 using namespace triagens::aql;
 
@@ -308,6 +309,105 @@ std::string AstNode::typeString () const {
 
   TRI_ASSERT(false);
   return "";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stringify the node into a string buffer
+////////////////////////////////////////////////////////////////////////////////
+
+void AstNode::append (triagens::basics::StringBuffer* buffer) const {
+  if (type == NODE_TYPE_VALUE) {
+    appendValue(buffer);
+    return;
+  }
+
+  if (type == NODE_TYPE_LIST) {
+    buffer->appendText("[ ");
+    size_t const n = numMembers();
+    for (size_t i = 0; i < n; ++i) {
+      if (i > 0) {
+        buffer->appendText(", ");
+      }
+
+      AstNode* member = getMember(i);
+      if (member != nullptr) {
+        member->append(buffer);
+      }
+    }
+    buffer->appendText(" ]");
+    return;
+  }
+
+  if (type == NODE_TYPE_ARRAY) {
+    buffer->appendText("{ ");
+    size_t const n = numMembers();
+    for (size_t i = 0; i < n; ++i) {
+      if (i > 0) {
+        buffer->appendText(", ");
+      }
+
+      AstNode* member = getMember(i);
+      if (member != nullptr) {
+        TRI_ASSERT(member->type == NODE_TYPE_ARRAY_ELEMENT);
+        TRI_ASSERT(member->numMembers() == 1);
+
+        buffer->appendChar('"');
+        buffer->appendJsonEncoded(member->getStringValue());
+        buffer->appendText("\" : ");
+
+        member->getMember(0)->append(buffer);
+      }
+    }
+    buffer->appendText(" }");
+    return;
+  }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stringify the value of a node into a string buffer
+////////////////////////////////////////////////////////////////////////////////
+
+void AstNode::appendValue (triagens::basics::StringBuffer* buffer) const {
+  TRI_ASSERT(type == NODE_TYPE_VALUE);
+
+  switch (value.type) {
+    case VALUE_TYPE_BOOL: {
+      if (value.value._bool) {
+        buffer->appendText("true", 4);
+      }
+      else {
+        buffer->appendText("false", 5);
+      }
+      break;
+    }
+
+    case VALUE_TYPE_INT: {
+      buffer->appendInteger(value.value._int);
+      break;
+    }
+
+    case VALUE_TYPE_DOUBLE: {
+      buffer->appendDecimal(value.value._double);
+      break;
+    }
+
+    case VALUE_TYPE_STRING: {
+      buffer->appendChar('"');
+      buffer->appendJsonEncoded(value.value._string);
+      buffer->appendChar('"');
+      break;
+    }
+
+    case VALUE_TYPE_NULL: 
+    default: {
+      buffer->appendText("null", 4);
+      break;
+    }
+  }
 }
 
 // -----------------------------------------------------------------------------
