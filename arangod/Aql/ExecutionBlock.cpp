@@ -32,7 +32,6 @@ using namespace triagens::arango;
 using namespace triagens::aql;
          
 ExecutionBlock::~ExecutionBlock () {        
-  std::cout << "EXECUTIONBLOCK DTOR\n";
   for (auto i = _dependencies.begin(); i != _dependencies.end(); ++i) {
     delete *i;
   }
