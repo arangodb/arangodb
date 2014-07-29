@@ -56,18 +56,18 @@ namespace triagens {
 
         enum NodeType {
           ILLEGAL,
-          SINGLETON,
-          ENUMERATE_COLLECTION,
+          SINGLETON,                // done
+          ENUMERATE_COLLECTION,     // done
           INDEX_RANGE,
-          STATIC_LIST,
-          FILTER,
-          LIMIT,
+          STATIC_LIST,              // 5.
+          FILTER,                   // done
+          LIMIT,                    // done
           INTERSECTION,
-          PROJECTION,
-          CALCULATION,
-          SORT,
+          PROJECTION,               // 2.
+          CALCULATION,              // 1.
+          SORT,                     // 4.
           AGGREGATE_ON_SORTED,
-          AGGREGATE_ON_UNSORTED,
+          AGGREGATE_ON_UNSORTED,    // 3.
           LOOKUP_JOIN,
           MERGE_JOIN,
           LOOKUP_INDEX_UNIQUE,
@@ -80,7 +80,7 @@ namespace triagens {
           REMOVE,
           REPLACE,
           UPDATE,
-          ROOT
+          ROOT                      // done
         };
 
 // -----------------------------------------------------------------------------
