@@ -100,18 +100,27 @@ Variable* Scope::addVariable (std::string const& name,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief end a scope
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a variable exists in the scope
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Scope::existsVariable (char const* name) const {
-  TRI_ASSERT(name != nullptr);
-  auto it = _variables.find(std::string(name));
+  return (getVariable(name) != nullptr);
+}
 
-  return (it != _variables.end());
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a variable
+////////////////////////////////////////////////////////////////////////////////
+
+Variable* Scope::getVariable (char const* name) const {
+  std::string const varname(name);
+
+  auto it = _variables.find(varname);
+
+  if (it == _variables.end()) {
+    return nullptr;
+  }
+
+  return (*it).second;
 }
 
 // -----------------------------------------------------------------------------
@@ -203,6 +212,7 @@ void Scopes::endNested () {
 Variable* Scopes::addVariable (char const* name,
                                bool isUserDefined) {
   TRI_ASSERT(! _activeScopes.empty());
+  TRI_ASSERT(name != nullptr);
 
   for (auto it = _activeScopes.rbegin(); it != _activeScopes.rend(); ++it) {
     auto scope = (*it);
@@ -223,17 +233,25 @@ Variable* Scopes::addVariable (char const* name,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Scopes::existsVariable (char const* name) const {
+  return (getVariable(name) != nullptr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a variable
+////////////////////////////////////////////////////////////////////////////////
+        
+Variable* Scopes::getVariable (char const* name) const {
   TRI_ASSERT(! _activeScopes.empty());
 
   for (auto it = _activeScopes.rbegin(); it != _activeScopes.rend(); ++it) {
-    auto scope = (*it);
+    auto variable = (*it)->getVariable(name);
 
-    if (scope->existsVariable(name)) {
-      return true;
+    if (variable != nullptr) {
+      return variable;
     }
   }
 
-  return false;
+  return nullptr;
 }
 
 // -----------------------------------------------------------------------------

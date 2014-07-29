@@ -123,8 +123,7 @@ namespace triagens {
       NODE_TYPE_PARAMETER,
       NODE_TYPE_FCALL,
       NODE_TYPE_FCALL_USER,
-      NODE_TYPE_RANGE,
-      NODE_TYPE_NOP,
+      NODE_TYPE_RANGE
     };
 
 // -----------------------------------------------------------------------------
@@ -270,7 +269,15 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the int value of a node
+/// @brief return the int value of a node, without asserting the node type
+////////////////////////////////////////////////////////////////////////////////
+
+        inline int64_t getIntValue (bool) const {
+          return value.value._int;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the int value of a node, with asserting the node type
 ////////////////////////////////////////////////////////////////////////////////
 
         inline int64_t getIntValue () const {
