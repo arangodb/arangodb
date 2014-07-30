@@ -31,15 +31,14 @@
 #define ARANGODB_AQL_PLAN_GENERATOR_H 1
 
 #include "Basics/Common.h"
-#include "Aql/Ast.h"
-#include "Aql/AstNode.h"
-#include "Aql/Variable.h"
-#include "BasicsC/json.h"
-
-#include <functional>
 
 namespace triagens {
   namespace aql {
+
+    class Ast;
+    struct AstNode;
+    class ExecutionPlan;
+    class Query;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class PlanGenerator
@@ -71,11 +70,64 @@ namespace triagens {
 
       public:
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an initial execution plan from an abstract syntax tree
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionPlan* fromAst (Query*,
+                                Ast const*); 
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds "previous" as dependency to "plan", returns "plan"
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionPlan* addDependency (ExecutionPlan*,
+                                      ExecutionPlan*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan element from an AST FOR node
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionPlan* fromNodeFor (Query*,
+                                    ExecutionPlan*,
+                                    AstNode const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan element from an AST FILTER node
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionPlan* fromNodeFilter (Query*,
+                                       ExecutionPlan*,
+                                       AstNode const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan element from an AST LET node
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionPlan* fromNodeLet (Query*,
+                                    ExecutionPlan*,
+                                    AstNode const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan element from an AST RETURN node
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionPlan* fromNodeReturn (Query*,
+                                       ExecutionPlan*,
+                                       AstNode const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan from an abstract syntax tree node
+////////////////////////////////////////////////////////////////////////////////
+  
+        ExecutionPlan* fromNode (Query*,
+                                 AstNode const*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

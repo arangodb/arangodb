@@ -229,16 +229,40 @@ statement_block_statement:
 for_statement:
     T_FOR variable_name T_IN expression {
       parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_FOR);
-      
-      auto node = parser->ast()->createNodeFor($2, $4);
-      parser->ast()->addOperation(node);
+     
+      if ($4->type == NODE_TYPE_COLLECTION || $4->type == NODE_TYPE_REFERENCE) { 
+        // right operand of FOR is a collection or a reference. can use it directly
+        auto node = parser->ast()->createNodeFor($2, $4);
+        parser->ast()->addOperation(node);
+      }
+      else {
+        char const* variableName = parser->generateName();
+        // right operand of FOR is an expression. use a temporary variable
+        auto letNode = parser->ast()->createNodeLet(variableName, $4, false);
+        parser->ast()->addOperation(letNode);
+        
+        auto forNode = parser->ast()->createNodeFor($2, variableName);
+        parser->ast()->addOperation(forNode);
+      }
     }
   ;
 
 filter_statement:
     T_FILTER expression {
-      auto node = parser->ast()->createNodeFilter($2);
-      parser->ast()->addOperation(node);
+      if ($2->type == NODE_TYPE_REFERENCE) {
+        // operand is a reference. can use it directly
+        auto node = parser->ast()->createNodeFilter($2);
+        parser->ast()->addOperation(node);
+      }
+      else {
+        // operand is not a reference. use a temporary variable
+        char const* variableName = parser->generateName();
+        auto letNode = parser->ast()->createNodeLet(variableName, $2, false);
+        parser->ast()->addOperation(letNode);
+      
+        auto filterNode = parser->ast()->createNodeFilter(variableName);
+        parser->ast()->addOperation(filterNode);
+      }
     }
   ;
 

@@ -30,7 +30,6 @@
 
 #include <Basics/Common.h>
 
-#include <BasicsC/json.h>
 #include <Basics/JsonHelper.h>
 #include <VocBase/voc-types.h>
 #include <VocBase/vocbase.h>
@@ -644,16 +643,26 @@ namespace triagens {
 
     class CalculationPlan : public ExecutionPlan {
       
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
-
-      public:
 
         CalculationPlan (AqlExpression* expr, VariableId varNumber, 
                          std::string varName)
           : ExecutionPlan(), _expression(expr), _varNumber(varNumber),
             _varName(varName) {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+        ~CalculationPlan () {
+          if (_expression != nullptr) {
+            delete _expression;
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
