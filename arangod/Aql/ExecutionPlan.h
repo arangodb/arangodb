@@ -692,8 +692,8 @@ namespace triagens {
 
       public:
 
-        FilterPlan (std::string attribute, triagens::basics::Json value) 
-          : ExecutionPlan(), _attribute(attribute), _value(value) {
+        FilterPlan (VariableId varNumber, std::string varName)
+          : ExecutionPlan(), _varNumber(varNumber), _varName(varName) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -724,7 +724,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionPlan* clone () const {
-          auto c = new FilterPlan(_attribute, _value.copy());
+          auto c = new FilterPlan(_varNumber, _varName);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
         }
@@ -735,8 +735,17 @@ namespace triagens {
 
       private:
 
-        std::string            _attribute;
-        triagens::basics::Json _value;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _varNumber, input variable
+////////////////////////////////////////////////////////////////////////////////
+
+        VariableId _varNumber;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _varName, name of variable to read from
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _varName;
 
     };
 
