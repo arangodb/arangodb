@@ -1,3 +1,12 @@
+v2.2.2 (XXXX-XX-XX)
+-------------------
+
+* fixed a race condition on task registration (i.e. `require("org/arangodb/tasks").register()`)
+
+  this race condition led to undefined behavior when a just-created task with no offset and
+  no period was instantly executed and deleted by the task scheduler, before the `register`
+  function returned to the caller.
+
 v2.2.1 (2014-07-24)
 -------------------
 
