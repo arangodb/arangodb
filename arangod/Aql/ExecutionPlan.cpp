@@ -226,6 +226,32 @@ Json CalculationPlan::toJson (TRI_memory_zone_t* zone) const {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                           methods of SubqueryPlan
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, for SubqueryPlan
+////////////////////////////////////////////////////////////////////////////////
+
+Json SubqueryPlan::toJson (TRI_memory_zone_t* zone) const {
+  Json json(ExecutionPlan::toJson(zone));  // call base class method
+  if (json.isEmpty()) {
+    return json;
+  }
+  try {
+    json("varNumber", Json(static_cast<double>(_varNumber)))
+        ("varName",   Json(_varName))
+        ("subquery",  _subquery->toJson(TRI_UNKNOWN_MEM_ZONE));
+  }
+  catch (std::exception& e) {
+    return Json();
+  }
+
+  // And return it:
+  return json;
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                         methods of ProjectionPlan
 // -----------------------------------------------------------------------------
 
