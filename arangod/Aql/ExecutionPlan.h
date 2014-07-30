@@ -257,8 +257,7 @@ namespace triagens {
 
       public:
 
-        SingletonPlan (int32_t nrvars) 
-          : ExecutionPlan(), _nrVars(nrvars) {
+        SingletonPlan () : ExecutionPlan() {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -290,18 +289,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionPlan* clone () const {
-          auto c = new SingletonPlan(_nrVars);
+          auto c = new SingletonPlan();
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
         }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief we need to know how many variables we have in this scope
-////////////////////////////////////////////////////////////////////////////////
-
-      private:
-
-        int32_t _nrVars;
 
     };
 
@@ -324,10 +315,8 @@ namespace triagens {
       public:
 
         EnumerateCollectionPlan (TRI_vocbase_t* vocbase, 
-                                 std::string collname,
-                                 int32_t nrVars) 
-          : ExecutionPlan(), _vocbase(vocbase), _collname(collname), 
-            _nrVars(nrVars) {
+                                 std::string collname)
+          : ExecutionPlan(), _vocbase(vocbase), _collname(collname) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -359,7 +348,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionPlan* clone () const {
-          auto c = new EnumerateCollectionPlan(_vocbase, _collname, _nrVars);
+          auto c = new EnumerateCollectionPlan(_vocbase, _collname);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
         }
@@ -381,12 +370,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string _collname;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _nrVars, number of variables in the current scope
-////////////////////////////////////////////////////////////////////////////////
-
-        int32_t _nrVars;
 
     };
 
@@ -984,11 +967,9 @@ namespace triagens {
         AggregateOnUnsortedPlan (std::vector<VariableId> varNumbers,
                   std::vector<std::string> varNames,
                   VariableId outVarNumber,
-                  std::string outVarName,
-                  int32_t nrVars)
+                  std::string outVarName)
           : ExecutionPlan(), _varNumbers(varNumbers), _varNames(varNames),
-            _outVarNumber(outVarNumber), _outVarName(outVarName),
-            _nrVars(nrVars) {
+            _outVarNumber(outVarNumber), _outVarName(outVarName) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1021,8 +1002,7 @@ namespace triagens {
 
         virtual ExecutionPlan* clone () const {
           auto c = new AggregateOnUnsortedPlan(_varNumbers, _varNames,
-                                               _outVarNumber, _outVarName,
-                                               _nrVars);
+                                               _outVarNumber, _outVarName);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
         }
@@ -1057,12 +1037,6 @@ namespace triagens {
 
         std::string _outVarName;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _nrVars, number of variables in the current scope
-////////////////////////////////////////////////////////////////////////////////
-
-        int32_t _nrVars;
-
     };
 
 
@@ -1084,8 +1058,8 @@ namespace triagens {
 
       public:
 
-        RootPlan () 
-          : ExecutionPlan(), dummy(0) {
+        RootPlan (VariableId varNumber, std::string varName) 
+          : ExecutionPlan(), _varNumber(varNumber), _varName(varName) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1117,7 +1091,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionPlan* clone () const {
-          auto c = new RootPlan();
+          auto c = new RootPlan(_varNumber, _varName);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
         }
@@ -1128,7 +1102,9 @@ namespace triagens {
 
       private:
 
-        int dummy;
+        VariableId _varNumber;
+
+        std::string _varName;
 
     };
   }   // namespace triagens::aql

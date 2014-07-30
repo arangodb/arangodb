@@ -5414,13 +5414,15 @@ static v8::Handle<v8::Value> JS_PengAql (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "AQL_PENG()");
   }
 
-  triagens::aql::ExecutionPlan* singlePlan = new triagens::aql::SingletonPlan(0);
-  triagens::aql::ExecutionPlan* enumPlan = new triagens::aql::EnumerateCollectionPlan(vocbase, "fuxx", 1);
+  triagens::aql::ExecutionPlan* singlePlan = new triagens::aql::SingletonPlan();
+  triagens::aql::ExecutionPlan* enumPlan = new triagens::aql::EnumerateCollectionPlan(vocbase, "fuxx");
   enumPlan->addDependency(singlePlan);
-  triagens::aql::ExecutionPlan* rootPlan = new triagens::aql::RootPlan(); 
+  triagens::aql::ExecutionPlan* rootPlan = new triagens::aql::RootPlan(1,"X"); 
   rootPlan->addDependency(enumPlan);
 
   triagens::aql::ExecutionBlock* exec = triagens::aql::ExecutionBlock::instanciatePlan (rootPlan);
+
+  exec->staticAnalysis();
 
   exec->initialize();
   exec->execute();
