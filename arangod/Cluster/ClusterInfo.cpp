@@ -2048,13 +2048,13 @@ int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
   // Note that currently we take the number of shards and the shardKeys
   // from Plan, since they are immutable. Later we will have to switch
   // this to Current, when we allow to add and remove shards.
-  if (!_collectionsValid) {
+  if (! _collectionsValid) {
     loadPlannedCollections();
   }
 
   int tries = 0;
   shared_ptr<vector<string> > shardKeysPtr;
-  char const** shardKeys = 0;
+  char const** shardKeys = nullptr;
   shared_ptr<vector<ShardID> > shards;
   bool found = false;
 
@@ -2071,7 +2071,7 @@ int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
         if (it2 != _shardKeys.end()) {
           shardKeysPtr = it2->second;
           shardKeys = new char const* [shardKeysPtr->size()];
-          if (shardKeys != 0) {
+          if (shardKeys != nullptr) {
             size_t i;
             for (i = 0; i < shardKeysPtr->size(); ++i) {
               shardKeys[i] = shardKeysPtr->at(i).c_str();
