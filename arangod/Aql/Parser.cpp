@@ -151,6 +151,23 @@ char* Parser::generateName () {
 /// @brief register a parse error, position is specified as line / column
 ////////////////////////////////////////////////////////////////////////////////
 
+void Parser::registerParseError (char const* format,
+                                 char const* data,
+                                 int line,
+                                 int column) {
+  char buffer[512];
+  snprintf(buffer,
+           sizeof(buffer),
+           format,
+           data);
+
+  return registerParseError(buffer, line, column);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a parse error, position is specified as line / column
+////////////////////////////////////////////////////////////////////////////////
+
 void Parser::registerParseError (char const* data,
                                  int line,
                                  int column) {
