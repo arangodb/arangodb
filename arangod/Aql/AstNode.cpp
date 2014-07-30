@@ -60,13 +60,11 @@ AstNode::~AstNode () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert the node into JSON
+/// @brief return a JSON representation of the node
+/// the caller is responsible for freeing the JSON later
 ////////////////////////////////////////////////////////////////////////////////
 
-void AstNode::toJson (TRI_json_t* json,
-                      TRI_memory_zone_t* zone) {
-  TRI_ASSERT(TRI_IsListJson(json));
-
+TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone) {
   TRI_json_t* node = TRI_CreateArrayJson(zone);
 
   if (node == nullptr) {
@@ -142,6 +140,24 @@ void AstNode::toJson (TRI_json_t* json,
     }
     
     TRI_Insert3ArrayJson(zone, node, "subNodes", subNodes);
+  }
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a JSON representation of the node to the JSON list specified
+/// in the first argument
+////////////////////////////////////////////////////////////////////////////////
+
+void AstNode::toJson (TRI_json_t* json,
+                      TRI_memory_zone_t* zone) {
+  TRI_ASSERT(TRI_IsListJson(json));
+
+  TRI_json_t* node = toJson(zone);
+
+  if (node == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   TRI_PushBack3ListJson(zone, json, node);
