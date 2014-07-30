@@ -55,8 +55,7 @@ Query::Query (TRI_vocbase_t* vocbase,
     _queryString(queryString),
     _queryLength(queryLength),
     _type(AQL_QUERY_READ),
-    _bindParameters(bindParameters),
-    _error() {
+    _bindParameters(bindParameters) {
 
   TRI_ASSERT(_vocbase != nullptr);
 }
@@ -140,27 +139,17 @@ std::string Query::extractRegion (int line,
 /// @brief register an error
 ////////////////////////////////////////////////////////////////////////////////
 
-void Query::registerError (int errorCode,
-                           std::string const& explanation) {
-  TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
+void Query::registerError (int code,
+                           char const* details) {
 
-  if (_error.code != TRI_ERROR_NO_ERROR) {
-    // there's already an error registered. do not overwrite it
-    return;
+  TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
+
+  if (details == nullptr) {
+    THROW_ARANGO_EXCEPTION(code);
   }
-
-  _error.code        = errorCode;
-  _error.explanation = explanation;
-
-  THROW_ARANGO_EXCEPTION(errorCode);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register an error
-////////////////////////////////////////////////////////////////////////////////
-
-void Query::registerError (int errorCode) {
-  registerError(errorCode, "");
+  else {
+    THROW_ARANGO_EXCEPTION_STRING(code, details);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -174,19 +163,16 @@ ParseResult Query::execute () {
     parser.ast()->injectBindParameters(_bindParameters);
     parser.ast()->optimize();
   
-    ParseResult result(_error.code, _error.explanation);   
+    ParseResult result(TRI_ERROR_NO_ERROR);
     result.json = parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE);
 
     return result;
   }
   catch (triagens::arango::Exception const& ex) {
-    _error.code = ex.code();
-    _error.explanation = "";
-    
-    return ParseResult(ex.code());
+    return ParseResult(ex.code(), ex.message());
   }
   catch (...) {
-    return ParseResult(TRI_ERROR_OUT_OF_MEMORY);
+    return ParseResult(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
   }
 }
 
@@ -200,17 +186,11 @@ ParseResult Query::parse () {
     return parser.parse();
   }
   catch (triagens::arango::Exception const& ex) {
-    _error.code = ex.code();
-    _error.explanation = "";
+    return ParseResult(ex.code(), ex.message());
   }
   catch (...) {
-    _error.code = TRI_ERROR_OUT_OF_MEMORY;
-    _error.explanation = "";
+    return ParseResult(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
   }
-  
-  ParseResult result(_error.code, _error.explanation);   
-
-  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

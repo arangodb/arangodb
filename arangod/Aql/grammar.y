@@ -31,7 +31,7 @@
 using namespace triagens::aql;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief forward for lexer function defined in Aql/tokens.l
+/// @brief forward for lexer function defined in Aql/tokens.ll
 ////////////////////////////////////////////////////////////////////////////////
 
 int Aqllex (YYSTYPE*, 
@@ -44,8 +44,8 @@ int Aqllex (YYSTYPE*,
 
 void Aqlerror (YYLTYPE* locp, 
                triagens::aql::Parser* parser,
-               const char* message) {
-  parser->registerError(message, locp->first_line, locp->first_column);
+               char const* message) {
+  parser->registerParseError(message, locp->first_line, locp->first_column);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -627,8 +627,7 @@ query_options:
       }
 
       if (! TRI_CaseEqualString($1, "OPTIONS")) {
-        parser->registerError(TRI_ERROR_QUERY_PARSE);
-        YYABORT;
+        parser->registerParseError("unexpected qualifier '%s', expecting 'OPTIONS'", $1, yylloc.first_line, yylloc.first_column);
       }
 
       $$ = $2;
@@ -780,8 +779,7 @@ numeric_value:
       double value = TRI_DoubleString($1);
 
       if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-        parser->registerError(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE);
-        YYABORT;
+        parser->registerParseError(TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE), yylloc.first_line, yylloc.first_column);
       }
      
       $$ = parser->ast()->createNodeValueDouble(value); 
@@ -826,8 +824,7 @@ collection_name:
       }
       
       if (strlen($1) < 2 || $1[0] != '@') {
-        parser->registerError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, $1);
-        YYABORT;
+        parser->registerParseError(TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1, yylloc.first_line, yylloc.first_column);
       }
 
       $$ = parser->ast()->createNodeParameter($1);
@@ -870,8 +867,7 @@ integer_value:
 
       int64_t value = TRI_Int64String($1);
       if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-        parser->registerError(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE);
-        YYABORT;
+        parser->registerParseError(TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE), yylloc.first_line, yylloc.first_column);
       }
 
       $$ = parser->ast()->createNodeValueInt(value);

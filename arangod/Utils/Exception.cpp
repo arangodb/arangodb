@@ -76,9 +76,15 @@ char const* Exception::what () const throw () {
 string Exception::message () const throw () {
   string message(TRI_errno_string(_code));
 
-  if (! _details.empty()) {
-    message.append(": ");
-    message.append(_details);
+  if (strstr(message.c_str(), "%s") != nullptr) {
+    // error message contains "%s" wildcard
+    try {
+      // replace %s with actual details
+      return basics::StringUtils::replace(message, "%s", _details);
+    }
+    catch (...) {
+      return "internal error";
+    }
   }
 
   return message;

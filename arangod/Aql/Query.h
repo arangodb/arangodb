@@ -33,8 +33,6 @@
 #include "Basics/Common.h"
 #include "Aql/BindParameters.h"
 #include "Aql/ParseResult.h"
-#include "Aql/QueryAst.h"
-#include "Aql/QueryError.h"
 
 struct TRI_json_s;
 struct TRI_vocbase_s;
@@ -90,14 +88,6 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the query error
-////////////////////////////////////////////////////////////////////////////////
-
-        inline QueryError* error () {
-          return &_error;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the query type
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -141,13 +131,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void registerError (int,
-                            std::string const&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register an error
-////////////////////////////////////////////////////////////////////////////////
-
-        void registerError (int);
+                            char const* = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an AQL query - TODO: implement and determine return type
@@ -180,7 +164,7 @@ namespace triagens {
       private:
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public variables
+// --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
       private:
@@ -195,7 +179,6 @@ namespace triagens {
 
         BindParameters         _bindParameters;
 
-        QueryError             _error;
     };
 
   }
