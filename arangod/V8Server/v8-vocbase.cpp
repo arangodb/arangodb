@@ -5369,7 +5369,7 @@ static v8::Handle<v8::Value> JS_ParseAql (v8::Arguments const& argv) {
   auto parseResult = query.parse();
 
   if (parseResult.code != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, parseResult.code, parseResult.explanation);
+    TRI_V8_EXCEPTION_FULL(scope, parseResult.code, parseResult.details);
   }
 
   v8::Handle<v8::Object> result = v8::Object::New();
@@ -5474,13 +5474,13 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
     parameters = TRI_ObjectToJson(argv[1]);
   }
 
-  // bind parameters will be freed by context...
+  // bind parameters will be freed by the query later
   triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), parameters);
   
   auto parseResult = query.execute();
 
   if (parseResult.code != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, parseResult.code, parseResult.explanation);
+    TRI_V8_EXCEPTION_FULL(scope, parseResult.code, parseResult.details);
   }
 
   v8::Handle<v8::Object> result = v8::Object::New();

@@ -45,7 +45,7 @@ int Aqllex (YYSTYPE*,
 void Aqlerror (YYLTYPE* locp, 
                triagens::aql::Parser* parser,
                const char* message) {
-  parser->registerError(message, locp->first_line, locp->first_column);
+  parser->registerParseError(message, locp->first_line, locp->first_column);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

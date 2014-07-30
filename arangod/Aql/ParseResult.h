@@ -45,30 +45,30 @@ namespace triagens {
       
       ParseResult (ParseResult&& other) {
         code = other.code;
-        explanation = other.explanation;
+        details = other.details;
         json = other.json;
         zone = other.zone;
         other.json = nullptr;
       }
 
       ParseResult (int code,
-                   std::string const& explanation) 
+                   std::string const& details) 
         : code(code),
-          explanation(explanation),
+          details(details),
           zone(TRI_UNKNOWN_MEM_ZONE),
           json(nullptr) {
       }
       
       explicit ParseResult (int code)
         : code(code),
-          explanation(""),
+          details(""),
           zone(TRI_UNKNOWN_MEM_ZONE),
           json(nullptr) {
       }
 
       ParseResult ()
         : code(TRI_ERROR_NO_ERROR),
-          explanation(),
+          details(),
           zone(TRI_UNKNOWN_MEM_ZONE),
           json(nullptr) {
       }
@@ -80,7 +80,7 @@ namespace triagens {
       }
 
       int                             code;
-      std::string                     explanation;
+      std::string                     details;
       std::unordered_set<std::string> bindParameters;
       std::unordered_set<std::string> collectionNames;
       TRI_memory_zone_t*              zone;

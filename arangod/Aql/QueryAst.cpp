@@ -375,12 +375,12 @@ AstNode* QueryAst::createNodeVariable (char const* name,
   }
 
   if (isUserDefined && *name == '_') {
-    _parser->registerError(TRI_ERROR_QUERY_VARIABLE_NAME_INVALID);
+    _query->registerError(TRI_ERROR_QUERY_VARIABLE_NAME_INVALID);
     return nullptr;
   }
 
   if (_scopes.existsVariable(name)) {
-    _parser->registerError(TRI_ERROR_QUERY_VARIABLE_REDECLARED, name);
+    _query->registerError(TRI_ERROR_QUERY_VARIABLE_REDECLARED, name);
     return nullptr;
   }
   
@@ -403,7 +403,7 @@ AstNode* QueryAst::createNodeCollection (char const* name) {
   }
 
   if (! TRI_IsAllowedNameCollection(true, name)) {
-    _parser->registerError(TRI_ERROR_ARANGO_ILLEGAL_NAME, name);
+    _query->registerError(TRI_ERROR_ARANGO_ILLEGAL_NAME, name);
     return nullptr;
   }
 
@@ -766,7 +766,7 @@ void QueryAst::injectBindParameters (BindParameters& parameters) {
       auto it = p.find(std::string(param));
 
       if (it == p.end()) {
-        _parser->registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param);
+        _query->registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param);
         return nullptr;
       }
 
@@ -938,7 +938,7 @@ AstNode* QueryAst::optimizeFilter (AstNode* node) {
   }
 
   if (! operand->isBoolValue()) {
-    _parser->registerError(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
+    _query->registerError(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
     return node;
   }
 
@@ -976,7 +976,7 @@ AstNode* QueryAst::optimizeUnaryOperatorArithmetic (AstNode* node) {
   }
 
   if (! operand->isNumericValue()) {
-    _parser->registerError(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    _query->registerError(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
     return node;
   }
 
@@ -1003,7 +1003,7 @@ AstNode* QueryAst::optimizeUnaryOperatorArithmetic (AstNode* node) {
         // IEEE754 NaN values have an interesting property that we can exploit...
         // if the architecture does not use IEEE754 values then this shouldn't do
         // any harm either
-        _parser->registerError(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE);
+        _query->registerError(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE);
         return node;
       }
 
@@ -1029,7 +1029,7 @@ AstNode* QueryAst::optimizeUnaryOperatorLogical (AstNode* node) {
   }
 
   if (! operand->isBoolValue()) {
-    _parser->registerError(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
+    _query->registerError(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
     return node;
   }
 
@@ -1059,13 +1059,13 @@ AstNode* QueryAst::optimizeBinaryOperatorLogical (AstNode* node) {
 
   if (lhsIsConst && ! lhs->isBoolValue()) {
     // left operand is a constant value, but no boolean
-    _parser->registerError(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
+    _query->registerError(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
     return node;
   }
 
   if (rhsIsConst && ! rhs->isBoolValue()) {
     // right operand is a constant value, but no boolean
-    _parser->registerError(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
+    _query->registerError(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
     return node;
   }
 
@@ -1128,7 +1128,7 @@ AstNode* QueryAst::optimizeBinaryOperatorRelational (AstNode* node) {
   if (node->type == NODE_TYPE_OPERATOR_BINARY_IN &&
       rhs->type != NODE_TYPE_LIST) {
     // right operand of IN must be a list
-    _parser->registerError(TRI_ERROR_QUERY_LIST_EXPECTED);
+    _query->registerError(TRI_ERROR_QUERY_LIST_EXPECTED);
     return node;
   }
   
@@ -1157,13 +1157,13 @@ AstNode* QueryAst::optimizeBinaryOperatorArithmetic (AstNode* node) {
 
   if (lhsIsConst && ! lhs->isNumericValue()) {
     // lhs is not a number
-    _parser->registerError(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    _query->registerError(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
     return node;
   }
   
   if (rhsIsConst && ! rhs->isNumericValue()) {
     // rhs is not a number
-    _parser->registerError(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    _query->registerError(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
     return node;
   }
 
@@ -1188,7 +1188,7 @@ AstNode* QueryAst::optimizeBinaryOperatorArithmetic (AstNode* node) {
   }
   else if (node->type == NODE_TYPE_OPERATOR_BINARY_DIV) {
     if (r == 0.0) {
-      _parser->registerError(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+      _query->registerError(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
       return node;
     }
 
@@ -1196,7 +1196,7 @@ AstNode* QueryAst::optimizeBinaryOperatorArithmetic (AstNode* node) {
   }
   else if (node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
     if (r == 0.0) {
-      _parser->registerError(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
+      _query->registerError(TRI_ERROR_QUERY_DIVISION_BY_ZERO);
       return node;
     }
 
@@ -1212,7 +1212,7 @@ AstNode* QueryAst::optimizeBinaryOperatorArithmetic (AstNode* node) {
     // IEEE754 NaN values have an interesting property that we can exploit...
     // if the architecture does not use IEEE754 values then this shouldn't do
     // any harm either
-    _parser->registerError(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE);
+    _query->registerError(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE);
     return node;
   }
 
@@ -1245,7 +1245,7 @@ AstNode* QueryAst::optimizeTernaryOperator (AstNode* node) {
   }
 
   if (! condition->isBoolValue()) {
-    _parser->registerError(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
+    _query->registerError(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
     return node;
   }
 
@@ -1303,7 +1303,7 @@ AstNode* QueryAst::optimizeRange (AstNode* node) {
   }
 
   if (! lhs->isNumericValue() || ! rhs->isNumericValue()) {
-    _parser->registerError(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+    _query->registerError(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
     return node;
   }
 
