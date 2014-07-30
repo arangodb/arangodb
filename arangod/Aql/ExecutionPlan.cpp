@@ -149,6 +149,31 @@ Json EnumerateCollectionPlan::toJson (TRI_memory_zone_t* zone) const {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                      methods of EnumerateListPlan
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, for EnumerateListPlan
+////////////////////////////////////////////////////////////////////////////////
+
+Json EnumerateListPlan::toJson (TRI_memory_zone_t* zone) const {
+  Json json(ExecutionPlan::toJson(zone));  // call base class method
+  if (json.isEmpty()) {
+    return json;
+  }
+  try {
+    json("varNumber", Json(static_cast<double>(_varNumber)))
+        ("varName",   Json(_varName));
+  }
+  catch (std::exception& e) {
+    return Json();
+  }
+
+  // And return it:
+  return json;
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                              methods of LimitPlan
 // -----------------------------------------------------------------------------
 
@@ -165,6 +190,32 @@ Json LimitPlan::toJson (TRI_memory_zone_t* zone) const {
   try {
     json("offset", Json(static_cast<double>(_offset)))
         ("limit",  Json(static_cast<double>(_limit)));
+  }
+  catch (std::exception& e) {
+    return Json();
+  }
+
+  // And return it:
+  return json;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        methods of CalculationPlan
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, for CalculationPlan
+////////////////////////////////////////////////////////////////////////////////
+
+Json CalculationPlan::toJson (TRI_memory_zone_t* zone) const {
+  Json json(ExecutionPlan::toJson(zone));  // call base class method
+  if (json.isEmpty()) {
+    return json;
+  }
+  try {
+    json("varNumber",  Json(static_cast<double>(_varNumber)))
+        ("varName",    Json(_varName))
+        ("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE));
   }
   catch (std::exception& e) {
     return Json();
@@ -233,7 +284,7 @@ Json FilterPlan::toJson (TRI_memory_zone_t* zone) const {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                         methods of SortPlan
+// --SECTION--                                               methods of SortPlan
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
