@@ -117,7 +117,7 @@ ExecutionPlan* PlanGenerator::fromNodeFor (Query* query,
 
   if (expression->type == NODE_TYPE_COLLECTION) {
     char const* collectionName = expression->getStringValue();
-    plan = new EnumerateCollectionPlan(query->vocbase(), std::string(collectionName), 0); 
+    plan = new EnumerateCollectionPlan(query->vocbase(), std::string(collectionName)); 
   }
   else if (expression->type == NODE_TYPE_REFERENCE) {
     auto v = static_cast<Variable*>(variable->getData());
@@ -183,9 +183,13 @@ ExecutionPlan* PlanGenerator::fromNodeReturn (Query* query,
                                               ExecutionPlan* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_RETURN);
+  TRI_ASSERT(node->numMembers() == 1);
+  
+  auto variable = node->getMember(0);
+  // TODO: the operand type of return is not necessarily a variable...
+  auto v = static_cast<Variable*>(variable->getData());
 
-  // TODO: use "node", otherwise we don't know what to return...
-  auto plan = new RootPlan();
+  auto plan = new RootPlan(v->id, v->name);
 
   return addDependency(previous, plan);
 }
@@ -198,7 +202,7 @@ ExecutionPlan* PlanGenerator::fromNode (Query* query,
                                         AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
-  ExecutionPlan* plan = new SingletonPlan(0);
+  ExecutionPlan* plan = new SingletonPlan();
 
   size_t const n = node->numMembers();
 
