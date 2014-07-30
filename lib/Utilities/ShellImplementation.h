@@ -37,10 +37,13 @@
 namespace triagens {
 
   class ShellImplementation {
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief state of the console                                  protected types
 ////////////////////////////////////////////////////////////////////////////////
+
   protected:
+
     typedef enum {
       STATE_NONE = 0,
       STATE_OPENED,
@@ -49,11 +52,12 @@ namespace triagens {
     console_state_e;
 
   public:
+
 ////////////////////////////////////////////////////////////////////////////////
 ///                                               public constructor, destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-    ShellImplementation (std::string const& history, Completer *);
+    ShellImplementation (std::string const& history, Completer*);
 
     virtual ~ShellImplementation ();
 
@@ -61,7 +65,7 @@ namespace triagens {
 /// @brief line editor open
 ////////////////////////////////////////////////////////////////////////////////
 
-    virtual bool open (bool autoComplete)  = 0;
+    virtual bool open (bool autoComplete) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor shutdown
@@ -100,15 +104,11 @@ namespace triagens {
 /// @brief todo!!
 ////////////////////////////////////////////////////////////////////////////////
 
-    virtual char * getLine (const char*) = 0;
+    virtual char* getLine (const char*) = 0;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-    // -----------------------------------------------------------------------------
-    // --SECTION--                                               protected variables
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                               protected variables
+// -----------------------------------------------------------------------------
 
   protected:
 
@@ -134,11 +134,13 @@ namespace triagens {
 /// @brief object which defines when the input is finished
 ////////////////////////////////////////////////////////////////////////////////
 
-    Completer * _completer;
+    Completer* _completer;
 
   };
 }
+
 #endif
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
