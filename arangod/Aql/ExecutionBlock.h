@@ -45,7 +45,7 @@ namespace triagens {
     class ExecutionBlock {
       public:
         ExecutionBlock (ExecutionPlan const* ep)
-          : _exePlan(ep), _done(false), _nrVars(10) { }
+          : _exePlan(ep), _done(false), _nrVars(10), _depth(0) { }
 
         virtual ~ExecutionBlock ();
           
@@ -95,7 +95,17 @@ namespace triagens {
           }
         }
 
-        virtual void staticAnalysis();
+        struct VarDefPlace {
+          int depth;
+          int index;
+          VarDefPlace(int depth, int index) : depth(depth), index(index) {}
+        };
+
+        virtual int staticAnalysisRecursion (
+            std::unordered_map<VariableId, VarDefPlace>& varTab,
+            int& curVar);
+
+        void staticAnalysis ();
 
         // Methods for execution:
         virtual int initialize () {
@@ -191,6 +201,8 @@ namespace triagens {
         std::deque<shared_ptr<AqlItem> > _buffer;
         bool _done;
         VariableId _nrVars;  // will be filled in by staticAnalysis
+        int _depth;          // nesting depth of contexts, i.e. AqlItems,
+                             // coming out of this node
 
       public:
 

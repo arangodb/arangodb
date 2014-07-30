@@ -117,11 +117,11 @@ ExecutionPlan* PlanGenerator::fromNodeFor (Query* query,
 
   if (expression->type == NODE_TYPE_COLLECTION) {
     char const* collectionName = expression->getStringValue();
-    plan = new EnumerateCollectionPlan(query->vocbase(), std::string(collectionName)); 
+    plan = new EnumerateCollectionPlan(query->vocbase(), std::string(collectionName), 0, "0"); // FIXME
   }
   else if (expression->type == NODE_TYPE_REFERENCE) {
     auto v = static_cast<Variable*>(variable->getData());
-    plan = new EnumerateListPlan(v->id, v->name);
+    plan = new EnumerateListPlan(v->id, v->name, 0, "0"); // FIXME
   }
   else {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
