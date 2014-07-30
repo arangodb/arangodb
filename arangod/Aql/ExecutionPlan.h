@@ -1049,8 +1049,8 @@ namespace triagens {
 
       public:
 
-        RootPlan () 
-          : ExecutionPlan(), dummy(0) {
+        RootPlan (VariableId varNumber, std::string varName) 
+          : ExecutionPlan(), _varNumber(varNumber), _varName(varName) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1082,7 +1082,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionPlan* clone () const {
-          auto c = new RootPlan();
+          auto c = new RootPlan(_varNumber, _varName);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
         }
@@ -1093,7 +1093,9 @@ namespace triagens {
 
       private:
 
-        int dummy;
+        VariableId _varNumber;
+
+        std::string _varName;
 
     };
   }   // namespace triagens::aql

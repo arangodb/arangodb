@@ -412,7 +412,8 @@ void RootPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
   if (json.isEmpty()) {
     return;
   }
-  // TODO: add specific stuff
+  json("varNumber", Json(static_cast<double>(_varNumber)))
+      ("varName"  , Json(_varName));
 
   // And add it:
   int len = static_cast<int>(nodes.size());
@@ -631,7 +632,7 @@ void testExecutionPlans () {
   e = n;
 
   // RETURN X
-  n = new RootPlan();
+  n = new RootPlan(4, "X");
   n->addDependency(e);
   e = n;
 
