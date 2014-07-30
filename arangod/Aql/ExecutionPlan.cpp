@@ -175,22 +175,28 @@ Json LimitPlan::toJson (TRI_memory_zone_t* zone) const {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                        methods of CalculationPlan
+// --SECTION--                                         methods of ProjectionPlan
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for CalculationPlan
+/// @brief toJson, for ProjectionPlan
 ////////////////////////////////////////////////////////////////////////////////
 
-Json CalculationPlan::toJson (TRI_memory_zone_t* zone) const {
+Json ProjectionPlan::toJson (TRI_memory_zone_t* zone) const {
   Json json(ExecutionPlan::toJson(zone));  // call base class method
   if (json.isEmpty()) {
     return json;
   }
   try {
-    json("varNumber",  Json(static_cast<double>(_varNumber)))
-        ("varName",    Json(_varName))
-        ("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE));
+    Json vec(Json::List,_keepAttributes.size());
+    for (auto it = _keepAttributes.begin(); it != _keepAttributes.end(); ++it) {
+      vec(Json(*it));
+    }
+    json("inVarNumber",    Json(static_cast<double>(_inVar)))
+        ("inVarName",      Json(_inVarName))
+        ("outVarNumber",   Json(static_cast<double>(_outVar)))
+        ("outVarName",     Json(_outVarName))
+        ("keepAttributes", vec);
   }
   catch (std::exception& e) {
     return Json();
@@ -217,6 +223,36 @@ Json FilterPlan::toJson (TRI_memory_zone_t* zone) const {
   try {
     json("attribute", Json(_attribute))
         ("value", Json(_value.copy()));
+  }
+  catch (std::exception& e) {
+    return Json();
+  }
+
+  // And return it:
+  return json;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                         methods of SortPlan
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, for SortPlan
+////////////////////////////////////////////////////////////////////////////////
+
+Json SortPlan::toJson (TRI_memory_zone_t* zone) const {
+  Json json(ExecutionPlan::toJson(zone));  // call base class method
+  if (json.isEmpty()) {
+    return json;
+  }
+  try {
+    Json vec(Json::List,_sortAttributes.size());
+    for (auto it = _sortAttributes.begin(); it != _sortAttributes.end(); ++it) {
+      vec(Json(*it));
+    }
+    json("varNumber",      Json(static_cast<double>(_varNumber)))
+        ("varName",        Json(_varName))
+        ("sortAttributes", vec);
   }
   catch (std::exception& e) {
     return Json();
