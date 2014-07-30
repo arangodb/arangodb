@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a basis class for concrete implementations for a shell
+/// @brief Aql, AST variables
 ///
 /// @file
 ///
@@ -22,88 +22,96 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Esteban Lombeyda
+/// @author Jan Steemann
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILITIES_LINENOISE_SHELL_H
-#define ARANGODB_UTILITIES_LINENOISE_SHELL_H 1
+#ifndef ARANGODB_AQL_VARIABLE_H
+#define ARANGODB_AQL_VARIABLE_H 1
 
 #include "Basics/Common.h"
 
-#include "Completer.h"
-#include "ShellImplementation.h"
-
-#include "BasicsC/tri-strings.h"
-#include "V8/v8-utils.h"
-
 namespace triagens {
+  namespace aql {
+
+    typedef uint32_t VariableId; 
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   struct Variable
+// -----------------------------------------------------------------------------
+
+    struct Variable {
+      Variable (std::string const& name,
+                VariableId id,
+                bool isUserDefined)
+        : name(name),
+          value(nullptr),
+          id(id),
+          refCount(0),
+          isUserDefined(isUserDefined) {
+      }
+
+      ~Variable () {
+      }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup Shell
-/// @{
+/// @brief registers a constant value for the variable
+/// this constant value is used for constant propagation in optimizations
 ////////////////////////////////////////////////////////////////////////////////
 
-  class LinenoiseShell: public ShellImplementation {
-
-  public:
-////////////////////////////////////////////////////////////////////////////////
-///                                               public constructor, destructor
-////////////////////////////////////////////////////////////////////////////////
-
-    LinenoiseShell(std::string const& history, Completer *);
-
-    virtual ~LinenoiseShell();
+      void constValue (void* node) {
+        value = node;
+      }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor open
+/// @brief returns a constant value registered for this variable
 ////////////////////////////////////////////////////////////////////////////////
 
-    virtual bool open(bool autoComplete);
+      inline void* constValue () const {
+        return value;
+      }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief line editor shutdown
+/// @brief whether or not the variable is reference counted
 ////////////////////////////////////////////////////////////////////////////////
 
-    virtual bool close();
+      inline bool isReferenceCounted () const {
+        return (refCount > 0);
+      }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the history file path
-///
-/// The path is "$HOME" plus _historyFilename, if $HOME is set. Else
-/// the local file _historyFilename.
+/// @brief increase the variable's reference counter
 ////////////////////////////////////////////////////////////////////////////////
 
-    virtual std::string historyPath();
+      inline void increaseReferenceCount () {
+        ++refCount;
+      }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add to history
+/// @brief decrease the variable's reference counter
 ////////////////////////////////////////////////////////////////////////////////
 
-    virtual void addHistory(const char*);
+      inline void decreaseReferenceCount () {
+        TRI_ASSERT(refCount > 0);
+        --refCount;
+      }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief save the history
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public variables
+// -----------------------------------------------------------------------------
 
-    virtual bool writeHistory();
+      std::string const  name;
+      void*              value;
+      VariableId const   id;
+      uint32_t           refCount;
+      bool const         isUserDefined;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the characters which the user has typed
-/// @arg  is the prompt of the shell
-/// Note: this is the interface between our shell world and some implementation
-///       of key events (linenoise, readline)
-////////////////////////////////////////////////////////////////////////////////
+    };
 
-    virtual char* getLine (char const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-  };
+  }
 }
+
 #endif
 
 // -----------------------------------------------------------------------------
