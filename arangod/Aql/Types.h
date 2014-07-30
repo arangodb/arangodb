@@ -240,7 +240,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         triagens::basics::Json toJson (TRI_memory_zone_t* zone) const {
-          return triagens::basics::Json("hier wird ein Ausdruck stehen");
+          return triagens::basics::Json(zone, _ast->toJson(zone));
         }
 
 ////////////////////////////////////////////////////////////////////////////////

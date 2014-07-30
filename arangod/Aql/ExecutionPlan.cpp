@@ -149,6 +149,31 @@ Json EnumerateCollectionPlan::toJson (TRI_memory_zone_t* zone) const {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                      methods of EnumerateListPlan
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, for EnumerateListPlan
+////////////////////////////////////////////////////////////////////////////////
+
+Json EnumerateListPlan::toJson (TRI_memory_zone_t* zone) const {
+  Json json(ExecutionPlan::toJson(zone));  // call base class method
+  if (json.isEmpty()) {
+    return json;
+  }
+  try {
+    json("varNumber", Json(static_cast<double>(_varNumber)))
+        ("varName",   Json(_varName));
+  }
+  catch (std::exception& e) {
+    return Json();
+  }
+
+  // And return it:
+  return json;
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                              methods of LimitPlan
 // -----------------------------------------------------------------------------
 
@@ -201,6 +226,38 @@ Json CalculationPlan::toJson (TRI_memory_zone_t* zone) const {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                         methods of ProjectionPlan
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, for ProjectionPlan
+////////////////////////////////////////////////////////////////////////////////
+
+Json ProjectionPlan::toJson (TRI_memory_zone_t* zone) const {
+  Json json(ExecutionPlan::toJson(zone));  // call base class method
+  if (json.isEmpty()) {
+    return json;
+  }
+  try {
+    Json vec(Json::List,_keepAttributes.size());
+    for (auto it = _keepAttributes.begin(); it != _keepAttributes.end(); ++it) {
+      vec(Json(*it));
+    }
+    json("inVarNumber",    Json(static_cast<double>(_inVar)))
+        ("inVarName",      Json(_inVarName))
+        ("outVarNumber",   Json(static_cast<double>(_outVar)))
+        ("outVarName",     Json(_outVarName))
+        ("keepAttributes", vec);
+  }
+  catch (std::exception& e) {
+    return Json();
+  }
+
+  // And return it:
+  return json;
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                             methods of FilterPlan
 // -----------------------------------------------------------------------------
 
@@ -215,8 +272,38 @@ Json FilterPlan::toJson (TRI_memory_zone_t* zone) const {
   }
   // Now put info about offset and limit in
   try {
-    json("attribute", Json(_attribute))
-        ("value", Json(_value.copy()));
+    json("varName",   Json(_varName))
+        ("varNumber", Json(static_cast<double>(_varNumber)));
+  }
+  catch (std::exception& e) {
+    return Json();
+  }
+
+  // And return it:
+  return json;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               methods of SortPlan
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, for SortPlan
+////////////////////////////////////////////////////////////////////////////////
+
+Json SortPlan::toJson (TRI_memory_zone_t* zone) const {
+  Json json(ExecutionPlan::toJson(zone));  // call base class method
+  if (json.isEmpty()) {
+    return json;
+  }
+  try {
+    Json vec(Json::List,_sortAttributes.size());
+    for (auto it = _sortAttributes.begin(); it != _sortAttributes.end(); ++it) {
+      vec(Json(*it));
+    }
+    json("varNumber",      Json(static_cast<double>(_varNumber)))
+        ("varName",        Json(_varName))
+        ("sortAttributes", vec);
   }
   catch (std::exception& e) {
     return Json();
