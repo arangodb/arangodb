@@ -208,9 +208,9 @@ namespace triagens {
 /// @brief register a parse error, position is specified as line / column
 ////////////////////////////////////////////////////////////////////////////////
 
-        void registerError (char const*,
-                            int,
-                            int);
+        void registerParseError (char const*,
+                                 int,
+                                 int);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register a non-parse error
