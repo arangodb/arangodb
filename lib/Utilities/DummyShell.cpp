@@ -33,7 +33,7 @@
 #include "BasicsC/files.h"
 
 using namespace std;
-using namespace triagentriagens;
+using namespace triagens;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class DummyShell
@@ -47,10 +47,9 @@ using namespace triagentriagens;
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-DummyShell::DummyShell (std::string const& history)
-  : _current(),
-    _historyFilename(history),
-    _state(STATE_NONE) {
+DummyShell::DummyShell (std::string const& history,
+                        Completer* completer)
+  : ShellImplementation(history, completer) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -80,29 +79,6 @@ bool DummyShell::open (bool) {
 
 bool DummyShell::close () {
   _state = STATE_CLOSED;
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the history file path
-////////////////////////////////////////////////////////////////////////////////
-
-string DummyShell::historyPath () {
-  return "";
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add to history
-////////////////////////////////////////////////////////////////////////////////
-
-void DummyShell::addHistory (char const* str) {
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief save history
-////////////////////////////////////////////////////////////////////////////////
-
-bool DummyShell::writeHistory () {
   return true;
 }
 
@@ -137,7 +113,7 @@ char* DummyShell::prompt (char const* prompt) {
     p = dotdot.c_str();
 
     if (cin.eof()) {
-        return 0;
+      return nullptr;
     }
 
     _current += sep;
@@ -164,7 +140,7 @@ char* DummyShell::prompt (char const* prompt) {
     // extend line and check
     _current += result;
 
-    bool ok = isComplete(_current, lineno, strlen(result));
+    bool ok = _completer->isComplete(_current, lineno, strlen(result));
 
     // stop if line is complete
     if (ok) {
@@ -173,9 +149,44 @@ char* DummyShell::prompt (char const* prompt) {
   }
 
   char* line = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, _current.c_str());
+
   _current.clear();
 
   return line;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the history file path
+////////////////////////////////////////////////////////////////////////////////
+
+string DummyShell::historyPath () {
+  return "";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add to history
+////////////////////////////////////////////////////////////////////////////////
+
+void DummyShell::addHistory (char const* str) {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief save history
+////////////////////////////////////////////////////////////////////////////////
+
+bool DummyShell::writeHistory () {
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the characters which the user has typed
+/// @arg  is the prompt of the shell
+/// Note: this is the interface between our shell world and some implementation
+///       of key events (linenoise, readline)
+////////////////////////////////////////////////////////////////////////////////
+
+char* DummyShell::getLine (char const* prompt) {
+  return this->prompt(prompt);
 }
 
 // -----------------------------------------------------------------------------
