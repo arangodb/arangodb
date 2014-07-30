@@ -30,9 +30,9 @@
 
 #ifdef _WIN32
 #include "LinenoiseShell.h"
-#elif TRI_HAVE_LINENOISE
+#elif defined TRI_HAVE_LINENOISE
 #include "LinenoiseShell.h"
-#elif TRI_HAVE_READLINE
+#elif defined TRI_HAVE_READLINE
 #include "ReadlineShell.h"
 #else 
 #include "DummyShell.h"
