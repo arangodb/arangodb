@@ -157,7 +157,7 @@ bool LinenoiseShell::writeHistory() {
   return true;
 }
 
-char * LinenoiseShell::getLine(char const * input) {
+char* LinenoiseShell::getLine(char const* input) {
   return linenoise(input);
 }
 
