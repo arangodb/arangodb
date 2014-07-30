@@ -78,19 +78,19 @@ static TRI_action_result_t ExecuteActionVocbase (TRI_vocbase_t* vocbase,
 /// @brief global V8 dealer
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationV8* GlobalV8Dealer = 0;
+ApplicationV8* GlobalV8Dealer = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global scheduler
 ////////////////////////////////////////////////////////////////////////////////
 
-Scheduler* GlobalScheduler = 0;
+Scheduler* GlobalScheduler = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global dispatcher
 ////////////////////////////////////////////////////////////////////////////////
 
-Dispatcher* GlobalDispatcher = 0;
+Dispatcher* GlobalDispatcher = nullptr;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
@@ -593,7 +593,7 @@ static HttpResponse* ResponseV8ToCpp (TRI_v8_global_t const* v8g,
     size_t length;
     char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *filename, &length);
 
-    if (content != 0) {
+    if (content != nullptr) {
       response->body().appendText(content, length);
       TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
     }
@@ -817,10 +817,10 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
   TRI_action_t* result = TRI_DefineActionVocBase(name, action);
 
   // and define the callback
-  if (result != 0) {
+  if (result != nullptr) {
     action = dynamic_cast<v8_action_t*>(result);
 
-    if (action != 0) {
+    if (action != nullptr) {
       action->createCallback(isolate, callback);
     }
     else {
@@ -935,7 +935,7 @@ static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
 
   ClusterComm* cc = ClusterComm::instance();
 
-  if (cc == 0) {
+  if (cc == nullptr) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL,
                              "clustercomm object not found");
   }
@@ -988,7 +988,7 @@ static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
 
   double timeout = TRI_ObjectToDouble(argv[7]);
   if (timeout == 0.0) {
-    timeout = 24*3600.0;
+    timeout = 24 * 3600.0;
   }
 
   bool asyncMode = TRI_ObjectToBoolean(argv[8]);
@@ -1268,10 +1268,29 @@ static v8::Handle<v8::Value> JS_RegisterTask (v8::Arguments const& argv) {
         command,
         parameters);
   }
+  
+  // get the JSON representation of the task
+  TRI_json_t* json = task->toJson();
+
+  if (json == nullptr) {
+    if (period > 0.0) {
+      V8PeriodicTask* t = dynamic_cast<V8PeriodicTask*>(task);
+      delete t;
+    }
+    else {
+      V8TimerTask* t = dynamic_cast<V8TimerTask*>(task);
+      delete t;
+    }
+
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  TRI_ASSERT(json != nullptr);
 
   int res = GlobalScheduler->registerTask(task);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     if (period > 0.0) {
       V8PeriodicTask* t = dynamic_cast<V8PeriodicTask*>(task);
       delete t;
@@ -1284,17 +1303,10 @@ static v8::Handle<v8::Value> JS_RegisterTask (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, res);
   }
 
-  // get the JSON representation of the task
-  TRI_json_t* json = task->toJson();
+  v8::Handle<v8::Value> result = TRI_ObjectJson(json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-  if (json != 0) {
-    v8::Handle<v8::Value> result = TRI_ObjectJson(json);
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
-    return scope.Close(result);
-  }
-
-  TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1312,7 +1324,7 @@ static v8::Handle<v8::Value> JS_UnregisterTask (v8::Arguments const& argv) {
 
   string const id = GetTaskId(argv[0]);
 
-  if (GlobalScheduler == 0 || GlobalDispatcher == 0) {
+  if (GlobalScheduler == nullptr || GlobalDispatcher == nullptr) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no scheduler found");
   }
 
@@ -1338,7 +1350,7 @@ static v8::Handle<v8::Value> JS_GetTask (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "get(<id>)");
   }
 
-  if (GlobalScheduler == 0 || GlobalDispatcher == 0) {
+  if (GlobalScheduler == nullptr || GlobalDispatcher == nullptr) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no scheduler found");
   }
 
@@ -1354,7 +1366,7 @@ static v8::Handle<v8::Value> JS_GetTask (v8::Arguments const& argv) {
     json = GlobalScheduler->getUserTasks();
   }
 
-  if (json == 0) {
+  if (json == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_TASK_NOT_FOUND);
   }
 
@@ -1399,7 +1411,7 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context,
   GlobalScheduler = scheduler->scheduler();
   GlobalDispatcher = dispatcher->dispatcher();
 
-  if (GlobalScheduler != 0 && GlobalDispatcher != 0) {
+  if (GlobalScheduler != nullptr && GlobalDispatcher != nullptr) {
     TRI_AddGlobalFunctionVocbase(context, "SYS_REGISTER_TASK", JS_RegisterTask);
     TRI_AddGlobalFunctionVocbase(context, "SYS_UNREGISTER_TASK", JS_UnregisterTask);
     TRI_AddGlobalFunctionVocbase(context, "SYS_GET_TASK", JS_GetTask);
