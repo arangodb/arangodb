@@ -64,6 +64,7 @@ add_executable(
     Aql/ExecutionPlan.cpp
     Aql/grammar.cpp
     Aql/Parser.cpp
+    Aql/PlanGenerator.cpp
     Aql/Query.cpp
     Aql/Scopes.cpp
     Aql/tokens.cpp
