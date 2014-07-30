@@ -31,80 +31,10 @@
 #define ARANGODB_AQL_SCOPES_H 1
 
 #include "Basics/Common.h"
+#include "Aql/Variable.h"
 
 namespace triagens {
   namespace aql {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   struct Variable
-// -----------------------------------------------------------------------------
-
-    struct Variable {
-      Variable (std::string const& name,
-                int64_t id,
-                bool isUserDefined)
-        : name(name),
-          value(nullptr),
-          id(id),
-          refCount(0),
-          isUserDefined(isUserDefined) {
-      }
-
-      ~Variable () {
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief registers a constant value for the variable
-/// this constant value is used for constant propagation in optimizations
-////////////////////////////////////////////////////////////////////////////////
-
-      void constValue (void* node) {
-        value = node;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a constant value registered for this variable
-////////////////////////////////////////////////////////////////////////////////
-
-      inline void* constValue () const {
-        return value;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the variable is reference counted
-////////////////////////////////////////////////////////////////////////////////
-
-      inline bool isReferenceCounted () const {
-        return (refCount > 0);
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief increase the variable's reference counter
-////////////////////////////////////////////////////////////////////////////////
-
-      inline void increaseReferenceCount () {
-        ++refCount;
-      }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief decrease the variable's reference counter
-////////////////////////////////////////////////////////////////////////////////
-
-      inline void decreaseReferenceCount () {
-        TRI_ASSERT(refCount > 0);
-        --refCount;
-      }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public variables
-// -----------------------------------------------------------------------------
-
-      std::string const  name;
-      void*              value;
-      int64_t const      id;
-      uint32_t           refCount;
-      bool const         isUserDefined;
-    };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -274,7 +204,7 @@ namespace triagens {
 /// @brief return a variable by id - this does not respect the scopes!
 ////////////////////////////////////////////////////////////////////////////////
 
-        Variable* getVariable (int64_t) const;
+        Variable* getVariable (VariableId) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -286,7 +216,7 @@ namespace triagens {
 /// @brief all variables used in the query
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_map<int64_t, Variable*>  _variables;
+        std::unordered_map<VariableId, Variable*>  _variables;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief currently active scopes
@@ -304,7 +234,7 @@ namespace triagens {
 /// @brief next variable id
 ////////////////////////////////////////////////////////////////////////////////
 
-        int64_t                                 _nextId;
+        VariableId                              _nextId;
 
     };
 

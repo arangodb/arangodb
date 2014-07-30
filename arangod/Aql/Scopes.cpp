@@ -217,7 +217,7 @@ Variable* Scopes::addVariable (char const* name,
     }
   }
 
-  int64_t id = ++_nextId;
+  VariableId id = ++_nextId;
 
   // if this fails, the exception will propagate and be caught somewhere else
   auto variable = new Variable(name, id, isUserDefined);
@@ -268,7 +268,7 @@ Variable* Scopes::getVariable (char const* name) const {
 /// @brief return a variable by id - this does not respect the scopes!
 ////////////////////////////////////////////////////////////////////////////////
         
-Variable* Scopes::getVariable (int64_t id) const {
+Variable* Scopes::getVariable (VariableId id) const {
   auto it = _variables.find(id);
 
   if (it == _variables.end()) {

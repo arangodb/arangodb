@@ -1493,7 +1493,7 @@ AstNode* QueryAst::traverse (AstNode* node,
 /// @brief determines the variables referenced in an expression
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_set<int64_t> QueryAst::getReferencedVariables (AstNode const* node) {
+std::unordered_set<VariableId> QueryAst::getReferencedVariables (AstNode const* node) {
   auto func = [&](AstNode* node, void* data) -> AstNode* {
     if (node == nullptr) {
       return nullptr;
@@ -1507,14 +1507,14 @@ std::unordered_set<int64_t> QueryAst::getReferencedVariables (AstNode const* nod
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
-      auto vars = static_cast<unordered_set<int64_t>*>(data);
+      auto vars = static_cast<unordered_set<VariableId>*>(data);
       vars->insert(variable->id);
     }
     
     return node;
   };
 
-  std::unordered_set<int64_t> vars;  
+  std::unordered_set<VariableId> vars;  
   traverse(_root, func, &vars); 
 
   return vars;
