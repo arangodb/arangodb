@@ -28,6 +28,8 @@
 /// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ShellImplFactory.h"
+
 #ifdef _WIN32
 #include "LinenoiseShell.h"
 #elif defined TRI_HAVE_LINENOISE
@@ -37,8 +39,6 @@
 #else 
 #include "DummyShell.h"
 #endif
-
-#include "ShellImplFactory.h"
 
 using namespace triagens;
 using namespace std;
