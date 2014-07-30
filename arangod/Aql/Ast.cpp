@@ -188,6 +188,27 @@ AstNode* Ast::createNodeFor (char const* variableName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST for node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeFor (char const* variable1Name,
+                             char const* variable2Name) {
+  if (variable1Name == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  AstNode* node = createNode(NODE_TYPE_FOR);
+
+  AstNode* variable = createNodeVariable(variable1Name, true);
+  node->addMember(variable);
+  
+  auto reference = createNodeReference(variable2Name);
+  node->addMember(reference);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST let node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -214,7 +235,26 @@ AstNode* Ast::createNodeLet (char const* variableName,
 AstNode* Ast::createNodeFilter (AstNode const* expression) {
   AstNode* node = createNode(NODE_TYPE_FILTER);
   node->setIntValue(static_cast<int64_t>(FILTER_UNKNOWN));
+
   node->addMember(expression);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST filter node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeFilter (char const* variableName) {
+  if (variableName == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  AstNode* node = createNode(NODE_TYPE_FILTER);
+  node->setIntValue(static_cast<int64_t>(FILTER_UNKNOWN));
+
+  auto reference = createNodeReference(variableName);
+  node->addMember(reference);
 
   return node;
 }
@@ -419,14 +459,14 @@ AstNode* Ast::createNodeCollection (char const* name) {
 /// @brief create an AST reference node
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* Ast::createNodeReference (char const* name) {
-  if (name == nullptr) {
+AstNode* Ast::createNodeReference (char const* variableName) {
+  if (variableName == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   AstNode* node = createNode(NODE_TYPE_REFERENCE);
 
-  auto variable = _scopes.getVariable(name);
+  auto variable = _scopes.getVariable(variableName);
 
   if (variable == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -1279,6 +1319,8 @@ AstNode* Ast::optimizeReference (AstNode* node) {
     return node;
   }
 
+// TODO: re-activate constant propagation??
+return node; 
   return static_cast<AstNode*>(variable->constValue());
 }
 
@@ -1345,6 +1387,8 @@ AstNode* Ast::optimizeLet (AstNode* node,
     }  
   }
   else if (pass == 1) {
+    /* TODO: re-add reference counting
+
     if (! v->isReferenceCounted()) {
       // this optimizes away the assignment of variables which are never read
       // (i.e. assigned-only variables). this is currently not free of side-effects:
@@ -1359,6 +1403,7 @@ AstNode* Ast::optimizeLet (AstNode* node,
       // variables
       return createNodeNop();
     }
+    */
   }
 
   return node; 
