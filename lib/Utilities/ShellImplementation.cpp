@@ -32,118 +32,123 @@
 #include "BasicsC/tri-strings.h"
 
 using namespace std;
-namespace triagens {
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                         class ShellImplementation
-  // -----------------------------------------------------------------------------
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and destructors
-  // -----------------------------------------------------------------------------
+namespace triagens {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                         class ShellImplementation
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new editor
 ////////////////////////////////////////////////////////////////////////////////
 
-  ShellImplementation::ShellImplementation (string const& history, Completer * completer)
-    : _current(),
+ShellImplementation::ShellImplementation (string const& history, 
+                                          Completer* completer)
+  : _current(),
     _historyFilename(history),
     _state(STATE_NONE),
     _completer(completer) {
 
-  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-  ShellImplementation::~ShellImplementation () {
-  }
+ShellImplementation::~ShellImplementation () {
+}
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                    public methods
-  // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief line editor prompt
 ////////////////////////////////////////////////////////////////////////////////
 
-  char* ShellImplementation::prompt (char const* the_prompt) {
-    string dotdot;
-    char const* p = the_prompt;
-    size_t len1 = strlen(the_prompt);
-    size_t len2 = len1;
-    size_t lineno = 0;
+char* ShellImplementation::prompt (char const* the_prompt) {
+  string dotdot;
+  char const* p = the_prompt;
+  size_t len1 = strlen(the_prompt);
+  size_t len2 = len1;
+  size_t lineno = 0;
 
-    if (len1 < 3) {
-      dotdot = "> ";
-      len2 = 2;
-    }
-    else {
-      dotdot = string(len1 - 2, '.') + "> ";
-    }
-
-    char const* sep = "";
-
-    while (true) {
-      // calling concrete implmentation of the shell
-      char* result = getLine(p);
-
-      p = dotdot.c_str();
-
-      if (result == 0) {
-
-        // give up, if the user pressed control-D on the top-most level
-        if (_current.empty()) {
-          return 0;
-        }
-
-        // otherwise clear current content
-        _current.clear();
-        break;
-      }
-
-      _current += sep;
-      sep = "\n";
-      ++lineno;
-
-      // remove any the_prompt at the beginning of the line
-      char* originalLine = result;
-      bool c1 = strncmp(result, the_prompt, len1) == 0;
-      bool c2 = strncmp(result, dotdot.c_str(), len2) == 0;
-
-      while (c1 || c2) {
-        if (c1) {
-          result += len1;
-        }
-        else if (c2) {
-          result += len2;
-        }
-
-        c1 = strncmp(result, the_prompt, len1) == 0;
-        c2 = strncmp(result, dotdot.c_str(), len2) == 0;
-      }
-
-      // extend line and check
-      _current += result;
-
-      bool ok = _completer->isComplete(_current, lineno, strlen(result));
-
-      // cannot use TRI_Free, because it was allocated by the system call readline
-      TRI_SystemFree(originalLine);
-
-      // stop if line is complete
-      if (ok) {
-        break;
-      }
-    }
-
-    char* line = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, _current.c_str());
-    _current.clear();
-
-    return line;
+  if (len1 < 3) {
+    dotdot = "> ";
+    len2 = 2;
   }
+  else {
+    dotdot = string(len1 - 2, '.') + "> ";
+  }
+
+  char const* sep = "";
+
+  while (true) {
+    // calling concrete implmentation of the shell
+    char* result = getLine(p);
+
+    p = dotdot.c_str();
+
+    if (result == nullptr) {
+
+      // give up, if the user pressed control-D on the top-most level
+      if (_current.empty()) {
+        return nullptr;
+      }
+
+      // otherwise clear current content
+      _current.clear();
+      break;
+    }
+
+    _current += sep;
+    sep = "\n";
+    ++lineno;
+
+    // remove any the_prompt at the beginning of the line
+    char* originalLine = result;
+    bool c1 = strncmp(result, the_prompt, len1) == 0;
+    bool c2 = strncmp(result, dotdot.c_str(), len2) == 0;
+
+    while (c1 || c2) {
+      if (c1) {
+        result += len1;
+      }
+      else if (c2) {
+        result += len2;
+      }
+
+      c1 = strncmp(result, the_prompt, len1) == 0;
+      c2 = strncmp(result, dotdot.c_str(), len2) == 0;
+    }
+
+    // extend line and check
+    _current += result;
+
+    bool ok = _completer->isComplete(_current, lineno, strlen(result));
+
+    // cannot use TRI_Free, because it was allocated by the system call readline
+    TRI_SystemFree(originalLine);
+
+    // stop if line is complete
+    if (ok) {
+      break;
+    }
+  }
+
+  char* line = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, _current.c_str());
+  _current.clear();
+
+  return line;
 }
+
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
