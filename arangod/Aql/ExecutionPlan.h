@@ -198,12 +198,31 @@ namespace triagens {
 /// @brief export to JSON, returns an AUTOFREE Json object
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual triagens::basics::Json toJson (
-                         TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) const;
+        triagens::basics::Json toJson (
+                         TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helpers for export to JSON, appends an entry to nodes, indexMap is the
+/// map from nodes to indices in list
+////////////////////////////////////////////////////////////////////////////////
+
+      protected:
+
+        triagens::basics::Json toJsonHelperGeneric (
+                  std::map<ExecutionPlan*, int>& indexTab,
+                  triagens::basics::Json& nodes,
+                  TRI_memory_zone_t* zone);
+
+        virtual void toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+                                   triagens::basics::Json& nodes,
+                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) = 0;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to a string, basically for debugging purposes
 ////////////////////////////////////////////////////////////////////////////////
+
+      public:
 
         virtual void appendAsString (std::string& st, int indent = 0);
 
@@ -263,8 +282,9 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual triagens::basics::Json toJson (
-               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) const;
+        virtual void toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+                                   triagens::basics::Json& nodes,
+                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone execution plan recursively
@@ -331,8 +351,9 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual triagens::basics::Json toJson (
-               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) const;
+        virtual void toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+                                   triagens::basics::Json& nodes,
+                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone execution plan recursively
@@ -410,8 +431,9 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual triagens::basics::Json toJson (
-               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) const;
+        virtual void toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+                                   triagens::basics::Json& nodes,
+                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone execution plan recursively
@@ -488,8 +510,9 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual triagens::basics::Json toJson (
-               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) const;
+        virtual void toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+                                   triagens::basics::Json& nodes,
+                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone execution plan recursively
@@ -558,8 +581,9 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual triagens::basics::Json toJson (
-               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) const;
+        virtual void toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+                                   triagens::basics::Json& nodes,
+                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone execution plan recursively
@@ -652,8 +676,9 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual triagens::basics::Json toJson (
-               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) const;
+        virtual void toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+                                   triagens::basics::Json& nodes,
+                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone execution plan recursively
@@ -733,8 +758,9 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual triagens::basics::Json toJson (
-               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) const;
+        virtual void toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+                                   triagens::basics::Json& nodes,
+                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone execution plan recursively
@@ -812,8 +838,9 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual triagens::basics::Json toJson (
-               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) const;
+        virtual void toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+                                   triagens::basics::Json& nodes,
+                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone execution plan recursively
@@ -888,8 +915,9 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual triagens::basics::Json toJson (
-               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) const;
+        virtual void toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+                                   triagens::basics::Json& nodes,
+                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone execution plan recursively
@@ -974,8 +1002,9 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual triagens::basics::Json toJson (
-               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) const;
+        virtual void toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+                                   triagens::basics::Json& nodes,
+                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone execution plan recursively
@@ -1070,8 +1099,9 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual triagens::basics::Json toJson (
-               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) const;
+        virtual void toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+                                   triagens::basics::Json& nodes,
+                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone execution plan recursively

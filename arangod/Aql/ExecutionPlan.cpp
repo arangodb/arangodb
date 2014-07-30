@@ -38,27 +38,53 @@ using namespace triagens::aql;
 /// @brief toJson, export an ExecutionPlan to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-Json ExecutionPlan::toJson (TRI_memory_zone_t* zone) const {
+Json ExecutionPlan::toJson (TRI_memory_zone_t* zone) {
+  std::map<ExecutionPlan*, int> indexTab;
   Json json;
+  Json nodes;
   try {
-    json = Json(Json::Array,2)
-             ("type", Json(getTypeString()));
+    nodes = Json(Json::List,10);
+    toJsonHelper(indexTab, nodes, zone);
+    json = Json(Json::Array,1)
+             ("nodes", nodes);
   }
   catch (std::exception& e) {
-    return json;
+    return Json();
   }
-  if (_dependencies.size() != 0) {
-    try {
-      Json deps(Json::List, _dependencies.size());
-      for (size_t i = 0; i < _dependencies.size(); i++) {
-        deps(_dependencies[i]->toJson(zone));
-      }
-      json("dependencies", deps);
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJsonHelper, for a generic node
+////////////////////////////////////////////////////////////////////////////////
+
+Json ExecutionPlan::toJsonHelperGeneric (std::map<ExecutionPlan*, int>& indexTab,
+                                         triagens::basics::Json& nodes,
+                                         TRI_memory_zone_t* zone) {
+  auto iter = indexTab.find(this);
+  if (iter != indexTab.end()) {
+    return Json();
+  }
+
+  for (size_t i = 0; i < _dependencies.size(); i++) {
+    _dependencies[i]->toJsonHelper(indexTab, nodes, zone);
+  }
+  Json json;
+  json = Json(Json::Array,2)
+           ("type", Json(getTypeString()));
+  Json deps(Json::List, _dependencies.size());
+  for (size_t i = 0; i < _dependencies.size(); i++) {
+    auto it = indexTab.find(_dependencies[i]);
+    if (it != indexTab.end()) {
+      deps(Json(static_cast<double>(it->second)));
     }
-    catch (std::exception& e) {
-      return Json();  // returns an empty one
+    else {
+      deps(Json("unknown"));
     }
   }
+  json("dependencies", deps);
+  json("index", Json(static_cast<double>(nodes.size())));
+
   return json;
 }
 
@@ -99,21 +125,22 @@ void ExecutionPlan::appendAsString (std::string& st, int indent) {
 /// @brief toJson, for SingletonPlan
 ////////////////////////////////////////////////////////////////////////////////
 
-Json SingletonPlan::toJson (TRI_memory_zone_t* zone) const {
-  Json json(ExecutionPlan::toJson(zone));  // call base class method
+void SingletonPlan::toJsonHelper (
+                std::map<ExecutionPlan*, int>& indexTab,
+                triagens::basics::Json& nodes,
+                TRI_memory_zone_t* zone) {
+  Json json(ExecutionPlan::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
   if (json.isEmpty()) {
-    return json;
-  }
-  // Now put info about number of vars:
-  try {
-    json("nrVariables", Json(_nrVars));
-  }
-  catch (std::exception& e) {
-    return Json();
+    return;
   }
 
-  // And return it:
-  return json;
+  // Now put info about number of vars:
+  json("nrVariables", Json(_nrVars));
+
+  // And add it:
+  int len = static_cast<int>(nodes.size());
+  nodes(json);
+  indexTab.insert(make_pair(this, len));
 }
 
 // -----------------------------------------------------------------------------
@@ -124,28 +151,28 @@ Json SingletonPlan::toJson (TRI_memory_zone_t* zone) const {
 /// @brief toJson, for EnumerateCollectionPlan
 ////////////////////////////////////////////////////////////////////////////////
 
-Json EnumerateCollectionPlan::toJson (TRI_memory_zone_t* zone) const {
-  Json json(ExecutionPlan::toJson(zone));  // call base class method
+void EnumerateCollectionPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+                                            triagens::basics::Json& nodes,
+                                            TRI_memory_zone_t* zone) {
+  Json json(ExecutionPlan::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
   if (json.isEmpty()) {
-    return json;
-  }
-  // Now put info about vocbase and cid in there
-  try {
-    if (_vocbase == nullptr) {
-      json("vocbase", Json("<nullptr>"));
-    }
-    else {
-      json("vocbase", Json(_vocbase->_name));
-    }
-    json("collection", Json(_collname))
-        ("nrVariables", Json(_nrVars));
-  }
-  catch (std::exception& e) {
-    return Json();
+    return;
   }
 
-  // And return it:
-  return json;
+  // Now put info about vocbase and cid in there
+  if (_vocbase == nullptr) {
+    json("vocbase", Json("<nullptr>"));
+  }
+  else {
+    json("vocbase", Json(_vocbase->_name));
+  }
+  json("collection", Json(_collname))
+      ("nrVariables", Json(_nrVars));
+
+  // And add it:
+  int len = static_cast<int>(nodes.size());
+  nodes(json);
+  indexTab.insert(make_pair(this, len));
 }
 
 // -----------------------------------------------------------------------------
@@ -156,21 +183,20 @@ Json EnumerateCollectionPlan::toJson (TRI_memory_zone_t* zone) const {
 /// @brief toJson, for EnumerateListPlan
 ////////////////////////////////////////////////////////////////////////////////
 
-Json EnumerateListPlan::toJson (TRI_memory_zone_t* zone) const {
-  Json json(ExecutionPlan::toJson(zone));  // call base class method
+void EnumerateListPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+                                      triagens::basics::Json& nodes,
+                                      TRI_memory_zone_t* zone) {
+  Json json(ExecutionPlan::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
   if (json.isEmpty()) {
-    return json;
+    return;
   }
-  try {
-    json("varNumber", Json(static_cast<double>(_varNumber)))
-        ("varName",   Json(_varName));
-  }
-  catch (std::exception& e) {
-    return Json();
-  }
+  json("varNumber", Json(static_cast<double>(_varNumber)))
+      ("varName",   Json(_varName));
 
-  // And return it:
-  return json;
+  // And add it:
+  int len = static_cast<int>(nodes.size());
+  nodes(json);
+  indexTab.insert(make_pair(this, len));
 }
 
 // -----------------------------------------------------------------------------
@@ -181,22 +207,21 @@ Json EnumerateListPlan::toJson (TRI_memory_zone_t* zone) const {
 /// @brief toJson, for LimitPlan
 ////////////////////////////////////////////////////////////////////////////////
 
-Json LimitPlan::toJson (TRI_memory_zone_t* zone) const {
-  Json json(ExecutionPlan::toJson(zone));  // call base class method
+void LimitPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+                              triagens::basics::Json& nodes,
+                              TRI_memory_zone_t* zone) {
+  Json json(ExecutionPlan::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
   if (json.isEmpty()) {
-    return json;
+    return;
   }
   // Now put info about offset and limit in
-  try {
-    json("offset", Json(static_cast<double>(_offset)))
-        ("limit",  Json(static_cast<double>(_limit)));
-  }
-  catch (std::exception& e) {
-    return Json();
-  }
+  json("offset", Json(static_cast<double>(_offset)))
+      ("limit",  Json(static_cast<double>(_limit)));
 
-  // And return it:
-  return json;
+  // And add it:
+  int len = static_cast<int>(nodes.size());
+  nodes(json);
+  indexTab.insert(make_pair(this, len));
 }
 
 // -----------------------------------------------------------------------------
@@ -207,22 +232,21 @@ Json LimitPlan::toJson (TRI_memory_zone_t* zone) const {
 /// @brief toJson, for CalculationPlan
 ////////////////////////////////////////////////////////////////////////////////
 
-Json CalculationPlan::toJson (TRI_memory_zone_t* zone) const {
-  Json json(ExecutionPlan::toJson(zone));  // call base class method
+void CalculationPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+                                    triagens::basics::Json& nodes,
+                                    TRI_memory_zone_t* zone) {
+  Json json(ExecutionPlan::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
   if (json.isEmpty()) {
-    return json;
+    return;
   }
-  try {
-    json("varNumber",  Json(static_cast<double>(_varNumber)))
-        ("varName",    Json(_varName))
-        ("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE));
-  }
-  catch (std::exception& e) {
-    return Json();
-  }
+  json("varNumber",  Json(static_cast<double>(_varNumber)))
+      ("varName",    Json(_varName))
+      ("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE));
 
-  // And return it:
-  return json;
+  // And add it:
+  int len = static_cast<int>(nodes.size());
+  nodes(json);
+  indexTab.insert(make_pair(this, len));
 }
 
 // -----------------------------------------------------------------------------
@@ -233,22 +257,21 @@ Json CalculationPlan::toJson (TRI_memory_zone_t* zone) const {
 /// @brief toJson, for SubqueryPlan
 ////////////////////////////////////////////////////////////////////////////////
 
-Json SubqueryPlan::toJson (TRI_memory_zone_t* zone) const {
-  Json json(ExecutionPlan::toJson(zone));  // call base class method
+void SubqueryPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+                                 triagens::basics::Json& nodes,
+                                 TRI_memory_zone_t* zone) {
+  Json json(ExecutionPlan::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
   if (json.isEmpty()) {
-    return json;
+    return;
   }
-  try {
-    json("varNumber", Json(static_cast<double>(_varNumber)))
-        ("varName",   Json(_varName))
-        ("subquery",  _subquery->toJson(TRI_UNKNOWN_MEM_ZONE));
-  }
-  catch (std::exception& e) {
-    return Json();
-  }
+  json("varNumber", Json(static_cast<double>(_varNumber)))
+      ("varName",   Json(_varName))
+      ("subquery",  _subquery->toJson(TRI_UNKNOWN_MEM_ZONE));
 
-  // And return it:
-  return json;
+  // And add it:
+  int len = static_cast<int>(nodes.size());
+  nodes(json);
+  indexTab.insert(make_pair(this, len));
 }
 
 // -----------------------------------------------------------------------------
@@ -259,28 +282,27 @@ Json SubqueryPlan::toJson (TRI_memory_zone_t* zone) const {
 /// @brief toJson, for ProjectionPlan
 ////////////////////////////////////////////////////////////////////////////////
 
-Json ProjectionPlan::toJson (TRI_memory_zone_t* zone) const {
-  Json json(ExecutionPlan::toJson(zone));  // call base class method
+void ProjectionPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+                                   triagens::basics::Json& nodes,
+                                   TRI_memory_zone_t* zone) {
+  Json json(ExecutionPlan::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
   if (json.isEmpty()) {
-    return json;
+    return;
   }
-  try {
-    Json vec(Json::List,_keepAttributes.size());
-    for (auto it = _keepAttributes.begin(); it != _keepAttributes.end(); ++it) {
-      vec(Json(*it));
-    }
-    json("inVarNumber",    Json(static_cast<double>(_inVar)))
-        ("inVarName",      Json(_inVarName))
-        ("outVarNumber",   Json(static_cast<double>(_outVar)))
-        ("outVarName",     Json(_outVarName))
-        ("keepAttributes", vec);
+  Json vec(Json::List,_keepAttributes.size());
+  for (auto it = _keepAttributes.begin(); it != _keepAttributes.end(); ++it) {
+    vec(Json(*it));
   }
-  catch (std::exception& e) {
-    return Json();
-  }
+  json("inVarNumber",    Json(static_cast<double>(_inVar)))
+      ("inVarName",      Json(_inVarName))
+      ("outVarNumber",   Json(static_cast<double>(_outVar)))
+      ("outVarName",     Json(_outVarName))
+      ("keepAttributes", vec);
 
-  // And return it:
-  return json;
+  // And add it:
+  int len = static_cast<int>(nodes.size());
+  nodes(json);
+  indexTab.insert(make_pair(this, len));
 }
 
 // -----------------------------------------------------------------------------
@@ -291,22 +313,21 @@ Json ProjectionPlan::toJson (TRI_memory_zone_t* zone) const {
 /// @brief toJson, for FilterPlan
 ////////////////////////////////////////////////////////////////////////////////
 
-Json FilterPlan::toJson (TRI_memory_zone_t* zone) const {
-  Json json(ExecutionPlan::toJson(zone));  // call base class method
+void FilterPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+                               triagens::basics::Json& nodes,
+                               TRI_memory_zone_t* zone) {
+  Json json(ExecutionPlan::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
   if (json.isEmpty()) {
-    return json;
+    return;
   }
   // Now put info about offset and limit in
-  try {
-    json("varName",   Json(_varName))
-        ("varNumber", Json(static_cast<double>(_varNumber)));
-  }
-  catch (std::exception& e) {
-    return Json();
-  }
+  json("varName",   Json(_varName))
+      ("varNumber", Json(static_cast<double>(_varNumber)));
 
-  // And return it:
-  return json;
+  // And add it:
+  int len = static_cast<int>(nodes.size());
+  nodes(json);
+  indexTab.insert(make_pair(this, len));
 }
 
 // -----------------------------------------------------------------------------
@@ -317,34 +338,33 @@ Json FilterPlan::toJson (TRI_memory_zone_t* zone) const {
 /// @brief toJson, for SortPlan
 ////////////////////////////////////////////////////////////////////////////////
 
-Json SortPlan::toJson (TRI_memory_zone_t* zone) const {
-  Json json(ExecutionPlan::toJson(zone));  // call base class method
+void SortPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+                             triagens::basics::Json& nodes,
+                             TRI_memory_zone_t* zone) {
+  Json json(ExecutionPlan::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
   if (json.isEmpty()) {
-    return json;
+    return;
   }
-  try {
-    Json numbers(Json::List, _varNumbers.size());
-    for (auto it = _varNumbers.begin(); it != _varNumbers.end(); ++it) {
-      numbers(Json(static_cast<double>(*it)));
-    }
-    Json names(Json::List, _varNames.size());
-    for (auto it = _varNames.begin(); it != _varNames.end(); ++it) {
-      names(Json(*it));
-    }
-    Json vec(Json::List, _sortAscending.size());
-    for (auto it = _sortAscending.begin(); it != _sortAscending.end(); ++it) {
-      vec(Json(*it));
-    }
-    json("varNumbers",    numbers)
-        ("varNames",      names)
-        ("sortAscending", vec);
+  Json numbers(Json::List, _varNumbers.size());
+  for (auto it = _varNumbers.begin(); it != _varNumbers.end(); ++it) {
+    numbers(Json(static_cast<double>(*it)));
   }
-  catch (std::exception& e) {
-    return Json();
+  Json names(Json::List, _varNames.size());
+  for (auto it = _varNames.begin(); it != _varNames.end(); ++it) {
+    names(Json(*it));
   }
+  Json vec(Json::List, _sortAscending.size());
+  for (auto it = _sortAscending.begin(); it != _sortAscending.end(); ++it) {
+    vec(Json(*it));
+  }
+  json("varNumbers",    numbers)
+      ("varNames",      names)
+      ("sortAscending", vec);
 
-  // And return it:
-  return json;
+  // And add it:
+  int len = static_cast<int>(nodes.size());
+  nodes(json);
+  indexTab.insert(make_pair(this, len));
 }
 
 // -----------------------------------------------------------------------------
@@ -355,32 +375,31 @@ Json SortPlan::toJson (TRI_memory_zone_t* zone) const {
 /// @brief toJson, for AggregateOnUnSortedPlan
 ////////////////////////////////////////////////////////////////////////////////
 
-Json AggregateOnUnsortedPlan::toJson (TRI_memory_zone_t* zone) const {
-  Json json(ExecutionPlan::toJson(zone));  // call base class method
+void AggregateOnUnsortedPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+                                            triagens::basics::Json& nodes,
+                                            TRI_memory_zone_t* zone) {
+  Json json(ExecutionPlan::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
   if (json.isEmpty()) {
-    return json;
+    return;
   }
-  try {
-    Json numbers(Json::List, _varNumbers.size());
-    for (auto it = _varNumbers.begin(); it != _varNumbers.end(); ++it) {
-      numbers(Json(static_cast<double>(*it)));
-    }
-    Json names(Json::List, _varNames.size());
-    for (auto it = _varNames.begin(); it != _varNames.end(); ++it) {
-      names(Json(*it));
-    }
-    json("varNumbers",   numbers)
-        ("varNames",     names)
-        ("outVarNumber", Json(static_cast<double>(_outVarNumber)))
-        ("outVarName",   Json(_outVarName))
-        ("nrVars",       Json(static_cast<double>(_nrVars)));
+  Json numbers(Json::List, _varNumbers.size());
+  for (auto it = _varNumbers.begin(); it != _varNumbers.end(); ++it) {
+    numbers(Json(static_cast<double>(*it)));
   }
-  catch (std::exception& e) {
-    return Json();
+  Json names(Json::List, _varNames.size());
+  for (auto it = _varNames.begin(); it != _varNames.end(); ++it) {
+    names(Json(*it));
   }
+  json("varNumbers",   numbers)
+      ("varNames",     names)
+      ("outVarNumber", Json(static_cast<double>(_outVarNumber)))
+      ("outVarName",   Json(_outVarName))
+      ("nrVars",       Json(static_cast<double>(_nrVars)));
 
-  // And return it:
-  return json;
+  // And add it:
+  int len = static_cast<int>(nodes.size());
+  nodes(json);
+  indexTab.insert(make_pair(this, len));
 }
 
 // -----------------------------------------------------------------------------
@@ -391,21 +410,19 @@ Json AggregateOnUnsortedPlan::toJson (TRI_memory_zone_t* zone) const {
 /// @brief toJson, for RootPlan
 ////////////////////////////////////////////////////////////////////////////////
 
-Json RootPlan::toJson (TRI_memory_zone_t* zone) const {
-  Json json(ExecutionPlan::toJson(zone));  // call base class method
+void RootPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+                             triagens::basics::Json& nodes,
+                             TRI_memory_zone_t* zone) {
+  Json json(ExecutionPlan::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
   if (json.isEmpty()) {
-    return json;
+    return;
   }
-  // Now put info about ...
-  try {
-    // TODO: add specific stuff
-  }
-  catch (std::exception& e) {
-    return Json();
-  }
+  // TODO: add specific stuff
 
-  // And return it:
-  return json;
+  // And add it:
+  int len = static_cast<int>(nodes.size());
+  nodes(json);
+  indexTab.insert(make_pair(this, len));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
