@@ -1979,8 +1979,8 @@ function EdgesAndVerticesSuite() {
       var myED = "unitTestEdgeCollection4711";
       var myVD1 = "unitTestVertexCollection4711";
       var myVD2 = "unitTestVertexCollection4712";
-      try {graph._drop(myGraphName, true)} catch (ignore){}
-      try {db._drop(myED)} catch (ignore){}
+      try {graph._drop(myGraphName, true);} catch (ignore){}
+      try {db._drop(myED);} catch (ignore){}
       try {
         graph._create(
           myGraphName,
@@ -2045,9 +2045,24 @@ function EdgesAndVerticesSuite() {
     },
 
     test_vC_remove : function () {
-      var vertex = g[vc1].save({first_name: "Tim"});
+      var col = g[vc1];
+      var counter = col.count();
+      var vertex = col.save({first_name: "Tim"});
+      assertEqual(col.count(), counter + 1);
       var vertexId = vertex._id;
-      var result = g[vc1].remove(vertexId);
+      var result = col.remove(vertexId);
+      assertEqual(col.count(), counter);
+      assertTrue(result);
+    },
+
+    test_vC_remove_by_key : function () {
+      var col = g[vc1];
+      var counter = col.count();
+      var vertex = col.save({first_name: "Tim"});
+      assertEqual(col.count(), counter + 1);
+      var vertexId = vertex._key;
+      var result = col.remove(vertexId);
+      assertEqual(col.count(), counter);
       assertTrue(result);
     },
 
@@ -2143,6 +2158,19 @@ function EdgesAndVerticesSuite() {
       assertTrue(edge);
     },
 
+    test_eC_remove_by_key : function () {
+      var vertex1 = g[vc1].save({first_name: "Tom"});
+      var vertexId1 = vertex1._id;
+      var vertex2 = g[vc1].save({first_name: "Tim"});
+      var vertexId2 = vertex2._id;
+      var counter = g[ec1].count();
+      var edge = g[ec1].save(vertexId1, vertexId2, {});
+      assertEqual(g[ec1].count(), counter + 1);
+      var edgeId1 = edge._key;
+      edge = g[ec1].remove(edgeId1);
+      assertTrue(edge);
+      assertEqual(g[ec1].count(), counter);
+    },
 
     test_eC_removeWithEdgesAsVertices : function () {
 

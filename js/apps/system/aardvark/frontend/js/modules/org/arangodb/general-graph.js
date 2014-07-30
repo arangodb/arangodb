@@ -1891,7 +1891,10 @@ var bindVertexCollections = function(self, vertexCollections) {
     wrap.remove = function(vertexId, options) {
       //delete all edges using the vertex in all graphs
       var graphs = getGraphCollection().toArray();
-      var vertexCollectionName = vertexId.split("/")[0];
+      var vertexCollectionName = key;
+      if (vertexId.indexOf("/") === -1) {
+        vertexId = key + "/" + vertexId;
+      }
       self.__collectionsToLock.push(vertexCollectionName);
       graphs.forEach(
         function(graph) {
