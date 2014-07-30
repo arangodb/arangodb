@@ -34,6 +34,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/BindParameters.h"
 #include "Aql/Scopes.h"
+#include "Aql/Variable.h"
 #include "BasicsC/json.h"
 
 #include <functional>
@@ -568,7 +569,7 @@ namespace triagens {
 /// @brief determines the variables referenced in an expression
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_set<int64_t> getReferencedVariables (AstNode const*);
+        std::unordered_set<VariableId> getReferencedVariables (AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize a function name
