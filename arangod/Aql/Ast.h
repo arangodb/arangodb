@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_QUERY_AST_H
-#define ARANGODB_AQL_QUERY_AST_H 1
+#ifndef ARANGODB_AQL_AST_H
+#define ARANGODB_AQL_AST_H 1
 
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
@@ -48,14 +48,14 @@ namespace triagens {
     class Query;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    class QueryAst
+// --SECTION--                                                         class Ast
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the AST
 ////////////////////////////////////////////////////////////////////////////////
 
-    class QueryAst {
+    class Ast {
 
       enum FilterType {
         FILTER_UNKNOWN,
@@ -73,14 +73,14 @@ namespace triagens {
 /// @brief create the AST
 ////////////////////////////////////////////////////////////////////////////////
 
-        QueryAst (Query*,
+        Ast (Query*,
                   Parser*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the AST
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~QueryAst ();
+        ~Ast ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
