@@ -272,8 +272,8 @@ Json FilterPlan::toJson (TRI_memory_zone_t* zone) const {
   }
   // Now put info about offset and limit in
   try {
-    json("attribute", Json(_attribute))
-        ("value", Json(_value.copy()));
+    json("varName",   Json(_varName))
+        ("varNumber", Json(static_cast<double>(_varNumber)));
   }
   catch (std::exception& e) {
     return Json();
