@@ -95,14 +95,17 @@ string const& RestShardHandler::queue () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 triagens::rest::HttpHandler::status_t RestShardHandler::execute () {
+  // Deactivated to allow for asynchronous cluster internal communication 
+  // between two DBservers. 30.7.2014 Max.
+#if 0
   ServerState::RoleEnum role = ServerState::instance()->getRole();
-
   if (role != ServerState::ROLE_COORDINATOR) {
     generateError(triagens::rest::HttpResponse::BAD,
                   (int) triagens::rest::HttpResponse::BAD,
                   "this API is meant to be called on a coordinator node");
     return status_t(HANDLER_DONE);
   }
+#endif
 
   bool found;
   char const* _coordinator = _request->header("x-arango-coordinator", found);
