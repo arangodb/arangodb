@@ -5,7 +5,7 @@
 To use this plugin, please require it first:
 
 ```js
-  FormatMiddleware = require("org/arangodb/foxx/template_middleware").FormatMiddleware;
+var FormatMiddleware = require("org/arangodb/foxx/format_middleware").FormatMiddleware;
 ```
 
 This Middleware gives you Rails-like format handling via the *extension* of 
@@ -22,8 +22,8 @@ an error is raised.
 Use it by calling:
 
 ```js
-FormatMiddleware = require('foxx').FormatMiddleware;
-app.before(FormatMiddleware.new(['json']));
+var FormatMiddleware = require("org/arangodb/foxx/format_middleware").FormatMiddleware;
+app.before(new FormatMiddleware(["json"]));
 ```
 
 In both forms you can give a default format as a second parameter, if no 
