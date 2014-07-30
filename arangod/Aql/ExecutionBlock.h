@@ -45,7 +45,7 @@ namespace triagens {
     class ExecutionBlock {
       public:
         ExecutionBlock (ExecutionPlan const* ep)
-          : _exePlan(ep), _done(false) { }
+          : _exePlan(ep), _done(false), _nrVars(10) { }
 
         virtual ~ExecutionBlock ();
           
@@ -95,6 +95,7 @@ namespace triagens {
           }
         }
 
+        virtual void staticAnalysis();
 
         // Methods for execution:
         virtual int initialize () {
@@ -189,6 +190,7 @@ namespace triagens {
         std::vector<ExecutionBlock*> _dependencies;
         std::deque<shared_ptr<AqlItem> > _buffer;
         bool _done;
+        VariableId _nrVars;  // will be filled in by staticAnalysis
 
       public:
 
@@ -227,8 +229,7 @@ namespace triagens {
             return nullptr;
           }
 
-          auto p = reinterpret_cast<SingletonPlan const*>(_exePlan);
-          shared_ptr<AqlItem> res(new AqlItem(p->_nrVars));
+          shared_ptr<AqlItem> res(new AqlItem(_nrVars));
           _done = true;
           return res;
         }
@@ -240,8 +241,7 @@ namespace triagens {
             return res;
           }
 
-          auto p = reinterpret_cast<SingletonPlan const*>(_exePlan);
-          res.emplace_back(new AqlItem(p->_nrVars));
+          res.emplace_back(new AqlItem(_nrVars));
           _done = true;
           return res;
         }

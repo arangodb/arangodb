@@ -134,9 +134,6 @@ void SingletonPlan::toJsonHelper (
     return;
   }
 
-  // Now put info about number of vars:
-  json("nrVariables", Json(_nrVars));
-
   // And add it:
   int len = static_cast<int>(nodes.size());
   nodes(json);
@@ -166,8 +163,7 @@ void EnumerateCollectionPlan::toJsonHelper (std::map<ExecutionPlan*, int>& index
   else {
     json("vocbase", Json(_vocbase->_name));
   }
-  json("collection", Json(_collname))
-      ("nrVariables", Json(_nrVars));
+  json("collection", Json(_collname));
 
   // And add it:
   int len = static_cast<int>(nodes.size());
@@ -393,8 +389,7 @@ void AggregateOnUnsortedPlan::toJsonHelper (std::map<ExecutionPlan*, int>& index
   json("varNumbers",   numbers)
       ("varNames",     names)
       ("outVarNumber", Json(static_cast<double>(_outVarNumber)))
-      ("outVarName",   Json(_outVarName))
-      ("nrVars",       Json(static_cast<double>(_nrVars)));
+      ("outVarName",   Json(_outVarName));
 
   // And add it:
   int len = static_cast<int>(nodes.size());
@@ -441,7 +436,7 @@ void testExecutionPlans () {
   std::cout << a.toString() << std::endl;
   std::cout << "Got here" << std::endl;
 
-  auto ec = new EnumerateCollectionPlan(nullptr, "guck", 1);
+  auto ec = new EnumerateCollectionPlan(nullptr, "guck");
   Json jjj(ec->toJson());
   cout << jjj.toString() << endl;
   auto li = new LimitPlan(12, 17);
@@ -536,7 +531,7 @@ void testExecutionPlans () {
   ExecutionPlan* n;
 
   // Singleton
-  e = new SingletonPlan(1);
+  e = new SingletonPlan();
 
   // LET A = [1,2,3]
   a = new AstNode(NODE_TYPE_LIST);
@@ -557,7 +552,7 @@ void testExecutionPlans () {
   e = n;
 
   // FOR g IN guck
-  n = new EnumerateCollectionPlan(nullptr, "guck", 3);
+  n = new EnumerateCollectionPlan(nullptr, "guck");
   n->addDependency(e);
   e = n;
 
