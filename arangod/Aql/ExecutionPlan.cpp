@@ -322,6 +322,42 @@ Json SortPlan::toJson (TRI_memory_zone_t* zone) const {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                methods of AggregateOnUnSortedPlan
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, for AggregateOnUnSortedPlan
+////////////////////////////////////////////////////////////////////////////////
+
+Json AggregateOnUnsortedPlan::toJson (TRI_memory_zone_t* zone) const {
+  Json json(ExecutionPlan::toJson(zone));  // call base class method
+  if (json.isEmpty()) {
+    return json;
+  }
+  try {
+    Json numbers(Json::List, _varNumbers.size());
+    for (auto it = _varNumbers.begin(); it != _varNumbers.end(); ++it) {
+      numbers(Json(static_cast<double>(*it)));
+    }
+    Json names(Json::List, _varNames.size());
+    for (auto it = _varNames.begin(); it != _varNames.end(); ++it) {
+      names(Json(*it));
+    }
+    json("varNumbers",   numbers)
+        ("varNames",     names)
+        ("outVarNumber", Json(static_cast<double>(_outVarNumber)))
+        ("outVarName",   Json(_outVarName))
+        ("nrVars",       Json(static_cast<double>(_nrVars)));
+  }
+  catch (std::exception& e) {
+    return Json();
+  }
+
+  // And return it:
+  return json;
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                               methods of RootPlan
 // -----------------------------------------------------------------------------
 
@@ -433,6 +469,136 @@ void testExecutionPlans () {
   Json l = k.at(2);
 
   cout << l.toString() << endl;
+
+  cout << "and now a complete test" << endl << endl;
+
+  // Here we want to build the unoptimised plan for:
+  //
+  // LET A = [1,2,3]
+  // FOR g IN guck
+  //   FILTER g.name == "Wurst"
+  //   SORT g.vorname
+  //   LIMIT 2, 10
+  //   FOR i IN A
+  //     LET X = { "vorname": g.vorname, "addresse": g.addresse,
+  //               "nr": i*2 }
+  //     RETURN X
+  //
+  //     
+  {
+  AstNode* a;
+  AstNode* b;
+  AstNode* c;
+  ExecutionPlan* e;
+  ExecutionPlan* n;
+
+  // Singleton
+  e = new SingletonPlan(1);
+
+  // LET A = [1,2,3]
+  a = new AstNode(NODE_TYPE_LIST);
+  b = new AstNode(NODE_TYPE_VALUE);
+  b->setValueType(VALUE_TYPE_INT);
+  b->setIntValue(1);
+  a->addMember(b);
+  b = new AstNode(NODE_TYPE_VALUE);
+  b->setValueType(VALUE_TYPE_INT);
+  b->setIntValue(2);
+  a->addMember(b);
+  b = new AstNode(NODE_TYPE_VALUE);
+  b->setValueType(VALUE_TYPE_INT);
+  b->setIntValue(3);
+  a->addMember(b);
+  n = new CalculationPlan(new AqlExpression(a), 1, "A");
+  n->addDependency(e);
+  e = n;
+
+  // FOR g IN guck
+  n = new EnumerateCollectionPlan(nullptr, "guck", 3);
+  n->addDependency(e);
+  e = n;
+
+  // FILTER g.name == "Wurst"
+  a = new AstNode(NODE_TYPE_OPERATOR_BINARY_EQ);
+  b = new AstNode(NODE_TYPE_VALUE);
+  b->setValueType(VALUE_TYPE_STRING);
+  b->setStringValue("g.name");
+  a->addMember(b);
+  b = new AstNode(NODE_TYPE_VALUE);
+  b->setValueType(VALUE_TYPE_STRING);
+  b->setStringValue("Wurst");
+  a->addMember(b);
+  n = new CalculationPlan(new AqlExpression(a), 2, "_1");
+  n->addDependency(e);
+  e = n;
+  n = new FilterPlan(2, "_1");
+  n->addDependency(e);
+  e = n;
+
+  // SORT g.vorname
+  a = new AstNode(NODE_TYPE_VALUE);
+  a->setValueType(VALUE_TYPE_STRING);
+  a->setStringValue("g.vorname");
+  n = new CalculationPlan(new AqlExpression(a), 3, "_2");
+  n->addDependency(e);
+  e = n;
+  std::vector<VariableId> vars;
+  std::vector<std::string> names;
+  std::vector<bool> asc;
+  vars.push_back(3);
+  names.push_back(string("_2"));
+  asc.push_back(true);
+  n = new SortPlan(vars, names, asc);
+  n->addDependency(e);
+  e = n;
+
+  // LIMIT 2, 10
+  n = new LimitPlan(2, 10);
+  n->addDependency(e);
+  e = n;
+
+  // FOR i in A
+  n = new EnumerateListPlan(1, "A");
+  n->addDependency(e);
+  e = n;
+
+  // LET X = {"vorname": g.vorname, "addresse": g.addresse, "nr": i*2}
+  a = new AstNode(NODE_TYPE_ARRAY);
+  b = new AstNode(NODE_TYPE_ARRAY_ELEMENT);
+  b->setValueType(VALUE_TYPE_STRING);
+  b->setStringValue("vorname");
+  c = new AstNode(NODE_TYPE_VALUE);
+  c->setValueType(VALUE_TYPE_STRING);
+  c->setStringValue("g.vorname");
+  b->addMember(c);
+  a->addMember(b);
+  b = new AstNode(NODE_TYPE_ARRAY_ELEMENT);
+  b->setValueType(VALUE_TYPE_STRING);
+  b->setStringValue("adresse");
+  c = new AstNode(NODE_TYPE_VALUE);
+  c->setValueType(VALUE_TYPE_STRING);
+  c->setStringValue("g.addresse");
+  b->addMember(c);
+  a->addMember(b);
+  b = new AstNode(NODE_TYPE_ARRAY_ELEMENT);
+  b->setValueType(VALUE_TYPE_STRING);
+  b->setStringValue("nr");
+  c = new AstNode(NODE_TYPE_VALUE);
+  c->setValueType(VALUE_TYPE_STRING);
+  c->setStringValue("i*2");
+  b->addMember(c);
+  a->addMember(b);
+  n = new CalculationPlan(new AqlExpression(a), 4, "X");
+  n->addDependency(e);
+  e = n;
+
+  // RETURN X
+  n = new RootPlan();
+  n->addDependency(e);
+  e = n;
+
+  cout << e->toJson().toString() << endl;
+  }
 }
 
 // Local Variables:
