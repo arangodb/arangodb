@@ -35,6 +35,7 @@
 #include <VocBase/voc-types.h>
 #include <VocBase/vocbase.h>
 
+#include "Aql/Variable.h"
 #include "Aql/Types.h"
 
 namespace triagens {
@@ -59,15 +60,15 @@ namespace triagens {
           SINGLETON,                // done
           ENUMERATE_COLLECTION,     // done
           INDEX_RANGE,
-          STATIC_LIST,              // 4.
+          STATIC_LIST,              // todo
           FILTER,                   // done
           LIMIT,                    // done
           INTERSECTION,
-          PROJECTION,               // 1.
+          PROJECTION,               // done
           CALCULATION,              // done
-          SORT,                     // 3.
+          SORT,                     // done
           AGGREGATE_ON_SORTED,
-          AGGREGATE_ON_UNSORTED,    // 2.
+          AGGREGATE_ON_UNSORTED,    // todo
           LOOKUP_JOIN,
           MERGE_JOIN,
           LOOKUP_INDEX_UNIQUE,
@@ -423,6 +424,104 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                              class ProjectionPlan
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class ProjectionPlan, derived from ExecutionPlan
+////////////////////////////////////////////////////////////////////////////////
+
+    class ProjectionPlan : public ExecutionPlan {
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+        ProjectionPlan (VariableId inVar,
+                        std::string inVarName,
+                        VariableId outVar,
+                        std::string outVarName,
+                        std::vector<std::string> keepAttributes)
+          : ExecutionPlan(), _inVar(inVar), _inVarName(inVarName),
+            _outVar(outVar), _outVarName(outVarName),
+            _keepAttributes(keepAttributes) {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual NodeType getType () const {
+          return PROJECTION;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node as a string
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::string getTypeString () const {
+          return std::string("ProjectionPlan");
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual triagens::basics::Json toJson (
+               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone execution plan recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ExecutionPlan* clone () const {
+          auto c = new ProjectionPlan(_inVar, _inVarName, _outVar, _outVarName,
+                                      _keepAttributes);
+          cloneDependencies(c);
+          return static_cast<ExecutionPlan*>(c);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief private data
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief input variable
+////////////////////////////////////////////////////////////////////////////////
+
+        VariableId _inVar;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _inVarName, name of variable to read from
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _inVarName;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief output variable
+////////////////////////////////////////////////////////////////////////////////
+
+        VariableId _outVar;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _outVarName, name of variable to write to
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _outVarName;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief vector of attributes to leave in the object
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<std::string> _keepAttributes;
+
+    };
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                             class CalculationPlan
 // -----------------------------------------------------------------------------
 
@@ -438,7 +537,7 @@ namespace triagens {
 
       public:
 
-        CalculationPlan (AqlExpression* expr, uint32_t varNumber, 
+        CalculationPlan (AqlExpression* expr, VariableId varNumber, 
                          std::string varName)
           : ExecutionPlan(), _expression(expr), _varNumber(varNumber),
             _varName(varName) {
@@ -493,7 +592,7 @@ namespace triagens {
 /// @brief _varNumber, global number of variable to write to
 ////////////////////////////////////////////////////////////////////////////////
 
-        uint32_t _varNumber;
+        VariableId _varNumber;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _varName, name of variable to write to
@@ -564,6 +663,88 @@ namespace triagens {
 
         std::string            _attribute;
         triagens::basics::Json _value;
+
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    class SortPlan
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class SortPlan, derived from ExecutionPlan
+////////////////////////////////////////////////////////////////////////////////
+
+    class SortPlan : public ExecutionPlan {
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+        SortPlan (VariableId varNumber,
+                  std::string varName,
+                  std::vector<std::string> sortAttributes)
+          : ExecutionPlan(), _varNumber(varNumber), _varName(varName),
+            _sortAttributes(sortAttributes) {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual NodeType getType () const {
+          return SORT;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node as a string
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::string getTypeString () const {
+          return std::string("SortPlan");
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual triagens::basics::Json toJson (
+               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone execution plan recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ExecutionPlan* clone () const {
+          auto c = new SortPlan(_varNumber, _varName, _sortAttributes);
+          cloneDependencies(c);
+          return static_cast<ExecutionPlan*>(c);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief private data
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief input variable
+////////////////////////////////////////////////////////////////////////////////
+
+        VariableId _varNumber;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _inVarName, name of variable to read from
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _varName;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief vector of attributes to sort by
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<std::string> _sortAttributes;
 
     };
 
