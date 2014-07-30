@@ -55,7 +55,7 @@ Parser::Parser (Query* query)
   Aqllex_init(&_scanner);
   Aqlset_extra(this, _scanner);
   
-  _ast = new QueryAst(query, this);
+  _ast = new Ast(query, this);
 
   _stack.reserve(16);
 }

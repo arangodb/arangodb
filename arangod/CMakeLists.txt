@@ -57,6 +57,7 @@ add_executable(
     Ahuacatl/ahuacatl-statementlist.cpp
     Ahuacatl/ahuacatl-tokens.cpp
     Ahuacatl/ahuacatl-variable.cpp
+    Aql/Ast.cpp
     Aql/AstNode.cpp
     Aql/BindParameters.cpp
     Aql/ExecutionBlock.cpp
@@ -64,7 +65,6 @@ add_executable(
     Aql/grammar.cpp
     Aql/Parser.cpp
     Aql/Query.cpp
-    Aql/QueryAst.cpp
     Aql/Scopes.cpp
     Aql/tokens.cpp
     Aql/V8Executor.cpp

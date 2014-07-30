@@ -33,7 +33,6 @@
 #include "Basics/Common.h"
 #include "Aql/BindParameters.h"
 #include "Aql/ParseResult.h"
-#include "Aql/QueryAst.h"
 
 struct TRI_json_s;
 struct TRI_vocbase_s;
