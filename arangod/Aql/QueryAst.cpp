@@ -1381,27 +1381,12 @@ void QueryAst::optimizeRoot() {
       continue;
     }
 
-    if (member->type == NODE_TYPE_FOR) {
-      // peek forward and check if the for contains a FILTER that is always false
-      bool isEmpty = false;
-
-      for (size_t j = i + 1; j < n; ++j) {
-        AstNode* sub = _root->getMember(j);
-
-        if (sub == nullptr) {
-          continue;
-        }
-
-        if (sub->type == NODE_TYPE_FILTER) {
-          // TODO: found a FILTER that is always false
-          isEmpty = true;
-        }
-
-        if (sub->type == NODE_TYPE_RETURN) {
-        }
-      }
-    }
-     
+    // TODO: replace trampoline variables / expressions
+    // TODO: detect common sub-expressions
+    // TODO: remove always-true filters
+    // TODO: remove blocks that contains always-false filters
+    // TODO: pull up LET assignments
+    // TODO: pull up FILTER
   }
 */
 }
