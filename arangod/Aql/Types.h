@@ -120,6 +120,9 @@ namespace triagens {
         : _outer(nullptr), _nrvars(nrvars) {
         if (nrvars > 0) {
           _vars = new AqlValue* [nrvars];
+          for (int i = 0; i < nrvars; i++) {
+            _vars[i] = nullptr;
+          }
         }
         else {
           _vars = nullptr;
