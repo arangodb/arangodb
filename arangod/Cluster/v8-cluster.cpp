@@ -877,9 +877,57 @@ static v8::Handle<v8::Value> JS_GetResponsibleServerClusterInfo (v8::Arguments c
     TRI_V8_EXCEPTION_USAGE(scope, "getResponsibleServer(<shard-id>)");
   }
 
-  const std::string result = ClusterInfo::instance()->getResponsibleServer(TRI_ObjectToString(argv[0]));
+  std::string const result = ClusterInfo::instance()->getResponsibleServer(TRI_ObjectToString(argv[0]));
 
   return scope.Close(v8::String::New(result.c_str(), (int) result.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the responsible shard
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_GetResponsibleShardClusterInfo (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  if (argv.Length() < 2 || argv.Length() > 3) {
+    TRI_V8_EXCEPTION_USAGE(scope, "getResponsibleShard(<collection-id>, <document>, <documentIsComplete>)");
+  }
+  
+  if (! argv[0]->IsString() && ! argv[0]->IsStringObject()) {
+    TRI_V8_TYPE_ERROR(scope, "expecting a string for <collection-id>)");
+  }
+
+  if (! argv[1]->IsObject()) {
+    TRI_V8_TYPE_ERROR(scope, "expecting an object for <document>)");
+  }
+
+  bool documentIsComplete = true;
+  if (argv.Length() > 2) {
+    documentIsComplete = TRI_ObjectToBoolean(argv[2]);
+  }
+
+  TRI_json_t* json = TRI_ObjectToJson(argv[1]);
+
+  if (json == nullptr) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  ShardID shardId;
+  CollectionID collectionId = TRI_ObjectToString(argv[0]);
+  bool usesDefaultShardingAttributes;
+  int res = ClusterInfo::instance()->getResponsibleShard(collectionId, json, documentIsComplete, shardId, usesDefaultShardingAttributes);
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION(scope, res);
+  }
+
+  v8::Handle<v8::Object> result = v8::Object::New();
+  result->Set(TRI_V8_STRING("shardId"), v8::String::New(shardId.c_str(), (int) shardId.size()));
+  result->Set(TRI_V8_STRING("usesDefaultShardingAttributes"), v8::Boolean::New(usesDefaultShardingAttributes));
+
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1812,6 +1860,7 @@ void TRI_InitV8Cluster (v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(rt, "getCollectionInfo", JS_GetCollectionInfoClusterInfo);
   TRI_AddMethodVocbase(rt, "getCollectionInfoCurrent", JS_GetCollectionInfoCurrentClusterInfo);
   TRI_AddMethodVocbase(rt, "getResponsibleServer", JS_GetResponsibleServerClusterInfo);
+  TRI_AddMethodVocbase(rt, "getResponsibleShard", JS_GetResponsibleShardClusterInfo);
   TRI_AddMethodVocbase(rt, "getServerEndpoint", JS_GetServerEndpointClusterInfo);
   TRI_AddMethodVocbase(rt, "getDBServers", JS_GetDBServers);
   TRI_AddMethodVocbase(rt, "reloadDBServers", JS_ReloadDBServers);

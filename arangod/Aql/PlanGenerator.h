@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, error handling
+/// @brief Aql, query plan generator
 ///
 /// @file
 ///
@@ -27,37 +27,62 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_QUERYERROR_H
-#define ARANGODB_AQL_QUERYERROR_H 1
+#ifndef ARANGODB_AQL_PLAN_GENERATOR_H
+#define ARANGODB_AQL_PLAN_GENERATOR_H 1
 
 #include "Basics/Common.h"
+#include "Aql/Ast.h"
+#include "Aql/AstNode.h"
+#include "Aql/Variable.h"
+#include "BasicsC/json.h"
+
+#include <functional>
 
 namespace triagens {
   namespace aql {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
+// --SECTION--                                               class PlanGenerator
 // -----------------------------------------------------------------------------
 
+    class PlanGenerator {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
+
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief query error structure
-///
-/// This struct is used to hold information about errors that happen during
-/// query parsing or execution. The data will be passed to the end user.
+/// @brief create the generator
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct QueryError {
+        PlanGenerator ();
 
-      QueryError () 
-        : code(TRI_ERROR_NO_ERROR),
-          explanation() {
-      }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy the generator
+////////////////////////////////////////////////////////////////////////////////
 
-      ~QueryError () {
-      }
+        ~PlanGenerator ();
 
-      int         code;
-      std::string explanation;
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+      public:
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+      private:
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
     };
 
   }

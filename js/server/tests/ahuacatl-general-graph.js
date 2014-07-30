@@ -51,6 +51,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       db._drop("UnitTestsAhuacatlVertex4");
       db._drop("UnitTestsAhuacatlEdge1");
       db._drop("UnitTestsAhuacatlEdge2");
+      db._drop("UnitTestsAhuacatlOrphan");
 
       vertex1 = db._create("UnitTestsAhuacatlVertex1");
       vertex2 = db._create("UnitTestsAhuacatlVertex2");
@@ -58,6 +59,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       vertex4 = db._create("UnitTestsAhuacatlVertex4");
       edge1 = db._createEdgeCollection("UnitTestsAhuacatlEdge1");
       edge2 = db._createEdgeCollection("UnitTestsAhuacatlEdge2");
+      oprhan = db._create("UnitTestsAhuacatlOrphan");
 
       vertex1.save({ _key: "v1", hugo: true});
       vertex1.save({ _key: "v2", hugo: true});
@@ -67,6 +69,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       vertex3.save({ _key: "v6" });
       vertex4.save({ _key: "v7" });
       vertex4.save({ _key: "v8", heinz: 1});
+      oprhan.save({ _key: "orphan" });
 
       function makeEdge(from, to, collection) {
         collection.save(from, to, { what: from.split("/")[1] + "->" + to.split("/")[1] });
@@ -93,7 +96,8 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
             ["UnitTestsAhuacatlVertex1", "UnitTestsAhuacatlVertex2"],
             ["UnitTestsAhuacatlVertex3", "UnitTestsAhuacatlVertex4"]
           )
-        )
+        ),
+        ["UnitTestsAhuacatlOrphan"]
       );
     },
 
@@ -108,6 +112,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       db._drop("UnitTestsAhuacatlVertex4");
       db._drop("UnitTestsAhuacatlEdge1");
       db._drop("UnitTestsAhuacatlEdge2");
+      db._drop("UnitTestsAhuacatlOrphan");
       db._collection("_graphs").remove("_graphs/bla3");
     },
 
@@ -120,6 +125,9 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       var actual;
       actual = getRawQueryResults("FOR e IN GRAPH_VERTICES('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'any'}) RETURN e");
       assertEqual(actual[0]._id, 'UnitTestsAhuacatlVertex1/v1');
+
+      actual = getRawQueryResults("FOR e IN GRAPH_VERTICES('bla3', {}, {direction : 'any', vertexCollectionRestriction : 'UnitTestsAhuacatlOrphan'}) RETURN e");
+      assertEqual(actual[0]._id, 'UnitTestsAhuacatlOrphan/orphan');
 
       var actual;
       actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'any'}) SORT e.what RETURN e.what");

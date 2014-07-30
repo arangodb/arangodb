@@ -55,7 +55,7 @@ Parser::Parser (Query* query)
   Aqllex_init(&_scanner);
   Aqlset_extra(this, _scanner);
   
-  _ast = new QueryAst(query, this);
+  _ast = new Ast(query, this);
 
   _stack.reserve(16);
 }
@@ -88,7 +88,7 @@ bool Parser::configureWriteQuery (QueryType type,
   // check if we currently are in a subquery
   if (_ast->isInSubQuery()) {
     // data modification not allowed in sub-queries
-    registerError(TRI_ERROR_QUERY_MODIFY_IN_SUBQUERY);
+    _query->registerError(TRI_ERROR_QUERY_MODIFY_IN_SUBQUERY);
     return false;
   }
 
@@ -97,7 +97,7 @@ bool Parser::configureWriteQuery (QueryType type,
 
   if (oldType != AQL_QUERY_READ) {
     // already a data-modification query, cannot have two data-modification operations in one query
-    registerError(TRI_ERROR_QUERY_MULTI_MODIFY);
+    _query->registerError(TRI_ERROR_QUERY_MULTI_MODIFY);
     return false;
   }
 
@@ -115,8 +115,6 @@ bool Parser::configureWriteQuery (QueryType type,
 ////////////////////////////////////////////////////////////////////////////////
 
 ParseResult Parser::parse () {
-  ParseResult result;
-
   // start main scope
   auto scopes = _ast->scopes();
   scopes->start(AQL_SCOPE_MAIN);
@@ -124,16 +122,13 @@ ParseResult Parser::parse () {
   // parse the query string
   if (Aqlparse(this)) {
     // lexing/parsing failed
-    auto error         = _query->error();
-    result.code        = error->code;
-    result.explanation = error->explanation;
-
-    return result;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_PARSE);
   }
 
   // end main scope
   scopes->endCurrent();
 
+  ParseResult result;
   result.collectionNames = _ast->collectionNames();
   result.bindParameters  = _ast->bindParameters();
   result.json            = _ast->toJson(TRI_UNKNOWN_MEM_ZONE);
@@ -146,20 +141,36 @@ ParseResult Parser::parse () {
 ////////////////////////////////////////////////////////////////////////////////
   
 char* Parser::generateName () {
-  char buffer[16];
-  int n = snprintf(buffer, sizeof(buffer) - 1, "_%d", (int) ++_uniqueId);
+  std::string const variableName(std::to_string(++_uniqueId)); // c++11
 
   // register the string and return a copy of it
-  return _ast->registerString(buffer, static_cast<size_t>(n), false);
+  return _ast->registerString(variableName.c_str(), variableName.size(), false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register a parse error, position is specified as line / column
 ////////////////////////////////////////////////////////////////////////////////
 
-void Parser::registerError (char const* data,
-                            int line,
-                            int column) {
+void Parser::registerParseError (char const* format,
+                                 char const* data,
+                                 int line,
+                                 int column) {
+  char buffer[512];
+  snprintf(buffer,
+           sizeof(buffer),
+           format,
+           data);
+
+  return registerParseError(buffer, line, column);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a parse error, position is specified as line / column
+////////////////////////////////////////////////////////////////////////////////
+
+void Parser::registerParseError (char const* data,
+                                 int line,
+                                 int column) {
   TRI_ASSERT(data != nullptr);
 
   // extract the query string part where the error happened
@@ -175,25 +186,16 @@ void Parser::registerError (char const* data,
            line,
            column + 1);
 
-  _query->registerError(TRI_ERROR_QUERY_PARSE, std::string(buffer));
+  registerError(TRI_ERROR_QUERY_PARSE, buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register a non-parse error
 ////////////////////////////////////////////////////////////////////////////////
 
-void Parser::registerError (int code,
+void Parser::registerError (int errorCode,
                             char const* data) {
- 
-  TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
-  char const* errorMessage = TRI_errno_string(code);
-
-  if (data != nullptr && strstr(errorMessage, "%s") != nullptr) {
-    _query->registerError(code, triagens::basics::StringUtils::replace(std::string(errorMessage), "%s", data));
-  }
-  else {
-    _query->registerError(code, std::string(errorMessage));
-  }
+  _query->registerError(errorCode, data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

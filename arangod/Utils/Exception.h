@@ -77,7 +77,7 @@ namespace triagens {
         char const * what () const throw ();
 
         std::string message () const throw ();
-
+        
         int code () const throw();
 
       protected:
