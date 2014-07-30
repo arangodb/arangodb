@@ -249,6 +249,7 @@ namespace triagens {
 
     class SingletonPlan : public ExecutionPlan {
       
+      friend class ExecutionBlock;
       friend class SingletonBlock;
       
 ////////////////////////////////////////////////////////////////////////////////
@@ -306,6 +307,7 @@ namespace triagens {
 
     class EnumerateCollectionPlan : public ExecutionPlan {
       
+      friend class ExecutionBlock;
       friend class EnumerateCollectionBlock;
       
 ////////////////////////////////////////////////////////////////////////////////
@@ -315,8 +317,11 @@ namespace triagens {
       public:
 
         EnumerateCollectionPlan (TRI_vocbase_t* vocbase, 
-                                 std::string collname)
-          : ExecutionPlan(), _vocbase(vocbase), _collname(collname) {
+                                 std::string collname,
+                                 VariableId outVarNumber,
+                                 std::string outVarName)
+          : ExecutionPlan(), _vocbase(vocbase), _collname(collname),
+            _outVarNumber(outVarNumber), _outVarName(outVarName) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -348,7 +353,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionPlan* clone () const {
-          auto c = new EnumerateCollectionPlan(_vocbase, _collname);
+          auto c = new EnumerateCollectionPlan(_vocbase, _collname,
+                                               _outVarNumber, _outVarName);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
         }
@@ -371,6 +377,18 @@ namespace triagens {
 
         std::string _collname;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _outVarNumber, output variable
+////////////////////////////////////////////////////////////////////////////////
+
+        VariableId _outVarNumber;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _outVarName, name of variable to write to
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _outVarName;
+
     };
 
 // -----------------------------------------------------------------------------
@@ -383,14 +401,19 @@ namespace triagens {
 
     class EnumerateListPlan : public ExecutionPlan {
       
+      friend class ExecutionBlock;
+      friend class EnumerateListBlock;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
 
-        EnumerateListPlan (VariableId varNumber, std::string varName)
-          : ExecutionPlan(), _varNumber(varNumber), _varName(varName) {
+        EnumerateListPlan (VariableId varNumber, std::string varName,
+                           VariableId outVarNumber, std::string outVarName)
+          : ExecutionPlan(), _varNumber(varNumber), _varName(varName),
+            _outVarNumber(outVarNumber), _outVarName(outVarName) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -422,7 +445,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionPlan* clone () const {
-          auto c = new EnumerateListPlan(_varNumber, _varName);
+          auto c = new EnumerateListPlan(_varNumber, _varName,
+                                         _outVarNumber, _outVarName);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
         }
@@ -445,6 +469,18 @@ namespace triagens {
 
         std::string _varName;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _outVarNumber, output variable
+////////////////////////////////////////////////////////////////////////////////
+
+        VariableId _outVarNumber;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _outVarName, name of variable to write to
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _outVarName;
+
     };
 
 
@@ -458,6 +494,9 @@ namespace triagens {
 
     class LimitPlan : public ExecutionPlan {
       
+      friend class ExecutionBlock;
+      friend class LimitBlock;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructors for various arguments, always with offset and limit
 ////////////////////////////////////////////////////////////////////////////////
@@ -527,6 +566,9 @@ namespace triagens {
 
     class ProjectionPlan : public ExecutionPlan {
       
+      friend class ExecutionBlock;
+      friend class ProjectionBlock;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
@@ -626,6 +668,9 @@ namespace triagens {
 
     class CalculationPlan : public ExecutionPlan {
       
+      friend class ExecutionBlock;
+      friend class CalculationBlock;
+
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -718,6 +763,9 @@ namespace triagens {
 
     class SubqueryPlan : public ExecutionPlan {
       
+      friend class ExecutionBlock;
+      friend class SubqueryBlock;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
@@ -800,6 +848,9 @@ namespace triagens {
 
     class FilterPlan : public ExecutionPlan {
       
+      friend class ExecutionBlock;
+      friend class FilterBlock;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructors for various arguments, always with offset and limit
 ////////////////////////////////////////////////////////////////////////////////
@@ -874,6 +925,9 @@ namespace triagens {
 
     class SortPlan : public ExecutionPlan {
       
+      friend class ExecutionBlock;
+      friend class SortBlock;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
@@ -958,6 +1012,9 @@ namespace triagens {
 
     class AggregateOnUnsortedPlan : public ExecutionPlan {
       
+      friend class ExecutionBlock;
+      friend class AggregateOnUnsortedBlock;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
@@ -1050,6 +1107,7 @@ namespace triagens {
 
     class RootPlan : public ExecutionPlan {
       
+      friend class ExecutionBlock;
       friend class RootBlock;
       
 ////////////////////////////////////////////////////////////////////////////////

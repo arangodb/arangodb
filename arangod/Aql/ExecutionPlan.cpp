@@ -163,7 +163,9 @@ void EnumerateCollectionPlan::toJsonHelper (std::map<ExecutionPlan*, int>& index
   else {
     json("vocbase", Json(_vocbase->_name));
   }
-  json("collection", Json(_collname));
+  json("collection", Json(_collname))
+      ("outVarNumber", Json(static_cast<double>(_outVarNumber)))
+      ("outVarName",   Json(_outVarName));
 
   // And add it:
   int len = static_cast<int>(nodes.size());
@@ -186,8 +188,11 @@ void EnumerateListPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
   if (json.isEmpty()) {
     return;
   }
-  json("varNumber", Json(static_cast<double>(_varNumber)))
-      ("varName",   Json(_varName));
+  json("varNumber",    Json(static_cast<double>(_varNumber)))
+      ("varName",      Json(_varName))
+      ("outVarNumber", Json(static_cast<double>(_outVarNumber)))
+      ("outVarName",   Json(_outVarName));
+
 
   // And add it:
   int len = static_cast<int>(nodes.size());
@@ -437,7 +442,7 @@ void testExecutionPlans () {
   std::cout << a.toString() << std::endl;
   std::cout << "Got here" << std::endl;
 
-  auto ec = new EnumerateCollectionPlan(nullptr, "guck");
+  auto ec = new EnumerateCollectionPlan(nullptr, "guck", 1, "X");
   Json jjj(ec->toJson());
   cout << jjj.toString() << endl;
   auto li = new LimitPlan(12, 17);
@@ -553,7 +558,7 @@ void testExecutionPlans () {
   e = n;
 
   // FOR g IN guck
-  n = new EnumerateCollectionPlan(nullptr, "guck");
+  n = new EnumerateCollectionPlan(nullptr, "guck", 2, "g");
   n->addDependency(e);
   e = n;
 
@@ -597,7 +602,7 @@ void testExecutionPlans () {
   e = n;
 
   // FOR i in A
-  n = new EnumerateListPlan(1, "A");
+  n = new EnumerateListPlan(1, "A", 2, "i");
   n->addDependency(e);
   e = n;
 
