@@ -297,13 +297,21 @@ Json SortPlan::toJson (TRI_memory_zone_t* zone) const {
     return json;
   }
   try {
-    Json vec(Json::List,_sortAttributes.size());
-    for (auto it = _sortAttributes.begin(); it != _sortAttributes.end(); ++it) {
+    Json numbers(Json::List, _varNumbers.size());
+    for (auto it = _varNumbers.begin(); it != _varNumbers.end(); ++it) {
+      numbers(Json(static_cast<double>(*it)));
+    }
+    Json names(Json::List, _varNames.size());
+    for (auto it = _varNames.begin(); it != _varNames.end(); ++it) {
+      names(Json(*it));
+    }
+    Json vec(Json::List, _sortAscending.size());
+    for (auto it = _sortAscending.begin(); it != _sortAscending.end(); ++it) {
       vec(Json(*it));
     }
-    json("varNumber",      Json(static_cast<double>(_varNumber)))
-        ("varName",        Json(_varName))
-        ("sortAttributes", vec);
+    json("varNumbers",    numbers)
+        ("varNames",      names)
+        ("sortAscending", vec);
   }
   catch (std::exception& e) {
     return Json();

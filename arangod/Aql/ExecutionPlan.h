@@ -765,11 +765,11 @@ namespace triagens {
 
       public:
 
-        SortPlan (VariableId varNumber,
-                  std::string varName,
-                  std::vector<std::string> sortAttributes)
-          : ExecutionPlan(), _varNumber(varNumber), _varName(varName),
-            _sortAttributes(sortAttributes) {
+        SortPlan (std::vector<VariableId> varNumbers,
+                  std::vector<std::string> varNames,
+                  std::vector<bool> sortAscending)
+          : ExecutionPlan(), _varNumbers(varNumbers), _varNames(varNames),
+            _sortAscending(sortAscending) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -800,7 +800,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionPlan* clone () const {
-          auto c = new SortPlan(_varNumber, _varName, _sortAttributes);
+          auto c = new SortPlan(_varNumbers, _varNames, _sortAscending);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
         }
@@ -812,22 +812,22 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _varNumber, input variable
+/// @brief _varNumbers, input variables for sorting
 ////////////////////////////////////////////////////////////////////////////////
 
-        VariableId _varNumber;
+        std::vector<VariableId> _varNumbers;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _varName, name of variable to read from
+/// @brief _varNames, name of variables for sorting
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string _varName;
+        std::vector<std::string> _varNames;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief vector of attributes to sort by
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<std::string> _sortAttributes;
+        std::vector<bool> _sortAscending;
 
     };
 
