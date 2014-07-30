@@ -175,6 +175,32 @@ Json LimitPlan::toJson (TRI_memory_zone_t* zone) const {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                        methods of CalculationPlan
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, for CalculationPlan
+////////////////////////////////////////////////////////////////////////////////
+
+Json CalculationPlan::toJson (TRI_memory_zone_t* zone) const {
+  Json json(ExecutionPlan::toJson(zone));  // call base class method
+  if (json.isEmpty()) {
+    return json;
+  }
+  try {
+    json("varNumber",  Json(static_cast<double>(_varNumber)))
+        ("varName",    Json(_varName))
+        ("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE));
+  }
+  catch (std::exception& e) {
+    return Json();
+  }
+
+  // And return it:
+  return json;
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                             methods of FilterPlan
 // -----------------------------------------------------------------------------
 
@@ -201,32 +227,7 @@ Json FilterPlan::toJson (TRI_memory_zone_t* zone) const {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                        methods of CalculationPlan
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for CalculationPlan
-////////////////////////////////////////////////////////////////////////////////
-
-Json CalculationPlan::toJson (TRI_memory_zone_t* zone) const {
-  Json json(ExecutionPlan::toJson(zone));  // call base class method
-  if (json.isEmpty()) {
-    return json;
-  }
-  // Now put info about ...
-  try {
-    // TODO: add specific stuff
-  }
-  catch (std::exception& e) {
-    return Json();
-  }
-
-  // And return it:
-  return json;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                        methods of RootPlan
+// --SECTION--                                               methods of RootPlan
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////

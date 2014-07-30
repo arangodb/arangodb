@@ -174,7 +174,6 @@ namespace triagens {
           return res;
         }
 
-
         bool skip (int number);
 
         virtual int64_t count () {
@@ -345,6 +344,36 @@ namespace triagens {
 
         ~RootBlock () {
         } 
+
+        virtual shared_ptr<AqlItem> getOne () {
+          // Fetch one from above, possibly using our _buffer:
+          shared_ptr<AqlItem> res = ExecutionBlock::getOne();
+          if (res == nullptr) {
+            return res;
+          }
+          // Let's steal the actual result and throw away the vars:
+          shared_ptr<AqlItem> stripped(new AqlItem(1));
+          stripped->setValue(0, 0, res->getValue(0, 0));
+          res->setValue(0, 0, nullptr);
+          return stripped;
+        }
+
+        virtual std::vector<shared_ptr<AqlItem> > getSome (size_t atLeast, 
+                                                           size_t atMost) {
+          std::vector<shared_ptr<AqlItem> > res 
+            = ExecutionBlock::getSome(atLeast, atMost);
+          std::vector<shared_ptr<AqlItem> > stripped;
+          if (res.size() > 0) {
+            stripped.reserve(res.size());
+            for (auto it = res.begin(); it != res.end(); ++it) {
+              auto a = new AqlItem(1);
+              a->setValue(0, 0, (*it)->getValue(0, 0));
+              (*it)->setValue(0, 0, nullptr);
+              stripped.emplace_back(a);
+            }
+          }
+          return stripped;
+        }
 
     };
 

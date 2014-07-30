@@ -56,18 +56,18 @@ namespace triagens {
 
         enum NodeType {
           ILLEGAL,
-          SINGLETON,
-          ENUMERATE_COLLECTION,
+          SINGLETON,                // done
+          ENUMERATE_COLLECTION,     // done
           INDEX_RANGE,
-          STATIC_LIST,
-          FILTER,
-          LIMIT,
+          STATIC_LIST,              // 4.
+          FILTER,                   // done
+          LIMIT,                    // done
           INTERSECTION,
-          PROJECTION,
-          CALCULATION,
-          SORT,
+          PROJECTION,               // 1.
+          CALCULATION,              // done
+          SORT,                     // 3.
           AGGREGATE_ON_SORTED,
-          AGGREGATE_ON_UNSORTED,
+          AGGREGATE_ON_UNSORTED,    // 2.
           LOOKUP_JOIN,
           MERGE_JOIN,
           LOOKUP_INDEX_UNIQUE,
@@ -80,7 +80,7 @@ namespace triagens {
           REMOVE,
           REPLACE,
           UPDATE,
-          ROOT
+          ROOT                      // done
         };
 
 // -----------------------------------------------------------------------------
@@ -423,6 +423,87 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                             class CalculationPlan
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class CalculationPlan, derived from ExecutionPlan
+////////////////////////////////////////////////////////////////////////////////
+
+    class CalculationPlan : public ExecutionPlan {
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+        CalculationPlan (AqlExpression* expr, uint32_t varNumber, 
+                         std::string varName)
+          : ExecutionPlan(), _expression(expr), _varNumber(varNumber),
+            _varName(varName) {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual NodeType getType () const {
+          return CALCULATION;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node as a string
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::string getTypeString () const {
+          return std::string("CalculationPlan");
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual triagens::basics::Json toJson (
+               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone execution plan recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ExecutionPlan* clone () const {
+          auto c = new CalculationPlan(_expression->clone(), _varNumber, _varName);
+          cloneDependencies(c);
+          return static_cast<ExecutionPlan*>(c);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief private data
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief we need to have an expression and where to write the result
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlExpression* _expression;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _varNumber, global number of variable to write to
+////////////////////////////////////////////////////////////////////////////////
+
+        uint32_t _varNumber;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _varName, name of variable to write to
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _varName;
+
+    };
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  class FilterPlan
 // -----------------------------------------------------------------------------
 
@@ -483,70 +564,6 @@ namespace triagens {
 
         std::string            _attribute;
         triagens::basics::Json _value;
-
-    };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                             class CalculationPlan
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief class CalculationPlan, derived from ExecutionPlan
-////////////////////////////////////////////////////////////////////////////////
-
-    class CalculationPlan : public ExecutionPlan {
-      
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructors for various arguments, always with offset and limit
-////////////////////////////////////////////////////////////////////////////////
-
-      public:
-
-        CalculationPlan (AqlExpression* aqlExpression) 
-          : ExecutionPlan(), _aqlExpression(aqlExpression) {
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual NodeType getType () const {
-          return CALCULATION;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::string getTypeString () const {
-          return std::string("CalculationPlan");
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief export to JSON
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual triagens::basics::Json toJson (
-               TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clone execution plan recursively
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual ExecutionPlan* clone () const {
-          auto c = new CalculationPlan(//_aqlExpression->clone());
-                                       _aqlExpression);
-          cloneDependencies(c);
-          return static_cast<ExecutionPlan*>(c);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief we need to know the offset and limit
-////////////////////////////////////////////////////////////////////////////////
-
-      private:
-
-        AqlExpression* _aqlExpression;
 
     };
 
