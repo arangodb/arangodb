@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, parse results
+/// @brief Aql, query results
 ///
 /// @file
 ///
@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_PARSE_RESULT_H
-#define ARANGODB_AQL_PARSE_RESULT_H 1
+#ifndef ARANGODB_AQL_QUERY_RESULT_H
+#define ARANGODB_AQL_QUERY_RESULT_H 1
 
 #include "Basics/Common.h"
 #include "BasicsC/json.h"
@@ -37,13 +37,13 @@ namespace triagens {
   namespace aql {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                struct ParseResult
+// --SECTION--                                                struct QueryResult
 // -----------------------------------------------------------------------------
 
-    struct ParseResult {
-      ParseResult& operator= (ParseResult const& other) = delete;
+    struct QueryResult {
+      QueryResult& operator= (QueryResult const& other) = delete;
       
-      ParseResult (ParseResult&& other) {
+      QueryResult (QueryResult&& other) {
         code = other.code;
         details = other.details;
         json = other.json;
@@ -51,7 +51,7 @@ namespace triagens {
         other.json = nullptr;
       }
 
-      ParseResult (int code,
+      QueryResult (int code,
                    std::string const& details) 
         : code(code),
           details(details),
@@ -59,21 +59,21 @@ namespace triagens {
           json(nullptr) {
       }
       
-      explicit ParseResult (int code)
+      explicit QueryResult (int code)
         : code(code),
           details(""),
           zone(TRI_UNKNOWN_MEM_ZONE),
           json(nullptr) {
       }
 
-      ParseResult ()
+      QueryResult ()
         : code(TRI_ERROR_NO_ERROR),
           details(),
           zone(TRI_UNKNOWN_MEM_ZONE),
           json(nullptr) {
       }
 
-      ~ParseResult () {
+      ~QueryResult () {
         if (json != nullptr) {
           TRI_FreeJson(zone, json);
         }

@@ -43,6 +43,7 @@ namespace triagens {
 
     struct AstNode;
     class Query;
+    struct QueryResult;
     class Parser;
   }
 }
@@ -204,7 +205,7 @@ namespace triagens {
 /// @brief parse the query
 ////////////////////////////////////////////////////////////////////////////////
 
-        ParseResult parse ();
+        QueryResult parse ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register a parse error, position is specified as line / column

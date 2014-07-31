@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/ExecutionBlock.h"
+#include "Utils/Exception.h"
 
 using namespace triagens::basics;
 using namespace triagens::arango;
@@ -82,8 +83,7 @@ ExecutionBlock* ExecutionBlock::instanciatePlan (ExecutionPlan const* ep) {
       break;
     }
     default: {
-      TRI_ASSERT(false);
-      break;
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     }
   }
   vector<ExecutionPlan*> deps = ep->getDependencies();

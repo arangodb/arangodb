@@ -32,7 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/BindParameters.h"
-#include "Aql/ParseResult.h"
+#include "Aql/QueryResult.h"
 
 struct TRI_json_s;
 struct TRI_vocbase_s;
@@ -142,16 +142,16 @@ namespace triagens {
                             char const* = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief execute an AQL query - TODO: implement and determine return type
+/// @brief execute an AQL query 
 ////////////////////////////////////////////////////////////////////////////////
 
-        ParseResult execute ();
+        QueryResult execute ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
-        ParseResult parse ();
+        QueryResult parse ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief explain an AQL query - TODO: implement and determine return type

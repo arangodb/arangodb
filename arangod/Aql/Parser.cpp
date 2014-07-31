@@ -29,6 +29,7 @@
 
 #include "Aql/Parser.h"
 #include "Aql/AstNode.h"
+#include "Aql/QueryResult.h"
 
 using namespace triagens::aql;
 
@@ -107,7 +108,7 @@ bool Parser::configureWriteQuery (QueryType type,
 /// @brief parse the query
 ////////////////////////////////////////////////////////////////////////////////
 
-ParseResult Parser::parse () {
+QueryResult Parser::parse () {
   // start main scope
   auto scopes = _ast->scopes();
   scopes->start(AQL_SCOPE_MAIN);
@@ -134,7 +135,7 @@ ParseResult Parser::parse () {
 
   TRI_ASSERT(scopes->numActive() == 0);
 
-  ParseResult result;
+  QueryResult result;
   result.collectionNames = _ast->collectionNames();
   result.bindParameters  = _ast->bindParameters();
   result.json            = _ast->toJson(TRI_UNKNOWN_MEM_ZONE);
