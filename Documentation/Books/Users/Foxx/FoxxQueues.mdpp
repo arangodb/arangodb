@@ -1,0 +1,144 @@
+!CHAPTER Foxx Job Queues
+
+*Examples*
+
+The following Foxx route handler will enqueue a job whenever the *"/log"* route is accessed that prints "Hello World!" to the server log.
+
+```js
+var Foxx = require("org/arangodb/foxx");
+var ctrl = new Foxx.Controller(applicationContext);
+var queue = Foxx.queues.create("my-queue");
+
+Foxx.queues.registerJobType("log", function (data) {
+    print(data);
+});
+
+ctrl.get("/log", function () {
+    queue.push("log", "Hello World!");
+});
+```
+
+!SECTION Creating or updating a queue
+
+Creates a queue with the given name and maximum number of workers.
+
+`Foxx.queues.create(name, [maxWorkers])`
+
+Returns the *Queue* instance for the given *name*. If the queue does not exist, a new queue with the given *name* will be created. If a queue with the given *name* already exists and *maxWorkers* is set, the queue's maximum number of workers will be updated.
+
+*Parameter*
+
+* *name*: the name of the queue to create.
+* *maxWorkers* (optional): the maximum number of workers. Default: *1*.
+
+*Examples*
+
+```js
+// Create a queue with the default number of workers (i.e. one)
+var queue1 = Foxx.queues.create("my-queue");
+// Create a queue with a given number of workers
+var queue2 = Foxx.queues.create("another-queue", 2);
+// Update the number of workers of an existing queue
+var queue3 = Foxx.queues.create("my-queue", 10);
+// queue1 and queue3 refer to the same queue
+assertEqual(queue1, queue3);
+```
+
+!SECTION Fetching an existing queue
+
+Fetches a queue with the given name.
+
+`Foxx.queues.get(name)`
+
+Returns the *Queue* instance for the given *name*. If the queue does not exist, an exception is thrown instead.
+
+*Parameter*
+
+* *name*: the name of the queue to fetch.
+
+*Examples*
+
+If the queue does not yet exist, an exception is thrown:
+
+```js
+Foxx.queues.get("some-queue");
+// Error: Queue does not exist: some-queue
+//     at ...
+```
+
+Otherwise, the *Queue* instance will be returned:
+
+```js
+var queue1 = Foxx.queues.create("some-queue");
+var queue2 = Foxx.queues.get("some-queue");
+assertEqual(queue1, queue2);
+```
+
+!SECTION Deleting a queue
+
+Deletes the queue with the given name from the database.
+
+`Foxx.queues.delete(name)`
+
+Returns *true* if the queue was deleted successfully. If the queue did not exist, it returns *false* instead.
+
+When a queue is deleted, jobs on that queue will no longer be executed.
+
+Deleting a queue will not delete any jobs on that queue.
+
+*Parameter*
+
+* *name*: the name of the queue to delete.
+
+*Examples*
+
+```js
+var queue = Foxx.queues.create("my-queue");
+Foxx.queues.delete("my-queue"); // true
+Foxx.queues.delete("my-queue"); // false
+```
+
+!SECTION Registering a job type
+
+Registers a job type with the queue manager.
+
+`Foxx.queues.registerJobType(name, opts)`
+
+If *opts* is a function, it will be treated as the *execute* function.
+
+*Parameter*
+
+* *name*: the name of the job type to register.
+* *opts*: an object with the following properties:
+  * *execute*: a function to pass the job data to when a job is executed.
+  * *maxFailures* (optional): the number of times a job will be re-tried before it is marked as "failed". A negative value or *Infinity* means that the job will be re-tried on failure indefinitely. Default: *0*.
+
+*Examples*
+
+```js
+var Foxx = require("org/arangodb/foxx");
+Foxx.queues.registerJobType("log", function (data) {
+    print(data);
+});
+```
+
+!SECTION Adding a job to a queue
+
+Adds a job of the given type to the given queue.
+
+`Queue::push(name, data)`
+
+Returns the number of pending jobs in the given queue.
+
+*Parameter*
+
+* *name*: the name of the job's job type.
+* *data*: the job data of the job; must be serializable to JSON.
+
+*Examples*
+
+```js
+var Foxx = require("org/arangodb/foxx");
+var queue = Foxx.queues.create("my-queue");
+queue.push("log", "Hello World!");
+```
