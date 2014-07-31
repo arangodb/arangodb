@@ -34,6 +34,7 @@
 #include <VocBase/voc-types.h>
 #include <VocBase/vocbase.h>
 
+#include "Aql/Expression.h"
 #include "Aql/Variable.h"
 #include "Aql/Types.h"
 
@@ -666,7 +667,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        CalculationPlan (AqlExpression* expr, Variable const* outVariable)
+        CalculationPlan (Expression* expr, Variable const* outVariable)
           : ExecutionPlan(), _expression(expr), _outVariable(outVariable) {
 
           TRI_ASSERT(_expression != nullptr);
@@ -735,7 +736,7 @@ namespace triagens {
 /// @brief we need to have an expression and where to write the result
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlExpression* _expression;
+        Expression* _expression;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief output variable to write to
