@@ -336,10 +336,9 @@ namespace triagens {
 
         EnumerateCollectionPlan (TRI_vocbase_t* vocbase, 
                                  std::string collname,
-                                 VariableId outVarNumber,
-                                 std::string outVarName)
+                                 Variable const* outVariable)
           : ExecutionPlan(), _vocbase(vocbase), _collname(collname),
-            _outVarNumber(outVarNumber), _outVarName(outVarName) {
+            _outVariable(outVariable) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -371,8 +370,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionPlan* clone () const {
-          auto c = new EnumerateCollectionPlan(_vocbase, _collname,
-                                               _outVarNumber, _outVarName);
+          auto c = new EnumerateCollectionPlan(_vocbase, _collname, _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
         }
@@ -396,16 +394,10 @@ namespace triagens {
         std::string _collname;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _outVarNumber, output variable
+/// @brief output variable
 ////////////////////////////////////////////////////////////////////////////////
 
-        VariableId _outVarNumber;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _outVarName, name of variable to write to
-////////////////////////////////////////////////////////////////////////////////
-
-        std::string _outVarName;
+        Variable const* _outVariable;
 
     };
 

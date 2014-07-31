@@ -184,8 +184,7 @@ void EnumerateCollectionPlan::toJsonHelper (std::map<ExecutionPlan*, int>& index
     json("vocbase", Json(_vocbase->_name));
   }
   json("collection", Json(_collname))
-      ("outVarNumber", Json(static_cast<double>(_outVarNumber)))
-      ("outVarName",   Json(_outVarName));
+      ("outVariable", _outVariable->toJson());
 
   // And add it:
   int len = static_cast<int>(nodes.size());
