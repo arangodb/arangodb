@@ -81,6 +81,31 @@ AqlValue* AqlValue::clone () const {
 
 AqlItemBlock* AqlItemBlock::splice(std::vector<AqlItemBlock*>& blocks)
 {
-  return nullptr;
+  TRI_ASSERT(blocks.size() != 0);
+
+  auto it = blocks.begin();
+  size_t totalsize = (*it)->size();
+  VariableId nrVars = (*it)->getNrVars();
+
+  while (true) {
+    if (++it == blocks.end()) {
+      break;
+    }
+    totalsize += (*it)->size();
+    TRI_ASSERT((*it)->getNrVars() == nrVars);
+  }
+
+  auto res = new AqlItemBlock(totalsize, nrVars);
+  size_t pos = 0;
+  for (it = blocks.begin(); it != blocks.end(); ++it) {
+    for (size_t row = 0; row < (*it)->size(); ++row) {
+      for (VariableId col = 0; col < nrVars; ++col) {
+        res->setValue(pos+row, col, (*it)->getValue(row, col));
+        (*it)->setValue(row, col, nullptr);
+      }
+    }
+    pos += (*it)->size();
+  }
+  return res;
 }
 
