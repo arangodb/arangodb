@@ -74,7 +74,8 @@ Expression::~Expression () {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue* Expression::execute (AqlItem* item) {
+AqlValue* Expression::execute (AqlItemBlock* items,
+                               size_t index) {
   // TODO: implement execution
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   return nullptr;
