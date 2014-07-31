@@ -1515,9 +1515,12 @@ static v8::Handle<v8::Value> JS_AsyncRequest (v8::Arguments const& argv) {
   //   - coordTransactionID   (number)
   //   - timeout              (number)
 
-  if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
-    TRI_V8_EXCEPTION_INTERNAL(scope,"request works only in coordinator role");
-  }
+  // Disabled to allow communication originating in a DBserver:
+  // 31.7.2014 Max
+
+  // if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
+  //  TRI_V8_EXCEPTION_INTERNAL(scope,"request works only in coordinator role");
+  //}
 
   ClusterComm* cc = ClusterComm::instance();
 
@@ -1572,9 +1575,12 @@ static v8::Handle<v8::Value> JS_SyncRequest (v8::Arguments const& argv) {
   //   - coordTransactionID   (number)
   //   - timeout              (number)
 
-  if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
-    TRI_V8_EXCEPTION_INTERNAL(scope,"request works only in coordinator role");
-  }
+  // Disabled to allow communication originating in a DBserver:
+  // 31.7.2014 Max
+
+  //if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
+  //  TRI_V8_EXCEPTION_INTERNAL(scope,"request works only in coordinator role");
+  //}
 
   ClusterComm* cc = ClusterComm::instance();
 
