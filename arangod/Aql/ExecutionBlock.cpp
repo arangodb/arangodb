@@ -124,19 +124,19 @@ int ExecutionBlock::staticAnalysisRecursion (
       _depth++;
       curVar = 0;
       auto p = static_cast<EnumerateListPlan const*>(_exePlan);
-      varTab.insert(make_pair(p->_outVarNumber, VarDefPlace(_depth, 0)));
+      varTab.insert(make_pair(p->_outVariable->id, VarDefPlace(_depth, 0)));
       break;
     }
     case ExecutionPlan::CALCULATION: {
       curVar++;
       auto p = static_cast<CalculationPlan const*>(_exePlan);
-      varTab.insert(make_pair(p->_varNumber, VarDefPlace(_depth, curVar)));
+      varTab.insert(make_pair(p->_outVariable->id, VarDefPlace(_depth, curVar)));
       break;
     }
     case ExecutionPlan::PROJECTION: {
       curVar++;
       auto p = static_cast<ProjectionPlan const*>(_exePlan);
-      varTab.insert(make_pair(p->_outVar, VarDefPlace(_depth, curVar)));
+      varTab.insert(make_pair(p->_outVariable->id, VarDefPlace(_depth, curVar)));
       break;
     }
     // TODO: potentially more cases
