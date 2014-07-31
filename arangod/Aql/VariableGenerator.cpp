@@ -66,7 +66,7 @@ VariableGenerator::~VariableGenerator () {
 Variable* VariableGenerator::createVariable (char const* name,
                                              bool isUserDefined) {
   auto variable = new Variable(std::string(name), nextId());
-
+  
   if (isUserDefined) {
     TRI_ASSERT(variable->isUserDefined());
   }
@@ -90,7 +90,7 @@ Variable* VariableGenerator::createVariable (char const* name,
 Variable* VariableGenerator::createVariable (std::string const& name,
                                              bool isUserDefined) {
   auto variable = new Variable(name, nextId());
-  
+
   if (isUserDefined) {
     TRI_ASSERT(variable->isUserDefined());
   }

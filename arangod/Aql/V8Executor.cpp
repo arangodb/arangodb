@@ -29,12 +29,39 @@
 
 #include "Aql/V8Executor.h"
 #include "Aql/AstNode.h"
+#include "Aql/V8Expression.h"
+#include "Aql/Variable.h"
 #include "Basics/StringBuffer.h"
 #include "Utils/Exception.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 
 using namespace triagens::aql;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                  function names used in execution
+// -----------------------------------------------------------------------------
+
+std::unordered_map<int, std::string> const V8Executor::FunctionNames{ 
+  { static_cast<int>(NODE_TYPE_OPERATOR_UNARY_PLUS),   "UNARY_PLUS" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_UNARY_MINUS),  "UNARY_MINUS" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_UNARY_NOT),    "LOGICAL_NOT" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_EQ),    "RELATIONAL_EQUAL" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NE),    "RELATIONAL_UNEQUAL" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT),    "RELATIONAL_GREATER" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE),    "RELATIONAL_GREATEREQUAL" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LT),    "RELATIONAL_LESS" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE),    "RELATIONAL_LESSEQUAL" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_IN),    "RELATIONAL_IN" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_PLUS),  "ARITHMETIC_PLUS" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_MINUS), "ARITHMETIC_MINUS" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_TIMES), "ARITHMETIC_TIMES" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_DIV),   "ARITHMETIC_DIVIDE" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_MOD),   "ARITHMETIC_MODULUS" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_AND),   "LOGICAL_AND_FN" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_OR),    "LOGICAL_OR_FN" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_TERNARY),      "TERNARY_OPERATOR_FN" }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -64,27 +91,50 @@ V8Executor::~V8Executor () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a comparison operation using V8
+/// @brief generates an expression execution object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* V8Executor::executeComparison (std::string const& func,
-                                           AstNode const* lhs,
-                                           AstNode const* rhs) {
+V8Expression* V8Executor::generateExpression (AstNode const* node) {
+  generateCodeExpression(node);
 
-  triagens::basics::StringBuffer* buffer = getBuffer();
-  TRI_ASSERT(buffer != nullptr);
-
-  _buffer->appendText("(function(){ var aql = require(\"org/arangodb/ahuacatl\"); return aql.RELATIONAL_");
-  _buffer->appendText(func);
-  _buffer->appendText("(");
-
-  lhs->append(buffer);
+  std::cout << "CREATED CODE: " << _buffer->c_str() << "\n";
   
-  _buffer->appendText(", ");
+  v8::Handle<v8::Script> compiled = v8::Script::Compile(v8::String::New(_buffer->c_str(), (int) _buffer->length()),
+                                                        v8::String::New("--script--"));
   
-  rhs->append(buffer);
+  if (compiled.IsEmpty()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+  
+  v8::TryCatch tryCatch;
+  v8::Handle<v8::Value> val = compiled->Run();
 
-  _buffer->appendText("); })");
+  if (tryCatch.HasCaught()) {
+    if (tryCatch.CanContinue()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
+    else {
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+      v8g->_canceled = true;
+
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
+    }
+  }
+
+  if (val.IsEmpty()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+ 
+  v8::Isolate* isolate = v8::Isolate::GetCurrent(); 
+  return new V8Expression(isolate, v8::Persistent<v8::Function>::New(isolate, v8::Handle<v8::Function>::Cast(val)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes an expression directly
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* V8Executor::executeExpression (AstNode const* node) {
+  generateCodeExpression(node);
 
   return execute();
 }
@@ -94,10 +144,237 @@ TRI_json_t* V8Executor::executeComparison (std::string const& func,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for an arbitrary expression
+////////////////////////////////////////////////////////////////////////////////
+
+void V8Executor::generateCodeExpression (AstNode const* node) {  
+  // initialise and/or clear the buffer
+  initBuffer();
+  TRI_ASSERT(_buffer != nullptr);
+
+  // write prologue
+  _buffer->appendText("(function (vars) { var aql = require(\"org/arangodb/ahuacatl\"); return ");
+
+  generateCodeNode(node);
+
+  // write epilogue
+  _buffer->appendText("; })");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for a unary operator
+////////////////////////////////////////////////////////////////////////////////
+
+void V8Executor::generateCodeUnaryOperator (AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->numMembers() == 1);
+
+  auto it = FunctionNames.find(static_cast<int>(node->type));
+
+  if (it == FunctionNames.end()) {
+    // no function found for the type of node
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
+  _buffer->appendText("aql.");
+  _buffer->appendText((*it).second);
+  _buffer->appendText("(");
+
+  generateCodeNode(node->getMember(0));
+  _buffer->appendText(")");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for a binary operator
+////////////////////////////////////////////////////////////////////////////////
+
+void V8Executor::generateCodeBinaryOperator (AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->numMembers() == 2);
+
+  auto it = FunctionNames.find(static_cast<int>(node->type));
+
+  if (it == FunctionNames.end()) {
+    // no function found for the type of node
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+  
+  bool wrap = (node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
+               node->type == NODE_TYPE_OPERATOR_BINARY_OR);
+
+  _buffer->appendText("aql.");
+  _buffer->appendText((*it).second);
+  _buffer->appendText("(");
+
+  if (wrap) {
+    _buffer->appendText("function () { return ");
+    generateCodeNode(node->getMember(0));
+    _buffer->appendText("}, function () { return ");
+    generateCodeNode(node->getMember(1));
+   _buffer->appendText("}");
+  }
+  else {
+    generateCodeNode(node->getMember(0));
+    _buffer->appendText(", ");
+    generateCodeNode(node->getMember(1));
+  }
+
+  _buffer->appendText(")");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for the ternary operator
+////////////////////////////////////////////////////////////////////////////////
+
+void V8Executor::generateCodeTernaryOperator (AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->numMembers() == 3);
+
+  auto it = FunctionNames.find(static_cast<int>(node->type));
+
+  if (it == FunctionNames.end()) {
+    // no function found for the type of node
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
+  _buffer->appendText("aql.");
+  _buffer->appendText((*it).second);
+  _buffer->appendText("(");
+
+  generateCodeNode(node->getMember(0));
+  _buffer->appendText(", function () { return ");
+  generateCodeNode(node->getMember(1));
+  _buffer->appendText("}, function () { return ");
+  generateCodeNode(node->getMember(2));
+  _buffer->appendText("})");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for a variable (read) access
+////////////////////////////////////////////////////////////////////////////////
+
+void V8Executor::generateCodeReference (AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->numMembers() == 0);
+  
+  auto variable = static_cast<Variable*>(node->getData());
+
+  _buffer->appendText("vars[\"");
+  _buffer->appendJsonEncoded(variable->name.c_str());
+  _buffer->appendText("\"]");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for a full collection access
+////////////////////////////////////////////////////////////////////////////////
+
+void V8Executor::generateCodeCollection (AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->numMembers() == 0);
+  
+  char const* name = node->getStringValue();
+
+  _buffer->appendText("aql.GET_DOCUMENTS(\"");
+  _buffer->appendJsonEncoded(name);
+  _buffer->appendText("\")");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for a function call
+////////////////////////////////////////////////////////////////////////////////
+
+void V8Executor::generateCodeFunctionCall (AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->numMembers() == 1);
+  
+  char const* name = node->getStringValue();
+
+  _buffer->appendText("aql.");
+  _buffer->appendText(name);
+  _buffer->appendText("(");
+
+  auto args = node->getMember(0);
+  TRI_ASSERT(args != nullptr);
+  TRI_ASSERT(args->type == NODE_TYPE_LIST);
+
+  size_t const n = args->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    if (i > 0) {
+      _buffer->appendText(", ");
+    }
+
+    generateCodeNode(args->getMember(i));
+  }
+  _buffer->appendText(")");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for a node
+////////////////////////////////////////////////////////////////////////////////
+
+void V8Executor::generateCodeNode (AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+
+  switch (node->type) {
+    case NODE_TYPE_VALUE:
+    case NODE_TYPE_LIST:
+    case NODE_TYPE_ARRAY:
+      node->append(_buffer);
+      break;
+
+    case NODE_TYPE_OPERATOR_UNARY_PLUS:
+    case NODE_TYPE_OPERATOR_UNARY_MINUS:
+    case NODE_TYPE_OPERATOR_UNARY_NOT:
+      generateCodeUnaryOperator(node);
+      break;
+    
+    case NODE_TYPE_OPERATOR_BINARY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_IN:
+    case NODE_TYPE_OPERATOR_BINARY_PLUS:
+    case NODE_TYPE_OPERATOR_BINARY_MINUS:
+    case NODE_TYPE_OPERATOR_BINARY_TIMES:
+    case NODE_TYPE_OPERATOR_BINARY_DIV:
+    case NODE_TYPE_OPERATOR_BINARY_MOD:
+      generateCodeBinaryOperator(node);
+      break;
+    
+    case NODE_TYPE_OPERATOR_TERNARY:
+      generateCodeTernaryOperator(node);
+      break;
+    
+    case NODE_TYPE_REFERENCE:
+      generateCodeReference(node);
+      break;
+
+    case NODE_TYPE_COLLECTION:
+      generateCodeCollection(node);
+      break;
+
+    case NODE_TYPE_FCALL:
+      generateCodeFunctionCall(node);
+      break;
+
+    case NODE_TYPE_ATTRIBUTE_ACCESS:
+    case NODE_TYPE_INDEXED_ACCESS:
+      // TODO:
+
+    default:
+      // TODO: remove debug output
+      std::cout << "NODE TYPE NOT IMPLEMENTED (" << node->typeString() << ")\n";
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create the string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::StringBuffer* V8Executor::getBuffer () {
+triagens::basics::StringBuffer* V8Executor::initBuffer () {
   if (_buffer == nullptr) {
     _buffer = new triagens::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE);
 
@@ -111,6 +388,8 @@ triagens::basics::StringBuffer* V8Executor::getBuffer () {
     _buffer->clear();
   }
 
+  TRI_ASSERT(_buffer != nullptr);
+
   return _buffer;
 }
 
@@ -119,7 +398,11 @@ triagens::basics::StringBuffer* V8Executor::getBuffer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* V8Executor::execute () {
+  // note: if this function is called without an already opened handle scope,
+  // it will fail badly
+
   TRI_ASSERT(_buffer != nullptr);
+  v8::Isolate* isolate = v8::Isolate::GetCurrent(); 
 
   v8::Handle<v8::Script> compiled = v8::Script::Compile(v8::String::New(_buffer->c_str(), (int) _buffer->length()),
                                                         v8::String::New("--script--"));
@@ -136,7 +419,7 @@ TRI_json_t* V8Executor::execute () {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
     else {
-      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData());
       v8g->_canceled = true;
 
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
@@ -156,7 +439,7 @@ TRI_json_t* V8Executor::execute () {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
     else {
-      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData());
       v8g->_canceled = true;
 
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);

@@ -330,7 +330,7 @@ std::string AstNode::typeString () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stringify the node into a string buffer
+/// @brief append a JavaScript representation of the node into a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
 void AstNode::append (triagens::basics::StringBuffer* buffer) const {
@@ -378,6 +378,30 @@ void AstNode::append (triagens::basics::StringBuffer* buffer) const {
     }
     buffer->appendText(" }");
     return;
+  }
+
+  if (type == NODE_TYPE_OPERATOR_BINARY_AND ||
+      type == NODE_TYPE_OPERATOR_BINARY_OR ||
+      type == NODE_TYPE_OPERATOR_BINARY_PLUS ||
+      type == NODE_TYPE_OPERATOR_BINARY_MINUS ||
+      type == NODE_TYPE_OPERATOR_BINARY_TIMES ||
+      type == NODE_TYPE_OPERATOR_BINARY_DIV ||
+      type == NODE_TYPE_OPERATOR_BINARY_MOD ||
+      type == NODE_TYPE_OPERATOR_BINARY_EQ ||
+      type == NODE_TYPE_OPERATOR_BINARY_NE ||
+      type == NODE_TYPE_OPERATOR_BINARY_LT ||
+      type == NODE_TYPE_OPERATOR_BINARY_LE ||
+      type == NODE_TYPE_OPERATOR_BINARY_GT ||
+      type == NODE_TYPE_OPERATOR_BINARY_GE ||
+      type == NODE_TYPE_OPERATOR_BINARY_IN) {
+    size_t const n = numMembers();
+    TRI_ASSERT(n == 2);
+
+    getMember(0)->append(buffer);
+
+    buffer->appendText(", ");
+
+    getMember(1)->append(buffer);
   }
 }
 

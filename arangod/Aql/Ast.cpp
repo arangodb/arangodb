@@ -36,16 +36,6 @@
 
 using namespace triagens::aql;
   
-std::unordered_map<int, std::string> const Ast::FunctionNames{ 
-  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_EQ), "EQUAL" },
-  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NE), "UNEQUAL" },
-  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT), "GREATER" },
-  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE), "GREATEREQUAL" },
-  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LT), "LESS" },
-  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE), "LESSEQUAL" },
-  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_IN), "IN" }
-};
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
@@ -849,32 +839,30 @@ void Ast::optimize () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a comparison function using two constant values
+/// @brief executes a comparison function
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* Ast::executeConstComparison (std::string const& func,
-                                      AstNode const* lhs,
-                                      AstNode const* rhs) {
-  TRI_json_t* result = _query->getExecutor()->executeComparison(func, lhs, rhs); 
+AstNode* Ast::executeConstComparison (AstNode const* node) {
+  TRI_json_t* result = _query->executor()->executeExpression(node); 
 
   if (result == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  AstNode* node = nullptr;
+  AstNode* value = nullptr;
   try {
-    node = nodeFromJson(result);
+    value = nodeFromJson(result);
   }
   catch (...) {
   }
   
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, result);
 
-  if (node == nullptr) {
+  if (value == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  return node;
+  return value;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1074,12 +1062,6 @@ AstNode* Ast::optimizeBinaryOperatorRelational (AstNode* node) {
     return node;
   }
 
-  auto it = FunctionNames.find(static_cast<int>(node->type));
-
-  if (it == FunctionNames.end()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-  }
-
   if (node->type == NODE_TYPE_OPERATOR_BINARY_IN &&
       rhs->type != NODE_TYPE_LIST) {
     // right operand of IN must be a list
@@ -1087,9 +1069,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational (AstNode* node) {
     return node;
   }
   
-  std::string const& func((*it).second);
-
-  return executeConstComparison(func, lhs, rhs);
+  return executeConstComparison(node);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

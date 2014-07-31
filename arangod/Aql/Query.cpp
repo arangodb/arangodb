@@ -253,7 +253,7 @@ void Query::explain () {
 /// @brief get v8 executor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8Executor* Query::getExecutor () {
+V8Executor* Query::executor () {
   if (_executor == nullptr) {
     // the executor is a singleton per query
     _executor = new V8Executor;
