@@ -49,7 +49,7 @@ namespace triagens {
     class ExecutionBlock {
       public:
         ExecutionBlock (ExecutionPlan const* ep)
-          : _exePlan(ep), _done(false), _nrVars(10), _depth(0) { }
+          : _exePlan(ep), _done(false), _nrVars(3), _depth(0) { }
 
         virtual ~ExecutionBlock ();
           
@@ -403,7 +403,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize, do noting
+/// @brief initialize, just call base class
 ////////////////////////////////////////////////////////////////////////////////
 
         int initialize () {
@@ -411,14 +411,26 @@ namespace triagens {
           return TRI_ERROR_NO_ERROR;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute, just call base class
+////////////////////////////////////////////////////////////////////////////////
+
         int execute () {
           ExecutionBlock::execute();
           return TRI_ERROR_NO_ERROR;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdown, just call base class
+////////////////////////////////////////////////////////////////////////////////
+
         int shutdown () {
           return TRI_ERROR_NO_ERROR;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getOne
+////////////////////////////////////////////////////////////////////////////////
 
         AqlItemBlock* getOne () {
           if (_done) {
@@ -429,6 +441,10 @@ namespace triagens {
           _done = true;
           return res;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSome
+////////////////////////////////////////////////////////////////////////////////
 
         AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
           if (_done) {
@@ -450,13 +466,31 @@ namespace triagens {
 
       public:
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
         EnumerateCollectionBlock (EnumerateCollectionPlan const* ep)
-          : ExecutionBlock(ep) {
+          : ExecutionBlock(ep), _posInAllDocs(0) {
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
         ~EnumerateCollectionBlock () {
+          if (_allDocs.size() > 0) {
+            for (auto it = _allDocs.begin(); it != _allDocs.end(); ++it) {
+              delete *it;
+            }
+            _allDocs.clear();
+          }
         }
         
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize, here we fetch all docs from the database
+////////////////////////////////////////////////////////////////////////////////
+
         int initialize () {
           // TODO: this is very very inefficient
           // it must be implemented properly for production
@@ -495,48 +529,130 @@ namespace triagens {
           return res;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute, here we release our docs from this collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int execute () {
+          int res = ExecutionBlock::execute();
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
+          if (_allDocs.size() == 0) {
+            _done = true;
+          }
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdown, here we release our docs from this collection
+////////////////////////////////////////////////////////////////////////////////
+
         int shutdown () {
           int res = ExecutionBlock::shutdown();  // Tell all dependencies
+          for (auto it = _allDocs.begin(); it != _allDocs.end(); ++it) {
+            delete *it;
+          }
           _allDocs.clear();
           return res;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getOne
+////////////////////////////////////////////////////////////////////////////////
+
         AqlItemBlock* getOne () {
-          return nullptr;
-        }
-
-        AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
-          return nullptr;
-        }
-
-#if 0
           if (_done) {
             return nullptr;
           }
           if (_buffer.size() == 0) {
-            if (! bufferMore(1,1)) {
+            if (! ExecutionBlock::getBlock(1, 1000)) {
               _done = true;
               return nullptr;
             }
-            _pos = 0;
-            if (_allDocs.size() == 0) {  // just in case
-              _done = true;
-              return nullptr;
-            }
+            _pos = 0;           // this is in the first block
+            _posInAllDocs = 0;  // Note that we know _allDocs.size() > 0,
+                                // otherwise _done would be true already
           }
-          shared_ptr<AqlItem> res(new AqlItem(_buffer.front(), 1));
-          res->setValue(0,0,new AqlValue( new Json(_allDocs[_pos]->copy())));
-          if (++_pos >= _allDocs.size()) {
-            _buffer.pop_front();
+
+          // If we get here, we do have _buffer.front()
+          AqlItemBlock* cur = _buffer.front();
+
+          auto res = new AqlItemBlock(1, _nrVars);
+          TRI_ASSERT(cur->getNrVars() <= _nrVars);
+          for (VariableId i = 0; i < cur->getNrVars(); i++) {
+            res->setValue(0, i, cur->getValue(_pos, i)->clone());
+          }
+          res->setValue(0, cur->getNrVars(), 
+              new AqlValue( new Json(_allDocs[_posInAllDocs++]->copy()) ) );
+          if (_posInAllDocs >= _allDocs.size()) {
+            _posInAllDocs = 0;
+            if (++_pos >= cur->size()) {
+              _buffer.pop_front();
+              delete cur;
+              _pos = 0;
+            }
           }
           return res;
         }
-#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSome
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
+          if (_done) {
+            return nullptr;
+          }
+          if (_buffer.size() == 0) {
+            if (! ExecutionBlock::getBlock(1000, 1000)) {
+              _done = true;
+              return nullptr;
+            }
+            _pos = 0;           // this is in the first block
+            _posInAllDocs = 0;  // Note that we know _allDocs.size() > 0,
+                                // otherwise _done would be true already
+          }
+
+          // If we get here, we do have _buffer.front()
+          AqlItemBlock* cur = _buffer.front();
+
+          size_t available = _allDocs.size() - _posInAllDocs;
+          size_t toSend = std::min(atMost, available);
+
+          auto res = new AqlItemBlock(toSend, _nrVars);
+          TRI_ASSERT(cur->getNrVars() <= _nrVars);
+          for (size_t j = 0; j < toSend; j++) {
+            for (VariableId i = 0; i < cur->getNrVars(); i++) {
+              res->setValue(j, i, cur->getValue(_pos, i)->clone());
+            }
+            res->setValue(j, cur->getNrVars(), 
+                new AqlValue( new Json(_allDocs[_posInAllDocs++]->copy()) ) );
+          }
+          if (_posInAllDocs >= _allDocs.size()) {
+            _posInAllDocs = 0;
+            if (++_pos >= cur->size()) {
+              _buffer.pop_front();
+              delete cur;
+              _pos = 0;
+            }
+          }
+          return res;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief all documents of this collection
+////////////////////////////////////////////////////////////////////////////////
 
       private:
 
         vector<Json*> _allDocs;
-        size_t _pos;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief current position in _allDocs
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t _posInAllDocs;
     };
 
 // -----------------------------------------------------------------------------
