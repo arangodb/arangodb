@@ -37,6 +37,7 @@ namespace triagens {
 
     class Ast;
     struct AstNode;
+    class CalculationPlan;
     class ExecutionPlan;
 
 // -----------------------------------------------------------------------------
@@ -80,6 +81,13 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a calculation node for an arbitrary expression
+////////////////////////////////////////////////////////////////////////////////
+
+        CalculationPlan* createTemporaryCalculation (Ast const*,
+                                                     AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds "previous" as dependency to "plan", returns "plan"
