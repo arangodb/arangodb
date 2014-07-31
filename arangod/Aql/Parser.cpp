@@ -29,7 +29,6 @@
 
 #include "Aql/Parser.h"
 #include "Aql/AstNode.h"
-#include "Basics/StringUtils.h"
 
 using namespace triagens::aql;
 
@@ -49,11 +48,7 @@ Parser::Parser (Query* query)
     _remainingLength(query->queryLength()),
     _offset(0),
     _marker(nullptr),
-    _uniqueId(0),
     _stack() {
-  
-  Aqllex_init(&_scanner);
-  Aqlset_extra(this, _scanner);
   
   _ast = new Ast(query, this);
 
@@ -65,8 +60,6 @@ Parser::Parser (Query* query)
 ////////////////////////////////////////////////////////////////////////////////
 
 Parser::~Parser () {
-  Aqllex_destroy(_scanner);
-
   if (_ast != nullptr) {
     delete _ast;
   }
@@ -118,15 +111,28 @@ ParseResult Parser::parse () {
   // start main scope
   auto scopes = _ast->scopes();
   scopes->start(AQL_SCOPE_MAIN);
+  
+  Aqllex_init(&_scanner);
+  Aqlset_extra(this, _scanner);
 
-  // parse the query string
-  if (Aqlparse(this)) {
-    // lexing/parsing failed
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_PARSE);
+  try {
+    // parse the query string
+    if (Aqlparse(this)) {
+      // lexing/parsing failed
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_PARSE);
+    }
+
+    Aqllex_destroy(_scanner);
+  }
+  catch (...) {
+    Aqllex_destroy(_scanner);
+    throw;
   }
 
   // end main scope
   scopes->endCurrent();
+
+  TRI_ASSERT(scopes->numActive() == 0);
 
   ParseResult result;
   result.collectionNames = _ast->collectionNames();
@@ -134,17 +140,6 @@ ParseResult Parser::parse () {
   result.json            = _ast->toJson(TRI_UNKNOWN_MEM_ZONE);
 
   return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate a new unique name
-////////////////////////////////////////////////////////////////////////////////
-  
-char* Parser::generateName () {
-  std::string const variableName(std::to_string(++_uniqueId)); // c++11
-
-  // register the string and return a copy of it
-  return _ast->registerString(variableName.c_str(), variableName.size(), false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

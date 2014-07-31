@@ -79,9 +79,8 @@ std::string Scope::typeName () const {
 /// @brief adds a variable to the scope
 ////////////////////////////////////////////////////////////////////////////////
 
-void Scope::addVariable (std::string const& name,
-                         Variable* variable) {
-  _variables.insert(std::make_pair(name, variable));
+void Scope::addVariable (Variable* variable) {
+  _variables.insert(std::make_pair(variable->name, variable));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -118,9 +117,7 @@ Variable* Scope::getVariable (char const* name) const {
 
 Scopes::Scopes () 
   : _variables(),
-    _activeScopes(),
-    _nextId(0) {
-
+    _activeScopes() {
   _activeScopes.reserve(4);
 }
 
@@ -203,7 +200,8 @@ void Scopes::endNested () {
 /// @brief adds a variable to the current scope
 ////////////////////////////////////////////////////////////////////////////////
 
-Variable* Scopes::addVariable (char const* name,
+Variable* Scopes::addVariable (VariableId id,
+                               char const* name,
                                bool isUserDefined) {
   TRI_ASSERT(! _activeScopes.empty());
   TRI_ASSERT(name != nullptr);
@@ -216,8 +214,6 @@ Variable* Scopes::addVariable (char const* name,
       return 0;
     }
   }
-
-  VariableId id = ++_nextId;
 
   // if this fails, the exception will propagate and be caught somewhere else
   auto variable = new Variable(name, id, isUserDefined);
@@ -233,7 +229,7 @@ Variable* Scopes::addVariable (char const* name,
   }
 
   // if this fails, there won't be a memleak
-  _activeScopes.back()->addVariable(std::string(name), variable);
+  _activeScopes.back()->addVariable(variable);
 
   return variable;
 }

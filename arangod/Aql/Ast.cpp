@@ -58,8 +58,8 @@ Ast::Ast (Query* query,
           Parser* parser)
   : _query(query),
     _parser(parser),
+    _variableId(0),
     _nodes(),
-    _strings(),
     _scopes(),
     _bindParameters(),
     _collectionNames(),
@@ -72,7 +72,6 @@ Ast::Ast (Query* query,
   TRI_ASSERT(_parser != nullptr);
 
   _nodes.reserve(32);
-  _strings.reserve(32);
 
   startSubQuery();
 
@@ -84,11 +83,6 @@ Ast::Ast (Query* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 Ast::~Ast () {
-  // free strings
-  for (auto it = _strings.begin(); it != _strings.end(); ++it) {
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, const_cast<char*>(*it));
-  }
-
   // free nodes
   for (auto it = _nodes.begin(); it != _nodes.end(); ++it) {
     delete (*it);
@@ -100,7 +94,19 @@ Ast::~Ast () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generate a new unique variable name
+////////////////////////////////////////////////////////////////////////////////
+  
+char const* Ast::generateName () {
+  std::string const variableName(std::to_string(nextVariableId())); // to_string: c++11
+
+  // register the string and return a copy of it
+  return _query->registerString(variableName.c_str(), variableName.size(), false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief convert the AST into JSON
+/// the caller is responsible for freeing the JSON later
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* Ast::toJson (TRI_memory_zone_t* zone) {
@@ -128,47 +134,6 @@ void Ast::addOperation (AstNode* node) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief register a string
-////////////////////////////////////////////////////////////////////////////////
-
-char* Ast::registerString (char const* p, 
-                           size_t length,
-                           bool mustUnescape) {
-
-  if (p == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  if (length == 0) {
-    static char const* empty = "";
-    // optimisation for the empty string
-    return const_cast<char*>(empty);
-  }
-
-  char* copy = nullptr;
-  if (mustUnescape) {
-    size_t outLength;
-    copy = TRI_UnescapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, p, length, &outLength);
-  }
-  else {
-    copy = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, p, length);
-  }
-
-  if (copy == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  try {
-    _strings.push_back(copy);
-  }
-  catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  return copy;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST for node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -183,27 +148,6 @@ AstNode* Ast::createNodeFor (char const* variableName,
   AstNode* variable = createNodeVariable(variableName, true);
   node->addMember(variable);
   node->addMember(expression);
-
-  return node;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST for node
-////////////////////////////////////////////////////////////////////////////////
-
-AstNode* Ast::createNodeFor (char const* variable1Name,
-                             char const* variable2Name) {
-  if (variable1Name == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  AstNode* node = createNode(NODE_TYPE_FOR);
-
-  AstNode* variable = createNodeVariable(variable1Name, true);
-  node->addMember(variable);
-  
-  auto reference = createNodeReference(variable2Name);
-  node->addMember(reference);
 
   return node;
 }
@@ -237,24 +181,6 @@ AstNode* Ast::createNodeFilter (AstNode const* expression) {
   node->setIntValue(static_cast<int64_t>(FILTER_UNKNOWN));
 
   node->addMember(expression);
-
-  return node;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST filter node
-////////////////////////////////////////////////////////////////////////////////
-
-AstNode* Ast::createNodeFilter (char const* variableName) {
-  if (variableName == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  AstNode* node = createNode(NODE_TYPE_FILTER);
-  node->setIntValue(static_cast<int64_t>(FILTER_UNKNOWN));
-
-  auto reference = createNodeReference(variableName);
-  node->addMember(reference);
 
   return node;
 }
@@ -427,7 +353,7 @@ AstNode* Ast::createNodeVariable (char const* name,
   AstNode* node = createNode(NODE_TYPE_VARIABLE);
   node->setStringValue(name);
 
-  auto variable = _scopes.addVariable(name, isUserDefined);
+  auto variable = _scopes.addVariable(nextVariableId(), name, isUserDefined);
   node->setData(static_cast<void*>(variable));
 
   return node;
@@ -742,7 +668,7 @@ AstNode* Ast::createNodeFunctionCall (char const* functionName,
   }
 
   std::string const normalizedName = normalizeFunctionName(functionName);
-  char* fname = registerString(normalizedName.c_str(), normalizedName.size(), false);
+  char* fname = _query->registerString(normalizedName.c_str(), normalizedName.size(), false);
 
   AstNode* node;
 
@@ -824,7 +750,7 @@ void Ast::injectBindParameters (BindParameters& parameters) {
         }
 
         // turn node into a collection node
-        char const* name = registerString(value->_value._string.data, value->_value._string.length - 1, false);
+        char const* name = _query->registerString(value->_value._string.data, value->_value._string.length - 1, false);
 
         node = createNodeCollection(name);
 
@@ -1300,6 +1226,7 @@ AstNode* Ast::optimizeTernaryOperator (AstNode* node) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimizes a reference to a variable
+/// references are replaced with constants if possible
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::optimizeReference (AstNode* node) {
@@ -1312,6 +1239,7 @@ AstNode* Ast::optimizeReference (AstNode* node) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
+  // constant propagation
   if (variable->constValue() == nullptr) {
     // note which variables we are reading
     variable->increaseReferenceCount();
@@ -1319,8 +1247,6 @@ AstNode* Ast::optimizeReference (AstNode* node) {
     return node;
   }
 
-// TODO: re-activate constant propagation??
-return node; 
   return static_cast<AstNode*>(variable->constValue());
 }
 
@@ -1387,8 +1313,6 @@ AstNode* Ast::optimizeLet (AstNode* node,
     }  
   }
   else if (pass == 1) {
-    /* TODO: re-add reference counting
-
     if (! v->isReferenceCounted()) {
       // this optimizes away the assignment of variables which are never read
       // (i.e. assigned-only variables). this is currently not free of side-effects:
@@ -1403,7 +1327,6 @@ AstNode* Ast::optimizeLet (AstNode* node,
       // variables
       return createNodeNop();
     }
-    */
   }
 
   return node; 
@@ -1452,7 +1375,7 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
   }
 
   if (json->_type == TRI_JSON_STRING) {
-    char const* value = registerString(json->_value._string.data, json->_value._string.length - 1, false);
+    char const* value = _query->registerString(json->_value._string.data, json->_value._string.length - 1, false);
     return createNodeValueString(value);
   }
 
@@ -1479,7 +1402,7 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
-      char const* attributeName = registerString(key->_value._string.data, key->_value._string.length - 1, false);
+      char const* attributeName = _query->registerString(key->_value._string.data, key->_value._string.length - 1, false);
       
       node->addMember(createNodeArrayElement(attributeName, nodeFromJson(value)));
     }
