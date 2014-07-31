@@ -62,6 +62,7 @@ add_executable(
     Aql/BindParameters.cpp
     Aql/ExecutionBlock.cpp
     Aql/ExecutionPlan.cpp
+    Aql/Expression.cpp
     Aql/grammar.cpp
     Aql/Parser.cpp
     Aql/PlanGenerator.cpp
