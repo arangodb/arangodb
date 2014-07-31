@@ -48,6 +48,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/PlanGenerator.cpp \
 	arangod/Aql/Query.cpp \
 	arangod/Aql/Scopes.cpp \
+	arangod/Aql/Types.cpp \
 	arangod/Aql/tokens.cpp \
 	arangod/Aql/V8Executor.cpp \
 	arangod/Aql/VariableGenerator.cpp \
