@@ -29,6 +29,7 @@
 
 #include "Aql/Expression.h"
 #include "Aql/Types.h"
+#include "Aql/V8Executor.h"
 #include "Utils/Exception.h"
 
 using namespace triagens::aql;
@@ -41,10 +42,13 @@ using namespace triagens::aql;
 /// @brief create the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-Expression::Expression (AstNode const* node)
-  : _node(node) {
+Expression::Expression (V8Executor* executor,
+                        AstNode const* node)
+  : _executor(executor),
+    _node(node) {
 
-  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(_executor != nullptr);
+  TRI_ASSERT(_node != nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
