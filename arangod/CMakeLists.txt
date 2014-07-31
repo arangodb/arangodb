@@ -69,6 +69,7 @@ add_executable(
     Aql/Scopes.cpp
     Aql/tokens.cpp
     Aql/V8Executor.cpp
+    Aql/VariableGenerator.cpp
     BitIndexes/bitarray.cpp
     BitIndexes/bitarrayIndex.cpp
     CapConstraint/cap-constraint.cpp

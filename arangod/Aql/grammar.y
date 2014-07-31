@@ -440,7 +440,7 @@ expression:
       AstNode* node = parser->ast()->endSubQuery();
       parser->ast()->scopes()->endCurrent();
 
-      char const* variableName = parser->generateName();
+      char const* variableName = parser->ast()->variables()->nextName().c_str();
       auto subQuery = parser->ast()->createNodeLet(variableName, node, false);
       parser->ast()->addOperation(subQuery);
 
@@ -485,7 +485,7 @@ function_name:
       std::string temp($1);
       temp.append("::");
       temp.append($3);
-      $$ = parser->ast()->registerString(temp.c_str(), temp.size(), false);
+      $$ = parser->query()->registerString(temp.c_str(), temp.size(), false);
 
       if ($$ == nullptr) {
         ABORT_OOM
@@ -673,7 +673,7 @@ reference:
       // expanded variable access, e.g. variable[*]
 
       // create a temporary iterator variable
-      char const* iteratorName = parser->generateName();
+      char const* iteratorName = parser->ast()->variables()->nextName().c_str();
       auto iterator = parser->ast()->createNodeIterator(iteratorName, $1);
 
       parser->pushStack(iterator);
@@ -685,7 +685,7 @@ reference:
       auto iterator = static_cast<AstNode*>(parser->popStack());
       auto expand = parser->ast()->createNodeExpand(iterator, $4);
       
-      char const* variableName = parser->generateName();
+      char const* variableName = parser->ast()->variables()->nextName().c_str();
       auto let = parser->ast()->createNodeLet(variableName, expand, false);
       parser->ast()->addOperation(let);
       

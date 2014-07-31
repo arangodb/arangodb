@@ -58,9 +58,9 @@ Ast::Ast (Query* query,
           Parser* parser)
   : _query(query),
     _parser(parser),
-    _variableId(0),
     _nodes(),
     _scopes(),
+    _variables(),
     _bindParameters(),
     _collectionNames(),
     _root(nullptr),
@@ -92,17 +92,6 @@ Ast::~Ast () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate a new unique variable name
-////////////////////////////////////////////////////////////////////////////////
-  
-char const* Ast::generateName () {
-  std::string const variableName(std::to_string(nextVariableId())); // to_string: c++11
-
-  // register the string and return a copy of it
-  return _query->registerString(variableName.c_str(), variableName.size(), false);
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert the AST into JSON
@@ -350,10 +339,10 @@ AstNode* Ast::createNodeVariable (char const* name,
     return nullptr;
   }
   
-  AstNode* node = createNode(NODE_TYPE_VARIABLE);
-  node->setStringValue(name);
+  auto variable = _variables.createVariable(name, isUserDefined);
+  _scopes.addVariable(variable);
 
-  auto variable = _scopes.addVariable(nextVariableId(), name, isUserDefined);
+  AstNode* node = createNode(NODE_TYPE_VARIABLE);
   node->setData(static_cast<void*>(variable));
 
   return node;

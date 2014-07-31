@@ -92,6 +92,14 @@ bool Scope::existsVariable (char const* name) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a variable exists in the scope
+////////////////////////////////////////////////////////////////////////////////
+
+bool Scope::existsVariable (std::string const& name) const {
+  return (getVariable(name) != nullptr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a variable
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -99,6 +107,20 @@ Variable* Scope::getVariable (char const* name) const {
   std::string const varname(name);
 
   auto it = _variables.find(varname);
+
+  if (it == _variables.end()) {
+    return nullptr;
+  }
+
+  return (*it).second;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a variable
+////////////////////////////////////////////////////////////////////////////////
+
+Variable* Scope::getVariable (std::string const& name) const {
+  auto it = _variables.find(name);
 
   if (it == _variables.end()) {
     return nullptr;
@@ -116,8 +138,7 @@ Variable* Scope::getVariable (char const* name) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 Scopes::Scopes () 
-  : _variables(),
-    _activeScopes() {
+  : _activeScopes() {
   _activeScopes.reserve(4);
 }
 
@@ -128,10 +149,6 @@ Scopes::Scopes ()
 Scopes::~Scopes () {
   for (auto it = _activeScopes.begin(); it != _activeScopes.end(); ++it) {
     delete (*it);
-  }
-
-  for (auto it = _variables.begin(); it != _variables.end(); ++it) {
-    delete (*it).second;
   }
 }
 
@@ -200,38 +217,21 @@ void Scopes::endNested () {
 /// @brief adds a variable to the current scope
 ////////////////////////////////////////////////////////////////////////////////
 
-Variable* Scopes::addVariable (VariableId id,
-                               char const* name,
-                               bool isUserDefined) {
+void Scopes::addVariable (Variable* variable) {
   TRI_ASSERT(! _activeScopes.empty());
-  TRI_ASSERT(name != nullptr);
+  TRI_ASSERT(variable != nullptr);
 
   for (auto it = _activeScopes.rbegin(); it != _activeScopes.rend(); ++it) {
     auto scope = (*it);
 
-    if (scope->existsVariable(name)) {
+    if (scope->existsVariable(variable->name)) {
       // duplicate variable name
-      return 0;
+      THROW_ARANGO_EXCEPTION_STRING(TRI_ERROR_QUERY_VARIABLE_REDECLARED, variable->name);
     }
-  }
-
-  // if this fails, the exception will propagate and be caught somewhere else
-  auto variable = new Variable(name, id, isUserDefined);
-
-  try {
-    // if this fails, we have to delete the variable
-    _variables.insert(std::make_pair(id, variable));
-  }
-  catch (...) {
-    // prevent memleak
-    delete variable;
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   // if this fails, there won't be a memleak
   _activeScopes.back()->addVariable(variable);
-
-  return variable;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -258,20 +258,6 @@ Variable* Scopes::getVariable (char const* name) const {
   }
 
   return nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a variable by id - this does not respect the scopes!
-////////////////////////////////////////////////////////////////////////////////
-        
-Variable* Scopes::getVariable (VariableId id) const {
-  auto it = _variables.find(id);
-
-  if (it == _variables.end()) {
-    return nullptr;
-  }
-
-  return (*it).second;
 }
 
 // -----------------------------------------------------------------------------

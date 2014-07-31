@@ -50,6 +50,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/Scopes.cpp \
 	arangod/Aql/tokens.cpp \
 	arangod/Aql/V8Executor.cpp \
+	arangod/Aql/VariableGenerator.cpp \
 	arangod/BitIndexes/bitarray.cpp \
 	arangod/BitIndexes/bitarrayIndex.cpp \
 	arangod/CapConstraint/cap-constraint.cpp \

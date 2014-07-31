@@ -223,7 +223,7 @@ namespace triagens {
         BindParameters             _bindParameters;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief all strings created in the AST - will be used for freeing them later
+/// @brief all strings created in the query - used for easy memory deallocation
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<char const*>   _strings;

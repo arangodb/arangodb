@@ -38,7 +38,6 @@ namespace triagens {
     class Ast;
     struct AstNode;
     class ExecutionPlan;
-    class Query;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class PlanGenerator
@@ -74,8 +73,7 @@ namespace triagens {
 /// @brief create an initial execution plan from an abstract syntax tree
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionPlan* fromAst (Query*,
-                                Ast const*); 
+        ExecutionPlan* fromAst (Ast const*); 
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -94,7 +92,7 @@ namespace triagens {
 /// @brief create an execution plan element from an AST FOR node
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionPlan* fromNodeFor (Query*,
+        ExecutionPlan* fromNodeFor (Ast const*,
                                     ExecutionPlan*,
                                     AstNode const*);
 
@@ -102,7 +100,7 @@ namespace triagens {
 /// @brief create an execution plan element from an AST FILTER node
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionPlan* fromNodeFilter (Query*,
+        ExecutionPlan* fromNodeFilter (Ast const*,
                                        ExecutionPlan*,
                                        AstNode const*);
 
@@ -110,7 +108,7 @@ namespace triagens {
 /// @brief create an execution plan element from an AST LET node
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionPlan* fromNodeLet (Query*,
+        ExecutionPlan* fromNodeLet (Ast const*,
                                     ExecutionPlan*,
                                     AstNode const*);
 
@@ -118,7 +116,7 @@ namespace triagens {
 /// @brief create an execution plan element from an AST SORT node
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionPlan* fromNodeSort (Query*,
+        ExecutionPlan* fromNodeSort (Ast const*,
                                      ExecutionPlan*,
                                      AstNode const*);
 
@@ -126,7 +124,7 @@ namespace triagens {
 /// @brief create an execution plan element from an AST COLLECT node
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionPlan* fromNodeCollect (Query*,
+        ExecutionPlan* fromNodeCollect (Ast const*,
                                         ExecutionPlan*,
                                         AstNode const*);
 
@@ -134,7 +132,7 @@ namespace triagens {
 /// @brief create an execution plan element from an AST LIMIT node
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionPlan* fromNodeLimit (Query*,
+        ExecutionPlan* fromNodeLimit (Ast const*,
                                       ExecutionPlan*,
                                       AstNode const*);
 
@@ -142,7 +140,7 @@ namespace triagens {
 /// @brief create an execution plan element from an AST RETURN node
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionPlan* fromNodeReturn (Query*,
+        ExecutionPlan* fromNodeReturn (Ast const*,
                                        ExecutionPlan*,
                                        AstNode const*);
 
@@ -150,7 +148,7 @@ namespace triagens {
 /// @brief create an execution plan element from an AST REMOVE node
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionPlan* fromNodeRemove (Query*,
+        ExecutionPlan* fromNodeRemove (Ast const*,
                                        ExecutionPlan*,
                                        AstNode const*);
 
@@ -158,7 +156,7 @@ namespace triagens {
 /// @brief create an execution plan element from an AST INSERT node
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionPlan* fromNodeInsert (Query*,
+        ExecutionPlan* fromNodeInsert (Ast const*,
                                        ExecutionPlan*,
                                        AstNode const*);
 
@@ -166,7 +164,7 @@ namespace triagens {
 /// @brief create an execution plan element from an AST UPDATE node
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionPlan* fromNodeUpdate (Query*,
+        ExecutionPlan* fromNodeUpdate (Ast const*,
                                        ExecutionPlan*,
                                        AstNode const*);
 
@@ -174,7 +172,7 @@ namespace triagens {
 /// @brief create an execution plan element from an AST REPLACE node
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionPlan* fromNodeReplace (Query*,
+        ExecutionPlan* fromNodeReplace (Ast const*,
                                         ExecutionPlan*,
                                         AstNode const*);
 
@@ -182,7 +180,7 @@ namespace triagens {
 /// @brief create an execution plan from an abstract syntax tree node
 ////////////////////////////////////////////////////////////////////////////////
   
-        ExecutionPlan* fromNode (Query*,
+        ExecutionPlan* fromNode (Ast const*,
                                  AstNode const*);
 
 // -----------------------------------------------------------------------------
