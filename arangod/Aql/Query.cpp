@@ -184,10 +184,10 @@ QueryResult Query::execute () {
         exec->initialize();
         exec->execute();
  
-        shared_ptr<AqlItem> value;
+        AqlItemBlock* value;
         while (nullptr != (value = exec->getOne())) {
           std::cout << value->getValue(0, 0)->toString() << std::endl;
-          value.reset();
+          delete value;
         }
 
         exec->shutdown();

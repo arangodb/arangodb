@@ -35,7 +35,7 @@
 namespace triagens {
   namespace aql {
 
-    struct AqlItem;
+    class AqlItemBlock;
     struct AqlValue;
     class V8Executor;
     struct V8Expression;
@@ -99,7 +99,8 @@ namespace triagens {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlValue* execute (AqlItem*);
+        AqlValue* execute (AqlItemBlock*, 
+                           size_t);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

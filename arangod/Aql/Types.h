@@ -32,6 +32,7 @@
 
 #include "VocBase/document-collection.h"
 #include "Aql/AstNode.h"
+#include "Aql/Variable.h"
 
 namespace triagens {
   namespace aql {
@@ -41,7 +42,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 
-    struct AqlItem;
+    class AqlItemBlock;
 
     struct AqlValue {
 
@@ -58,9 +59,9 @@ namespace triagens {
       };
 
       union {
-        triagens::basics::Json* _json;
-        std::vector<shared_ptr<AqlItem> >*  _vector;
-        Range                   _range;
+        triagens::basics::Json*     _json;
+        std::vector<AqlItemBlock*>* _vector;
+        Range                       _range;
       };
       
       AqlValueType _type;
@@ -69,7 +70,7 @@ namespace triagens {
         : _json(json), _type(JSON) {
       }
 
-      AqlValue (std::vector<shared_ptr<AqlItem> >* vector)
+      AqlValue (std::vector<AqlItemBlock*>* vector)
         : _vector(vector), _type(DOCVEC) {
       }
 
@@ -77,26 +78,18 @@ namespace triagens {
         : _range(low, high), _type(RANGE) {
       }
 
-      ~AqlValue () {
-        switch (_type) {
-          case JSON:
-            delete _json;
-            break;
-          case DOCVEC:
-            delete _vector;
-            break;
-          case RANGE:
-            break;
-        }
-      }
+      ~AqlValue ();
+
+      AqlValue* clone () const;
 
       std::string toString () {
         switch (_type) {
-          case JSON:
+          case JSON: {
             return _json->toString();
+          }
           case DOCVEC: {
             std::stringstream s;
-            s << "I am a DOCVEC of length " << _vector->size() << ".";
+            s << "I am a DOCVEC with " << _vector->size() << " blocks.";
             return s.str();
           }
           case RANGE: {
@@ -111,73 +104,117 @@ namespace triagens {
 
     };
 
-    struct AqlItem {
-      shared_ptr<AqlItem> _outer;
-      AqlValue**          _vars;
-      int32_t             _nrvars;
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      AqlItemBlock
+// -----------------------------------------------------------------------------
 
-      AqlItem (int nrvars)
-        : _outer(nullptr), _nrvars(nrvars) {
-        if (nrvars > 0) {
-          _vars = new AqlValue* [nrvars];
-          for (int i = 0; i < nrvars; i++) {
-            _vars[i] = nullptr;
+    class AqlItemBlock {
+
+        AqlValue** _data;
+        size_t     _nrItems;
+        VariableId _nrVars;
+
+      public:
+
+        AqlItemBlock (size_t nrItems, VariableId nrVars)
+          : _nrItems(nrItems), _nrVars(nrVars) {
+          TRI_ASSERT(nrItems > 0 && nrVars > 0);
+          _data = new AqlValue* [nrItems * nrVars];
+          for (size_t i = 0; i < nrItems * nrVars; i++) {
+            _data[i] = nullptr;
           }
         }
-        else {
-          _vars = nullptr;
-        }
-      }
-
-      AqlItem (shared_ptr<AqlItem> outer, int nrvars)
-        : _outer(outer), _nrvars(nrvars) {
-        if (nrvars > 0) {
-          _vars = new AqlValue* [nrvars];
-          for (int i = 0; i < nrvars; i++) {
-            _vars[i] = nullptr;
-          }
-        }
-        else {
-          _vars = nullptr;
-        }
-      }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-      ~AqlItem () {
-        if (_vars != nullptr) {
-          for (int i = 0; i < _nrvars; i++) {
-            delete _vars[i];
+        ~AqlItemBlock () {
+          std::unordered_set<AqlValue*> cache;
+          for (size_t i = 0; i < _nrItems * _nrVars; i++) {
+            if (_data[i] != nullptr) {
+              auto it = cache.find(_data[i]);
+              if (it == cache.end()) {
+                cache.insert(_data[i]);
+                delete _data[i];
+              }
+            }
           }
-          delete[] _vars;
+          delete[] _data;
         }
-      }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getValue, get the current value of a variable or attribute
+/// @brief getValue, get the value of a variable
 ////////////////////////////////////////////////////////////////////////////////
 
-      AqlValue* getValue (int up, int index) {
-        AqlItem* p = this;
-        for (int i = 0; i < up; i++) {
-          p = p->_outer.get();
-        }
-        return p->_vars[index];
+      AqlValue* getValue (size_t index, VariableId varNr) {
+        return _data[index * _nrVars + varNr - 1];
       }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setValue, set the current value of a variable or attribute
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setValue (int up, int index, AqlValue* zeug) {
-        AqlItem* p = this;
-        for (int i = 0; i < up; i++) {
-          p = p->_outer.get();
-        }
-        p->_vars[index] = zeug;
+      void setValue (size_t index, VariableId varNr, AqlValue* zeug) {
+        _data[index * _nrVars + varNr - 1] = zeug;
       }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getter for _nrVars
+////////////////////////////////////////////////////////////////////////////////
+
+      VariableId getNrVars () {
+        return _nrVars;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getter for _nrItems
+////////////////////////////////////////////////////////////////////////////////
+
+      size_t size () {
+        return _nrItems;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getter for _data
+////////////////////////////////////////////////////////////////////////////////
+
+      AqlValue** getData () {
+        return _data;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief slice/clone
+////////////////////////////////////////////////////////////////////////////////
+
+      AqlItemBlock* slice (size_t from, size_t to) {
+        TRI_ASSERT(from < to && to <= _nrItems);
+        std::unordered_map<AqlValue*, AqlValue*> cache;
+        auto res = new AqlItemBlock(to-from, _nrVars);
+        for (size_t row = from; row < to; row++) {
+          for (VariableId col = 0; col < _nrVars; col++) {
+            AqlValue* a = _data[row * _nrVars + col];
+            auto it = cache.find(a);
+            if (it == cache.end()) {
+              AqlValue* b = a->clone();
+              res->_data[(row-from) * _nrVars + col] = b;
+              cache.insert(make_pair(a,b));
+            }
+            else {
+              res->_data[(row-from) * _nrVars + col] = it->second;
+            }
+          }
+        }
+        return res;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief splice multiple blocks, note that the new block now owns all
+/// AqlValue pointers in the old blocks, therefore, the latter are all
+/// set to nullptr, just to be sure.
+////////////////////////////////////////////////////////////////////////////////
+
+      static AqlItemBlock* splice(std::vector<AqlItemBlock*>& blocks);
 
     };
 

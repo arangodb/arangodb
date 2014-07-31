@@ -42,10 +42,14 @@ struct TRI_json_s;
 namespace triagens {
   namespace aql {
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    ExecutionBlock
+// -----------------------------------------------------------------------------
+
     class ExecutionBlock {
       public:
         ExecutionBlock (ExecutionPlan const* ep)
-          : _exePlan(ep), _done(false), _nrVars(10), _depth(0) { }
+          : _exePlan(ep), _done(false), _nrVars(3), _depth(0) { }
 
         virtual ~ExecutionBlock ();
           
@@ -113,6 +117,10 @@ namespace triagens {
 
         void walk (WalkerWorker& worker);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief static analysis
+////////////////////////////////////////////////////////////////////////////////
+
         struct VarDefPlace {
           int depth;
           int index;
@@ -125,174 +133,364 @@ namespace triagens {
 
         void staticAnalysis ();
 
-        // Methods for execution:
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Methods for execution
+/// Lifecycle is:
+///    staticAnalysis()
+///    initialize()
+///    possibly repeat many times:
+///      bind(...)
+///      execute(...)
+///      // use cursor functionality
+///    shutdown()
+/// It should be possible to perform the sequence from initialize to shutdown
+/// multiple times.
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize
+////////////////////////////////////////////////////////////////////////////////
+
         virtual int initialize () {
+          int res;
           for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
-            (*it)->initialize();
+            res = (*it)->initialize();
+            if (res != TRI_ERROR_NO_ERROR) {
+              return res;
+            }
           }
-          // FIXME: report errors from above
           return TRI_ERROR_NO_ERROR;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief bind
+////////////////////////////////////////////////////////////////////////////////
+
         virtual int bind (std::map<std::string, struct TRI_json_s*>* params);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getParameters
+////////////////////////////////////////////////////////////////////////////////
 
         std::map<std::string, struct TRI_json_s*>* getParameters ();
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute
+////////////////////////////////////////////////////////////////////////////////
+
         virtual int execute () {
+          int res;
           for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
-            (*it)->execute();
+            res = (*it)->execute();
+            if (res != TRI_ERROR_NO_ERROR) {
+              return res;
+            }
           }
-          // FIXME: report errors from above
           _done = false;
           return TRI_ERROR_NO_ERROR;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdown
+////////////////////////////////////////////////////////////////////////////////
+
         virtual int shutdown () {
+          int res;
           for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
-            (*it)->shutdown();
-          }
-          // FIXME: report errors from above
-          return TRI_ERROR_NO_ERROR;
-        }
-
-      protected:
-        bool bufferMore (size_t atLeast, size_t atMost) {
-          std::vector<shared_ptr<AqlItem> > docs 
-            = _dependencies[0]->getSome(atLeast, atMost);
-          if (docs.size() == 0) {
-            return false;
-          }
-          for (auto it = docs.begin(); it != docs.end(); ++it) {
-            _buffer.push_back(*it);
-          }
-          return true;
-        }
-
-      public:
-        virtual shared_ptr<AqlItem> getOne () {
-          shared_ptr<AqlItem> res;
-          if (_buffer.size() != 0) {
-            res = _buffer.front();
-            _buffer.pop_front();
-            return res;
-          }
-          return _dependencies[0]->getOne();
-        }
-
-        virtual std::vector<shared_ptr<AqlItem> > getSome (size_t atLeast, 
-                                                           size_t atMost) {
-          std::vector<shared_ptr<AqlItem> > res;
-          if (_done) {
-            return res;
-          }
-          if (_buffer.size() < atLeast) {
-            if (! bufferMore(atLeast-_buffer.size(), atMost-_buffer.size()) &&
-                _buffer.size() == 0) {
-              _done = true;
+            res = (*it)->shutdown();
+            if (res != TRI_ERROR_NO_ERROR) {
               return res;
             }
           }
-          size_t nr = _buffer.size();
-          if (nr > atMost) {
-            nr = atMost;
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the following is internal to pull one more block and append it to
+/// our _buffer deque. Returns true if a new block was appended and false if
+/// the dependent node is exhausted.
+////////////////////////////////////////////////////////////////////////////////
+
+      protected:
+        bool getBlock (size_t atLeast, size_t atMost) {
+          AqlItemBlock* docs = _dependencies[0]->getSome(atLeast, atMost);
+          if (docs == nullptr) {
+            return false;
           }
-          while (nr-- > 0) {
-            res.push_back(_buffer.front());
+          _buffer.push_back(docs);
+          return true;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getOne, gets one more document
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+        virtual AqlItemBlock* getOne () {
+          if (_done) {
+            return nullptr;
+          }
+
+          if (_buffer.size() == 0) {
+            if (! getBlock(1, 1000)) {
+              _done = true;
+              return nullptr;
+            }
+            _pos = 0;
+          }
+
+          // Here, _buffer.size() is > 0 and _pos points to a valid place
+          // in it.
+
+          AqlItemBlock* res;
+          AqlItemBlock* cur;
+          cur = _buffer.front();
+          res = cur->slice(_pos, _pos+1);
+          _pos++;
+          if (_pos >= cur->size()) {
             _buffer.pop_front();
+            delete cur;
+            _pos = 0;
           }
           return res;
+        }
+
+        virtual AqlItemBlock* getSome (size_t atLeast, 
+                                       size_t atMost) {
+          if (_done) {
+            return nullptr;
+          }
+
+          // Here, _buffer.size() is > 0 and _pos points to a valid place
+          // in it.
+          size_t total = 0;
+          vector<AqlItemBlock*> collector;
+          AqlItemBlock* res;
+          while (total < atLeast) {
+            if (_buffer.size() == 0) {
+              if (! getBlock(atLeast-total, atMost-total)) {
+                _done = true;
+                break;
+              }
+            }
+            AqlItemBlock* cur = _buffer.front();
+            if (cur->size() - _pos + total > atMost) {
+              // The current block is too large for atMost:
+              collector.push_back(cur->slice(_pos, _pos + (atMost-total)));
+              _pos += atMost - total;
+              total = atMost;
+            }
+            else if (_pos > 0) {
+              // The current block fits into our result, but it is already
+              // half-eaten:
+              collector.push_back(cur->slice(_pos, cur->size()));
+              total += cur->size() - _pos;
+              delete cur;
+              _buffer.pop_front();
+              _pos = 0;
+            } 
+            else {
+              // The current block fits into our result and is fresh:
+              collector.push_back(cur);
+              total += cur->size();
+              _buffer.pop_front();
+              _pos = 0;
+            }
+          }
+          if (collector.size() == 0) {
+            return nullptr;
+          }
+          else if (collector.size() == 1) {
+            return collector[0];
+          }
+          else {
+            res = AqlItemBlock::splice(collector);
+            for (auto it = collector.begin(); 
+                 it != collector.end(); ++it) {
+              delete (*it);
+            }
+            return res;
+          }
         }
 
         bool skip (int number);
 
         virtual int64_t count () {
-          return _dependencies[0]->count();
+          return 0;
         }
 
         virtual int64_t remaining () {
-          return _dependencies[0]->remaining() + _buffer.size();
+          return 0;
         }
 
         ExecutionPlan const* getPlan () {
           return _exePlan;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief our corresponding ExecutionPlan node
+////////////////////////////////////////////////////////////////////////////////
+
       protected:
         ExecutionPlan const* _exePlan;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief our dependent nodes
+////////////////////////////////////////////////////////////////////////////////
+
         std::vector<ExecutionBlock*> _dependencies;
-        std::deque<shared_ptr<AqlItem> > _buffer;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief this is our buffer for the items, it is a deque of AqlItemBlocks
+////////////////////////////////////////////////////////////////////////////////
+
+        std::deque<AqlItemBlock*> _buffer;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief current working position in the first entry of _buffer
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t _pos;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief if this is set, we are done, this is reset to false by execute()
+////////////////////////////////////////////////////////////////////////////////
+
         bool _done;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief this is the number of variables in items coming out of this node
+////////////////////////////////////////////////////////////////////////////////
+
         VariableId _nrVars;  // will be filled in by staticAnalysis
-        int _depth;          // nesting depth of contexts, i.e. AqlItems,
-                             // coming out of this node
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief depth of frames (number of FOR statements here or above)
+////////////////////////////////////////////////////////////////////////////////
+
+        int _depth;  // will be filled in by staticAnalysis
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a static factory for ExecutionBlocks from ExecutionPlans
+////////////////////////////////////////////////////////////////////////////////
 
       public:
-
         static ExecutionBlock* instanciatePlan (ExecutionPlan const* ep);
 
     };
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    SingletonBlock
+// -----------------------------------------------------------------------------
 
     class SingletonBlock : public ExecutionBlock {
 
       public:
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
         SingletonBlock (SingletonPlan const* ep)
           : ExecutionBlock(ep) {
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
         ~SingletonBlock () {
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize, just call base class
+////////////////////////////////////////////////////////////////////////////////
 
         int initialize () {
           ExecutionBlock::initialize();
           return TRI_ERROR_NO_ERROR;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute, just call base class
+////////////////////////////////////////////////////////////////////////////////
+
         int execute () {
           ExecutionBlock::execute();
           return TRI_ERROR_NO_ERROR;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdown, just call base class
+////////////////////////////////////////////////////////////////////////////////
+
         int shutdown () {
           return TRI_ERROR_NO_ERROR;
         }
 
-        shared_ptr<AqlItem> getOne () {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getOne
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlItemBlock* getOne () {
           if (_done) {
             return nullptr;
           }
 
-          shared_ptr<AqlItem> res(new AqlItem(_nrVars));
+          AqlItemBlock* res(new AqlItemBlock(1, _nrVars));
           _done = true;
           return res;
         }
 
-        vector<shared_ptr<AqlItem> > getSome (size_t atLeast, size_t atMost) {
-          vector<shared_ptr<AqlItem> > res;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSome
+////////////////////////////////////////////////////////////////////////////////
 
+        AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
           if (_done) {
-            return res;
+            return nullptr;
           }
 
-          res.emplace_back(new AqlItem(_nrVars));
+          AqlItemBlock* res(new AqlItemBlock(1, _nrVars));
           _done = true;
           return res;
         }
 
     };
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                          EnumerateCollectionBlock
+// -----------------------------------------------------------------------------
+
     class EnumerateCollectionBlock : public ExecutionBlock {
 
       public:
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
         EnumerateCollectionBlock (EnumerateCollectionPlan const* ep)
-          : ExecutionBlock(ep) {
+          : ExecutionBlock(ep), _posInAllDocs(0) {
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
         ~EnumerateCollectionBlock () {
+          if (_allDocs.size() > 0) {
+            for (auto it = _allDocs.begin(); it != _allDocs.end(); ++it) {
+              delete *it;
+            }
+            _allDocs.clear();
+          }
         }
         
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize, here we fetch all docs from the database
+////////////////////////////////////////////////////////////////////////////////
+
         int initialize () {
           // TODO: this is very very inefficient
           // it must be implemented properly for production
@@ -327,45 +525,139 @@ namespace triagens {
           if (_allDocs.size() == 0) {
             _done = true;
           }
-          _buffer.clear();
 
           return res;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute, here we release our docs from this collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int execute () {
+          int res = ExecutionBlock::execute();
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
+          if (_allDocs.size() == 0) {
+            _done = true;
+          }
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdown, here we release our docs from this collection
+////////////////////////////////////////////////////////////////////////////////
+
         int shutdown () {
           int res = ExecutionBlock::shutdown();  // Tell all dependencies
+          for (auto it = _allDocs.begin(); it != _allDocs.end(); ++it) {
+            delete *it;
+          }
           _allDocs.clear();
           return res;
         }
 
-        shared_ptr<AqlItem> getOne () {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getOne
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlItemBlock* getOne () {
           if (_done) {
             return nullptr;
           }
           if (_buffer.size() == 0) {
-            if (! bufferMore(1,1)) {
+            if (! ExecutionBlock::getBlock(1, 1000)) {
               _done = true;
               return nullptr;
             }
-            _pos = 0;
-            if (_allDocs.size() == 0) {  // just in case
-              _done = true;
-              return nullptr;
-            }
+            _pos = 0;           // this is in the first block
+            _posInAllDocs = 0;  // Note that we know _allDocs.size() > 0,
+                                // otherwise _done would be true already
           }
-          shared_ptr<AqlItem> res(new AqlItem(_buffer.front(), 1));
-          res->setValue(0,0,new AqlValue( new Json(_allDocs[_pos]->copy())));
-          if (++_pos >= _allDocs.size()) {
-            _buffer.pop_front();
+
+          // If we get here, we do have _buffer.front()
+          AqlItemBlock* cur = _buffer.front();
+
+          auto res = new AqlItemBlock(1, _nrVars);
+          TRI_ASSERT(cur->getNrVars() <= _nrVars);
+          for (VariableId i = 0; i < cur->getNrVars(); i++) {
+            res->setValue(0, i, cur->getValue(_pos, i)->clone());
+          }
+          res->setValue(0, cur->getNrVars(), 
+              new AqlValue( new Json(_allDocs[_posInAllDocs++]->copy()) ) );
+          if (_posInAllDocs >= _allDocs.size()) {
+            _posInAllDocs = 0;
+            if (++_pos >= cur->size()) {
+              _buffer.pop_front();
+              delete cur;
+              _pos = 0;
+            }
           }
           return res;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSome
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
+          if (_done) {
+            return nullptr;
+          }
+          if (_buffer.size() == 0) {
+            if (! ExecutionBlock::getBlock(1000, 1000)) {
+              _done = true;
+              return nullptr;
+            }
+            _pos = 0;           // this is in the first block
+            _posInAllDocs = 0;  // Note that we know _allDocs.size() > 0,
+                                // otherwise _done would be true already
+          }
+
+          // If we get here, we do have _buffer.front()
+          AqlItemBlock* cur = _buffer.front();
+
+          size_t available = _allDocs.size() - _posInAllDocs;
+          size_t toSend = std::min(atMost, available);
+
+          auto res = new AqlItemBlock(toSend, _nrVars);
+          TRI_ASSERT(cur->getNrVars() <= _nrVars);
+          for (size_t j = 0; j < toSend; j++) {
+            for (VariableId i = 0; i < cur->getNrVars(); i++) {
+              res->setValue(j, i, cur->getValue(_pos, i)->clone());
+            }
+            res->setValue(j, cur->getNrVars(), 
+                new AqlValue( new Json(_allDocs[_posInAllDocs++]->copy()) ) );
+          }
+          if (_posInAllDocs >= _allDocs.size()) {
+            _posInAllDocs = 0;
+            if (++_pos >= cur->size()) {
+              _buffer.pop_front();
+              delete cur;
+              _pos = 0;
+            }
+          }
+          return res;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief all documents of this collection
+////////////////////////////////////////////////////////////////////////////////
+
       private:
 
         vector<Json*> _allDocs;
-        size_t _pos;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief current position in _allDocs
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t _posInAllDocs;
     };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                         RootBlock
+// -----------------------------------------------------------------------------
 
     class RootBlock : public ExecutionBlock {
 
@@ -379,33 +671,36 @@ namespace triagens {
         ~RootBlock () {
         } 
 
-        virtual shared_ptr<AqlItem> getOne () {
+        virtual AqlItemBlock* getOne () {
           // Fetch one from above, possibly using our _buffer:
-          shared_ptr<AqlItem> res = ExecutionBlock::getOne();
+          auto res = ExecutionBlock::getOne();
           if (res == nullptr) {
             return res;
           }
+          TRI_ASSERT(res->size() == 1);
+
           // Let's steal the actual result and throw away the vars:
-          shared_ptr<AqlItem> stripped(new AqlItem(1));
+          AqlItemBlock* stripped = new AqlItemBlock(1, 1);
           stripped->setValue(0, 0, res->getValue(0, 0));
           res->setValue(0, 0, nullptr);
+          delete res;
           return stripped;
         }
 
-        virtual std::vector<shared_ptr<AqlItem> > getSome (size_t atLeast, 
-                                                           size_t atMost) {
-          std::vector<shared_ptr<AqlItem> > res 
-            = ExecutionBlock::getSome(atLeast, atMost);
-          std::vector<shared_ptr<AqlItem> > stripped;
-          if (res.size() > 0) {
-            stripped.reserve(res.size());
-            for (auto it = res.begin(); it != res.end(); ++it) {
-              auto a = new AqlItem(1);
-              a->setValue(0, 0, (*it)->getValue(0, 0));
-              (*it)->setValue(0, 0, nullptr);
-              stripped.emplace_back(a);
-            }
+        virtual AqlItemBlock* getSome (size_t atLeast, 
+                                       size_t atMost) {
+          auto res = ExecutionBlock::getSome(atLeast, atMost);
+          if (res == nullptr) {
+            return res;
           }
+
+          // Let's steal the actual result and throw away the vars:
+          AqlItemBlock* stripped = new AqlItemBlock(res->size(), 1);
+          for (size_t i = 0; i < res->size(); i++) {
+            stripped->setValue(i, 0, res->getValue(i, 0));
+            res->setValue(i, 0, nullptr);
+          }
+          delete res;
           return stripped;
         }
 
