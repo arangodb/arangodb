@@ -63,15 +63,14 @@ PlanGenerator::~PlanGenerator () {
 /// @brief create an initial execution plan from an abstract syntax tree
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* PlanGenerator::fromAst (Query* query,
-                                       Ast const* ast) {
+ExecutionPlan* PlanGenerator::fromAst (Ast const* ast) {
   TRI_ASSERT(ast != nullptr);
   
   auto root = ast->root();
   TRI_ASSERT(root != nullptr);
   TRI_ASSERT(root->type == NODE_TYPE_ROOT);
 
-  ExecutionPlan* plan = fromNode(query, root);
+  ExecutionPlan* plan = fromNode(ast, root);
 
   return plan;
 }
@@ -104,7 +103,7 @@ ExecutionPlan* PlanGenerator::addDependency (ExecutionPlan* previous,
 /// @brief create an execution plan element from an AST FOR node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* PlanGenerator::fromNodeFor (Query* query,
+ExecutionPlan* PlanGenerator::fromNodeFor (Ast const* ast,
                                            ExecutionPlan* previous,
                                            AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FOR);
@@ -112,20 +111,50 @@ ExecutionPlan* PlanGenerator::fromNodeFor (Query* query,
 
   auto variable = node->getMember(0);
   auto expression = node->getMember(1);
+
+  // fetch 1st operand (out variable name)
+  TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
+  auto v = static_cast<Variable*>(variable->getData());
+  TRI_ASSERT(v != nullptr);
   
   ExecutionPlan* plan = nullptr;
 
+  // peek at second operand
   if (expression->type == NODE_TYPE_COLLECTION) {
+    // second operand is a collection
     char const* collectionName = expression->getStringValue();
-    plan = new EnumerateCollectionPlan(query->vocbase(), std::string(collectionName), 0, "0"); // FIXME
-  }
-  else if (expression->type == NODE_TYPE_REFERENCE) {
-    auto v = static_cast<Variable*>(variable->getData());
-    plan = new EnumerateListPlan(v->id, v->name, 0, "0"); // FIXME
+    plan = new EnumerateCollectionPlan(ast->query()->vocbase(), std::string(collectionName), v->id, v->name); 
   }
   else {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    // generate a temporary variable
+    auto out = ast->variables()->createTemporaryVariable();
+
+    // generate a temporary calculation node
+    CalculationPlan* calc;
+    auto expr = new AqlExpression(expression);
+
+    try {
+      calc = new CalculationPlan(expr, out->id, out->name); 
+    }
+    catch (...) {
+      // prevent memleak
+      delete expr;
+      throw;
+    }
+
+    TRI_ASSERT(calc != nullptr);
+
+    try {
+      plan = new EnumerateListPlan(out->id, out->name, v->id, v->name); 
+      plan->addDependency(calc);
+    }
+    catch (...) {
+      // prevent memleak
+      delete calc;
+    }
   }
+
+  TRI_ASSERT(plan != nullptr);
   
   return addDependency(previous, plan);
 }
@@ -134,7 +163,7 @@ ExecutionPlan* PlanGenerator::fromNodeFor (Query* query,
 /// @brief create an execution plan element from an AST FILTER node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* PlanGenerator::fromNodeFilter (Query* query,
+ExecutionPlan* PlanGenerator::fromNodeFilter (Ast const* ast,
                                               ExecutionPlan* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FILTER);
@@ -151,7 +180,7 @@ ExecutionPlan* PlanGenerator::fromNodeFilter (Query* query,
 /// @brief create an execution plan element from an AST LET node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* PlanGenerator::fromNodeLet (Query* query,
+ExecutionPlan* PlanGenerator::fromNodeLet (Ast const* ast,
                                            ExecutionPlan* previous,
                                            AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_LET);
@@ -179,14 +208,15 @@ ExecutionPlan* PlanGenerator::fromNodeLet (Query* query,
 /// @brief create an execution plan element from an AST SORT node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* PlanGenerator::fromNodeSort (Query* query,
+ExecutionPlan* PlanGenerator::fromNodeSort (Ast const* ast,
                                             ExecutionPlan* previous,
                                             AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_SORT);
   TRI_ASSERT(node->numMembers() == 1);
 
-  // AstNode const* list = node->getMember(0);
   // TODO
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+
   return nullptr;
 }
 
@@ -194,15 +224,17 @@ ExecutionPlan* PlanGenerator::fromNodeSort (Query* query,
 /// @brief create an execution plan element from an AST COLLECT node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* PlanGenerator::fromNodeCollect (Query* query,
+ExecutionPlan* PlanGenerator::fromNodeCollect (Ast const* ast,
                                                ExecutionPlan* previous,
                                                AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_COLLECT);
   size_t const n = node->numMembers();
 
   TRI_ASSERT(n >= 1);
-
+  
   // TODO
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+
   return nullptr;
 }
 
@@ -210,21 +242,28 @@ ExecutionPlan* PlanGenerator::fromNodeCollect (Query* query,
 /// @brief create an execution plan element from an AST LIMIT node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* PlanGenerator::fromNodeLimit (Query* query,
+ExecutionPlan* PlanGenerator::fromNodeLimit (Ast const* ast,
                                              ExecutionPlan* previous,
                                              AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_LIMIT);
   TRI_ASSERT(node->numMembers() == 2);
 
-  // TODO
-  return nullptr;
+  auto offset = node->getMember(0);
+  auto count  = node->getMember(1);
+
+  TRI_ASSERT(offset->type == NODE_TYPE_VALUE);
+  TRI_ASSERT(count->type == NODE_TYPE_VALUE);
+
+  auto plan = new LimitPlan(static_cast<size_t>(offset->getIntValue()), static_cast<size_t>(count->getIntValue()));
+
+  return addDependency(previous, plan);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST RETURN node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* PlanGenerator::fromNodeReturn (Query* query,
+ExecutionPlan* PlanGenerator::fromNodeReturn (Ast const* ast,
                                               ExecutionPlan* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_RETURN);
@@ -243,7 +282,7 @@ ExecutionPlan* PlanGenerator::fromNodeReturn (Query* query,
 /// @brief create an execution plan element from an AST REMOVE node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* PlanGenerator::fromNodeRemove (Query* query,
+ExecutionPlan* PlanGenerator::fromNodeRemove (Ast const* ast,
                                               ExecutionPlan* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REMOVE);
@@ -256,7 +295,7 @@ ExecutionPlan* PlanGenerator::fromNodeRemove (Query* query,
 /// @brief create an execution plan element from an AST INSERT node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* PlanGenerator::fromNodeInsert (Query* query,
+ExecutionPlan* PlanGenerator::fromNodeInsert (Ast const* ast,
                                               ExecutionPlan* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_INSERT);
@@ -269,7 +308,7 @@ ExecutionPlan* PlanGenerator::fromNodeInsert (Query* query,
 /// @brief create an execution plan element from an AST UPDATE node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* PlanGenerator::fromNodeUpdate (Query* query,
+ExecutionPlan* PlanGenerator::fromNodeUpdate (Ast const* ast,
                                               ExecutionPlan* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPDATE);
@@ -282,7 +321,7 @@ ExecutionPlan* PlanGenerator::fromNodeUpdate (Query* query,
 /// @brief create an execution plan element from an AST REPLACE node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* PlanGenerator::fromNodeReplace (Query* query,
+ExecutionPlan* PlanGenerator::fromNodeReplace (Ast const* ast,
                                                ExecutionPlan* previous,
                                                AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REPLACE);
@@ -295,7 +334,7 @@ ExecutionPlan* PlanGenerator::fromNodeReplace (Query* query,
 /// @brief create an execution plan from an abstract syntax tree node
 ////////////////////////////////////////////////////////////////////////////////
   
-ExecutionPlan* PlanGenerator::fromNode (Query* query,
+ExecutionPlan* PlanGenerator::fromNode (Ast const* ast,
                                         AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
@@ -312,57 +351,57 @@ ExecutionPlan* PlanGenerator::fromNode (Query* query,
 
     switch (member->type) {
       case NODE_TYPE_FOR: {
-        plan = fromNodeFor(query, plan, member);
+        plan = fromNodeFor(ast, plan, member);
         break;
       }
 
       case NODE_TYPE_FILTER: {
-        plan = fromNodeFilter(query, plan, member);
+        plan = fromNodeFilter(ast, plan, member);
         break;
       }
 
       case NODE_TYPE_LET: {
-        plan = fromNodeLet(query, plan, member);
+        plan = fromNodeLet(ast, plan, member);
         break;
       }
       
       case NODE_TYPE_SORT: {
-        plan = fromNodeSort(query, plan, member);
+        plan = fromNodeSort(ast, plan, member);
         break;
       }
       
       case NODE_TYPE_COLLECT: {
-        plan = fromNodeCollect(query, plan, member);
+        plan = fromNodeCollect(ast, plan, member);
         break;
       }
       
       case NODE_TYPE_LIMIT: {
-        plan = fromNodeLimit(query, plan, member);
+        plan = fromNodeLimit(ast, plan, member);
         break;
       }
       
       case NODE_TYPE_RETURN: {
-        plan = fromNodeReturn(query, plan, member);
+        plan = fromNodeReturn(ast, plan, member);
         break;
       }
       
       case NODE_TYPE_REMOVE: {
-        plan = fromNodeRemove(query, plan, member);
+        plan = fromNodeRemove(ast, plan, member);
         break;
       }
       
       case NODE_TYPE_INSERT: {
-        plan = fromNodeInsert(query, plan, member);
+        plan = fromNodeInsert(ast, plan, member);
         break;
       }
       
       case NODE_TYPE_UPDATE: {
-        plan = fromNodeUpdate(query, plan, member);
+        plan = fromNodeUpdate(ast, plan, member);
         break;
       }
       
       case NODE_TYPE_REPLACE: {
-        plan = fromNodeReplace(query, plan, member);
+        plan = fromNodeReplace(ast, plan, member);
         break;
       }
 
