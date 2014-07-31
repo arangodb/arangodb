@@ -67,6 +67,7 @@ add_executable(
     Aql/PlanGenerator.cpp
     Aql/Query.cpp
     Aql/Scopes.cpp
+    Aql/Types.cpp
     Aql/tokens.cpp
     Aql/V8Executor.cpp
     Aql/VariableGenerator.cpp
