@@ -976,11 +976,8 @@ namespace triagens {
 
       public:
 
-        SortPlan (std::vector<VariableId> varNumbers,
-                  std::vector<std::string> varNames,
-                  std::vector<bool> sortAscending)
-          : ExecutionPlan(), _varNumbers(varNumbers), _varNames(varNames),
-            _sortAscending(sortAscending) {
+        SortPlan (std::vector<std::tuple<VariableId, std::string, bool>> elements)
+          : ExecutionPlan(), _elements(elements) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1012,7 +1009,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionPlan* clone () const {
-          auto c = new SortPlan(_varNumbers, _varNames, _sortAscending);
+          auto c = new SortPlan(_elements);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
         }
@@ -1024,22 +1021,11 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _varNumbers, input variables for sorting
+/// @brief tuples, consisting of variable id, variable name and sort direction
+/// (true = ascending | false = descending)
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<VariableId> _varNumbers;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _varNames, name of variables for sorting
-////////////////////////////////////////////////////////////////////////////////
-
-        std::vector<std::string> _varNames;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief vector of attributes to sort by
-////////////////////////////////////////////////////////////////////////////////
-
-        std::vector<bool> _sortAscending;
+        std::vector<std::tuple<VariableId, std::string, bool>> _elements;
 
     };
 
