@@ -165,7 +165,7 @@ namespace triagens {
 /// the caller is responsible for freeing the JSON later
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_json_s* toJson (TRI_memory_zone_t*);
+        struct TRI_json_s* toJson (TRI_memory_zone_t*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a JSON representation of the node to the JSON list specified
@@ -173,7 +173,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void toJson (TRI_json_t*,
-                     TRI_memory_zone_t*);
+                     TRI_memory_zone_t*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a value node is of numeric type

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, parse results
+/// @brief Aql, expression
 ///
 /// @file
 ///
@@ -27,70 +27,49 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_PARSE_RESULT_H
-#define ARANGODB_AQL_PARSE_RESULT_H 1
+#include "Aql/Expression.h"
+#include "Aql/Types.h"
+#include "Aql/V8Executor.h"
+#include "Utils/Exception.h"
 
-#include "Basics/Common.h"
-#include "BasicsC/json.h"
-
-namespace triagens {
-  namespace aql {
+using namespace triagens::aql;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                struct ParseResult
+// --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
-    struct ParseResult {
-      ParseResult& operator= (ParseResult const& other) = delete;
-      
-      ParseResult (ParseResult&& other) {
-        code = other.code;
-        details = other.details;
-        json = other.json;
-        zone = other.zone;
-        other.json = nullptr;
-      }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the expression
+////////////////////////////////////////////////////////////////////////////////
 
-      ParseResult (int code,
-                   std::string const& details) 
-        : code(code),
-          details(details),
-          zone(TRI_UNKNOWN_MEM_ZONE),
-          json(nullptr) {
-      }
-      
-      explicit ParseResult (int code)
-        : code(code),
-          details(""),
-          zone(TRI_UNKNOWN_MEM_ZONE),
-          json(nullptr) {
-      }
+Expression::Expression (V8Executor* executor,
+                        AstNode const* node)
+  : _executor(executor),
+    _node(node) {
 
-      ParseResult ()
-        : code(TRI_ERROR_NO_ERROR),
-          details(),
-          zone(TRI_UNKNOWN_MEM_ZONE),
-          json(nullptr) {
-      }
-
-      ~ParseResult () {
-        if (json != nullptr) {
-          TRI_FreeJson(zone, json);
-        }
-      }
-
-      int                             code;
-      std::string                     details;
-      std::unordered_set<std::string> bindParameters;
-      std::unordered_set<std::string> collectionNames;
-      TRI_memory_zone_t*              zone;
-      TRI_json_t*                     json;
-    };
-
-  }
+  TRI_ASSERT(_executor != nullptr);
+  TRI_ASSERT(_node != nullptr);
 }
 
-#endif
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy the expression
+////////////////////////////////////////////////////////////////////////////////
+
+Expression::~Expression () {
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute the expression
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue* Expression::execute (AqlItem* item) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return nullptr;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

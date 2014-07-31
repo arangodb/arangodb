@@ -34,6 +34,7 @@
 #include <VocBase/voc-types.h>
 #include <VocBase/vocbase.h>
 
+#include "Aql/Expression.h"
 #include "Aql/Variable.h"
 #include "Aql/Types.h"
 
@@ -336,10 +337,12 @@ namespace triagens {
 
         EnumerateCollectionPlan (TRI_vocbase_t* vocbase, 
                                  std::string collname,
-                                 VariableId outVarNumber,
-                                 std::string outVarName)
+                                 Variable const* outVariable)
           : ExecutionPlan(), _vocbase(vocbase), _collname(collname),
-            _outVarNumber(outVarNumber), _outVarName(outVarName) {
+            _outVariable(outVariable) {
+
+          TRI_ASSERT(_vocbase != nullptr);
+          TRI_ASSERT(_outVariable != nullptr);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -371,8 +374,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionPlan* clone () const {
-          auto c = new EnumerateCollectionPlan(_vocbase, _collname,
-                                               _outVarNumber, _outVarName);
+          auto c = new EnumerateCollectionPlan(_vocbase, _collname, _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
         }
@@ -396,16 +398,10 @@ namespace triagens {
         std::string _collname;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _outVarNumber, output variable
+/// @brief output variable
 ////////////////////////////////////////////////////////////////////////////////
 
-        VariableId _outVarNumber;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _outVarName, name of variable to write to
-////////////////////////////////////////////////////////////////////////////////
-
-        std::string _outVarName;
+        Variable const* _outVariable;
 
     };
 
@@ -428,10 +424,12 @@ namespace triagens {
 
       public:
 
-        EnumerateListPlan (VariableId varNumber, std::string varName,
-                           VariableId outVarNumber, std::string outVarName)
-          : ExecutionPlan(), _varNumber(varNumber), _varName(varName),
-            _outVarNumber(outVarNumber), _outVarName(outVarName) {
+        EnumerateListPlan (Variable const* inVariable,
+                           Variable const* outVariable) 
+          : ExecutionPlan(), _inVariable(inVariable), _outVariable(outVariable) {
+
+          TRI_ASSERT(_inVariable != nullptr);
+          TRI_ASSERT(_outVariable != nullptr);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -463,8 +461,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionPlan* clone () const {
-          auto c = new EnumerateListPlan(_varNumber, _varName,
-                                         _outVarNumber, _outVarName);
+          auto c = new EnumerateListPlan(_inVariable, _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
         }
@@ -476,28 +473,16 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _varNumber, input variable
+/// @brief input variable to read from
 ////////////////////////////////////////////////////////////////////////////////
 
-        VariableId _varNumber;
+        Variable const* _inVariable;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _varName, name of variable to read from
+/// @brief output variable to write to
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string _varName;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _outVarNumber, output variable
-////////////////////////////////////////////////////////////////////////////////
-
-        VariableId _outVarNumber;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _outVarName, name of variable to write to
-////////////////////////////////////////////////////////////////////////////////
-
-        std::string _outVarName;
+        Variable const* _outVariable;
 
     };
 
@@ -593,14 +578,14 @@ namespace triagens {
 
       public:
 
-        ProjectionPlan (VariableId inVar,
-                        std::string inVarName,
-                        VariableId outVar,
-                        std::string outVarName,
+        ProjectionPlan (Variable const* inVariable,
+                        Variable const* outVariable,
                         std::vector<std::string> keepAttributes)
-          : ExecutionPlan(), _inVar(inVar), _inVarName(inVarName),
-            _outVar(outVar), _outVarName(outVarName),
+          : ExecutionPlan(), _inVariable(inVariable), _outVariable(outVariable),
             _keepAttributes(keepAttributes) {
+
+          TRI_ASSERT(inVariable != nullptr);
+          TRI_ASSERT(outVariable != nullptr);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -632,8 +617,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionPlan* clone () const {
-          auto c = new ProjectionPlan(_inVar, _inVarName, _outVar, _outVarName,
-                                      _keepAttributes);
+          auto c = new ProjectionPlan(_inVariable, _outVariable, _keepAttributes);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
         }
@@ -645,28 +629,16 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief input variable
+/// @brief input variable to read from
 ////////////////////////////////////////////////////////////////////////////////
 
-        VariableId _inVar;
+        Variable const* _inVariable;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _inVarName, name of variable to read from
+/// @brief output variable to write to
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string _inVarName;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief output variable
-////////////////////////////////////////////////////////////////////////////////
-
-        VariableId _outVar;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _outVarName, name of variable to write to
-////////////////////////////////////////////////////////////////////////////////
-
-        std::string _outVarName;
+        Variable const* _outVariable;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief vector of attributes to leave in the object
@@ -695,10 +667,11 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        CalculationPlan (AqlExpression* expr, VariableId varNumber, 
-                         std::string varName)
-          : ExecutionPlan(), _expression(expr), _varNumber(varNumber),
-            _varName(varName) {
+        CalculationPlan (Expression* expr, Variable const* outVariable)
+          : ExecutionPlan(), _expression(expr), _outVariable(outVariable) {
+
+          TRI_ASSERT(_expression != nullptr);
+          TRI_ASSERT(_outVariable != nullptr);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -740,9 +713,17 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionPlan* clone () const {
-          auto c = new CalculationPlan(_expression->clone(), _varNumber, _varName);
+          auto c = new CalculationPlan(_expression->clone(), _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return out variable
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* outVariable () const {
+          return _outVariable;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -755,19 +736,13 @@ namespace triagens {
 /// @brief we need to have an expression and where to write the result
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlExpression* _expression;
+        Expression* _expression;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _varNumber, global number of variable to write to
+/// @brief output variable to write to
 ////////////////////////////////////////////////////////////////////////////////
 
-        VariableId _varNumber;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _varName, name of variable to write to
-////////////////////////////////////////////////////////////////////////////////
-
-        std::string _varName;
+        Variable const* _outVariable;
 
     };
 
@@ -790,10 +765,11 @@ namespace triagens {
 
       public:
 
-        SubqueryPlan (ExecutionPlan* subquery, VariableId varNumber, 
-                      std::string varName)
-          : ExecutionPlan(), _subquery(subquery), _varNumber(varNumber),
-            _varName(varName) {
+        SubqueryPlan (ExecutionPlan* subquery, Variable const* outVariable)
+          : ExecutionPlan(), _subquery(subquery), _outVariable(outVariable) {
+
+          TRI_ASSERT(_subquery != nullptr);
+          TRI_ASSERT(_outVariable != nullptr);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -825,7 +801,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionPlan* clone () const {
-          auto c = new SubqueryPlan(_subquery->clone(), _varNumber, _varName);
+          auto c = new SubqueryPlan(_subquery->clone(), _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
         }
@@ -851,16 +827,10 @@ namespace triagens {
         ExecutionPlan* _subquery;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _varNumber, global number of variable to write to
+/// @brief variable to write to
 ////////////////////////////////////////////////////////////////////////////////
 
-        VariableId _varNumber;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _varName, name of variable to write to
-////////////////////////////////////////////////////////////////////////////////
-
-        std::string _varName;
+        Variable const* _outVariable;
 
     };
 
@@ -883,8 +853,10 @@ namespace triagens {
 
       public:
 
-        FilterPlan (VariableId varNumber, std::string varName)
-          : ExecutionPlan(), _varNumber(varNumber), _varName(varName) {
+        FilterPlan (Variable const* inVariable)
+          : ExecutionPlan(), _inVariable(inVariable) {
+
+          TRI_ASSERT(_inVariable != nullptr);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -916,7 +888,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionPlan* clone () const {
-          auto c = new FilterPlan(_varNumber, _varName);
+          auto c = new FilterPlan(_inVariable);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
         }
@@ -928,16 +900,10 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _varNumber, input variable
+/// @brief input variable to read from
 ////////////////////////////////////////////////////////////////////////////////
 
-        VariableId _varNumber;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _varName, name of variable to read from
-////////////////////////////////////////////////////////////////////////////////
-
-        std::string _varName;
+        Variable const* _inVariable;
 
     };
 
@@ -960,11 +926,8 @@ namespace triagens {
 
       public:
 
-        SortPlan (std::vector<VariableId> varNumbers,
-                  std::vector<std::string> varNames,
-                  std::vector<bool> sortAscending)
-          : ExecutionPlan(), _varNumbers(varNumbers), _varNames(varNames),
-            _sortAscending(sortAscending) {
+        SortPlan (std::vector<std::pair<Variable const*, bool>> elements)
+          : ExecutionPlan(), _elements(elements) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -996,7 +959,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionPlan* clone () const {
-          auto c = new SortPlan(_varNumbers, _varNames, _sortAscending);
+          auto c = new SortPlan(_elements);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
         }
@@ -1008,22 +971,11 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _varNumbers, input variables for sorting
+/// @brief pairs, consisting of variable and sort direction
+/// (true = ascending | false = descending)
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<VariableId> _varNumbers;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _varNames, name of variables for sorting
-////////////////////////////////////////////////////////////////////////////////
-
-        std::vector<std::string> _varNames;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief vector of attributes to sort by
-////////////////////////////////////////////////////////////////////////////////
-
-        std::vector<bool> _sortAscending;
+        std::vector<std::pair<Variable const*, bool>> _elements;
 
     };
 
@@ -1047,12 +999,9 @@ namespace triagens {
 
       public:
 
-        AggregateOnUnsortedPlan (std::vector<VariableId> varNumbers,
-                  std::vector<std::string> varNames,
-                  VariableId outVarNumber,
-                  std::string outVarName)
-          : ExecutionPlan(), _varNumbers(varNumbers), _varNames(varNames),
-            _outVarNumber(outVarNumber), _outVarName(outVarName) {
+        AggregateOnUnsortedPlan (std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables,
+                                 Variable const* outVariable)
+          : ExecutionPlan(), _aggregateVariables(aggregateVariables), _outVariable(outVariable) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1084,8 +1033,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionPlan* clone () const {
-          auto c = new AggregateOnUnsortedPlan(_varNumbers, _varNames,
-                                               _outVarNumber, _outVarName);
+          auto c = new AggregateOnUnsortedPlan(_aggregateVariables, _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
         }
@@ -1097,28 +1045,16 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _varNumbers, input variables for the aggregation
+/// @brief input/output variables for the aggregation (out = in)
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<VariableId> _varNumbers;
+        std::vector<std::pair<Variable const*, Variable const*>> _aggregateVariables;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _varNames, name of variables for the aggregation
+/// @brief output variable to write to (might be null)
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<std::string> _varNames;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief output variable
-////////////////////////////////////////////////////////////////////////////////
-
-        VariableId _outVarNumber;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _outVarName, name of variable to write to
-////////////////////////////////////////////////////////////////////////////////
-
-        std::string _outVarName;
+        Variable const* _outVariable;
 
     };
 
@@ -1142,8 +1078,10 @@ namespace triagens {
 
       public:
 
-        RootPlan (VariableId varNumber, std::string varName) 
-          : ExecutionPlan(), _varNumber(varNumber), _varName(varName) {
+        RootPlan (Variable const* inVariable)
+          : ExecutionPlan(), _inVariable(inVariable) {
+
+          TRI_ASSERT(_inVariable != nullptr);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1175,7 +1113,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionPlan* clone () const {
-          auto c = new RootPlan(_varNumber, _varName);
+          auto c = new RootPlan(_inVariable);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
         }
@@ -1186,9 +1124,7 @@ namespace triagens {
 
       private:
 
-        VariableId _varNumber;
-
-        std::string _varName;
+        Variable const* _inVariable;
 
     };
   }   // namespace triagens::aql

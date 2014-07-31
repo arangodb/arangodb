@@ -31,6 +31,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Aql/Query.h"
 #include "Aql/Variable.h"
 #include "Utils/Exception.h"
@@ -80,6 +81,30 @@ ExecutionPlan* PlanGenerator::fromAst (Ast const* ast) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a calculation node for an arbitrary expression
+////////////////////////////////////////////////////////////////////////////////
+
+CalculationPlan* PlanGenerator::createTemporaryCalculation (Ast const* ast,
+                                                            AstNode const* expression) {
+  // generate a temporary variable
+  auto out = ast->variables()->createTemporaryVariable();
+  TRI_ASSERT(out != nullptr);
+
+  // generate a temporary calculation node
+  auto expr = new Expression(ast->query()->executor(), const_cast<AstNode*>(expression));
+
+  try {
+    return new CalculationPlan(expr, out);
+  }
+  catch (...) {
+    // prevent memleak
+    delete expr;
+    throw;
+    // no need to delete "out" as this is automatically freed by the variables management
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief adds "previous" as dependency to "plan", returns "plan"
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -123,29 +148,20 @@ ExecutionPlan* PlanGenerator::fromNodeFor (Ast const* ast,
   if (expression->type == NODE_TYPE_COLLECTION) {
     // second operand is a collection
     char const* collectionName = expression->getStringValue();
-    plan = new EnumerateCollectionPlan(ast->query()->vocbase(), std::string(collectionName), v->id, v->name); 
+    plan = new EnumerateCollectionPlan(ast->query()->vocbase(), std::string(collectionName), v);
+  }
+  else if (expression->type == NODE_TYPE_REFERENCE) {
+    // second operand is already a variable
+    auto inVariable = static_cast<Variable*>(variable->getData());
+    TRI_ASSERT(inVariable != nullptr);
+    plan = new EnumerateListPlan(inVariable, v);
   }
   else {
-    // generate a temporary variable
-    auto out = ast->variables()->createTemporaryVariable();
-
-    // generate a temporary calculation node
-    CalculationPlan* calc;
-    auto expr = new AqlExpression(expression);
+    // second operand is some misc. expression
+    auto calc = createTemporaryCalculation(ast, expression);
 
     try {
-      calc = new CalculationPlan(expr, out->id, out->name); 
-    }
-    catch (...) {
-      // prevent memleak
-      delete expr;
-      throw;
-    }
-
-    TRI_ASSERT(calc != nullptr);
-
-    try {
-      plan = new EnumerateListPlan(out->id, out->name, v->id, v->name); 
+      plan = new EnumerateListPlan(calc->outVariable(), v);
       plan->addDependency(calc);
     }
     catch (...) {
@@ -169,10 +185,30 @@ ExecutionPlan* PlanGenerator::fromNodeFilter (Ast const* ast,
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FILTER);
   TRI_ASSERT(node->numMembers() == 1);
   
-  auto variable = node->getMember(0);
-  auto v = static_cast<Variable*>(variable->getData());
+  auto expression = node->getMember(0);
+
+  ExecutionPlan* plan = nullptr;
   
-  auto plan = new FilterPlan(v->id, v->name);
+  if (expression->type == NODE_TYPE_REFERENCE) {
+    // operand is already a variable
+    auto v = static_cast<Variable*>(expression->getData());
+    TRI_ASSERT(v != nullptr);
+    plan = new FilterPlan(v);
+  }
+  else {
+    // operand is some misc expression
+    auto calc = createTemporaryCalculation(ast, expression);
+
+    try {
+      plan = new FilterPlan(calc->outVariable());
+      plan->addDependency(calc);
+    }
+    catch (...) {
+      // prevent memleak
+      delete calc;
+    }
+  }
+
   return addDependency(previous, plan);
 }
 
@@ -190,18 +226,28 @@ ExecutionPlan* PlanGenerator::fromNodeLet (Ast const* ast,
   AstNode const* expression = node->getMember(1);
 
   auto v = static_cast<Variable*>(variable->getData());
+  
+  ExecutionPlan* plan = nullptr;
 
-  // TODO: node might be a subquery. this is currently NOT handled
-  auto expr = new AqlExpression(const_cast<AstNode*>(expression));
-  try {
-    auto plan = new CalculationPlan(expr, v->id, v->name);
-    return addDependency(previous, plan);
+  if (expression->type == NODE_TYPE_SUBQUERY) {
+    // TODO: node might be a subquery. this is currently NOT handled
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
-  catch (...) {
-    // prevent memleak
-    delete expr;
-    throw;
+  else {
+    // operand is some misc expression, including references to other variables
+    auto expr = new Expression(ast->query()->executor(), const_cast<AstNode*>(expression));
+
+    try {
+      plan = new CalculationPlan(expr, v);
+    }
+    catch (...) {
+      // prevent memleak
+      delete expr;
+      throw;
+    }
   }
+    
+  return addDependency(previous, plan);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -214,10 +260,55 @@ ExecutionPlan* PlanGenerator::fromNodeSort (Ast const* ast,
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_SORT);
   TRI_ASSERT(node->numMembers() == 1);
 
-  // TODO
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  auto list = node->getMember(0);
+  TRI_ASSERT(list->type == NODE_TYPE_LIST);
 
-  return nullptr;
+  std::vector<std::pair<Variable const*, bool>> elements;
+  std::vector<CalculationPlan*> temp;
+
+  try {
+    size_t const n = list->numMembers();
+    for (size_t i = 0; i < n; ++i) {
+      auto element = list->getMember(i);
+      TRI_ASSERT(element != nullptr);
+      TRI_ASSERT(element->type == NODE_TYPE_SORT_ELEMENT);
+      TRI_ASSERT(element->numMembers() == 1);
+
+      auto expression = element->getMember(0);
+
+      if (expression->type == NODE_TYPE_REFERENCE) {
+        // sort operand is a variable
+        auto v = static_cast<Variable*>(expression->getData());
+        TRI_ASSERT(v != nullptr);
+        elements.push_back(std::make_pair(v, element->getBoolValue()));
+      }
+      else {
+        // sort operand is some misc expression
+        auto calc = createTemporaryCalculation(ast, expression);
+        temp.push_back(calc);
+        elements.push_back(std::make_pair(calc->outVariable(), element->getBoolValue()));
+      }
+    }
+  }
+  catch (...) {
+    // prevent memleak
+    for (auto it = temp.begin(); it != temp.end(); ++it) {
+      delete (*it);
+    }
+    throw;
+  }
+
+  TRI_ASSERT(! elements.empty());
+
+  // properly link the temporary calculations in the plan
+  for (auto it = temp.begin(); it != temp.end(); ++it) {
+    (*it)->addDependency(previous);
+    previous = (*it);
+  }
+
+  auto plan = new SortPlan(elements);
+
+  return addDependency(previous, plan);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -269,11 +360,29 @@ ExecutionPlan* PlanGenerator::fromNodeReturn (Ast const* ast,
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_RETURN);
   TRI_ASSERT(node->numMembers() == 1);
   
-  auto variable = node->getMember(0);
-  // TODO: the operand type of return is not necessarily a variable...
-  auto v = static_cast<Variable*>(variable->getData());
+  auto expression = node->getMember(0);
 
-  auto plan = new RootPlan(v->id, v->name);
+  ExecutionPlan* plan = nullptr;
+  
+  if (expression->type == NODE_TYPE_REFERENCE) {
+    // operand is already a variable
+    auto v = static_cast<Variable*>(expression->getData());
+    TRI_ASSERT(v != nullptr);
+    plan = new RootPlan(v);
+  }
+  else {
+    // operand is some misc expression
+    auto calc = createTemporaryCalculation(ast, expression);
+
+    try {
+      plan = new RootPlan(calc->outVariable());
+      plan->addDependency(calc);
+    }
+    catch (...) {
+      // prevent memleak
+      delete calc;
+    }
+  }
 
   return addDependency(previous, plan);
 }
@@ -288,6 +397,8 @@ ExecutionPlan* PlanGenerator::fromNodeRemove (Ast const* ast,
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REMOVE);
 
   // TODO
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+
   return nullptr;
 }
 
@@ -301,6 +412,8 @@ ExecutionPlan* PlanGenerator::fromNodeInsert (Ast const* ast,
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_INSERT);
 
   // TODO
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+
   return nullptr;
 }
 
@@ -314,6 +427,8 @@ ExecutionPlan* PlanGenerator::fromNodeUpdate (Ast const* ast,
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPDATE);
 
   // TODO
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+
   return nullptr;
 }
 
@@ -327,6 +442,8 @@ ExecutionPlan* PlanGenerator::fromNodeReplace (Ast const* ast,
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REPLACE);
 
   // TODO
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+
   return nullptr;
 }
 
@@ -340,84 +457,93 @@ ExecutionPlan* PlanGenerator::fromNode (Ast const* ast,
 
   ExecutionPlan* plan = new SingletonPlan();
 
-  size_t const n = node->numMembers();
+  try {
+    size_t const n = node->numMembers();
 
-  for (size_t i = 0; i < n; ++i) {
-    auto member = node->getMember(i);
+    for (size_t i = 0; i < n; ++i) {
+      auto member = node->getMember(i);
+  
+      if (member == nullptr || member->type == NODE_TYPE_NOP) {
+        continue;
+      }
 
-    if (member == nullptr || member->type == NODE_TYPE_NOP) {
-      continue;
+      switch (member->type) {
+        case NODE_TYPE_FOR: {
+          plan = fromNodeFor(ast, plan, member);
+          break;
+        }
+
+        case NODE_TYPE_FILTER: {
+          plan = fromNodeFilter(ast, plan, member);
+          break;
+        }
+
+        case NODE_TYPE_LET: {
+          plan = fromNodeLet(ast, plan, member);
+          break;
+        }
+      
+        case NODE_TYPE_SORT: {
+          plan = fromNodeSort(ast, plan, member);
+          break;
+        }
+      
+        case NODE_TYPE_COLLECT: {
+          plan = fromNodeCollect(ast, plan, member);
+          break;
+        }
+       
+        case NODE_TYPE_LIMIT: {
+          plan = fromNodeLimit(ast, plan, member);
+          break;
+        }
+      
+        case NODE_TYPE_RETURN: {
+          plan = fromNodeReturn(ast, plan, member);
+          break;
+        }
+      
+        case NODE_TYPE_REMOVE: {
+          plan = fromNodeRemove(ast, plan, member);
+          break;
+        }
+      
+        case NODE_TYPE_INSERT: {
+          plan = fromNodeInsert(ast, plan, member);
+          break;
+        }
+      
+        case NODE_TYPE_UPDATE: {
+          plan = fromNodeUpdate(ast, plan, member);
+          break;
+        }
+      
+        case NODE_TYPE_REPLACE: {
+          plan = fromNodeReplace(ast, plan, member);
+          break;
+        }
+
+        default: {
+          // node type not implemented
+          plan = nullptr;
+          break;
+        }
+      }
+
+      if (plan == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
     }
-
-    switch (member->type) {
-      case NODE_TYPE_FOR: {
-        plan = fromNodeFor(ast, plan, member);
-        break;
-      }
-
-      case NODE_TYPE_FILTER: {
-        plan = fromNodeFilter(ast, plan, member);
-        break;
-      }
-
-      case NODE_TYPE_LET: {
-        plan = fromNodeLet(ast, plan, member);
-        break;
-      }
-      
-      case NODE_TYPE_SORT: {
-        plan = fromNodeSort(ast, plan, member);
-        break;
-      }
-      
-      case NODE_TYPE_COLLECT: {
-        plan = fromNodeCollect(ast, plan, member);
-        break;
-      }
-      
-      case NODE_TYPE_LIMIT: {
-        plan = fromNodeLimit(ast, plan, member);
-        break;
-      }
-      
-      case NODE_TYPE_RETURN: {
-        plan = fromNodeReturn(ast, plan, member);
-        break;
-      }
-      
-      case NODE_TYPE_REMOVE: {
-        plan = fromNodeRemove(ast, plan, member);
-        break;
-      }
-      
-      case NODE_TYPE_INSERT: {
-        plan = fromNodeInsert(ast, plan, member);
-        break;
-      }
-      
-      case NODE_TYPE_UPDATE: {
-        plan = fromNodeUpdate(ast, plan, member);
-        break;
-      }
-      
-      case NODE_TYPE_REPLACE: {
-        plan = fromNodeReplace(ast, plan, member);
-        break;
-      }
-
-      default: {
-        // node type not implemented
-        plan = nullptr;
-        break;
-      }
-    }
-
-    if (plan == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
+  
+    return plan;
   }
-
-  return plan;
+  catch (...) {
+    // prevent memleak
+    if (plan != nullptr) {
+      delete plan;
+    }
+    throw;
+  }
 }
 
 // -----------------------------------------------------------------------------

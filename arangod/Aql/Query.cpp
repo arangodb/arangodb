@@ -28,7 +28,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Query.h"
+#include "Aql/ExecutionBlock.h"
 #include "Aql/Parser.h"
+#include "Aql/PlanGenerator.h"
 #include "Aql/V8Executor.h"
 #include "BasicsC/json.h"
 #include "BasicsC/tri-strings.h"
@@ -163,23 +165,63 @@ void Query::registerError (int code,
 /// @brief execute an AQL query - TODO: implement and determine return type
 ////////////////////////////////////////////////////////////////////////////////
 
-ParseResult Query::execute () {
+QueryResult Query::execute () {
   try {
     Parser parser(this);
     parser.parse();
     parser.ast()->injectBindParameters(_bindParameters);
     parser.ast()->optimize();
-  
-    ParseResult result(TRI_ERROR_NO_ERROR);
-    result.json = parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE);
 
+    PlanGenerator generator;
+    auto plan = generator.fromAst(parser.ast());
+
+    try { 
+      auto exec = ExecutionBlock::instanciatePlan(plan);
+
+      try {
+        exec->staticAnalysis();
+
+        exec->initialize();
+        exec->execute();
+ 
+        shared_ptr<AqlItem> value;
+        while (nullptr != (value = exec->getOne())) {
+          std::cout << value->getValue(0, 0)->toString() << std::endl;
+          value.reset();
+        }
+
+        exec->shutdown();
+        delete exec;
+      }
+      catch (...) {
+        delete exec;
+        delete plan;
+        // TODO: convert exception code
+        return QueryResult(TRI_ERROR_INTERNAL);
+      }
+    }
+    catch (triagens::arango::Exception const& ex) {
+      delete plan;
+      return QueryResult(ex.code(), ex.message());
+    }
+    catch (...) {
+      delete plan;
+      // TODO: convert exception code
+      return QueryResult(TRI_ERROR_INTERNAL);
+    }
+
+    delete plan;
+    
+    QueryResult result(TRI_ERROR_NO_ERROR);
+    // result.json = parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE);
+  
     return result;
   }
   catch (triagens::arango::Exception const& ex) {
-    return ParseResult(ex.code(), ex.message());
+    return QueryResult(ex.code(), ex.message());
   }
   catch (...) {
-    return ParseResult(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+    return QueryResult(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
   }
 }
 
@@ -187,16 +229,16 @@ ParseResult Query::execute () {
 /// @brief parse an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
-ParseResult Query::parse () {
+QueryResult Query::parse () {
   try {
     Parser parser(this);
     return parser.parse();
   }
   catch (triagens::arango::Exception const& ex) {
-    return ParseResult(ex.code(), ex.message());
+    return QueryResult(ex.code(), ex.message());
   }
   catch (...) {
-    return ParseResult(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+    return QueryResult(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
   }
 }
 
