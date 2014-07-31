@@ -1632,9 +1632,12 @@ static v8::Handle<v8::Value> JS_Enquire (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "enquire(operationID)");
   }
 
-  if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
-    TRI_V8_EXCEPTION_INTERNAL(scope,"request works only in coordinator role");
-  }
+  // Disabled to allow communication originating in a DBserver:
+  // 31.7.2014 Max
+  
+  // if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
+  //   TRI_V8_EXCEPTION_INTERNAL(scope,"request works only in coordinator role");
+  // }
 
   ClusterComm* cc = ClusterComm::instance();
 
@@ -1674,9 +1677,12 @@ static v8::Handle<v8::Value> JS_Wait (v8::Arguments const& argv) {
   //   - shardID              (string)
   //   - timeout              (number)
 
-  if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
-    TRI_V8_EXCEPTION_INTERNAL(scope,"request works only in coordinator role");
-  }
+  // Disabled to allow communication originating in a DBserver:
+  // 31.7.2014 Max
+
+  // if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
+  //   TRI_V8_EXCEPTION_INTERNAL(scope,"request works only in coordinator role");
+  // }
 
   ClusterComm* cc = ClusterComm::instance();
 
@@ -1748,9 +1754,12 @@ static v8::Handle<v8::Value> JS_Drop (v8::Arguments const& argv) {
   //   - operationID          (number)
   //   - shardID              (string)
 
-  if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
-    TRI_V8_EXCEPTION_INTERNAL(scope,"request works only in coordinator role");
-  }
+  // Disabled to allow communication originating in a DBserver:
+  // 31.7.2014 Max
+
+  // if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
+  //   TRI_V8_EXCEPTION_INTERNAL(scope,"request works only in coordinator role");
+  // }
 
   ClusterComm* cc = ClusterComm::instance();
 
