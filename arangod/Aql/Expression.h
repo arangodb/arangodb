@@ -37,6 +37,7 @@ namespace triagens {
 
     struct AqlItem;
     struct AqlValue;
+    class V8Executor;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AqlExpression, used in execution plans and execution blocks
@@ -54,7 +55,8 @@ namespace triagens {
 /// @brief constructor, using an AST start node
 ////////////////////////////////////////////////////////////////////////////////
 
-        Expression (AstNode const*);
+        Expression (V8Executor*,
+                    AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -81,7 +83,7 @@ namespace triagens {
         Expression* clone () {
           // We do not need to copy the _ast, since it is managed by the
           // query object and the memory management of the ASTs
-          return new Expression(_node);
+          return new Expression(_executor, _node);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,7 +107,13 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the abstract syntax tree
+/// @brief the V8 executor
+////////////////////////////////////////////////////////////////////////////////
+
+        V8Executor*       _executor;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the AST node that contains the expression to execute
 ////////////////////////////////////////////////////////////////////////////////
 
         // do we need a (possibly empty) subquery entry here?

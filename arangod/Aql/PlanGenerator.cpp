@@ -91,7 +91,7 @@ CalculationPlan* PlanGenerator::createTemporaryCalculation (Ast const* ast,
   TRI_ASSERT(out != nullptr);
 
   // generate a temporary calculation node
-  auto expr = new Expression(const_cast<AstNode*>(expression));
+  auto expr = new Expression(ast->query()->executor(), const_cast<AstNode*>(expression));
 
   try {
     return new CalculationPlan(expr, out);
@@ -235,7 +235,7 @@ ExecutionPlan* PlanGenerator::fromNodeLet (Ast const* ast,
   }
   else {
     // operand is some misc expression, including references to other variables
-    auto expr = new Expression(const_cast<AstNode*>(expression));
+    auto expr = new Expression(ast->query()->executor(), const_cast<AstNode*>(expression));
 
     try {
       plan = new CalculationPlan(expr, v);
