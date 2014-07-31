@@ -117,19 +117,25 @@ Queue = function Queue(name) {
   });
 };
 
-Queue.prototype.push = function (type, data) {
-  'use strict';
-  if (typeof type !== 'string') {
-    throw new Error('Must pass a job type!');
+_.extend(Queue.prototype, {
+  push: function (type, data) {
+    'use strict';
+    if (typeof type !== 'string') {
+      throw new Error('Must pass a job type!');
+    }
+    db._jobs.save({
+      status: 'pending',
+      queue: this.name,
+      type: type,
+      failures: 0,
+      data: data
+    });
+    return db._jobs.byExample({
+      status: 'pending',
+      queue: this.name
+    }).count();
   }
-  db._jobs.save({
-    status: 'pending',
-    queue: this.name,
-    type: type,
-    failures: 0,
-    data: data
-  });
-};
+});
 
 queues._worker = {
   work: function (job) {
