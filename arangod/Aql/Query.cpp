@@ -31,10 +31,9 @@
 #include "Aql/Parser.h"
 #include "Aql/V8Executor.h"
 #include "BasicsC/json.h"
+#include "BasicsC/tri-strings.h"
 #include "Utils/Exception.h"
 #include "VocBase/vocbase.h"
-
-#include "Basics/JsonHelper.h"
 
 using namespace triagens::aql;
 
@@ -55,9 +54,12 @@ Query::Query (TRI_vocbase_t* vocbase,
     _queryString(queryString),
     _queryLength(queryLength),
     _type(AQL_QUERY_READ),
-    _bindParameters(bindParameters) {
+    _bindParameters(bindParameters),
+    _strings() {
 
   TRI_ASSERT(_vocbase != nullptr);
+  
+  _strings.reserve(32);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,6 +70,11 @@ Query::~Query () {
   if (_executor != nullptr) {
     delete _executor;
     _executor = nullptr;
+  }
+
+  // free strings
+  for (auto it = _strings.begin(); it != _strings.end(); ++it) {
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, const_cast<char*>(*it));
   }
 }
 
@@ -206,11 +213,54 @@ void Query::explain () {
 
 V8Executor* Query::getExecutor () {
   if (_executor == nullptr) {
+    // the executor is a singleton per query
     _executor = new V8Executor;
   }
 
   TRI_ASSERT(_executor != nullptr);
   return _executor;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a string
+/// the string is freed when the query is destroyed
+////////////////////////////////////////////////////////////////////////////////
+
+char* Query::registerString (char const* p, 
+                             size_t length,
+                             bool mustUnescape) {
+
+  if (p == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  if (length == 0) {
+    static char const* empty = "";
+    // optimisation for the empty string
+    return const_cast<char*>(empty);
+  }
+
+  char* copy = nullptr;
+  if (mustUnescape) {
+    size_t outLength;
+    copy = TRI_UnescapeUtf8StringZ(TRI_UNKNOWN_MEM_ZONE, p, length, &outLength);
+  }
+  else {
+    copy = TRI_DuplicateString2Z(TRI_UNKNOWN_MEM_ZONE, p, length);
+  }
+
+  if (copy == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  try {
+    _strings.push_back(copy);
+  }
+  catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  return copy;
 }
 
 // -----------------------------------------------------------------------------
