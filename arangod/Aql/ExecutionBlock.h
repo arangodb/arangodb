@@ -109,8 +109,10 @@ namespace triagens {
             virtual ~WalkerWorker () {};
             virtual void before (ExecutionBlock* eb) {};
             virtual void after (ExecutionBlock* eb) {};
-            virtual void enterSubquery (ExecutionBlock* super, 
-                                        ExecutionBlock* sub) {};
+            virtual bool enterSubquery (ExecutionBlock* super, 
+                                        ExecutionBlock* sub) {
+              return true;  // indicates that we enter the subquery
+            };
             virtual void leaveSubquery (ExecutionBlock* super,
                                         ExecutionBlock* sub) {};
         };
@@ -118,20 +120,96 @@ namespace triagens {
         void walk (WalkerWorker& worker);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief static analysis
+/// @brief static analysis, walker class and information collector
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct VarDefPlace {
-          int depth;
-          int index;
-          VarDefPlace(int depth, int index) : depth(depth), index(index) {}
+        struct VarInfo {
+          unsigned int depth;
+          unsigned int index;
+          VarInfo(int depth, int index) : depth(depth), index(index) {}
         };
 
-        virtual int staticAnalysisRecursion (
-            std::unordered_map<VariableId, VarDefPlace>& varTab,
-            int& curVar);
+        struct VarOverview : public WalkerWorker {
+          std::unordered_map<VariableId, VarInfo> varInfo;
+          std::vector<VariableId>                 nrVars;
+          unsigned int depth;
+          unsigned int totalNrVars;
+          VarOverview () : depth(0), totalNrVars(0) {};
+          ~VarOverview () {};
+          virtual bool enterSubquery (ExecutionBlock* super,
+                                      ExecutionBlock* sub) {
+            auto vv = new VarOverview();
+            sub->walk(*vv);
+            return false;
+          }
+          virtual void after (ExecutionBlock *eb) {
+            switch (eb->getPlan()->getType()) {
+              case ExecutionPlan::SINGLETON: {
+                depth = 0;
+                if (nrVars.size() == 0) {
+                  nrVars.push_back(0);
+                }
+                else {
+                  nrVars[0] = 0;
+                }
+                break;
+              }
+              case ExecutionPlan::ENUMERATE_COLLECTION: {
+                depth++;
+                while (depth >= nrVars.size()) {
+                  nrVars.push_back(0);
+                }
+                TRI_ASSERT(nrVars[depth] == 0);
+                nrVars[depth] = 1;
+                auto ep = static_cast<EnumerateCollectionPlan const*>(eb->getPlan());
+                varInfo.insert(make_pair(ep->_outVariable->id,
+                                         VarInfo(depth, totalNrVars)));
+                totalNrVars++;
+                break;
+              }
+              case ExecutionPlan::ENUMERATE_LIST: {
+                depth++;
+                while (depth >= nrVars.size()) {
+                  nrVars.push_back(0);
+                }
+                TRI_ASSERT(nrVars[depth] == 0);
+                nrVars[depth] = 1;
+                auto ep = static_cast<EnumerateListPlan const*>(eb->getPlan());
+                varInfo.insert(make_pair(ep->_outVariable->id,
+                                         VarInfo(depth, totalNrVars)));
+                totalNrVars++;
+                break;
+              }
+              case ExecutionPlan::CALCULATION: {
+                nrVars[depth]++;
+                auto ep = static_cast<CalculationPlan const*>(eb->getPlan());
+                varInfo.insert(make_pair(ep->_outVariable->id,
+                                         VarInfo(depth, totalNrVars)));
+                totalNrVars++;
+                break;
+              }
+              case ExecutionPlan::PROJECTION: {
+                nrVars[depth]++;
+                auto ep = static_cast<ProjectionPlan const*>(eb->getPlan());
+                varInfo.insert(make_pair(ep->_outVariable->id,
+                                         VarInfo(depth, totalNrVars)));
+                totalNrVars++;
+                break;
+              }
+              // TODO: potentially more cases
+              default:
+                break;
+            }
+            eb->_depth = depth;
+            eb->_varOverview.reset(this);
+          }
 
-        void staticAnalysis ();
+        };
+
+        void staticAnalysis () {
+          auto v = new VarOverview();
+          walk(*v);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Methods for execution
@@ -369,6 +447,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int _depth;  // will be filled in by staticAnalysis
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief info about variables, filled in by staticAnalysis
+////////////////////////////////////////////////////////////////////////////////
+
+        std::shared_ptr<VarOverview> _varOverview;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a static factory for ExecutionBlocks from ExecutionPlans

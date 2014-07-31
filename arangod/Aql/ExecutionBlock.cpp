@@ -55,9 +55,10 @@ void ExecutionBlock::walk (WalkerWorker& worker) {
   }
   if (_exePlan->getType() == ExecutionPlan::SUBQUERY) {
     // auto p = static_cast<SubqueryBlock*>(this);
-    worker.enterSubquery(this, nullptr); // p->_subquery
-    // p->_subquery->walk(worker);
-    worker.leaveSubquery(this, nullptr); // p->_subquery
+    if (worker.enterSubquery(this, nullptr)) { ; // p->_subquery
+      // p->_subquery->walk(worker);
+      worker.leaveSubquery(this, nullptr); // p->_subquery
+    }
   }
   worker.after(this);
 }
@@ -91,67 +92,6 @@ ExecutionBlock* ExecutionBlock::instanciatePlan (ExecutionPlan const* ep) {
     eb->addDependency(instanciatePlan(*it));
   }
   return eb;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                               static analysis for ExecutionBlocks
-// -----------------------------------------------------------------------------
-
-int ExecutionBlock::staticAnalysisRecursion (
-                    std::unordered_map<VariableId, VarDefPlace>& varTab,
-                    int& curVar) {
-  if (_dependencies.size() == 0) {
-    // No dependencies, we are depth 0:
-    _depth = 0;
-    curVar = 0;
-  }
-  else {
-    auto it = _dependencies.begin();
-    _depth = (*it++)->staticAnalysisRecursion(varTab, curVar);
-    while (it != _dependencies.end()) {
-      (*it++)->staticAnalysisRecursion(varTab, curVar);
-    }
-  }
-  switch (_exePlan->getType()) {
-    case ExecutionPlan::ENUMERATE_COLLECTION: {
-      _depth++;
-      curVar = 0;
-      auto p = static_cast<EnumerateCollectionPlan const*>(_exePlan);
-      varTab.insert(make_pair(p->_outVariable->id, VarDefPlace(_depth, 0)));
-      break;
-    }
-    case ExecutionPlan::ENUMERATE_LIST: {
-      _depth++;
-      curVar = 0;
-      auto p = static_cast<EnumerateListPlan const*>(_exePlan);
-      varTab.insert(make_pair(p->_outVariable->id, VarDefPlace(_depth, 0)));
-      break;
-    }
-    case ExecutionPlan::CALCULATION: {
-      curVar++;
-      auto p = static_cast<CalculationPlan const*>(_exePlan);
-      varTab.insert(make_pair(p->_outVariable->id, VarDefPlace(_depth, curVar)));
-      break;
-    }
-    case ExecutionPlan::PROJECTION: {
-      curVar++;
-      auto p = static_cast<ProjectionPlan const*>(_exePlan);
-      varTab.insert(make_pair(p->_outVariable->id, VarDefPlace(_depth, curVar)));
-      break;
-    }
-    // TODO: potentially more cases
-    default: {
-      break;
-    }
-  }
-  return _depth;
-}
-                            
-
-void ExecutionBlock::staticAnalysis () {
-  std::unordered_map<VariableId, VarDefPlace> varTab;
-  int curVar = 0;
-  staticAnalysisRecursion(varTab, curVar);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
