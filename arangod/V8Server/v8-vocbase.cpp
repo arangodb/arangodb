@@ -5401,6 +5401,22 @@ static v8::Handle<v8::Value> JS_ParseAql (v8::Arguments const& argv) {
 /// @brief peng an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
+class MyWorker : public triagens::aql::ExecutionBlock::WalkerWorker {
+  public:
+    int count;
+    MyWorker () : count(0) {};
+    ~MyWorker () {};
+    void before (triagens::aql::ExecutionBlock* eb) {
+      std::cout << "Before node of type " << eb->getPlan()->getTypeString()
+                << std::endl;
+      count++;
+    }
+    void after (triagens::aql::ExecutionBlock* eb) {
+      std::cout << "After node of type " << eb->getPlan()->getTypeString()
+                << std::endl;
+    }
+};
+
 static v8::Handle<v8::Value> JS_PengAql (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
@@ -5424,6 +5440,10 @@ static v8::Handle<v8::Value> JS_PengAql (v8::Arguments const& argv) {
 
   exec->staticAnalysis();
 
+  MyWorker w;
+  exec->walk(w);
+  std::cout << "Count is " << w.count << std::endl;
+  
   exec->initialize();
   exec->execute();
  
