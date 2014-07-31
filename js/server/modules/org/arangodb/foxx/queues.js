@@ -33,9 +33,12 @@ var QUEUE_MANAGER_PERIOD = 1000, // in ms
   tasks = require('org/arangodb/tasks'),
   arangodb = require('org/arangodb'),
   db = arangodb.db,
+  queueMap,
   queues,
   Queue,
   worker;
+
+queueMap = Object.create(null);
 
 queues = {
   _jobTypes: Object.create(null),
@@ -44,7 +47,10 @@ queues = {
     if (!db._queues.exists(key)) {
       throw new Error('Queue does not exist: ' + key);
     }
-    return new Queue(key);
+    if (!queueMap[key]) {
+      queueMap[key] = new Queue(key);
+    }
+    return queueMap[key];
   },
   create: function (key, maxWorkers) {
     'use strict';
@@ -57,7 +63,10 @@ queues = {
       }
       db._queues.update(key, {maxWorkers: maxWorkers});
     }
-    return new Queue(key);
+    if (!queueMap[key]) {
+      queueMap[key] = new Queue(key);
+    }
+    return queueMap[key];
   },
   destroy: function (key) {
     'use strict';
