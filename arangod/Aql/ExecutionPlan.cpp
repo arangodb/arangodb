@@ -117,6 +117,26 @@ void ExecutionPlan::appendAsString (std::string& st, int indent) {
   st.push_back('>');
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief functionality to walk an execution plan recursively
+////////////////////////////////////////////////////////////////////////////////
+
+void ExecutionPlan::walk (WalkerWorker& worker) {
+  worker.before(this);
+  for (auto it = _dependencies.begin();
+            it != _dependencies.end(); 
+            ++it) {
+    (*it)->walk(worker);
+  }
+  if (getType() == SUBQUERY) {
+    auto p = static_cast<SubqueryPlan*>(this);
+    worker.enterSubquery(this, p->getSubquery());
+    p->getSubquery()->walk(worker);
+    worker.leaveSubquery(this, p->getSubquery());
+  }
+  worker.after(this);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                methods of SingletonPlan
 // -----------------------------------------------------------------------------
@@ -434,6 +454,22 @@ using namespace triagens::basics;
 
 using namespace std;
 
+class MyWorker2 : public triagens::aql::ExecutionPlan::WalkerWorker {
+  public:
+    int count;
+    MyWorker2 () : count(0) {};
+    ~MyWorker2 () {};
+    void before (triagens::aql::ExecutionPlan* ep) {
+      std::cout << "Before node of type " << ep->getTypeString()
+                << std::endl;
+      count++;
+    }
+    void after (triagens::aql::ExecutionPlan* ep) {
+      std::cout << "After node of type " << ep->getTypeString()
+                << std::endl;
+    }
+};
+
 void testExecutionPlans () {
   Json a(12);
   Json b(Json::Array);
@@ -642,6 +678,11 @@ void testExecutionPlans () {
   e = n;
 
   cout << e->toJson().toString() << endl;
+  MyWorker2 w;
+  e->walk(w);
+  cout << "Count is: " << w.count << endl;
+
+  delete e;
   }
 }
 

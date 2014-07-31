@@ -225,6 +225,24 @@ namespace triagens {
 
         virtual void appendAsString (std::string& st, int indent = 0);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief functionality to walk an execution plan recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        class WalkerWorker {
+          public:
+            WalkerWorker () {};
+            virtual ~WalkerWorker () {};
+            virtual void before (ExecutionPlan* eb) {};
+            virtual void after (ExecutionPlan* eb) {};
+            virtual void enterSubquery (ExecutionPlan* super, 
+                                        ExecutionPlan* sub) {};
+            virtual void leaveSubquery (ExecutionPlan* super,
+                                        ExecutionPlan* sub) {};
+        };
+
+        void walk (WalkerWorker& worker);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -810,6 +828,14 @@ namespace triagens {
           auto c = new SubqueryPlan(_subquery->clone(), _varNumber, _varName);
           cloneDependencies(c);
           return static_cast<ExecutionPlan*>(c);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getter for subquery
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionPlan* getSubquery () {
+          return _subquery;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
