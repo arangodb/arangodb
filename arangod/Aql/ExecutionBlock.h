@@ -95,6 +95,24 @@ namespace triagens {
           }
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief functionality to walk an execution plan recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        class WalkerWorker {
+          public:
+            WalkerWorker () {};
+            virtual ~WalkerWorker () {};
+            virtual void before (ExecutionBlock* eb) {};
+            virtual void after (ExecutionBlock* eb) {};
+            virtual void enterSubquery (ExecutionBlock* super, 
+                                        ExecutionBlock* sub) {};
+            virtual void leaveSubquery (ExecutionBlock* super,
+                                        ExecutionBlock* sub) {};
+        };
+
+        void walk (WalkerWorker& worker);
+
         struct VarDefPlace {
           int depth;
           int index;
@@ -193,6 +211,10 @@ namespace triagens {
 
         virtual int64_t remaining () {
           return _dependencies[0]->remaining() + _buffer.size();
+        }
+
+        ExecutionPlan const* getPlan () {
+          return _exePlan;
         }
 
       protected:
