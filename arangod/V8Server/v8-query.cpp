@@ -1519,7 +1519,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
       TRI_voc_cid_t cid;
       TRI_voc_key_t key = 0;
 
-      res = TRI_ParseVertex(trx.resolver(), cid, key, vertices->Get(i), true);
+      res = TRI_ParseVertex(trx.resolver(), cid, key, vertices->Get(i));
 
       if (res != TRI_ERROR_NO_ERROR) {
         // error is just ignored
@@ -1561,7 +1561,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
     TRI_voc_key_t key = nullptr;
     TRI_voc_cid_t cid;
 
-    res = TRI_ParseVertex(trx.resolver(), cid, key, argv[0], true);
+    res = TRI_ParseVertex(trx.resolver(), cid, key, argv[0]);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_EXCEPTION(scope, res);
