@@ -65,7 +65,11 @@ VariableGenerator::~VariableGenerator () {
 
 Variable* VariableGenerator::createVariable (char const* name,
                                              bool isUserDefined) {
-  auto variable = new Variable(std::string(name), nextId(), isUserDefined);
+  auto variable = new Variable(std::string(name), nextId());
+
+  if (isUserDefined) {
+    TRI_ASSERT(variable->isUserDefined());
+  }
 
   try {
     _variables.insert(std::make_pair(variable->id, variable));
@@ -85,7 +89,11 @@ Variable* VariableGenerator::createVariable (char const* name,
 
 Variable* VariableGenerator::createVariable (std::string const& name,
                                              bool isUserDefined) {
-  auto variable = new Variable(name, nextId(), isUserDefined);
+  auto variable = new Variable(name, nextId());
+  
+  if (isUserDefined) {
+    TRI_ASSERT(variable->isUserDefined());
+  }
 
   try {
     _variables.insert(std::make_pair(variable->id, variable));
@@ -126,6 +134,8 @@ Variable* VariableGenerator::getVariable (VariableId id) const {
 ////////////////////////////////////////////////////////////////////////////////
   
 std::string VariableGenerator::nextName () const {
+  // note: if the naming scheme is adjusted, it may be necessary to adjust
+  // Variable::isUserDefined, too!
   return std::to_string(_id); // to_string: c++11
 }
 

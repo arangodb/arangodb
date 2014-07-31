@@ -64,7 +64,7 @@ AstNode::~AstNode () {
 /// the caller is responsible for freeing the JSON later
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone) {
+TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone) const {
   TRI_json_t* node = TRI_CreateArrayJson(zone);
 
   if (node == nullptr) {
@@ -151,7 +151,7 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void AstNode::toJson (TRI_json_t* json,
-                      TRI_memory_zone_t* zone) {
+                      TRI_memory_zone_t* zone) const {
   TRI_ASSERT(TRI_IsListJson(json));
 
   TRI_json_t* node = toJson(zone);

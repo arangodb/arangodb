@@ -177,15 +177,9 @@ void EnumerateCollectionPlan::toJsonHelper (std::map<ExecutionPlan*, int>& index
   }
 
   // Now put info about vocbase and cid in there
-  if (_vocbase == nullptr) {
-    json("vocbase", Json("<nullptr>"));
-  }
-  else {
-    json("vocbase", Json(_vocbase->_name));
-  }
-  json("collection", Json(_collname))
-      ("outVarNumber", Json(static_cast<double>(_outVarNumber)))
-      ("outVarName",   Json(_outVarName));
+  json("database", Json(_vocbase->_name))
+      ("collection", Json(_collname))
+      ("outVariable", _outVariable->toJson());
 
   // And add it:
   int len = static_cast<int>(nodes.size());
@@ -208,11 +202,8 @@ void EnumerateListPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
   if (json.isEmpty()) {
     return;
   }
-  json("varNumber",    Json(static_cast<double>(_varNumber)))
-      ("varName",      Json(_varName))
-      ("outVarNumber", Json(static_cast<double>(_outVarNumber)))
-      ("outVarName",   Json(_outVarName));
-
+  json("inVariable",  _inVariable->toJson())
+      ("outVariable", _outVariable->toJson());
 
   // And add it:
   int len = static_cast<int>(nodes.size());
@@ -260,9 +251,9 @@ void CalculationPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
   if (json.isEmpty()) {
     return;
   }
-  json("varNumber",  Json(static_cast<double>(_varNumber)))
-      ("varName",    Json(_varName))
-      ("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE));
+  
+  json("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE))
+      ("outVariable", _outVariable->toJson());
 
   // And add it:
   int len = static_cast<int>(nodes.size());
@@ -285,9 +276,8 @@ void SubqueryPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
   if (json.isEmpty()) {
     return;
   }
-  json("varNumber", Json(static_cast<double>(_varNumber)))
-      ("varName",   Json(_varName))
-      ("subquery",  _subquery->toJson(TRI_UNKNOWN_MEM_ZONE));
+  json("subquery",  _subquery->toJson(TRI_UNKNOWN_MEM_ZONE))
+      ("outVariable", _outVariable->toJson());
 
   // And add it:
   int len = static_cast<int>(nodes.size());
@@ -314,10 +304,9 @@ void ProjectionPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
   for (auto it = _keepAttributes.begin(); it != _keepAttributes.end(); ++it) {
     vec(Json(*it));
   }
-  json("inVarNumber",    Json(static_cast<double>(_inVar)))
-      ("inVarName",      Json(_inVarName))
-      ("outVarNumber",   Json(static_cast<double>(_outVar)))
-      ("outVarName",     Json(_outVarName))
+  
+  json("inVariable", _inVariable->toJson())
+      ("outVariable", _outVariable->toJson())
       ("keepAttributes", vec);
 
   // And add it:
@@ -341,9 +330,8 @@ void FilterPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
   if (json.isEmpty()) {
     return;
   }
-  // Now put info about offset and limit in
-  json("varName",   Json(_varName))
-      ("varNumber", Json(static_cast<double>(_varNumber)));
+  
+  json("inVariable", _inVariable->toJson());
 
   // And add it:
   int len = static_cast<int>(nodes.size());
@@ -366,21 +354,14 @@ void SortPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
   if (json.isEmpty()) {
     return;
   }
-  Json numbers(Json::List, _varNumbers.size());
-  for (auto it = _varNumbers.begin(); it != _varNumbers.end(); ++it) {
-    numbers(Json(static_cast<double>(*it)));
+  Json values(Json::List, _elements.size());
+  for (auto it = _elements.begin(); it != _elements.end(); ++it) {
+    Json element(Json::Array);
+    element("inVariable", (*it).first->toJson())
+           ("ascending", Json((*it).second));
+    values(element);
   }
-  Json names(Json::List, _varNames.size());
-  for (auto it = _varNames.begin(); it != _varNames.end(); ++it) {
-    names(Json(*it));
-  }
-  Json vec(Json::List, _sortAscending.size());
-  for (auto it = _sortAscending.begin(); it != _sortAscending.end(); ++it) {
-    vec(Json(*it));
-  }
-  json("varNumbers",    numbers)
-      ("varNames",      names)
-      ("sortAscending", vec);
+  json("elements", values);
 
   // And add it:
   int len = static_cast<int>(nodes.size());
@@ -403,18 +384,20 @@ void AggregateOnUnsortedPlan::toJsonHelper (std::map<ExecutionPlan*, int>& index
   if (json.isEmpty()) {
     return;
   }
-  Json numbers(Json::List, _varNumbers.size());
-  for (auto it = _varNumbers.begin(); it != _varNumbers.end(); ++it) {
-    numbers(Json(static_cast<double>(*it)));
+
+  Json values(Json::List, _aggregateVariables.size());
+  for (auto it = _aggregateVariables.begin(); it != _aggregateVariables.end(); ++it) {
+    Json variable(Json::Array);
+    variable("outVariable", (*it).first->toJson())
+            ("inVariable", (*it).second->toJson());
+    values(variable);
   }
-  Json names(Json::List, _varNames.size());
-  for (auto it = _varNames.begin(); it != _varNames.end(); ++it) {
-    names(Json(*it));
+  json("aggregates", values);
+
+  // output variable might be empty
+  if (_outVariable != nullptr) {
+    json("outVariable", _outVariable->toJson());
   }
-  json("varNumbers",   numbers)
-      ("varNames",     names)
-      ("outVarNumber", Json(static_cast<double>(_outVarNumber)))
-      ("outVarName",   Json(_outVarName));
 
   // And add it:
   int len = static_cast<int>(nodes.size());
@@ -437,253 +420,13 @@ void RootPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
   if (json.isEmpty()) {
     return;
   }
-  json("varNumber", Json(static_cast<double>(_varNumber)))
-      ("varName"  , Json(_varName));
+      
+  json("inVariable", _inVariable->toJson());
 
   // And add it:
   int len = static_cast<int>(nodes.size());
   nodes(json);
   indexTab.insert(make_pair(this, len));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test function
-////////////////////////////////////////////////////////////////////////////////
-
-using namespace triagens::basics;
-
-using namespace std;
-
-class MyWorker2 : public triagens::aql::ExecutionPlan::WalkerWorker {
-  public:
-    int count;
-    MyWorker2 () : count(0) {};
-    ~MyWorker2 () {};
-    void before (triagens::aql::ExecutionPlan* ep) {
-      std::cout << "Before node of type " << ep->getTypeString()
-                << std::endl;
-      count++;
-    }
-    void after (triagens::aql::ExecutionPlan* ep) {
-      std::cout << "After node of type " << ep->getTypeString()
-                << std::endl;
-    }
-};
-
-void testExecutionPlans () {
-  Json a(12);
-  Json b(Json::Array);
-  b("a",a);
-  std::cout << b.toString() << std::endl;
-  std::cout << a.toString() << std::endl;
-  std::cout << "Got here" << std::endl;
-
-  auto ec = new EnumerateCollectionPlan(nullptr, "guck", 1, "X");
-  Json jjj(ec->toJson());
-  cout << jjj.toString() << endl;
-  auto li = new LimitPlan(12, 17);
-  li->addDependency(ec);
-  jjj = li->toJson();
-  cout << jjj.toString() << endl;
-
-  TRI_json_t* json = Json(12);
-  cout << JsonHelper::toString(json) << endl;
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-  
-  json = Json(true);
-  cout << JsonHelper::toString(json) << endl;
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
-  json = Json(Json::Null);
-  cout << JsonHelper::toString(json) << endl;
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
-  json = Json(Json::String);
-  cout << JsonHelper::toString(json) << endl;
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
-  json = Json(Json::List);
-  cout << JsonHelper::toString(json) << endl;
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
-  json = Json(Json::Array);
-  cout << JsonHelper::toString(json) << endl;
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
-  json = Json(Json::Array, 10)
-           ("myinteger", Json(12))
-           ("mystring", Json("hallo"))
-           ("mybool", Json(false))
-           ("mynull", Json(Json::Null))
-           ("mylist", Json(Json::List, 3)
-                            (Json(1))
-                            (Json(2))
-                            (Json(3)))
-           ("myarray", Json(Json::Array, 2)
-                            ("a",Json("hallo"))
-                            ("b",Json(13)));
-  cout << JsonHelper::toString(json) << endl;
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
-  Json j(Json::Array);
-       j("a", Json(12))
-        ("b", Json(true))
-        ("c", Json(Json::List) 
-                (Json(1))(Json(2))(Json(3)))
-        ("d", Json(Json::Array)
-                ("x", Json(12))
-                ("y", Json(true)));
-  cout << j.toString() << endl;
-
-  // We expect to see exactly two copies here:
-  Json jjjj = j.copy();  // create an explicit copy
-  Json jj(12);
-  
-  cout << "Before assignment" << jj.toString() << endl;
-  jj = j;  // this steals the pointer from j
-
-  cout << jjjj.toString();
-  cout << jj.toString();
-
-  Json k = jj.get("c");
-  Json l = k.at(2);
-
-  cout << l.toString() << endl;
-
-  cout << "and now a complete test" << endl << endl;
-
-  // Here we want to build the unoptimised plan for:
-  //
-  // LET A = [1,2,3]
-  // FOR g IN guck
-  //   FILTER g.name == "Wurst"
-  //   SORT g.vorname
-  //   LIMIT 2, 10
-  //   FOR i IN A
-  //     LET X = { "vorname": g.vorname, "addresse": g.addresse,
-  //               "nr": i*2 }
-  //     RETURN X
-  //
-  //     
-  {
-  AstNode* a;
-  AstNode* b;
-  AstNode* c;
-  ExecutionPlan* e;
-  ExecutionPlan* n;
-
-  // Singleton
-  e = new SingletonPlan();
-
-  // LET A = [1,2,3]
-  a = new AstNode(NODE_TYPE_LIST);
-  b = new AstNode(NODE_TYPE_VALUE);
-  b->setValueType(VALUE_TYPE_INT);
-  b->setIntValue(1);
-  a->addMember(b);
-  b = new AstNode(NODE_TYPE_VALUE);
-  b->setValueType(VALUE_TYPE_INT);
-  b->setIntValue(2);
-  a->addMember(b);
-  b = new AstNode(NODE_TYPE_VALUE);
-  b->setValueType(VALUE_TYPE_INT);
-  b->setIntValue(3);
-  a->addMember(b);
-  n = new CalculationPlan(new AqlExpression(a), 1, "A");
-  n->addDependency(e);
-  e = n;
-
-  // FOR g IN guck
-  n = new EnumerateCollectionPlan(nullptr, "guck", 2, "g");
-  n->addDependency(e);
-  e = n;
-
-  // FILTER g.name == "Wurst"
-  a = new AstNode(NODE_TYPE_OPERATOR_BINARY_EQ);
-  b = new AstNode(NODE_TYPE_VALUE);
-  b->setValueType(VALUE_TYPE_STRING);
-  b->setStringValue("g.name");
-  a->addMember(b);
-  b = new AstNode(NODE_TYPE_VALUE);
-  b->setValueType(VALUE_TYPE_STRING);
-  b->setStringValue("Wurst");
-  a->addMember(b);
-  n = new CalculationPlan(new AqlExpression(a), 2, "_1");
-  n->addDependency(e);
-  e = n;
-  n = new FilterPlan(2, "_1");
-  n->addDependency(e);
-  e = n;
-
-  // SORT g.vorname
-  a = new AstNode(NODE_TYPE_VALUE);
-  a->setValueType(VALUE_TYPE_STRING);
-  a->setStringValue("g.vorname");
-  n = new CalculationPlan(new AqlExpression(a), 3, "_2");
-  n->addDependency(e);
-  e = n;
-  std::vector<VariableId> vars;
-  std::vector<std::string> names;
-  std::vector<bool> asc;
-  vars.push_back(3);
-  names.push_back(string("_2"));
-  asc.push_back(true);
-  n = new SortPlan(vars, names, asc);
-  n->addDependency(e);
-  e = n;
-
-  // LIMIT 2, 10
-  n = new LimitPlan(2, 10);
-  n->addDependency(e);
-  e = n;
-
-  // FOR i in A
-  n = new EnumerateListPlan(1, "A", 2, "i");
-  n->addDependency(e);
-  e = n;
-
-  // LET X = {"vorname": g.vorname, "addresse": g.addresse, "nr": i*2}
-  a = new AstNode(NODE_TYPE_ARRAY);
-  b = new AstNode(NODE_TYPE_ARRAY_ELEMENT);
-  b->setValueType(VALUE_TYPE_STRING);
-  b->setStringValue("vorname");
-  c = new AstNode(NODE_TYPE_VALUE);
-  c->setValueType(VALUE_TYPE_STRING);
-  c->setStringValue("g.vorname");
-  b->addMember(c);
-  a->addMember(b);
-  b = new AstNode(NODE_TYPE_ARRAY_ELEMENT);
-  b->setValueType(VALUE_TYPE_STRING);
-  b->setStringValue("adresse");
-  c = new AstNode(NODE_TYPE_VALUE);
-  c->setValueType(VALUE_TYPE_STRING);
-  c->setStringValue("g.addresse");
-  b->addMember(c);
-  a->addMember(b);
-  b = new AstNode(NODE_TYPE_ARRAY_ELEMENT);
-  b->setValueType(VALUE_TYPE_STRING);
-  b->setStringValue("nr");
-  c = new AstNode(NODE_TYPE_VALUE);
-  c->setValueType(VALUE_TYPE_STRING);
-  c->setStringValue("i*2");
-  b->addMember(c);
-  a->addMember(b);
-  n = new CalculationPlan(new AqlExpression(a), 4, "X");
-  n->addDependency(e);
-  e = n;
-
-  // RETURN X
-  n = new RootPlan(4, "X");
-  n->addDependency(e);
-  e = n;
-
-  cout << e->toJson().toString() << endl;
-  MyWorker2 w;
-  e->walk(w);
-  cout << "Count is: " << w.count << endl;
-
-  delete e;
-  }
 }
 
 // Local Variables:
