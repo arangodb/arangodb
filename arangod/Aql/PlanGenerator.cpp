@@ -176,6 +176,51 @@ ExecutionPlan* PlanGenerator::fromNodeLet (Query* query,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan element from an AST SORT node
+////////////////////////////////////////////////////////////////////////////////
+
+ExecutionPlan* PlanGenerator::fromNodeSort (Query* query,
+                                            ExecutionPlan* previous,
+                                            AstNode const* node) {
+  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_SORT);
+  TRI_ASSERT(node->numMembers() == 1);
+
+  // AstNode const* list = node->getMember(0);
+  // TODO
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan element from an AST COLLECT node
+////////////////////////////////////////////////////////////////////////////////
+
+ExecutionPlan* PlanGenerator::fromNodeCollect (Query* query,
+                                               ExecutionPlan* previous,
+                                               AstNode const* node) {
+  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_COLLECT);
+  size_t const n = node->numMembers();
+
+  TRI_ASSERT(n >= 1);
+
+  // TODO
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan element from an AST LIMIT node
+////////////////////////////////////////////////////////////////////////////////
+
+ExecutionPlan* PlanGenerator::fromNodeLimit (Query* query,
+                                             ExecutionPlan* previous,
+                                             AstNode const* node) {
+  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_LIMIT);
+  TRI_ASSERT(node->numMembers() == 2);
+
+  // TODO
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST RETURN node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -195,6 +240,58 @@ ExecutionPlan* PlanGenerator::fromNodeReturn (Query* query,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan element from an AST REMOVE node
+////////////////////////////////////////////////////////////////////////////////
+
+ExecutionPlan* PlanGenerator::fromNodeRemove (Query* query,
+                                              ExecutionPlan* previous,
+                                              AstNode const* node) {
+  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REMOVE);
+
+  // TODO
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan element from an AST INSERT node
+////////////////////////////////////////////////////////////////////////////////
+
+ExecutionPlan* PlanGenerator::fromNodeInsert (Query* query,
+                                              ExecutionPlan* previous,
+                                              AstNode const* node) {
+  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_INSERT);
+
+  // TODO
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan element from an AST UPDATE node
+////////////////////////////////////////////////////////////////////////////////
+
+ExecutionPlan* PlanGenerator::fromNodeUpdate (Query* query,
+                                              ExecutionPlan* previous,
+                                              AstNode const* node) {
+  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPDATE);
+
+  // TODO
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan element from an AST REPLACE node
+////////////////////////////////////////////////////////////////////////////////
+
+ExecutionPlan* PlanGenerator::fromNodeReplace (Query* query,
+                                               ExecutionPlan* previous,
+                                               AstNode const* node) {
+  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REPLACE);
+
+  // TODO
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan from an abstract syntax tree node
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -209,11 +306,11 @@ ExecutionPlan* PlanGenerator::fromNode (Query* query,
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMember(i);
 
-    if (member == nullptr) {
+    if (member == nullptr || member->type == NODE_TYPE_NOP) {
       continue;
     }
 
-    switch (node->type) {
+    switch (member->type) {
       case NODE_TYPE_FOR: {
         plan = fromNodeFor(query, plan, member);
         break;
@@ -228,15 +325,49 @@ ExecutionPlan* PlanGenerator::fromNode (Query* query,
         plan = fromNodeLet(query, plan, member);
         break;
       }
-
+      
+      case NODE_TYPE_SORT: {
+        plan = fromNodeSort(query, plan, member);
+        break;
+      }
+      
+      case NODE_TYPE_COLLECT: {
+        plan = fromNodeCollect(query, plan, member);
+        break;
+      }
+      
+      case NODE_TYPE_LIMIT: {
+        plan = fromNodeLimit(query, plan, member);
+        break;
+      }
+      
       case NODE_TYPE_RETURN: {
         plan = fromNodeReturn(query, plan, member);
         break;
       }
-
-      // TODO: implement all other node types
+      
+      case NODE_TYPE_REMOVE: {
+        plan = fromNodeRemove(query, plan, member);
+        break;
+      }
+      
+      case NODE_TYPE_INSERT: {
+        plan = fromNodeInsert(query, plan, member);
+        break;
+      }
+      
+      case NODE_TYPE_UPDATE: {
+        plan = fromNodeUpdate(query, plan, member);
+        break;
+      }
+      
+      case NODE_TYPE_REPLACE: {
+        plan = fromNodeReplace(query, plan, member);
+        break;
+      }
 
       default: {
+        // node type not implemented
         plan = nullptr;
         break;
       }
