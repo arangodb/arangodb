@@ -55,13 +55,15 @@ queues = {
   create: function (key, maxWorkers) {
     'use strict';
     try {
-      db._queues.save({_key: key, maxWorkers: maxWorkers});
+      db._queues.save({_key: key, maxWorkers: maxWorkers || 1});
     } catch (err) {
       if (!err instanceof arangodb.ArangoError ||
           err.errorNum !== arangodb.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
         throw err;
       }
-      db._queues.update(key, {maxWorkers: maxWorkers});
+      if (maxWorkers) {
+        db._queues.update(key, {maxWorkers: maxWorkers});
+      }
     }
     if (!queueMap[key]) {
       queueMap[key] = new Queue(key);
