@@ -93,7 +93,7 @@ CalculationPlan* PlanGenerator::createTemporaryCalculation (Ast const* ast,
   auto expr = new AqlExpression(const_cast<AstNode*>(expression));
 
   try {
-    return new CalculationPlan(expr, out->id, out->name); 
+    return new CalculationPlan(expr, out);
   }
   catch (...) {
     // prevent memleak
@@ -151,16 +151,16 @@ ExecutionPlan* PlanGenerator::fromNodeFor (Ast const* ast,
   }
   else if (expression->type == NODE_TYPE_REFERENCE) {
     // second operand is already a variable
-    auto out = static_cast<Variable*>(variable->getData());
-    TRI_ASSERT(out != nullptr);
-    plan = new EnumerateListPlan(out->id, out->name, v->id, v->name); 
+    auto inVariable = static_cast<Variable*>(variable->getData());
+    TRI_ASSERT(inVariable != nullptr);
+    plan = new EnumerateListPlan(inVariable, v);
   }
   else {
     // second operand is some misc. expression
     auto calc = createTemporaryCalculation(ast, expression);
 
     try {
-      plan = new EnumerateListPlan(calc->varNumber(), calc->varName(), v->id, v->name); 
+      plan = new EnumerateListPlan(calc->outVariable(), v);
       plan->addDependency(calc);
     }
     catch (...) {
@@ -192,14 +192,14 @@ ExecutionPlan* PlanGenerator::fromNodeFilter (Ast const* ast,
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    plan = new FilterPlan(v->id, v->name);
+    plan = new FilterPlan(v);
   }
   else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(ast, expression);
 
     try {
-      plan = new FilterPlan(calc->varNumber(), calc->varName());
+      plan = new FilterPlan(calc->outVariable());
       plan->addDependency(calc);
     }
     catch (...) {
@@ -237,7 +237,7 @@ ExecutionPlan* PlanGenerator::fromNodeLet (Ast const* ast,
     auto expr = new AqlExpression(const_cast<AstNode*>(expression));
 
     try {
-      plan = new CalculationPlan(expr, v->id, v->name);
+      plan = new CalculationPlan(expr, v);
     }
     catch (...) {
       // prevent memleak
@@ -262,7 +262,7 @@ ExecutionPlan* PlanGenerator::fromNodeSort (Ast const* ast,
   auto list = node->getMember(0);
   TRI_ASSERT(list->type == NODE_TYPE_LIST);
 
-  std::vector<std::tuple<VariableId, std::string, bool>> elements;
+  std::vector<std::pair<Variable const*, bool>> elements;
   std::vector<CalculationPlan*> temp;
 
   try {
@@ -279,13 +279,13 @@ ExecutionPlan* PlanGenerator::fromNodeSort (Ast const* ast,
         // sort operand is a variable
         auto v = static_cast<Variable*>(expression->getData());
         TRI_ASSERT(v != nullptr);
-        elements.push_back(std::make_tuple(v->id, v->name, element->getBoolValue()));
+        elements.push_back(std::make_pair(v, element->getBoolValue()));
       }
       else {
         // sort operand is some misc expression
         auto calc = createTemporaryCalculation(ast, expression);
         temp.push_back(calc);
-        elements.push_back(std::make_tuple(calc->varNumber(), calc->varName(), element->getBoolValue()));
+        elements.push_back(std::make_pair(calc->outVariable(), element->getBoolValue()));
       }
     }
   }
@@ -367,14 +367,14 @@ ExecutionPlan* PlanGenerator::fromNodeReturn (Ast const* ast,
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    plan = new RootPlan(v->id, v->name);
+    plan = new RootPlan(v);
   }
   else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(ast, expression);
 
     try {
-      plan = new RootPlan(calc->varNumber(), calc->varName());
+      plan = new RootPlan(calc->outVariable());
       plan->addDependency(calc);
     }
     catch (...) {

@@ -177,13 +177,8 @@ void EnumerateCollectionPlan::toJsonHelper (std::map<ExecutionPlan*, int>& index
   }
 
   // Now put info about vocbase and cid in there
-  if (_vocbase == nullptr) {
-    json("vocbase", Json("<nullptr>"));
-  }
-  else {
-    json("vocbase", Json(_vocbase->_name));
-  }
-  json("collection", Json(_collname))
+  json("database", Json(_vocbase->_name))
+      ("collection", Json(_collname))
       ("outVariable", _outVariable->toJson());
 
   // And add it:
@@ -207,11 +202,8 @@ void EnumerateListPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
   if (json.isEmpty()) {
     return;
   }
-  json("varNumber",    Json(static_cast<double>(_varNumber)))
-      ("varName",      Json(_varName))
-      ("outVarNumber", Json(static_cast<double>(_outVarNumber)))
-      ("outVarName",   Json(_outVarName));
-
+  json("inVariable",  _inVariable->toJson())
+      ("outVariable", _outVariable->toJson());
 
   // And add it:
   int len = static_cast<int>(nodes.size());
@@ -259,9 +251,9 @@ void CalculationPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
   if (json.isEmpty()) {
     return;
   }
-  json("varNumber",  Json(static_cast<double>(_varNumber)))
-      ("varName",    Json(_varName))
-      ("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE));
+  
+  json("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE))
+      ("outVariable", _outVariable->toJson());
 
   // And add it:
   int len = static_cast<int>(nodes.size());
@@ -284,9 +276,8 @@ void SubqueryPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
   if (json.isEmpty()) {
     return;
   }
-  json("varNumber", Json(static_cast<double>(_varNumber)))
-      ("varName",   Json(_varName))
-      ("subquery",  _subquery->toJson(TRI_UNKNOWN_MEM_ZONE));
+  json("subquery",  _subquery->toJson(TRI_UNKNOWN_MEM_ZONE))
+      ("outVariable", _outVariable->toJson());
 
   // And add it:
   int len = static_cast<int>(nodes.size());
@@ -313,10 +304,9 @@ void ProjectionPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
   for (auto it = _keepAttributes.begin(); it != _keepAttributes.end(); ++it) {
     vec(Json(*it));
   }
-  json("inVarNumber",    Json(static_cast<double>(_inVar)))
-      ("inVarName",      Json(_inVarName))
-      ("outVarNumber",   Json(static_cast<double>(_outVar)))
-      ("outVarName",     Json(_outVarName))
+  
+  json("inVariable", _inVariable->toJson())
+      ("outVariable", _outVariable->toJson())
       ("keepAttributes", vec);
 
   // And add it:
@@ -340,9 +330,8 @@ void FilterPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
   if (json.isEmpty()) {
     return;
   }
-  // Now put info about offset and limit in
-  json("varName",   Json(_varName))
-      ("varNumber", Json(static_cast<double>(_varNumber)));
+  
+  json("inVariable", _inVariable->toJson());
 
   // And add it:
   int len = static_cast<int>(nodes.size());
@@ -368,9 +357,8 @@ void SortPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
   Json values(Json::List, _elements.size());
   for (auto it = _elements.begin(); it != _elements.end(); ++it) {
     Json element(Json::Array);
-    element("varName",   Json(std::get<1>(*it)))
-           ("varNumber", Json(static_cast<double>(std::get<0>(*it))))
-           ("ascending", Json(std::get<2>(*it)));
+    element("inVariable", (*it).first->toJson())
+           ("ascending", Json((*it).second));
     values(element);
   }
   json("elements", values);
@@ -396,18 +384,20 @@ void AggregateOnUnsortedPlan::toJsonHelper (std::map<ExecutionPlan*, int>& index
   if (json.isEmpty()) {
     return;
   }
-  Json numbers(Json::List, _varNumbers.size());
-  for (auto it = _varNumbers.begin(); it != _varNumbers.end(); ++it) {
-    numbers(Json(static_cast<double>(*it)));
+
+  Json values(Json::List, _aggregateVariables.size());
+  for (auto it = _aggregateVariables.begin(); it != _aggregateVariables.end(); ++it) {
+    Json variable(Json::Array);
+    variable("outVariable", (*it).first->toJson())
+            ("inVariable", (*it).second->toJson());
+    values(variable);
   }
-  Json names(Json::List, _varNames.size());
-  for (auto it = _varNames.begin(); it != _varNames.end(); ++it) {
-    names(Json(*it));
+  json("aggregates", values);
+
+  // output variable might be empty
+  if (_outVariable != nullptr) {
+    json("outVariable", _outVariable->toJson());
   }
-  json("varNumbers",   numbers)
-      ("varNames",     names)
-      ("outVarNumber", Json(static_cast<double>(_outVarNumber)))
-      ("outVarName",   Json(_outVarName));
 
   // And add it:
   int len = static_cast<int>(nodes.size());
@@ -430,8 +420,8 @@ void RootPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
   if (json.isEmpty()) {
     return;
   }
-  json("varNumber", Json(static_cast<double>(_varNumber)))
-      ("varName"  , Json(_varName));
+      
+  json("inVariable", _inVariable->toJson());
 
   // And add it:
   int len = static_cast<int>(nodes.size());
