@@ -373,7 +373,7 @@ namespace triagens {
         std::string typeString () const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stringify the node into a string buffer
+/// @brief append a JavaScript representation of the node into a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
         void append (triagens::basics::StringBuffer*) const;

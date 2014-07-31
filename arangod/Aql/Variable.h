@@ -110,7 +110,7 @@ namespace triagens {
       inline bool isUserDefined () const {
         char const c = name[0];
         // variables starting with a number are user-defined
-        return (c >= '0' && c <= '9');
+        return (c < '0' || c > '9');
       }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -38,6 +38,7 @@ namespace triagens {
     struct AqlItem;
     struct AqlValue;
     class V8Executor;
+    struct V8Expression;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AqlExpression, used in execution plans and execution blocks
@@ -116,8 +117,13 @@ namespace triagens {
 /// @brief the AST node that contains the expression to execute
 ////////////////////////////////////////////////////////////////////////////////
 
-        // do we need a (possibly empty) subquery entry here?
         AstNode const*    _node;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a v8 function that will be executed for the expression
+////////////////////////////////////////////////////////////////////////////////
+
+        V8Expression*     _func;
 
     };
 

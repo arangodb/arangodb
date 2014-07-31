@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, expression
+/// @brief Aql, V8 execution context
 ///
 /// @file
 ///
@@ -27,58 +27,62 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/Expression.h"
-#include "Aql/Types.h"
-#include "Aql/V8Executor.h"
-#include "Aql/V8Expression.h"
-#include "Utils/Exception.h"
+#ifndef ARANGODB_AQL_V8_EXPRESSION_H
+#define ARANGODB_AQL_V8_EXPRESSION_H 1
 
-using namespace triagens::aql;
+#include "Basics/Common.h"
+#include <v8.h>
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        constructors / destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the expression
-////////////////////////////////////////////////////////////////////////////////
-
-Expression::Expression (V8Executor* executor,
-                        AstNode const* node)
-  : _executor(executor),
-    _node(node),
-    _func(nullptr) {
-
-  TRI_ASSERT(_executor != nullptr);
-  TRI_ASSERT(_node != nullptr);
-
-  // TODO: catch return value and store in V8 persistent handle
-  _func = _executor->generateExpression(node);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the expression
-////////////////////////////////////////////////////////////////////////////////
-
-Expression::~Expression () {
-  if (_func != nullptr) {
-    delete _func;
-  }
-}
+namespace triagens {
+  namespace aql {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                               struct V8Expression
 // -----------------------------------------------------------------------------
+
+    struct V8Expression {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the v8 expression
+////////////////////////////////////////////////////////////////////////////////
+
+      V8Expression (v8::Isolate* isolate,
+                    v8::Persistent<v8::Function> func) 
+        : isolate(isolate),
+          func(func) {
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy the v8 expression
+////////////////////////////////////////////////////////////////////////////////
+
+      ~V8Expression () {
+        func.Dispose(isolate);
+        func.Clear();
+      }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue* Expression::execute (AqlItem* item) {
-  // TODO: implement execution
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  return nullptr;
+      v8::Handle<v8::Value> execute (v8::Handle<v8::Value> argv) {
+        v8::HandleScope scope;
+
+        v8::Handle<v8::Value> args[] = { argv };
+        return scope.Close(func->Call(func, 1, args));
+      }
+
+
+      v8::Isolate* isolate;
+
+      v8::Persistent<v8::Function> func;
+
+    };
+
+  }
 }
+
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
