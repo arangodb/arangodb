@@ -5398,71 +5398,6 @@ static v8::Handle<v8::Value> JS_ParseAql (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief peng an AQL query
-////////////////////////////////////////////////////////////////////////////////
-
-class MyWorker : public triagens::aql::ExecutionBlock::WalkerWorker {
-  public:
-    int count;
-    MyWorker () : count(0) {};
-    ~MyWorker () {};
-    void before (triagens::aql::ExecutionBlock* eb) {
-      std::cout << "Before node of type " << eb->getPlan()->getTypeString()
-                << std::endl;
-      count++;
-    }
-    void after (triagens::aql::ExecutionBlock* eb) {
-      std::cout << "After node of type " << eb->getPlan()->getTypeString()
-                << std::endl;
-    }
-};
-
-static v8::Handle<v8::Value> JS_PengAql (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  TRI_vocbase_t* vocbase = GetContextVocBase();
-
-  if (vocbase == nullptr) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-  
-  if (argv.Length() != 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "AQL_PENG()");
-  }
-
-  triagens::aql::ExecutionPlan* singlePlan = new triagens::aql::SingletonPlan();
-  triagens::aql::ExecutionPlan* enumPlan = new triagens::aql::EnumerateCollectionPlan(vocbase, "fuxx", 1, "f");
-  enumPlan->addDependency(singlePlan);
-  triagens::aql::ExecutionPlan* rootPlan = new triagens::aql::RootPlan(1,"X"); 
-  rootPlan->addDependency(enumPlan);
-
-  triagens::aql::ExecutionBlock* exec = triagens::aql::ExecutionBlock::instanciatePlan (rootPlan);
-
-  exec->staticAnalysis();
-
-  MyWorker w;
-  exec->walk(w);
-  std::cout << "Count is " << w.count << std::endl;
-  
-  exec->initialize();
-  exec->execute();
- 
-  shared_ptr<triagens::aql::AqlItem> value;
-  while (nullptr != (value = exec->getOne())) {
-    std::cout << "Peng" << std::endl;
-    std::cout << value->getValue(0,0)->toString() << std::endl;
-    value.reset();
-  }
-
-  exec->shutdown();
-
-  delete exec;
-  delete rootPlan;
-
-  return scope.Close(v8::Undefined());
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -5499,14 +5434,16 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
   // bind parameters will be freed by the query later
   triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), parameters);
   
-  auto parseResult = query.execute();
-
-  if (parseResult.code != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION_FULL(scope, parseResult.code, parseResult.details);
+  auto queryResult = query.execute();
+  
+  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_FULL(scope, queryResult.code, queryResult.details);
   }
 
   v8::Handle<v8::Object> result = v8::Object::New();
-  result->Set(TRI_V8_STRING("ast"), TRI_ObjectJson(parseResult.json));
+  if (queryResult.json != nullptr) {
+    result->Set(TRI_V8_STRING("json"), TRI_ObjectJson(queryResult.json));
+  }
 
   return scope.Close(result);
 }
@@ -10778,7 +10715,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // new AQL functions. not intended to be used directly by end users
   TRI_AddGlobalFunctionVocbase(context, "AQL_EXECUTE", JS_ExecuteAql, true);
   TRI_AddGlobalFunctionVocbase(context, "AQL_PARSE", JS_ParseAql, true);
-  TRI_AddGlobalFunctionVocbase(context, "AQL_PENG", JS_PengAql, true);
 
   // cursor functions. not intended to be used by end users
   TRI_AddGlobalFunctionVocbase(context, "CURSOR", JS_Cursor, true);
