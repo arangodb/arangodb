@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, AST variables
+/// @brief Aql, AST variable
 ///
 /// @file
 ///
@@ -31,6 +31,7 @@
 #define ARANGODB_AQL_VARIABLE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/JsonHelper.h"
 
 namespace triagens {
   namespace aql {
@@ -42,18 +43,23 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     struct Variable {
-      Variable (std::string const& name,
-                VariableId id,
-                bool isUserDefined)
-        : name(name),
-          value(nullptr),
-          id(id),
-          refCount(0),
-          isUserDefined(isUserDefined) {
-      }
 
-      ~Variable () {
-      }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the variable
+////////////////////////////////////////////////////////////////////////////////
+
+      Variable (std::string const&,
+                VariableId);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy the variable
+////////////////////////////////////////////////////////////////////////////////
+
+      ~Variable ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief registers a constant value for the variable
@@ -97,15 +103,49 @@ namespace triagens {
         --refCount;
       }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the variable is user-defined
+////////////////////////////////////////////////////////////////////////////////
+
+      inline bool isUserDefined () const {
+        char const c = name[0];
+        // variables starting with a number are user-defined
+        return (c >= '0' && c <= '9');
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a JSON representation of the variable
+////////////////////////////////////////////////////////////////////////////////
+
+      triagens::basics::Json toJson () const;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
 
-      std::string const  name;
-      void*              value;
-      VariableId const   id;
-      uint32_t           refCount;
-      bool const         isUserDefined;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief variable name
+////////////////////////////////////////////////////////////////////////////////
+
+      std::string const   name;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constant variable value (points to another AstNode)
+////////////////////////////////////////////////////////////////////////////////
+      
+      void*               value;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief variable id
+////////////////////////////////////////////////////////////////////////////////
+
+      VariableId const    id;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of times the variable is used in the AST
+////////////////////////////////////////////////////////////////////////////////
+
+      uint32_t            refCount;
 
     };
 

@@ -147,7 +147,7 @@ ExecutionPlan* PlanGenerator::fromNodeFor (Ast const* ast,
   if (expression->type == NODE_TYPE_COLLECTION) {
     // second operand is a collection
     char const* collectionName = expression->getStringValue();
-    plan = new EnumerateCollectionPlan(ast->query()->vocbase(), std::string(collectionName), v->id, v->name); 
+    plan = new EnumerateCollectionPlan(ast->query()->vocbase(), std::string(collectionName), v);
   }
   else if (expression->type == NODE_TYPE_REFERENCE) {
     // second operand is already a variable

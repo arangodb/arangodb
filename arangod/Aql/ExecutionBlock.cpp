@@ -117,7 +117,7 @@ int ExecutionBlock::staticAnalysisRecursion (
       _depth++;
       curVar = 0;
       auto p = static_cast<EnumerateCollectionPlan const*>(_exePlan);
-      varTab.insert(make_pair(p->_outVarNumber, VarDefPlace(_depth, 0)));
+      varTab.insert(make_pair(p->_outVariable->id, VarDefPlace(_depth, 0)));
       break;
     }
     case ExecutionPlan::ENUMERATE_LIST: {
