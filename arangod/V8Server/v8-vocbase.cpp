@@ -2582,7 +2582,7 @@ static v8::Handle<v8::Value> InsertEdgeCol (
   edge._toKey   = nullptr;
 
   // extract from
-  res = TRI_ParseVertex(trx->resolver(), edge._fromCid, edge._fromKey, argv[0], false);
+  res = TRI_ParseVertex(trx->resolver(), edge._fromCid, edge._fromKey, argv[0]);
 
   if (res != TRI_ERROR_NO_ERROR) {
     FREE_STRING(TRI_CORE_MEM_ZONE, key);
@@ -2590,7 +2590,7 @@ static v8::Handle<v8::Value> InsertEdgeCol (
   }
 
   // extract to
-  res = TRI_ParseVertex(trx->resolver(), edge._toCid, edge._toKey, argv[1], false);
+  res = TRI_ParseVertex(trx->resolver(), edge._toCid, edge._toKey, argv[1]);
 
   if (res != TRI_ERROR_NO_ERROR) {
     FREE_STRING(TRI_CORE_MEM_ZONE, edge._fromKey);
@@ -10079,8 +10079,7 @@ static v8::Handle<v8::Value> MapGetIndexedShapedJson (uint32_t idx,
 int TRI_ParseVertex (CollectionNameResolver const* resolver,
                      TRI_voc_cid_t& cid,
                      TRI_voc_key_t& key,
-                     v8::Handle<v8::Value> const val,
-                     bool translateName) {
+                     v8::Handle<v8::Value> const val) {
 
   v8::HandleScope scope;
 
@@ -10106,7 +10105,7 @@ int TRI_ParseVertex (CollectionNameResolver const* resolver,
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
   }
 
-  if (translateName && ServerState::instance()->isDBserver()) {
+  if (ServerState::instance()->isDBserver()) {
     cid = resolver->getCollectionIdCluster(collectionName);
   }
   else {
