@@ -34,7 +34,7 @@
 #include "Ahuacatl/ahuacatl-context.h"
 #include "Ahuacatl/ahuacatl-explain.h"
 #include "Ahuacatl/ahuacatl-result.h"
-#include "Aql/ExecutionPlan.h"
+#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/Query.h"
 #include "Basics/StringUtils.h"

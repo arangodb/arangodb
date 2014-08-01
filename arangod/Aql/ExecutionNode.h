@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Infrastructure for ExecutionPlans
 ///
-/// @file arangod/Aql/ExecutionPlan.h
+/// @file arangod/Aql/ExecutionNode.h
 ///
 /// DISCLAIMER
 ///

@@ -32,7 +32,7 @@
 #include <ShapedJson/shaped-json.h>
 
 #include "Aql/Types.h"
-#include "Aql/ExecutionPlan.h"
+#include "Aql/ExecutionNode.h"
 #include "Utils/transactions.h"
 
 using namespace triagens::basics;
