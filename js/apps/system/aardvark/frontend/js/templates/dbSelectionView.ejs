@@ -18,11 +18,13 @@ if (list.length > 1) {
   <%
     });
   %>
-    <li class="divider"></li>
 <%
 }
 %>
-    <% if (current === "_system") { %>
+    <% if (current === "_system") { console.log(list.length);%>
+    <% if (list.length >= 2) { %>
+      <li class="divider"></li>
+    <% } %>
     <li class="dropdown-header">Manager</li>
     <li id="databaseNavi" class="dropdown-item">
       <a id="databases" class="tab" href="#databases">Manage DBs</a>
