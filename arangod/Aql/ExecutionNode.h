@@ -680,8 +680,11 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        CalculationNode (Expression* expr, Variable const* outVariable)
-          : ExecutionNode(), _expression(expr), _outVariable(outVariable) {
+        CalculationNode (Expression* expr, 
+                         Variable const* outVariable)
+          : ExecutionNode(), 
+            _expression(expr), 
+            _outVariable(outVariable) {
 
           TRI_ASSERT(_expression != nullptr);
           TRI_ASSERT(_outVariable != nullptr);
@@ -737,6 +740,14 @@ namespace triagens {
 
         Variable const* outVariable () const {
           return _outVariable;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the expression
+////////////////////////////////////////////////////////////////////////////////
+
+        Expression* expression () const {
+          return _expression;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
