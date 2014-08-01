@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, query plan generator
+/// @brief Aql, execution plan
 ///
 /// @file
 ///
@@ -27,7 +27,7 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/PlanGenerator.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionNode.h"
@@ -37,23 +37,30 @@
 #include "Utils/Exception.h"
 
 using namespace triagens::aql;
-  
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the generator
+/// @brief create the plan
 ////////////////////////////////////////////////////////////////////////////////
 
-PlanGenerator::PlanGenerator () {
+ExecutionPlan::ExecutionPlan () 
+  : _nodes(),
+    _root(nullptr) {
+
+  _nodes.reserve(8);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the generator
+/// @brief destroy the plan, frees all assigned nodes
 ////////////////////////////////////////////////////////////////////////////////
 
-PlanGenerator::~PlanGenerator () {
+ExecutionPlan::~ExecutionPlan () {
+  for (auto it = _nodes.begin(); it != _nodes.end(); ++it) {
+    delete (*it);
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -61,19 +68,27 @@ PlanGenerator::~PlanGenerator () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an initial execution plan from an abstract syntax tree
+/// @brief create an execution plan from an AST
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* PlanGenerator::fromAst (Ast const* ast) {
+ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast const* ast) {
   TRI_ASSERT(ast != nullptr);
-  
+
   auto root = ast->root();
   TRI_ASSERT(root != nullptr);
   TRI_ASSERT(root->type == NODE_TYPE_ROOT);
 
-  ExecutionNode* plan = fromNode(ast, root);
+  auto plan = new ExecutionPlan();
 
-  return plan;
+  try {
+    plan->_root = plan->fromNode(ast, root);
+
+    return plan;
+  }
+  catch (...) {
+    delete plan;
+    throw;
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -81,10 +96,20 @@ ExecutionNode* PlanGenerator::fromAst (Ast const* ast) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief add a node to the plan
+////////////////////////////////////////////////////////////////////////////////
+
+void ExecutionPlan::addNode (ExecutionNode* node) {
+  TRI_ASSERT(node != nullptr);
+
+  _nodes.push_back(node);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a calculation node for an arbitrary expression
 ////////////////////////////////////////////////////////////////////////////////
 
-CalculationNode* PlanGenerator::createTemporaryCalculation (Ast const* ast,
+CalculationNode* ExecutionPlan::createTemporaryCalculation (Ast const* ast,
                                                             AstNode const* expression) {
   // generate a temporary variable
   auto out = ast->variables()->createTemporaryVariable();
@@ -108,7 +133,7 @@ CalculationNode* PlanGenerator::createTemporaryCalculation (Ast const* ast,
 /// @brief adds "previous" as dependency to "plan", returns "plan"
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* PlanGenerator::addDependency (ExecutionNode* previous,
+ExecutionNode* ExecutionPlan::addDependency (ExecutionNode* previous,
                                              ExecutionNode* plan) {
   TRI_ASSERT(previous != nullptr);
   TRI_ASSERT(plan != nullptr);
@@ -128,7 +153,7 @@ ExecutionNode* PlanGenerator::addDependency (ExecutionNode* previous,
 /// @brief create an execution plan element from an AST FOR node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* PlanGenerator::fromNodeFor (Ast const* ast,
+ExecutionNode* ExecutionPlan::fromNodeFor (Ast const* ast,
                                            ExecutionNode* previous,
                                            AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FOR);
@@ -179,7 +204,7 @@ ExecutionNode* PlanGenerator::fromNodeFor (Ast const* ast,
 /// @brief create an execution plan element from an AST FILTER node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* PlanGenerator::fromNodeFilter (Ast const* ast,
+ExecutionNode* ExecutionPlan::fromNodeFilter (Ast const* ast,
                                               ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FILTER);
@@ -216,7 +241,7 @@ ExecutionNode* PlanGenerator::fromNodeFilter (Ast const* ast,
 /// @brief create an execution plan element from an AST LET node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* PlanGenerator::fromNodeLet (Ast const* ast,
+ExecutionNode* ExecutionPlan::fromNodeLet (Ast const* ast,
                                            ExecutionNode* previous,
                                            AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_LET);
@@ -254,7 +279,7 @@ ExecutionNode* PlanGenerator::fromNodeLet (Ast const* ast,
 /// @brief create an execution plan element from an AST SORT node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* PlanGenerator::fromNodeSort (Ast const* ast,
+ExecutionNode* ExecutionPlan::fromNodeSort (Ast const* ast,
                                             ExecutionNode* previous,
                                             AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_SORT);
@@ -315,7 +340,7 @@ ExecutionNode* PlanGenerator::fromNodeSort (Ast const* ast,
 /// @brief create an execution plan element from an AST COLLECT node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* PlanGenerator::fromNodeCollect (Ast const* ast,
+ExecutionNode* ExecutionPlan::fromNodeCollect (Ast const* ast,
                                                ExecutionNode* previous,
                                                AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_COLLECT);
@@ -333,7 +358,7 @@ ExecutionNode* PlanGenerator::fromNodeCollect (Ast const* ast,
 /// @brief create an execution plan element from an AST LIMIT node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* PlanGenerator::fromNodeLimit (Ast const* ast,
+ExecutionNode* ExecutionPlan::fromNodeLimit (Ast const* ast,
                                              ExecutionNode* previous,
                                              AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_LIMIT);
@@ -354,7 +379,7 @@ ExecutionNode* PlanGenerator::fromNodeLimit (Ast const* ast,
 /// @brief create an execution plan element from an AST RETURN node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* PlanGenerator::fromNodeReturn (Ast const* ast,
+ExecutionNode* ExecutionPlan::fromNodeReturn (Ast const* ast,
                                               ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_RETURN);
@@ -391,7 +416,7 @@ ExecutionNode* PlanGenerator::fromNodeReturn (Ast const* ast,
 /// @brief create an execution plan element from an AST REMOVE node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* PlanGenerator::fromNodeRemove (Ast const* ast,
+ExecutionNode* ExecutionPlan::fromNodeRemove (Ast const* ast,
                                               ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REMOVE);
@@ -406,7 +431,7 @@ ExecutionNode* PlanGenerator::fromNodeRemove (Ast const* ast,
 /// @brief create an execution plan element from an AST INSERT node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* PlanGenerator::fromNodeInsert (Ast const* ast,
+ExecutionNode* ExecutionPlan::fromNodeInsert (Ast const* ast,
                                               ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_INSERT);
@@ -421,7 +446,7 @@ ExecutionNode* PlanGenerator::fromNodeInsert (Ast const* ast,
 /// @brief create an execution plan element from an AST UPDATE node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* PlanGenerator::fromNodeUpdate (Ast const* ast,
+ExecutionNode* ExecutionPlan::fromNodeUpdate (Ast const* ast,
                                               ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPDATE);
@@ -436,7 +461,7 @@ ExecutionNode* PlanGenerator::fromNodeUpdate (Ast const* ast,
 /// @brief create an execution plan element from an AST REPLACE node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* PlanGenerator::fromNodeReplace (Ast const* ast,
+ExecutionNode* ExecutionPlan::fromNodeReplace (Ast const* ast,
                                                ExecutionNode* previous,
                                                AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REPLACE);
@@ -451,7 +476,7 @@ ExecutionNode* PlanGenerator::fromNodeReplace (Ast const* ast,
 /// @brief create an execution plan from an abstract syntax tree node
 ////////////////////////////////////////////////////////////////////////////////
   
-ExecutionNode* PlanGenerator::fromNode (Ast const* ast,
+ExecutionNode* ExecutionPlan::fromNode (Ast const* ast,
                                         AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 

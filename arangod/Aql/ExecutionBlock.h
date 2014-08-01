@@ -493,7 +493,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
-        static ExecutionBlock* instanciatePlan (ExecutionNode const* ep);
+
+        static ExecutionBlock* instanciatePlan (ExecutionNode const*);
 
     };
 
