@@ -3056,6 +3056,8 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
   // default shard key
   shardKeys.push_back("_key");
 
+  string distributeShardsLike;
+
   if (2 <= argv.Length()) {
     if (! argv[1]->IsObject()) {
       TRI_V8_TYPE_ERROR(scope, "<properties> must be an object");
@@ -3105,6 +3107,12 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
         }
       }
     }
+
+    if (p->Has(TRI_V8_SYMBOL("distributeShardsLike")) &&
+        p->Get(TRI_V8_SYMBOL("distributeShardsLike"))->IsString()) {
+      distributeShardsLike
+        = TRI_ObjectToString(p->Get(TRI_V8_SYMBOL("distributeShardsLike")));
+    }
   }
 
   if (numberOfShards == 0 || numberOfShards > 1000) {
@@ -3123,14 +3131,30 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
   // collection id is the first unique id we got
   string const cid = StringUtils::itoa(id);
 
-  // fetch list of available servers in cluster, and shuffle them randomly
-  vector<string> dbServers = ci->getCurrentDBServers();
+  vector<string> dbServers;
 
-  if (dbServers.empty()) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no database servers found in cluster");
+  if (distributeShardsLike.empty()) {
+    // fetch list of available servers in cluster, and shuffle them randomly
+    dbServers = ci->getCurrentDBServers();
+
+    if (dbServers.empty()) {
+      TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no database servers found in cluster");
+    }
+
+    random_shuffle(dbServers.begin(), dbServers.end());
   }
-
-  random_shuffle(dbServers.begin(), dbServers.end());
+  else {
+    CollectionNameResolver resolver(vocbase);
+    TRI_voc_cid_t otherCid 
+      = resolver.getCollectionIdCluster(distributeShardsLike);
+    shared_ptr<CollectionInfo> collInfo = ci->getCollection(databaseName,
+                               triagens::basics::StringUtils::itoa(otherCid));
+    auto shards = collInfo->shardIds();
+    for (auto it = shards.begin(); it != shards.end(); ++it) {
+      dbServers.push_back(it->second);
+    }
+    // FIXME: need to sort shards numerically and not alphabetically
+  }
 
   // now create the shards
   std::map<std::string, std::string> shards;
