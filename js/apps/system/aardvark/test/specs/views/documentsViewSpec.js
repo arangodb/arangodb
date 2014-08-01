@@ -1738,11 +1738,9 @@
               expect(jQueryDummy.addClass).toHaveBeenCalledWith('disabledPag');
               expect(jQueryDummy.html).toHaveBeenCalledWith('tmp');
               expect(jQueryDummy.tooltip).toHaveBeenCalled();
-              expect(jQueryDummy.tooltip).toHaveBeenCalledWith({placement: "left"});
               expect(window.$).toHaveBeenCalledWith("#collectionPrev");
               expect(window.$).toHaveBeenCalledWith("#collectionNext");
               expect(window.$).toHaveBeenCalledWith("[data-toggle=tooltip]");
-              expect(window.$).toHaveBeenCalledWith('.modalImportTooltips');
               expect(window.$).toHaveBeenCalledWith(1);
 
               expect(arangoHelper.fixTooltips).toHaveBeenCalledWith(
@@ -1765,11 +1763,9 @@
               expect(jQueryDummy.addClass).toHaveBeenCalledWith('disabledPag');
               expect(jQueryDummy.html).toHaveBeenCalledWith('tmp');
               expect(jQueryDummy.tooltip).toHaveBeenCalled();
-              expect(jQueryDummy.tooltip).toHaveBeenCalledWith({placement: "left"});
               expect(window.$).toHaveBeenCalledWith("#collectionPrev");
               expect(window.$).not.toHaveBeenCalledWith("#collectionNext");
               expect(window.$).toHaveBeenCalledWith("[data-toggle=tooltip]");
-              expect(window.$).toHaveBeenCalledWith('.modalImportTooltips');
               expect(window.$).toHaveBeenCalledWith(1);
 
               expect(arangoHelper.fixTooltips).toHaveBeenCalledWith(
@@ -1792,11 +1788,9 @@
               expect(jQueryDummy.addClass).toHaveBeenCalledWith('disabledPag');
               expect(jQueryDummy.html).toHaveBeenCalledWith('tmp');
               expect(jQueryDummy.tooltip).toHaveBeenCalled();
-              expect(jQueryDummy.tooltip).toHaveBeenCalledWith({placement: "left"});
               expect(window.$).not.toHaveBeenCalledWith("#collectionPrev");
               expect(window.$).toHaveBeenCalledWith("#collectionNext");
               expect(window.$).toHaveBeenCalledWith("[data-toggle=tooltip]");
-              expect(window.$).toHaveBeenCalledWith('.modalImportTooltips');
               expect(window.$).toHaveBeenCalledWith(1);
 
               expect(arangoHelper.fixTooltips).toHaveBeenCalledWith(

@@ -276,7 +276,10 @@
       model.advancedContent = advancedContent || false;
       $(".modal-body").html(template.render(model));
       $('.modalTooltips').tooltip({
-        placement: "left"
+        position: {
+          my: "left top",
+          at: "right+55 top-1"
+        }
       });
       var ind = buttons.indexOf(this.closeButton);
       buttons.splice(ind, 1);
