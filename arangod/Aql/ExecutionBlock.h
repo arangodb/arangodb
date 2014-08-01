@@ -162,10 +162,14 @@ namespace triagens {
           unsigned int depth;
           unsigned int totalNrVars;
 
+          // This is used to tell all Blocks and share a pointer to ourselves
+          shared_ptr<VarOverview> me;
+
           VarOverview () 
             : depth(0), totalNrVars(0) {
             nrVarsHere.push_back(0);
             nrVars.push_back(0);
+            me.reset(this);
           };
 
           // Copy constructor used for a subquery:
@@ -240,7 +244,7 @@ namespace triagens {
                 break;
             }
             eb->_depth = depth;
-            eb->_varOverview.reset(this);
+            eb->_varOverview = me;
           }
 
         };
