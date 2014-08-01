@@ -198,7 +198,7 @@ namespace triagens {
 /// @brief getter for _nrRegs
 ////////////////////////////////////////////////////////////////////////////////
 
-      RegisterId getNrRegs () {
+      RegisterId getNrRegs () const {
         return _nrRegs;
       }
 
@@ -206,7 +206,7 @@ namespace triagens {
 /// @brief getter for _nrItems
 ////////////////////////////////////////////////////////////////////////////////
 
-      size_t size () {
+      size_t size () const {
         return _nrItems;
       }
 
@@ -214,7 +214,7 @@ namespace triagens {
 /// @brief getter for _data
 ////////////////////////////////////////////////////////////////////////////////
 
-      AqlValue** getData () {
+      AqlValue** getData () const {
         return _data;
       }
 
@@ -224,19 +224,20 @@ namespace triagens {
 
       AqlItemBlock* slice (size_t from, size_t to) {
         TRI_ASSERT(from < to && to <= _nrItems);
+
         std::unordered_map<AqlValue*, AqlValue*> cache;
-        auto res = new AqlItemBlock(to-from, _nrRegs);
+        auto res = new AqlItemBlock(to - from, _nrRegs);
         for (size_t row = from; row < to; row++) {
           for (RegisterId col = 0; col < _nrRegs; col++) {
             AqlValue* a = _data[row * _nrRegs + col];
             auto it = cache.find(a);
             if (it == cache.end()) {
               AqlValue* b = a->clone();
-              res->_data[(row-from) * _nrRegs + col] = b;
+              res->_data[(row - from) * _nrRegs + col] = b;
               cache.insert(make_pair(a,b));
             }
             else {
-              res->_data[(row-from) * _nrRegs + col] = it->second;
+              res->_data[(row - from) * _nrRegs + col] = it->second;
             }
           }
         }

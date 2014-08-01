@@ -51,7 +51,8 @@ namespace triagens {
     class ExecutionBlock {
       public:
         ExecutionBlock (ExecutionNode const* ep)
-          : _exePlan(ep), _done(false), _depth(0), _varOverview(nullptr) { }
+          : _exePlan(ep), _pos(0), _done(false), _depth(0), _varOverview(nullptr) { 
+        }
 
         virtual ~ExecutionBlock ();
           
@@ -360,7 +361,7 @@ namespace triagens {
             return nullptr;
           }
 
-          if (_buffer.size() == 0) {
+          if (_buffer.empty()) {
             if (! getBlock(1, 1000)) {
               _done = true;
               return nullptr;
@@ -374,7 +375,7 @@ namespace triagens {
           AqlItemBlock* res;
           AqlItemBlock* cur;
           cur = _buffer.front();
-          res = cur->slice(_pos, _pos+1);
+          res = cur->slice(_pos, _pos + 1);
           _pos++;
           if (_pos >= cur->size()) {
             _buffer.pop_front();
@@ -396,8 +397,8 @@ namespace triagens {
           vector<AqlItemBlock*> collector;
           AqlItemBlock* res;
           while (total < atLeast) {
-            if (_buffer.size() == 0) {
-              if (! getBlock(atLeast-total, atMost-total)) {
+            if (_buffer.empty()) {
+              if (! getBlock(atLeast - total, atMost - total)) {
                 _done = true;
                 break;
               }
@@ -405,7 +406,7 @@ namespace triagens {
             AqlItemBlock* cur = _buffer.front();
             if (cur->size() - _pos + total > atMost) {
               // The current block is too large for atMost:
-              collector.push_back(cur->slice(_pos, _pos + (atMost-total)));
+              collector.push_back(cur->slice(_pos, _pos + (atMost - total)));
               _pos += atMost - total;
               total = atMost;
             }
@@ -426,7 +427,7 @@ namespace triagens {
               _pos = 0;
             }
           }
-          if (collector.size() == 0) {
+          if (collector.empty()) {
             return nullptr;
           }
           else if (collector.size() == 1) {
@@ -461,6 +462,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       protected:
+
         ExecutionNode const* _exePlan;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -688,7 +690,7 @@ namespace triagens {
           if (_done) {
             return nullptr;
           }
-          if (_buffer.size() == 0) {
+          if (_buffer.empty()) {
             if (! ExecutionBlock::getBlock(1, 1000)) {
               _done = true;
               return nullptr;
@@ -734,7 +736,7 @@ namespace triagens {
           if (_done) {
             return nullptr;
           }
-          if (_buffer.size() == 0) {
+          if (_buffer.empty()) {
             if (! ExecutionBlock::getBlock(1000, 1000)) {
               _done = true;
               return nullptr;
@@ -833,13 +835,15 @@ namespace triagens {
         }
 
         void doEvaluation (AqlItemBlock* result) {
-
           AqlValue** data = result->getData();
+          TRI_ASSERT(data != nullptr);
+
           RegisterId nrRegs = result->getNrRegs();
 
           for (size_t i = 0; i < result->size(); i++) {
             // Now build V8-Object as argument:
             for (size_t j = 0; j < _inVars.size(); j++) {
+              TRI_ASSERT(data + nrRegs * i != nullptr);
               AqlValue* res = _expression->execute(data + nrRegs * i,
                                                    _inVars, _inRegs);
               result->setValue(i, _outReg, res);
