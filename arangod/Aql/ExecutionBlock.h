@@ -49,7 +49,7 @@ namespace triagens {
     class ExecutionBlock {
       public:
         ExecutionBlock (ExecutionNode const* ep)
-          : _exePlan(ep), _done(false), _depth(0) { }
+          : _exePlan(ep), _done(false), _depth(0), _varOverview(nullptr) { }
 
         virtual ~ExecutionBlock ();
           
@@ -163,19 +163,22 @@ namespace triagens {
           unsigned int totalNrVars;
 
           // This is used to tell all Blocks and share a pointer to ourselves
-          shared_ptr<VarOverview> me;
+          shared_ptr<VarOverview>* me;
 
           VarOverview () 
-            : depth(0), totalNrVars(0) {
+            : depth(0), totalNrVars(0), me(nullptr) {
             nrVarsHere.push_back(0);
             nrVars.push_back(0);
-            me.reset(this);
           };
+
+          void setSharedPtr (shared_ptr<VarOverview>* shared) {
+            me = shared;
+          }
 
           // Copy constructor used for a subquery:
           VarOverview (VarOverview const& v) 
             : varInfo(v.varInfo), nrVarsHere(v.nrVars), nrVars(v.nrVars),
-              depth(v.depth+1), totalNrVars(v.totalNrVars) {
+              depth(v.depth+1), totalNrVars(v.totalNrVars), me(nullptr) {
             nrVarsHere.push_back(0);
             nrVars.push_back(0);
           }
@@ -184,8 +187,9 @@ namespace triagens {
 
           virtual bool enterSubquery (ExecutionBlock* super,
                                       ExecutionBlock* sub) {
-            auto vv = new VarOverview(*this);
-            sub->walk(vv);
+            shared_ptr<VarOverview> vv(new VarOverview(*this));
+            vv->setSharedPtr(&vv);
+            sub->walk(vv.get());
             vv->reset();
             return false;  // do not walk into subquery
           }
@@ -244,14 +248,15 @@ namespace triagens {
                 break;
             }
             eb->_depth = depth;
-            eb->_varOverview = me;
+            eb->_varOverview = *me;
           }
 
         };
 
         void staticAnalysis () {
-          auto v = new VarOverview();
-          walk(v);
+          shared_ptr<VarOverview> v(new VarOverview());
+          v->setSharedPtr(&v);
+          walk(v.get());
           v->reset();
         }
 
