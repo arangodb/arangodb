@@ -70,7 +70,7 @@ queues = {
     }
     return queueMap[key];
   },
-  destroy: function (key) {
+  delete: function (key) {
     'use strict';
     var result = false;
     db._executeTransaction({
