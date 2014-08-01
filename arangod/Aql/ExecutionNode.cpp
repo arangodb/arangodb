@@ -414,16 +414,16 @@ void AggregateOnUnsortedNode::toJsonHelper (std::map<ExecutionNode*, int>& index
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               methods of RootNode
+// --SECTION--                                             methods of ReturnNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for RootNode
+/// @brief toJson, for ReturnNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void RootNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
-                             triagens::basics::Json& nodes,
-                             TRI_memory_zone_t* zone) {
+void ReturnNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
+                               triagens::basics::Json& nodes,
+                               TRI_memory_zone_t* zone) {
   Json json(ExecutionNode::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
   if (json.isEmpty()) {
     return;
