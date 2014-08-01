@@ -69,9 +69,9 @@ namespace triagens {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-      AqlValue* execute (AqlValue const** argv, 
-                         std::vector<Variable*> vars,
-                         std::vector<RegisterId> regs) {
+      AqlValue* execute (AqlValue const* const* argv, 
+                         std::vector<Variable*> const& vars,
+                         std::vector<RegisterId> const& regs) {
         // TODO: decide whether a separate handle scope is needed
 
         v8::Handle<v8::Object> values = v8::Object::New();
