@@ -814,7 +814,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         shared_ptr<CollectionInfo> getCollection (DatabaseID const&,
-                                                      CollectionID const&);
+                                                  CollectionID const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get properties of a collection

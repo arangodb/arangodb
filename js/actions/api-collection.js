@@ -172,6 +172,10 @@ function parseBodyForCreateCollection (req, res) {
     r.parameter.numberOfShards = body.numberOfShards || 0;
   }
 
+  if (body.hasOwnProperty("distributeShardsLike") && cluster.isCoordinator()) {
+    r.parameter.distributeShardsLike = body.distributeShardsLike || "";
+  }
+  
   return r;
 }
   
@@ -344,6 +348,7 @@ function post_api_collection (req, res) {
     if (cluster.isCoordinator()) {
       result.shardKeys = collection.shardKeys;
       result.numberOfShards = collection.numberOfShards;
+      result.distributeShardsLike = collection.distributeShardsLike || "";
     }
     
     var headers = {
