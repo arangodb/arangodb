@@ -425,6 +425,7 @@ void ReturnNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
                                triagens::basics::Json& nodes,
                                TRI_memory_zone_t* zone) {
   Json json(ExecutionNode::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
+
   if (json.isEmpty()) {
     return;
   }
