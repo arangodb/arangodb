@@ -43,7 +43,7 @@ int ExecutionBlock::bind (std::map<std::string, struct TRI_json_s*>* params) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief functionality to walk an execution plan recursively
+/// @brief functionality to walk an execution block recursively
 ////////////////////////////////////////////////////////////////////////////////
 
 void ExecutionBlock::walk (WalkerWorker* worker) {
@@ -60,7 +60,7 @@ void ExecutionBlock::walk (WalkerWorker* worker) {
     (*it)->walk(worker);
   }
   // Now handle a subquery:
-  if (_exePlan->getType() == ExecutionPlan::SUBQUERY) {
+  if (_exePlan->getType() == ExecutionNode::SUBQUERY) {
     // auto p = static_cast<SubqueryBlock*>(this);
     if (worker->enterSubquery(this, nullptr)) { ; // p->_subquery
       // p->_subquery->walk(worker);
@@ -75,26 +75,26 @@ void ExecutionBlock::walk (WalkerWorker* worker) {
 // --SECTION--                                factory for instanciation of plans
 // -----------------------------------------------------------------------------
 
-ExecutionBlock* ExecutionBlock::instanciatePlan (ExecutionPlan const* ep) {
+ExecutionBlock* ExecutionBlock::instanciatePlan (ExecutionNode const* ep) {
   ExecutionBlock* eb;
   switch (ep->getType()) {
-    case ExecutionPlan::SINGLETON: {
-      eb = new SingletonBlock(static_cast<SingletonPlan const*>(ep));
+    case ExecutionNode::SINGLETON: {
+      eb = new SingletonBlock(static_cast<SingletonNode const*>(ep));
       break;
     }
-    case ExecutionPlan::ENUMERATE_COLLECTION: {
-      eb = new EnumerateCollectionBlock(static_cast<EnumerateCollectionPlan const*>(ep));
+    case ExecutionNode::ENUMERATE_COLLECTION: {
+      eb = new EnumerateCollectionBlock(static_cast<EnumerateCollectionNode const*>(ep));
       break;
     }
-    case ExecutionPlan::ROOT: {
-      eb = new RootBlock(static_cast<RootPlan const*>(ep));
+    case ExecutionNode::ROOT: {
+      eb = new RootBlock(static_cast<RootNode const*>(ep));
       break;
     }
     default: {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     }
   }
-  vector<ExecutionPlan*> deps = ep->getDependencies();
+  vector<ExecutionNode*> deps = ep->getDependencies();
   for (auto it = deps.begin(); it != deps.end();++it) {
     eb->addDependency(instanciatePlan(*it));
   }
