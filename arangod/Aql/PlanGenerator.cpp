@@ -30,7 +30,7 @@
 #include "Aql/PlanGenerator.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
-#include "Aql/ExecutionPlan.h"
+#include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Query.h"
 #include "Aql/Variable.h"

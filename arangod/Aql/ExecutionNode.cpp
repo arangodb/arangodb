@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Infrastructure for ExecutionPlans
 ///
-/// @file arangod/Aql/ExecutionPlan.cpp
+/// @file arangod/Aql/ExecutionNode.cpp
 ///
 /// DISCLAIMER
 ///
@@ -25,7 +25,7 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/ExecutionPlan.h"
+#include "Aql/ExecutionNode.h"
 
 using namespace triagens::basics;
 using namespace triagens::aql;

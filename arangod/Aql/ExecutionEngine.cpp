@@ -29,7 +29,7 @@
 
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionPlan.h"
+#include "Aql/ExecutionNode.h"
 #include "Utils/Exception.h"
 
 using namespace triagens::aql;
