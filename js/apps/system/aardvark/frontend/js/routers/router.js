@@ -85,6 +85,12 @@
         notificationCollection: new window.NotificationCollection(),
         userCollection: this.userCollection
       });
+
+      console.log(this.userCollection.activeUser);
+      this.queryCollection = new window.ArangoQueries([],{
+        activeUser: self.userCollection.activeUser
+      });
+
       this.footerView.render();
       this.naviView.render();
 
