@@ -38,7 +38,9 @@
       'keypress #aqlEditor': 'aqlShortcuts',
       'click #arangoQueryTable .table-cell0': 'editCustomQuery',
       'click #arangoQueryTable .table-cell1': 'editCustomQuery',
-      'click #arangoQueryTable .table-cell2 a': 'deleteAQL'
+      'click #arangoQueryTable .table-cell2 a': 'deleteAQL',
+      'click #confirmQueryImport': 'importCustomQueries',
+      'click #confirmQueryExport': 'exportCustomQueries'
     },
 
     createCustomQueryModal: function(){
@@ -263,8 +265,37 @@
       $("#queryDiv").show();
       $("#customsDiv").show();
 
+      this.initQueryImport();
+
       this.switchTab('query-switch');
       return this;
+    },
+
+    initQueryImport: function () {
+      var self = this;
+      $('#importQueries').change(function(e) {
+        self.files = e.target.files || e.dataTransfer.files;
+        self.file = self.files[0];
+
+        self.allowUpload = true;
+      });
+    },
+
+    importCustomQueries: function () {
+      var result;
+      if (this.allowUpload === true) {
+          console.log(this.file.valueOf());
+          console.log(this.file);
+          console.log(this.files);
+
+          $.getJSON(this.file, function(json) {
+            console.log(json);
+          });
+      }
+    },
+
+    exportCustomQueries: function () {
+
     },
 
     deselect: function (editor) {
@@ -386,6 +417,7 @@
         }
       });
     },
+
     getCustomQueryValueByName: function (qName) {
       var returnVal;
       $.each(this.customQueries, function (k, v) {
