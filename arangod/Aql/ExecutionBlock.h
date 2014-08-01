@@ -590,7 +590,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~EnumerateCollectionBlock () {
-          if (_allDocs.size() > 0) {
+          if (! _allDocs.empty()) {
             for (auto it = _allDocs.begin(); it != _allDocs.end(); ++it) {
               delete *it;
             }
@@ -623,6 +623,7 @@ namespace triagens {
 
           auto shaper = trx.documentCollection()->getShaper();
 
+          // TODO: if _allDocs is not empty, its contents will leak
           _allDocs.clear();
           for (size_t i = 0; i < n; ++i) {
             TRI_shaped_json_t shaped;
@@ -633,7 +634,7 @@ namespace triagens {
           
           res = trx.finish(res);
 
-          if (_allDocs.size() == 0) {
+          if (_allDocs.empty()) {
             _done = true;
           }
 
@@ -649,7 +650,7 @@ namespace triagens {
           if (res != TRI_ERROR_NO_ERROR) {
             return res;
           }
-          if (_allDocs.size() == 0) {
+          if (_allDocs.empty()) {
             _done = true;
           }
           return TRI_ERROR_NO_ERROR;
@@ -769,7 +770,7 @@ namespace triagens {
 
       private:
 
-        vector<Json*> _allDocs;
+        std::vector<Json*> _allDocs;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief current position in _allDocs

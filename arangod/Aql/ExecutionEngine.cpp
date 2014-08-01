@@ -138,14 +138,13 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (ExecutionNode* plan) {
     root->initialize();
 
     engine->_root = root;
-
+  
+    return engine;
   }
   catch (...) {
     delete engine;
     throw;
   }
-
-  return engine;
 }
 
 // -----------------------------------------------------------------------------
