@@ -71,7 +71,7 @@ ExecutionEngine::~ExecutionEngine () {
 /// @brief create an execution engine from a plan
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionEngine* ExecutionEngine::instanciateFromPlan (ExecutionPlan const* plan) {
+ExecutionEngine* ExecutionEngine::instanciateFromPlan (ExecutionNode const* plan) {
   auto engine = new ExecutionEngine();
 
   try {

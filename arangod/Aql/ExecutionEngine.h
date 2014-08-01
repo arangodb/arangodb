@@ -36,7 +36,7 @@ namespace triagens {
   namespace aql {
 
     class ExecutionBlock;
-    class ExecutionPlan;
+    class ExecutionNode;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             class ExecutionEngine
@@ -74,7 +74,7 @@ namespace triagens {
 /// @brief create an execution engine from a plan
 ////////////////////////////////////////////////////////////////////////////////
 
-        static ExecutionEngine* instanciateFromPlan (ExecutionPlan const*);
+        static ExecutionEngine* instanciateFromPlan (ExecutionNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a block to the engine
