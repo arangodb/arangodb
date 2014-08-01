@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true, stupid: true*/
-/*global require, exports, Backbone, window, arangoCollectionModel, $, arangoHelper, data, _ */
+/*global require, exports, Backbone, window, ArangoQuery, $, data, _ */
 (function() {
   "use strict";
 
@@ -8,7 +8,6 @@
     initialize: function(models, options) {
       this.fetch();
 
-      options || (options = {});
       if (options.activeUser) {
         this.activeUser = options.activeUser;
       }

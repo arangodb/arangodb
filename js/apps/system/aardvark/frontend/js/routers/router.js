@@ -86,7 +86,6 @@
         userCollection: this.userCollection
       });
 
-      console.log(this.userCollection.activeUser);
       this.queryCollection = new window.ArangoQueries([],{
         activeUser: self.userCollection.activeUser
       });
