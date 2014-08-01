@@ -174,7 +174,6 @@ function parseBodyForCreateCollection (req, res) {
 
   if (body.hasOwnProperty("distributeShardsLike") && cluster.isCoordinator()) {
     r.parameter.distributeShardsLike = body.distributeShardsLike || "";
-    require("internal").print("distributeShardsLike:", body.distributeShardsLike);
   }
   
   return r;
