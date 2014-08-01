@@ -230,14 +230,20 @@ namespace triagens {
         for (size_t row = from; row < to; row++) {
           for (RegisterId col = 0; col < _nrRegs; col++) {
             AqlValue* a = _data[row * _nrRegs + col];
-            auto it = cache.find(a);
-            if (it == cache.end()) {
-              AqlValue* b = a->clone();
-              res->_data[(row - from) * _nrRegs + col] = b;
-              cache.insert(make_pair(a,b));
+
+            if (a == nullptr) {
+              res->_data[(row - from) * _nrRegs + col] = nullptr;
             }
             else {
-              res->_data[(row - from) * _nrRegs + col] = it->second;
+              auto it = cache.find(a);
+              if (it == cache.end()) {
+                AqlValue* b = a->clone();
+                res->_data[(row - from) * _nrRegs + col] = b;
+                cache.insert(make_pair(a,b));
+              }
+              else {
+                res->_data[(row - from) * _nrRegs + col] = it->second;
+              }
             }
           }
         }

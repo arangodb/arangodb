@@ -51,7 +51,7 @@ namespace triagens {
     class ExecutionBlock {
       public:
         ExecutionBlock (ExecutionNode const* ep)
-          : _exePlan(ep), _pos(0), _done(false), _depth(0), _varOverview(nullptr) { 
+          : _exePlan(ep), _done(false), _depth(0), _varOverview(nullptr) { 
         }
 
         virtual ~ExecutionBlock ();
@@ -342,6 +342,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       protected:
+
         bool getBlock (size_t atLeast, size_t atMost) {
           AqlItemBlock* docs = _dependencies[0]->getSome(atLeast, atMost);
           if (docs == nullptr) {
@@ -356,6 +357,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
+
         virtual AqlItemBlock* getOne () {
           if (_done) {
             return nullptr;
@@ -368,6 +370,8 @@ namespace triagens {
             }
             _pos = 0;
           }
+
+          TRI_ASSERT(_buffer.size() > 0);
 
           // Here, _buffer.size() is > 0 and _pos points to a valid place
           // in it.
@@ -402,6 +406,7 @@ namespace triagens {
                 _done = true;
                 break;
               }
+              _pos = 0;
             }
             AqlItemBlock* cur = _buffer.front();
             if (cur->size() - _pos + total > atMost) {
@@ -629,6 +634,13 @@ namespace triagens {
           V8ReadTransaction trx(p->_vocbase, p->_collname);
   
           res = trx.begin();
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            THROW_ARANGO_EXCEPTION(res);
+          }
+
+          std::string collectionName = trx.resolver()->getCollectionName(trx.cid());
+          collectionName.push_back('/');
           
           vector<TRI_doc_mptr_t*> docs;
           res = trx.read(docs);
@@ -639,10 +651,25 @@ namespace triagens {
           // TODO: if _allDocs is not empty, its contents will leak
           _allDocs.clear();
           for (size_t i = 0; i < n; ++i) {
+            TRI_doc_mptr_t const* mptr = docs[i];
             TRI_shaped_json_t shaped;
-            TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, docs[i]->getDataPtr());
-            _allDocs.push_back(new Json(shaper->_memoryZone,
-                                        TRI_JsonShapedJson(shaper, &shaped)));
+            TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, mptr->getDataPtr());
+
+            Json* json = new Json(shaper->_memoryZone, TRI_JsonShapedJson(shaper, &shaped));
+
+            try {
+              std::string id(collectionName);
+              id += std::string(TRI_EXTRACT_MARKER_KEY(mptr));
+              (*json)("_id", Json(id));
+              (*json)("_rev", Json(std::to_string(mptr->_rid))); 
+              (*json)("_key", Json(TRI_EXTRACT_MARKER_KEY(mptr)));
+
+              _allDocs.push_back(json);
+            }
+            catch (...) {
+              delete json;
+              throw;
+            }
           }
           
           res = trx.finish(res);
@@ -835,24 +862,27 @@ namespace triagens {
         }
 
         void doEvaluation (AqlItemBlock* result) {
+          TRI_ASSERT(result != nullptr);
+
           AqlValue** data = result->getData();
           TRI_ASSERT(data != nullptr);
 
           RegisterId nrRegs = result->getNrRegs();
 
           for (size_t i = 0; i < result->size(); i++) {
-            // Now build V8-Object as argument:
-            for (size_t j = 0; j < _inVars.size(); j++) {
-              TRI_ASSERT(data + nrRegs * i != nullptr);
-              AqlValue* res = _expression->execute(data + nrRegs * i,
-                                                   _inVars, _inRegs);
-              result->setValue(i, _outReg, res);
-            }
+            AqlValue* res = _expression->execute(data + nrRegs * i,
+                                                 _inVars, _inRegs);
+            result->setValue(i, _outReg, res);
           }
         }
 
         virtual AqlItemBlock* getOne () {
           AqlItemBlock* res = ExecutionBlock::getOne();
+
+          if (res == nullptr) {
+            return nullptr;
+          }
+
           try {
             doEvaluation(res);
             return res;
@@ -866,6 +896,11 @@ namespace triagens {
         virtual AqlItemBlock* getSome (size_t atLeast, 
                                        size_t atMost) {
           AqlItemBlock* res = ExecutionBlock::getSome(atLeast, atMost);
+          
+          if (res == nullptr) {
+            return nullptr;
+          }
+
           try {
             doEvaluation(res);
             return res;
