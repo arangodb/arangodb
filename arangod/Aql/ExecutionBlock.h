@@ -139,36 +139,36 @@ namespace triagens {
 
         struct VarInfo {
           unsigned int depth;
-          unsigned int index;
-          VarInfo(int depth, int index) : depth(depth), index(index) {}
+          RegisterId registerId;
+          VarInfo(int depth, int registerId) : depth(depth), registerId(registerId) {}
         };
 
         struct VarOverview : public WalkerWorker {
           // The following are collected for global usage in the ExecutionBlock:
 
-          // map VariableIds to their depth and index:
+          // map VariableIds to their depth and registerId:
           std::unordered_map<VariableId, VarInfo> varInfo;
 
           // number of variables in the frame of the current depth:
-          std::vector<VariableId>                 nrVarsHere;
+          std::vector<RegisterId>                 nrRegsHere;
 
           // number of variables in this and all outer frames together,
           // the entry with index i here is always the sum of all values
-          // in nrVarsHere from index 0 to i (inclusively) and the two
+          // in nrRegsHere from index 0 to i (inclusively) and the two
           // have the same length:
-          std::vector<VariableId>                 nrVars;
+          std::vector<RegisterId>                 nrRegs;
 
           // Local for the walk:
           unsigned int depth;
-          unsigned int totalNrVars;
+          unsigned int totalNrRegs;
 
           // This is used to tell all Blocks and share a pointer to ourselves
           shared_ptr<VarOverview>* me;
 
           VarOverview () 
-            : depth(0), totalNrVars(0), me(nullptr) {
-            nrVarsHere.push_back(0);
-            nrVars.push_back(0);
+            : depth(0), totalNrRegs(0), me(nullptr) {
+            nrRegsHere.push_back(0);
+            nrRegs.push_back(0);
           };
 
           void setSharedPtr (shared_ptr<VarOverview>* shared) {
@@ -177,10 +177,10 @@ namespace triagens {
 
           // Copy constructor used for a subquery:
           VarOverview (VarOverview const& v) 
-            : varInfo(v.varInfo), nrVarsHere(v.nrVars), nrVars(v.nrVars),
-              depth(v.depth+1), totalNrVars(v.totalNrVars), me(nullptr) {
-            nrVarsHere.push_back(0);
-            nrVars.push_back(0);
+            : varInfo(v.varInfo), nrRegsHere(v.nrRegs), nrRegs(v.nrRegs),
+              depth(v.depth+1), totalNrRegs(v.totalNrRegs), me(nullptr) {
+            nrRegsHere.push_back(0);
+            nrRegs.push_back(0);
           }
 
           ~VarOverview () {};
@@ -198,49 +198,49 @@ namespace triagens {
             switch (eb->getPlanNode()->getType()) {
               case ExecutionNode::ENUMERATE_COLLECTION: {
                 depth++;
-                nrVarsHere.push_back(1);
-                nrVars.push_back(1 + nrVars.back());
+                nrRegsHere.push_back(1);
+                nrRegs.push_back(1 + nrRegs.back());
                 auto ep = static_cast<EnumerateCollectionNode const*>(eb->getPlanNode());
                 varInfo.insert(make_pair(ep->_outVariable->id,
-                                         VarInfo(depth, totalNrVars)));
-                totalNrVars++;
+                                         VarInfo(depth, totalNrRegs)));
+                totalNrRegs++;
                 break;
               }
               case ExecutionNode::ENUMERATE_LIST: {
                 depth++;
-                nrVarsHere.push_back(1);
-                nrVars.push_back(1 + nrVars.back());
+                nrRegsHere.push_back(1);
+                nrRegs.push_back(1 + nrRegs.back());
                 auto ep = static_cast<EnumerateListNode const*>(eb->getPlanNode());
                 varInfo.insert(make_pair(ep->_outVariable->id,
-                                         VarInfo(depth, totalNrVars)));
-                totalNrVars++;
+                                         VarInfo(depth, totalNrRegs)));
+                totalNrRegs++;
                 break;
               }
               case ExecutionNode::CALCULATION: {
-                nrVarsHere[depth]++;
-                nrVars[depth]++;
+                nrRegsHere[depth]++;
+                nrRegs[depth]++;
                 auto ep = static_cast<CalculationNode const*>(eb->getPlanNode());
                 varInfo.insert(make_pair(ep->_outVariable->id,
-                                         VarInfo(depth, totalNrVars)));
-                totalNrVars++;
+                                         VarInfo(depth, totalNrRegs)));
+                totalNrRegs++;
                 break;
               }
               case ExecutionNode::PROJECTION: {
-                nrVarsHere[depth]++;
-                nrVars[depth]++;
+                nrRegsHere[depth]++;
+                nrRegs[depth]++;
                 auto ep = static_cast<ProjectionNode const*>(eb->getPlanNode());
                 varInfo.insert(make_pair(ep->_outVariable->id,
-                                         VarInfo(depth, totalNrVars)));
-                totalNrVars++;
+                                         VarInfo(depth, totalNrRegs)));
+                totalNrRegs++;
                 break;
               }
               case ExecutionNode::SUBQUERY: {
-                nrVarsHere[depth]++;
-                nrVars[depth]++;
+                nrRegsHere[depth]++;
+                nrRegs[depth]++;
                 auto ep = static_cast<SubqueryNode const*>(eb->getPlanNode());
                 varInfo.insert(make_pair(ep->_outVariable->id,
-                                         VarInfo(depth, totalNrVars)));
-                totalNrVars++;
+                                         VarInfo(depth, totalNrRegs)));
+                totalNrRegs++;
                 break;
               }
               // TODO: potentially more cases
@@ -557,7 +557,7 @@ namespace triagens {
             return nullptr;
           }
 
-          AqlItemBlock* res(new AqlItemBlock(1, _varOverview->nrVars[_depth]));
+          AqlItemBlock* res(new AqlItemBlock(1, _varOverview->nrRegs[_depth]));
           _done = true;
           return res;
         }
@@ -571,7 +571,7 @@ namespace triagens {
             return nullptr;
           }
 
-          AqlItemBlock* res(new AqlItemBlock(1, _varOverview->nrVars[_depth]));
+          AqlItemBlock* res(new AqlItemBlock(1, _varOverview->nrRegs[_depth]));
           _done = true;
           return res;
         }
@@ -700,16 +700,16 @@ namespace triagens {
           AqlItemBlock* cur = _buffer.front();
 
           // Copy stuff from frames above:
-          auto res = new AqlItemBlock(1, _varOverview->nrVars[_depth]);
-          TRI_ASSERT(cur->getNrVars() <= res->getNrVars());
-          for (VariableId i = 0; i < cur->getNrVars(); i++) {
+          auto res = new AqlItemBlock(1, _varOverview->nrRegs[_depth]);
+          TRI_ASSERT(cur->getNrRegs() <= res->getNrRegs());
+          for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
             res->setValue(0, i, cur->getValue(_pos, i)->clone());
           }
 
           // The result is in the first variable of this depth,
           // we do not need to do a lookup in _varOverview->varInfo,
-          // but can just take cur->getNrVars() as index:
-          res->setValue(0, cur->getNrVars(), 
+          // but can just take cur->getNrRegs() as registerId:
+          res->setValue(0, cur->getNrRegs(), 
               new AqlValue( new Json(_allDocs[_posInAllDocs++]->copy()) ) );
 
           // Advance read position:
@@ -748,16 +748,16 @@ namespace triagens {
           size_t available = _allDocs.size() - _posInAllDocs;
           size_t toSend = std::min(atMost, available);
 
-          auto res = new AqlItemBlock(toSend, _varOverview->nrVars[_depth]);
-          TRI_ASSERT(cur->getNrVars() <= res->getNrVars());
+          auto res = new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]);
+          TRI_ASSERT(cur->getNrRegs() <= res->getNrRegs());
           for (size_t j = 0; j < toSend; j++) {
-            for (VariableId i = 0; i < cur->getNrVars(); i++) {
+            for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
               res->setValue(j, i, cur->getValue(_pos, i)->clone());
             }
             // The result is in the first variable of this depth,
             // we do not need to do a lookup in _varOverview->varInfo,
-            // but can just take cur->getNrVars() as index:
-            res->setValue(j, cur->getNrVars(), 
+            // but can just take cur->getNrRegs() as registerId:
+            res->setValue(j, cur->getNrRegs(), 
                 new AqlValue( new Json(_allDocs[_posInAllDocs++]->copy()) ) );
           }
 
@@ -789,6 +789,80 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                  CalculationBlock
+// -----------------------------------------------------------------------------
+
+    class CalculationBlock : public ExecutionBlock {
+
+      public:
+
+        CalculationBlock (CalculationNode const* en)
+          : ExecutionBlock(en), _expression(en->expression()), _outReg(0) {
+
+          std::unordered_set<Variable*> inVars = _expression->variables();
+          for (auto it = inVars.begin(); it != inVars.end(); ++it) {
+            _inVars.push_back(*it);
+            auto it2 = _varOverview->varInfo.find((*it)->id);
+            TRI_ASSERT(it2 != _varOverview->varInfo.end());
+            _inRegs.push_back(it2->second.registerId);
+          }
+
+          auto it3 = _varOverview->varInfo.find(en->_outVariable->id);
+          TRI_ASSERT(it3 != _varOverview->varInfo.end());
+          _outReg = it3->second.registerId;
+        }
+
+        ~CalculationBlock () {
+        } 
+
+        void doEvaluation (AqlItemBlock* result) {
+
+          for (size_t i = 0; i < result->size(); i++) {
+            // Now build V8-Object as argument:
+            for (size_t j = 0; j < _inVars.size(); j++) {
+
+            }
+          }
+        }
+
+        virtual AqlItemBlock* getOne () {
+          AqlItemBlock* res = ExecutionBlock::getOne();
+          try {
+            doEvaluation(res);
+            return res;
+          }
+          catch (...) {
+            delete res;
+            throw;
+          }
+        }
+
+        virtual AqlItemBlock* getSome (size_t atLeast, 
+                                       size_t atMost) {
+          AqlItemBlock* res = ExecutionBlock::getSome(atLeast, atMost);
+          try {
+            doEvaluation(res);
+            return res;
+          }
+          catch (...) {
+            delete res;
+            throw;
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief we hold a pointer to the expression in the plan
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+        Expression* _expression;
+        std::vector<Variable*> _inVars;
+        std::vector<RegisterId> _inRegs;
+        RegisterId _outReg;
+
+    };
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                       ReturnBlock
 // -----------------------------------------------------------------------------
 
@@ -817,9 +891,9 @@ namespace triagens {
           auto ep = static_cast<ReturnNode const*>(getPlanNode());
           auto it = _varOverview->varInfo.find(ep->_inVariable->id);
           TRI_ASSERT(it != _varOverview->varInfo.end());
-          unsigned int index = it->second.index;
-          stripped->setValue(0, 0, res->getValue(0, index));
-          res->setValue(0, index, nullptr);
+          RegisterId registerId = it->second.registerId;
+          stripped->setValue(0, 0, res->getValue(0, registerId));
+          res->setValue(0, registerId, nullptr);
           delete res;
           return stripped;
         }
@@ -835,11 +909,11 @@ namespace triagens {
           auto ep = static_cast<ReturnNode const*>(getPlanNode());
           auto it = _varOverview->varInfo.find(ep->_inVariable->id);
           TRI_ASSERT(it != _varOverview->varInfo.end());
-          unsigned int index = it->second.index;
+          RegisterId registerId = it->second.registerId;
           AqlItemBlock* stripped = new AqlItemBlock(res->size(), 1);
           for (size_t i = 0; i < res->size(); i++) {
-            stripped->setValue(i, 0, res->getValue(i, index));
-            res->setValue(i, index, nullptr);
+            stripped->setValue(i, 0, res->getValue(i, registerId));
+            res->setValue(i, registerId, nullptr);
           }
           delete res;
           return stripped;
