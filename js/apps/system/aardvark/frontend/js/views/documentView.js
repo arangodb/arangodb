@@ -50,7 +50,7 @@
 
       var container = document.getElementById('documentEditor');
       var options = {
-        change: function(){self.jsonContentChanged()},
+        change: function(){self.jsonContentChanged();},
         search: true,
         mode: 'tree',
         modes: ['tree', 'code']
@@ -112,9 +112,7 @@
         model = this.editor.get();
       }
       catch (e) {
-        console.log("error1");
         this.errorConfirmation();
-        console.log("error2");
       }
 
       model = JSON.stringify(model);
