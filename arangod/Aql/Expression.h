@@ -37,6 +37,7 @@ namespace triagens {
 
     class AqlItemBlock;
     struct AqlValue;
+    struct Variable;
     class V8Executor;
     struct V8Expression;
 
@@ -86,6 +87,12 @@ namespace triagens {
           // query object and the memory management of the ASTs
           return new Expression(_executor, _node);
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return all variables used in the expression
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_set<Variable*> variables () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a Json representation of the expression

@@ -494,6 +494,12 @@ namespace triagens {
 
         void optimize ();
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determines the variables referenced in an expression
+////////////////////////////////////////////////////////////////////////////////
+
+        static std::unordered_set<Variable*> getReferencedVariables (AstNode const*);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -585,15 +591,17 @@ namespace triagens {
 /// @brief traverse the AST
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode* traverse (AstNode*,
-                           std::function<AstNode*(AstNode*, void*)>,
-                           void*);
+        static AstNode* traverse (AstNode*,
+                                  std::function<AstNode*(AstNode*, void*)>,
+                                  void*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief determines the variables referenced in an expression
+/// @brief traverse the AST, with const nodes
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_set<VariableId> getReferencedVariables (AstNode const*);
+        static void traverse (AstNode const*,
+                              std::function<void(AstNode const*, void*)>,
+                              void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize a function name

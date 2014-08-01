@@ -833,6 +833,35 @@ void Ast::optimize () {
   optimizeRoot();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determines the variables referenced in an expression
+////////////////////////////////////////////////////////////////////////////////
+
+std::unordered_set<Variable*> Ast::getReferencedVariables (AstNode const* node) {
+  auto func = [&](AstNode const* node, void* data) -> void {
+    if (node == nullptr) {
+      return;
+    }
+
+    // reference to a variable
+    if (node->type == NODE_TYPE_REFERENCE) {
+      auto variable = static_cast<Variable*>(node->getData());
+
+      if (variable == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
+
+      auto result = static_cast<std::unordered_set<Variable*>*>(data);
+      result->insert(variable);
+    }
+  };
+
+  std::unordered_set<Variable*> result;  
+  traverse(node, func, &result); 
+
+  return result;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -1392,7 +1421,6 @@ AstNode* Ast::traverse (AstNode* node,
     return nullptr;
   }
   
-  // dump sub-nodes 
   size_t const n = node->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
@@ -1411,34 +1439,27 @@ AstNode* Ast::traverse (AstNode* node,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief determines the variables referenced in an expression
+/// @brief traverse the AST, with const nodes
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_set<VariableId> Ast::getReferencedVariables (AstNode const* node) {
-  auto func = [&](AstNode* node, void* data) -> AstNode* {
-    if (node == nullptr) {
-      return nullptr;
+void Ast::traverse (AstNode const* node, 
+                    std::function<void(AstNode const*, void*)> func,
+                    void* data) {
+  if (node == nullptr) {
+    return;
+  }
+  
+  size_t const n = node->numMembers();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto member = node->getMember(i);
+
+    if (member != nullptr) {
+      traverse(const_cast<AstNode const*>(member), func, data);
     }
+  }
 
-    // reference to a variable
-    if (node->type == NODE_TYPE_REFERENCE) {
-      auto variable = static_cast<Variable*>(node->getData());
-
-      if (variable == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-      }
-
-      auto vars = static_cast<unordered_set<VariableId>*>(data);
-      vars->insert(variable->id);
-    }
-    
-    return node;
-  };
-
-  std::unordered_set<VariableId> vars;  
-  traverse(_root, func, &vars); 
-
-  return vars;
+  func(node, data);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

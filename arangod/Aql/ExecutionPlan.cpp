@@ -492,93 +492,84 @@ ExecutionNode* ExecutionPlan::fromNode (Ast const* ast,
 
   ExecutionNode* en = addNode(new SingletonNode());
 
-  try {
-    size_t const n = node->numMembers();
+  size_t const n = node->numMembers();
 
-    for (size_t i = 0; i < n; ++i) {
-      auto member = node->getMember(i);
-  
-      if (member == nullptr || member->type == NODE_TYPE_NOP) {
-        continue;
+  for (size_t i = 0; i < n; ++i) {
+    auto member = node->getMember(i);
+
+    if (member == nullptr || member->type == NODE_TYPE_NOP) {
+      continue;
+    }
+
+    switch (member->type) {
+      case NODE_TYPE_FOR: {
+        en = fromNodeFor(ast, en, member);
+        break;
       }
 
-      switch (member->type) {
-        case NODE_TYPE_FOR: {
-          en = fromNodeFor(ast, en, member);
-          break;
-        }
-
-        case NODE_TYPE_FILTER: {
-          en = fromNodeFilter(ast, en, member);
-          break;
-        }
-
-        case NODE_TYPE_LET: {
-          en = fromNodeLet(ast, en, member);
-          break;
-        }
-      
-        case NODE_TYPE_SORT: {
-          en = fromNodeSort(ast, en, member);
-          break;
-        }
-      
-        case NODE_TYPE_COLLECT: {
-          en = fromNodeCollect(ast, en, member);
-          break;
-        }
-       
-        case NODE_TYPE_LIMIT: {
-          en = fromNodeLimit(ast, en, member);
-          break;
-        }
-      
-        case NODE_TYPE_RETURN: {
-          en = fromNodeReturn(ast, en, member);
-          break;
-        }
-      
-        case NODE_TYPE_REMOVE: {
-          en = fromNodeRemove(ast, en, member);
-          break;
-        }
-      
-        case NODE_TYPE_INSERT: {
-          en = fromNodeInsert(ast, en, member);
-          break;
-        }
-      
-        case NODE_TYPE_UPDATE: {
-          en = fromNodeUpdate(ast, en, member);
-          break;
-        }
-      
-        case NODE_TYPE_REPLACE: {
-          en = fromNodeReplace(ast, en, member);
-          break;
-        }
-
-        default: {
-          // node type not implemented
-          en = nullptr;
-          break;
-        }
+      case NODE_TYPE_FILTER: {
+        en = fromNodeFilter(ast, en, member);
+        break;
       }
 
-      if (en == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      case NODE_TYPE_LET: {
+        en = fromNodeLet(ast, en, member);
+        break;
+      }
+    
+      case NODE_TYPE_SORT: {
+        en = fromNodeSort(ast, en, member);
+        break;
+      }
+    
+      case NODE_TYPE_COLLECT: {
+        en = fromNodeCollect(ast, en, member);
+        break;
+      }
+      
+      case NODE_TYPE_LIMIT: {
+        en = fromNodeLimit(ast, en, member);
+        break;
+      }
+    
+      case NODE_TYPE_RETURN: {
+        en = fromNodeReturn(ast, en, member);
+        break;
+      }
+    
+      case NODE_TYPE_REMOVE: {
+        en = fromNodeRemove(ast, en, member);
+        break;
+      }
+    
+      case NODE_TYPE_INSERT: {
+        en = fromNodeInsert(ast, en, member);
+        break;
+      }
+    
+      case NODE_TYPE_UPDATE: {
+        en = fromNodeUpdate(ast, en, member);
+        break;
+      }
+    
+      case NODE_TYPE_REPLACE: {
+        en = fromNodeReplace(ast, en, member);
+        break;
+      }
+
+      default: {
+        // node type not implemented
+        en = nullptr;
+        break;
       }
     }
-  
-    return en;
-  }
-  catch (...) {
-    // prevent memleak
-    if (en != nullptr) {
-      delete en;
+
+    if (en == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
-    throw;
   }
+
+  return en;
 }
 
 // -----------------------------------------------------------------------------
