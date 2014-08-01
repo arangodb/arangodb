@@ -82,6 +82,8 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast const* ast) {
 
   try {
     plan->_root = plan->fromNode(ast, root);
+    
+    std::cout << plan->_root->toJson().toString() << "\n";
 
     return plan;
   }
@@ -196,8 +198,9 @@ ExecutionNode* ExecutionPlan::fromNodeFor (Ast const* ast,
     auto calc = createTemporaryCalculation(ast, expression);
 
     try {
+      calc->addDependency(previous);
       en = addNode(new EnumerateListNode(calc->outVariable(), v));
-      en->addDependency(calc);
+      previous = calc;
     }
     catch (...) {
       // prevent memleak
@@ -235,8 +238,9 @@ ExecutionNode* ExecutionPlan::fromNodeFilter (Ast const* ast,
     auto calc = createTemporaryCalculation(ast, expression);
 
     try {
+      calc->addDependency(previous);
       en = addNode(new FilterNode(calc->outVariable()));
-      en->addDependency(calc);
+      previous = calc;
     }
     catch (...) {
       // prevent memleak
@@ -410,8 +414,9 @@ ExecutionNode* ExecutionPlan::fromNodeReturn (Ast const* ast,
     auto calc = createTemporaryCalculation(ast, expression);
 
     try {
+      calc->addDependency(previous);
       en = addNode(new ReturnNode(calc->outVariable()));
-      en->addDependency(calc);
+      previous = calc;
     }
     catch (...) {
       // prevent memleak
