@@ -560,10 +560,6 @@
 
       $("[data-toggle=tooltip]").tooltip();
 
-      $('.modalImportTooltips').tooltip({
-        placement: "left"
-      });
-
       arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "top");
       this.drawTable();
       this.renderPaginationElements();
