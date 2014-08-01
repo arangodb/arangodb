@@ -84,11 +84,10 @@ std::unordered_set<Variable*> Expression::variables () const {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue* Expression::execute (AqlItemBlock* items,
-                               size_t index) {
-  // TODO: implement execution
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  return nullptr;
+AqlValue* Expression::execute (AqlValue const* const* argv,
+                               std::vector<Variable*> const& vars,
+                               std::vector<RegisterId> const& regs) {
+  return _func->execute(argv, vars, regs);
 }
 
 // -----------------------------------------------------------------------------
