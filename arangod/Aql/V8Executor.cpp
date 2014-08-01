@@ -265,6 +265,21 @@ void V8Executor::generateCodeReference (AstNode const* node) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for a variable
+////////////////////////////////////////////////////////////////////////////////
+
+void V8Executor::generateCodeVariable (AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->numMembers() == 0);
+  
+  auto variable = static_cast<Variable*>(node->getData());
+
+  _buffer->appendText("vars[\"");
+  _buffer->appendJsonEncoded(variable->name.c_str());
+  _buffer->appendText("\"]");
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generate JavaScript code for a full collection access
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -305,6 +320,78 @@ void V8Executor::generateCodeFunctionCall (AstNode const* node) {
 
     generateCodeNode(args->getMember(i));
   }
+  _buffer->appendText(")");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for an expansion (i.e. [*] operator)
+////////////////////////////////////////////////////////////////////////////////
+
+void V8Executor::generateCodeExpand (AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->numMembers() == 2);
+
+  _buffer->appendText("(function () { var r = []; return ");
+  generateCodeNode(node->getMember(0));
+  _buffer->appendText(".forEach(function (v) { r.push_back(");
+  generateCodeNode(node->getMember(1));
+  _buffer->appendText("); }); })()");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for an expansion iterator
+////////////////////////////////////////////////////////////////////////////////
+
+void V8Executor::generateCodeExpandIterator (AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->numMembers() == 2);
+
+  // intentionally do not stringify node 0
+  generateCodeNode(node->getMember(1));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for a range (i.e. 1..10)
+////////////////////////////////////////////////////////////////////////////////
+
+void V8Executor::generateCodeRange (AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->numMembers() == 2);
+  
+  _buffer->appendText("aql.RANGE(");
+  generateCodeNode(node->getMember(0));
+  _buffer->appendText(", ");
+  generateCodeNode(node->getMember(1));
+  _buffer->appendText(")");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for a named attribute access
+////////////////////////////////////////////////////////////////////////////////
+
+void V8Executor::generateCodeNamedAccess (AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->numMembers() == 1);
+
+  _buffer->appendText("aql.DOCUMENT_MEMBER(");
+  generateCodeNode(node->getMember(0));
+  _buffer->appendText(", \"");
+  _buffer->appendJsonEncoded(node->getStringValue());
+  _buffer->appendText("\")");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for an indexed attribute access
+////////////////////////////////////////////////////////////////////////////////
+
+void V8Executor::generateCodeIndexedAccess (AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->numMembers() == 2);
+
+  _buffer->appendText("aql.GET_INDEX(");
+  generateCodeNode(node->getMember(0));
+  _buffer->appendText(", ");
+  generateCodeNode(node->getMember(1));
   _buffer->appendText(")");
 }
 
@@ -358,10 +445,30 @@ void V8Executor::generateCodeNode (AstNode const* node) {
     case NODE_TYPE_FCALL:
       generateCodeFunctionCall(node);
       break;
+    
+    case NODE_TYPE_EXPAND:
+      generateCodeExpand(node);
+      break;
+
+    case NODE_TYPE_ITERATOR:
+      generateCodeExpandIterator(node);
+      break;
+    
+    case NODE_TYPE_RANGE:
+      generateCodeRange(node);
+      break;
 
     case NODE_TYPE_ATTRIBUTE_ACCESS:
+      generateCodeNamedAccess(node);
+      break;
+
     case NODE_TYPE_INDEXED_ACCESS:
-      // TODO:
+      generateCodeIndexedAccess(node);
+      break;
+
+    case NODE_TYPE_VARIABLE:
+      // we're not expecting a variable here
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 
     default:
       // TODO: remove debug output
