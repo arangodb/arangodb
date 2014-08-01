@@ -28,9 +28,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Expression.h"
+#include "Aql/Ast.h"
 #include "Aql/Types.h"
 #include "Aql/V8Executor.h"
 #include "Aql/V8Expression.h"
+#include "Aql/Variable.h"
 #include "Utils/Exception.h"
 
 using namespace triagens::aql;
@@ -69,6 +71,14 @@ Expression::~Expression () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return all variables used in the expression
+////////////////////////////////////////////////////////////////////////////////
+
+std::unordered_set<Variable*> Expression::variables () const {
+  return Ast::getReferencedVariables(_node);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute the expression
