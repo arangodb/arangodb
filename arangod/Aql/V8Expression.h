@@ -84,8 +84,6 @@ namespace triagens {
           auto varname = vars[i]->name;
           auto reg = regs[i];
 
-          std::cout << "VARNAME: " << varname << ", REG: " << reg << ", " << argv[reg] << "\n";
-
           TRI_ASSERT(argv[reg] != nullptr);
 
           values->Set(v8::String::New(varname.c_str(), (int) varname.size()), argv[reg]->toV8());
@@ -94,12 +92,9 @@ namespace triagens {
         v8::Handle<v8::Value> args[] = { values };
         v8::Handle<v8::Value> result = func->Call(func, 1, args);
 
-        std::cout << "RESULT...\n";
         if (result.IsEmpty()) {
-          std::cout << "RESULT IS EMPTY.................\n";
           THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
         }
-        std::cout << "RESULT DONE...\n";
 
         TRI_json_t* json = TRI_ObjectToJson(result);
 

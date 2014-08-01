@@ -664,6 +664,8 @@ namespace triagens {
               (*json)("_rev", Json(std::to_string(mptr->_rid))); 
               (*json)("_key", Json(TRI_EXTRACT_MARKER_KEY(mptr)));
 
+              // TODO: add attributes _from and _to of edge collection
+
               _allDocs.push_back(json);
             }
             catch (...) {
