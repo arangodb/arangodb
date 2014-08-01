@@ -33,6 +33,7 @@
 #include "VocBase/document-collection.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
+#include "V8/v8-conv.h"
 
 namespace triagens {
   namespace aql {
@@ -82,6 +83,26 @@ namespace triagens {
       ~AqlValue ();
 
       AqlValue* clone () const;
+
+      v8::Handle<v8::Value> toV8 () const {
+        switch (_type) {
+          case JSON: {
+            return TRI_ObjectJson(_json->json());
+          }
+          case DOCVEC: {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+          }
+          case RANGE: {
+            v8::Handle<v8::Array> values = v8::Array::New();
+            // TODO: fill range
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+            return values;
+          }
+          default: {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+          }
+        }
+      }
 
       std::string toString () {
         switch (_type) {

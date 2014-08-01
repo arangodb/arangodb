@@ -31,6 +31,10 @@
 #define ARANGODB_AQL_V8_EXPRESSION_H 1
 
 #include "Basics/Common.h"
+#include "Basics/JsonHelper.h"
+#include "BasicsC/json.h"
+#include "Aql/Types.h"
+#include "V8/v8-conv.h"
 #include <v8.h>
 
 namespace triagens {
@@ -65,11 +69,29 @@ namespace triagens {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-      v8::Handle<v8::Value> execute (v8::Handle<v8::Value> argv) {
-        v8::HandleScope scope;
+      AqlValue* execute (AqlValue const** argv, 
+                         std::vector<Variable*> vars,
+                         std::vector<RegisterId> regs) {
+        // TODO: decide whether a separate handle scope is needed
 
-        v8::Handle<v8::Value> args[] = { argv };
-        return scope.Close(func->Call(func, 1, args));
+        v8::Handle<v8::Object> values = v8::Object::New();
+        for (size_t i = 0; i < vars.size(); ++i) {
+          auto varname = vars[i]->name;
+          auto reg = regs[i];
+
+          values->Set(v8::String::New(varname.c_str(), (int) varname.size()), argv[reg]->toV8());
+        }
+
+        v8::Handle<v8::Value> args[] = { values };
+        v8::Handle<v8::Value> result = func->Call(func, 1, args);
+
+        TRI_json_t* json = TRI_ObjectToJson(result);
+
+        if (json == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
+
+        return new AqlValue(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, json));
       }
 
 
