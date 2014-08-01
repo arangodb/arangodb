@@ -71,36 +71,6 @@ void ExecutionBlock::walk (WalkerWorker* worker) {
 }
 
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                factory for instanciation of plans
-// -----------------------------------------------------------------------------
-
-ExecutionBlock* ExecutionBlock::instanciatePlan (ExecutionNode const* ep) {
-  ExecutionBlock* eb;
-  switch (ep->getType()) {
-    case ExecutionNode::SINGLETON: {
-      eb = new SingletonBlock(static_cast<SingletonNode const*>(ep));
-      break;
-    }
-    case ExecutionNode::ENUMERATE_COLLECTION: {
-      eb = new EnumerateCollectionBlock(static_cast<EnumerateCollectionNode const*>(ep));
-      break;
-    }
-    case ExecutionNode::ROOT: {
-      eb = new RootBlock(static_cast<RootNode const*>(ep));
-      break;
-    }
-    default: {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-    }
-  }
-  vector<ExecutionNode*> deps = ep->getDependencies();
-  for (auto it = deps.begin(); it != deps.end();++it) {
-    eb->addDependency(instanciatePlan(*it));
-  }
-  return eb;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief
 ////////////////////////////////////////////////////////////////////////////////

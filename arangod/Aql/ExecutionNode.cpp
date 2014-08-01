@@ -121,20 +121,28 @@ void ExecutionNode::appendAsString (std::string& st, int indent) {
 /// @brief functionality to walk an execution plan recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionNode::walk (WalkerWorker& worker) {
-  worker.before(this);
+void ExecutionNode::walk (WalkerWorker* worker) {
+  // Only do every node exactly once:
+  if (worker->done(this)) {
+    return;
+  }
+
+  worker->before(this);
+  // Now the children in their natural order:
   for (auto it = _dependencies.begin();
             it != _dependencies.end(); 
             ++it) {
     (*it)->walk(worker);
   }
+  // Now handle a subquery:
   if (getType() == SUBQUERY) {
     auto p = static_cast<SubqueryNode*>(this);
-    worker.enterSubquery(this, p->getSubquery());
-    p->getSubquery()->walk(worker);
-    worker.leaveSubquery(this, p->getSubquery());
+    if (worker->enterSubquery(this, p->getSubquery())) {
+      p->getSubquery()->walk(worker);
+      worker->leaveSubquery(this, p->getSubquery());
+    }
   }
-  worker.after(this);
+  worker->after(this);
 }
 
 // -----------------------------------------------------------------------------

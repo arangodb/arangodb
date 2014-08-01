@@ -64,6 +64,54 @@ ExecutionEngine::~ExecutionEngine () {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                     walker class for ExecutionNode to instanciate
+// -----------------------------------------------------------------------------
+
+struct Instanciator : public ExecutionNode::WalkerWorker {
+  ExecutionBlock* root;
+  ExecutionEngine* engine;
+  std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
+
+  Instanciator (ExecutionEngine* engine) : engine(engine) {};
+  
+  ~Instanciator () {};
+
+  virtual void after (ExecutionNode* en) {
+    ExecutionBlock* eb;
+    switch (en->getType()) {
+      case ExecutionNode::SINGLETON: {
+        eb = new SingletonBlock(static_cast<SingletonNode const*>(en));
+        break;
+      }
+      case ExecutionNode::ENUMERATE_COLLECTION: {
+        eb = new EnumerateCollectionBlock(static_cast<EnumerateCollectionNode const*>(en));
+        break;
+      }
+      case ExecutionNode::ROOT: {
+        eb = new RootBlock(static_cast<RootNode const*>(en));
+        root = eb;
+        break;
+      }
+      default: {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+      }
+    }
+    engine->addBlock(eb);
+
+    // Now add dependencies:
+    std::vector<ExecutionNode*> deps = en->getDependencies();
+    for (auto it = deps.begin(); it != deps.end();++it) {
+      auto it2 = cache.find(*it);
+      TRI_ASSERT(it2 != cache.end());
+      eb->addDependency(it2->second);
+    }
+
+    cache.insert(std::make_pair(en, eb));
+  }
+
+};
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
@@ -71,14 +119,15 @@ ExecutionEngine::~ExecutionEngine () {
 /// @brief create an execution engine from a plan
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionEngine* ExecutionEngine::instanciateFromPlan (ExecutionNode const* plan) {
+ExecutionEngine* ExecutionEngine::instanciateFromPlan (ExecutionNode* plan) {
   auto engine = new ExecutionEngine();
 
   try {
-    auto root = ExecutionBlock::instanciatePlan(plan); //engine, plan);
-    root->staticAnalysis();
-    root->initialize();
-    
+    auto inst = new Instanciator(engine);
+    plan->walk(inst);
+    auto root = inst->root;
+    delete inst;
+
     engine->_root = root;
   }
   catch (...) {
