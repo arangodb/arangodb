@@ -44,10 +44,10 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/ExecutionBlock.cpp \
 	arangod/Aql/ExecutionEngine.cpp \
 	arangod/Aql/ExecutionNode.cpp \
+	arangod/Aql/ExecutionPlan.cpp \
 	arangod/Aql/Expression.cpp \
 	arangod/Aql/grammar.cpp \
 	arangod/Aql/Parser.cpp \
-	arangod/Aql/PlanGenerator.cpp \
 	arangod/Aql/Query.cpp \
 	arangod/Aql/Scopes.cpp \
 	arangod/Aql/Types.cpp \

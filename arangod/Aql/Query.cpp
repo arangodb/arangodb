@@ -29,8 +29,8 @@
 
 #include "Aql/Query.h"
 #include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/Parser.h"
-#include "Aql/PlanGenerator.h"
 #include "Aql/V8Executor.h"
 #include "Aql/ExecutionEngine.h"
 #include "BasicsC/json.h"
@@ -173,8 +173,7 @@ QueryResult Query::execute () {
     parser.ast()->injectBindParameters(_bindParameters);
     parser.ast()->optimize();
 
-    PlanGenerator generator;
-    auto plan = generator.fromAst(parser.ast());
+    auto plan = ExecutionPlan::instanciateFromAst(parser.ast());
 
     try { 
       auto exec = ExecutionEngine::instanciateFromPlan(plan);
