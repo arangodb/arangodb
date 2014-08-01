@@ -31,6 +31,7 @@
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
 #include "Basics/JsonHelper.h"
+#include "Aql/Types.h"
 
 namespace triagens {
   namespace aql {
