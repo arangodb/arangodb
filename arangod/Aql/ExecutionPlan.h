@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, query plan generator
+/// @brief Aql, execution plan
 ///
 /// @file
 ///
@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_PLAN_GENERATOR_H
-#define ARANGODB_AQL_PLAN_GENERATOR_H 1
+#ifndef ARANGODB_AQL_EXECUTION_PLAN_H
+#define ARANGODB_AQL_EXECUTION_PLAN_H 1
 
 #include "Basics/Common.h"
 
@@ -41,28 +41,30 @@ namespace triagens {
     class ExecutionNode;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               class PlanGenerator
+// --SECTION--                                               class ExecutionPlan
 // -----------------------------------------------------------------------------
 
-    class PlanGenerator {
+    class ExecutionPlan {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the plan
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionPlan ();
+
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create the generator
+/// @brief destroy the plan, frees all assigned nodes
 ////////////////////////////////////////////////////////////////////////////////
 
-        PlanGenerator ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the generator
-////////////////////////////////////////////////////////////////////////////////
-
-        ~PlanGenerator ();
+        ~ExecutionPlan ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -71,16 +73,31 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an initial execution plan from an abstract syntax tree
+/// @brief create an execution plan from an AST
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode* fromAst (Ast const*); 
+        static ExecutionPlan* instanciateFromAst (Ast const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the root node
+////////////////////////////////////////////////////////////////////////////////
+        
+        ExecutionNode* root () const {
+          TRI_ASSERT(_root != nullptr);
+          return _root;
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a node to the plan
+////////////////////////////////////////////////////////////////////////////////
+
+        void addNode (ExecutionNode*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a calculation node for an arbitrary expression
@@ -191,11 +208,24 @@ namespace triagens {
         ExecutionNode* fromNode (Ast const*,
                                  AstNode const*);
 
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief all nodes registered, used for memory management
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<ExecutionNode*>  _nodes;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief root node of the engine
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionNode*               _root;
 
     };
 

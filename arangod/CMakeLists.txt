@@ -63,10 +63,10 @@ add_executable(
     Aql/ExecutionBlock.cpp
     Aql/ExecutionEngine.cpp
     Aql/ExecutionNode.cpp
+    Aql/ExecutionPlan.cpp
     Aql/Expression.cpp
     Aql/grammar.cpp
     Aql/Parser.cpp
-    Aql/PlanGenerator.cpp
     Aql/Query.cpp
     Aql/Scopes.cpp
     Aql/Types.cpp
