@@ -48,7 +48,7 @@ namespace triagens {
 
     class ExecutionBlock {
       public:
-        ExecutionBlock (ExecutionPlan const* ep)
+        ExecutionBlock (ExecutionNode const* ep)
           : _exePlan(ep), _done(false), _depth(0) { }
 
         virtual ~ExecutionBlock ();
@@ -100,7 +100,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief functionality to walk an execution plan recursively
+/// @brief functionality to walk an execution block recursively
 ////////////////////////////////////////////////////////////////////////////////
 
         class WalkerWorker {
@@ -187,49 +187,49 @@ namespace triagens {
           }
 
           virtual void after (ExecutionBlock *eb) {
-            switch (eb->getPlan()->getType()) {
-              case ExecutionPlan::ENUMERATE_COLLECTION: {
+            switch (eb->getPlanNode()->getType()) {
+              case ExecutionNode::ENUMERATE_COLLECTION: {
                 depth++;
                 nrVarsHere.push_back(1);
                 nrVars.push_back(1 + nrVars.back());
-                auto ep = static_cast<EnumerateCollectionPlan const*>(eb->getPlan());
+                auto ep = static_cast<EnumerateCollectionNode const*>(eb->getPlanNode());
                 varInfo.insert(make_pair(ep->_outVariable->id,
                                          VarInfo(depth, totalNrVars)));
                 totalNrVars++;
                 break;
               }
-              case ExecutionPlan::ENUMERATE_LIST: {
+              case ExecutionNode::ENUMERATE_LIST: {
                 depth++;
                 nrVarsHere.push_back(1);
                 nrVars.push_back(1 + nrVars.back());
-                auto ep = static_cast<EnumerateListPlan const*>(eb->getPlan());
+                auto ep = static_cast<EnumerateListNode const*>(eb->getPlanNode());
                 varInfo.insert(make_pair(ep->_outVariable->id,
                                          VarInfo(depth, totalNrVars)));
                 totalNrVars++;
                 break;
               }
-              case ExecutionPlan::CALCULATION: {
+              case ExecutionNode::CALCULATION: {
                 nrVarsHere[depth]++;
                 nrVars[depth]++;
-                auto ep = static_cast<CalculationPlan const*>(eb->getPlan());
+                auto ep = static_cast<CalculationNode const*>(eb->getPlanNode());
                 varInfo.insert(make_pair(ep->_outVariable->id,
                                          VarInfo(depth, totalNrVars)));
                 totalNrVars++;
                 break;
               }
-              case ExecutionPlan::PROJECTION: {
+              case ExecutionNode::PROJECTION: {
                 nrVarsHere[depth]++;
                 nrVars[depth]++;
-                auto ep = static_cast<ProjectionPlan const*>(eb->getPlan());
+                auto ep = static_cast<ProjectionNode const*>(eb->getPlanNode());
                 varInfo.insert(make_pair(ep->_outVariable->id,
                                          VarInfo(depth, totalNrVars)));
                 totalNrVars++;
                 break;
               }
-              case ExecutionPlan::SUBQUERY: {
+              case ExecutionNode::SUBQUERY: {
                 nrVarsHere[depth]++;
                 nrVars[depth]++;
-                auto ep = static_cast<SubqueryPlan const*>(eb->getPlan());
+                auto ep = static_cast<SubqueryNode const*>(eb->getPlanNode());
                 varInfo.insert(make_pair(ep->_outVariable->id,
                                          VarInfo(depth, totalNrVars)));
                 totalNrVars++;
@@ -441,16 +441,16 @@ namespace triagens {
           return 0;
         }
 
-        ExecutionPlan const* getPlan () {
+        ExecutionNode const* getPlanNode () {
           return _exePlan;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief our corresponding ExecutionPlan node
+/// @brief our corresponding ExecutionNode node
 ////////////////////////////////////////////////////////////////////////////////
 
       protected:
-        ExecutionPlan const* _exePlan;
+        ExecutionNode const* _exePlan;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief our dependent nodes
@@ -489,11 +489,11 @@ namespace triagens {
         std::shared_ptr<VarOverview> _varOverview;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a static factory for ExecutionBlocks from ExecutionPlans
+/// @brief a static factory for ExecutionBlocks from ExecutionNodes
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
-        static ExecutionBlock* instanciatePlan (ExecutionPlan const* ep);
+        static ExecutionBlock* instanciatePlan (ExecutionNode const* ep);
 
     };
 
@@ -509,7 +509,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        SingletonBlock (SingletonPlan const* ep)
+        SingletonBlock (SingletonNode const* ep)
           : ExecutionBlock(ep) {
         }
 
@@ -588,7 +588,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        EnumerateCollectionBlock (EnumerateCollectionPlan const* ep)
+        EnumerateCollectionBlock (EnumerateCollectionNode const* ep)
           : ExecutionBlock(ep), _posInAllDocs(0) {
         }
 
@@ -618,7 +618,7 @@ namespace triagens {
             return res;
           }
 
-          auto p = reinterpret_cast<EnumerateCollectionPlan const*>(_exePlan);
+          auto p = reinterpret_cast<EnumerateCollectionNode const*>(_exePlan);
 
           V8ReadTransaction trx(p->_vocbase, p->_collname);
   
@@ -793,7 +793,7 @@ namespace triagens {
 
       public:
 
-        RootBlock (RootPlan const* ep)
+        RootBlock (RootNode const* ep)
           : ExecutionBlock(ep) {
 
         }
@@ -811,7 +811,7 @@ namespace triagens {
 
           // Let's steal the actual result and throw away the vars:
           AqlItemBlock* stripped = new AqlItemBlock(1, 1);
-          auto ep = static_cast<RootPlan const*>(getPlan());
+          auto ep = static_cast<RootNode const*>(getPlanNode());
           auto it = _varOverview->varInfo.find(ep->_inVariable->id);
           TRI_ASSERT(it != _varOverview->varInfo.end());
           unsigned int index = it->second.index;
@@ -829,7 +829,7 @@ namespace triagens {
           }
 
           // Let's steal the actual result and throw away the vars:
-          auto ep = static_cast<RootPlan const*>(getPlan());
+          auto ep = static_cast<RootNode const*>(getPlanNode());
           auto it = _varOverview->varInfo.find(ep->_inVariable->id);
           TRI_ASSERT(it != _varOverview->varInfo.end());
           unsigned int index = it->second.index;

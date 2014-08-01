@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_EXECUTION_PLAN_H
-#define ARANGODB_AQL_EXECUTION_PLAN_H 1
+#ifndef ARANGODB_AQL_EXECUTION_Plan_H
+#define ARANGODB_AQL_EXECUTION_Plan_H 1
 
 #include <Basics/Common.h>
 
@@ -44,10 +44,10 @@ namespace triagens {
     class ExecutionBlock;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class ExecutionPlan, abstract base class of all execution plans
+/// @brief class ExecutionNode, abstract base class of all execution Nodes
 ////////////////////////////////////////////////////////////////////////////////
 
-    class ExecutionPlan {
+    class ExecutionNode {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief node type
@@ -93,14 +93,14 @@ namespace triagens {
 /// @brief default constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionPlan () {
+        ExecutionNode () {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor with one dependency
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionPlan (ExecutionPlan* ep) {
+        ExecutionNode (ExecutionNode* ep) {
           _dependencies.push_back(ep);
         }
 
@@ -108,10 +108,7 @@ namespace triagens {
 /// @brief destructor, free dependencies
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ~ExecutionPlan () { 
-          for (auto i = _dependencies.begin(); i != _dependencies.end(); ++i) {
-            delete *i;
-          }
+        virtual ~ExecutionNode () { 
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -127,14 +124,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::string getTypeString () const {
-          return std::string("ExecutionPlan (abstract)");
+          return std::string("ExecutionNode (abstract)");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a dependency
 ////////////////////////////////////////////////////////////////////////////////
 
-        void addDependency (ExecutionPlan* ep) {
+        void addDependency (ExecutionNode* ep) {
           _dependencies.push_back(ep);
         }
 
@@ -142,7 +139,7 @@ namespace triagens {
 /// @brief get all dependencies
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<ExecutionPlan*> getDependencies () const {
+        vector<ExecutionNode*> getDependencies () const {
           return _dependencies;
         }
 
@@ -151,7 +148,7 @@ namespace triagens {
 /// removed, please note that this does not delete ep!
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool removeDependency (ExecutionPlan* ep) {
+        bool removeDependency (ExecutionNode* ep) {
           auto it = _dependencies.begin(); 
           while (it != _dependencies.end()) {
             if (*it == ep) {
@@ -167,7 +164,7 @@ namespace triagens {
 /// @brief access the pos-th dependency
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionPlan* operator[] (size_t pos) const {
+        ExecutionNode* operator[] (size_t pos) const {
           if (pos > _dependencies.size()) {
             return nullptr;
           }
@@ -177,16 +174,16 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clone execution plan recursively, this makes the class abstract
+/// @brief clone execution Node recursively, this makes the class abstract
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionPlan* clone () const = 0;   // make class abstract
+        virtual ExecutionNode* clone () const = 0;   // make class abstract
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper for cloning, use virtual clone methods for dependencies
 ////////////////////////////////////////////////////////////////////////////////
 
-        void cloneDependencies (ExecutionPlan* theClone) const {
+        void cloneDependencies (ExecutionNode* theClone) const {
           auto it = _dependencies.begin();
           while (it != _dependencies.end()) {
             theClone->_dependencies.push_back((*it)->clone());
@@ -209,11 +206,11 @@ namespace triagens {
       protected:
 
         triagens::basics::Json toJsonHelperGeneric (
-                  std::map<ExecutionPlan*, int>& indexTab,
+                  std::map<ExecutionNode*, int>& indexTab,
                   triagens::basics::Json& nodes,
                   TRI_memory_zone_t* zone);
 
-        virtual void toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
                                    triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) = 0;
 
@@ -234,12 +231,12 @@ namespace triagens {
           public:
             WalkerWorker () {};
             virtual ~WalkerWorker () {};
-            virtual void before (ExecutionPlan* eb) {};
-            virtual void after (ExecutionPlan* eb) {};
-            virtual void enterSubquery (ExecutionPlan* super, 
-                                        ExecutionPlan* sub) {};
-            virtual void leaveSubquery (ExecutionPlan* super,
-                                        ExecutionPlan* sub) {};
+            virtual void before (ExecutionNode* eb) {};
+            virtual void after (ExecutionNode* eb) {};
+            virtual void enterSubquery (ExecutionNode* super, 
+                                        ExecutionNode* sub) {};
+            virtual void leaveSubquery (ExecutionNode* super,
+                                        ExecutionNode* sub) {};
         };
 
         void walk (WalkerWorker& worker);
@@ -254,19 +251,19 @@ namespace triagens {
 
       protected:
 
-        std::vector<ExecutionPlan*> _dependencies;
+        std::vector<ExecutionNode*> _dependencies;
 
     };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               class SingletonPlan
+// --SECTION--                                               class SingletonNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class SingletonPlan, derived from ExecutionPlan
+/// @brief class SingletonNode, derived from ExecutionNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class SingletonPlan : public ExecutionPlan {
+    class SingletonNode : public ExecutionNode {
       
       friend class ExecutionBlock;
       friend class SingletonBlock;
@@ -277,7 +274,7 @@ namespace triagens {
 
       public:
 
-        SingletonPlan () : ExecutionPlan() {
+        SingletonNode () : ExecutionNode() {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -293,38 +290,38 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::string getTypeString () const {
-          return std::string("SingletonPlan");
+          return std::string("SingletonNode");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
                                    triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clone execution plan recursively
+/// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionPlan* clone () const {
-          auto c = new SingletonPlan();
+        virtual ExecutionNode* clone () const {
+          auto c = new SingletonNode();
           cloneDependencies(c);
-          return static_cast<ExecutionPlan*>(c);
+          return static_cast<ExecutionNode*>(c);
         }
 
     };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                     class EnumerateCollectionPlan
+// --SECTION--                                     class EnumerateCollectionNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class EnumerateCollectionPlan, derived from ExecutionPlan
+/// @brief class EnumerateCollectionNode, derived from ExecutionNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class EnumerateCollectionPlan : public ExecutionPlan {
+    class EnumerateCollectionNode : public ExecutionNode {
       
       friend class ExecutionBlock;
       friend class EnumerateCollectionBlock;
@@ -335,10 +332,10 @@ namespace triagens {
 
       public:
 
-        EnumerateCollectionPlan (TRI_vocbase_t* vocbase, 
+        EnumerateCollectionNode (TRI_vocbase_t* vocbase, 
                                  std::string collname,
                                  Variable const* outVariable)
-          : ExecutionPlan(), _vocbase(vocbase), _collname(collname),
+          : ExecutionNode(), _vocbase(vocbase), _collname(collname),
             _outVariable(outVariable) {
 
           TRI_ASSERT(_vocbase != nullptr);
@@ -358,25 +355,25 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::string getTypeString () const {
-          return std::string("EnumerateCollectionPlan");
+          return std::string("EnumerateCollectionNode");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
                                    triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clone execution plan recursively
+/// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionPlan* clone () const {
-          auto c = new EnumerateCollectionPlan(_vocbase, _collname, _outVariable);
+        virtual ExecutionNode* clone () const {
+          auto c = new EnumerateCollectionNode(_vocbase, _collname, _outVariable);
           cloneDependencies(c);
-          return static_cast<ExecutionPlan*>(c);
+          return static_cast<ExecutionNode*>(c);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -406,14 +403,14 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                           class EnumerateListPlan
+// --SECTION--                                           class EnumerateListNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class EnumerateListPlan, derived from ExecutionPlan
+/// @brief class EnumerateListNode, derived from ExecutionNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class EnumerateListPlan : public ExecutionPlan {
+    class EnumerateListNode : public ExecutionNode {
       
       friend class ExecutionBlock;
       friend class EnumerateListBlock;
@@ -424,9 +421,9 @@ namespace triagens {
 
       public:
 
-        EnumerateListPlan (Variable const* inVariable,
+        EnumerateListNode (Variable const* inVariable,
                            Variable const* outVariable) 
-          : ExecutionPlan(), _inVariable(inVariable), _outVariable(outVariable) {
+          : ExecutionNode(), _inVariable(inVariable), _outVariable(outVariable) {
 
           TRI_ASSERT(_inVariable != nullptr);
           TRI_ASSERT(_outVariable != nullptr);
@@ -445,25 +442,25 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::string getTypeString () const {
-          return std::string("EnumerateListPlan");
+          return std::string("EnumerateListNode");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
                                    triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clone execution plan recursively
+/// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionPlan* clone () const {
-          auto c = new EnumerateListPlan(_inVariable, _outVariable);
+        virtual ExecutionNode* clone () const {
+          auto c = new EnumerateListNode(_inVariable, _outVariable);
           cloneDependencies(c);
-          return static_cast<ExecutionPlan*>(c);
+          return static_cast<ExecutionNode*>(c);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -488,14 +485,14 @@ namespace triagens {
 
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   class LimitPlan
+// --SECTION--                                                   class LimitNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class LimitPlan, derived from ExecutionPlan
+/// @brief class LimitNode, derived from ExecutionNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class LimitPlan : public ExecutionPlan {
+    class LimitNode : public ExecutionNode {
       
       friend class ExecutionBlock;
       friend class LimitBlock;
@@ -506,12 +503,12 @@ namespace triagens {
 
       public:
 
-        LimitPlan (size_t o, size_t l) 
-          : ExecutionPlan(), _offset(o), _limit(l) {
+        LimitNode (size_t o, size_t l) 
+          : ExecutionNode(), _offset(o), _limit(l) {
         }
 
-        LimitPlan (size_t l) 
-          : ExecutionPlan(), _offset(0), _limit(l) {
+        LimitNode (size_t l) 
+          : ExecutionNode(), _offset(0), _limit(l) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -527,25 +524,25 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::string getTypeString () const {
-          return std::string("LimitPlan");
+          return std::string("LimitNode");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
                                    triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clone execution plan recursively
+/// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionPlan* clone () const {
-          auto c = new LimitPlan(_offset, _limit);
+        virtual ExecutionNode* clone () const {
+          auto c = new LimitNode(_offset, _limit);
           cloneDependencies(c);
-          return static_cast<ExecutionPlan*>(c);
+          return static_cast<ExecutionNode*>(c);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -560,14 +557,14 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              class ProjectionPlan
+// --SECTION--                                              class ProjectionNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class ProjectionPlan, derived from ExecutionPlan
+/// @brief class ProjectionNode, derived from ExecutionNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class ProjectionPlan : public ExecutionPlan {
+    class ProjectionNode : public ExecutionNode {
       
       friend class ExecutionBlock;
       friend class ProjectionBlock;
@@ -578,10 +575,10 @@ namespace triagens {
 
       public:
 
-        ProjectionPlan (Variable const* inVariable,
+        ProjectionNode (Variable const* inVariable,
                         Variable const* outVariable,
                         std::vector<std::string> keepAttributes)
-          : ExecutionPlan(), _inVariable(inVariable), _outVariable(outVariable),
+          : ExecutionNode(), _inVariable(inVariable), _outVariable(outVariable),
             _keepAttributes(keepAttributes) {
 
           TRI_ASSERT(inVariable != nullptr);
@@ -601,25 +598,25 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::string getTypeString () const {
-          return std::string("ProjectionPlan");
+          return std::string("ProjectionNode");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
                                    triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clone execution plan recursively
+/// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionPlan* clone () const {
-          auto c = new ProjectionPlan(_inVariable, _outVariable, _keepAttributes);
+        virtual ExecutionNode* clone () const {
+          auto c = new ProjectionNode(_inVariable, _outVariable, _keepAttributes);
           cloneDependencies(c);
-          return static_cast<ExecutionPlan*>(c);
+          return static_cast<ExecutionNode*>(c);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -649,14 +646,14 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             class CalculationPlan
+// --SECTION--                                             class CalculationNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class CalculationPlan, derived from ExecutionPlan
+/// @brief class CalculationNode, derived from ExecutionNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class CalculationPlan : public ExecutionPlan {
+    class CalculationNode : public ExecutionNode {
       
       friend class ExecutionBlock;
       friend class CalculationBlock;
@@ -667,8 +664,8 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        CalculationPlan (Expression* expr, Variable const* outVariable)
-          : ExecutionPlan(), _expression(expr), _outVariable(outVariable) {
+        CalculationNode (Expression* expr, Variable const* outVariable)
+          : ExecutionNode(), _expression(expr), _outVariable(outVariable) {
 
           TRI_ASSERT(_expression != nullptr);
           TRI_ASSERT(_outVariable != nullptr);
@@ -678,7 +675,7 @@ namespace triagens {
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~CalculationPlan () {
+        ~CalculationNode () {
           if (_expression != nullptr) {
             delete _expression;
           }
@@ -697,25 +694,25 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::string getTypeString () const {
-          return std::string("CalculationPlan");
+          return std::string("CalculationNode");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
                                    triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clone execution plan recursively
+/// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionPlan* clone () const {
-          auto c = new CalculationPlan(_expression->clone(), _outVariable);
+        virtual ExecutionNode* clone () const {
+          auto c = new CalculationNode(_expression->clone(), _outVariable);
           cloneDependencies(c);
-          return static_cast<ExecutionPlan*>(c);
+          return static_cast<ExecutionNode*>(c);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -747,14 +744,14 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                class SubqueryPlan
+// --SECTION--                                                class SubqueryNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class SubqueryPlan, derived from ExecutionPlan
+/// @brief class SubqueryNode, derived from ExecutionNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class SubqueryPlan : public ExecutionPlan {
+    class SubqueryNode : public ExecutionNode {
       
       friend class ExecutionBlock;
       friend class SubqueryBlock;
@@ -765,8 +762,8 @@ namespace triagens {
 
       public:
 
-        SubqueryPlan (ExecutionPlan* subquery, Variable const* outVariable)
-          : ExecutionPlan(), _subquery(subquery), _outVariable(outVariable) {
+        SubqueryNode (ExecutionNode* subquery, Variable const* outVariable)
+          : ExecutionNode(), _subquery(subquery), _outVariable(outVariable) {
 
           TRI_ASSERT(_subquery != nullptr);
           TRI_ASSERT(_outVariable != nullptr);
@@ -785,32 +782,32 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::string getTypeString () const {
-          return std::string("SubqueryPlan");
+          return std::string("SubqueryNode");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
                                    triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clone execution plan recursively
+/// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionPlan* clone () const {
-          auto c = new SubqueryPlan(_subquery->clone(), _outVariable);
+        virtual ExecutionNode* clone () const {
+          auto c = new SubqueryNode(_subquery->clone(), _outVariable);
           cloneDependencies(c);
-          return static_cast<ExecutionPlan*>(c);
+          return static_cast<ExecutionNode*>(c);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getter for subquery
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionPlan* getSubquery () {
+        ExecutionNode* getSubquery () {
           return _subquery;
         }
 
@@ -824,7 +821,7 @@ namespace triagens {
 /// @brief we need to have an expression and where to write the result
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionPlan* _subquery;
+        ExecutionNode* _subquery;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief variable to write to
@@ -835,14 +832,14 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  class FilterPlan
+// --SECTION--                                                  class FilterNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class FilterPlan, derived from ExecutionPlan
+/// @brief class FilterNode, derived from ExecutionNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class FilterPlan : public ExecutionPlan {
+    class FilterNode : public ExecutionNode {
       
       friend class ExecutionBlock;
       friend class FilterBlock;
@@ -853,8 +850,8 @@ namespace triagens {
 
       public:
 
-        FilterPlan (Variable const* inVariable)
-          : ExecutionPlan(), _inVariable(inVariable) {
+        FilterNode (Variable const* inVariable)
+          : ExecutionNode(), _inVariable(inVariable) {
 
           TRI_ASSERT(_inVariable != nullptr);
         }
@@ -872,25 +869,25 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::string getTypeString () const {
-          return std::string("FilterPlan");
+          return std::string("FilterNode");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
                                    triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clone execution plan recursively
+/// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionPlan* clone () const {
-          auto c = new FilterPlan(_inVariable);
+        virtual ExecutionNode* clone () const {
+          auto c = new FilterNode(_inVariable);
           cloneDependencies(c);
-          return static_cast<ExecutionPlan*>(c);
+          return static_cast<ExecutionNode*>(c);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -908,14 +905,14 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    class SortPlan
+// --SECTION--                                                    class SortNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class SortPlan, derived from ExecutionPlan
+/// @brief class SortNode, derived from ExecutionNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class SortPlan : public ExecutionPlan {
+    class SortNode : public ExecutionNode {
       
       friend class ExecutionBlock;
       friend class SortBlock;
@@ -926,8 +923,8 @@ namespace triagens {
 
       public:
 
-        SortPlan (std::vector<std::pair<Variable const*, bool>> elements)
-          : ExecutionPlan(), _elements(elements) {
+        SortNode (std::vector<std::pair<Variable const*, bool>> elements)
+          : ExecutionNode(), _elements(elements) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -943,25 +940,25 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::string getTypeString () const {
-          return std::string("SortPlan");
+          return std::string("SortNode");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
                                    triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clone execution plan recursively
+/// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionPlan* clone () const {
-          auto c = new SortPlan(_elements);
+        virtual ExecutionNode* clone () const {
+          auto c = new SortNode(_elements);
           cloneDependencies(c);
-          return static_cast<ExecutionPlan*>(c);
+          return static_cast<ExecutionNode*>(c);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -981,14 +978,14 @@ namespace triagens {
 
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                     class AggregateOnUnsortedPlan
+// --SECTION--                                     class AggregateOnUnsortedNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class AggregateOnUnsortedPlan, derived from ExecutionPlan
+/// @brief class AggregateOnUnsortedNode, derived from ExecutionNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class AggregateOnUnsortedPlan : public ExecutionPlan {
+    class AggregateOnUnsortedNode : public ExecutionNode {
       
       friend class ExecutionBlock;
       friend class AggregateOnUnsortedBlock;
@@ -999,9 +996,9 @@ namespace triagens {
 
       public:
 
-        AggregateOnUnsortedPlan (std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables,
+        AggregateOnUnsortedNode (std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables,
                                  Variable const* outVariable)
-          : ExecutionPlan(), _aggregateVariables(aggregateVariables), _outVariable(outVariable) {
+          : ExecutionNode(), _aggregateVariables(aggregateVariables), _outVariable(outVariable) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1017,25 +1014,25 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::string getTypeString () const {
-          return std::string("AggregateOnUnsortedPlan");
+          return std::string("AggregateOnUnsortedNode");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
                                    triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clone execution plan recursively
+/// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionPlan* clone () const {
-          auto c = new AggregateOnUnsortedPlan(_aggregateVariables, _outVariable);
+        virtual ExecutionNode* clone () const {
+          auto c = new AggregateOnUnsortedNode(_aggregateVariables, _outVariable);
           cloneDependencies(c);
-          return static_cast<ExecutionPlan*>(c);
+          return static_cast<ExecutionNode*>(c);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1060,14 +1057,14 @@ namespace triagens {
 
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    class RootPlan
+// --SECTION--                                                    class RootNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class RootPlan, derived from ExecutionPlan
+/// @brief class RootNode, derived from ExecutionNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RootPlan : public ExecutionPlan {
+    class RootNode : public ExecutionNode {
       
       friend class ExecutionBlock;
       friend class RootBlock;
@@ -1078,8 +1075,8 @@ namespace triagens {
 
       public:
 
-        RootPlan (Variable const* inVariable)
-          : ExecutionPlan(), _inVariable(inVariable) {
+        RootNode (Variable const* inVariable)
+          : ExecutionNode(), _inVariable(inVariable) {
 
           TRI_ASSERT(_inVariable != nullptr);
         }
@@ -1097,25 +1094,25 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::string getTypeString () const {
-          return std::string("RootPlan");
+          return std::string("RootNode");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
                                    triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clone execution plan recursively
+/// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionPlan* clone () const {
-          auto c = new RootPlan(_inVariable);
+        virtual ExecutionNode* clone () const {
+          auto c = new RootNode(_inVariable);
           cloneDependencies(c);
-          return static_cast<ExecutionPlan*>(c);
+          return static_cast<ExecutionNode*>(c);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
