@@ -801,7 +801,23 @@ namespace triagens {
         CalculationBlock (CalculationNode const* en)
           : ExecutionBlock(en), _expression(en->expression()), _outReg(0) {
 
+        }
+
+        ~CalculationBlock () {
+        } 
+
+        int initialize () {
+          int res = ExecutionBlock::initialize();
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
+
+          // We know that staticAnalysis has been run, so _varOverview is set up
+
+          auto en = static_cast<CalculationNode const*>(getPlanNode());
+
           std::unordered_set<Variable*> inVars = _expression->variables();
+
           for (auto it = inVars.begin(); it != inVars.end(); ++it) {
             _inVars.push_back(*it);
             auto it2 = _varOverview->varInfo.find((*it)->id);
@@ -812,10 +828,9 @@ namespace triagens {
           auto it3 = _varOverview->varInfo.find(en->_outVariable->id);
           TRI_ASSERT(it3 != _varOverview->varInfo.end());
           _outReg = it3->second.registerId;
+          
+          return TRI_ERROR_NO_ERROR;
         }
-
-        ~CalculationBlock () {
-        } 
 
         void doEvaluation (AqlItemBlock* result) {
 
