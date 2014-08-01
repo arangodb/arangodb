@@ -74,10 +74,19 @@ namespace triagens {
                          std::vector<RegisterId> const& regs) {
         // TODO: decide whether a separate handle scope is needed
 
+        TRI_ASSERT(argv != nullptr);
+        
+        size_t const n = vars.size();
+        TRI_ASSERT(regs.size() == n); // assert same vector length
+
         v8::Handle<v8::Object> values = v8::Object::New();
-        for (size_t i = 0; i < vars.size(); ++i) {
+        for (size_t i = 0; i < n; ++i) {
           auto varname = vars[i]->name;
           auto reg = regs[i];
+
+          std::cout << "VARNAME: " << varname << ", REG: " << reg << ", " << argv[reg] << "\n";
+
+          TRI_ASSERT(argv[reg] != nullptr);
 
           values->Set(v8::String::New(varname.c_str(), (int) varname.size()), argv[reg]->toV8());
         }
