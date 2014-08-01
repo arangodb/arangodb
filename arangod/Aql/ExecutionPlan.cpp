@@ -31,15 +31,15 @@ using namespace triagens::basics;
 using namespace triagens::aql;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                          methods of ExecutionPlan
+// --SECTION--                                          methods of ExecutionNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, export an ExecutionPlan to JSON
+/// @brief toJson, export an ExecutionNode to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-Json ExecutionPlan::toJson (TRI_memory_zone_t* zone) {
-  std::map<ExecutionPlan*, int> indexTab;
+Json ExecutionNode::toJson (TRI_memory_zone_t* zone) {
+  std::map<ExecutionNode*, int> indexTab;
   Json json;
   Json nodes;
   try {
@@ -58,7 +58,7 @@ Json ExecutionPlan::toJson (TRI_memory_zone_t* zone) {
 /// @brief toJsonHelper, for a generic node
 ////////////////////////////////////////////////////////////////////////////////
 
-Json ExecutionPlan::toJsonHelperGeneric (std::map<ExecutionPlan*, int>& indexTab,
+Json ExecutionNode::toJsonHelperGeneric (std::map<ExecutionNode*, int>& indexTab,
                                          triagens::basics::Json& nodes,
                                          TRI_memory_zone_t* zone) {
   auto iter = indexTab.find(this);
@@ -98,7 +98,7 @@ static void someSpaces (std::string& st, int nr) {
   }
 }
 
-void ExecutionPlan::appendAsString (std::string& st, int indent) {
+void ExecutionNode::appendAsString (std::string& st, int indent) {
   someSpaces(st, indent);
   st.push_back('<');
   st.append(getTypeString());
@@ -121,7 +121,7 @@ void ExecutionPlan::appendAsString (std::string& st, int indent) {
 /// @brief functionality to walk an execution plan recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionPlan::walk (WalkerWorker& worker) {
+void ExecutionNode::walk (WalkerWorker& worker) {
   worker.before(this);
   for (auto it = _dependencies.begin();
             it != _dependencies.end(); 
@@ -129,7 +129,7 @@ void ExecutionPlan::walk (WalkerWorker& worker) {
     (*it)->walk(worker);
   }
   if (getType() == SUBQUERY) {
-    auto p = static_cast<SubqueryPlan*>(this);
+    auto p = static_cast<SubqueryNode*>(this);
     worker.enterSubquery(this, p->getSubquery());
     p->getSubquery()->walk(worker);
     worker.leaveSubquery(this, p->getSubquery());
@@ -138,18 +138,18 @@ void ExecutionPlan::walk (WalkerWorker& worker) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                methods of SingletonPlan
+// --SECTION--                                methods of SingletonNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for SingletonPlan
+/// @brief toJson, for SingletonNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void SingletonPlan::toJsonHelper (
-                std::map<ExecutionPlan*, int>& indexTab,
+void SingletonNode::toJsonHelper (
+                std::map<ExecutionNode*, int>& indexTab,
                 triagens::basics::Json& nodes,
                 TRI_memory_zone_t* zone) {
-  Json json(ExecutionPlan::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
+  Json json(ExecutionNode::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
   if (json.isEmpty()) {
     return;
   }
@@ -161,17 +161,17 @@ void SingletonPlan::toJsonHelper (
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                methods of EnumerateCollectionPlan
+// --SECTION--                                methods of EnumerateCollectionNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for EnumerateCollectionPlan
+/// @brief toJson, for EnumerateCollectionNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void EnumerateCollectionPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+void EnumerateCollectionNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
                                             triagens::basics::Json& nodes,
                                             TRI_memory_zone_t* zone) {
-  Json json(ExecutionPlan::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
+  Json json(ExecutionNode::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
   if (json.isEmpty()) {
     return;
   }
@@ -188,17 +188,17 @@ void EnumerateCollectionPlan::toJsonHelper (std::map<ExecutionPlan*, int>& index
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      methods of EnumerateListPlan
+// --SECTION--                                      methods of EnumerateListNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for EnumerateListPlan
+/// @brief toJson, for EnumerateListNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void EnumerateListPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+void EnumerateListNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
                                       triagens::basics::Json& nodes,
                                       TRI_memory_zone_t* zone) {
-  Json json(ExecutionPlan::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
+  Json json(ExecutionNode::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
   if (json.isEmpty()) {
     return;
   }
@@ -212,17 +212,17 @@ void EnumerateListPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              methods of LimitPlan
+// --SECTION--                                              methods of LimitNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for LimitPlan
+/// @brief toJson, for LimitNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void LimitPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+void LimitNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
                               triagens::basics::Json& nodes,
                               TRI_memory_zone_t* zone) {
-  Json json(ExecutionPlan::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
+  Json json(ExecutionNode::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
   if (json.isEmpty()) {
     return;
   }
@@ -237,17 +237,17 @@ void LimitPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                        methods of CalculationPlan
+// --SECTION--                                        methods of CalculationNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for CalculationPlan
+/// @brief toJson, for CalculationNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void CalculationPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+void CalculationNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
                                     triagens::basics::Json& nodes,
                                     TRI_memory_zone_t* zone) {
-  Json json(ExecutionPlan::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
+  Json json(ExecutionNode::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
   if (json.isEmpty()) {
     return;
   }
@@ -262,17 +262,17 @@ void CalculationPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                           methods of SubqueryPlan
+// --SECTION--                                           methods of SubqueryNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for SubqueryPlan
+/// @brief toJson, for SubqueryNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void SubqueryPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+void SubqueryNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
                                  triagens::basics::Json& nodes,
                                  TRI_memory_zone_t* zone) {
-  Json json(ExecutionPlan::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
+  Json json(ExecutionNode::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
   if (json.isEmpty()) {
     return;
   }
@@ -286,17 +286,17 @@ void SubqueryPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                         methods of ProjectionPlan
+// --SECTION--                                         methods of ProjectionNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for ProjectionPlan
+/// @brief toJson, for ProjectionNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void ProjectionPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+void ProjectionNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
                                    triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone) {
-  Json json(ExecutionPlan::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
+  Json json(ExecutionNode::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
   if (json.isEmpty()) {
     return;
   }
@@ -316,17 +316,17 @@ void ProjectionPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             methods of FilterPlan
+// --SECTION--                                             methods of FilterNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for FilterPlan
+/// @brief toJson, for FilterNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void FilterPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+void FilterNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
                                triagens::basics::Json& nodes,
                                TRI_memory_zone_t* zone) {
-  Json json(ExecutionPlan::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
+  Json json(ExecutionNode::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
   if (json.isEmpty()) {
     return;
   }
@@ -340,17 +340,17 @@ void FilterPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               methods of SortPlan
+// --SECTION--                                               methods of SortNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for SortPlan
+/// @brief toJson, for SortNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void SortPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+void SortNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
                              triagens::basics::Json& nodes,
                              TRI_memory_zone_t* zone) {
-  Json json(ExecutionPlan::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
+  Json json(ExecutionNode::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
   if (json.isEmpty()) {
     return;
   }
@@ -370,17 +370,17 @@ void SortPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                methods of AggregateOnUnSortedPlan
+// --SECTION--                                methods of AggregateOnUnSortedNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for AggregateOnUnSortedPlan
+/// @brief toJson, for AggregateOnUnSortedNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void AggregateOnUnsortedPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+void AggregateOnUnsortedNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
                                             triagens::basics::Json& nodes,
                                             TRI_memory_zone_t* zone) {
-  Json json(ExecutionPlan::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
+  Json json(ExecutionNode::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
   if (json.isEmpty()) {
     return;
   }
@@ -406,17 +406,17 @@ void AggregateOnUnsortedPlan::toJsonHelper (std::map<ExecutionPlan*, int>& index
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               methods of RootPlan
+// --SECTION--                                               methods of RootNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for RootPlan
+/// @brief toJson, for RootNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void RootPlan::toJsonHelper (std::map<ExecutionPlan*, int>& indexTab,
+void RootNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
                              triagens::basics::Json& nodes,
                              TRI_memory_zone_t* zone) {
-  Json json(ExecutionPlan::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
+  Json json(ExecutionNode::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
   if (json.isEmpty()) {
     return;
   }

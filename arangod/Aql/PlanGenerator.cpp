@@ -64,14 +64,14 @@ PlanGenerator::~PlanGenerator () {
 /// @brief create an initial execution plan from an abstract syntax tree
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* PlanGenerator::fromAst (Ast const* ast) {
+ExecutionNode* PlanGenerator::fromAst (Ast const* ast) {
   TRI_ASSERT(ast != nullptr);
   
   auto root = ast->root();
   TRI_ASSERT(root != nullptr);
   TRI_ASSERT(root->type == NODE_TYPE_ROOT);
 
-  ExecutionPlan* plan = fromNode(ast, root);
+  ExecutionNode* plan = fromNode(ast, root);
 
   return plan;
 }
@@ -84,7 +84,7 @@ ExecutionPlan* PlanGenerator::fromAst (Ast const* ast) {
 /// @brief creates a calculation node for an arbitrary expression
 ////////////////////////////////////////////////////////////////////////////////
 
-CalculationPlan* PlanGenerator::createTemporaryCalculation (Ast const* ast,
+CalculationNode* PlanGenerator::createTemporaryCalculation (Ast const* ast,
                                                             AstNode const* expression) {
   // generate a temporary variable
   auto out = ast->variables()->createTemporaryVariable();
@@ -94,7 +94,7 @@ CalculationPlan* PlanGenerator::createTemporaryCalculation (Ast const* ast,
   auto expr = new Expression(ast->query()->executor(), const_cast<AstNode*>(expression));
 
   try {
-    return new CalculationPlan(expr, out);
+    return new CalculationNode(expr, out);
   }
   catch (...) {
     // prevent memleak
@@ -108,8 +108,8 @@ CalculationPlan* PlanGenerator::createTemporaryCalculation (Ast const* ast,
 /// @brief adds "previous" as dependency to "plan", returns "plan"
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* PlanGenerator::addDependency (ExecutionPlan* previous,
-                                             ExecutionPlan* plan) {
+ExecutionNode* PlanGenerator::addDependency (ExecutionNode* previous,
+                                             ExecutionNode* plan) {
   TRI_ASSERT(previous != nullptr);
   TRI_ASSERT(plan != nullptr);
 
@@ -128,8 +128,8 @@ ExecutionPlan* PlanGenerator::addDependency (ExecutionPlan* previous,
 /// @brief create an execution plan element from an AST FOR node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* PlanGenerator::fromNodeFor (Ast const* ast,
-                                           ExecutionPlan* previous,
+ExecutionNode* PlanGenerator::fromNodeFor (Ast const* ast,
+                                           ExecutionNode* previous,
                                            AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FOR);
   TRI_ASSERT(node->numMembers() == 2);
@@ -142,26 +142,26 @@ ExecutionPlan* PlanGenerator::fromNodeFor (Ast const* ast,
   auto v = static_cast<Variable*>(variable->getData());
   TRI_ASSERT(v != nullptr);
   
-  ExecutionPlan* plan = nullptr;
+  ExecutionNode* plan = nullptr;
 
   // peek at second operand
   if (expression->type == NODE_TYPE_COLLECTION) {
     // second operand is a collection
     char const* collectionName = expression->getStringValue();
-    plan = new EnumerateCollectionPlan(ast->query()->vocbase(), std::string(collectionName), v);
+    plan = new EnumerateCollectionNode(ast->query()->vocbase(), std::string(collectionName), v);
   }
   else if (expression->type == NODE_TYPE_REFERENCE) {
     // second operand is already a variable
     auto inVariable = static_cast<Variable*>(variable->getData());
     TRI_ASSERT(inVariable != nullptr);
-    plan = new EnumerateListPlan(inVariable, v);
+    plan = new EnumerateListNode(inVariable, v);
   }
   else {
     // second operand is some misc. expression
     auto calc = createTemporaryCalculation(ast, expression);
 
     try {
-      plan = new EnumerateListPlan(calc->outVariable(), v);
+      plan = new EnumerateListNode(calc->outVariable(), v);
       plan->addDependency(calc);
     }
     catch (...) {
@@ -179,28 +179,28 @@ ExecutionPlan* PlanGenerator::fromNodeFor (Ast const* ast,
 /// @brief create an execution plan element from an AST FILTER node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* PlanGenerator::fromNodeFilter (Ast const* ast,
-                                              ExecutionPlan* previous,
+ExecutionNode* PlanGenerator::fromNodeFilter (Ast const* ast,
+                                              ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FILTER);
   TRI_ASSERT(node->numMembers() == 1);
   
   auto expression = node->getMember(0);
 
-  ExecutionPlan* plan = nullptr;
+  ExecutionNode* plan = nullptr;
   
   if (expression->type == NODE_TYPE_REFERENCE) {
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    plan = new FilterPlan(v);
+    plan = new FilterNode(v);
   }
   else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(ast, expression);
 
     try {
-      plan = new FilterPlan(calc->outVariable());
+      plan = new FilterNode(calc->outVariable());
       plan->addDependency(calc);
     }
     catch (...) {
@@ -216,8 +216,8 @@ ExecutionPlan* PlanGenerator::fromNodeFilter (Ast const* ast,
 /// @brief create an execution plan element from an AST LET node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* PlanGenerator::fromNodeLet (Ast const* ast,
-                                           ExecutionPlan* previous,
+ExecutionNode* PlanGenerator::fromNodeLet (Ast const* ast,
+                                           ExecutionNode* previous,
                                            AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_LET);
   TRI_ASSERT(node->numMembers() == 2);
@@ -227,7 +227,7 @@ ExecutionPlan* PlanGenerator::fromNodeLet (Ast const* ast,
 
   auto v = static_cast<Variable*>(variable->getData());
   
-  ExecutionPlan* plan = nullptr;
+  ExecutionNode* plan = nullptr;
 
   if (expression->type == NODE_TYPE_SUBQUERY) {
     // TODO: node might be a subquery. this is currently NOT handled
@@ -238,7 +238,7 @@ ExecutionPlan* PlanGenerator::fromNodeLet (Ast const* ast,
     auto expr = new Expression(ast->query()->executor(), const_cast<AstNode*>(expression));
 
     try {
-      plan = new CalculationPlan(expr, v);
+      plan = new CalculationNode(expr, v);
     }
     catch (...) {
       // prevent memleak
@@ -254,8 +254,8 @@ ExecutionPlan* PlanGenerator::fromNodeLet (Ast const* ast,
 /// @brief create an execution plan element from an AST SORT node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* PlanGenerator::fromNodeSort (Ast const* ast,
-                                            ExecutionPlan* previous,
+ExecutionNode* PlanGenerator::fromNodeSort (Ast const* ast,
+                                            ExecutionNode* previous,
                                             AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_SORT);
   TRI_ASSERT(node->numMembers() == 1);
@@ -264,7 +264,7 @@ ExecutionPlan* PlanGenerator::fromNodeSort (Ast const* ast,
   TRI_ASSERT(list->type == NODE_TYPE_LIST);
 
   std::vector<std::pair<Variable const*, bool>> elements;
-  std::vector<CalculationPlan*> temp;
+  std::vector<CalculationNode*> temp;
 
   try {
     size_t const n = list->numMembers();
@@ -306,7 +306,7 @@ ExecutionPlan* PlanGenerator::fromNodeSort (Ast const* ast,
     previous = (*it);
   }
 
-  auto plan = new SortPlan(elements);
+  auto plan = new SortNode(elements);
 
   return addDependency(previous, plan);
 }
@@ -315,8 +315,8 @@ ExecutionPlan* PlanGenerator::fromNodeSort (Ast const* ast,
 /// @brief create an execution plan element from an AST COLLECT node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* PlanGenerator::fromNodeCollect (Ast const* ast,
-                                               ExecutionPlan* previous,
+ExecutionNode* PlanGenerator::fromNodeCollect (Ast const* ast,
+                                               ExecutionNode* previous,
                                                AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_COLLECT);
   size_t const n = node->numMembers();
@@ -333,8 +333,8 @@ ExecutionPlan* PlanGenerator::fromNodeCollect (Ast const* ast,
 /// @brief create an execution plan element from an AST LIMIT node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* PlanGenerator::fromNodeLimit (Ast const* ast,
-                                             ExecutionPlan* previous,
+ExecutionNode* PlanGenerator::fromNodeLimit (Ast const* ast,
+                                             ExecutionNode* previous,
                                              AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_LIMIT);
   TRI_ASSERT(node->numMembers() == 2);
@@ -345,7 +345,7 @@ ExecutionPlan* PlanGenerator::fromNodeLimit (Ast const* ast,
   TRI_ASSERT(offset->type == NODE_TYPE_VALUE);
   TRI_ASSERT(count->type == NODE_TYPE_VALUE);
 
-  auto plan = new LimitPlan(static_cast<size_t>(offset->getIntValue()), static_cast<size_t>(count->getIntValue()));
+  auto plan = new LimitNode(static_cast<size_t>(offset->getIntValue()), static_cast<size_t>(count->getIntValue()));
 
   return addDependency(previous, plan);
 }
@@ -354,28 +354,28 @@ ExecutionPlan* PlanGenerator::fromNodeLimit (Ast const* ast,
 /// @brief create an execution plan element from an AST RETURN node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* PlanGenerator::fromNodeReturn (Ast const* ast,
-                                              ExecutionPlan* previous,
+ExecutionNode* PlanGenerator::fromNodeReturn (Ast const* ast,
+                                              ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_RETURN);
   TRI_ASSERT(node->numMembers() == 1);
   
   auto expression = node->getMember(0);
 
-  ExecutionPlan* plan = nullptr;
+  ExecutionNode* plan = nullptr;
   
   if (expression->type == NODE_TYPE_REFERENCE) {
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    plan = new RootPlan(v);
+    plan = new RootNode(v);
   }
   else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(ast, expression);
 
     try {
-      plan = new RootPlan(calc->outVariable());
+      plan = new RootNode(calc->outVariable());
       plan->addDependency(calc);
     }
     catch (...) {
@@ -391,8 +391,8 @@ ExecutionPlan* PlanGenerator::fromNodeReturn (Ast const* ast,
 /// @brief create an execution plan element from an AST REMOVE node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* PlanGenerator::fromNodeRemove (Ast const* ast,
-                                              ExecutionPlan* previous,
+ExecutionNode* PlanGenerator::fromNodeRemove (Ast const* ast,
+                                              ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REMOVE);
 
@@ -406,8 +406,8 @@ ExecutionPlan* PlanGenerator::fromNodeRemove (Ast const* ast,
 /// @brief create an execution plan element from an AST INSERT node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* PlanGenerator::fromNodeInsert (Ast const* ast,
-                                              ExecutionPlan* previous,
+ExecutionNode* PlanGenerator::fromNodeInsert (Ast const* ast,
+                                              ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_INSERT);
 
@@ -421,8 +421,8 @@ ExecutionPlan* PlanGenerator::fromNodeInsert (Ast const* ast,
 /// @brief create an execution plan element from an AST UPDATE node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* PlanGenerator::fromNodeUpdate (Ast const* ast,
-                                              ExecutionPlan* previous,
+ExecutionNode* PlanGenerator::fromNodeUpdate (Ast const* ast,
+                                              ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPDATE);
 
@@ -436,8 +436,8 @@ ExecutionPlan* PlanGenerator::fromNodeUpdate (Ast const* ast,
 /// @brief create an execution plan element from an AST REPLACE node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* PlanGenerator::fromNodeReplace (Ast const* ast,
-                                               ExecutionPlan* previous,
+ExecutionNode* PlanGenerator::fromNodeReplace (Ast const* ast,
+                                               ExecutionNode* previous,
                                                AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REPLACE);
 
@@ -451,11 +451,11 @@ ExecutionPlan* PlanGenerator::fromNodeReplace (Ast const* ast,
 /// @brief create an execution plan from an abstract syntax tree node
 ////////////////////////////////////////////////////////////////////////////////
   
-ExecutionPlan* PlanGenerator::fromNode (Ast const* ast,
+ExecutionNode* PlanGenerator::fromNode (Ast const* ast,
                                         AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
-  ExecutionPlan* plan = new SingletonPlan();
+  ExecutionNode* plan = new SingletonNode();
 
   try {
     size_t const n = node->numMembers();
