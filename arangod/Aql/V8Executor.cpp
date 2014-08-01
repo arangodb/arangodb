@@ -153,12 +153,59 @@ void V8Executor::generateCodeExpression (AstNode const* node) {
   TRI_ASSERT(_buffer != nullptr);
 
   // write prologue
-  _buffer->appendText("(function (vars) { require('internal').print(vars); var aql = require(\"org/arangodb/ahuacatl\"); return ");
+  _buffer->appendText("(function (vars) { var aql = require(\"org/arangodb/ahuacatl\"); return ");
 
   generateCodeNode(node);
 
   // write epilogue
   _buffer->appendText("; })");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for a list
+////////////////////////////////////////////////////////////////////////////////
+
+void V8Executor::generateCodeList (AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+
+  size_t const n = node->numMembers();
+  TRI_ASSERT(n >= 0);
+
+  _buffer->appendText("[ ");
+  for (size_t i = 0; i < n; ++i) {
+    if (i > 0) {
+      _buffer->appendText(", ");
+    }
+
+    generateCodeNode(node->getMember(i));
+  }
+  _buffer->appendText(" ]");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for an array
+////////////////////////////////////////////////////////////////////////////////
+
+void V8Executor::generateCodeArray (AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+
+  size_t const n = node->numMembers();
+  TRI_ASSERT(n >= 0);
+
+  _buffer->appendText("{ ");
+  for (size_t i = 0; i < n; ++i) {
+    if (i > 0) {
+      _buffer->appendText(", ");
+    }
+    
+    auto member = node->getMember(i);
+    
+    _buffer->appendText("\"");
+    _buffer->appendJsonEncoded(member->getStringValue());
+    _buffer->appendText("\" : ");
+    generateCodeNode(member->getMember(0));
+  }
+  _buffer->appendText(" }");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -404,11 +451,17 @@ void V8Executor::generateCodeNode (AstNode const* node) {
 
   switch (node->type) {
     case NODE_TYPE_VALUE:
-    case NODE_TYPE_LIST:
-    case NODE_TYPE_ARRAY:
       node->append(_buffer);
       break;
 
+    case NODE_TYPE_LIST:
+      generateCodeList(node);
+      break;
+
+    case NODE_TYPE_ARRAY:
+      generateCodeArray(node);
+      break;
+    
     case NODE_TYPE_OPERATOR_UNARY_PLUS:
     case NODE_TYPE_OPERATOR_UNARY_MINUS:
     case NODE_TYPE_OPERATOR_UNARY_NOT:
