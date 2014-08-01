@@ -46,21 +46,28 @@ int ExecutionBlock::bind (std::map<std::string, struct TRI_json_s*>* params) {
 /// @brief functionality to walk an execution plan recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionBlock::walk (WalkerWorker& worker) {
-  worker.before(this);
+void ExecutionBlock::walk (WalkerWorker* worker) {
+  // Only do every node exactly once:
+  if (worker->done(this)) {
+    return;
+  }
+
+  worker->before(this);
+  // Now the children in their natural order:
   for (auto it = _dependencies.begin();
             it != _dependencies.end();
             ++it) {
     (*it)->walk(worker);
   }
+  // Now handle a subquery:
   if (_exePlan->getType() == ExecutionPlan::SUBQUERY) {
     // auto p = static_cast<SubqueryBlock*>(this);
-    if (worker.enterSubquery(this, nullptr)) { ; // p->_subquery
+    if (worker->enterSubquery(this, nullptr)) { ; // p->_subquery
       // p->_subquery->walk(worker);
-      worker.leaveSubquery(this, nullptr); // p->_subquery
+      worker->leaveSubquery(this, nullptr); // p->_subquery
     }
   }
-  worker.after(this);
+  worker->after(this);
 }
 
 
