@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fundamental types for the optimisation and execution of AQL
+/// @brief Fundamental objects for the execution of AQL queries
 ///
 /// @file arangod/Aql/Types.cpp
 ///
@@ -30,6 +30,10 @@
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
 AqlValue::~AqlValue () {
   switch (_type) {
     case JSON: {
@@ -37,10 +41,12 @@ AqlValue::~AqlValue () {
       return;
     }
     case DOCVEC: {
-      for (auto it = _vector->begin(); it != _vector->end(); ++it) {
-        delete *it;
+      if (_vector != nullptr) {
+        for (auto it = _vector->begin(); it != _vector->end(); ++it) {
+          delete *it;
+        }
+        delete _vector;
       }
-      delete _vector;
       return;
     }
     case RANGE: {
@@ -57,7 +63,7 @@ AqlValue* AqlValue::clone () const {
       return new AqlValue(new Json(_json->copy()));
     }
     case DOCVEC: {
-      auto c = new vector<AqlItemBlock*>;
+      auto c = new std::vector<AqlItemBlock*>;
       c->reserve(_vector->size());
       for (auto it = _vector->begin(); it != _vector->end(); ++it) {
         c->push_back((*it)->slice(0, (*it)->size()));
@@ -67,8 +73,9 @@ AqlValue* AqlValue::clone () const {
     case RANGE: {
       return new AqlValue(_range._low, _range._high);
     }
-    default:
-      return nullptr;
+    default: {
+      TRI_ASSERT(false);
+    }
   }
 
 }
@@ -84,18 +91,19 @@ AqlItemBlock* AqlItemBlock::splice(std::vector<AqlItemBlock*>& blocks)
   TRI_ASSERT(blocks.size() != 0);
 
   auto it = blocks.begin();
-  size_t totalsize = (*it)->size();
+  TRI_ASSERT(it != blocks.end());
+  size_t totalSize = (*it)->size();
   VariableId nrVars = (*it)->getNrVars();
 
   while (true) {
     if (++it == blocks.end()) {
       break;
     }
-    totalsize += (*it)->size();
+    totalSize += (*it)->size();
     TRI_ASSERT((*it)->getNrVars() == nrVars);
   }
 
-  auto res = new AqlItemBlock(totalsize, nrVars);
+  auto res = new AqlItemBlock(totalSize, nrVars);
   size_t pos = 0;
   for (it = blocks.begin(); it != blocks.end(); ++it) {
     for (size_t row = 0; row < (*it)->size(); ++row) {
@@ -108,4 +116,10 @@ AqlItemBlock* AqlItemBlock::splice(std::vector<AqlItemBlock*>& blocks)
   }
   return res;
 }
+
+// Local Variables:
+// mode: outline-minor
+// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
+// End:
+
 
