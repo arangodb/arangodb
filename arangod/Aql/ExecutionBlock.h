@@ -779,19 +779,19 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                         RootBlock
+// --SECTION--                                                       ReturnBlock
 // -----------------------------------------------------------------------------
 
-    class RootBlock : public ExecutionBlock {
+    class ReturnBlock : public ExecutionBlock {
 
       public:
 
-        RootBlock (RootNode const* ep)
+        ReturnBlock (ReturnNode const* ep)
           : ExecutionBlock(ep) {
 
         }
 
-        ~RootBlock () {
+        ~ReturnBlock () {
         } 
 
         virtual AqlItemBlock* getOne () {
@@ -804,7 +804,7 @@ namespace triagens {
 
           // Let's steal the actual result and throw away the vars:
           AqlItemBlock* stripped = new AqlItemBlock(1, 1);
-          auto ep = static_cast<RootNode const*>(getPlanNode());
+          auto ep = static_cast<ReturnNode const*>(getPlanNode());
           auto it = _varOverview->varInfo.find(ep->_inVariable->id);
           TRI_ASSERT(it != _varOverview->varInfo.end());
           unsigned int index = it->second.index;
@@ -822,7 +822,7 @@ namespace triagens {
           }
 
           // Let's steal the actual result and throw away the vars:
-          auto ep = static_cast<RootNode const*>(getPlanNode());
+          auto ep = static_cast<ReturnNode const*>(getPlanNode());
           auto it = _varOverview->varInfo.find(ep->_inVariable->id);
           TRI_ASSERT(it != _varOverview->varInfo.end());
           unsigned int index = it->second.index;
