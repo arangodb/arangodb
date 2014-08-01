@@ -42,6 +42,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/AstNode.cpp \
 	arangod/Aql/BindParameters.cpp \
 	arangod/Aql/ExecutionBlock.cpp \
+	arangod/Aql/ExecutionEngine.cpp \
 	arangod/Aql/ExecutionPlan.cpp \
 	arangod/Aql/Expression.cpp \
 	arangod/Aql/grammar.cpp \
