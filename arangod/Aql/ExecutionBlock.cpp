@@ -33,9 +33,6 @@ using namespace triagens::arango;
 using namespace triagens::aql;
          
 ExecutionBlock::~ExecutionBlock () {        
-  for (auto i = _dependencies.begin(); i != _dependencies.end(); ++i) {
-    delete *i;
-  }
 }
 
 int ExecutionBlock::bind (std::map<std::string, struct TRI_json_s*>* params) {
