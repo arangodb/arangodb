@@ -367,6 +367,7 @@ int main (int argc, char* argv[]) {
     usleep(5000);
   }
 
+
   if (Delay) {
     Status("sleeping (startup delay)...");
     sleep(10);
@@ -453,7 +454,7 @@ int main (int argc, char* argv[]) {
     ret = EXIT_FAILURE;
   }
 
-  arangobExitFunction(ret, NULL);
+  arangobExitFunction(ret, nullptr);
 
   return ret;
 }
