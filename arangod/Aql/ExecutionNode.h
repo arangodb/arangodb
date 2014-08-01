@@ -1073,17 +1073,17 @@ namespace triagens {
 
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    class RootNode
+// --SECTION--                                                  class ReturnNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class RootNode, derived from ExecutionNode
+/// @brief class ReturnNode, derived from ExecutionNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RootNode : public ExecutionNode {
+    class ReturnNode : public ExecutionNode {
       
       friend class ExecutionBlock;
-      friend class RootBlock;
+      friend class ReturnBlock;
       
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructors for various arguments, always with offset and limit
@@ -1091,7 +1091,7 @@ namespace triagens {
 
       public:
 
-        RootNode (Variable const* inVariable)
+        ReturnNode (Variable const* inVariable)
           : ExecutionNode(), _inVariable(inVariable) {
 
           TRI_ASSERT(_inVariable != nullptr);
@@ -1110,7 +1110,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::string getTypeString () const {
-          return std::string("RootNode");
+          return std::string("ReturnNode");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1126,7 +1126,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new RootNode(_inVariable);
+          auto c = new ReturnNode(_inVariable);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }

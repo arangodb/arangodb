@@ -594,7 +594,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~EnumerateCollectionBlock () {
-          if (_allDocs.size() > 0) {
+          if (! _allDocs.empty()) {
             for (auto it = _allDocs.begin(); it != _allDocs.end(); ++it) {
               delete *it;
             }
@@ -627,6 +627,7 @@ namespace triagens {
 
           auto shaper = trx.documentCollection()->getShaper();
 
+          // TODO: if _allDocs is not empty, its contents will leak
           _allDocs.clear();
           for (size_t i = 0; i < n; ++i) {
             TRI_shaped_json_t shaped;
@@ -637,7 +638,7 @@ namespace triagens {
           
           res = trx.finish(res);
 
-          if (_allDocs.size() == 0) {
+          if (_allDocs.empty()) {
             _done = true;
           }
 
@@ -653,7 +654,7 @@ namespace triagens {
           if (res != TRI_ERROR_NO_ERROR) {
             return res;
           }
-          if (_allDocs.size() == 0) {
+          if (_allDocs.empty()) {
             _done = true;
           }
           return TRI_ERROR_NO_ERROR;
@@ -773,7 +774,7 @@ namespace triagens {
 
       private:
 
-        vector<Json*> _allDocs;
+        std::vector<Json*> _allDocs;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief current position in _allDocs
@@ -783,19 +784,19 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                         RootBlock
+// --SECTION--                                                       ReturnBlock
 // -----------------------------------------------------------------------------
 
-    class RootBlock : public ExecutionBlock {
+    class ReturnBlock : public ExecutionBlock {
 
       public:
 
-        RootBlock (RootNode const* ep)
+        ReturnBlock (ReturnNode const* ep)
           : ExecutionBlock(ep) {
 
         }
 
-        ~RootBlock () {
+        ~ReturnBlock () {
         } 
 
         virtual AqlItemBlock* getOne () {
@@ -808,7 +809,7 @@ namespace triagens {
 
           // Let's steal the actual result and throw away the vars:
           AqlItemBlock* stripped = new AqlItemBlock(1, 1);
-          auto ep = static_cast<RootNode const*>(getPlanNode());
+          auto ep = static_cast<ReturnNode const*>(getPlanNode());
           auto it = _varOverview->varInfo.find(ep->_inVariable->id);
           TRI_ASSERT(it != _varOverview->varInfo.end());
           unsigned int index = it->second.index;
@@ -826,7 +827,7 @@ namespace triagens {
           }
 
           // Let's steal the actual result and throw away the vars:
-          auto ep = static_cast<RootNode const*>(getPlanNode());
+          auto ep = static_cast<ReturnNode const*>(getPlanNode());
           auto it = _varOverview->varInfo.find(ep->_inVariable->id);
           TRI_ASSERT(it != _varOverview->varInfo.end());
           unsigned int index = it->second.index;

@@ -88,7 +88,7 @@ struct Instanciator : public ExecutionNode::WalkerWorker {
         break;
       }
       case ExecutionNode::ROOT: {
-        eb = new RootBlock(static_cast<RootNode const*>(en));
+        eb = new ReturnBlock(static_cast<ReturnNode const*>(en));
         root = eb;
         break;
       }
@@ -138,14 +138,13 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (ExecutionNode* plan) {
     root->initialize();
 
     engine->_root = root;
-
+  
+    return engine;
   }
   catch (...) {
     delete engine;
     throw;
   }
-
-  return engine;
 }
 
 // -----------------------------------------------------------------------------
