@@ -93,14 +93,14 @@ AqlItemBlock* AqlItemBlock::splice(std::vector<AqlItemBlock*>& blocks)
   auto it = blocks.begin();
   TRI_ASSERT(it != blocks.end());
   size_t totalSize = (*it)->size();
-  RegisterId nrRegs = (*it)->getNrVars();
+  RegisterId nrRegs = (*it)->getNrRegs();
 
   while (true) {
     if (++it == blocks.end()) {
       break;
     }
     totalSize += (*it)->size();
-    TRI_ASSERT((*it)->getNrVars() == nrRegs);
+    TRI_ASSERT((*it)->getNrRegs() == nrRegs);
   }
 
   auto res = new AqlItemBlock(totalSize, nrRegs);
