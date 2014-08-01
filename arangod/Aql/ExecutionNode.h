@@ -231,15 +231,31 @@ namespace triagens {
           public:
             WalkerWorker () {};
             virtual ~WalkerWorker () {};
-            virtual void before (ExecutionNode* eb) {};
-            virtual void after (ExecutionNode* eb) {};
-            virtual void enterSubquery (ExecutionNode* super, 
-                                        ExecutionNode* sub) {};
+            virtual void before (ExecutionNode* en) {};
+            virtual void after (ExecutionNode* en) {};
+            virtual bool enterSubquery (ExecutionNode* super, 
+                                        ExecutionNode* sub) {
+              return true;
+            };
             virtual void leaveSubquery (ExecutionNode* super,
                                         ExecutionNode* sub) {};
+            bool done (ExecutionNode* en) {
+              if (_done.find(en) == _done.end()) {
+                _done.insert(en);
+                return false;
+              }
+              else {
+                return true;
+              }
+            }
+            void reset () {
+              _done.clear();
+            }
+          private:
+            std::unordered_set<ExecutionNode*> _done;
         };
 
-        void walk (WalkerWorker& worker);
+        void walk (WalkerWorker* worker);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

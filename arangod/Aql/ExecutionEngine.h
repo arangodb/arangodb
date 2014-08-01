@@ -74,7 +74,7 @@ namespace triagens {
 /// @brief create an execution engine from a plan
 ////////////////////////////////////////////////////////////////////////////////
 
-        static ExecutionEngine* instanciateFromPlan (ExecutionNode const*);
+        static ExecutionEngine* instanciateFromPlan (ExecutionNode*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a block to the engine

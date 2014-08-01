@@ -488,13 +488,6 @@ namespace triagens {
 
         std::shared_ptr<VarOverview> _varOverview;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a static factory for ExecutionBlocks from ExecutionNodes
-////////////////////////////////////////////////////////////////////////////////
-
-      public:
-        static ExecutionBlock* instanciatePlan (ExecutionNode const* ep);
-
     };
 
 // -----------------------------------------------------------------------------

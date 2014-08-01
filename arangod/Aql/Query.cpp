@@ -32,6 +32,7 @@
 #include "Aql/Parser.h"
 #include "Aql/PlanGenerator.h"
 #include "Aql/V8Executor.h"
+#include "Aql/ExecutionEngine.h"
 #include "BasicsC/json.h"
 #include "BasicsC/tri-strings.h"
 #include "Utils/Exception.h"
@@ -176,21 +177,21 @@ QueryResult Query::execute () {
     auto plan = generator.fromAst(parser.ast());
 
     try { 
-      auto exec = ExecutionBlock::instanciatePlan(plan);
+      auto exec = ExecutionEngine::instanciateFromPlan(plan);
 
       try {
-        exec->staticAnalysis();
+        exec->root()->staticAnalysis();
 
-        exec->initialize();
-        exec->execute();
+        exec->root()->initialize();
+        exec->root()->execute();
  
         AqlItemBlock* value;
-        while (nullptr != (value = exec->getOne())) {
+        while (nullptr != (value = exec->root()->getOne())) {
           std::cout << value->getValue(0, 0)->toString() << std::endl;
           delete value;
         }
 
-        exec->shutdown();
+        exec->root()->shutdown();
         delete exec;
       }
       catch (...) {
