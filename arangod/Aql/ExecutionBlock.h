@@ -825,9 +825,9 @@ namespace triagens {
           for (size_t i = 0; i < result->size(); i++) {
             // Now build V8-Object as argument:
             for (size_t j = 0; j < _inVars.size(); j++) {
-              AqlValue* result = _expression->execute(data + nrRegs * i,
-                                                      _inVars, _inRegs);
-              result->setValue(i, _outReg, result);
+              AqlValue* res = _expression->execute(data + nrRegs * i,
+                                                   _inVars, _inRegs);
+              result->setValue(i, _outReg, res);
             }
           }
         }
