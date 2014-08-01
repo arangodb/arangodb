@@ -185,7 +185,9 @@ QueryResult Query::execute () {
  
         AqlItemBlock* value;
         while (nullptr != (value = root->getOne())) {
-          std::cout << value->getValue(0, 0)->toString() << std::endl;
+          auto val = value->getValue(0, 0);
+          TRI_ASSERT(val != nullptr);
+          std::cout << val->toString() << std::endl;
           delete value;
         }
 
