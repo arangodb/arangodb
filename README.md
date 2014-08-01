@@ -6,7 +6,7 @@ ArangoDB
 Master: [![Build Status](https://secure.travis-ci.org/triAGENS/ArangoDB.png?branch=master)](http://travis-ci.org/triAGENS/ArangoDB)
 Devel: [![Build Status](https://secure.travis-ci.org/triAGENS/ArangoDB.png?branch=devel)](http://travis-ci.org/triAGENS/ArangoDB)
 
-ArangoDB is a multi-purpose, open-source database with flexible data models for documents, graphs, and key-values. Build high performance applications using a convenient SQL-like query language or JavaScript/Ruby extensions. Use ACID transaction if you require them. Scale horizontally and vertically with a few mouse clicks.
+ArangoDB is a multi-purpose, open-source database with flexible data models for documents, graphs, and key-values. Build high performance applications using a convenient SQL-like query language or JavaScript extensions. Use ACID transactions if you require them. Scale horizontally and vertically with a few mouse clicks.
 
 Key features include:
 
@@ -18,7 +18,7 @@ Key features include:
 * Free **index choice**: use the correct index for your problem, be it a skip list or a fulltext search
 * Configurable **durability**: let the application decide if it needs more durability or more performance
 * No-nonsense storage: ArangoDB uses all of the power of **modern storage hardware**, like SSD and large caches
-* **Powerful query language** (AQL) to retrieve data 
+* **Powerful query language** (AQL) to retrieve and modify data 
 * **Transactions**: run queries on multiple documents or collections with optional transactional consistency and isolation
 * **Replication** and **Sharding**: set up the database in a master-slave configuration or spread bigger datasets across multiple servers
 * It is **open source** (Apache Licence 2.0)
