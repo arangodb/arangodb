@@ -88,7 +88,7 @@ struct Instanciator : public ExecutionNode::WalkerWorker {
         break;
       }
       case ExecutionNode::ROOT: {
-        eb = new RootBlock(static_cast<RootNode const*>(en));
+        eb = new ReturnBlock(static_cast<ReturnNode const*>(en));
         root = eb;
         break;
       }

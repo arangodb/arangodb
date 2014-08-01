@@ -403,14 +403,14 @@ ExecutionNode* ExecutionPlan::fromNodeReturn (Ast const* ast,
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = addNode(new RootNode(v));
+    en = addNode(new ReturnNode(v));
   }
   else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(ast, expression);
 
     try {
-      en = addNode(new RootNode(calc->outVariable()));
+      en = addNode(new ReturnNode(calc->outVariable()));
       en->addDependency(calc);
     }
     catch (...) {
