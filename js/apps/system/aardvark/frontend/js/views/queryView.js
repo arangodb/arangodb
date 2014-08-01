@@ -284,6 +284,7 @@
     importCustomQueries: function () {
       var result;
       if (this.allowUpload === true) {
+        result = true;
       }
     },
 
