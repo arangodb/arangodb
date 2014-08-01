@@ -41,6 +41,7 @@ namespace triagens {
 // --SECTION--                                                            AqlDoc
 // -----------------------------------------------------------------------------
 
+    typedef unsigned int RegisterId;
 
     class AqlItemBlock;
 
@@ -112,15 +113,15 @@ namespace triagens {
 
         AqlValue** _data;
         size_t     _nrItems;
-        VariableId _nrVars;
+        RegisterId _nrRegs;
 
       public:
 
-        AqlItemBlock (size_t nrItems, VariableId nrVars)
-          : _nrItems(nrItems), _nrVars(nrVars) {
-          if (nrItems > 0 && nrVars > 0) {
-            _data = new AqlValue* [nrItems * nrVars];
-            for (size_t i = 0; i < nrItems * nrVars; i++) {
+        AqlItemBlock (size_t nrItems, RegisterId nrRegs)
+          : _nrItems(nrItems), _nrRegs(nrRegs) {
+          if (nrItems > 0 && nrRegs > 0) {
+            _data = new AqlValue* [nrItems * nrRegs];
+            for (size_t i = 0; i < nrItems * nrRegs; i++) {
               _data[i] = nullptr;
             }
           }
@@ -136,7 +137,7 @@ namespace triagens {
         ~AqlItemBlock () {
           std::unordered_set<AqlValue*> cache;
           if (_data != nullptr) {
-            for (size_t i = 0; i < _nrItems * _nrVars; i++) {
+            for (size_t i = 0; i < _nrItems * _nrRegs; i++) {
               if (_data[i] != nullptr) {
                 auto it = cache.find(_data[i]);
                 if (it == cache.end()) {
@@ -153,12 +154,12 @@ namespace triagens {
 /// @brief getValue, get the value of a variable
 ////////////////////////////////////////////////////////////////////////////////
 
-      AqlValue* getValue (size_t index, VariableId varNr) {
+      AqlValue* getValue (size_t index, RegisterId varNr) {
         if (_data == nullptr) {
           return nullptr;
         }
         else {
-          return _data[index * _nrVars + varNr];
+          return _data[index * _nrRegs + varNr];
         }
       }
 
@@ -166,18 +167,18 @@ namespace triagens {
 /// @brief setValue, set the current value of a variable or attribute
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setValue (size_t index, VariableId varNr, AqlValue* zeug) {
+      void setValue (size_t index, RegisterId varNr, AqlValue* zeug) {
         if (_data != nullptr) {
-          _data[index * _nrVars + varNr] = zeug;
+          _data[index * _nrRegs + varNr] = zeug;
         }
       }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getter for _nrVars
+/// @brief getter for _nrRegs
 ////////////////////////////////////////////////////////////////////////////////
 
-      VariableId getNrVars () {
-        return _nrVars;
+      RegisterId getNrRegs () {
+        return _nrRegs;
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -203,18 +204,18 @@ namespace triagens {
       AqlItemBlock* slice (size_t from, size_t to) {
         TRI_ASSERT(from < to && to <= _nrItems);
         std::unordered_map<AqlValue*, AqlValue*> cache;
-        auto res = new AqlItemBlock(to-from, _nrVars);
+        auto res = new AqlItemBlock(to-from, _nrRegs);
         for (size_t row = from; row < to; row++) {
-          for (VariableId col = 0; col < _nrVars; col++) {
-            AqlValue* a = _data[row * _nrVars + col];
+          for (RegisterId col = 0; col < _nrRegs; col++) {
+            AqlValue* a = _data[row * _nrRegs + col];
             auto it = cache.find(a);
             if (it == cache.end()) {
               AqlValue* b = a->clone();
-              res->_data[(row-from) * _nrVars + col] = b;
+              res->_data[(row-from) * _nrRegs + col] = b;
               cache.insert(make_pair(a,b));
             }
             else {
-              res->_data[(row-from) * _nrVars + col] = it->second;
+              res->_data[(row-from) * _nrRegs + col] = it->second;
             }
           }
         }
