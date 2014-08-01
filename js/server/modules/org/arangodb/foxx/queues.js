@@ -28,17 +28,27 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var QUEUE_MANAGER_PERIOD = 1000, // in ms
-  _ = require('underscore'),
-  tasks = require('org/arangodb/tasks'),
+var _ = require('underscore'),
+  flatten = require('internal').flatten,
   arangodb = require('org/arangodb'),
   db = arangodb.db,
+  failImmutable,
   queueMap,
+  jobMap,
   queues,
-  Queue,
-  worker;
+  getJobs,
+  Job,
+  Queue;
+
+failImmutable = function (name) {
+  'use strict';
+  return function () {
+    throw new Error(name + ' is not mutable');
+  };
+};
 
 queueMap = Object.create(null);
+jobMap = Object.create(null);
 
 queues = {
   _jobTypes: Object.create(null),
@@ -96,12 +106,86 @@ queues = {
       throw new Error('Must provide a function to execute!');
     }
     var cfg = _.extend({maxFailures: 0}, opts);
-    if (cfg.maxFailures < 0) {
-      cfg.maxFailures = Infinity;
-    }
     queues._jobTypes[type] = cfg;
   }
 };
+
+getJobs = function (queue, status, type) {
+  'use strict';
+  var vars = {},
+    aql = 'FOR job IN _jobs';
+  if (queue !== undefined) {
+    aql += ' FILTER job.queue == @queue';
+    vars.queue = queue;
+  }
+  if (status !== undefined) {
+    aql += ' FILTER job.status == @status';
+    vars.status = status;
+  }
+  if (type !== undefined) {
+    aql += ' FILTER job.type == @type';
+    vars.type = type;
+  }
+  aql += ' SORT job.delayUntil ASC RETURN job._id';
+  return db._createStatement({
+    query: aql,
+    bindVars: vars
+  }).execute().toArray();
+};
+
+Job = function Job(id) {
+  'use strict';
+  var self = this;
+  Object.defineProperty(self, 'id', {
+    get: function () {
+      return id;
+    },
+    configurable: false,
+    enumerable: true
+  });
+  _.each(['data', 'status', 'type', 'failures'], function (key) {
+    Object.defineProperty(self, key, {
+      get: function () {
+        var value = db._jobs.document(this.id)[key];
+        return (value && typeof value === 'object') ? Object.freeze(value) : value;
+      },
+      set: failImmutable(key),
+      configurable: false,
+      enumerable: true
+    });
+  });
+};
+
+_.extend(Job.prototype, {
+  abort: function () {
+    'use strict';
+    var self = this;
+    db._executeTransaction({
+      collections: {
+        read: ['_jobs'],
+        write: ['_jobs']
+      },
+      action: function () {
+        var job = db._jobs.document(self.id);
+        if (job.status !== 'completed') {
+          db._jobs.update(job, {
+            status: 'failed',
+            modified: Date.now(),
+            failures: job.failures.concat([
+              flatten(new Error('Job aborted.'))
+            ])
+          });
+        }
+      }
+    });
+  },
+  reset: function () {
+    'use strict';
+    db._jobs.update(this.id, {
+      status: 'pending'
+    });
+  }
+});
 
 Queue = function Queue(name) {
   'use strict';
@@ -109,107 +193,87 @@ Queue = function Queue(name) {
     get: function () {
       return name;
     },
-    set: function (value) {
-      throw new Error('name is not mutable');
-    },
+    set: failImmutable('name'),
     configurable: false,
     enumerable: true
   });
 };
 
 _.extend(Queue.prototype, {
-  push: function (type, data) {
+  push: function (type, data, opts) {
     'use strict';
     if (typeof type !== 'string') {
       throw new Error('Must pass a job type!');
     }
-    db._jobs.save({
+    if (!opts) {
+      opts = {};
+    }
+    var now = Date.now();
+    return db._jobs.save({
       status: 'pending',
       queue: this.name,
       type: type,
-      failures: 0,
-      data: data
-    });
-    return db._jobs.byExample({
-      status: 'pending',
-      queue: this.name
-    }).count();
-  }
-});
-
-queues._worker = {
-  work: function (job) {
+      failures: [],
+      data: data,
+      created: now,
+      modified: now,
+      maxFailures: opts.maxFailures === Infinity ? -1 : opts.maxFailures,
+      backOff: typeof opts.backOff === 'function' ? opts.backOff.toString() : opts.backOff,
+      delayUntil: opts.delayUntil || now,
+      onSuccess: opts.success ? opts.success.toString() : null,
+      onFailure: opts.failure ? opts.failure.toString() : null
+    })._id;
+  },
+  get: function (id) {
     'use strict';
-    var db = require('org/arangodb').db,
-      queues = require('org/arangodb/foxx').queues,
-      console = require('console'),
-      cfg = queues._jobTypes[job.type],
-      failed = false;
-
-    if (!cfg) {
-      console.warn('Unknown job type for job ' + job._key + ':', job.type);
-      db._jobs.update(job._key, {status: 'pending'});
-      return;
+    if (!id.match(/^_jobs\//)) {
+      id = '_jobs/' + id;
     }
-
-    try {
-      cfg.execute(job.data);
-    } catch (err) {
-      console.error('Job ' + job._key + ' failed:', err);
-      failed = true;
+    if (!jobMap[id]) {
+      jobMap[id] = new Job(id);
     }
-    db._jobs.update(job._key, failed ? {
-      failures: job.failures + 1,
-      status: (job.failures + 1 > cfg.maxFailures) ? 'failed' : 'pending'
-    } : {status: 'complete'});
-  }
-};
-
-queues._manager = {
-  manage: function () {
+    return jobMap[id];
+  },
+  delete: function (id) {
     'use strict';
-    var _ = require('underscore'),
-      db = require('org/arangodb').db,
-      queues = require('org/arangodb/foxx').queues,
-      tasks = require('org/arangodb/tasks');
-
+    var result = false;
     db._executeTransaction({
       collections: {
-        read: ['_queues', '_jobs'],
+        read: ['_jobs'],
         write: ['_jobs']
       },
       action: function () {
-        db._queues.all().toArray().forEach(function (queue) {
-          var numBusy = db._jobs.byExample({
-            queue: queue._key,
-            status: 'progress'
-          }).count();
-          if (numBusy >= queue.maxWorkers) {
-            return;
-          }
-          db._jobs.byExample({
-            queue: queue._key,
-            status: 'pending'
-          }).limit(queue.maxWorkers - numBusy).toArray().forEach(function (doc) {
-            db._jobs.update(doc, {status: 'progress'});
-            tasks.register({
-              command: queues._worker.work,
-              params: _.extend({}, doc, {status: 'progress'}),
-              offset: 0
-            });
-          });
-        });
+        if (db._jobs.exists(id)) {
+          db._jobs.delete(id);
+          result = true;
+        }
       }
     });
+    return result;
   },
-  run: function () {
+  pending: function (jobType) {
     'use strict';
-    db._jobs.updateByExample({status: 'progress'}, {status: 'pending'});
-    tasks.register({command: queues._manager.manage, period: QUEUE_MANAGER_PERIOD / 1000});
+    return getJobs(this.name, 'pending', jobType);
+  },
+  complete: function (jobType) {
+    'use strict';
+    return getJobs(this.name, 'complete', jobType);
+  },
+  failed: function (jobType) {
+    'use strict';
+    return getJobs(this.name, 'failed', jobType);
+  },
+  progress: function (jobType) {
+    'use strict';
+    return getJobs(this.name, 'progress', jobType);
+  },
+  all: function (jobType) {
+    'use strict';
+    return getJobs(this.name, undefined, jobType);
   }
-};
+});
 
-queues.create('default', 1);
+queues.create('default');
 
 module.exports = queues;
 
