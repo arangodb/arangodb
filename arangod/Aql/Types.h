@@ -118,10 +118,14 @@ namespace triagens {
 
         AqlItemBlock (size_t nrItems, VariableId nrVars)
           : _nrItems(nrItems), _nrVars(nrVars) {
-          TRI_ASSERT(nrItems > 0 && nrVars > 0);
-          _data = new AqlValue* [nrItems * nrVars];
-          for (size_t i = 0; i < nrItems * nrVars; i++) {
-            _data[i] = nullptr;
+          if (nrItems > 0 && nrVars > 0) {
+            _data = new AqlValue* [nrItems * nrVars];
+            for (size_t i = 0; i < nrItems * nrVars; i++) {
+              _data[i] = nullptr;
+            }
+          }
+          else {
+            _data = nullptr;
           }
         }
 
@@ -131,16 +135,18 @@ namespace triagens {
 
         ~AqlItemBlock () {
           std::unordered_set<AqlValue*> cache;
-          for (size_t i = 0; i < _nrItems * _nrVars; i++) {
-            if (_data[i] != nullptr) {
-              auto it = cache.find(_data[i]);
-              if (it == cache.end()) {
-                cache.insert(_data[i]);
-                delete _data[i];
+          if (_data != nullptr) {
+            for (size_t i = 0; i < _nrItems * _nrVars; i++) {
+              if (_data[i] != nullptr) {
+                auto it = cache.find(_data[i]);
+                if (it == cache.end()) {
+                  cache.insert(_data[i]);
+                  delete _data[i];
+                }
               }
             }
+            delete[] _data;
           }
-          delete[] _data;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -148,7 +154,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       AqlValue* getValue (size_t index, VariableId varNr) {
-        return _data[index * _nrVars + varNr - 1];
+        if (_data == nullptr) {
+          return nullptr;
+        }
+        else {
+          return _data[index * _nrVars + varNr];
+        }
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -156,7 +167,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       void setValue (size_t index, VariableId varNr, AqlValue* zeug) {
-        _data[index * _nrVars + varNr - 1] = zeug;
+        if (_data != nullptr) {
+          _data[index * _nrVars + varNr] = zeug;
+        }
       }
 
 ////////////////////////////////////////////////////////////////////////////////

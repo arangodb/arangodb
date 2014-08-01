@@ -49,7 +49,7 @@ namespace triagens {
     class ExecutionBlock {
       public:
         ExecutionBlock (ExecutionPlan const* ep)
-          : _exePlan(ep), _done(false), _nrVars(3), _depth(0) { }
+          : _exePlan(ep), _done(false), _depth(0) { }
 
         virtual ~ExecutionBlock ();
           
@@ -115,9 +115,23 @@ namespace triagens {
             };
             virtual void leaveSubquery (ExecutionBlock* super,
                                         ExecutionBlock* sub) {};
+            bool done (ExecutionBlock* eb) {
+              if (_done.find(eb) == _done.end()) {
+                _done.insert(eb);
+                return false;
+              }
+              else {
+                return true;
+              }
+            }
+            void reset () {
+              _done.clear();
+            }
+          private:
+            std::unordered_set<ExecutionBlock*> _done;
         };
 
-        void walk (WalkerWorker& worker);
+        void walk (WalkerWorker* worker);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief static analysis, walker class and information collector
@@ -130,37 +144,54 @@ namespace triagens {
         };
 
         struct VarOverview : public WalkerWorker {
+          // The following are collected for global usage in the ExecutionBlock:
+
+          // map VariableIds to their depth and index:
           std::unordered_map<VariableId, VarInfo> varInfo;
+
+          // number of variables in the frame of the current depth:
+          std::vector<VariableId>                 nrVarsHere;
+
+          // number of variables in this and all outer frames together,
+          // the entry with index i here is always the sum of all values
+          // in nrVarsHere from index 0 to i (inclusively) and the two
+          // have the same length:
           std::vector<VariableId>                 nrVars;
+
+          // Local for the walk:
           unsigned int depth;
           unsigned int totalNrVars;
-          VarOverview () : depth(0), totalNrVars(0) {};
+
+          VarOverview () 
+            : depth(0), totalNrVars(0) {
+            nrVarsHere.push_back(0);
+            nrVars.push_back(0);
+          };
+
+          // Copy constructor used for a subquery:
+          VarOverview (VarOverview const& v) 
+            : varInfo(v.varInfo), nrVarsHere(v.nrVars), nrVars(v.nrVars),
+              depth(v.depth+1), totalNrVars(v.totalNrVars) {
+            nrVarsHere.push_back(0);
+            nrVars.push_back(0);
+          }
+
           ~VarOverview () {};
+
           virtual bool enterSubquery (ExecutionBlock* super,
                                       ExecutionBlock* sub) {
-            auto vv = new VarOverview();
-            sub->walk(*vv);
-            return false;
+            auto vv = new VarOverview(*this);
+            sub->walk(vv);
+            vv->reset();
+            return false;  // do not walk into subquery
           }
+
           virtual void after (ExecutionBlock *eb) {
             switch (eb->getPlan()->getType()) {
-              case ExecutionPlan::SINGLETON: {
-                depth = 0;
-                if (nrVars.size() == 0) {
-                  nrVars.push_back(0);
-                }
-                else {
-                  nrVars[0] = 0;
-                }
-                break;
-              }
               case ExecutionPlan::ENUMERATE_COLLECTION: {
                 depth++;
-                while (depth >= nrVars.size()) {
-                  nrVars.push_back(0);
-                }
-                TRI_ASSERT(nrVars[depth] == 0);
-                nrVars[depth] = 1;
+                nrVarsHere.push_back(1);
+                nrVars.push_back(1 + nrVars.back());
                 auto ep = static_cast<EnumerateCollectionPlan const*>(eb->getPlan());
                 varInfo.insert(make_pair(ep->_outVariable->id,
                                          VarInfo(depth, totalNrVars)));
@@ -169,11 +200,8 @@ namespace triagens {
               }
               case ExecutionPlan::ENUMERATE_LIST: {
                 depth++;
-                while (depth >= nrVars.size()) {
-                  nrVars.push_back(0);
-                }
-                TRI_ASSERT(nrVars[depth] == 0);
-                nrVars[depth] = 1;
+                nrVarsHere.push_back(1);
+                nrVars.push_back(1 + nrVars.back());
                 auto ep = static_cast<EnumerateListPlan const*>(eb->getPlan());
                 varInfo.insert(make_pair(ep->_outVariable->id,
                                          VarInfo(depth, totalNrVars)));
@@ -181,6 +209,7 @@ namespace triagens {
                 break;
               }
               case ExecutionPlan::CALCULATION: {
+                nrVarsHere[depth]++;
                 nrVars[depth]++;
                 auto ep = static_cast<CalculationPlan const*>(eb->getPlan());
                 varInfo.insert(make_pair(ep->_outVariable->id,
@@ -189,8 +218,18 @@ namespace triagens {
                 break;
               }
               case ExecutionPlan::PROJECTION: {
+                nrVarsHere[depth]++;
                 nrVars[depth]++;
                 auto ep = static_cast<ProjectionPlan const*>(eb->getPlan());
+                varInfo.insert(make_pair(ep->_outVariable->id,
+                                         VarInfo(depth, totalNrVars)));
+                totalNrVars++;
+                break;
+              }
+              case ExecutionPlan::SUBQUERY: {
+                nrVarsHere[depth]++;
+                nrVars[depth]++;
+                auto ep = static_cast<SubqueryPlan const*>(eb->getPlan());
                 varInfo.insert(make_pair(ep->_outVariable->id,
                                          VarInfo(depth, totalNrVars)));
                 totalNrVars++;
@@ -208,7 +247,8 @@ namespace triagens {
 
         void staticAnalysis () {
           auto v = new VarOverview();
-          walk(*v);
+          walk(v);
+          v->reset();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -437,12 +477,6 @@ namespace triagens {
         bool _done;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief this is the number of variables in items coming out of this node
-////////////////////////////////////////////////////////////////////////////////
-
-        VariableId _nrVars;  // will be filled in by staticAnalysis
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief depth of frames (number of FOR statements here or above)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -521,7 +555,7 @@ namespace triagens {
             return nullptr;
           }
 
-          AqlItemBlock* res(new AqlItemBlock(1, _nrVars));
+          AqlItemBlock* res(new AqlItemBlock(1, _varOverview->nrVars[_depth]));
           _done = true;
           return res;
         }
@@ -535,7 +569,7 @@ namespace triagens {
             return nullptr;
           }
 
-          AqlItemBlock* res(new AqlItemBlock(1, _nrVars));
+          AqlItemBlock* res(new AqlItemBlock(1, _varOverview->nrVars[_depth]));
           _done = true;
           return res;
         }
@@ -662,13 +696,20 @@ namespace triagens {
           // If we get here, we do have _buffer.front()
           AqlItemBlock* cur = _buffer.front();
 
-          auto res = new AqlItemBlock(1, _nrVars);
-          TRI_ASSERT(cur->getNrVars() <= _nrVars);
+          // Copy stuff from frames above:
+          auto res = new AqlItemBlock(1, _varOverview->nrVars[_depth]);
+          TRI_ASSERT(cur->getNrVars() <= res->getNrVars());
           for (VariableId i = 0; i < cur->getNrVars(); i++) {
             res->setValue(0, i, cur->getValue(_pos, i)->clone());
           }
+
+          // The result is in the first variable of this depth,
+          // we do not need to do a lookup in _varOverview->varInfo,
+          // but can just take cur->getNrVars() as index:
           res->setValue(0, cur->getNrVars(), 
               new AqlValue( new Json(_allDocs[_posInAllDocs++]->copy()) ) );
+
+          // Advance read position:
           if (_posInAllDocs >= _allDocs.size()) {
             _posInAllDocs = 0;
             if (++_pos >= cur->size()) {
@@ -704,15 +745,20 @@ namespace triagens {
           size_t available = _allDocs.size() - _posInAllDocs;
           size_t toSend = std::min(atMost, available);
 
-          auto res = new AqlItemBlock(toSend, _nrVars);
-          TRI_ASSERT(cur->getNrVars() <= _nrVars);
+          auto res = new AqlItemBlock(toSend, _varOverview->nrVars[_depth]);
+          TRI_ASSERT(cur->getNrVars() <= res->getNrVars());
           for (size_t j = 0; j < toSend; j++) {
             for (VariableId i = 0; i < cur->getNrVars(); i++) {
               res->setValue(j, i, cur->getValue(_pos, i)->clone());
             }
+            // The result is in the first variable of this depth,
+            // we do not need to do a lookup in _varOverview->varInfo,
+            // but can just take cur->getNrVars() as index:
             res->setValue(j, cur->getNrVars(), 
                 new AqlValue( new Json(_allDocs[_posInAllDocs++]->copy()) ) );
           }
+
+          // Advance read position:
           if (_posInAllDocs >= _allDocs.size()) {
             _posInAllDocs = 0;
             if (++_pos >= cur->size()) {
@@ -765,8 +811,12 @@ namespace triagens {
 
           // Let's steal the actual result and throw away the vars:
           AqlItemBlock* stripped = new AqlItemBlock(1, 1);
-          stripped->setValue(0, 0, res->getValue(0, 0));
-          res->setValue(0, 0, nullptr);
+          auto ep = static_cast<RootPlan const*>(getPlan());
+          auto it = _varOverview->varInfo.find(ep->_inVariable->id);
+          TRI_ASSERT(it != _varOverview->varInfo.end());
+          unsigned int index = it->second.index;
+          stripped->setValue(0, 0, res->getValue(0, index));
+          res->setValue(0, index, nullptr);
           delete res;
           return stripped;
         }
@@ -779,10 +829,14 @@ namespace triagens {
           }
 
           // Let's steal the actual result and throw away the vars:
+          auto ep = static_cast<RootPlan const*>(getPlan());
+          auto it = _varOverview->varInfo.find(ep->_inVariable->id);
+          TRI_ASSERT(it != _varOverview->varInfo.end());
+          unsigned int index = it->second.index;
           AqlItemBlock* stripped = new AqlItemBlock(res->size(), 1);
           for (size_t i = 0; i < res->size(); i++) {
-            stripped->setValue(i, 0, res->getValue(i, 0));
-            res->setValue(i, 0, nullptr);
+            stripped->setValue(i, 0, res->getValue(i, index));
+            res->setValue(i, index, nullptr);
           }
           delete res;
           return stripped;
