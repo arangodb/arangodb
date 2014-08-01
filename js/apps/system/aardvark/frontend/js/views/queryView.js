@@ -284,13 +284,6 @@
     importCustomQueries: function () {
       var result;
       if (this.allowUpload === true) {
-          console.log(this.file.valueOf());
-          console.log(this.file);
-          console.log(this.files);
-
-          $.getJSON(this.file, function(json) {
-            console.log(json);
-          });
       }
     },
 
