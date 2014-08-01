@@ -88,7 +88,7 @@ var TextHighlightRules = require("./text_highlight_rules").TextHighlightRules;
 var AqlHighlightRules = function() {
 
     var keywords = (
-        "for|return|filter|sort|limit|let|collect|asc|desc|in|into|insert|update|remove|replace|options"
+        "for|return|filter|sort|limit|let|collect|asc|desc|in|into|insert|update|remove|replace|options|with"
     );
 
     var builtinFunctions = (
@@ -97,6 +97,17 @@ var AqlHighlightRules = function() {
         "like|floor|ceil|round|abs|sqrt|rand|length|min|max|average|sum|median|variance_population|" +
         "variance_sample|first|last|unique|matches|merge|merge_recursive|has|attributes|unset|keep|" +
         "near|within|fulltext|paths|traversal|traversal_tree|edges|not_null|first_list|first_document|" +
+        "flatten|length|min|max|sum|median|average|variance_sample|variance_population|"+
+        "stddev_sample|stddev_population|unique|slice|reverse|first|last|nth|position|"+
+        "has|attributes|merge|merge_recursive|document|matches|unset|keep|translate|"+
+        "near|within|fulltext|paths|graph_paths|shortest_path|graph_shortest_path|graph_distance_to|"+
+        "traversal|graph_traversal|traversal_tree|graph_traversal_tree|edges|graph_edges|"+
+        "graph_vertices|neighbors|graph_neighbors|graph_common_neighbors|graph_common_properties|"+
+        "graph_eccentricity|graph_betweenness|graph_closeness|graph_absolute_eccentricity|"+
+        "graph_absolute_betweenness|graph_absolute_closeness|graph_diameter|graph_radius|date_now|"+
+        "date_timestamp|date_iso8601|date_dayofweek|date_year|date_month|date_day|date_hour|"+
+        "date_minute|date_second|date_millisecond|fail|passthru|sleep|collections|not_null|"+
+        "first_list|first_document|parse_identifier|skiplist|current_user|current_database|"+
         "collections|document|stddev_population|stddev_sample|neighbors|union|union_distinct|intersection)"
     );
 
