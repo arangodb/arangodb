@@ -96,7 +96,13 @@ struct Instanciator : public ExecutionNode::WalkerWorker {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
       }
     }
-    engine->addBlock(eb);
+    try {
+      engine->addBlock(eb);
+    }
+    catch (...) {
+      delete eb;
+      throw;
+    }
 
     // Now add dependencies:
     std::vector<ExecutionNode*> deps = en->getDependencies();
@@ -128,7 +134,11 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (ExecutionNode* plan) {
     auto root = inst->root;
     delete inst;
 
+    root->staticAnalysis();
+    root->initialize();
+
     engine->_root = root;
+
   }
   catch (...) {
     delete engine;

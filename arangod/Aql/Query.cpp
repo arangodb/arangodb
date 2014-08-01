@@ -29,6 +29,7 @@
 
 #include "Aql/Query.h"
 #include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Parser.h"
 #include "Aql/V8Executor.h"
@@ -176,25 +177,22 @@ QueryResult Query::execute () {
     auto plan = ExecutionPlan::instanciateFromAst(parser.ast());
 
     try { 
-      auto exec = ExecutionEngine::instanciateFromPlan(plan);
+      auto engine = ExecutionEngine::instanciateFromPlan(plan->root());
 
       try {
-        exec->root()->staticAnalysis();
-
-        exec->root()->initialize();
-        exec->root()->execute();
+        auto root = engine->root();
+        root->execute();
  
         AqlItemBlock* value;
-        while (nullptr != (value = exec->root()->getOne())) {
+        while (nullptr != (value = root->getOne())) {
           std::cout << value->getValue(0, 0)->toString() << std::endl;
           delete value;
         }
 
-        exec->root()->shutdown();
-        delete exec;
+        delete engine;
       }
       catch (...) {
-        delete exec;
+        delete engine;
         delete plan;
         // TODO: convert exception code
         return QueryResult(TRI_ERROR_INTERNAL);
