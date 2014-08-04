@@ -33,6 +33,8 @@
 #include "Basics/Common.h"
 #include "Aql/Collection.h"
 
+struct TRI_vocbase_s;
+
 namespace triagens {
   namespace aql {
 
@@ -45,7 +47,9 @@ namespace triagens {
 
         Collections& operator= (Collections const& other) = delete;
       
-        Collections () {
+        Collections (struct TRI_vocbase_s* vocbase) 
+          : _vocbase(vocbase),
+            _collections() {
         }
       
         ~Collections () {
@@ -62,7 +66,7 @@ namespace triagens {
           auto it = _collections.find(name);
 
           if (it == _collections.end()) {
-            auto collection = new Collection(name, accessType);
+            auto collection = new Collection(name, _vocbase, accessType);
             try {
               _collections.insert(std::make_pair(name, collection));
             }
@@ -95,7 +99,9 @@ namespace triagens {
 
       private:
 
-        std::map<std::string, Collection*> _collections;
+        struct TRI_vocbase_s*               _vocbase;
+
+        std::map<std::string, Collection*>  _collections;
     };
 
   }

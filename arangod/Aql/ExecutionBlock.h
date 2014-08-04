@@ -32,12 +32,11 @@
 #include <ShapedJson/shaped-json.h>
 
 #include "Aql/Types.h"
+#include "Aql/Collection.h"
 #include "Aql/ExecutionNode.h"
+#include "Utils/AqlTransaction.h"
 #include "Utils/transactions.h"
-
-// #include "V8/v8.h"
-
-using namespace triagens::basics;
+#include "Utils/V8TransactionContext.h"
 
 struct TRI_json_s;
 
@@ -601,8 +600,21 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        EnumerateCollectionBlock (EnumerateCollectionNode const* ep)
-          : ExecutionBlock(ep), _posInAllDocs(0) {
+        EnumerateCollectionBlock (EnumerateCollectionNode const* ep) 
+          : ExecutionBlock(ep), _trx(nullptr), _posInAllDocs(0) {
+          
+          auto p = reinterpret_cast<EnumerateCollectionNode const*>(_exeNode);
+
+          // create an embedded transaction for the collection access
+          _trx = new triagens::arango::SingleCollectionReadOnlyTransaction<triagens::arango::V8TransactionContext<true>>(p->_vocbase, p->_collname);
+
+          int res = _trx->begin();
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            // transaction failure
+            delete _trx;
+            THROW_ARANGO_EXCEPTION(res);
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -610,12 +622,37 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~EnumerateCollectionBlock () {
-          if (! _allDocs.empty()) {
-            for (auto it = _allDocs.begin(); it != _allDocs.end(); ++it) {
-              delete *it;
-            }
-            _allDocs.clear();
+          if (_trx != nullptr) {
+            // finalize our own transaction
+            delete _trx;
           }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize fetching of documents
+////////////////////////////////////////////////////////////////////////////////
+
+        void initDocuments () {
+          _internalSkip = 0;
+          if (! moreDocuments()) {
+            _done = true;
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief continue fetching of documents
+////////////////////////////////////////////////////////////////////////////////
+
+        bool moreDocuments () {
+          _documents.clear();
+
+          int res = _trx->readOffset(_documents, _internalSkip, BatchSize, 0, TRI_QRY_NO_LIMIT, &_totalCount);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            THROW_ARANGO_EXCEPTION(res);
+          }
+
+          return (! _documents.empty());
         }
         
 ////////////////////////////////////////////////////////////////////////////////
@@ -623,48 +660,38 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int initialize () {
-          // TODO: this is very very inefficient
-          // it must be implemented properly for production
-
           int res = ExecutionBlock::initialize();
+
           if (res != TRI_ERROR_NO_ERROR) {
             return res;
           }
 
           auto p = reinterpret_cast<EnumerateCollectionNode const*>(_exeNode);
 
-          V8ReadTransaction trx(p->_vocbase, p->_collname);
-  
-          res = trx.begin();
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            THROW_ARANGO_EXCEPTION(res);
-          }
-
-          std::string collectionName = trx.resolver()->getCollectionName(trx.cid());
+          std::string collectionName(p->_collname);
           collectionName.push_back('/');
-          
-          vector<TRI_doc_mptr_t*> docs;
-          res = trx.read(docs);
+
+          initDocuments();
+         /* 
           size_t const n = docs.size();
 
-          auto shaper = trx.documentCollection()->getShaper();
+          auto shaper = _trx->documentCollection()->getShaper();
 
           // TODO: if _allDocs is not empty, its contents will leak
           _allDocs.clear();
           for (size_t i = 0; i < n; ++i) {
-            TRI_doc_mptr_t const* mptr = docs[i];
+            TRI_doc_mptr_copy_t mptr = docs[i];
             TRI_shaped_json_t shaped;
-            TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, mptr->getDataPtr());
+            TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, mptr.getDataPtr());
 
-            Json* json = new Json(shaper->_memoryZone, TRI_JsonShapedJson(shaper, &shaped));
+            auto json = new triagens::basics::Json(shaper->_memoryZone, TRI_JsonShapedJson(shaper, &shaped));
 
             try {
               std::string id(collectionName);
-              id += std::string(TRI_EXTRACT_MARKER_KEY(mptr));
-              (*json)("_id", Json(id));
-              (*json)("_rev", Json(std::to_string(mptr->_rid))); 
-              (*json)("_key", Json(TRI_EXTRACT_MARKER_KEY(mptr)));
+              id += std::string(TRI_EXTRACT_MARKER_KEY(&mptr));
+              (*json)("_id", triagens::basics::Json(id));
+              (*json)("_rev", triagens::basics::Json(std::to_string(mptr._rid))); 
+              (*json)("_key", triagens::basics::Json(TRI_EXTRACT_MARKER_KEY(&mptr)));
 
               // TODO: add attributes _from and _to of edge collection
 
@@ -676,13 +703,12 @@ namespace triagens {
             }
           }
           
-          res = trx.finish(res);
-
           if (_allDocs.empty()) {
             _done = true;
           }
+          */
 
-          return res;
+          return TRI_ERROR_NO_ERROR;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -696,7 +722,7 @@ namespace triagens {
             return res;
           }
 
-          if (_allDocs.empty()) {
+          if (_totalCount == 0) {
             _done = true;
           }
 
@@ -709,11 +735,7 @@ namespace triagens {
 
         int shutdown () {
           int res = ExecutionBlock::shutdown();  // Tell all dependencies
-          for (auto it = _allDocs.begin(); it != _allDocs.end(); ++it) {
-            delete *it;
-          }
 
-          _allDocs.clear();
           return res;
         }
 
@@ -749,16 +771,21 @@ namespace triagens {
           // The result is in the first variable of this depth,
           // we do not need to do a lookup in _varOverview->varInfo,
           // but can just take cur->getNrRegs() as registerId:
-          res->setValue(0, cur->getNrRegs(), 
-              new AqlValue( new Json(_allDocs[_posInAllDocs++]->copy()) ) );
+          res->setValue(0, cur->getNrRegs(), new AqlValue(_trx->documentCollection(), _documents[_posInAllDocs++]));
 
           // Advance read position:
-          if (_posInAllDocs >= _allDocs.size()) {
+          if (_posInAllDocs >= _documents.size()) {
+            // we have exhausted our local documents buffer
             _posInAllDocs = 0;
-            if (++_pos >= cur->size()) {
-              _buffer.pop_front();
-              delete cur;
-              _pos = 0;
+            
+            // fetch more documents into our buffer
+            if (! moreDocuments()) {
+              initDocuments();
+              if (++_pos >= cur->size()) {
+                _buffer.pop_front();
+                delete cur;
+                _pos = 0;
+              }
             }
           }
           return res;
@@ -772,6 +799,7 @@ namespace triagens {
           if (_done) {
             return nullptr;
           }
+
           if (_buffer.empty()) {
             if (! ExecutionBlock::getBlock(1000, 1000)) {
               _done = true;
@@ -786,9 +814,9 @@ namespace triagens {
           AqlItemBlock* cur = _buffer.front();
           size_t const curRegs = cur->getNrRegs();
 
-          size_t available = _allDocs.size() - _posInAllDocs;
+          size_t available = _documents.size() - _posInAllDocs;
           size_t toSend = std::min(atMost, available);
-
+            
           auto res = new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]);
           TRI_ASSERT(curRegs <= res->getNrRegs());
 
@@ -801,40 +829,72 @@ namespace triagens {
             if (j > 0) {
               // re-use already copied aqlvalues
               for (RegisterId i = 0; i < curRegs; i++) {
-                res->setValue(j, i, cur->getValue(0, i));
+                res->setValue(j, i, res->getValue(0, i));
               }
             }
+
             // The result is in the first variable of this depth,
             // we do not need to do a lookup in _varOverview->varInfo,
             // but can just take cur->getNrRegs() as registerId:
-            res->setValue(j, curRegs, new AqlValue(new Json(_allDocs[_posInAllDocs++]->copy())));
+            res->setValue(j, curRegs, new AqlValue(_trx->documentCollection(), _documents[_posInAllDocs++]));
           }
 
           // Advance read position:
-          if (_posInAllDocs >= _allDocs.size()) {
+          if (_posInAllDocs >= _documents.size()) {
+            // we have exhausted our local documents buffer
             _posInAllDocs = 0;
-            if (++_pos >= cur->size()) {
-              _buffer.pop_front();
-              delete cur;
-              _pos = 0;
+
+            // fetch more documents into our buffer
+            if (! moreDocuments()) {
+              // nothing more to read, re-initialize fetching of documents
+              initDocuments();
+              if (++_pos >= cur->size()) {
+                _buffer.pop_front();
+                delete cur;
+                _pos = 0;
+              }
             }
           }
           return res;
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief all documents of this collection
-////////////////////////////////////////////////////////////////////////////////
-
       private:
 
-        std::vector<Json*> _allDocs;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief currently ongoing transaction
+////////////////////////////////////////////////////////////////////////////////
+                                  
+        triagens::arango::SingleCollectionReadOnlyTransaction<triagens::arango::V8TransactionContext<true>>* _trx;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief total number of documents in the collection
+////////////////////////////////////////////////////////////////////////////////
+  
+        uint32_t _totalCount;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal skip value
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_voc_size_t _internalSkip;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief document buffer
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<TRI_doc_mptr_copy_t> _documents;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief current position in _allDocs
 ////////////////////////////////////////////////////////////////////////////////
 
         size_t _posInAllDocs;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief batch size value
+////////////////////////////////////////////////////////////////////////////////
+  
+        static TRI_voc_size_t const BatchSize = 3;
     };
 
 // -----------------------------------------------------------------------------

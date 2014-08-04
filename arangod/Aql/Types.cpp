@@ -40,6 +40,11 @@ AqlValue::~AqlValue () {
       delete _json;
       return;
     }
+    
+    case DOCUMENT: {
+      return;
+    }
+
     case DOCVEC: {
       if (_vector != nullptr) {
         for (auto it = _vector->begin(); it != _vector->end(); ++it) {
@@ -49,9 +54,11 @@ AqlValue::~AqlValue () {
       }
       return;
     }
+
     case RANGE: {
       return;
     }
+
     default:
       return;
   }
@@ -62,6 +69,11 @@ AqlValue* AqlValue::clone () const {
     case JSON: {
       return new AqlValue(new Json(_json->copy()));
     }
+
+    case DOCUMENT: {
+      return new AqlValue(_document._document, _document._mptr);
+    }
+
     case DOCVEC: {
       auto c = new std::vector<AqlItemBlock*>;
       c->reserve(_vector->size());
@@ -70,9 +82,11 @@ AqlValue* AqlValue::clone () const {
       }
       return new AqlValue(c);
     }
+
     case RANGE: {
       return new AqlValue(_range._low, _range._high);
     }
+
     default: {
       TRI_ASSERT(false);
     }
@@ -86,8 +100,7 @@ AqlValue* AqlValue::clone () const {
 /// set to nullptr, just to be sure.
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlItemBlock* AqlItemBlock::splice(std::vector<AqlItemBlock*>& blocks)
-{
+AqlItemBlock* AqlItemBlock::splice (std::vector<AqlItemBlock*>& blocks) {
   TRI_ASSERT(blocks.size() != 0);
 
   auto it = blocks.begin();

@@ -38,7 +38,7 @@
 #include "BasicsC/tri-strings.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/Exception.h"
-#include "Utils/RestTransactionContext.h"
+#include "Utils/V8TransactionContext.h"
 #include "VocBase/vocbase.h"
 
 using namespace triagens::aql;
@@ -61,6 +61,7 @@ Query::Query (TRI_vocbase_t* vocbase,
     _queryLength(queryLength),
     _type(AQL_QUERY_READ),
     _bindParameters(bindParameters),
+    _collections(vocbase),
     _strings() {
 
   TRI_ASSERT(_vocbase != nullptr);
@@ -179,7 +180,7 @@ QueryResult Query::execute () {
     // optimize the ast
     parser.ast()->optimize();
 
-    triagens::arango::AqlTransaction<triagens::arango::RestTransactionContext> trx(_vocbase, _collections.collections());
+    triagens::arango::AqlTransaction<triagens::arango::V8TransactionContext<true>> trx(_vocbase, _collections.collections());
 
     int res = trx.begin();
 

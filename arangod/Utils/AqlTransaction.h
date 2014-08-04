@@ -82,8 +82,7 @@ namespace triagens {
 /// @brief add a collection to the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        void processCollection (triagens::aql::Collection const* collection) {
-            std::cout << "COLLECTION: " << collection->name << ", ACCESSTYPE: " << (collection->accessType == TRI_TRANSACTION_READ ? "read" : "write") << "\n";
+        void processCollection (triagens::aql::Collection* collection) {
           if (ServerState::instance()->isCoordinator()) {
             processCollectionCoordinator(collection);
           }
@@ -96,7 +95,7 @@ namespace triagens {
 /// @brief add a coordinator collection to the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        void processCollectionCoordinator (triagens::aql::Collection const* collection) {
+        void processCollectionCoordinator (triagens::aql::Collection* collection) {
           TRI_voc_cid_t cid = this->resolver()->getCollectionIdCluster(collection->name);
 
           this->addCollection(cid, collection->name.c_str(), collection->accessType);
@@ -106,7 +105,7 @@ namespace triagens {
 /// @brief add a regular collection to the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        void processCollectionNormal (triagens::aql::Collection const* collection) {
+        void processCollectionNormal (triagens::aql::Collection* collection) {
           TRI_vocbase_col_t const* col = this->resolver()->getCollectionStruct(collection->name);
           TRI_voc_cid_t cid = 0;
 
@@ -116,8 +115,9 @@ namespace triagens {
 
           int res = this->addCollection(cid, collection->name.c_str(), collection->accessType);
 
-          if (res == TRI_ERROR_NO_ERROR) {
-            // TODO
+          if (res == TRI_ERROR_NO_ERROR &&
+              col != nullptr) {
+            collection->collection = const_cast<TRI_vocbase_col_t*>(col);
           }
         }
 
