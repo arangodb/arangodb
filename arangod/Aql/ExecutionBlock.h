@@ -448,7 +448,9 @@ namespace triagens {
           }
         }
 
-        bool skip (int number);
+        virtual bool hasMore ();
+
+        virtual bool skip (size_t number);
 
         virtual int64_t count () {
           return 0;
