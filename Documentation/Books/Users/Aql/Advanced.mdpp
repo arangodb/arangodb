@@ -27,7 +27,7 @@ explicitly mark their start and end points:
 	  RETURN r.user.rating
       ) }
 
-Subqueries might also include other subqueries themselves.
+Subqueries may also include other subqueries themselves.
 
 !SUBSECTION Variable expansion
 

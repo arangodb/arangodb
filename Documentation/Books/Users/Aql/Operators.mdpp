@@ -125,7 +125,7 @@ will produce the following result:
 
 !SUBSUBSECTION Operator precedence
 
-The operator precedence in AQL is as follows (lowest precedence first):
+The operator precedence in AQL is similar as in other familliar languages (lowest precedence first):
 
 - *? :* ternary operator
 - *||* logical or
