@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Ast.h"
+#include "Aql/Collection.h"
 #include "Aql/Parser.h"
 #include "Aql/V8Executor.h"
 #include "BasicsC/tri-strings.h"
@@ -52,7 +53,6 @@ Ast::Ast (Query* query,
     _scopes(),
     _variables(),
     _bindParameters(),
-    _collectionNames(),
     _root(nullptr),
     _queries(),
     _writeCollection(nullptr),
@@ -183,6 +183,7 @@ AstNode* Ast::createNodeRemove (AstNode const* expression,
                                 AstNode const* collection,
                                 AstNode* options) {
   AstNode* node = createNode(NODE_TYPE_REMOVE);
+  node->addMember(collection);
   node->addMember(expression);
 
   return node;
@@ -196,6 +197,7 @@ AstNode* Ast::createNodeInsert (AstNode const* expression,
                                 AstNode const* collection,
                                 AstNode* options) {
   AstNode* node = createNode(NODE_TYPE_INSERT);
+  node->addMember(collection);
   node->addMember(expression);
   
   return node;
@@ -210,6 +212,7 @@ AstNode* Ast::createNodeUpdate (AstNode const* keyExpression,
                                 AstNode const* collection,
                                 AstNode* options) {
   AstNode* node = createNode(NODE_TYPE_UPDATE);
+  node->addMember(collection);
   node->addMember(docExpression);
 
   if (keyExpression != nullptr) {
@@ -228,6 +231,7 @@ AstNode* Ast::createNodeReplace (AstNode const* keyExpression,
                                  AstNode const* collection,
                                  AstNode* options) {
   AstNode* node = createNode(NODE_TYPE_REPLACE);
+  node->addMember(collection);
   node->addMember(docExpression);
 
   if (keyExpression != nullptr) {
@@ -354,8 +358,8 @@ AstNode* Ast::createNodeCollection (char const* name) {
 
   AstNode* node = createNode(NODE_TYPE_COLLECTION);
   node->setStringValue(name);
-
-  _collectionNames.insert(std::string(name));
+ 
+  _query->collections()->add(name, TRI_TRANSACTION_READ);
 
   return node;
 }
@@ -695,10 +699,6 @@ AstNode* Ast::createNodeNop () {
 void Ast::injectBindParameters (BindParameters& parameters) {
   auto p = parameters();
 
-  if (p.empty()) {
-    return;
-  }
-
   auto func = [&](AstNode* node, void* data) -> AstNode* {
     if (node->type == NODE_TYPE_PARAMETER) {
       char const* param = node->getStringValue();
@@ -745,7 +745,15 @@ void Ast::injectBindParameters (BindParameters& parameters) {
     return node;
   };
 
-  _root = traverse(_root, func, &p); 
+  if (! p.empty()) {
+    _root = traverse(_root, func, &p); 
+  }
+  
+  if (_writeCollection != nullptr &&
+      _writeCollection->type == NODE_TYPE_COLLECTION) {
+
+    _query->collections()->add(_writeCollection->getStringValue(), TRI_TRANSACTION_WRITE);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1420,7 +1428,7 @@ AstNode* Ast::traverse (AstNode* node,
   if (node == nullptr) {
     return nullptr;
   }
-  
+ 
   size_t const n = node->numMembers();
 
   for (size_t i = 0; i < n; ++i) {

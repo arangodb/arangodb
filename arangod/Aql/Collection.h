@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, query results
+/// @brief Aql, collection
 ///
 /// @file
 ///
@@ -27,64 +27,33 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_QUERY_RESULT_H
-#define ARANGODB_AQL_QUERY_RESULT_H 1
+#ifndef ARANGODB_AQL_COLLECTION_H
+#define ARANGODB_AQL_COLLECTION_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/json.h"
+#include "VocBase/transaction.h"
 
 namespace triagens {
   namespace aql {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                struct QueryResult
+// --SECTION--                                                 struct Collection
 // -----------------------------------------------------------------------------
 
-    struct QueryResult {
-      QueryResult& operator= (QueryResult const& other) = delete;
+    struct Collection {
+      Collection& operator= (Collection const& other) = delete;
       
-      QueryResult (QueryResult&& other) {
-        code = other.code;
-        details = other.details;
-        json = other.json;
-        zone = other.zone;
-        other.json = nullptr;
-      }
-
-      QueryResult (int code,
-                   std::string const& details) 
-        : code(code),
-          details(details),
-          zone(TRI_UNKNOWN_MEM_ZONE),
-          json(nullptr) {
+      Collection (std::string const& name,
+                  TRI_transaction_type_e accessType) 
+        : name(name),
+          accessType(accessType) {
       }
       
-      explicit QueryResult (int code)
-        : code(code),
-          details(""),
-          zone(TRI_UNKNOWN_MEM_ZONE),
-          json(nullptr) {
+      ~Collection () {
       }
 
-      QueryResult ()
-        : code(TRI_ERROR_NO_ERROR),
-          details(),
-          zone(TRI_UNKNOWN_MEM_ZONE),
-          json(nullptr) {
-      }
-
-      ~QueryResult () {
-        if (json != nullptr) {
-          TRI_FreeJson(zone, json);
-        }
-      }
-
-      int                             code;
-      std::string                     details;
-      std::unordered_set<std::string> bindParameters;
-      std::vector<std::string>        collectionNames;
-      TRI_memory_zone_t*              zone;
-      TRI_json_t*                     json;
+      std::string const        name;
+      TRI_transaction_type_e   accessType;
     };
 
   }

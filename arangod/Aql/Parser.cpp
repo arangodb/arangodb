@@ -136,7 +136,7 @@ QueryResult Parser::parse () {
   TRI_ASSERT(scopes->numActive() == 0);
 
   QueryResult result;
-  result.collectionNames = _ast->collectionNames();
+  result.collectionNames = _query->collectionNames();
   result.bindParameters  = _ast->bindParameters();
   result.json            = _ast->toJson(TRI_UNKNOWN_MEM_ZONE);
 
