@@ -169,7 +169,6 @@ void V8Executor::generateCodeList (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
   size_t const n = node->numMembers();
-  TRI_ASSERT(n >= 0);
 
   _buffer->appendText("[ ");
   for (size_t i = 0; i < n; ++i) {
@@ -190,7 +189,6 @@ void V8Executor::generateCodeArray (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
   size_t const n = node->numMembers();
-  TRI_ASSERT(n >= 0);
 
   _buffer->appendText("{ ");
   for (size_t i = 0; i < n; ++i) {

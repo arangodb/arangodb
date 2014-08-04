@@ -14,7 +14,7 @@ AQL is mainly a declarative language, meaning that in a query it is expressed
 what result should be achieved and not how. AQL aims to be human- readable and
 therefore uses keywords from the English language. Another design goal of AQL
 was client independency, meaning that the language and syntax are the same for
-all clients, no matter what programming language the clients might use.  Further
+all clients, no matter what programming language the clients may use.  Further
 design goals of AQL were the support of complex query patterns and the different
 data models ArangoDB offers.
 

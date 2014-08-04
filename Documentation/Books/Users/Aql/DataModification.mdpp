@@ -1,7 +1,6 @@
 !CHAPTER Data modification queries
 
-Up to including version 2.1, AQL supported data retrieval operations only.
-Starting with ArangoDB version 2.2, AQL also supports the following 
+As of ArangoDB version 2.2, AQL supports the following
 data-modification operations:
 
 - INSERT: insert new documents into a collection
@@ -18,8 +17,8 @@ iterate over a given list of documents. They can optionally be combined with
       UPDATE u WITH { status: 'inactive' } IN users
 
 Though there is no need to combine a data-modification query with other
-AQL operations such a *FOR* and *FILTER*. For example, the following 
-stripped-down update query will work, too. It will update one document
+AQL operations such as *FOR* and *FILTER*. For example, the following 
+stripped-down *update* query will work, too. It will *update* one document
 (with key *foo*) in collection *users*:
 
     UPDATE "foo" WITH { status: 'inactive' } IN users
@@ -29,20 +28,20 @@ collection per query. That means a data-modification query cannot modify
 data in multiple collections with a single query, though it is possible
 to read from one collection and modify data in another with one query.
 
-For example, to copy the contents of collection "users" into collection
+For example, to copy the contents of the collection "users" into the collection
 "backup":
 
     FOR u IN users
       INSERT u IN backup
 
-To remove documents in collection "backup" that have the same key as some
+To remove documents in the collection "backup" that have the same key as some
 matching documents in collection "users":
 
     FOR u IN users
       FILTER u.status == 'inactive'
       REMOVE u._key IN backup
 
-The name of the modified collection ("backup" in th above cases) must be 
+The name of the modified collection ("backup" in the above cases) must be 
 known to the AQL executor at query-compile time and cannot change at 
 runtime. Using a bind parameter to specify the collection name is allowed.
   
@@ -51,7 +50,7 @@ If a data-modification operation fails, it will be rolled back automatically
 as if it never happened.
 
 In a cluster, AQL data-modification queries are not executed transactionally.
-Additionally, update, replace and remove AQL queries currently require the 
+Additionally, *update*, *replace* and *remove* AQL queries currently require the 
 *_key* attribute to be specified for all documents that should be modified or 
-removed, even if a shard key attribute other than *_key* was chosen for the
-collection. This restriction might be lifted in a future release of ArangoDB.
+removed, even if a shared key attribute other than *_key* was chosen for the
+collection. This restriction may be overcome in a future release of ArangoDB.

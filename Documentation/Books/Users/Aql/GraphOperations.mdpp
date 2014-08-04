@@ -20,7 +20,7 @@ Hence the complexity of these functions depends of the chosen algorithm for this
 with *n* being the amount of vertices in the graph. For
 [Dijkstra](http://en.wikipedia.org/wiki/Dijkstra's_algorithm) it would be **O(x\*y\*n^2)** with *n* being
 the amount of vertices in the graph, *x* the amount of start vertices and *y* the amount of
-target vertices. Hence a suggestion might be to use Dijkstra when x\*y < n and the functions supports choosing your algorithm.
+target vertices. Hence a suggestion may be to use Dijkstra when x\*y < n and the functions supports choosing your algorithm.
 
 !SUBSECTION Edges and Vertices related functions
 
