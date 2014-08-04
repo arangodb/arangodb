@@ -95,7 +95,11 @@ struct Instanciator : public ExecutionNode::WalkerWorker {
         eb = new FilterBlock(static_cast<FilterNode const*>(en));
         break;
       }
-      case ExecutionNode::ROOT: {
+      case ExecutionNode::LIMIT: {
+        eb = new LimitBlock(static_cast<LimitNode const*>(en));
+        break;
+      }
+      case ExecutionNode::RETURN: {
         eb = new ReturnBlock(static_cast<ReturnNode const*>(en));
         root = eb;
         break;
