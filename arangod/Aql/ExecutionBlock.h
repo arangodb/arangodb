@@ -51,7 +51,7 @@ namespace triagens {
     class ExecutionBlock {
       public:
         ExecutionBlock (ExecutionNode const* ep)
-          : _exePlan(ep), _done(false), _depth(0), _varOverview(nullptr) { 
+          : _exeNode(ep), _done(false), _depth(0), _varOverview(nullptr) { 
         }
 
         virtual ~ExecutionBlock ();
@@ -448,7 +448,9 @@ namespace triagens {
           }
         }
 
-        bool skip (int number);
+        virtual bool hasMore ();
+
+        virtual bool skip (size_t number);
 
         virtual int64_t count () {
           return 0;
@@ -459,7 +461,7 @@ namespace triagens {
         }
 
         ExecutionNode const* getPlanNode () {
-          return _exePlan;
+          return _exeNode;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -468,7 +470,7 @@ namespace triagens {
 
       protected:
 
-        ExecutionNode const* _exePlan;
+        ExecutionNode const* _exeNode;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief our dependent nodes
@@ -629,7 +631,7 @@ namespace triagens {
             return res;
           }
 
-          auto p = reinterpret_cast<EnumerateCollectionNode const*>(_exePlan);
+          auto p = reinterpret_cast<EnumerateCollectionNode const*>(_exeNode);
 
           V8ReadTransaction trx(p->_vocbase, p->_collname);
   
