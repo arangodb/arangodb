@@ -48,6 +48,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     class ExecutionBlock {
+
       public:
         ExecutionBlock (ExecutionNode const* ep)
           : _exeNode(ep), _done(false), _depth(0), _varOverview(nullptr) { 
@@ -363,14 +364,14 @@ namespace triagens {
           }
 
           if (_buffer.empty()) {
-            if (! getBlock(1, 1000)) {
+            if (! getBlock(1, DefaultBatchSize)) {
               _done = true;
               return nullptr;
             }
             _pos = 0;
           }
 
-          TRI_ASSERT(_buffer.size() > 0);
+          TRI_ASSERT(! _buffer.empty());
 
           // Here, _buffer.size() is > 0 and _pos points to a valid place
           // in it.
@@ -451,10 +452,10 @@ namespace triagens {
           if (_done) {
             return false;
           }
-          if (_buffer.size() > 0) {
+          if (! _buffer.empty()) {
             return true;
           }
-          if (getBlock(1000, 1000)) {
+          if (getBlock(DefaultBatchSize, DefaultBatchSize)) {
             return true;
           }
 
@@ -499,11 +500,11 @@ namespace triagens {
           // kept our data structures OK.
           // If _buffer.size() == 0, we have to try to get another block
           // just to be sure to get the return value right:
-          if (_buffer.size() > 0) {
+          if (! _buffer.empty()) {
             return true;
           }
 
-          if (! getBlock(1000,1000)) {
+          if (! getBlock(DefaultBatchSize, DefaultBatchSize)) {
             _done = true;
             return false;
           }
@@ -575,6 +576,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::shared_ptr<VarOverview> _varOverview;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief batch size value
+////////////////////////////////////////////////////////////////////////////////
+  
+        static size_t const DefaultBatchSize = 1000;
 
     };
 
@@ -754,7 +761,12 @@ namespace triagens {
         bool moreDocuments () {
           _documents.clear();
 
-          int res = _trx->readOffset(_documents, _internalSkip, BatchSize, 0, TRI_QRY_NO_LIMIT, &_totalCount);
+          int res = _trx->readOffset(_documents, 
+                                     _internalSkip, 
+                                     static_cast<TRI_voc_size_t>(DefaultBatchSize), 
+                                     0, 
+                                     TRI_QRY_NO_LIMIT, 
+                                     &_totalCount);
 
           if (res != TRI_ERROR_NO_ERROR) {
             THROW_ARANGO_EXCEPTION(res);
@@ -780,41 +792,6 @@ namespace triagens {
           collectionName.push_back('/');
 
           initDocuments();
-         /* 
-          size_t const n = docs.size();
-
-          auto shaper = _trx->documentCollection()->getShaper();
-
-          // TODO: if _allDocs is not empty, its contents will leak
-          _allDocs.clear();
-          for (size_t i = 0; i < n; ++i) {
-            TRI_doc_mptr_copy_t mptr = docs[i];
-            TRI_shaped_json_t shaped;
-            TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, mptr.getDataPtr());
-
-            auto json = new triagens::basics::Json(shaper->_memoryZone, TRI_JsonShapedJson(shaper, &shaped));
-
-            try {
-              std::string id(collectionName);
-              id += std::string(TRI_EXTRACT_MARKER_KEY(&mptr));
-              (*json)("_id", triagens::basics::Json(id));
-              (*json)("_rev", triagens::basics::Json(std::to_string(mptr._rid))); 
-              (*json)("_key", triagens::basics::Json(TRI_EXTRACT_MARKER_KEY(&mptr)));
-
-              // TODO: add attributes _from and _to of edge collection
-
-              _allDocs.push_back(json);
-            }
-            catch (...) {
-              delete json;
-              throw;
-            }
-          }
-          
-          if (_allDocs.empty()) {
-            _done = true;
-          }
-          */
 
           return TRI_ERROR_NO_ERROR;
         }
@@ -857,7 +834,7 @@ namespace triagens {
           }
 
           if (_buffer.empty()) {
-            if (! ExecutionBlock::getBlock(1, 1000)) {
+            if (! ExecutionBlock::getBlock(1, DefaultBatchSize)) {
               _done = true;
               return nullptr;
             }
@@ -909,7 +886,7 @@ namespace triagens {
           }
 
           if (_buffer.empty()) {
-            if (! ExecutionBlock::getBlock(1000, 1000)) {
+            if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
               _done = true;
               return nullptr;
             }
@@ -998,11 +975,6 @@ namespace triagens {
 
         size_t _posInAllDocs;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief batch size value
-////////////////////////////////////////////////////////////////////////////////
-  
-        static TRI_voc_size_t const BatchSize = 3;
     };
 
 // -----------------------------------------------------------------------------
@@ -1248,7 +1220,7 @@ namespace triagens {
           }
 
           if (_buffer.empty()) {
-            if (! getBlock(1, 1000)) {
+            if (! getBlock(1, DefaultBatchSize)) {
               _done = true;
               return nullptr;
             }
@@ -1351,14 +1323,14 @@ namespace triagens {
           }
 
           if (_buffer.empty()) {
-            if (! getBlock(1, 1000)) {
+            if (! getBlock(1, DefaultBatchSize)) {
               _done = true;
               return false;
             }
             _pos = 0;
           }
 
-          TRI_ASSERT(_buffer.size() > 0);
+          TRI_ASSERT(! _buffer.empty());
 
           // Here, _buffer.size() is > 0 and _pos points to a valid place
           // in it.
