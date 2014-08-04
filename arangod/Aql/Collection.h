@@ -33,6 +33,9 @@
 #include "Basics/Common.h"
 #include "VocBase/transaction.h"
 
+struct TRI_vocbase_s;
+struct TRI_vocbase_col_s;
+
 namespace triagens {
   namespace aql {
 
@@ -44,16 +47,21 @@ namespace triagens {
       Collection& operator= (Collection const& other) = delete;
       
       Collection (std::string const& name,
+                  struct TRI_vocbase_s* vocbase,
                   TRI_transaction_type_e accessType) 
         : name(name),
+          vocbase(vocbase),
+          collection(nullptr),
           accessType(accessType) {
       }
       
       ~Collection () {
       }
 
-      std::string const        name;
-      TRI_transaction_type_e   accessType;
+      std::string const          name;
+      struct TRI_vocbase_s*      vocbase;
+      struct TRI_vocbase_col_s*  collection;
+      TRI_transaction_type_e     accessType;
     };
 
   }

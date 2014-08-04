@@ -42,7 +42,7 @@ using namespace triagens::aql;
 /// @brief create the engine
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionEngine::ExecutionEngine () 
+ExecutionEngine::ExecutionEngine ()
   : _blocks(),
     _root(nullptr) {
 

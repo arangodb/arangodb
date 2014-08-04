@@ -30,10 +30,11 @@
 
 #include <Basics/JsonHelper.h>
 
-#include "VocBase/document-collection.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
 #include "V8/v8-conv.h"
+#include "VocBase/document-collection.h"
+#include "VocBase/voc-shaper.h"
 
 namespace triagens {
   namespace aql {
@@ -50,20 +51,23 @@ namespace triagens {
 
       enum AqlValueType {
         JSON,
-        MPTR,
+        DOCUMENT,
         DOCVEC,
         RANGE
       };
 
       struct Range {
-        int64_t _low;
-        int64_t _high;
-        Range(int64_t low, int64_t high) : _low(low), _high(high) {}
+        int64_t const _low;
+        int64_t const _high;
+        Range (int64_t low, int64_t high) : _low(low), _high(high) {}
       };
 
       union {
         triagens::basics::Json*     _json;
-        TRI_doc_mptr_copy_t         _mptr;
+        struct {
+          TRI_document_collection_t* _document;
+          TRI_doc_mptr_copy_t        _mptr;
+        } _document;
         std::vector<AqlItemBlock*>* _vector;
         Range                       _range;
       };
@@ -74,10 +78,12 @@ namespace triagens {
         : _json(json), _type(JSON) {
       }
       
-      AqlValue (TRI_doc_mptr_copy_t mptr)
-        : _mptr(mptr), _type(MPTR) {
+      AqlValue (TRI_document_collection_t* document,
+                TRI_doc_mptr_copy_t mptr)
+        : _document{ document, mptr },
+          _type(DOCUMENT) {
       }
-
+      
       AqlValue (std::vector<AqlItemBlock*>* vector)
         : _vector(vector), _type(DOCVEC) {
       }
@@ -95,7 +101,8 @@ namespace triagens {
           case JSON: {
             return TRI_ObjectJson(_json->json());
           }
-          case MPTR: {
+
+          case DOCUMENT: {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
           }
 
@@ -122,8 +129,22 @@ namespace triagens {
             return _json->toString();
           }
 
-          case MPTR: {
-            return std::string("I am a master pointer");
+          case DOCUMENT: {
+            TRI_document_collection_t* document = _document._document;
+            TRI_shaper_t* shaper = document->getShaper();
+            TRI_shaped_json_t shaped;
+            TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, _document._mptr.getDataPtr());
+            triagens::basics::Json json(shaper->_memoryZone, TRI_JsonShapedJson(shaper, &shaped));
+
+            char const* key = TRI_EXTRACT_MARKER_KEY(&_document._mptr);
+            std::string id(document->_info._name);
+            id.push_back('/');
+            id += std::string(key);
+            json("_id", triagens::basics::Json(id));
+            json("_rev", triagens::basics::Json(std::to_string(_document._mptr._rid))); 
+            json("_key", triagens::basics::Json(key));
+            
+            return json.toString();
           }
 
           case DOCVEC: {
@@ -194,7 +215,7 @@ namespace triagens {
 /// @brief getValue, get the value of a variable
 ////////////////////////////////////////////////////////////////////////////////
 
-      AqlValue* getValue (size_t index, RegisterId varNr) {
+      AqlValue* getValue (size_t index, RegisterId varNr) const {
         if (_data == nullptr) {
           return nullptr;
         }
