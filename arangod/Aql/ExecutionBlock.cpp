@@ -57,7 +57,7 @@ void ExecutionBlock::walk (WalkerWorker* worker) {
     (*it)->walk(worker);
   }
   // Now handle a subquery:
-  if (_exePlan->getType() == ExecutionNode::SUBQUERY) {
+  if (_exeNode->getType() == ExecutionNode::SUBQUERY) {
     // auto p = static_cast<SubqueryBlock*>(this);
     if (worker->enterSubquery(this, nullptr)) { ; // p->_subquery
       // p->_subquery->walk(worker);
