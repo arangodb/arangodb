@@ -9,13 +9,13 @@ the ArangoDB package.
 
 Key features include:
 
-* *Schema-free schemata*: Let you combine the space efficiency of MySQL with
+* *Schema-free schemata*: Lets you combine the space efficiency of MySQL with
   the performance power of NoSQL
-* *Application server*: Use ArangoDB as an application server and fuse your application and
-  database together for maximal throughput
+* *Application server*: Use ArangoDB as an application server and fuse your
+  application and database together for maximal throughput
 * *JavaScript for all*: No language zoo, you can use one language from your
   browser to your back-end
-* *Flexible data modeling*: Model your data as combination of key-value pairs,
+* *Flexible data modeling*: Model your data as combinations of key-value pairs,
   documents or graphs - perfect for social relations
 * *Free index choice*: Use the correct index for your problem, may it be a skip
   list or a fulltext search 
