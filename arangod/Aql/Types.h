@@ -50,6 +50,7 @@ namespace triagens {
 
       enum AqlValueType {
         JSON,
+        MPTR,
         DOCVEC,
         RANGE
       };
@@ -62,6 +63,7 @@ namespace triagens {
 
       union {
         triagens::basics::Json*     _json;
+        TRI_doc_mptr_copy_t         _mptr;
         std::vector<AqlItemBlock*>* _vector;
         Range                       _range;
       };
@@ -70,6 +72,10 @@ namespace triagens {
 
       AqlValue (triagens::basics::Json* json)
         : _json(json), _type(JSON) {
+      }
+      
+      AqlValue (TRI_doc_mptr_copy_t mptr)
+        : _mptr(mptr), _type(MPTR) {
       }
 
       AqlValue (std::vector<AqlItemBlock*>* vector)
@@ -89,15 +95,21 @@ namespace triagens {
           case JSON: {
             return TRI_ObjectJson(_json->json());
           }
+          case MPTR: {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+          }
+
           case DOCVEC: {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
           }
+
           case RANGE: {
             v8::Handle<v8::Array> values = v8::Array::New();
             // TODO: fill range
             THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
             return values;
           }
+
           default: {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
           }
@@ -109,16 +121,23 @@ namespace triagens {
           case JSON: {
             return _json->toString();
           }
+
+          case MPTR: {
+            return std::string("I am a master pointer");
+          }
+
           case DOCVEC: {
             std::stringstream s;
             s << "I am a DOCVEC with " << _vector->size() << " blocks.";
             return s.str();
           }
+
           case RANGE: {
             std::stringstream s;
             s << "I am a range: " << _range._low << " .. " << _range._high;
             return s.str();
           }
+
           default:
             return std::string("");
         }
