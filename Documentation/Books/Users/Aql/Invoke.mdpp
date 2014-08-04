@@ -123,6 +123,6 @@ number of results and allow the server to apply optimizations.
 
 Please note that at the moment the server will always create the full result set for each query so 
 specifying or omitting the *count* attribute currently does not have any impact on query execution.
-This might change in the future. Future versions of ArangoDB might create result sets incrementally 
-on the server-side and might be able to apply optimizations if a result set is not fully fetched by 
+This may change in the future. Future versions of ArangoDB may create result sets incrementally 
+on the server-side and may be able to apply optimizations if a result set is not fully fetched by 
 a client.
