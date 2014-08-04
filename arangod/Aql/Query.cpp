@@ -36,7 +36,9 @@
 #include "Aql/ExecutionEngine.h"
 #include "BasicsC/json.h"
 #include "BasicsC/tri-strings.h"
+#include "Utils/AqlTransaction.h"
 #include "Utils/Exception.h"
+#include "Utils/RestTransactionContext.h"
 #include "VocBase/vocbase.h"
 
 using namespace triagens::aql;
@@ -164,15 +166,26 @@ void Query::registerError (int code,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief execute an AQL query - TODO: implement and determine return type
+/// @brief execute an AQL query 
 ////////////////////////////////////////////////////////////////////////////////
 
 QueryResult Query::execute () {
   try {
     Parser parser(this);
     parser.parse();
+
+    // put in bind parameters
     parser.ast()->injectBindParameters(_bindParameters);
+    // optimize the ast
     parser.ast()->optimize();
+
+    triagens::arango::AqlTransaction<triagens::arango::RestTransactionContext> trx(_vocbase, _collections.collections());
+
+    int res = trx.begin();
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return QueryResult(res, TRI_errno_string(res));
+    }
 
     auto plan = ExecutionPlan::instanciateFromAst(parser.ast());
 
@@ -187,6 +200,8 @@ QueryResult Query::execute () {
         while (nullptr != (value = root->getOne())) {
           auto val = value->getValue(0, 0);
           TRI_ASSERT(val != nullptr);
+
+          // TODO: remove debug output
           std::cout << val->toString() << std::endl;
           delete value;
         }
@@ -211,6 +226,7 @@ QueryResult Query::execute () {
     }
 
     delete plan;
+    trx.commit();
     
     QueryResult result(TRI_ERROR_NO_ERROR);
     // result.json = parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE);
