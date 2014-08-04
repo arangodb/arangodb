@@ -1,7 +1,7 @@
 !CHAPTER Extending AQL with User Functions
 
 AQL comes with a built-in set of functions, but it is no
-full-feature programming language.
+full-featured programming language.
 
 To add missing functionality or to simplify queries, users
 may add own functions to AQL. These functions can be written
