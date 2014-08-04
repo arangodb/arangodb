@@ -37,12 +37,20 @@
       this.editor.set(toFill);
     },
 
+    jsonContentChanged: function() {
+      this.enableSaveButton();
+    },
+
     render: function() {
       $(this.el).html(this.template.render({}));
+      this.disableSaveButton();
       this.breadcrumb();
+
+      var self = this;
 
       var container = document.getElementById('documentEditor');
       var options = {
+        change: function(){self.jsonContentChanged();},
         search: true,
         mode: 'tree',
         modes: ['tree', 'code']
@@ -99,7 +107,13 @@
 
     saveDocument: function () {
       var model, result;
-      model = this.editor.get();
+
+      try {
+        model = this.editor.get();
+      }
+      catch (e) {
+        this.errorConfirmation();
+      }
 
       model = JSON.stringify(model);
 
@@ -119,8 +133,37 @@
       }
 
       if (result === true) {
-        $('#showSaveState').fadeIn(1000).fadeOut(1000);
+        this.successConfirmation();
+        this.disableSaveButton();
       }
+    },
+
+    successConfirmation: function () {
+      $('#documentEditor .tree').animate({backgroundColor: '#C6FFB0'}, 500);
+      $('#documentEditor .tree').animate({backgroundColor: '#FFFFF'}, 500);
+
+      $('#documentEditor .ace_content').animate({backgroundColor: '#C6FFB0'}, 500);
+      $('#documentEditor .ace_content').animate({backgroundColor: '#FFFFF'}, 500);
+    },
+
+    errorConfirmation: function () {
+      $('#documentEditor .tree').animate({backgroundColor: '#FFB0B0'}, 500);
+      $('#documentEditor .tree').animate({backgroundColor: '#FFFFF'}, 500);
+
+      $('#documentEditor .ace_content').animate({backgroundColor: '#FFB0B0'}, 500);
+      $('#documentEditor .ace_content').animate({backgroundColor: '#FFFFF'}, 500);
+    },
+
+    enableSaveButton: function () {
+      $('#saveDocumentButton').prop('disabled', false);
+      $('#saveDocumentButton').addClass('button-success');
+      $('#saveDocumentButton').removeClass('button-close');
+    },
+
+    disableSaveButton: function () {
+      $('#saveDocumentButton').prop('disabled', true);
+      $('#saveDocumentButton').addClass('button-close');
+      $('#saveDocumentButton').removeClass('button-success');
     },
 
     breadcrumb: function () {

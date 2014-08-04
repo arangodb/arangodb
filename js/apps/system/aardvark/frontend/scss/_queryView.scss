@@ -263,6 +263,7 @@
 
 .query-div {
   display: none;
+  min-height: 360px;
 
   &> * {
     border: 0 !important;
