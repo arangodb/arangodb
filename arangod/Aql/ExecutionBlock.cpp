@@ -39,6 +39,16 @@ int ExecutionBlock::bind (std::map<std::string, struct TRI_json_s*>* params) {
   return TRI_ERROR_NO_ERROR;
 }
 
+bool ExecutionBlock::hasMore () {
+  // FIXME: do this correctly!
+  return ! _done;
+}
+
+bool ExecutionBlock::skip (size_t number) {
+  return true;
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief functionality to walk an execution block recursively
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,7 +67,7 @@ void ExecutionBlock::walk (WalkerWorker* worker) {
     (*it)->walk(worker);
   }
   // Now handle a subquery:
-  if (_exePlan->getType() == ExecutionNode::SUBQUERY) {
+  if (_exeNode->getType() == ExecutionNode::SUBQUERY) {
     // auto p = static_cast<SubqueryBlock*>(this);
     if (worker->enterSubquery(this, nullptr)) { ; // p->_subquery
       // p->_subquery->walk(worker);
