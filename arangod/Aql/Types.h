@@ -342,6 +342,38 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief slice/clone for a subset
+////////////////////////////////////////////////////////////////////////////////
+
+      AqlItemBlock* slice (vector<size_t>& chosen, size_t from, size_t to) {
+        TRI_ASSERT(from < to && to <= chosen.size());
+
+        std::unordered_map<AqlValue*, AqlValue*> cache;
+        auto res = new AqlItemBlock(to - from, _nrRegs);
+        for (size_t row = from; row < to; row++) {
+          for (RegisterId col = 0; col < _nrRegs; col++) {
+            AqlValue* a = _data[chosen[row] * _nrRegs + col];
+
+            if (a == nullptr) {
+              res->_data[(row - from) * _nrRegs + col] = nullptr;
+            }
+            else {
+              auto it = cache.find(a);
+              if (it == cache.end()) {
+                AqlValue* b = a->clone();
+                res->_data[(row - from) * _nrRegs + col] = b;
+                cache.insert(make_pair(a,b));
+              }
+              else {
+                res->_data[(row - from) * _nrRegs + col] = it->second;
+              }
+            }
+          }
+        }
+        return res;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief splice multiple blocks, note that the new block now owns all
 /// AqlValue pointers in the old blocks, therefore, the latter are all
 /// set to nullptr, just to be sure.

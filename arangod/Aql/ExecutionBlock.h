@@ -395,7 +395,7 @@ namespace triagens {
             return nullptr;
           }
 
-          // Here, _buffer.size() is > 0 and _pos points to a valid place
+          // Here, if _buffer.size() is > 0 then _pos points to a valid place
           // in it.
           size_t total = 0;
           vector<AqlItemBlock*> collector;
@@ -1096,10 +1096,69 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief internal function to get another block
+////////////////////////////////////////////////////////////////////////////////
+
+        bool getBlock (size_t atLeast, size_t atMost) {
+          bool res;
+          while (true) {  // will be left by break or return
+            res = ExecutionBlock::getBlock(atLeast, atMost);
+            if (res == false) {
+              return false;
+            }
+            if (_buffer.size() > 1) {
+              break;  // Already have a current block
+            }
+            // Now decide about these docs:
+            _chosen.clear();
+            AqlItemBlock* cur = _buffer.front();
+            _chosen.reserve(cur->size());
+            for (size_t i = 0; i < cur->size(); ++i) {
+              if (takeItem(cur, i)) {
+                _chosen.push_back(i);
+              }
+            }
+            if (_chosen.size() > 0) {
+              break;   // OK, there are some docs in the result
+            }
+            _buffer.pop_front();  // Block was useless, just try again
+          }
+          return true;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief getOne
 ////////////////////////////////////////////////////////////////////////////////
 
         AqlItemBlock* getOne () {
+          if (_done) {
+            return nullptr;
+          }
+
+          if (_buffer.empty()) {
+            if (! getBlock(1, 1000)) {
+              _done = true;
+              return nullptr;
+            }
+            _pos = 0;
+          }
+
+          TRI_ASSERT(_buffer.size() > 0);
+
+          // Here, _buffer.size() is > 0 and _pos points to a valid place
+          // in it.
+
+          AqlItemBlock* res;
+          AqlItemBlock* cur;
+          cur = _buffer.front();
+          res = cur->slice(_chosen[_pos], _chosen[_pos+ 1]);
+          _pos++;
+          if (_pos >= _chosen.size()) {
+            _buffer.pop_front();
+            delete cur;
+            _pos = 0;
+          }
+          return res;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1107,6 +1166,67 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
+          if (_done) {
+            return nullptr;
+          }
+
+          // Here, if _buffer.size() is > 0 then _pos points to a valid place
+          // in it.
+          size_t total = 0;
+          vector<AqlItemBlock*> collector;
+          AqlItemBlock* res;
+          while (total < atLeast) {
+            if (_buffer.empty()) {
+              if (! getBlock(atLeast - total, atMost - total)) {
+                _done = true;
+                break;
+              }
+              _pos = 0;
+            }
+            // If we get here, then _buffer.size() > 0 and _pos points to a
+            // valid place in it.
+            AqlItemBlock* cur = _buffer.front();
+            if (_chosen.size() - _pos + total > atMost) {
+              // The current block of chosen ones is too large for atMost:
+              collector.push_back(cur->slice(_chosen, 
+                                  _pos, _pos + (atMost - total)));
+              _pos += atMost - total;
+              total = atMost;
+            }
+            else if (_pos > 0 || _chosen.size() < cur->size()) {
+              // The current block fits into our result, but it is already
+              // half-eaten or needs to be copied anyway:
+              collector.push_back(cur->slice(_chosen, _pos, _chosen.size()));
+              total += _chosen.size() - _pos;
+              delete cur;
+              _buffer.pop_front();
+              _chosen.clear();
+              _pos = 0;
+            } 
+            else {
+              // The current block fits into our result and is fresh and
+              // takes them all, so we can just hand it on:
+              collector.push_back(cur);
+              total += cur->size();
+              _buffer.pop_front();
+              _chosen.clear();
+              _pos = 0;
+            }
+          }
+          if (collector.empty()) {
+            return nullptr;
+          }
+          else if (collector.size() == 1) {
+            return collector[0];
+          }
+          else {
+            res = AqlItemBlock::splice(collector);
+            for (auto it = collector.begin(); 
+                 it != collector.end(); ++it) {
+              delete (*it);
+            }
+            return res;
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1114,6 +1234,24 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool hasMore () {
+          if (_done) {
+            return false;
+          }
+
+          if (_buffer.empty()) {
+            if (! getBlock(1, 1000)) {
+              _done = true;
+              return false;
+            }
+            _pos = 0;
+          }
+
+          TRI_ASSERT(_buffer.size() > 0);
+
+          // Here, _buffer.size() is > 0 and _pos points to a valid place
+          // in it.
+
+          return true;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1121,6 +1259,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool skip (size_t number) {
+          // FIXME: to be implemented
+          return false;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1146,6 +1286,13 @@ namespace triagens {
       private:
 
         RegisterId _inReg;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief vector of indices of those documents in the current block
+/// that are chosen
+////////////////////////////////////////////////////////////////////////////////
+
+        vector<size_t> _chosen;
 
     };
 
