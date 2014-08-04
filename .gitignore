@@ -109,3 +109,5 @@ js/apps/*
 
 3rdParty/etcd/src/
 Documentation/Books/allComments.txt
+
+.gdb-history
