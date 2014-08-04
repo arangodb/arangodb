@@ -691,12 +691,15 @@ namespace triagens {
 
         int execute () {
           int res = ExecutionBlock::execute();
+
           if (res != TRI_ERROR_NO_ERROR) {
             return res;
           }
+
           if (_allDocs.empty()) {
             _done = true;
           }
+
           return TRI_ERROR_NO_ERROR;
         }
 
@@ -709,6 +712,7 @@ namespace triagens {
           for (auto it = _allDocs.begin(); it != _allDocs.end(); ++it) {
             delete *it;
           }
+
           _allDocs.clear();
           return res;
         }
@@ -721,6 +725,7 @@ namespace triagens {
           if (_done) {
             return nullptr;
           }
+
           if (_buffer.empty()) {
             if (! ExecutionBlock::getBlock(1, 1000)) {
               _done = true;
@@ -785,9 +790,18 @@ namespace triagens {
 
           auto res = new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]);
           TRI_ASSERT(cur->getNrRegs() <= res->getNrRegs());
+
+          // only copy 1st row of registers inherited from previous frame(s)
+          for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
+            res->setValue(0, i, cur->getValue(_pos, i)->clone());
+          }
+
           for (size_t j = 0; j < toSend; j++) {
-            for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
-              res->setValue(j, i, cur->getValue(_pos, i)->clone());
+            if (j > 0) {
+              // re-use already copied aqlvalues
+              for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
+                res->setValue(j, i, cur->getValue(0, i));
+              }
             }
             // The result is in the first variable of this depth,
             // we do not need to do a lookup in _varOverview->varInfo,
