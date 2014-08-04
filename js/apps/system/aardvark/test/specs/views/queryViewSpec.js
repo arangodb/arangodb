@@ -63,7 +63,9 @@
         'keypress #aqlEditor': 'aqlShortcuts',
         'click #arangoQueryTable .table-cell0': 'editCustomQuery',
         'click #arangoQueryTable .table-cell1': 'editCustomQuery',
-        'click #arangoQueryTable .table-cell2 a': 'deleteAQL'
+        'click #arangoQueryTable .table-cell2 a': 'deleteAQL',
+        'click #confirmQueryImport': 'importCustomQueries',
+        'click #confirmQueryExport': 'exportCustomQueries'
       };
       expect(events).toEqual(view.events);
     });
