@@ -394,7 +394,7 @@ namespace triagens {
             return nullptr;
           }
 
-          // Here, _buffer.size() is > 0 and _pos points to a valid place
+          // Here, if _buffer.size() is > 0 then _pos points to a valid place
           // in it.
           size_t total = 0;
           vector<AqlItemBlock*> collector;
@@ -447,16 +447,79 @@ namespace triagens {
           }
         }
 
-        virtual bool hasMore ();
+        virtual bool hasMore () {
+          if (_done) {
+            return false;
+          }
+          if (_buffer.size() > 0) {
+            return true;
+          }
+          if (getBlock(1000, 1000)) {
+            return true;
+          }
 
-        virtual bool skip (size_t number);
+          return ! _done;
+        }
+
+        virtual bool skip (size_t number) {
+          if (_done) {
+            return false;
+          }
+          
+          // Here, if _buffer.size() is > 0 then _pos points to a valid place
+          // in it.
+
+          size_t skipped = 0;
+          vector<AqlItemBlock*> collector;
+          while (skipped < number) {
+            if (_buffer.empty()) {
+              if (! getBlock(number - skipped, number - skipped)) {
+                _done = true;
+                return false;
+              }
+              _pos = 0;
+            }
+            AqlItemBlock* cur = _buffer.front();
+            if (cur->size() - _pos + skipped > number) {
+              // The current block is too large:
+              _pos += number - skipped;
+              skipped = number;
+            }
+            else {
+              // The current block fits into our result, but it might be
+              // half-eaten already:
+              skipped += cur->size() - _pos;
+              delete cur;
+              _buffer.pop_front();
+              _pos = 0;
+            } 
+          }
+
+          // When we get here, we have skipped enough documents and
+          // kept our data structures OK.
+          // If _buffer.size() == 0, we have to try to get another block
+          // just to be sure to get the return value right:
+          if (_buffer.size() > 0) {
+            return true;
+          }
+
+          if (! getBlock(1000,1000)) {
+            _done = true;
+            return false;
+          }
+          return true;
+        }
 
         virtual int64_t count () {
-          return 0;
+          return _dependencies[0]->count();
         }
 
         virtual int64_t remaining () {
-          return 0;
+          int64_t sum = 0;
+          for (auto it = _buffer.begin(); it != _buffer.end(); ++it) {
+            sum += (*it)->size();
+          }
+          return sum + _dependencies[0]->remaining();
         }
 
         ExecutionNode const* getPlanNode () {
@@ -478,7 +541,13 @@ namespace triagens {
         std::vector<ExecutionBlock*> _dependencies;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief this is our buffer for the items, it is a deque of AqlItemBlocks
+/// @brief this is our buffer for the items, it is a deque of AqlItemBlocks.
+/// We keep the following invariant between this and the other two variables
+/// _pos and _done: If _buffer.size() != 0, then 0 <= _pos < _buffer[0]->size()
+/// and _buffer[0][_pos] is the next item to be handed on. If _done is true,
+/// then no more documents will ever be returned. _done will be set to
+/// true if and only if we have no more data ourselves (i.e. _buffer.size()==0)
+/// and we have unsuccessfully tried to get another block from our dependency.
 ////////////////////////////////////////////////////////////////////////////////
 
         std::deque<AqlItemBlock*> _buffer;
@@ -586,7 +655,46 @@ namespace triagens {
           return res;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hasMore
+////////////////////////////////////////////////////////////////////////////////
+
+        bool hasMore () {
+          return ! _done;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief skip
+////////////////////////////////////////////////////////////////////////////////
+
+        bool skip (size_t number) {
+          if (_done) {
+            return true;
+          }
+          if (number > 0) {
+            _done = true;
+          }
+          return _done;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief count
+////////////////////////////////////////////////////////////////////////////////
+
+        int64_t count () {
+          return 1;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remaining
+////////////////////////////////////////////////////////////////////////////////
+
+        int64_t remaining () {
+          return _done ? 0 : 1;
+        }
+
     };
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          EnumerateCollectionBlock
@@ -905,13 +1013,25 @@ namespace triagens {
 
       public:
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
         CalculationBlock (CalculationNode const* en)
           : ExecutionBlock(en), _expression(en->expression()), _outReg(0) {
 
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
         ~CalculationBlock () {
         } 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize
+////////////////////////////////////////////////////////////////////////////////
 
         int initialize () {
           int res = ExecutionBlock::initialize();
@@ -939,6 +1059,12 @@ namespace triagens {
           return TRI_ERROR_NO_ERROR;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief doEvaluation, private helper to do the work
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
         void doEvaluation (AqlItemBlock* result) {
           TRI_ASSERT(result != nullptr);
 
@@ -953,6 +1079,12 @@ namespace triagens {
             result->setValue(i, _outReg, res);
           }
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getOne
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
 
         virtual AqlItemBlock* getOne () {
           AqlItemBlock* res = ExecutionBlock::getOne();
@@ -970,6 +1102,10 @@ namespace triagens {
             throw;
           }
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSome
+////////////////////////////////////////////////////////////////////////////////
 
         virtual AqlItemBlock* getSome (size_t atLeast, 
                                        size_t atMost) {
@@ -995,10 +1131,426 @@ namespace triagens {
 
       private:
         Expression* _expression;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief info about input variables
+////////////////////////////////////////////////////////////////////////////////
+
         std::vector<Variable*> _inVars;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief info about input registers
+////////////////////////////////////////////////////////////////////////////////
+
         std::vector<RegisterId> _inRegs;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief output register
+////////////////////////////////////////////////////////////////////////////////
+
         RegisterId _outReg;
 
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       FilterBlock
+// -----------------------------------------------------------------------------
+
+    class FilterBlock : public ExecutionBlock {
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+        FilterBlock (FilterNode const* ep)
+          : ExecutionBlock(ep) {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+        ~FilterBlock () {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize
+////////////////////////////////////////////////////////////////////////////////
+
+        int initialize () {
+          int res = ExecutionBlock::initialize();
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
+
+          // We know that staticAnalysis has been run, so _varOverview is set up
+          
+          auto en = static_cast<FilterNode const*>(getPlanNode());
+
+          auto it = _varOverview->varInfo.find(en->_inVariable->id);
+          TRI_ASSERT(it != _varOverview->varInfo.end());
+          _inReg = it->second.registerId;
+          
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal function to actually decide
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+        bool takeItem (AqlItemBlock* items, size_t index) {
+          AqlValue* v = items->getValue(index, _inReg);
+          return v->isTrue();
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal function to get another block
+////////////////////////////////////////////////////////////////////////////////
+
+        bool getBlock (size_t atLeast, size_t atMost) {
+          bool res;
+          while (true) {  // will be left by break or return
+            res = ExecutionBlock::getBlock(atLeast, atMost);
+            if (res == false) {
+              return false;
+            }
+            if (_buffer.size() > 1) {
+              break;  // Already have a current block
+            }
+            // Now decide about these docs:
+            _chosen.clear();
+            AqlItemBlock* cur = _buffer.front();
+            _chosen.reserve(cur->size());
+            for (size_t i = 0; i < cur->size(); ++i) {
+              if (takeItem(cur, i)) {
+                _chosen.push_back(i);
+              }
+            }
+            if (_chosen.size() > 0) {
+              break;   // OK, there are some docs in the result
+            }
+            _buffer.pop_front();  // Block was useless, just try again
+          }
+          return true;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getOne
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlItemBlock* getOne () {
+          if (_done) {
+            return nullptr;
+          }
+
+          if (_buffer.empty()) {
+            if (! getBlock(1, 1000)) {
+              _done = true;
+              return nullptr;
+            }
+            _pos = 0;
+          }
+
+          TRI_ASSERT(_buffer.size() > 0);
+
+          // Here, _buffer.size() is > 0 and _pos points to a valid place
+          // in it.
+
+          AqlItemBlock* res;
+          AqlItemBlock* cur;
+          cur = _buffer.front();
+          res = cur->slice(_chosen[_pos], _chosen[_pos+ 1]);
+          _pos++;
+          if (_pos >= _chosen.size()) {
+            _buffer.pop_front();
+            delete cur;
+            _pos = 0;
+          }
+          return res;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSome
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
+          if (_done) {
+            return nullptr;
+          }
+
+          // Here, if _buffer.size() is > 0 then _pos points to a valid place
+          // in it.
+          size_t total = 0;
+          vector<AqlItemBlock*> collector;
+          AqlItemBlock* res;
+          while (total < atLeast) {
+            if (_buffer.empty()) {
+              if (! getBlock(atLeast - total, atMost - total)) {
+                _done = true;
+                break;
+              }
+              _pos = 0;
+            }
+            // If we get here, then _buffer.size() > 0 and _pos points to a
+            // valid place in it.
+            AqlItemBlock* cur = _buffer.front();
+            if (_chosen.size() - _pos + total > atMost) {
+              // The current block of chosen ones is too large for atMost:
+              collector.push_back(cur->slice(_chosen, 
+                                  _pos, _pos + (atMost - total)));
+              _pos += atMost - total;
+              total = atMost;
+            }
+            else if (_pos > 0 || _chosen.size() < cur->size()) {
+              // The current block fits into our result, but it is already
+              // half-eaten or needs to be copied anyway:
+              collector.push_back(cur->slice(_chosen, _pos, _chosen.size()));
+              total += _chosen.size() - _pos;
+              delete cur;
+              _buffer.pop_front();
+              _chosen.clear();
+              _pos = 0;
+            } 
+            else {
+              // The current block fits into our result and is fresh and
+              // takes them all, so we can just hand it on:
+              collector.push_back(cur);
+              total += cur->size();
+              _buffer.pop_front();
+              _chosen.clear();
+              _pos = 0;
+            }
+          }
+          if (collector.empty()) {
+            return nullptr;
+          }
+          else if (collector.size() == 1) {
+            return collector[0];
+          }
+          else {
+            res = AqlItemBlock::splice(collector);
+            for (auto it = collector.begin(); 
+                 it != collector.end(); ++it) {
+              delete (*it);
+            }
+            return res;
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hasMore
+////////////////////////////////////////////////////////////////////////////////
+
+        bool hasMore () {
+          if (_done) {
+            return false;
+          }
+
+          if (_buffer.empty()) {
+            if (! getBlock(1, 1000)) {
+              _done = true;
+              return false;
+            }
+            _pos = 0;
+          }
+
+          TRI_ASSERT(_buffer.size() > 0);
+
+          // Here, _buffer.size() is > 0 and _pos points to a valid place
+          // in it.
+
+          return true;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief skip
+////////////////////////////////////////////////////////////////////////////////
+
+        bool skip (size_t number) {
+          // FIXME: to be implemented
+          return false;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief count
+////////////////////////////////////////////////////////////////////////////////
+
+        int64_t count () {
+          return -1;   // refuse to work
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remaining
+////////////////////////////////////////////////////////////////////////////////
+
+        int64_t remaining () {
+          return -1;   // refuse to work
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief input register
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+        RegisterId _inReg;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief vector of indices of those documents in the current block
+/// that are chosen
+////////////////////////////////////////////////////////////////////////////////
+
+        vector<size_t> _chosen;
+
+    };
+
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       LimitBlock
+// -----------------------------------------------------------------------------
+
+    class LimitBlock : public ExecutionBlock {
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+        LimitBlock (LimitNode const* ep)
+          : ExecutionBlock(ep), _offset(ep->_offset), _limit(ep->_limit),
+            _state(0) {  // start in the beginning
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+        ~LimitBlock () {
+        } 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize
+////////////////////////////////////////////////////////////////////////////////
+
+        int initialize () {
+          int res = ExecutionBlock::initialize();
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
+          _state = 0;
+          _count = 0;
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getOne
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual AqlItemBlock* getOne () {
+          if (_state == 2) {
+            return nullptr;
+          }
+
+          if (_state == 0) {
+            if (_offset > 0) {
+              ExecutionBlock::skip(_offset);
+              _state = 1;
+              _count = 0;
+              if (_limit == 0) {
+                _state = 2;
+                return nullptr;
+              }
+            }
+          }
+
+          // If we get to here, _state == 1 and _count < _limit
+
+          // Fetch one from above, possibly using our _buffer:
+          auto res = ExecutionBlock::getOne();
+          if (res == nullptr) {
+            _state = 2;
+            return res;
+          }
+          TRI_ASSERT(res->size() == 1);
+
+          if (++_count >= _limit) {
+            _state = 2;
+          }
+
+          return res;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSome
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual AqlItemBlock* getSome (size_t atLeast, 
+                                       size_t atMost) {
+          if (_state == 2) {
+            return nullptr;
+          }
+
+          if (_state == 0) {
+            if (_offset > 0) {
+              ExecutionBlock::skip(_offset);
+              _state = 1;
+              _count = 0;
+              if (_limit == 0) {
+                _state = 2;
+                return nullptr;
+              }
+            }
+          }
+
+          // If we get to here, _state == 1 and _count < _limit
+
+          if (atMost > _limit - _count) {
+            atMost = _limit - _count;
+            if (atLeast > atMost) {
+              atLeast = atMost;
+            }
+          }
+
+          auto res = ExecutionBlock::getSome(atLeast, atMost);
+          if (res == nullptr) {
+            return res;
+          }
+          _count += res->size();
+          if (_count >= _limit) {
+            _state = 2;
+          }
+
+          return res;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _offset
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t _offset;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _limit
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t _limit;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _count, number of items already handed on
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t _count;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _state, 0 is beginning, 1 is after offset, 2 is done
+////////////////////////////////////////////////////////////////////////////////
+
+        int _state;
     };
 
 // -----------------------------------------------------------------------------
@@ -1009,13 +1561,25 @@ namespace triagens {
 
       public:
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
         ReturnBlock (ReturnNode const* ep)
           : ExecutionBlock(ep) {
 
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
         ~ReturnBlock () {
         } 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getOne
+////////////////////////////////////////////////////////////////////////////////
 
         virtual AqlItemBlock* getOne () {
           // Fetch one from above, possibly using our _buffer:
@@ -1036,6 +1600,10 @@ namespace triagens {
           delete res;
           return stripped;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSome
+////////////////////////////////////////////////////////////////////////////////
 
         virtual AqlItemBlock* getSome (size_t atLeast, 
                                        size_t atMost) {

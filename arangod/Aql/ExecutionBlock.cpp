@@ -39,16 +39,6 @@ int ExecutionBlock::bind (std::map<std::string, struct TRI_json_s*>* params) {
   return TRI_ERROR_NO_ERROR;
 }
 
-bool ExecutionBlock::hasMore () {
-  // FIXME: do this correctly!
-  return ! _done;
-}
-
-bool ExecutionBlock::skip (size_t number) {
-  return true;
-}
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief functionality to walk an execution block recursively
 ////////////////////////////////////////////////////////////////////////////////

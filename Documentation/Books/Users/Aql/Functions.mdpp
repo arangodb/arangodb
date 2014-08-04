@@ -417,7 +417,7 @@ AQL supports the following functions to operate on list values:
 
 - *UNIQUE(list)*: Returns all unique elements in *list*. To determine
   uniqueness, the function will use the comparison order.
-  Calling this function might return the unique elements in any order.
+  Calling this function may return the unique elements in any order.
 
 - *UNION(list1, list2, ...)*: Returns the union of all lists specified.
   The function expects at least two list values as its arguments. The result is a list
@@ -714,7 +714,7 @@ Please use [Graph operations](../Aql/GraphOperations.md) instead.
   The result of the function is a list of paths. Paths of length 0 will also be returned. Each 
   path is a document consisting of the following attributes:
   - *vertices*: list of vertices visited along the path
-  - *edges*: list of edges visited along the path (might be empty)
+  - *edges*: list of edges visited along the path (may be empty)
   - *source*: start vertex of path
   - *destination*: destination vertex of path
 
@@ -892,8 +892,8 @@ Please use [Graph operations](../Aql/GraphOperations.md) instead.
 When using one of AQL's graph functions please make sure that the graph does not contain cycles,
 or that you at least specify some maximum depth or uniqueness criteria for a traversal. 
 
-If no bounds are set, a traversal might run into an endless loop in a cyclic graph or sub-graph,
-and even in a non-cyclic graph, traversing far into the graph might consume a lot of processing
+If no bounds are set, a traversal may run into an endless loop in a cyclic graph or sub-graph,
+and even in a non-cyclic graph, traversing far into the graph may consume a lot of processing
 time and memory for the result set.
 
 **Warning Deprecated**
