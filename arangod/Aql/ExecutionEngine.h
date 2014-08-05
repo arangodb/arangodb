@@ -32,6 +32,8 @@
 
 #include "Basics/Common.h"
 
+#include "Utils/AqlTransaction.h"
+
 namespace triagens {
   namespace aql {
 
@@ -54,7 +56,7 @@ namespace triagens {
 /// @brief create the engine
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionEngine ();
+        ExecutionEngine (AQL_TRANSACTION_V8* trx);
 
       public:
 
@@ -74,7 +76,8 @@ namespace triagens {
 /// @brief create an execution engine from a plan
 ////////////////////////////////////////////////////////////////////////////////
 
-        static ExecutionEngine* instanciateFromPlan (ExecutionNode*);
+        static ExecutionEngine* instanciateFromPlan (AQL_TRANSACTION_V8*,
+                                                     ExecutionNode*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the root block 
@@ -83,6 +86,14 @@ namespace triagens {
         ExecutionBlock* root () const {
           TRI_ASSERT(_root != nullptr);
           return _root;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the transaction
+////////////////////////////////////////////////////////////////////////////////
+        
+        AQL_TRANSACTION_V8* getTransaction () const {
+          return _trx;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -108,6 +119,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ExecutionBlock*              _root;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a pointer to the transaction for this query
+////////////////////////////////////////////////////////////////////////////////
+
+        AQL_TRANSACTION_V8*          _trx;
 
     };
 

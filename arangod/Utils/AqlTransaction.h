@@ -36,6 +36,7 @@
 #include "Cluster/ServerState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
+#include "Utils/V8TransactionContext.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
 

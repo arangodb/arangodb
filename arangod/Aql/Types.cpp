@@ -30,6 +30,46 @@
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy, explicit destruction, only when needed
+////////////////////////////////////////////////////////////////////////////////
+
+void AqlValue::destroy () {
+  switch (_type) {
+    case JSON: {
+      if (_json != nullptr) {
+        delete _json;
+      }
+      break;
+    }
+    case DOCVEC: {
+      if (_vector != nullptr) {
+        for (auto it = _vector->begin(); it != _vector->end(); ++it) {
+          delete *it;
+        }
+        delete _vector;
+      }
+      delete _vector;
+      break;
+    }
+    case RANGE: {
+      delete _range;
+      break;
+    }
+    case SHAPED: {
+      // do nothing here, since data pointers need not be freed
+      break;
+    }
+    default: {
+      TRI_ASSERT(false);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone for recursive copying
+////////////////////////////////////////////////////////////////////////////////
+
 AqlValue AqlValue::clone () const {
   switch (_type) {
     case JSON: {
@@ -37,7 +77,7 @@ AqlValue AqlValue::clone () const {
     }
 
     case SHAPED: {
-      return AqlValue(_shaped);
+      return AqlValue(_marker);
     }
 
     case DOCVEC: {
@@ -50,7 +90,7 @@ AqlValue AqlValue::clone () const {
     }
 
     case RANGE: {
-      return AqlValue(_range._low, _range._high);
+      return AqlValue(_range->_low, _range->_high);
     }
 
     default: {
