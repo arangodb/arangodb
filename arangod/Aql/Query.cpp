@@ -201,13 +201,14 @@ QueryResult Query::execute () {
         root->execute();
  
         AqlItemBlock* value;
-
+    
         while (nullptr != (value = root->getOne())) {
           AqlValue val = value->getValue(0, 0);
           TRI_ASSERT(! val.isEmpty());
-          
+          auto doc = value->getDocumentCollection(0);
+          json.add(val.toJson(doc)); 
           // TODO: remove debug output
-          std::cout << val.toString(value->getDocumentCollections()[0]) << std::endl;
+          //std::cout << val.toString(value->getDocumentCollections()[0]) << std::endl;
           delete value;
         }
 
