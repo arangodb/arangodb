@@ -177,7 +177,8 @@ namespace triagens {
             id.push_back('/');
             id += std::string(key);
             json("_id", triagens::basics::Json(id));
-            json("_rev", triagens::basics::Json(std::to_string( 17 ))); // TRI_EXTRACT_MARKER_RID))); 
+            json("_rev", triagens::basics::Json(std::to_string(
+                    TRI_EXTRACT_MARKER_RID(_marker) )));
             json("_key", triagens::basics::Json(key));
             
             return json.toString();
@@ -198,6 +199,51 @@ namespace triagens {
           default:
             return std::string("");
         }
+      }
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson method
+////////////////////////////////////////////////////////////////////////////////
+      
+      triagens::basics::Json toJson (TRI_document_collection_t const* document) {
+        switch (_type) {
+          case JSON: {
+            return *_json;
+          }
+
+          case SHAPED: {
+            TRI_shaper_t* shaper = document->getShaper();
+            TRI_shaped_json_t shaped;
+            TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, _marker);
+            triagens::basics::Json json(shaper->_memoryZone,
+                TRI_JsonShapedJson(shaper, &shaped));
+
+            char const* key = TRI_EXTRACT_MARKER_KEY(_marker);
+            std::string id(document->_info._name);
+            id.push_back('/');
+            id += std::string(key);
+            json("_id", triagens::basics::Json(id));
+            json("_rev", triagens::basics::Json(std::to_string(
+                    TRI_EXTRACT_MARKER_RID(_marker) )));
+            json("_key", triagens::basics::Json(key));
+            
+            return json;
+          }
+          
+          case DOCVEC: {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+          }
+          
+          case RANGE: {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+          }
+
+          case EMPTY: {
+            return triagens::basics::Json();
+          }
+        }
+
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
 ////////////////////////////////////////////////////////////////////////////////
