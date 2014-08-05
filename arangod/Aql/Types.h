@@ -430,6 +430,9 @@ namespace triagens {
 
         std::unordered_map<AqlValue, AqlValue> cache;
         auto res = new AqlItemBlock(to - from, _nrRegs);
+        for (RegisterId col = 0; col < _nrRegs; col++) {
+          res->_docColls[col] = _docColls[col];
+        }
         for (size_t row = from; row < to; row++) {
           for (RegisterId col = 0; col < _nrRegs; col++) {
             AqlValue& a(_data[row * _nrRegs + col]);
@@ -459,6 +462,9 @@ namespace triagens {
 
         std::unordered_map<AqlValue, AqlValue> cache;
         auto res = new AqlItemBlock(to - from, _nrRegs);
+        for (RegisterId col = 0; col < _nrRegs; col++) {
+          res->_docColls[col] = _docColls[col];
+        }
         for (size_t row = from; row < to; row++) {
           for (RegisterId col = 0; col < _nrRegs; col++) {
             AqlValue& a(_data[chosen[row] * _nrRegs + col]);
