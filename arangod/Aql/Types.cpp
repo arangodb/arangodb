@@ -105,7 +105,7 @@ AqlValue AqlValue::clone () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> AqlValue::toV8 (AQL_TRANSACTION_V8* trx, 
-                           TRI_document_collection_t const* document) const {
+                                      TRI_document_collection_t const* document) const {
   switch (_type) {
     case JSON: {
       return TRI_ObjectJson(_json->json());
@@ -126,10 +126,92 @@ v8::Handle<v8::Value> AqlValue::toV8 (AQL_TRANSACTION_V8* trx,
       return values;
     }
 
-    default: {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    case EMPTY: {
+      return v8::Object::New(); // TODO?
     }
   }
+      
+  // should never get here
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toString method
+////////////////////////////////////////////////////////////////////////////////
+
+std::string AqlValue::toString (TRI_document_collection_t const* document) const {
+  switch (_type) {
+    case JSON: {
+      return _json->toString();
+    }
+
+    case SHAPED: {
+      // we're lazy and just stringify the json representation
+      // this does not matter as this code is not performance-sensitive
+      return toJson(document).toString();
+    }
+
+    case DOCVEC: {
+      std::stringstream s;
+      s << "I am a DOCVEC with " << _vector->size() << " blocks.";
+      return s.str();
+    }
+
+    case RANGE: {
+      std::stringstream s;
+      s << "I am a range: " << _range->_low << " .. " << _range->_high;
+      return s.str();
+    }
+
+    case EMPTY: {
+      return std::string("empty");
+    }
+  }
+      
+  // should never get here
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson method
+////////////////////////////////////////////////////////////////////////////////
+      
+Json AqlValue::toJson (TRI_document_collection_t const* document) const {
+  switch (_type) {
+    case JSON: {
+      return *_json;
+    }
+
+    case SHAPED: {
+      TRI_shaper_t* shaper = document->getShaper();
+      TRI_shaped_json_t shaped;
+      TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, _marker);
+      triagens::basics::Json json(shaper->_memoryZone, TRI_JsonShapedJson(shaper, &shaped));
+
+      char const* key = TRI_EXTRACT_MARKER_KEY(_marker);
+      std::string id(document->_info._name);
+      id.push_back('/');
+      id += std::string(key);
+      json("_id", triagens::basics::Json(id));
+      json("_rev", triagens::basics::Json(std::to_string(TRI_EXTRACT_MARKER_RID(_marker) )));
+      json("_key", triagens::basics::Json(key));
+      return json;
+    }
+          
+    case DOCVEC: {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    }
+          
+    case RANGE: {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    }
+
+    case EMPTY: {
+      return triagens::basics::Json();
+    }
+  }
+
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

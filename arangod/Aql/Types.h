@@ -167,97 +167,19 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       v8::Handle<v8::Value> toV8 (AQL_TRANSACTION_V8* trx, 
-                                  TRI_document_collection_t const* document) const;
+                                  TRI_document_collection_t const*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toString method
 ////////////////////////////////////////////////////////////////////////////////
 
-      std::string toString (TRI_document_collection_t const* document) {
-        switch (_type) {
-          case JSON: {
-            return _json->toString();
-          }
-
-          case SHAPED: {
-            TRI_shaper_t* shaper = document->getShaper();
-            TRI_shaped_json_t shaped;
-            TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, _marker);
-            triagens::basics::Json json(shaper->_memoryZone, TRI_JsonShapedJson(shaper, &shaped));
-
-            char const* key = TRI_EXTRACT_MARKER_KEY(_marker);
-            std::string id(document->_info._name);
-            id.push_back('/');
-            id += std::string(key);
-            json("_id", triagens::basics::Json(id));
-            json("_rev", triagens::basics::Json(std::to_string(
-                    TRI_EXTRACT_MARKER_RID(_marker) )));
-            json("_key", triagens::basics::Json(key));
-            
-            return json.toString();
-          }
-
-          case DOCVEC: {
-            std::stringstream s;
-            s << "I am a DOCVEC with " << _vector->size() << " blocks.";
-            return s.str();
-          }
-
-          case RANGE: {
-            std::stringstream s;
-            s << "I am a range: " << _range->_low << " .. " << _range->_high;
-            return s.str();
-          }
-
-          default:
-            return std::string("");
-        }
-      }
+      std::string toString (TRI_document_collection_t const*) const;
       
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson method
 ////////////////////////////////////////////////////////////////////////////////
       
-      triagens::basics::Json toJson (TRI_document_collection_t const* document) {
-        switch (_type) {
-          case JSON: {
-            return *_json;
-          }
-
-          case SHAPED: {
-            TRI_shaper_t* shaper = document->getShaper();
-            TRI_shaped_json_t shaped;
-            TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, _marker);
-            triagens::basics::Json json(shaper->_memoryZone,
-                TRI_JsonShapedJson(shaper, &shaped));
-
-            char const* key = TRI_EXTRACT_MARKER_KEY(_marker);
-            std::string id(document->_info._name);
-            id.push_back('/');
-            id += std::string(key);
-            json("_id", triagens::basics::Json(id));
-            json("_rev", triagens::basics::Json(std::to_string(
-                    TRI_EXTRACT_MARKER_RID(_marker) )));
-            json("_key", triagens::basics::Json(key));
-            
-            return json;
-          }
-          
-          case DOCVEC: {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-          }
-          
-          case RANGE: {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-          }
-
-          case EMPTY: {
-            return triagens::basics::Json();
-          }
-        }
-
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-      }
+      triagens::basics::Json toJson (TRI_document_collection_t const*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a quick method to decide whether a value is empty
