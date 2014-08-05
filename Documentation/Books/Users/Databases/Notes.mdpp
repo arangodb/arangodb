@@ -1,7 +1,8 @@
 !CHAPTER Notes about Databases
 
 Please keep in mind that each database contains its own system collections,
-which need to set up when a database is created. This will make the creation of a database take a while. 
+which need to be set up when a database is created. This will make the creation
+of a database take a while. 
 
 Replication is configured on a per-database level, meaning that any replication logging or applying for a new database must
 be configured explicitly after a new database has been created. 

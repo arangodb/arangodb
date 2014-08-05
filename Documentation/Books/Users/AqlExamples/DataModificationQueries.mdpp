@@ -62,9 +62,10 @@ FOR u IN users
 ``` 
 
 To completely replace existing documents, use the *REPLACE* operation.
-The following query replaces all documents in collection backup with the documents
-found in collection users. Only those documents will be replaced that are present
-in both collections. Documents are compared using their *_key* attributes:
+The following query replaces all documents in the collection backup with
+the documents found in collection users. Documents common to both
+collections will be replaced. All other documents will remain unchanged.
+Documents are compared using their *_key* attributes:
 
 ```js
 FOR u IN users
@@ -82,8 +83,7 @@ FOR u IN users
 ``` 
 
 !SUBSECTION Removing documents
-
-Removing documents can be achieved with the *REMOVE* operation.
+Deleting documents can be achieved with the *REMOVE* operation.
 To remove all users within a certain age range, we can use the following query:
 
 ```js

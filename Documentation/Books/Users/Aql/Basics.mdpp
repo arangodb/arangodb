@@ -9,24 +9,23 @@ parser will return an error if it detects more than one data-modification
 operation in the same query or if it cannot figure out if the query is meant
 to be a data retrieval or a modification operation.
 
-In SQL, the semicolon can be used to indicate the end of a query and to separate
-multiple queries. This is not supported in AQL. Using a semicolon to terminate
-a query string is not allowed in AQL. Specifying more than one AQL query in
-a single query string is disallowed, too. 
+AQL only allows *one* query in a single query string; Thus semicolons to
+indicate the end of one query and separate multiple queries (as seen in SQL) are
+not allowed.
 
 !SUBSECTION Whitespace 
 
-Whitespace can be used in the query text to increase its readability.  However,
-for the parser any whitespace (spaces, carriage returns, line feeds, and tab
-stops) does not have any special meaning except that it separates individual
-tokens in the query. Whitespace within strings or names must be enclosed in
-quotes in order to be preserved.
+Whitespaces (blanks, carriage returns, line feeds, and tab stops) can be used
+in the query text to increase its readability. Tokens have to be separated by
+any number of whitespaces. Whitespace within strings or names must be enclosed
+in quotes in order to be preserved.
 
 !SUBSECTION Comments 
 
 Comments can be embedded at any position in a query. The text contained in the
-comment is ignored by the AQL parser. Comments cannot be nested, meaning
-the comment text may not contain another comment.
+comment is ignored by the AQL parser.
+Multi-line Comments cannot be nested. -> Subsequent comment starts within
+comments are ignored, ends will end the comment.
 
 AQL supports two types of comments:
 - Single line comments: These start with a double forward slash and end at
@@ -62,7 +61,7 @@ Each of the above operations can be initiated in a query by using a keyword of
 the same name. An AQL query can (and typically does) consist of multiple of the
 above operations.
 
-An example AQL query might look like this:
+An example AQL query may look like this:
 
     FOR u IN users
       FILTER u.type == "newbie" && u.active == true
@@ -108,7 +107,7 @@ The current list of keywords is:
 - TRUE
 - FALSE
 
-Additional keywords might be added in future versions of ArangoDB. 
+Additional keywords may be added in future versions of ArangoDB. 
 
 !SUBSECTION Names
 
@@ -120,7 +119,7 @@ case-sensitive.
 
 Keywords must not be used as names. If a reserved keyword should be used as a
 name, the name must be enclosed in backticks. Enclosing a name in backticks
-allows using otherwise-reserved keywords as names. An example for this is:
+makes it possible to use otherwise reserved keywords as names. An example for this is:
 
     FOR f IN `filter` 
       RETURN f.`sort`
@@ -140,7 +139,7 @@ conventions.
 
 When referring to attributes of documents from a collection, the fully qualified
 attribute name must be used. This is because multiple collections with ambiguous
-attribute names might be used in a query.  To avoid any ambiguity, it is not
+attribute names may be used in a query.  To avoid any ambiguity, it is not
 allowed to refer to an unqualified attribute name.
 
 Please refer to the [Naming Conventions in ArangoDB](../NamingConventions/AttributeNames.md) for more information about the
@@ -157,7 +156,7 @@ respectively).
 
 !SUBSUBSECTION Variable names
 
-AQL offers the user to assign values to additional variables in a query.  All
+AQL allows the user to assign values to additional variables in a query.  All
 variables that are assigned a value must have a name that is unique within the
 context of the query. Variable names must be different from the names of any
 collection name used in the same query.
@@ -313,7 +312,7 @@ AQL supports the usage of bind parameters, thus allowing to separate the query
 text from literal values used in the query. It is good practice to separate the
 query text from the literal values because this will prevent (malicious)
 injection of keywords and other collection names into an existing query. This
-injection would be dangerous because it might change the meaning of an existing
+injection would be dangerous because it may change the meaning of an existing
 query.
 
 Using bind parameters, the meaning of an existing query cannot be changed. Bind
@@ -491,7 +490,7 @@ from *users* that do not have the *name* attribute at all:
       RETURN u
 
 Furthermore, *null* is less than any other value (excluding *null* itself). That
-means documents with non-existing attributes might be included in the result
+means documents with non-existing attributes may be included in the result
 when comparing attribute values with the less than or less equal operators.
 
 For example, the following query will return all documents from the collection
