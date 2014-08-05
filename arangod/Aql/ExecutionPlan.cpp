@@ -348,6 +348,8 @@ ExecutionNode* ExecutionPlan::fromNodeSort (Ast const* ast,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST COLLECT node
+/// note that also a sort plan node will be added in front of the collect plan
+/// node
 ////////////////////////////////////////////////////////////////////////////////
 
 ExecutionNode* ExecutionPlan::fromNodeCollect (Ast const* ast,
@@ -360,6 +362,8 @@ ExecutionNode* ExecutionPlan::fromNodeCollect (Ast const* ast,
 
   auto list = node->getMember(0);
   size_t const numVars = list->numMembers();
+  
+  std::vector<std::pair<Variable const*, bool>> sortElements;
 
   std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables;
   aggregateVariables.reserve(numVars);
@@ -379,19 +383,27 @@ ExecutionNode* ExecutionPlan::fromNodeCollect (Ast const* ast,
     auto expression = assigner->getMember(1);
       
     if (expression->type == NODE_TYPE_REFERENCE) {
-      // expression is already a variable
+      // operand is a variable
       auto e = static_cast<Variable*>(expression->getData());
       aggregateVariables.push_back(std::make_pair(v, e));
+      sortElements.push_back(std::make_pair(e, true));
     }
     else {
+      // operand is some misc expression
       auto calc = createTemporaryCalculation(ast, expression);
 
       calc->addDependency(previous);
       previous = calc;
 
       aggregateVariables.push_back(std::make_pair(v, calc->outVariable()));
+      sortElements.push_back(std::make_pair(calc->outVariable(), true));
     }
   }
+
+  // inject a sort node for all expressions / variables that we just picked up...
+  auto sort = addNode(new SortNode(sortElements));
+  sort->addDependency(previous);
+  previous = sort;
 
   // handle out variable
   Variable* outVariable = nullptr;
