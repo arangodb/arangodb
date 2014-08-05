@@ -101,6 +101,38 @@ AqlValue AqlValue::clone () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief construct a V8 value as input for the expression execution in V8
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> AqlValue::toV8 (AQL_TRANSACTION_V8* trx, 
+                           TRI_document_collection_t const* document) const {
+  switch (_type) {
+    case JSON: {
+      return TRI_ObjectJson(_json->json());
+    }
+
+    case SHAPED: {
+      return TRI_WrapShapedJson(*trx, document->_info._cid, _marker);
+    }
+
+    case DOCVEC: {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    }
+
+    case RANGE: {
+      v8::Handle<v8::Array> values = v8::Array::New();
+      // TODO: fill range
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+      return values;
+    }
+
+    default: {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief splice multiple blocks, note that the new block now owns all
 /// AqlValue pointers in the old blocks, therefore, the latter are all
 /// set to nullptr, just to be sure.

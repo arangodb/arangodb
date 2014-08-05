@@ -59,6 +59,7 @@
 #include "Utils/DocumentHelper.h"
 #include "Utils/transactions.h"
 #include "Utils/V8ResolverGuard.h"
+#include "Utils/AqlTransaction.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-execution.h"
 #include "V8/v8-utils.h"
@@ -10379,7 +10380,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
   TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(data);
   TRI_ASSERT(marker != nullptr);
 
-  TRI_barrier_t* barrier = trx.barrier();
+  TRI_barrier_t* barrier = trx.barrier(cid);
   TRI_ASSERT(barrier != nullptr);
 
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
@@ -10389,7 +10390,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
 
   if (doCopy) {
     // we'll create a full copy of the document
-    TRI_document_collection_t* collection = trx.documentCollection();
+    TRI_document_collection_t* collection = trx.documentCollection(cid);
     TRI_shaper_t* shaper = collection->getShaper();  // PROTECTED by trx from above
 
     TRI_shaped_json_t json;
@@ -10444,6 +10445,14 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
 
   return AddBasicDocumentAttributes<T>(trx, v8g, cid, marker, result);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief explicitly instanciate a template function
+////////////////////////////////////////////////////////////////////////////////
+
+#if 0
+template<> v8::Handle<v8::Value> TRI_WrapShapedJson<AQL_TRANSACTION_V8> (AQL_TRANSACTION_V8&, TRI_voc_cid_t, void const*);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the private WRP_VOCBASE_COL_TYPE value
