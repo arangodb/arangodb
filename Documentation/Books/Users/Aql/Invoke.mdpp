@@ -115,8 +115,9 @@ Please note that the *count* method returns nothing if you did not specify the *
 attribute when creating the query. 
 
 This is intentional so that the server may apply optimizations when executing the query and 
-construct the result set incrementally. Incremental creating of the result sets would not be possible
-if the total number of results needs to be shipped to the client anyway. Therefore, the client
+construct the result set incrementally. Incremental creation of the result sets
+is no possible
+if all of the results need to be shipped to the client anyway. Therefore, the client
 has the choice to specify *count* and retrieve the total number of results for a query (and
 disable potential incremental result set creation on the server), or to not retrieve the total
 number of results and allow the server to apply optimizations.
