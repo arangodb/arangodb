@@ -40,12 +40,43 @@ The implementation follows the CommonJS specification
 
 @startDocuBlock JS_Read
 
-
 <!-- lib/V8/v8-utils.cpp  -->
 
 @startDocuBlock JS_Read64
 
-
 <!-- lib/V8/v8-utils.cpp  -->
 
 @startDocuBlock JS_Remove
+
+<!-- lib/V8/v8-utils.cpp  -->
+
+@startDocuBlock JS_MakeDirectory
+
+<!-- lib/V8/v8-utils.cpp  -->
+
+@startDocuBlock JS_GetTempFile
+
+<!-- lib/V8/v8-utils.cpp  -->
+
+@startDocuBlock JS_GetTempPath
+
+`fs.join(path, filename)`
+
+The function returns the combination of the path and filename, e.g. fs.join(Hello/World, foo.bar) would return Hello/World/foo.bar.
+
+`fs.pathSeparator`
+
+If you want to combine two paths you can use fs.pathSeparator instead of */* or *\\*.
+
+<!-- lib/V8/v8-utils.cpp  -->
+
+@startDocuBlock JS_Size
+
+<!-- lib/V8/v8-utils.cpp  -->
+
+@startDocuBlock JS_RemoveDirectory
+
+
+`fs.write(filename, content)`
+
+Writes the content in a file. 
