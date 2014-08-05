@@ -119,7 +119,7 @@ case-sensitive.
 
 Keywords must not be used as names. If a reserved keyword should be used as a
 name, the name must be enclosed in backticks. Enclosing a name in backticks
-allows using otherwise-reserved keywords as names. An example for this is:
+makes it possible to use otherwise reserved keywords as names. An example for this is:
 
     FOR f IN `filter` 
       RETURN f.`sort`
@@ -156,7 +156,7 @@ respectively).
 
 !SUBSUBSECTION Variable names
 
-AQL offers the user to assign values to additional variables in a query.  All
+AQL allows the user to assign values to additional variables in a query.  All
 variables that are assigned a value must have a name that is unique within the
 context of the query. Variable names must be different from the names of any
 collection name used in the same query.

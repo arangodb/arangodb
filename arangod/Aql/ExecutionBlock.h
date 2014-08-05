@@ -1600,7 +1600,9 @@ namespace triagens {
           TRI_ASSERT(it != _varOverview->varInfo.end());
           RegisterId registerId = it->second.registerId;
           stripped->setValue(0, 0, res->getValue(0, registerId));
-          res->setValue(0, registerId, AqlValue());
+          res->eraseValue(0, registerId);
+          stripped->getDocumentCollections().at(0)
+              = res->getDocumentCollections().at(registerId);
           delete res;
           return stripped;
         }
@@ -1624,8 +1626,10 @@ namespace triagens {
           AqlItemBlock* stripped = new AqlItemBlock(res->size(), 1);
           for (size_t i = 0; i < res->size(); i++) {
             stripped->setValue(i, 0, res->getValue(i, registerId));
-            res->setValue(i, registerId, AqlValue());
+            res->eraseValue(i, registerId);
           }
+          stripped->getDocumentCollections().at(0)
+              = res->getDocumentCollections().at(registerId);
           delete res;
           return stripped;
         }
