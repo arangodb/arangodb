@@ -30,48 +30,14 @@
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
-////////////////////////////////////////////////////////////////////////////////
-
-AqlValue::~AqlValue () {
+AqlValue AqlValue::clone () const {
   switch (_type) {
     case JSON: {
-      delete _json;
-      return;
-    }
-    
-    case DOCUMENT: {
-      return;
+      return AqlValue(new Json(_json->copy()));
     }
 
-    case DOCVEC: {
-      if (_vector != nullptr) {
-        for (auto it = _vector->begin(); it != _vector->end(); ++it) {
-          delete *it;
-        }
-        delete _vector;
-      }
-      return;
-    }
-
-    case RANGE: {
-      return;
-    }
-
-    default:
-      return;
-  }
-}
-
-AqlValue* AqlValue::clone () const {
-  switch (_type) {
-    case JSON: {
-      return new AqlValue(new Json(_json->copy()));
-    }
-
-    case DOCUMENT: {
-      return new AqlValue(_document._document, _document._mptr);
+    case SHAPED: {
+      return AqlValue(_shaped);
     }
 
     case DOCVEC: {
@@ -80,11 +46,11 @@ AqlValue* AqlValue::clone () const {
       for (auto it = _vector->begin(); it != _vector->end(); ++it) {
         c->push_back((*it)->slice(0, (*it)->size()));
       }
-      return new AqlValue(c);
+      return AqlValue(c);
     }
 
     case RANGE: {
-      return new AqlValue(_range._low, _range._high);
+      return AqlValue(_range._low, _range._high);
     }
 
     default: {
@@ -122,7 +88,7 @@ AqlItemBlock* AqlItemBlock::splice (std::vector<AqlItemBlock*>& blocks) {
     for (size_t row = 0; row < (*it)->size(); ++row) {
       for (RegisterId col = 0; col < nrRegs; ++col) {
         res->setValue(pos+row, col, (*it)->getValue(row, col));
-        (*it)->setValue(row, col, nullptr);
+        (*it)->setValue(row, col, AqlValue());
       }
     }
     pos += (*it)->size();
