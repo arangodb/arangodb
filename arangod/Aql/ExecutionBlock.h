@@ -332,6 +332,9 @@ namespace triagens {
               return res;
             }
           }
+          for (auto it = _buffer.begin(); it != _buffer.end(); ++it) {
+            delete *it;
+          }
           return TRI_ERROR_NO_ERROR;
         }
 
