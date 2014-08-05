@@ -207,8 +207,6 @@ QueryResult Query::execute () {
           TRI_ASSERT(! val.isEmpty());
           auto doc = value->getDocumentCollection(0);
           json.add(val.toJson(doc)); 
-          // TODO: remove debug output
-          //std::cout << val.toString(value->getDocumentCollections()[0]) << std::endl;
           delete value;
         }
 
@@ -235,8 +233,8 @@ QueryResult Query::execute () {
     trx.commit();
     
     QueryResult result(TRI_ERROR_NO_ERROR);
-    result.json = parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE);
-  
+    //result.json = parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE);
+    result.json = json; 
     return result;
   }
   catch (triagens::arango::Exception const& ex) {
