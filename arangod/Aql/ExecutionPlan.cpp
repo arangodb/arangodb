@@ -197,15 +197,9 @@ ExecutionNode* ExecutionPlan::fromNodeFor (Ast const* ast,
     // second operand is some misc. expression
     auto calc = createTemporaryCalculation(ast, expression);
 
-    try {
-      calc->addDependency(previous);
-      en = addNode(new EnumerateListNode(calc->outVariable(), v));
-      previous = calc;
-    }
-    catch (...) {
-      // prevent memleak
-      delete calc;
-    }
+    calc->addDependency(previous);
+    en = addNode(new EnumerateListNode(calc->outVariable(), v));
+    previous = calc;
   }
 
   TRI_ASSERT(en != nullptr);
@@ -237,15 +231,9 @@ ExecutionNode* ExecutionPlan::fromNodeFilter (Ast const* ast,
     // operand is some misc expression
     auto calc = createTemporaryCalculation(ast, expression);
 
-    try {
-      calc->addDependency(previous);
-      en = addNode(new FilterNode(calc->outVariable()));
-      previous = calc;
-    }
-    catch (...) {
-      // prevent memleak
-      delete calc;
-    }
+    calc->addDependency(previous);
+    en = addNode(new FilterNode(calc->outVariable()));
+    previous = calc;
   }
 
   return addDependency(previous, en);
@@ -269,6 +257,7 @@ ExecutionNode* ExecutionPlan::fromNodeLet (Ast const* ast,
   ExecutionNode* en = nullptr;
 
   if (expression->type == NODE_TYPE_SUBQUERY) {
+    std::cout << "FAILED HERE\n";
     // TODO: node might be a subquery. this is currently NOT handled
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -361,11 +350,54 @@ ExecutionNode* ExecutionPlan::fromNodeCollect (Ast const* ast,
   size_t const n = node->numMembers();
 
   TRI_ASSERT(n >= 1);
-  
-  // TODO
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 
-  return nullptr;
+  auto list = node->getMember(0);
+  size_t const numVars = list->numMembers();
+
+  std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables;
+  aggregateVariables.reserve(numVars);
+  for (size_t i = 0; i < numVars; ++i) {
+    auto assigner = list->getMember(i);
+
+    if (assigner == nullptr) {
+      continue;
+    }
+
+    TRI_ASSERT(assigner->type == NODE_TYPE_ASSIGN);
+    auto out = assigner->getMember(0);
+    TRI_ASSERT(out != nullptr);
+    auto v = static_cast<Variable*>(out->getData());
+    TRI_ASSERT(v != nullptr);
+   
+    auto expression = assigner->getMember(1);
+      
+    if (expression->type == NODE_TYPE_REFERENCE) {
+      // expression is already a variable
+      auto e = static_cast<Variable*>(expression->getData());
+      aggregateVariables.push_back(std::make_pair(v, e));
+    }
+    else {
+      auto calc = createTemporaryCalculation(ast, expression);
+
+      calc->addDependency(previous);
+      previous = calc;
+
+      aggregateVariables.push_back(std::make_pair(v, calc->outVariable()));
+    }
+  }
+
+  // handle out variable
+  Variable* outVariable = nullptr;
+
+  if (n == 2) {
+    // collect with an output variable!
+    auto v = node->getMember(1);
+    outVariable = static_cast<Variable*>(v->getData());
+  }
+
+  auto en = addNode(new AggregateOnUnsortedNode(aggregateVariables, outVariable));
+
+  return addDependency(previous, en);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -412,16 +444,9 @@ ExecutionNode* ExecutionPlan::fromNodeReturn (Ast const* ast,
   else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(ast, expression);
-
-    try {
-      calc->addDependency(previous);
-      en = addNode(new ReturnNode(calc->outVariable()));
-      previous = calc;
-    }
-    catch (...) {
-      // prevent memleak
-      delete calc;
-    }
+    calc->addDependency(previous);
+    en = addNode(new ReturnNode(calc->outVariable()));
+    previous = calc;
   }
 
   return addDependency(previous, en);

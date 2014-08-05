@@ -733,6 +733,7 @@ namespace triagens {
             delete _trx;
             THROW_ARANGO_EXCEPTION(res);
           }
+
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -762,6 +763,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool moreDocuments () {
+          if (_documents.empty()) {
+            _documents.reserve(DefaultBatchSize);
+          }
+
           _documents.clear();
 
           int res = _trx->readOffset(_documents, 
