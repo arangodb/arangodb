@@ -227,7 +227,7 @@ static char* FailRealloc (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_FAILURE_TESTS
-static void InitFailMalloc () { 
+static void InitFailMalloc (void) { 
   char* value;
 
   // get failure probability 
