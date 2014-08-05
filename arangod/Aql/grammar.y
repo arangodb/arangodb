@@ -440,11 +440,11 @@ expression:
       AstNode* node = parser->ast()->endSubQuery();
       parser->ast()->scopes()->endCurrent();
 
-      char const* variableName = parser->ast()->variables()->nextName().c_str();
-      auto subQuery = parser->ast()->createNodeLet(variableName, node, false);
+      std::string const variableName = parser->ast()->variables()->nextName();
+      auto subQuery = parser->ast()->createNodeLet(variableName.c_str(), node, false);
       parser->ast()->addOperation(subQuery);
 
-      $$ = parser->ast()->createNodeReference(variableName);
+      $$ = parser->ast()->createNodeReference(variableName.c_str());
     } 
   | operator_unary {
       $$ = $1;
