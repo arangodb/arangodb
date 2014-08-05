@@ -189,12 +189,15 @@ Json AqlValue::toJson (TRI_document_collection_t const* document) const {
       triagens::basics::Json json(shaper->_memoryZone, TRI_JsonShapedJson(shaper, &shaped));
 
       char const* key = TRI_EXTRACT_MARKER_KEY(_marker);
+      // TODO: use CollectionNameResolver
       std::string id(document->_info._name);
       id.push_back('/');
       id += std::string(key);
       json("_id", triagens::basics::Json(id));
       json("_rev", triagens::basics::Json(std::to_string(TRI_EXTRACT_MARKER_RID(_marker) )));
       json("_key", triagens::basics::Json(key));
+
+      // TODO: return _from and _to, and fix order of attributes!
       return json;
     }
           
