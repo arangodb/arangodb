@@ -241,6 +241,8 @@ ExecutionNode* ExecutionPlan::fromNodeFilter (Ast const* ast,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST LET node
+/// this also includes handling of subqueries (as subqueries can only occur 
+/// inside LET nodes)
 ////////////////////////////////////////////////////////////////////////////////
 
 ExecutionNode* ExecutionPlan::fromNodeLet (Ast const* ast,
@@ -257,9 +259,14 @@ ExecutionNode* ExecutionPlan::fromNodeLet (Ast const* ast,
   ExecutionNode* en = nullptr;
 
   if (expression->type == NODE_TYPE_SUBQUERY) {
-    std::cout << "FAILED HERE\n";
-    // TODO: node might be a subquery. this is currently NOT handled
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    // operand is a subquery...
+    auto subquery = fromNode(ast, expression);
+
+    if (subquery == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+
+    en = addNode(new SubqueryNode(subquery, v));
   }
   else {
     // operand is some misc expression, including references to other variables
