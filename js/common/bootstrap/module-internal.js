@@ -1342,6 +1342,78 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief flatten
+////////////////////////////////////////////////////////////////////////////////
+
+  var hasOwnProperty = Function.prototype.call.bind(Object.prototype.hasOwnProperty);
+
+  exports.flatten = function (obj, seen) {
+    'use strict';
+
+    if (!obj || (typeof obj !== 'object' && typeof obj !== 'function')) {
+      return obj;
+    }
+
+    if (obj instanceof Date) {
+      return obj.toJSON();
+    }
+
+    if (!seen) {
+      seen = [];
+    }
+
+    var result = Object.create(null),
+      src = obj,
+      keys,
+      i,
+      key,
+      val;
+
+    if (typeof obj === 'function') {
+      result.__exec = String(obj);
+    }
+
+    while (src) {
+      if (
+        seen.indexOf(src) !== -1
+          || (obj.constructor && src === obj.constructor.prototype)
+      ) {
+        break;
+      }
+      seen.push(src);
+      keys = Object.getOwnPropertyNames(src);
+      for (i = 0; i < keys.length; i++) {
+        key = keys[i];
+        if (typeof src !== 'function' || (
+          key !== 'arguments' && key !== 'caller' && key !== 'callee'
+        )) {
+          if (key.charAt(0) !== '_' && !hasOwnProperty(result, key)) {
+            val = obj[key];
+            if (seen.indexOf(val) !== -1 && (
+              typeof val === 'object' || typeof val === 'function'
+            )) {
+              result[key] = '[Circular]';
+            } else {
+              result[key] = exports.flatten(val, seen);
+            }
+          }
+        }
+      }
+      src = Object.getPrototypeOf(src);
+    }
+
+    if (obj.constructor && obj.constructor.name) {
+      if (obj instanceof Error && obj.name === Error.name) {
+        result.name = obj.constructor.name;
+      } else if (!hasOwnProperty(result, 'constructor')) {
+        result.constructor = {name: obj.constructor.name};
+      }
+    }
+
+    return result;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief inspect
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1559,6 +1631,28 @@
     }
 
     useColor = false;
+  };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          public utility functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief exponentialBackoff
+////////////////////////////////////////////////////////////////////////////////
+
+  exports.exponentialBackOff = function (n, i) {
+    'use strict';
+    if (i === 0) {
+      return 0;
+    }
+    if (n === 0) {
+      return 0;
+    }
+    if (n === 1) {
+      return Math.random() < 0.5 ? 0 : i;
+    }
+    return Math.floor(Math.random() * (n + 1)) * i;
   };
 
 }());
