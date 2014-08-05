@@ -269,10 +269,26 @@ collect_statement:
     } collect_list optional_into {
       auto list = static_cast<AstNode const*>(parser->popStack());
 
-      // TODO: check if the following two lines are valid here
-      parser->ast()->scopes()->endNested();
-      parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_COLLECT);
-      
+      if (list == nullptr) {
+        ABORT_OOM
+      }
+
+      auto scopes = parser->ast()->scopes();
+
+      scopes->endNested();
+      scopes->start(triagens::aql::AQL_SCOPE_COLLECT);
+
+      size_t const n = list->numMembers();
+      for (size_t i = 0; i < n; ++i) {
+        auto member = list->getMember(i);
+
+        if (member != nullptr) {
+          TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
+          auto v = static_cast<Variable*>(member->getMember(0)->getData());
+          scopes->addVariable(v);
+        }
+      }
+
       auto node = parser->ast()->createNodeCollect(list, $4);
 
       parser->ast()->addOperation(node);
