@@ -10365,7 +10365,18 @@ static v8::Handle<v8::Object> AddBasicDocumentAttributes (T& trx,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a TRI_shaped_json_t
-/// note: the function updates the usedBarrier variable if the barrier was used
+////////////////////////////////////////////////////////////////////////////////
+
+template<class T>
+v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
+                                          TRI_voc_cid_t cid,
+                                          TRI_df_marker_t const* marker) {
+  // TODO: implement!
+  return v8::Object::New();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wraps a TRI_shaped_json_t
 ////////////////////////////////////////////////////////////////////////////////
 
 template<class T>
