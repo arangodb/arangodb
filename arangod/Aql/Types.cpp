@@ -125,6 +125,18 @@ AqlItemBlock* AqlItemBlock::splice (std::vector<AqlItemBlock*>& blocks) {
   auto res = new AqlItemBlock(totalSize, nrRegs);
   size_t pos = 0;
   for (it = blocks.begin(); it != blocks.end(); ++it) {
+    if (it == blocks.begin()) {
+      for (RegisterId col = 0; col < nrRegs; ++col) {
+        res->getDocumentCollections().at(col)
+          = (*it)->getDocumentCollections().at(col);
+      }
+    }
+    else {
+      for (RegisterId col = 0; col < nrRegs; ++col) {
+        TRI_ASSERT(res->getDocumentCollections().at(col) ==
+                   (*it)->getDocumentCollections().at(col));
+      }
+    }
     for (size_t row = 0; row < (*it)->size(); ++row) {
       for (RegisterId col = 0; col < nrRegs; ++col) {
         res->setValue(pos+row, col, (*it)->getValue(row, col));
