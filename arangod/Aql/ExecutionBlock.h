@@ -472,8 +472,8 @@ namespace triagens {
           if (getBlock(DefaultBatchSize, DefaultBatchSize)) {
             return true;
           }
-
-          return ! _done;
+          _done = true;
+          return false;
         }
 
         virtual bool skip (size_t number) {
@@ -633,8 +633,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int initialize () {
-          ExecutionBlock::initialize();
-          return TRI_ERROR_NO_ERROR;
+          return ExecutionBlock::initialize();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -642,8 +641,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int execute () {
-          ExecutionBlock::execute();
-          return TRI_ERROR_NO_ERROR;
+          return ExecutionBlock::execute();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -651,7 +649,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int shutdown () {
-          return TRI_ERROR_NO_ERROR;
+          return ExecutionBlock::shutdown();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
