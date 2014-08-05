@@ -10327,8 +10327,7 @@ TRI_index_t* TRI_LookupIndexByHandle (CollectionNameResolver const* resolver,
 /// @brief add basic attributes (_key, _rev, _from, _to) to a document object
 ////////////////////////////////////////////////////////////////////////////////
 
-template<class T>
-static v8::Handle<v8::Object> AddBasicDocumentAttributes (T& trx,
+static v8::Handle<v8::Object> AddBasicDocumentAttributes (triagens::arango::CollectionNameResolver const* resolver,
                                                           TRI_v8_global_t* v8g,
                                                           TRI_voc_cid_t cid,
                                                           TRI_df_marker_t const* marker,
@@ -10341,7 +10340,6 @@ static v8::Handle<v8::Object> AddBasicDocumentAttributes (T& trx,
   char const* docKey = TRI_EXTRACT_MARKER_KEY(marker);
   TRI_ASSERT(docKey != nullptr);
 
-  CollectionNameResolver const* resolver = trx.resolver();
   result->Set(v8g->_IdKey, V8DocumentId(resolver->getCollectionName(cid), docKey), v8::ReadOnly);
   result->Set(v8g->_RevKey, V8RevisionId(rid), v8::ReadOnly);
   result->Set(v8g->_KeyKey, v8::String::New(docKey), v8::ReadOnly);
@@ -10369,15 +10367,15 @@ static v8::Handle<v8::Object> AddBasicDocumentAttributes (T& trx,
 /// @brief wraps a TRI_shaped_json_t
 ////////////////////////////////////////////////////////////////////////////////
 
-template<class T>
-v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
+v8::Handle<v8::Value> TRI_WrapShapedJson (triagens::arango::CollectionNameResolver const* resolver,
+                                          TRI_barrier_t* barrier,
                                           TRI_voc_cid_t cid,
+                                          TRI_document_collection_t* collection,
                                           void const* data) {
   TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(data);
   TRI_ASSERT(marker != nullptr);
-
-  TRI_barrier_t* barrier = trx.barrier(cid);
   TRI_ASSERT(barrier != nullptr);
+  TRI_ASSERT(collection != nullptr);
 
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData());
@@ -10386,7 +10384,6 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
 
   if (doCopy) {
     // we'll create a full copy of the document
-    TRI_document_collection_t* collection = trx.documentCollection(cid);
     TRI_shaper_t* shaper = collection->getShaper();  // PROTECTED by trx from above
 
     TRI_shaped_json_t json;
@@ -10399,7 +10396,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
     }
 
     v8::Handle<v8::Object> result = v8::Object::New();
-    result = AddBasicDocumentAttributes<T>(trx, v8g, cid, marker, result);
+    result = AddBasicDocumentAttributes(resolver, v8g, cid, marker, result);
 
     return TRI_JsonShapeData(result, shaper, shape, json._data.data, json._data.length);
   }
@@ -10439,16 +10436,8 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
     result->SetInternalField(SLOT_BARRIER, i->second);
   }
 
-  return AddBasicDocumentAttributes<T>(trx, v8g, cid, marker, result);
+  return AddBasicDocumentAttributes(resolver, v8g, cid, marker, result);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief explicitly instanciate a template function
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-template<> v8::Handle<v8::Value> TRI_WrapShapedJson<AQL_TRANSACTION_V8> (AQL_TRANSACTION_V8&, TRI_voc_cid_t, void const*);
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the private WRP_VOCBASE_COL_TYPE value

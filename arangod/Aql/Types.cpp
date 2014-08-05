@@ -112,7 +112,7 @@ v8::Handle<v8::Value> AqlValue::toV8 (AQL_TRANSACTION_V8* trx,
     }
 
     case SHAPED: {
-      return TRI_WrapShapedJson(*trx, document->_info._cid, _marker);
+      return TRI_WrapShapedJson<AQL_TRANSACTION_V8>(*trx, document->_info._cid, _marker);
     }
 
     case DOCVEC: {
