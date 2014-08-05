@@ -195,18 +195,20 @@ void Scopes::endNested () {
   int iterations = 0;
 
   while (! _activeScopes.empty()) {
+    ++iterations;
+
     auto scope = _activeScopes.back();
     TRI_ASSERT(scope != nullptr);
     ScopeType type = scope->type();
 
     if (type == AQL_SCOPE_MAIN) {
       // main scope cannot be closed here
-      return;
+      break;
     }
 
-    if (type != AQL_SCOPE_FOR && ++iterations >= 2) {
+    if (type != AQL_SCOPE_FOR && iterations >= 2) {
       // if nested, do not close anything but for scopes
-      return;
+      break;
     }
 
     endCurrent();
