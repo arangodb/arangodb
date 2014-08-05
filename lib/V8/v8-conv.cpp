@@ -55,10 +55,16 @@ static int FillShapeValueJson (TRI_shaper_t* shaper,
                                vector< v8::Handle<v8::Object> >& seenObjects,
                                bool create);
 
-static v8::Handle<v8::Value> JsonShapeData (TRI_shaper_t* shaper,
-                                            TRI_shape_t const* shape,
-                                            char const* data,
-                                            size_t size);
+static v8::Handle<v8::Value> JsonShapeData (v8::Handle<v8::Value>&,
+                                            TRI_shaper_t*,
+                                            TRI_shape_t const*,
+                                            char const*,
+                                            size_t);
+
+static v8::Handle<v8::Value> JsonShapeData (TRI_shaper_t*,
+                                            TRI_shape_t const*,
+                                            char const*,
+                                            size_t);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
@@ -972,7 +978,114 @@ static v8::Handle<v8::Value> JsonShapeDataLongString (TRI_shaper_t* shaper,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a data array blob into a json object
+/// @brief merges a data array blob into an existing json object
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JsonShapeDataArray (v8::Handle<v8::Value>& value,
+                                                 TRI_shaper_t* shaper,
+                                                 TRI_shape_t const* shape,
+                                                 char const* data,
+                                                 size_t size) {
+  TRI_array_shape_t const* s;
+  TRI_shape_aid_t const* aids;
+  TRI_shape_sid_t const* sids;
+  TRI_shape_size_t const* offsetsF;
+  TRI_shape_size_t const* offsetsV;
+  TRI_shape_size_t f;
+  TRI_shape_size_t i;
+  TRI_shape_size_t n;
+  TRI_shape_size_t v;
+  shape_cache_t shapeCache;
+  char const* qtr;
+
+  v8::Handle<v8::Object> array = v8::Handle<v8::Object>::Cast(value);
+
+  s = (TRI_array_shape_t const*) shape;
+  f = s->_fixedEntries;
+  v = s->_variableEntries;
+  n = f + v;
+
+  qtr = (char const*) shape;
+
+  qtr += sizeof(TRI_array_shape_t);
+
+  sids = (TRI_shape_sid_t const*) qtr;
+  qtr += n * sizeof(TRI_shape_sid_t);
+
+  aids = (TRI_shape_aid_t const*) qtr;
+  qtr += n * sizeof(TRI_shape_aid_t);
+
+  offsetsF = (TRI_shape_size_t const*) qtr;
+  shapeCache._sid   = 0;
+  shapeCache._shape = 0;
+
+  for (i = 0;  i < f;  ++i, ++sids, ++aids, ++offsetsF) {
+    TRI_shape_sid_t sid = *sids;
+
+    TRI_shape_t const* subshape;
+    if (sid == shapeCache._sid && shapeCache._sid > 0) {
+      subshape = shapeCache._shape;
+    }
+    else {
+      shapeCache._shape = subshape = shaper->lookupShapeId(shaper, sid);
+      shapeCache._sid = sid;
+    }
+
+    if (subshape == 0) {
+      LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
+      continue;
+    }
+
+    TRI_shape_aid_t aid = *aids;
+    char const* name = shaper->lookupAttributeId(shaper, aid);
+
+    if (name == 0) {
+      LOG_WARNING("cannot find attribute #%u", (unsigned int) aid);
+      continue;
+    }
+
+    const TRI_shape_size_t offset = *offsetsF;
+    v8::Handle<v8::Value> element = JsonShapeData(shaper, subshape, data + offset, offsetsF[1] - offset);
+    array->Set(v8::String::New(name), element);
+  }
+
+  offsetsV = (TRI_shape_size_t const*) data;
+
+  for (i = 0;  i < v;  ++i, ++sids, ++aids, ++offsetsV) {
+    TRI_shape_sid_t sid = *sids;
+
+    TRI_shape_t const* subshape;
+    if (sid == shapeCache._sid && shapeCache._sid > 0) {
+      subshape = shapeCache._shape;
+    }
+    else {
+      shapeCache._shape = subshape = shaper->lookupShapeId(shaper, sid);
+      shapeCache._sid = sid;
+    }
+
+    if (subshape == 0) {
+      LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
+      continue;
+    }
+
+    TRI_shape_aid_t aid = *aids;
+    char const* name = shaper->lookupAttributeId(shaper, aid);
+
+    if (name == 0) {
+      LOG_WARNING("cannot find attribute #%u", (unsigned int) aid);
+      continue;
+    }
+
+    const TRI_shape_size_t offset = *offsetsV;
+    v8::Handle<v8::Value> element = JsonShapeData(shaper, subshape, data + offset, offsetsV[1] - offset);
+    array->Set(v8::String::New(name), element);
+  }
+
+  return array;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a data array blob into a new json object
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JsonShapeDataArray (TRI_shaper_t* shaper,
@@ -1229,7 +1342,24 @@ static v8::Handle<v8::Value> JsonShapeDataHomogeneousSizedList (TRI_shaper_t* sh
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a data blob into a json object
+/// @brief merges a data blob into an existing json object
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JsonShapeData (v8::Handle<v8::Value>& value,
+                                            TRI_shaper_t* shaper,
+                                            TRI_shape_t const* shape,
+                                            char const* data,
+                                            size_t size) {
+  if (shape == nullptr) {
+    return v8::Null();
+  }
+
+  TRI_ASSERT(shape->_type == TRI_SHAPE_ARRAY);
+  return JsonShapeDataArray(value, shaper, shape, data, size);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a data blob into a new json object
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JsonShapeData (TRI_shaper_t* shaper,
@@ -1415,7 +1545,19 @@ v8::Handle<v8::Value> TRI_ObjectJson (TRI_json_t const* json) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a TRI_shaped_json_t into a V8 object
+/// @brief converts a TRI_shaped_json_t into an existing V8 object
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> TRI_JsonShapeData (v8::Handle<v8::Value> value,
+                                         TRI_shaper_t* shaper,
+                                         TRI_shape_t const* shape,
+                                         char const* data,
+                                         size_t size) {
+  return JsonShapeData(value, shaper, shape, data, size);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a TRI_shaped_json_t into a new V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> TRI_JsonShapeData (TRI_shaper_t* shaper,

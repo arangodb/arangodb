@@ -1103,7 +1103,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   while (limit > 0) {
     TRI_skiplist_index_element_t* indexElement = skiplistIterator->_next(skiplistIterator);
 
-    if (indexElement == NULL) {
+    if (indexElement == nullptr) {
       break;
     }
 
@@ -1112,7 +1112,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
     if (total > skip && count < limit) {
       v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx,
                                                    col->_cid,
-                                                   (TRI_doc_mptr_t const*) indexElement->_document);
+                                                   ((TRI_doc_mptr_t const*) indexElement->_document)->getDataPtr());
 
       if (doc.IsEmpty()) {
         error = true;
@@ -1306,18 +1306,18 @@ static v8::Handle<v8::Value> ExecuteBitarrayQuery (v8::Arguments const& argv,
   TRI_voc_size_t count = 0;
   bool error = false;
 
-  if (indexIterator != NULL) {
+  if (indexIterator != nullptr) {
     while (limit > 0) {
       TRI_doc_mptr_t* data = (TRI_doc_mptr_t*) indexIterator->_next(indexIterator);
 
-      if (data == NULL) {
+      if (data == nullptr) {
         break;
       }
 
       ++total;
 
       if (total > skip && count < limit) {
-        v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, data);
+        v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, data->getDataPtr());
 
         if (doc.IsEmpty()) {
           error = true;
@@ -1418,7 +1418,7 @@ static int StoreGeoResult (V8ReadTransaction& trx,
   // copy the documents
   bool error = false;
   for (gtr = tmp, i = 0;  gtr < gnd;  ++gtr, ++i) {
-    v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, collection->_cid, (TRI_doc_mptr_t const*) gtr->_data);
+    v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, collection->_cid, ((TRI_doc_mptr_t const*) gtr->_data)->getDataPtr());
 
     if (doc.IsEmpty()) {
       error = true;
@@ -1533,7 +1533,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
       }
 
       for (size_t j = 0;  j < edges.size();  ++j) {
-        v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, &edges[j]);
+        v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, edges[j].getDataPtr());
 
         if (doc.IsEmpty()) {
           // error
@@ -1576,7 +1576,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
     }
 
     for (size_t j = 0;  j < edges.size();  ++j) {
-      v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, &edges[j]);
+      v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, edges[j].getDataPtr());
 
       if (doc.IsEmpty()) {
         error = true;
@@ -1660,7 +1660,7 @@ static v8::Handle<v8::Value> JS_AllQuery (v8::Arguments const& argv) {
   result->Set(v8::String::New("documents"), documents);
 
   for (size_t i = 0; i < n; ++i) {
-    v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, &docs[i]);
+    v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, docs[i].getDataPtr());
 
     if (doc.IsEmpty()) {
       TRI_V8_EXCEPTION_MEMORY(scope);
@@ -1736,7 +1736,7 @@ static v8::Handle<v8::Value> JS_OffsetQuery (v8::Arguments const& argv) {
   result->Set(v8::String::New("documents"), documents);
 
   for (size_t i = 0; i < n; ++i) {
-    v8::Handle<v8::Value> document = WRAP_SHAPED_JSON(trx, col->_cid, &docs[i]);
+    v8::Handle<v8::Value> document = WRAP_SHAPED_JSON(trx, col->_cid, docs[i].getDataPtr());
 
     if (document.IsEmpty()) {
       TRI_V8_EXCEPTION_MEMORY(scope);
@@ -1802,7 +1802,7 @@ static v8::Handle<v8::Value> JS_AnyQuery (v8::Arguments const& argv) {
     return scope.Close(v8::Null());
   }
 
-  v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, &document);
+  v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, document.getDataPtr());
 
   if (doc.IsEmpty()) {
     TRI_V8_EXCEPTION_MEMORY(scope);
@@ -1917,9 +1917,7 @@ static v8::Handle<v8::Value> JS_ByExampleQuery (v8::Arguments const& argv) {
 
     if (s < e) {
       for (size_t j = s; j < e; ++j) {
-        TRI_doc_mptr_copy_t* mptr = &filtered[j];
-
-        v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, mptr);
+        v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, filtered[j].getDataPtr());
 
         if (doc.IsEmpty()) {
           error = true;
@@ -2030,7 +2028,7 @@ static v8::Handle<v8::Value> ByExampleHashIndexQuery (V8ReadTransaction& trx,
 
     if (s < e) {
       for (size_t i = s;  i < e;  ++i) {
-        v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, collection->_cid, list._documents[i]);
+        v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, collection->_cid, list._documents[i]->getDataPtr());
 
         if (doc.IsEmpty()) {
           error = true;
@@ -2434,7 +2432,7 @@ static v8::Handle<v8::Value> JS_FirstQuery (v8::Arguments const& argv) {
     uint32_t j = 0;
 
     for (size_t i = 0; i < n; ++i) {
-      v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, &documents[i]);
+      v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, documents[i].getDataPtr());
 
       if (doc.IsEmpty()) {
         // error
@@ -2451,7 +2449,7 @@ static v8::Handle<v8::Value> JS_FirstQuery (v8::Arguments const& argv) {
       return scope.Close(v8::Null());
     }
 
-    v8::Handle<v8::Value> result = WRAP_SHAPED_JSON(trx, col->_cid, &documents[0]);
+    v8::Handle<v8::Value> result = WRAP_SHAPED_JSON(trx, col->_cid, documents[0].getDataPtr());
 
     if (result.IsEmpty()) {
       TRI_V8_EXCEPTION_MEMORY(scope);
@@ -2533,7 +2531,7 @@ static v8::Handle<v8::Value> FulltextQuery (V8ReadTransaction& trx,
   bool error = false;
 
   for (uint32_t i = 0; i < queryResult->_numDocuments; ++i) {
-    v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, collection->_cid, (TRI_doc_mptr_t const*) queryResult->_documents[i]);
+    v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, collection->_cid, ((TRI_doc_mptr_t const*) queryResult->_documents[i])->getDataPtr());
 
     if (doc.IsEmpty()) {
       error = true;
@@ -2671,7 +2669,7 @@ static v8::Handle<v8::Value> JS_LastQuery (v8::Arguments const& argv) {
     uint32_t j = 0;
 
     for (size_t i = 0; i < n; ++i) {
-      v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, &documents[i]);
+      v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, documents[i].getDataPtr());
 
       if (doc.IsEmpty()) {
         // error
@@ -2688,7 +2686,7 @@ static v8::Handle<v8::Value> JS_LastQuery (v8::Arguments const& argv) {
       return scope.Close(v8::Null());
     }
 
-    v8::Handle<v8::Value> result = WRAP_SHAPED_JSON(trx, col->_cid, &documents[0]);
+    v8::Handle<v8::Value> result = WRAP_SHAPED_JSON(trx, col->_cid, documents[0].getDataPtr());
 
     if (result.IsEmpty()) {
       TRI_V8_EXCEPTION_MEMORY(scope);
