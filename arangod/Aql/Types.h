@@ -154,32 +154,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       v8::Handle<v8::Value> toV8 (AQL_TRANSACTION_V8* trx, 
-                                  TRI_document_collection_t const* document) const {
-        switch (_type) {
-          case JSON: {
-            return TRI_ObjectJson(_json->json());
-          }
-
-          case SHAPED: {
-            return TRI_WrapShapedJson(*trx, document->_info._cid, _marker);
-          }
-
-          case DOCVEC: {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-          }
-
-          case RANGE: {
-            v8::Handle<v8::Array> values = v8::Array::New();
-            // TODO: fill range
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-            return values;
-          }
-
-          default: {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-          }
-        }
-      }
+                                  TRI_document_collection_t const* document) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toString method
