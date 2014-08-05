@@ -264,23 +264,15 @@ namespace triagens {
 /// @brief hash function for AqlValue objects
 ////////////////////////////////////////////////////////////////////////////////
 
-#if 0
-    template<class T> class std::hash {
-      size_t operator() (T const& x) {
-        return 0;
-      }
-    };
+namespace std {
 
-template<> class std::hash<AqlValue> :
-#endif
-
-template<> struct std::hash<triagens::aql::AqlValue> {
+template<> struct hash<triagens::aql::AqlValue> {
   size_t operator () (triagens::aql::AqlValue const& x) const {
     return 1;
   }
 };
 
-template<> struct std::equal_to<triagens::aql::AqlValue> {
+template<> struct equal_to<triagens::aql::AqlValue> {
   bool operator () (triagens::aql::AqlValue const& a,
                     triagens::aql::AqlValue const& b) const {
     if (a._type != b._type) {
@@ -306,6 +298,8 @@ template<> struct std::equal_to<triagens::aql::AqlValue> {
     }
   }
 };
+
+}
 
 namespace triagens {
   namespace aql {
