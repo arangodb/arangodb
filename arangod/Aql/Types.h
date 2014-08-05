@@ -28,6 +28,8 @@
 #ifndef ARANGODB_AQL_TYPES_H
 #define ARANGODB_AQL_TYPES_H 1
 
+#include <functional>
+
 #include <Basics/JsonHelper.h>
 
 #include "Aql/AstNode.h"
@@ -254,7 +256,27 @@ namespace std {
 
 template<> struct hash<triagens::aql::AqlValue> {
   size_t operator () (triagens::aql::AqlValue const& x) const {
-    return 1;
+    std::hash<uint32_t> intHash;
+    std::hash<void const*> ptrHash;
+    size_t res = intHash(static_cast<uint32_t>(x._type));
+    switch (x._type) {
+      case triagens::aql::AqlValue::JSON: {
+        return res ^ ptrHash(x._json);
+      }
+      case triagens::aql::AqlValue::SHAPED: {
+        return res ^ ptrHash(x._marker);
+      }
+      case triagens::aql::AqlValue::DOCVEC: {
+        return res ^ ptrHash(x._vector);
+      }
+      case triagens::aql::AqlValue::RANGE: {
+        return res ^ ptrHash(x._range);
+      }
+      default: {
+        TRI_ASSERT(false);
+        return 0;
+      }
+    }
   }
 };
 
