@@ -1993,7 +1993,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
   TRI_ASSERT(trx.hasBarrier());
 
   if (res == TRI_ERROR_NO_ERROR) {
-    result = TRI_WrapShapedJson<V8ReadTransaction>(trx, col->_cid, &document);
+    result = TRI_WrapShapedJson<V8ReadTransaction>(trx, col->_cid, document.getDataPtr());
   }
 
   FREE_STRING(TRI_CORE_MEM_ZONE, key);
@@ -10329,15 +10329,14 @@ template<class T>
 static v8::Handle<v8::Object> AddBasicDocumentAttributes (T& trx,
                                                           TRI_v8_global_t* v8g,
                                                           TRI_voc_cid_t cid,
-                                                          TRI_doc_mptr_t const* mptr,
+                                                          TRI_df_marker_t const* marker,
                                                           v8::Handle<v8::Object> result) {
-  v8::HandleScope scope;
+  TRI_ASSERT(marker != nullptr);
 
-  TRI_ASSERT(mptr != nullptr);
-
-  TRI_voc_rid_t rid = mptr->_rid;
-  char const* docKey = TRI_EXTRACT_MARKER_KEY(mptr);  // PROTECTED by trx from above
+  TRI_voc_rid_t rid = TRI_EXTRACT_MARKER_RID(marker);
   TRI_ASSERT(rid > 0);
+  
+  char const* docKey = TRI_EXTRACT_MARKER_KEY(marker);
   TRI_ASSERT(docKey != nullptr);
 
   CollectionNameResolver const* resolver = trx.resolver();
@@ -10345,22 +10344,23 @@ static v8::Handle<v8::Object> AddBasicDocumentAttributes (T& trx,
   result->Set(v8g->_RevKey, V8RevisionId(rid), v8::ReadOnly);
   result->Set(v8g->_KeyKey, v8::String::New(docKey), v8::ReadOnly);
 
-  TRI_df_marker_type_t type = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr())->_type;  // PROTECTED by trx from above
+  TRI_df_marker_type_t type = marker->_type;
+  char const* base = reinterpret_cast<char const*>(marker);
 
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t const* marker = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->getDataPtr());  // PROTECTED by trx from above
+    TRI_doc_edge_key_marker_t const* m = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker); 
 
-    result->Set(v8g->_FromKey, V8DocumentId(resolver->getCollectionNameCluster(marker->_fromCid), ((char*) marker) + marker->_offsetFromKey));
-    result->Set(v8g->_ToKey, V8DocumentId(resolver->getCollectionNameCluster(marker->_toCid), ((char*) marker) + marker->_offsetToKey));
+    result->Set(v8g->_FromKey, V8DocumentId(resolver->getCollectionNameCluster(m->_fromCid), base + m->_offsetFromKey));
+    result->Set(v8g->_ToKey, V8DocumentId(resolver->getCollectionNameCluster(m->_toCid), base + m->_offsetToKey));
   }
   else if (type == TRI_WAL_MARKER_EDGE) {
-    triagens::wal::edge_marker_t const* marker = static_cast<triagens::wal::edge_marker_t const*>(mptr->getDataPtr());  // PROTECTED by trx from above
+    triagens::wal::edge_marker_t const* m = reinterpret_cast<triagens::wal::edge_marker_t const*>(marker);
 
-    result->Set(v8g->_FromKey, V8DocumentId(resolver->getCollectionNameCluster(marker->_fromCid), ((char const*) marker) + marker->_offsetFromKey));
-    result->Set(v8g->_ToKey, V8DocumentId(resolver->getCollectionNameCluster(marker->_toCid), ((char const*) marker) + marker->_offsetToKey));
+    result->Set(v8g->_FromKey, V8DocumentId(resolver->getCollectionNameCluster(m->_fromCid), base + m->_offsetFromKey));
+    result->Set(v8g->_ToKey, V8DocumentId(resolver->getCollectionNameCluster(m->_toCid), base + m->_offsetToKey));
   }
 
-  return scope.Close(result);
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -10370,31 +10370,15 @@ static v8::Handle<v8::Object> AddBasicDocumentAttributes (T& trx,
 template<class T>
 v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
                                           TRI_voc_cid_t cid,
-                                          TRI_df_marker_t const* marker) {
-  // TODO: implement!
-  return v8::Object::New();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wraps a TRI_shaped_json_t
-////////////////////////////////////////////////////////////////////////////////
-
-template<class T>
-v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
-                                          TRI_voc_cid_t cid,
-                                          TRI_doc_mptr_t const* document) {
-  v8::HandleScope scope;
-
-  TRI_ASSERT(document != nullptr);
+                                          void const* data) {
+  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(data);
+  TRI_ASSERT(marker != nullptr);
 
   TRI_barrier_t* barrier = trx.barrier();
   TRI_ASSERT(barrier != nullptr);
 
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData());
-
-  void const* marker = document->getDataPtr();
-  TRI_ASSERT(marker != nullptr);  // PROTECTED by trx from above
 
   bool const doCopy = TRI_IsWalDataMarkerDatafile(marker);
 
@@ -10409,27 +10393,13 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
     TRI_shape_t const* shape = shaper->lookupShapeId(shaper, json._sid);
 
     if (shape == nullptr) {
-      return scope.Close(v8::Object::New());
+      return v8::Object::New();
     }
 
     v8::Handle<v8::Object> result = v8::Object::New();
-    result = AddBasicDocumentAttributes<T>(trx, v8g, cid, document, result);
+    result = AddBasicDocumentAttributes<T>(trx, v8g, cid, marker, result);
 
-    v8::Handle<v8::Value> shaped = TRI_JsonShapeData(shaper, shape, json._data.data, json._data.length);
-
-    if (! shaped.IsEmpty()) {
-      // now copy the shaped json attributes into the result
-      // this is done to ensure proper order (_key, _id, _rev etc. come first)
-      v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(shaped);
-      v8::Handle<v8::Array> names = array->GetOwnPropertyNames();
-      uint32_t const n = names->Length();
-      for (uint32_t j = 0; j < n; ++j) {
-        v8::Handle<v8::Value> key = names->Get(j);
-        result->Set(key, array->Get(key));
-      }
-    }
-
-    return scope.Close(result);
+    return TRI_JsonShapeData(result, shaper, shape, json._data.data, json._data.length);
   }
 
   // we'll create a document stub, with a pointer into the datafile
@@ -10439,14 +10409,12 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
 
   if (result.IsEmpty()) {
     // error
-    return scope.Close(result);
+    return result;
   }
-
-  void* data = const_cast<void*>(marker);  // PROTECTED by trx from above
 
   // point the 0 index Field to the c++ pointer for unwrapping later
   result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(WRP_SHAPED_JSON_TYPE));
-  result->SetInternalField(SLOT_CLASS, v8::External::New(data));
+  result->SetInternalField(SLOT_CLASS, v8::External::New((void*) marker));
 
   // tell everyone else that this barrier is used by an external
   reinterpret_cast<TRI_barrier_blocker_t*>(barrier)->_usedByExternal = true;
@@ -10469,7 +10437,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
     result->SetInternalField(SLOT_BARRIER, i->second);
   }
 
-  return scope.Close(AddBasicDocumentAttributes<T>(trx, v8g, cid, document, result));
+  return AddBasicDocumentAttributes<T>(trx, v8g, cid, marker, result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

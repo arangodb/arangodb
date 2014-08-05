@@ -58,7 +58,17 @@ v8::Handle<v8::Array> TRI_ArrayAssociativePointer (TRI_associative_pointer_t con
 v8::Handle<v8::Value> TRI_ObjectJson (TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a TRI_shaped_json_t into a V8 object
+/// @brief converts a TRI_shaped_json_t into an existing V8 object
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> TRI_JsonShapeData (v8::Handle<v8::Value>,
+                                         TRI_shaper_t*,
+                                         TRI_shape_t const*,
+                                         char const* data,
+                                         size_t size);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a TRI_shaped_json_t into a new V8 object
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> TRI_JsonShapeData (TRI_shaper_t*,
