@@ -191,7 +191,7 @@ QueryResult Query::execute () {
     auto plan = ExecutionPlan::instanciateFromAst(parser.ast());
 
     try { 
-      auto engine = ExecutionEngine::instanciateFromPlan(plan->root());
+      auto engine = ExecutionEngine::instanciateFromPlan(&trx, plan->root());
 
       try {
         auto root = engine->root();
@@ -199,11 +199,11 @@ QueryResult Query::execute () {
  
         AqlItemBlock* value;
         while (nullptr != (value = root->getOne())) {
-          auto val = value->getValue(0, 0);
-          TRI_ASSERT(val != nullptr);
+          AqlValue val = value->getValue(0, 0);
+          TRI_ASSERT(! val.isEmpty());
 
           // TODO: remove debug output
-          std::cout << val->toString() << std::endl;
+          std::cout << val.toString(value->getDocumentCollections()[0]) << std::endl;
           delete value;
         }
 

@@ -35,6 +35,7 @@
 #include "V8/v8-conv.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/voc-shaper.h"
+#include "V8Server/v8-vocbase.h"
 #include "Utils/V8TransactionContext.h"
 #include "Utils/AqlTransaction.h"
 
@@ -71,10 +72,10 @@ namespace triagens {
 
       enum AqlValueType {
         EMPTY,     // contains no data
-        JSON,      // TRI_json_t
-        DOCUMENT,  // TRI_doc_mptr_t
+        JSON,      // Json*
+        SHAPED,    // TRI_df_marker_t*
         DOCVEC,    // a vector of blocks of results coming from a subquery
-        RANGE      // a range just remembering lower and upper bound
+        RANGE      // a pointer to a range remembering lower and upper bound
       };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -93,7 +94,7 @@ namespace triagens {
 
       union {
         triagens::basics::Json*     _json;
-        TRI_df_marker_t const*      _shaped;
+        TRI_df_marker_t const*      _marker;
         std::vector<AqlItemBlock*>* _vector;
         Range const*                _range;
       };
@@ -117,7 +118,7 @@ namespace triagens {
       }
       
       AqlValue (TRI_df_marker_t const* marker)
-        : _marker(marker), _type(DOCUMENT) {
+        : _marker(marker), _type(SHAPED) {
       }
       
       AqlValue (std::vector<AqlItemBlock*>* vector)
@@ -140,37 +141,7 @@ namespace triagens {
 /// @brief destroy, explicit destruction, only when needed
 ////////////////////////////////////////////////////////////////////////////////
 
-      void destroy () {
-        switch (_type) {
-          case JSON: {
-            if (_json != nullptr) {
-              delete _json;
-            }
-            break;
-          }
-          case DOCVEC: {
-            if (_vector != nullptr) {
-              for (auto it = _vector->begin(); it != _vector->end(); ++it) {
-                delete *it;
-              }
-              delete _vector;
-            }
-            delete _vector;
-            break;
-          }
-          case RANGE: {
-            delete _range;
-            break;
-          }
-          case SHAPED: {
-            // do nothing here, since data pointers need not be freed
-            break;
-          }
-          default: {
-            TRI_ASSERT(false);
-          }
-        }
-      }
+      void destroy ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone for recursive copying
@@ -189,7 +160,7 @@ namespace triagens {
             return TRI_ObjectJson(_json->json());
           }
 
-          case DOCUMENT: {
+          case SHAPED: {
             return TRI_WrapShapedJson(*trx, document->_info._cid, _marker);
           }
 
@@ -231,7 +202,7 @@ namespace triagens {
             id.push_back('/');
             id += std::string(key);
             json("_id", triagens::basics::Json(id));
-            json("_rev", triagens::basics::Json(std::to_string(TRI_EXTRACT_MARKER_RID))); 
+            json("_rev", triagens::basics::Json(std::to_string( 17 ))); // TRI_EXTRACT_MARKER_RID))); 
             json("_key", triagens::basics::Json(key));
             
             return json.toString();
@@ -286,6 +257,59 @@ namespace triagens {
       }
     };
 
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hash function for AqlValue objects
+////////////////////////////////////////////////////////////////////////////////
+
+#if 0
+    template<class T> class std::hash {
+      size_t operator() (T const& x) {
+        return 0;
+      }
+    };
+
+template<> class std::hash<AqlValue> :
+#endif
+
+template<> struct std::hash<triagens::aql::AqlValue> {
+  size_t operator () (triagens::aql::AqlValue const& x) const {
+    return 1;
+  }
+};
+
+template<> struct std::equal_to<triagens::aql::AqlValue> {
+  bool operator () (triagens::aql::AqlValue const& a,
+                    triagens::aql::AqlValue const& b) const {
+    if (a._type != b._type) {
+      return false;
+    }
+    switch (a._type) {
+      case triagens::aql::AqlValue::JSON: {
+        return a._json == b._json;
+      }
+      case triagens::aql::AqlValue::SHAPED: {
+        return a._marker == b._marker;
+      }
+      case triagens::aql::AqlValue::DOCVEC: {
+        return a._vector == b._vector;
+      }
+      case triagens::aql::AqlValue::RANGE: {
+        return a._range == b._range;
+      }
+      default: {
+        TRI_ASSERT(false);
+        return true;
+      }
+    }
+  }
+};
+
+namespace triagens {
+  namespace aql {
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      AqlItemBlock
 // -----------------------------------------------------------------------------
@@ -293,6 +317,7 @@ namespace triagens {
     class AqlItemBlock {
 
         std::vector<AqlValue> _data;
+        std::vector<TRI_document_collection_t const*> _docColls;
         size_t     _nrItems;
         RegisterId _nrRegs;
 
@@ -302,8 +327,14 @@ namespace triagens {
           : _nrItems(nrItems), _nrRegs(nrRegs) {
           if (nrItems > 0 && nrRegs > 0) {
             _data.reserve(nrItems * nrRegs);
-            for (size_t i = 0; i < nrItems * nrRegs; i++) {
+            for (size_t i = 0; i < nrItems * nrRegs; ++i) {
               _data.emplace_back();
+            }
+          }
+          if (nrRegs > 0) {
+            _docColls.reserve(nrRegs);
+            for (size_t i = 0; i < nrRegs; ++i) {
+              _docColls.push_back(nullptr);
             }
           }
         }
@@ -314,7 +345,7 @@ namespace triagens {
 
         ~AqlItemBlock () {
           std::unordered_set<AqlValue> cache;
-          for (i = 0; i < _nrItems * _nrRegs; i++) {
+          for (size_t i = 0; i < _nrItems * _nrRegs; i++) {
             if (! _data[i].isEmpty()) {
               auto it = cache.find(_data[i]);
               if (it == cache.end()) {
@@ -343,6 +374,22 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief getDocumentCollection
+////////////////////////////////////////////////////////////////////////////////
+
+      TRI_document_collection_t const* getDocumentCollection (RegisterId varNr) const {
+        return _docColls[varNr];
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief setDocumentCollection, set the current value of a variable or attribute
+////////////////////////////////////////////////////////////////////////////////
+
+      void setDocumentCollection (RegisterId varNr, TRI_document_collection_t const* docColl) {
+        _docColls[varNr] = docColl;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief getter for _nrRegs
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -362,8 +409,16 @@ namespace triagens {
 /// @brief getter for _data
 ////////////////////////////////////////////////////////////////////////////////
 
-      vector<AqlValue>& getData () const {
+      vector<AqlValue>& getData () {
         return _data;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getter for _data
+////////////////////////////////////////////////////////////////////////////////
+
+      vector<TRI_document_collection_t const*>& getDocumentCollections () {
+        return _docColls;
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -411,7 +466,7 @@ namespace triagens {
             if (! a.isEmpty()) {
               auto it = cache.find(a);
               if (it == cache.end()) {
-                AqlValue b = a->clone();
+                AqlValue b = a.clone();
                 res->_data[(row - from) * _nrRegs + col] = b;
                 cache.insert(make_pair(a,b));
               }
