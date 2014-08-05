@@ -31,20 +31,17 @@ using namespace triagens::aql;
 using Json = triagens::basics::Json;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor
+/// @brief destroy, explicit destruction, only when needed
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue::~AqlValue () {
+void AqlValue::destroy () {
   switch (_type) {
     case JSON: {
-      delete _json;
-      return;
+      if (_json != nullptr) {
+        delete _json;
+      }
+      break;
     }
-    
-    case DOCUMENT: {
-      return;
-    }
-
     case DOCVEC: {
       if (_vector != nullptr) {
         for (auto it = _vector->begin(); it != _vector->end(); ++it) {
@@ -52,26 +49,35 @@ AqlValue::~AqlValue () {
         }
         delete _vector;
       }
-      return;
+      delete _vector;
+      break;
     }
-
     case RANGE: {
-      return;
+      delete _range;
+      break;
     }
-
-    default:
-      return;
+    case SHAPED: {
+      // do nothing here, since data pointers need not be freed
+      break;
+    }
+    default: {
+      TRI_ASSERT(false);
+    }
   }
 }
 
-AqlValue* AqlValue::clone () const {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone for recursive copying
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue AqlValue::clone () const {
   switch (_type) {
     case JSON: {
-      return new AqlValue(new Json(_json->copy()));
+      return AqlValue(new Json(_json->copy()));
     }
 
-    case DOCUMENT: {
-      return new AqlValue(_document._document, _document._mptr);
+    case SHAPED: {
+      return AqlValue(_marker);
     }
 
     case DOCVEC: {
@@ -80,11 +86,11 @@ AqlValue* AqlValue::clone () const {
       for (auto it = _vector->begin(); it != _vector->end(); ++it) {
         c->push_back((*it)->slice(0, (*it)->size()));
       }
-      return new AqlValue(c);
+      return AqlValue(c);
     }
 
     case RANGE: {
-      return new AqlValue(_range._low, _range._high);
+      return AqlValue(_range->_low, _range->_high);
     }
 
     default: {
@@ -119,10 +125,22 @@ AqlItemBlock* AqlItemBlock::splice (std::vector<AqlItemBlock*>& blocks) {
   auto res = new AqlItemBlock(totalSize, nrRegs);
   size_t pos = 0;
   for (it = blocks.begin(); it != blocks.end(); ++it) {
+    if (it == blocks.begin()) {
+      for (RegisterId col = 0; col < nrRegs; ++col) {
+        res->getDocumentCollections().at(col)
+          = (*it)->getDocumentCollections().at(col);
+      }
+    }
+    else {
+      for (RegisterId col = 0; col < nrRegs; ++col) {
+        TRI_ASSERT(res->getDocumentCollections().at(col) ==
+                   (*it)->getDocumentCollections().at(col));
+      }
+    }
     for (size_t row = 0; row < (*it)->size(); ++row) {
       for (RegisterId col = 0; col < nrRegs; ++col) {
         res->setValue(pos+row, col, (*it)->getValue(row, col));
-        (*it)->setValue(row, col, nullptr);
+        (*it)->setValue(row, col, AqlValue());
       }
     }
     pos += (*it)->size();

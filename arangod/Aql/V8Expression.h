@@ -69,13 +69,14 @@ namespace triagens {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-      AqlValue* execute (AqlValue const* const* argv, 
-                         std::vector<Variable*> const& vars,
-                         std::vector<RegisterId> const& regs) {
+      AqlValue execute (AQL_TRANSACTION_V8* trx,
+                        std::vector<TRI_document_collection_t const*>& docColls,
+                        std::vector<AqlValue>& argv,
+                        size_t startPos,
+                        std::vector<Variable*> const& vars,
+                        std::vector<RegisterId> const& regs) {
         // TODO: decide whether a separate handle scope is needed
 
-        TRI_ASSERT(argv != nullptr);
-        
         size_t const n = vars.size();
         TRI_ASSERT(regs.size() == n); // assert same vector length
 
@@ -84,9 +85,9 @@ namespace triagens {
           auto varname = vars[i]->name;
           auto reg = regs[i];
 
-          TRI_ASSERT(argv[reg] != nullptr);
+          TRI_ASSERT(! argv[reg].isEmpty());
 
-          values->Set(v8::String::New(varname.c_str(), (int) varname.size()), argv[reg]->toV8());
+          values->Set(v8::String::New(varname.c_str(), (int) varname.size()), argv[startPos + reg].toV8(trx, docColls[reg]));
         }
 
         v8::Handle<v8::Value> args[] = { values };
@@ -102,7 +103,7 @@ namespace triagens {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
 
-        return new AqlValue(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, json));
+        return AqlValue(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, json));
       }
 
 

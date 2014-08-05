@@ -36,8 +36,11 @@
 #include "Cluster/ServerState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Transaction.h"
+#include "Utils/V8TransactionContext.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
+
+#define AQL_TRANSACTION_V8 triagens::arango::AqlTransaction<triagens::arango::V8TransactionContext<true>>
 
 namespace triagens {
   namespace arango {

@@ -42,9 +42,10 @@ using namespace triagens::aql;
 /// @brief create the engine
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionEngine::ExecutionEngine ()
+ExecutionEngine::ExecutionEngine (AQL_TRANSACTION_V8* trx)
   : _blocks(),
-    _root(nullptr) {
+    _root(nullptr),
+    _trx(trx) {
 
   _blocks.reserve(8);
 }
@@ -80,27 +81,33 @@ struct Instanciator : public ExecutionNode::WalkerWorker {
     ExecutionBlock* eb;
     switch (en->getType()) {
       case ExecutionNode::SINGLETON: {
-        eb = new SingletonBlock(static_cast<SingletonNode const*>(en));
+        eb = new SingletonBlock(engine->getTransaction(),
+                                static_cast<SingletonNode const*>(en));
         break;
       }
       case ExecutionNode::ENUMERATE_COLLECTION: {
-        eb = new EnumerateCollectionBlock(static_cast<EnumerateCollectionNode const*>(en));
+        eb = new EnumerateCollectionBlock(engine->getTransaction(),
+                                          static_cast<EnumerateCollectionNode const*>(en));
         break;
       }
       case ExecutionNode::CALCULATION: {
-        eb = new CalculationBlock(static_cast<CalculationNode const*>(en));
+        eb = new CalculationBlock(engine->getTransaction(),
+                                  static_cast<CalculationNode const*>(en));
         break;
       }
       case ExecutionNode::FILTER: {
-        eb = new FilterBlock(static_cast<FilterNode const*>(en));
+        eb = new FilterBlock(engine->getTransaction(),
+                             static_cast<FilterNode const*>(en));
         break;
       }
       case ExecutionNode::LIMIT: {
-        eb = new LimitBlock(static_cast<LimitNode const*>(en));
+        eb = new LimitBlock(engine->getTransaction(),
+                            static_cast<LimitNode const*>(en));
         break;
       }
       case ExecutionNode::RETURN: {
-        eb = new ReturnBlock(static_cast<ReturnNode const*>(en));
+        eb = new ReturnBlock(engine->getTransaction(),
+                             static_cast<ReturnNode const*>(en));
         root = eb;
         break;
       }
@@ -137,8 +144,9 @@ struct Instanciator : public ExecutionNode::WalkerWorker {
 /// @brief create an execution engine from a plan
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionEngine* ExecutionEngine::instanciateFromPlan (ExecutionNode* plan) {
-  auto engine = new ExecutionEngine();
+ExecutionEngine* ExecutionEngine::instanciateFromPlan (AQL_TRANSACTION_V8* trx,
+                                                       ExecutionNode* plan) {
+  auto engine = new ExecutionEngine(trx);
 
   try {
     auto inst = new Instanciator(engine);

@@ -50,9 +50,20 @@ namespace triagens {
     class ExecutionBlock {
 
       public:
-        ExecutionBlock (ExecutionNode const* ep)
-          : _exeNode(ep), _done(false), _depth(0), _varOverview(nullptr) { 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionBlock (AQL_TRANSACTION_V8* trx,
+                        ExecutionNode const* ep)
+          : _trx(trx), _exeNode(ep), _done(false), _depth(0), 
+            _varOverview(nullptr) { 
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
 
         virtual ~ExecutionBlock ();
           
@@ -531,10 +542,16 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief our corresponding ExecutionNode node
+/// @brief the transaction for this query
 ////////////////////////////////////////////////////////////////////////////////
 
       protected:
+
+        AQL_TRANSACTION_V8* _trx;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief our corresponding ExecutionNode node
+////////////////////////////////////////////////////////////////////////////////
 
         ExecutionNode const* _exeNode;
 
@@ -600,8 +617,8 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        SingletonBlock (SingletonNode const* ep)
-          : ExecutionBlock(ep) {
+        SingletonBlock (AQL_TRANSACTION_V8* trx, SingletonNode const* ep)
+          : ExecutionBlock(trx, ep) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -718,8 +735,9 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        EnumerateCollectionBlock (EnumerateCollectionNode const* ep) 
-          : ExecutionBlock(ep), _trx(nullptr), _posInAllDocs(0) {
+        EnumerateCollectionBlock (AQL_TRANSACTION_V8* trx,
+                                  EnumerateCollectionNode const* ep) 
+          : ExecutionBlock(trx, ep), _trx(nullptr), _posInAllDocs(0) {
           
           auto p = reinterpret_cast<EnumerateCollectionNode const*>(_exeNode);
 
@@ -858,13 +876,15 @@ namespace triagens {
           auto res = new AqlItemBlock(1, _varOverview->nrRegs[_depth]);
           TRI_ASSERT(cur->getNrRegs() <= res->getNrRegs());
           for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
-            res->setValue(0, i, cur->getValue(_pos, i)->clone());
+            res->setValue(0, i, cur->getValue(_pos, i).clone());
           }
 
           // The result is in the first variable of this depth,
           // we do not need to do a lookup in _varOverview->varInfo,
           // but can just take cur->getNrRegs() as registerId:
-          res->setValue(0, cur->getNrRegs(), new AqlValue(_trx->documentCollection(), _documents[_posInAllDocs++]));
+          res->setValue(0, cur->getNrRegs(), AqlValue(reinterpret_cast<TRI_df_marker_t const*>(_documents[_posInAllDocs++].getDataPtr())));
+          res->getDocumentCollections().at(cur->getNrRegs()) 
+            = _trx->documentCollection();
 
           // Advance read position:
           if (_posInAllDocs >= _documents.size()) {
@@ -915,8 +935,10 @@ namespace triagens {
 
           // only copy 1st row of registers inherited from previous frame(s)
           for (RegisterId i = 0; i < curRegs; i++) {
-            res->setValue(0, i, cur->getValue(_pos, i)->clone());
+            res->setValue(0, i, cur->getValue(_pos, i).clone());
           }
+          res->getDocumentCollections().at(curRegs)
+            = _trx->documentCollection();
 
           for (size_t j = 0; j < toSend; j++) {
             if (j > 0) {
@@ -929,7 +951,7 @@ namespace triagens {
             // The result is in the first variable of this depth,
             // we do not need to do a lookup in _varOverview->varInfo,
             // but can just take cur->getNrRegs() as registerId:
-            res->setValue(j, curRegs, new AqlValue(_trx->documentCollection(), _documents[_posInAllDocs++]));
+            res->setValue(j, curRegs, AqlValue(reinterpret_cast<TRI_df_marker_t const*>(_documents[_posInAllDocs++].getDataPtr())));
           }
 
           // Advance read position:
@@ -997,8 +1019,9 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        CalculationBlock (CalculationNode const* en)
-          : ExecutionBlock(en), _expression(en->expression()), _outReg(0) {
+        CalculationBlock (AQL_TRANSACTION_V8* trx,
+                          CalculationNode const* en)
+          : ExecutionBlock(trx, en), _expression(en->expression()), _outReg(0) {
 
         }
 
@@ -1048,14 +1071,15 @@ namespace triagens {
         void doEvaluation (AqlItemBlock* result) {
           TRI_ASSERT(result != nullptr);
 
-          AqlValue** data = result->getData();
-          TRI_ASSERT(data != nullptr);
+          vector<AqlValue>& data(result->getData());
+          vector<TRI_document_collection_t const*> 
+              docColls(result->getDocumentCollections());
 
           RegisterId nrRegs = result->getNrRegs();
 
           for (size_t i = 0; i < result->size(); i++) {
-            AqlValue* res = _expression->execute(data + nrRegs * i,
-                                                 _inVars, _inRegs);
+            AqlValue res = _expression->execute(_trx, docColls, data, nrRegs * i,
+                                                _inVars, _inRegs);
             result->setValue(i, _outReg, res);
           }
         }
@@ -1144,8 +1168,8 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        FilterBlock (FilterNode const* ep)
-          : ExecutionBlock(ep) {
+        FilterBlock (AQL_TRANSACTION_V8* trx, FilterNode const* ep)
+          : ExecutionBlock(trx, ep) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1183,8 +1207,8 @@ namespace triagens {
       private:
 
         bool takeItem (AqlItemBlock* items, size_t index) {
-          AqlValue* v = items->getValue(index, _inReg);
-          return v->isTrue();
+          AqlValue v = items->getValue(index, _inReg);
+          return v.isTrue();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1401,8 +1425,8 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        LimitBlock (LimitNode const* ep)
-          : ExecutionBlock(ep), _offset(ep->_offset), _limit(ep->_limit),
+        LimitBlock (AQL_TRANSACTION_V8* trx, LimitNode const* ep)
+          : ExecutionBlock(trx, ep), _offset(ep->_offset), _limit(ep->_limit),
             _state(0) {  // start in the beginning
         }
 
@@ -1545,8 +1569,8 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ReturnBlock (ReturnNode const* ep)
-          : ExecutionBlock(ep) {
+        ReturnBlock (AQL_TRANSACTION_V8* trx, ReturnNode const* ep)
+          : ExecutionBlock(trx, ep) {
 
         }
 
@@ -1576,7 +1600,7 @@ namespace triagens {
           TRI_ASSERT(it != _varOverview->varInfo.end());
           RegisterId registerId = it->second.registerId;
           stripped->setValue(0, 0, res->getValue(0, registerId));
-          res->setValue(0, registerId, nullptr);
+          res->setValue(0, registerId, AqlValue());
           delete res;
           return stripped;
         }
@@ -1600,7 +1624,7 @@ namespace triagens {
           AqlItemBlock* stripped = new AqlItemBlock(res->size(), 1);
           for (size_t i = 0; i < res->size(); i++) {
             stripped->setValue(i, 0, res->getValue(i, registerId));
-            res->setValue(i, registerId, nullptr);
+            res->setValue(i, registerId, AqlValue());
           }
           delete res;
           return stripped;

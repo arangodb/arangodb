@@ -107,9 +107,11 @@ namespace triagens {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlValue* execute (AqlValue const* const*, 
-                           std::vector<Variable*> const&,
-                           std::vector<RegisterId> const&);
+        AqlValue execute (AQL_TRANSACTION_V8* trx,
+                          std::vector<TRI_document_collection_t const*>&,
+                          std::vector<AqlValue>&, size_t,
+                          std::vector<Variable*> const&,
+                          std::vector<RegisterId> const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
