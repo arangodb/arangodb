@@ -124,6 +124,24 @@ namespace triagens {
           }
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief barrier
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_barrier_t* barrier (TRI_voc_cid_t cid) {
+          TRI_transaction_collection_t* trxColl = this->trxCollection(cid);
+          return trxColl->_barrier;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief documentCollection
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_document_collection_t* documentCollection (TRI_voc_cid_t cid) {
+          TRI_transaction_collection_t* trxColl = this->trxCollection(cid);
+          return trxColl->_collection->_collection;
+        }
+
     };
 
   }
