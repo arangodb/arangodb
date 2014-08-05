@@ -224,3 +224,5 @@
   * [Attribute Names](NamingConventions/AttributeNames.md)
 <!-- 30 -->
 * [Error codes and meanings](ErrorCodes/README.md)
+<!-- 31 -->
+* [Glossary](Glossary/README.md)

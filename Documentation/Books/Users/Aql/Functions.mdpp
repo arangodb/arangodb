@@ -587,9 +587,9 @@ AQL supports the following functions to operate on document values:
 
       RETURN KEEP(doc, 'firstname', 'name', 'likes')
 
-- *PARSE_IDENTIFIER(document-handle)*: Parses the document handle specified in 
+- *PARSE_IDENTIFIER(document-handle)*: Parses the [document handle](../Glossary/README.html#document_handle) specified in 
   *document-handle* and returns a the handle's individual parts a separate attributes.
-  This function can be used to easily determine the collection name and key from a given document.
+  This function can be used to easily determine the [collection name](../Glossary/README.html#collection_name) and key from a given document.
   The *document-handle* can either be a regular document from a collection, or a document
   identifier string (e.g. *_users/1234*). Passing either a non-string or a non-document or a
   document without an *_id* attribute will result in an error.
@@ -608,7 +608,7 @@ AQL supports the following functions to operate on document values:
 
 !SUBSUBSECTION Geo functions
 
-AQL offers the following functions to filter data based on geo indexes:
+AQL offers the following functions to filter data based on [geo indexes](../Glossary/README.html#geo_index):
 
 - *NEAR(collection, latitude, longitude, limit, distancename)*: 
   Returns at most *limit* documents from collection *collection* that are near
@@ -637,7 +637,7 @@ with an error.
 
 !SUBSUBSECTION Fulltext functions
 
-AQL offers the following functions to filter data based on fulltext indexes:
+AQL offers the following functions to filter data based on [fulltext indexes](../Glossary/README.html#fulltext_index):
 
 - *FULLTEXT(collection, attribute, query)*: 
   Returns all documents from collection *collection* for which the attribute *attribute*
@@ -1092,7 +1092,7 @@ function categories:
       DOCUMENT([ "users/john", "users/amy" ])
 
 - *SKIPLIST(collection, condition, skip, limit)*: Return all documents 
-  from a skiplist index on collection *collection* that match the specified *condition*.
+  from a [skiplist index](../Glossary/README.html#skiplist_index) on collection *collection* that match the specified *condition*.
   This is a shortcut method to use a skiplist index for retrieving specific documents in 
   indexed order. The skiplist index supports equality and less than/greater than queries. The
   *skip* and *limit* parameters are optional but can be specified to further limit the

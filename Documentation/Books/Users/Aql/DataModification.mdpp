@@ -43,7 +43,7 @@ matching documents in collection "users":
 
 The name of the modified collection ("backup" in the above cases) must be 
 known to the AQL executor at query-compile time and cannot change at 
-runtime. Using a bind parameter to specify the collection name is allowed.
+runtime. Using a bind parameter to specify the [collection name](../Glossary/README.html#collection_name) is allowed.
   
 On a single server, data-modification operations are executed transactionally.
 If a data-modification operation fails, it will be rolled back automatically
