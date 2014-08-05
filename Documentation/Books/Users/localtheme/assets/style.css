@@ -6551,10 +6551,10 @@ background: #0b0d0e
 font-family: "Open Sans","Clear Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
 position: absolute;
 top: 50px;
-left: -250px;
+left: -300px;
 bottom: 0;
 z-index: 1;
-width: 250px;
+width: 300px;
 color: #c4cdd4;
 background: #fff;
 border-right: 1px solid rgba(0,0,0,0.07);
@@ -7546,7 +7546,7 @@ color: rgba(0,0,0,0.6)
 right: 0
 }
 .book .book-body .navigation.navigation-prev {
-left: 0
+left: 50px
 }
 @media(max-width:1240px) {.book .book-body .navigation {
 position: static;
