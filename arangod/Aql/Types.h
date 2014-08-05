@@ -110,7 +110,7 @@ namespace triagens {
 /// ownership of the corresponding pointers
 ////////////////////////////////////////////////////////////////////////////////
 
-      AqlValue () : _type(EMPTY) {
+      AqlValue () : _json(nullptr), _type(EMPTY) {
       }
 
       AqlValue (triagens::basics::Json* json)
@@ -142,6 +142,17 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       void destroy ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief erase, this does not free the stuff in the AqlValue, it only
+/// erases the pointers and makes the AqlValue structure EMPTY, this
+/// is used when the AqlValue is stolen and stored in another object
+////////////////////////////////////////////////////////////////////////////////
+
+      void erase () {
+        _type = EMPTY;
+        _json = nullptr;
+      }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone for recursive copying
@@ -372,7 +383,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getValue, get the value of a variable
+/// @brief getValue, get the value of a register
 ////////////////////////////////////////////////////////////////////////////////
 
       AqlValue getValue (size_t index, RegisterId varNr) const {
@@ -380,12 +391,21 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief setValue, set the current value of a variable or attribute
+/// @brief setValue, set the current value of a register
 ////////////////////////////////////////////////////////////////////////////////
 
       void setValue (size_t index, RegisterId varNr, AqlValue zeug) {
         TRI_ASSERT(_data[index * _nrRegs + varNr].isEmpty());
         _data[index * _nrRegs + varNr] = zeug;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief eraseValue, erase the current value of a register not freeing it
+/// this is used if the value is stolen and later released from elsewhere
+////////////////////////////////////////////////////////////////////////////////
+
+      void eraseValue (size_t index, RegisterId varNr) {
+        _data[index * _nrRegs + varNr].erase();
       }
 
 ////////////////////////////////////////////////////////////////////////////////

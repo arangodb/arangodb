@@ -1003,6 +1003,7 @@ static v8::Handle<v8::Value> JS_Getline (v8::Arguments const& argv) {
 /// `fs.getTempPath()`
 ///
 /// Returns the absolute path of the temporary directory
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1173,7 +1174,7 @@ static v8::Handle<v8::Value> JS_MakeAbsolute(v8::Arguments const& argv) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the directory listing
 /// @startDocuBlock JS_List
-/// `fs.list(path`
+/// `fs.list(path)`
 ///
 /// The functions returns the names of all the files in a directory, in
 /// lexically sorted order. Throws an exception if the directory cannot be
@@ -1706,7 +1707,7 @@ static v8::Handle<v8::Value> JS_MarkNonce (v8::Arguments const& argv) {
 /// @startDocuBlock JS_Move
 /// `fs.move(source, destination)`
 ///
-/// Moves *source to destination. Failure to move the file, or
+/// Moves *source* to destination. Failure to move the file, or
 /// specifying a directory for target when source is a file will throw an
 /// exception.
 /// @endDocuBlock
@@ -2032,6 +2033,7 @@ static v8::Handle<v8::Value> JS_Remove (v8::Arguments const& argv) {
 ///
 /// Removes a directory if it is empty. Throws an exception if the path is not
 /// an empty directory.
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
