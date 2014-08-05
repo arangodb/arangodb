@@ -34,6 +34,7 @@
 #include "Aql/Parser.h"
 #include "Aql/V8Executor.h"
 #include "Aql/ExecutionEngine.h"
+#include "Basics/JsonHelper.h"
 #include "BasicsC/json.h"
 #include "BasicsC/tri-strings.h"
 #include "Utils/AqlTransaction.h"
@@ -189,6 +190,8 @@ QueryResult Query::execute () {
     }
 
     auto plan = ExecutionPlan::instanciateFromAst(parser.ast());
+  
+    triagens::basics::Json json(triagens::basics::Json::List);
 
     try { 
       auto engine = ExecutionEngine::instanciateFromPlan(&trx, plan->root());
@@ -198,10 +201,11 @@ QueryResult Query::execute () {
         root->execute();
  
         AqlItemBlock* value;
+
         while (nullptr != (value = root->getOne())) {
           AqlValue val = value->getValue(0, 0);
           TRI_ASSERT(! val.isEmpty());
-
+          
           // TODO: remove debug output
           std::cout << val.toString(value->getDocumentCollections()[0]) << std::endl;
           delete value;
@@ -230,7 +234,7 @@ QueryResult Query::execute () {
     trx.commit();
     
     QueryResult result(TRI_ERROR_NO_ERROR);
-    // result.json = parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE);
+    result.json = parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE);
   
     return result;
   }

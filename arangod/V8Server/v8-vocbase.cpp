@@ -5466,7 +5466,12 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_FULL(scope, queryResult.code, queryResult.details);
   }
 
-  v8::Handle<v8::Object> result = v8::Object::New();
+  if (queryResult.json == nullptr){
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL); 
+  }
+
+  v8::Handle<v8::Object> result = TRI_ObjectJson( queryResult.json );
+
   if (queryResult.json != nullptr) {
     result->Set(TRI_V8_STRING("json"), TRI_ObjectJson(queryResult.json));
   }
