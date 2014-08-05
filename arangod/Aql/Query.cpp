@@ -180,6 +180,7 @@ QueryResult Query::execute () {
     parser.ast()->injectBindParameters(_bindParameters);
     // optimize the ast
     parser.ast()->optimize();
+    std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
 
     triagens::arango::AqlTransaction<triagens::arango::V8TransactionContext<true>> trx(_vocbase, _collections.collections());
 
@@ -233,7 +234,6 @@ QueryResult Query::execute () {
     trx.commit();
     
     QueryResult result(TRI_ERROR_NO_ERROR);
-    //result.json = parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE);
     result.json = json; 
     return result;
   }
