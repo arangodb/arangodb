@@ -201,13 +201,12 @@ QueryResult Query::execute () {
         root->execute();
  
         AqlItemBlock* value;
-
+    
         while (nullptr != (value = root->getOne())) {
           AqlValue val = value->getValue(0, 0);
           TRI_ASSERT(! val.isEmpty());
-          
-          // TODO: remove debug output
-          std::cout << val.toString(value->getDocumentCollections()[0]) << std::endl;
+          auto doc = value->getDocumentCollection(0);
+          json.add(val.toJson(doc)); 
           delete value;
         }
 
@@ -234,8 +233,8 @@ QueryResult Query::execute () {
     trx.commit();
     
     QueryResult result(TRI_ERROR_NO_ERROR);
-    result.json = parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE);
-  
+    //result.json = parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE);
+    result.json = json; 
     return result;
   }
   catch (triagens::arango::Exception const& ex) {
