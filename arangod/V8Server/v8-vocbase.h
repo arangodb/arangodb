@@ -34,6 +34,7 @@
 
 #include "V8/v8-globals.h"
 #include "ShapedJson/shaped-json.h"
+#include "VocBase/barrier.h"
 #include "VocBase/document-collection.h"
 
 struct TRI_server_s;
@@ -73,10 +74,30 @@ TRI_index_t* TRI_LookupIndexByHandle (triagens::arango::CollectionNameResolver c
 /// @brief wraps a TRI_shaped_json_t
 ////////////////////////////////////////////////////////////////////////////////
 
-template<class T>
-v8::Handle<v8::Value> TRI_WrapShapedJson (T&,
+v8::Handle<v8::Value> TRI_WrapShapedJson (triagens::arango::CollectionNameResolver const*,
+                                          TRI_barrier_t*,
                                           TRI_voc_cid_t,
+                                          TRI_document_collection_t*,
                                           void const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wraps a TRI_shaped_json_t
+////////////////////////////////////////////////////////////////////////////////
+
+template<class T>
+v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
+                                          TRI_voc_cid_t cid,
+                                          void const* data) {
+  TRI_barrier_t* barrier = trx.barrier(cid);
+  TRI_ASSERT(barrier != nullptr);
+
+  triagens::arango::CollectionNameResolver const* resolver = trx.resolver();
+  TRI_document_collection_t* collection = trx.documentCollection(cid);
+
+  TRI_ASSERT(collection != nullptr);
+
+  return TRI_WrapShapedJson(resolver, barrier, cid, collection, data);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the private WRP_VOCBASE_COL_TYPE value
