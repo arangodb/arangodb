@@ -203,9 +203,9 @@ void Scopes::endNested () {
       // main scope cannot be closed here
       return;
     }
-    
-    if (type != AQL_SCOPE_FOR && ++iterations < 2) {
-      // do not close anything but for scopes
+
+    if (type != AQL_SCOPE_FOR && ++iterations >= 2) {
+      // if nested, do not close anything but for scopes
       return;
     }
 
