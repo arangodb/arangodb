@@ -293,8 +293,6 @@
             result = self.collection.saveQueries(self.file);
           }
         });
-
-        console.log(result);
       }
     },
 
