@@ -131,6 +131,7 @@
   "frontend/js/collections/graphCollection.js",
   "frontend/js/collections/notificationCollection.js",
   "frontend/js/collections/arangoQueries.js",
+  "clusterFrontend/js/collections/_automaticRetryCollection.js",
   "clusterFrontend/js/collections/clusterServers.js",
   "clusterFrontend/js/collections/clusterCoordinators.js",
   "clusterFrontend/js/collections/clusterDatabases.js",
