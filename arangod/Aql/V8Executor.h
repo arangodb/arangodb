@@ -87,6 +87,12 @@ namespace triagens {
 
         struct TRI_json_s* executeExpression (AstNode const*);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a reference to a built-in function
+////////////////////////////////////////////////////////////////////////////////
+
+        Function const* getFunctionByName (std::string const&);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
