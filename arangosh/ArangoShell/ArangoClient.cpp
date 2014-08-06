@@ -49,7 +49,7 @@ size_t const ArangoClient::DEFAULT_RETRIES            = 2;
 
 namespace {
 #ifdef _WIN32
-void _newLine() {
+bool _newLine () {
     COORD pos;
     CONSOLE_SCREEN_BUFFER_INFO  bufferInfo;
     GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &bufferInfo);
@@ -76,13 +76,17 @@ void _newLine() {
         chiFill.Attributes = BACKGROUND_GREEN | FOREGROUND_RED;
       }
       ScrollConsoleScreenBuffer(GetStdHandle(STD_OUTPUT_HANDLE), &srctScrollRect, NULL, coordDest, &chiFill);
-         pos.Y = bufferInfo.dwCursorPosition.Y;
-         pos.X = 0;
-    } else {
-        pos.Y = bufferInfo.dwCursorPosition.Y + 1;
-        pos.X = 0;
+      pos.Y = bufferInfo.dwCursorPosition.Y;
+      pos.X = 0;
+      SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
+      return true;
     }
-    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
+    else {
+      pos.Y = bufferInfo.dwCursorPosition.Y + 1;
+      pos.X = 0;
+      SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
+      return false;
+    }
   }
 
 #endif
@@ -486,7 +490,6 @@ void ArangoClient::parse (ProgramOptions& options,
 void ArangoClient::printErrLine (const string& s) {
 #ifdef _WIN32
   // no, we can use std::cerr as this doesn't support UTF-8 on Windows
-  //fprintf(stderr, "esteban: %s\r\n", s.c_str());
   printLine(s);
 #else
   fprintf(stderr, "%s\n", s.c_str());
@@ -497,7 +500,7 @@ void ArangoClient::printErrLine (const string& s) {
 /// @brief prints a string and a newline to stdout
 ////////////////////////////////////////////////////////////////////////////////
 
-void ArangoClient::_printLine(const string &s) {
+void ArangoClient::_printLine (const string &s) {
 #ifdef _WIN32
   LPWSTR wBuf = (LPWSTR) TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof WCHAR)* (s.size() + 1), true);
   int wLen = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), -1, wBuf, (int) ((sizeof WCHAR) * (s.size() + 1)));
@@ -505,11 +508,33 @@ void ArangoClient::_printLine(const string &s) {
   if (wLen) {
     DWORD n;
     COORD pos;
-    CONSOLE_SCREEN_BUFFER_INFO  bufferInfo;
+    CONSOLE_SCREEN_BUFFER_INFO bufferInfo;
     GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &bufferInfo);
+    // save old cursor position
     pos = bufferInfo.dwCursorPosition;
+
+    auto newX = pos.X + s.size();
+    auto oldY = pos.Y;
+    if (newX >= bufferInfo.dwSize.X) {
+      for (size_t i = 0; i <= newX / bufferInfo.dwSize.X; ++i) {
+        // insert as many newlines as we need. this prevents running out of buffer space when printing lines
+        // at the end of the console output buffer
+        if (_newLine()) {
+          pos.Y = pos.Y - 1;
+        }
+      }
+    }
+
+    // save new cursor position
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &bufferInfo);
+    auto newPos = bufferInfo.dwCursorPosition;
+
+    // print the actual string. note: printing does not advance the cursor position
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
     WriteConsoleOutputCharacterW(GetStdHandle(STD_OUTPUT_HANDLE), wBuf, (DWORD) s.size(), pos, &n);
+  
+    // finally set the cursor position to where the printing should have stopped 
+    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), newPos);
   }
   else {
     fprintf(stdout, "window error: '%d' \r\n", GetLastError());

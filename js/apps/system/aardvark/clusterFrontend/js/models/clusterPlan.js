@@ -12,11 +12,19 @@
 
     idAttribute: "config",
 
+    getVersion: function() {
+      var v = this.get("version");
+      return v || "2.0";
+    },
+
     getCoordinator: function() {
       if (this._coord) {
-        return this._coord;
+        return this._coord[
+          this._lastStableCoord
+        ];
       }
-      var i,j,r;
+      var tmpList = [];
+      var i,j,r,l;
       r = this.get("runInfo");
       if (!r) {
         return;
@@ -24,19 +32,31 @@
       j = r.length-1;
       while (j > 0) {
         if(r[j].isStartServers) {
-          var l = r[j];
+          l = r[j];
           if (l.endpoints) {
             for (i = 0; i < l.endpoints.length;i++) {
               if (l.roles[i] === "Coordinator") {
-                this._coord = l.endpoints[i]
+                tmpList.push(l.endpoints[i]
                   .replace("tcp://","http://")
-                  .replace("ssl://", "https://");
-                return this._coord;
+                  .replace("ssl://", "https://")
+                );
               }
             }
           }
         }
         j--;
+      }
+      this._coord = tmpList;
+      this._lastStableCoord = Math.floor(Math.random() * this._coord.length);
+    },
+
+    rotateCoordinator: function() {
+      var last = this._lastStableCoord, next;
+      if (this._coord.length > 1) {
+        do {
+          next = Math.floor(Math.random() * this._coord.length);
+        } while (next === last);
+        this._lastStableCoord = next;
       }
     },
 

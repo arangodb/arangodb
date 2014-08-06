@@ -13,10 +13,10 @@
     detailTemplate: templateEngine.createTemplate("detailView.ejs"),
 
     events: {
-      "change #selectDB"        : "updateCollections",
-      "change #selectCol"       : "updateShards",
-      "click .dbserver"         : "dashboard",
-      "click .coordinator"      : "dashboard"
+      "change #selectDB"                : "updateCollections",
+      "change #selectCol"               : "updateShards",
+      "click .dbserver.success"         : "dashboard",
+      "click .coordinator.success"      : "dashboard"
     },
 
     replaceSVGs: function() {
@@ -76,111 +76,134 @@
       this.startUpdating();
     },
 
-    listByAddress: function() {
-      var byAddress = this.dbservers.byAddress();
-      byAddress = this.coordinators.byAddress(byAddress);
-      return byAddress;
+    listByAddress: function(callback) {
+      var byAddress = {};
+      var self = this;
+      this.dbservers.byAddress(byAddress, function(res) {
+        self.coordinators.byAddress(res, callback);
+      });
     },
 
     updateCollections: function() {
+      var self = this;
+      var selCol = $("#selectCol");
       var dbName = $("#selectDB").find(":selected").attr("id");
-      $("#selectCol").html("");
-      _.each(_.pluck(this.cols.getList(dbName), "name"), function(c) {
-        $("#selectCol").append("<option id=\"" + c + "\">" + c + "</option>");
+      if (!dbName) {
+        return;
+      }
+      var colName = selCol.find(":selected").attr("id");
+      selCol.html("");
+      this.cols.getList(dbName, function(list) {
+        _.each(_.pluck(list, "name"), function(c) {
+          selCol.append("<option id=\"" + c + "\">" + c + "</option>");
+        });
+        var colToSel = $("#" + colName, selCol);
+        if (colToSel.length === 1) {
+          colToSel.prop("selected", true);
+        }
+        self.updateShards();
       });
-      this.updateShards();
     },
 
     updateShards: function() {
       var dbName = $("#selectDB").find(":selected").attr("id");
       var colName = $("#selectCol").find(":selected").attr("id");
-      var list = this.shards.getList(dbName, colName);
-      $(".shardCounter").html("0");
-      _.each(list, function(s) {
-        $("#" + s.server + "Shards").html(s.shards.length);
+      this.shards.getList(dbName, colName, function(list) {
+        $(".shardCounter").html("0");
+        _.each(list, function(s) {
+          $("#" + s.server + "Shards").html(s.shards.length);
+        });
       });
     },
 
-    updateServerStatus: function() {
-      this.dbservers.getStatuses(function(stat, serv) {
+    updateServerStatus: function(nextStep) {
+      var self = this;
+      var callBack = function(cls, stat, serv) {
         var id = serv,
-            type;
+          type, icon;
         id = id.replace(/\./g,'-');
         id = id.replace(/\:/g,'_');
-        type = $("#id" + id).attr("class").split(/\s+/)[1];
-        $("#id" + id).attr("class", "dbserver " + type + " " + stat);
-      });
-      this.coordinators.getStatuses(function(stat, serv) {
-        var id = serv,
-            type;
-        id = id.replace(/\./g,'-');
-        id = id.replace(/\:/g,'_');
-        type = $("#id" + id).attr("class").split(/\s+/)[1];
-        $("#id" + id).attr("class", "coordinator " + type + " " + stat);
+        icon = $("#id" + id);
+        if (icon.length < 1) {
+          // callback after view was unrendered
+          return;
+        }
+        type = icon.attr("class").split(/\s+/)[1];
+        icon.attr("class", cls + " " + type + " " + stat);
+        if (cls === "coordinator") {
+          if (stat === "success") {
+            $(".button-gui", icon.closest(".tile")).toggleClass("button-gui-disabled", false);
+          } else {
+            $(".button-gui", icon.closest(".tile")).toggleClass("button-gui-disabled", true);
+          }
+
+        }
+      };
+      this.coordinators.getStatuses(callBack.bind(this, "coordinator"), function() {
+        self.dbservers.getStatuses(callBack.bind(self, "dbserver"));
+        nextStep();
       });
     },
 
     updateDBDetailList: function() {
-      var dbName = $("#selectDB").find(":selected").attr("id");
-      var colName = $("#selectCol").find(":selected").attr("id");
-
+      var self = this;
       var selDB = $("#selectDB");
+      var dbName = selDB.find(":selected").attr("id");
       selDB.html("");
-      _.each(_.pluck(this.dbs.getList(), "name"), function(c) {
-        selDB.append("<option id=\"" + c + "\">" + c + "</option>");
+      this.dbs.getList(function(dbList) {
+        _.each(_.pluck(dbList, "name"), function(c) {
+          selDB.append("<option id=\"" + c + "\">" + c + "</option>");
+        });
+        var dbToSel = $("#" + dbName, selDB);
+        if (dbToSel.length === 1) {
+          dbToSel.prop("selected", true);
+        }
+        self.updateCollections();
       });
-      var dbToSel = $("#" + dbName, selDB);
-      if (!dbToSel.length) {
-        dbName = $("#selectDB").find(":selected").attr("id");
-      }
-      else {
-        dbToSel.prop("selected", true);
-      }
-
-      var selCol = $("#selectCol");
-      selCol.html("");
-      _.each(_.pluck(this.cols.getList(dbName), "name"), function(c) {
-        selCol.append("<option id=\"" + c + "\">" + c + "</option>");
-      });
-      var colToSel = $("#" + colName, selCol);
-      colToSel.prop("selected", true);
-      if (!colToSel.length || !dbToSel.length) {
-        this.updateShards();
-      }
     },
 
     rerender : function() {
-      this.updateServerStatus();
-      this.getServerStatistics();
-      this.updateServerTime();
-      this.data = this.generatePieData();
-      this.renderPieChart(this.data);
-      this.renderLineChart();
-      this.updateDBDetailList();
+      var self = this;
+      this.updateServerStatus(function() {
+        self.getServerStatistics(function() {
+          self.updateServerTime();
+          self.data = self.generatePieData();
+          self.renderPieChart(self.data);
+          self.renderLineChart();
+          self.updateDBDetailList();
+        });
+      });
     },
 
     render: function() {
-      this.startUpdating();
-      var byAddress = this.listByAddress();
-      if (Object.keys(byAddress).length === 1) {
-        this.type = "testPlan";
-      }
-      else {
-        this.type = "other";
-      }
-      $(this.el).html(this.template.render({
-        dbs: _.pluck(this.dbs.getList(), "name"),
-        byAddress: byAddress,
-        type: this.type
-      }));
-      $(this.el).append(this.modal.render({}));
-      this.replaceSVGs();
-      /* this.loadHistory(); */
-      this.getServerStatistics();
-      this.data = this.generatePieData();
-      this.renderPieChart(this.data);
-      this.renderLineChart();
-      this.updateCollections();
+      this.knownServers = [];
+      delete this.hist;
+      var self = this;
+      this.listByAddress(function(byAddress) {
+        if (Object.keys(byAddress).length === 1) {
+          self.type = "testPlan";
+        } else {
+          self.type = "other";
+        }
+        self.updateDBDetailList();
+        self.dbs.getList(function(dbList) {
+          $(self.el).html(self.template.render({
+            dbs: _.pluck(dbList, "name"),
+            byAddress: byAddress,
+            type: self.type
+          }));
+          $(self.el).append(self.modal.render({}));
+          self.replaceSVGs();
+          /* this.loadHistory(); */
+          self.getServerStatistics(function() {
+            self.data = self.generatePieData();
+            self.renderPieChart(self.data);
+            self.renderLineChart();
+            self.updateDBDetailList();
+            self.startUpdating();
+          });
+        });
+      });
     },
 
     generatePieData: function() {
@@ -268,15 +291,7 @@
         var lt = h[l - 1].time;
         var tt = h[l - 1].requests;
 
-        if (tt >= requests) {
-          h.times.push({
-            time: time,
-            snap: snap,
-            requests: requests,
-            requestsPerSecond: 0
-          });
-        }
-        else {
+        if (tt < requests) {
           var dt = time - lt;
           var ps = 0;
 
@@ -291,10 +306,20 @@
             requestsPerSecond: ps
           });
         }
+        /*
+        else {
+          h.times.push({
+            time: time,
+            snap: snap,
+            requests: requests,
+            requestsPerSecond: 0
+          });
+        }
+        */
       }
     },
 
-    getServerStatistics: function() {
+    getServerStatistics: function(nextStep) {
       var self = this;
       var snap = Math.round(self.serverTime / 1000);
 
@@ -338,18 +363,30 @@
         statCollect.add(stat);
       });
 
-      // now fetch the statistics
-      statCollect.fetch();
+      var cbCounter = statCollect.size();
 
-      statCollect.forEach(function(m) {
+      this.data = [];
+      
+      var successCB = function(m) {
+        cbCounter--;
         var time = m.get("time");
         var name = m.get("name");
         var requests = m.get("http").requestsTotal;
 
         self.addStatisticsItem(name, time, requests, snap);
-      });
-
-      this.data = statCollect;
+        self.data.push(m);
+        if (cbCounter === 0) {
+          nextStep();
+        }
+      };
+      var errCB = function() {
+        cbCounter--;
+        if (cbCounter === 0) {
+          nextStep();
+        }
+      };
+      // now fetch the statistics
+      statCollect.fetch(successCB, errCB);
     },
 
     renderPieChart: function(dataset) {
