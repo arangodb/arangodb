@@ -83,5 +83,11 @@
         },
       ],
     },
+    {
+      'target_name': 'EmptyBundle',
+      'product_extension': 'bundle',
+      'type': 'executable',
+      'mac_bundle': 1,
+    },
   ],
 }

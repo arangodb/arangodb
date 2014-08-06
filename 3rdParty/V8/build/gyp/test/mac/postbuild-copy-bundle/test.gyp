@@ -15,6 +15,12 @@
       'mac_bundle_resources': [
         'resource_file.sb',
       ],
+      'copies': [
+        {
+          'destination': '<(PRODUCT_DIR)/$(CONTENTS_FOLDER_PATH)/Libraries',
+          'files': [ 'copied.txt' ],
+        },
+      ],
     },
     {
       'target_name': 'test_app',

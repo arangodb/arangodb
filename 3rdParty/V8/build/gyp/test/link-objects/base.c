@@ -1,6 +1,6 @@
 void extra();
 
-int main(int argc, char** argv) {
+int main(void) {
   extra();
   return 0;
 }

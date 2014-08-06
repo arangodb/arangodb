@@ -4,12 +4,12 @@
 
 #include <stdio.h>
 
-int main(int argc, char *argv[])
+int main(void)
 {
-#ifdef __OPTIMIZE__
-  printf("Using an optimization flag\n");
+#ifdef ABC
+  printf("With define\n");
 #else
-  printf("Using no optimization flag\n");
+  printf("No define\n");
 #endif
   return 0;
 }

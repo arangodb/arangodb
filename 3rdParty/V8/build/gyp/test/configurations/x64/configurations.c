@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-int main(int argc, char *argv[]) {
+int main(void) {
   if (sizeof(void*) == 4) {
     printf("Running Win32\n");
   } else if (sizeof(void*) == 8) {

@@ -13,8 +13,8 @@ import os
 import TestGyp
 
 # Regenerating build files when a gyp file changes is currently only supported
-# by the make and Android generators.
-test = TestGyp.TestGyp(formats=['make', 'android'])
+# by the make generator.
+test = TestGyp.TestGyp(formats=['make'])
 
 try:
   os.environ['GYP_DEFINES'] = 'value=50'

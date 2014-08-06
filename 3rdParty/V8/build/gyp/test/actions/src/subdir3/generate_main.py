@@ -9,7 +9,7 @@ import sys
 contents = """
 #include <stdio.h>
 
-int main(int argc, char *argv[])
+int main(void)
 {
   printf("Hello from generate_main.py\\n");
   return 0;

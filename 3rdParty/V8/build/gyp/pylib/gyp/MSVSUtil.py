@@ -109,15 +109,16 @@ def ShardTargets(target_list, target_dicts):
       new_target_dicts[t] = target_dicts[t]
   # Shard dependencies.
   for t in new_target_dicts:
-    dependencies = copy.copy(new_target_dicts[t].get('dependencies', []))
-    new_dependencies = []
-    for d in dependencies:
-      if d in targets_to_shard:
-        for i in range(targets_to_shard[d]):
-          new_dependencies.append(_ShardName(d, i))
-      else:
-        new_dependencies.append(d)
-    new_target_dicts[t]['dependencies'] = new_dependencies
+    for deptype in ('dependencies', 'dependencies_original'):
+      dependencies = copy.copy(new_target_dicts[t].get(deptype, []))
+      new_dependencies = []
+      for d in dependencies:
+        if d in targets_to_shard:
+          for i in range(targets_to_shard[d]):
+            new_dependencies.append(_ShardName(d, i))
+        else:
+          new_dependencies.append(d)
+      new_target_dicts[t][deptype] = new_dependencies
 
   return (new_target_list, new_target_dicts)
 

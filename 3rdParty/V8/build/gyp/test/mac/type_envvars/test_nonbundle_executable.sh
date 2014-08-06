@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 
 set -e
+
 # For some reason, Xcode doesn't set MACH_O_TYPE for non-bundle executables.
 # Check for "not set", not just "empty":
 [[ ! $MACH_O_TYPE && ${MACH_O_TYPE-_} ]]
@@ -18,5 +19,4 @@ test $EXECUTABLE_PATH = nonbundle_executable
 [[ ! $DYLIB_INSTALL_NAME_BASE && ${DYLIB_INSTALL_NAME_BASE-_} ]]
 [[ ! $LD_DYLIB_INSTALL_NAME && ${LD_DYLIB_INSTALL_NAME-_} ]]
 
-# Should be set, but empty.
-[[ ! $SDKROOT && ! ${SDKROOT-_} ]]
+"$(dirname "$0")/test_check_sdkroot.sh"

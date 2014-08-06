@@ -2,7 +2,7 @@
 
 extern void func2(void);
 
-int main(int argc, char *argv[])
+int main(void)
 {
   printf("Hello from subdir2/prog2.c\n");
   func2();

@@ -21,9 +21,6 @@
         'TestFramework/ObjCVectorInternal.h',
         'TestFramework/ObjCVector.mm',
       ],
-      'mac_framework_headers': [
-        'TestFramework/ObjCVector.h',
-      ],
       'mac_bundle_resources': [
         'TestFramework/English.lproj/InfoPlist.strings',
       ],

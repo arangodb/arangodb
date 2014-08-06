@@ -6,7 +6,7 @@
 
 extern int hello2();
 
-int main(int argc, char *argv[]) {
+int main(void) {
   printf("Hello, world!\n");
   hello2();
   return 0;

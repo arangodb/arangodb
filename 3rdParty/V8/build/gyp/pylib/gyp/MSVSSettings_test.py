@@ -109,6 +109,7 @@ class TestSequenceFunctions(unittest.TestCase):
             'ZZXYZ': 'bogus'},
          'VCLinkerTool': {
              'AdditionalDependencies': 'file1;file2',
+             'AdditionalDependencies_excluded': 'file3',
              'AdditionalLibraryDirectories': 'folder1;folder2',
              'AdditionalManifestDependencies': 'file1;file2',
              'AdditionalOptions': 'a string1',

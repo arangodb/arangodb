@@ -5,7 +5,9 @@
 #include <stdio.h>
 
 const char *GetToolset();
+const char *GetToolsetShared();
 
-int main(int argc, char *argv[]) {
+int main(void) {
   printf("%s\n", GetToolset());
+  printf("Shared: %s\n", GetToolsetShared());
 }

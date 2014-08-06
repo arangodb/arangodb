@@ -7,7 +7,6 @@
     {
       'target_name': 'cxxflags',
       'type': 'executable',
-      'opt': '-Os',
       'sources': [
         'cxxflags.cc',
       ],

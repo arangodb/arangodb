@@ -2,7 +2,7 @@
 
 #include "lib/shared.h"
 
-int main(int argc, char *argv[])
+int main(void)
 {
   printf("Hello from %s.\n", kSharedStr);
   return 0;

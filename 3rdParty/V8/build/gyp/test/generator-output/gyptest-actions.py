@@ -10,14 +10,15 @@ Verifies --generator-output= behavior when using actions.
 
 import TestGyp
 
-# Ninja and Android don't support --generator-output.
-test = TestGyp.TestGyp(formats=['!ninja', '!android'])
+# Android doesn't support --generator-output.
+test = TestGyp.TestGyp(formats=['!android'])
 
 # All the generated files should go under 'gypfiles'. The source directory
 # ('actions') should be untouched.
 test.writable(test.workpath('actions'), False)
 test.run_gyp('actions.gyp',
              '--generator-output=' + test.workpath('gypfiles'),
+             '-G', 'xcode_ninja_target_pattern=^pull_in_all_actions$',
              chdir='actions')
 
 test.writable(test.workpath('actions'), True)

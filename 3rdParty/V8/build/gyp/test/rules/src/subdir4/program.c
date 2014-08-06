@@ -9,7 +9,7 @@ int asm_function() {
 }
 #endif
 
-int main(int argc, char *argv[])
+int main(void)
 {
   fprintf(stdout, "Hello from program.c\n");
   fflush(stdout);

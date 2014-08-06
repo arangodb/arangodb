@@ -17,5 +17,4 @@ test $EXECUTABLE_PATH = libnonbundle_static_library.a
 [[ ! $DYLIB_INSTALL_NAME_BASE && ${DYLIB_INSTALL_NAME_BASE-_} ]]
 [[ ! $LD_DYLIB_INSTALL_NAME && ${LD_DYLIB_INSTALL_NAME-_} ]]
 
-# Should be set, but empty.
-[[ ! $SDKROOT && ! ${SDKROOT-_} ]]
+"$(dirname "$0")/test_check_sdkroot.sh"

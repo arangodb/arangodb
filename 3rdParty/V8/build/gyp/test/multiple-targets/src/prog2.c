@@ -2,7 +2,7 @@
 
 extern void common(void);
 
-int main(int argc, char *argv[])
+int main(void)
 {
   printf("hello from prog2.c\n");
   common();

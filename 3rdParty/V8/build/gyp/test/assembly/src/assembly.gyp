@@ -8,7 +8,7 @@
       ['OS=="win"', {
         'defines': ['PLATFORM_WIN'],
       }],
-      ['OS=="mac"', {
+      ['OS=="mac" or OS=="ios"', {
         'defines': ['PLATFORM_MAC'],
       }],
       ['OS=="linux"', {

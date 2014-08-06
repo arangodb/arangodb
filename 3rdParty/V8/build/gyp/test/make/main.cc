@@ -6,7 +6,7 @@
 
 #include "main.h"
 
-int main(int argc, char *argv[]) {
+int main(void) {
   printf("hello world\n");
   return 0;
 }
