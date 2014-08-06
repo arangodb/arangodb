@@ -914,7 +914,7 @@ ArangoCollection.prototype.exists = function (id) {
       errorNum : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
       errorMessage : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.message
     });
-  };
+  }
 
   if (id.hasOwnProperty("_id")) {
     if (id.hasOwnProperty("_rev")) {
@@ -1122,7 +1122,7 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
       errorNum : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
       errorMessage : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.message
     });
-  };
+  }
 
   if (id.hasOwnProperty("_id")) {
     if (id.hasOwnProperty("_rev")) {
@@ -1198,7 +1198,7 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
       errorNum : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
       errorMessage : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.message
     });
-  };
+  }
 
   if (id.hasOwnProperty("_id")) {
     if (id.hasOwnProperty("_rev")) {
@@ -1266,7 +1266,7 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
       errorNum : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
       errorMessage : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.message
     });
-  };
+  }
 
   if (id.hasOwnProperty("_id")) {
     if (id.hasOwnProperty("_rev")) {
