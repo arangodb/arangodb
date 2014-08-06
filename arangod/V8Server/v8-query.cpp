@@ -45,6 +45,8 @@
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/vocbase.h"
+#include "v8-vocindex.h"
+#include "v8-wrapshapedjson.h"
 
 using namespace std;
 using namespace triagens::basics;

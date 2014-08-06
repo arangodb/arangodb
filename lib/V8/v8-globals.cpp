@@ -219,7 +219,7 @@ TRI_v8_global_s::~TRI_v8_global_s () {
 TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate* isolate) {
   TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
 
-  if (v8g == 0) {
+  if (v8g == nullptr) {
     v8g = new TRI_v8_global_t(isolate);
     isolate->SetData(v8g);
   }
