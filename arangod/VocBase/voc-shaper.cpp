@@ -1128,10 +1128,10 @@ static void DestroyAttributesVector (TRI_vector_t* vector) {
 /// You must either supply (rightDocument, rightObject) or rightShaped.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
+int TRI_CompareShapeTypes (char const* leftDocument,
                            TRI_shaped_sub_t* leftObject,
                            TRI_shaped_json_t const* leftShaped,
-                           TRI_doc_mptr_t* rightDocument,
+                           char const* rightDocument,
                            TRI_shaped_sub_t* rightObject,
                            TRI_shaped_json_t const* rightShaped,
                            TRI_shaper_t* shaper) {
@@ -1144,16 +1144,13 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
   TRI_shaped_json_t leftElement;
   TRI_shaped_json_t right;
   TRI_shaped_json_t rightElement;
-  char const* ptr;
   int result;
 
   // left is either a shaped json or a shaped sub object
   if (leftDocument != nullptr) {
-    ptr = leftDocument->getShapedJsonPtr();  // ONLY IN INDEX
-
     left._sid = leftObject->_sid;
     left._data.length = (uint32_t) leftObject->_length;
-    left._data.data = const_cast<char*>(ptr) + leftObject->_offset;
+    left._data.data = const_cast<char*>(leftDocument) + leftObject->_offset;
   }
   else {
     left = *leftShaped;
@@ -1161,11 +1158,9 @@ int TRI_CompareShapeTypes (TRI_doc_mptr_t* leftDocument,
 
   // right is either a shaped json or a shaped sub object
   if (rightDocument != nullptr) {
-    ptr = rightDocument->getShapedJsonPtr();  // ONLY IN INDEX
-
     right._sid = rightObject->_sid;
     right._data.length = (uint32_t) rightObject->_length;
-    right._data.data = const_cast<char*>(ptr) + rightObject->_offset;
+    right._data.data = const_cast<char*>(rightDocument) + rightObject->_offset;
   }
   else {
     right = *rightShaped;
