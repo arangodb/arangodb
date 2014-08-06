@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/AstNode.h"
+#include "Aql/Function.h"
 #include "Aql/Scopes.h"
 #include "Basics/StringBuffer.h"
 
@@ -77,10 +78,14 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone) const {
   if (type == NODE_TYPE_COLLECTION ||
       type == NODE_TYPE_PARAMETER ||
       type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-      type == NODE_TYPE_FCALL ||
       type == NODE_TYPE_FCALL_USER) {
     // dump "name" of node
     TRI_Insert3ArrayJson(zone, node, "name", TRI_CreateStringCopyJson(zone, getStringValue()));
+  }
+
+  if (type == NODE_TYPE_FCALL) {
+    auto func = static_cast<Function*>(getData());
+    TRI_Insert3ArrayJson(zone, node, "name", TRI_CreateStringCopyJson(zone, func->name.c_str()));
   }
 
   if (type == NODE_TYPE_VALUE) {
