@@ -2,7 +2,7 @@
 /*global window, Backbone, console */
 (function() {
   "use strict";
-  window.ClusterCoordinators = Backbone.Collection.extend({
+  window.ClusterCoordinators = window.AutomaticRetryCollection.extend({
     model: window.ClusterCoordinator,
     
     url: "/_admin/aardvark/cluster/Coordinators",
@@ -11,7 +11,7 @@
       this.url = window.App.getNewRoute("Coordinators");
     },
 
-    initialize: function(options) {
+    initialize: function() {
       window.App.registerForUpdate(this);
     },
 
@@ -25,38 +25,67 @@
           return "danger";
         case "missing":
           return "inactive";
+        default: 
+          return "danger";
       }
     },
-  
-    getStatuses: function(cb) {
+
+    getStatuses: function(cb, nextStep) {
+      if(!this.checkRetries()) {
+        return;
+      }
       var self = this;
       this.fetch({
-        async: false,
-        beforeSend: window.App.addAuth.bind(window.App)
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: self.failureTry.bind(self, self.getStatuses.bind(self, cb, nextStep))
       }).done(function() {
+        self.successFullTry();
         self.forEach(function(m) {
           cb(self.statusClass(m.get("status")), m.get("address"));
         });
+        nextStep();
       });
     },
 
-    byAddress: function (res) {
+    byAddress: function (res, callback) {
+      if(!this.checkRetries()) {
+        return;
+      }
+      var self = this;
       this.fetch({
-        async: false,
-        beforeSend: window.App.addAuth.bind(window.App)
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: self.failureTry.bind(self, self.byAddress.bind(self, res, callback))
+      }).done(function() {
+        self.successFullTry();
+        res = res || {};
+        self.forEach(function(m) {
+          var addr = m.get("address");
+          addr = addr.split(":")[0];
+          res[addr] = res[addr] || {};
+          res[addr].coords = res[addr].coords || [];
+          res[addr].coords.push(m);
+        });
+        callback(res);
       });
-      res = res || {};
-      this.forEach(function(m) {
-        var addr = m.get("address");
-        addr = addr.split(":")[0];
-        res[addr] = res[addr] || {};
-        res[addr].coords = res[addr].coords || [];
-        res[addr].coords.push(m);
+    },
+
+    checkConnection: function(callback) {
+      var self = this;
+      if(!this.checkRetries()) {
+        return;
+      }
+      this.fetch({
+        beforeSend: window.App.addAuth.bind(window.App),
+        error: self.failureTry.bind(self, self.checkConnection.bind(self, callback))
+      }).done(function() {
+        self.successFullTry();
+        callback();
       });
-      return res;
     },
 
     getList: function() {
+      throw "Do not use coordinator.getList";
+      /*
       this.fetch({
         async: false,
         beforeSend: window.App.addAuth.bind(window.App)
@@ -64,9 +93,12 @@
       return this.map(function(m) {
         return m.forList();
       });
+      */
     },
 
     getOverview: function() {
+      throw "Do not use coordinator.getOverview";
+      /*
       this.fetch({
         async: false,
         beforeSend: window.App.addAuth.bind(window.App)
@@ -100,6 +132,7 @@
         }
       });
       return res;
+      */
     }
   });
 }());

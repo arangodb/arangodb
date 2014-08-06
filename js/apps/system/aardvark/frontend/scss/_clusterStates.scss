@@ -68,3 +68,10 @@ a.dbserver {
   color: $c-negative;
   margin-left: 20px;
 }
+
+.cluster-unreachable-info {
+  margin: 0 auto; 
+  max-width: 320px;
+  padding-top: 17px;
+  text-align: center;
+}
