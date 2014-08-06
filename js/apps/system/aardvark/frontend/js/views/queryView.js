@@ -286,15 +286,7 @@
     importCustomQueries: function () {
       var result, fetched, self = this;
       if (this.allowUpload === true) {
-
-        this.collection.fetch({
-          async: true,
-          success: function() {
-            result = self.collection.saveQueries(self.file);
-          }
-        });
-
-        console.log(result);
+        result = self.collection.saveQueries(self.file);
       }
     },
 
