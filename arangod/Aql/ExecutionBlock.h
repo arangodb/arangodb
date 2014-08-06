@@ -1539,11 +1539,6 @@ namespace triagens {
           return TRI_ERROR_NO_ERROR;
         }
 
-        AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
-          std::cout << "Hi there!" << std::endl;
-          return ExecutionBlock::getSome(atLeast, atMost);
-        }
-
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
