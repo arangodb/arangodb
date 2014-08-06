@@ -174,6 +174,17 @@ arangoDatabase, btoa, _*/
           serverToShow : this.serverToShow
       });
       this.dashboardView.render();
+    },
+
+    clusterUnreachable: function() {
+      if (this.showClusterView) {
+        this.showClusterView.stopUpdating();
+        this.shutdownView.unrender();
+      }
+      if (!this.unreachableView) {
+        this.unreachableView = new window.ClusterUnreachableView();
+      }
+      this.unreachableView.render();
     }
 
   });
