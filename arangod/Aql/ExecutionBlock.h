@@ -1514,13 +1514,17 @@ namespace triagens {
             size_t size_next 
               = (sum - count > DefaultBatchSize ?  DefaultBatchSize : sum - count);
             AqlItemBlock* next = new AqlItemBlock(size_next, nrregs);
-            for (size_t i = 0; i < size_next; i++){
-              count++;
-              for (RegisterId j = 0; j < nrregs; j++){
+            for (size_t i = 0; i < size_next; i++) {
+              for (RegisterId j = 0; j < nrregs; j++) {
                 next->setValue(i, j, 
                     newbuf[coords[count].first]->getValue(coords[count].second, j));
                 newbuf[coords[count].first]->eraseValue(coords[count].second, j);
               }
+              count++;
+            }
+            for (RegisterId j = 0; j < nrregs; j++) {
+              next->setDocumentCollection(j, 
+                               newbuf.front()->getDocumentCollection(j));
             }
             _buffer.push_back(next);
           }
@@ -1529,7 +1533,15 @@ namespace triagens {
             delete x;
           }
 
+          _done = false;
+          _pos = 0;
+
           return TRI_ERROR_NO_ERROR;
+        }
+
+        AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
+          std::cout << "Hi there!" << std::endl;
+          return ExecutionBlock::getSome(atLeast, atMost);
         }
 
       private:
