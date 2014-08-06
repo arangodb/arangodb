@@ -907,6 +907,13 @@ ArangoCollection.prototype.document = function (id) {
 ArangoCollection.prototype.exists = function (id) {
   var rev = null;
   var requestResult;
+  
+  if (id === undefined || id === null) {   
+    throw new ArangoError({
+      errorNum : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
+      errorMessage : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.message
+    });
+  }
 
   if (id.hasOwnProperty("_id")) {
     if (id.hasOwnProperty("_rev")) {
@@ -1108,6 +1115,13 @@ ArangoCollection.prototype.insert = function (from, to, data, waitForSync) {
 ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
   var rev = null;
   var requestResult;
+ 
+  if (id === undefined || id === null) {   
+    throw new ArangoError({
+      errorNum : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
+      errorMessage : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.message
+    });
+  }
 
   if (id.hasOwnProperty("_id")) {
     if (id.hasOwnProperty("_rev")) {
@@ -1177,6 +1191,13 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
 ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync) { 
   var rev = null;
   var requestResult;
+  
+  if (id === undefined || id === null) {   
+    throw new ArangoError({
+      errorNum : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
+      errorMessage : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.message
+    });
+  }
 
   if (id.hasOwnProperty("_id")) {
     if (id.hasOwnProperty("_rev")) {
@@ -1238,6 +1259,13 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
 ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, waitForSync) { 
   var rev = null;
   var requestResult;
+  
+  if (id === undefined || id === null) {   
+    throw new ArangoError({
+      errorNum : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code,
+      errorMessage : internal.errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.message
+    });
+  }
 
   if (id.hasOwnProperty("_id")) {
     if (id.hasOwnProperty("_rev")) {
