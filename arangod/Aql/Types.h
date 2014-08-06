@@ -31,6 +31,7 @@
 #include <functional>
 
 #include <Basics/JsonHelper.h>
+#include <BasicsC/json-utilities.h>
 
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
@@ -41,7 +42,6 @@
 #include "V8Server/v8-wrapshapedjson.h"
 #include "Utils/V8TransactionContext.h"
 #include "Utils/AqlTransaction.h"
-
 
 namespace triagens {
   namespace aql {
@@ -217,8 +217,49 @@ namespace triagens {
 /// @brief 3-way comparison 
 ////////////////////////////////////////////////////////////////////////////////
 
-      int compare (AqlValue const& val){
-        return 0;
+      int compare (AqlValue const& right, TRI_document_collection_t const* collection){
+        if (_type != right._type) {
+          TRI_ASSERT(false);
+        }
+        switch (_type) {
+          case EMPTY: {
+            return 0;
+          }
+          case JSON: {
+            return TRI_CompareValuesJson(_json->json(), right._json->json());
+          }
+          case SHAPED: {
+            TRI_shaped_json_t l;
+            TRI_shaped_json_t r;
+            TRI_EXTRACT_SHAPED_JSON_MARKER(l, _marker);
+            TRI_EXTRACT_SHAPED_JSON_MARKER(r, right._marker);
+                      
+            return TRI_CompareShapeTypes(nullptr, nullptr, &l, nullptr, nullptr, &r, 
+                collection->getShaper());
+          }
+          case DOCVEC: {
+            return 0;
+          }
+          case RANGE: {
+            if(_range->_low < right._range->_low){
+              return -1;
+            } 
+            if (_range->_low > right._range->_low){
+              return 1;
+            } 
+            if (_range->_high < _range->_high) {
+              return -1;
+            } 
+            if (_range->_high > _range->_high) {
+              return 1;
+            }
+            return 0;
+          }
+          default: {
+            TRI_ASSERT(false);
+            return true;
+          }
+        }
       }
     };
   }
@@ -236,6 +277,9 @@ template<> struct hash<triagens::aql::AqlValue> {
     std::hash<void const*> ptrHash;
     size_t res = intHash(static_cast<uint32_t>(x._type));
     switch (x._type) {
+      case triagens::aql::AqlValue::EMPTY: {
+        return res;
+      }
       case triagens::aql::AqlValue::JSON: {
         return res ^ ptrHash(x._json);
       }

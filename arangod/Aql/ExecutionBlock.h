@@ -1465,7 +1465,6 @@ namespace triagens {
 
           for( auto p: en->_elements){
             //We know that staticAnalysis has been run, so _varOverview is set up
-            std::cout << "Looking for " << p.first->id << std::endl;
             auto it = _varOverview->varInfo.find(p.first->id);
             TRI_ASSERT(it != _varOverview->varInfo.end());
             _sortRegisters.push_back(make_pair(it->second.registerId, p.second));
@@ -1511,8 +1510,14 @@ namespace triagens {
             }
             count++;
           }
+
+          std::vector<TRI_document_collection_t const *> colls;
+          for (RegisterId i = 0; i < _sortRegisters.size(); i++) {
+            colls.push_back(_buffer.front()->getDocumentCollection(_sortRegisters[i].first));
+          }
+
           // comparison function
-          OurLessThan ourLessThan(_buffer, _sortRegisters);
+          OurLessThan ourLessThan(_buffer, _sortRegisters, colls);
           
           // sort coords
           std::sort(coords.begin(), coords.end(), ourLessThan);
@@ -1567,22 +1572,25 @@ namespace triagens {
         class OurLessThan {
           public:
             OurLessThan (std::deque<AqlItemBlock*>& buffer,  
-                         std::vector<std::pair<RegisterId, bool>>& sortRegisters) 
-              : _buffer(buffer), _sortRegisters(sortRegisters) {
+                         std::vector<std::pair<RegisterId, bool>>& sortRegisters,
+                         std::vector<TRI_document_collection_t const*>& colls) 
+              : _buffer(buffer), _sortRegisters(sortRegisters), _colls(colls) {
             }
 
             bool operator() (std::pair<size_t, size_t> const& a, 
                              std::pair<size_t, size_t> const& b) {
 
+              size_t i = 0;
               for(auto reg: _sortRegisters){
                 int cmp = _buffer[a.first]->getValue(a.second, reg.first).compare(
-                          _buffer[b.first]->getValue(b.second, reg.first));
+                          _buffer[b.first]->getValue(b.second, reg.first), _colls[i]);
                 if(cmp == -1) {
                   return reg.second;
                 } 
                 else if (cmp == 1) {
                   return !reg.second;
                 }
+                i++;
               }
 
               return false;
@@ -1591,6 +1599,7 @@ namespace triagens {
           private:
             std::deque<AqlItemBlock*>& _buffer;
             std::vector<std::pair<RegisterId, bool>>& _sortRegisters;
+            std::vector<TRI_document_collection_t const*>& _colls;
         };
 
 ////////////////////////////////////////////////////////////////////////////////
