@@ -111,6 +111,11 @@ struct Instanciator : public ExecutionNode::WalkerWorker {
         root = eb;
         break;
       }
+      case ExecutionNode::SORT: {
+        eb = new SortBlock(engine->getTransaction(),
+                             static_cast<SortNode const*>(en));
+        break;
+      }
       default: {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
       }
