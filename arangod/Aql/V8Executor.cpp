@@ -253,52 +253,15 @@ V8Expression* V8Executor::generateExpression (AstNode const* node) {
   
   std::cout << "Executor::generateExpression: " << _buffer->c_str() << "\n";
 
-  v8::Handle<v8::Script> compiled = v8::Script::Compile(v8::String::New(_buffer->c_str(), (int) _buffer->length()),
-                                                        v8::String::New("--script--"));
-  
-  if (compiled.IsEmpty()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-  }
-  
   v8::TryCatch tryCatch;
-  v8::Handle<v8::Value> val = compiled->Run();
+  // compile the expression
+  v8::Handle<v8::Value> func = compileExpression();
+  
+  // exit early if an error occurred
+  HandleV8Error(tryCatch, func);
 
-  if (tryCatch.HasCaught()) {
-    if (tryCatch.CanContinue()) {
-      if (tryCatch.Exception()->IsObject()) {
-        // cast the exception into an object
-        v8::Handle<v8::Array> objValue = v8::Handle<v8::Array>::Cast(tryCatch.Exception());
-       
-        v8::Handle<v8::String> errorName = v8::String::New("errorName");
-         
-        if (objValue->HasOwnProperty(errorName)) {
-          v8::Handle<v8::Value> errorNum = objValue->Get(errorName);
-
-          if (errorNum->IsNumber()) {
-            int errorCode = static_cast<int>(TRI_ObjectToInt64(errorNum));
-            // TODO: handle errors
-          }
-
-        }
-      }
-          
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
-    else {
-      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
-      v8g->_canceled = true;
-
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
-    }
-  }
-
-  if (val.IsEmpty()) {
-    // out of memory
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-  }
- 
   v8::Isolate* isolate = v8::Isolate::GetCurrent(); 
-  return new V8Expression(isolate, v8::Persistent<v8::Function>::New(isolate, v8::Handle<v8::Function>::Cast(val)));
+  return new V8Expression(isolate, v8::Persistent<v8::Function>::New(isolate, v8::Handle<v8::Function>::Cast(func)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -309,8 +272,25 @@ TRI_json_t* V8Executor::executeExpression (AstNode const* node) {
   generateCodeExpression(node);
 
   std::cout << "Executor::ExecuteExpression: " << _buffer->c_str() << "\n";
+  
+  // note: if this function is called without an already opened handle scope,
+  // it will fail badly
 
-  return execute();
+  v8::TryCatch tryCatch;
+  // compile the expression
+  v8::Handle<v8::Value> func = compileExpression();
+
+  // exit early if an error occurred
+  HandleV8Error(tryCatch, func);
+
+  // execute the function
+  v8::Handle<v8::Value> args[] = { };
+  v8::Handle<v8::Value> result = v8::Handle<v8::Function>::Cast(func)->Call(v8::Object::New(), 0, args);
+ 
+  // exit if execution raised an error
+  HandleV8Error(tryCatch, result);
+
+  return TRI_ObjectToJson(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -331,6 +311,80 @@ Function const* V8Executor::getFunctionByName (std::string const& name) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a V8 exception has occurred and throws an appropriate C++ 
+/// exception from it if so
+////////////////////////////////////////////////////////////////////////////////
+
+void V8Executor::HandleV8Error (v8::TryCatch& tryCatch,
+                                v8::Handle<v8::Value>& result) {
+  if (tryCatch.HasCaught()) {
+    // caught a V8 exception
+    if (! tryCatch.CanContinue()) {
+      // request was cancelled
+      v8::Isolate* isolate = v8::Isolate::GetCurrent(); 
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData());
+      v8g->_canceled = true;
+
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
+    }
+
+    // request was not cancelled, but some other error occurred
+    // peek into the exception
+    if (tryCatch.Exception()->IsObject()) {
+      // cast the exception to an object
+      v8::Handle<v8::Array> objValue = v8::Handle<v8::Array>::Cast(tryCatch.Exception());
+      v8::Handle<v8::String> errorNum = v8::String::New("errorNum");
+      v8::Handle<v8::String> errorMessage = v8::String::New("errorMessage");
+        
+      if (objValue->HasOwnProperty(errorNum) && 
+          objValue->HasOwnProperty(errorMessage)) {
+        v8::Handle<v8::Value> errorNumValue = objValue->Get(errorNum);
+        v8::Handle<v8::Value> errorMessageValue = objValue->Get(errorMessage);
+
+        // found something that looks like an ArangoError
+        if (errorNumValue->IsNumber() && 
+            errorMessageValue->IsString()) {
+          int errorCode = static_cast<int>(TRI_ObjectToInt64(errorNumValue));
+          std::string const errorMessage(TRI_ObjectToString(errorMessageValue));
+    
+          THROW_ARANGO_EXCEPTION_MESSAGE(errorCode, errorMessage);
+        }
+      }
+    
+      // exception is no ArangoError
+      std::string const details(TRI_ObjectToString(tryCatch.Exception()));
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_SCRIPT, details);
+    }
+    
+    // we can't figure out what kind of error occured and throw a generic error
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+  
+  if (result.IsEmpty()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
+  // if we get here, no exception has been raised
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compile a V8 function from the code contained in the buffer
+////////////////////////////////////////////////////////////////////////////////
+  
+v8::Handle<v8::Value> V8Executor::compileExpression () {
+  TRI_ASSERT(_buffer != nullptr);
+
+  v8::Handle<v8::Script> compiled = v8::Script::Compile(v8::String::New(_buffer->c_str(), (int) _buffer->length()),
+                                                        v8::String::New("--script--"));
+  
+  if (compiled.IsEmpty()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+  
+  return compiled->Run();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate JavaScript code for an arbitrary expression
@@ -772,67 +826,6 @@ triagens::basics::StringBuffer* V8Executor::initBuffer () {
   TRI_ASSERT(_buffer != nullptr);
 
   return _buffer;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the contents of the string buffer
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* V8Executor::execute () {
-  // note: if this function is called without an already opened handle scope,
-  // it will fail badly
-
-  TRI_ASSERT(_buffer != nullptr);
-
-  v8::Isolate* isolate = v8::Isolate::GetCurrent(); 
-
-  v8::Handle<v8::Script> compiled = v8::Script::Compile(v8::String::New(_buffer->c_str(), (int) _buffer->length()),
-                                                        v8::String::New("--script--"));
-  
-  if (compiled.IsEmpty()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-  }
-  
-  v8::TryCatch tryCatch;
-  v8::Handle<v8::Value> func = compiled->Run();
-  
-  if (tryCatch.HasCaught()) {
-    if (tryCatch.CanContinue()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
-    else {
-      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData());
-      v8g->_canceled = true;
-
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
-    }
-  }
-
-  if (func.IsEmpty() || ! func->IsFunction()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-  }
-
-  // execute the function
-  v8::Handle<v8::Value> args[] = { };
-  v8::Handle<v8::Value> result = v8::Handle<v8::Function>::Cast(func)->Call(v8::Object::New(), 0, args);
-  
-  if (tryCatch.HasCaught()) {
-    if (tryCatch.CanContinue()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
-    else {
-      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData());
-      v8g->_canceled = true;
-
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
-    }
-  }
-
-  if (result.IsEmpty()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-  }
-
-  return TRI_ObjectToJson(result);
 }
 
 // -----------------------------------------------------------------------------
