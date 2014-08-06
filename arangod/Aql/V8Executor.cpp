@@ -250,6 +250,8 @@ V8Executor::~V8Executor () {
 
 V8Expression* V8Executor::generateExpression (AstNode const* node) {
   generateCodeExpression(node);
+  
+  std::cout << "Executor::generateExpression: " << _buffer->c_str() << "\n";
 
   v8::Handle<v8::Script> compiled = v8::Script::Compile(v8::String::New(_buffer->c_str(), (int) _buffer->length()),
                                                         v8::String::New("--script--"));
@@ -306,7 +308,24 @@ V8Expression* V8Executor::generateExpression (AstNode const* node) {
 TRI_json_t* V8Executor::executeExpression (AstNode const* node) {
   generateCodeExpression(node);
 
+  std::cout << "Executor::ExecuteExpression: " << _buffer->c_str() << "\n";
+
   return execute();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a reference to a built-in function
+////////////////////////////////////////////////////////////////////////////////
+
+Function const* V8Executor::getFunctionByName (std::string const& name) {
+  auto it = FunctionNames.find(name);
+
+  if (it == FunctionNames.end()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, name.c_str());
+  }
+
+  // return the address of the function
+  return &((*it).second);
 }
 
 // -----------------------------------------------------------------------------
@@ -517,43 +536,17 @@ void V8Executor::generateCodeFunctionCall (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 1);
   
-  char const* name = node->getStringValue();
-
-  TRI_ASSERT(name != nullptr);
-  TRI_ASSERT(strncmp(name, "_AQL::", 6) == 0);
-
-  // pointer to the function name as specified in the query
-  char const* userName = name + sizeof("_AQL::") - 1;
- 
-  auto it = FunctionNames.find(std::string(userName));
-
-  if (it == FunctionNames.end()) {
-    // unknown function name
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, userName);
-  }
-
-  Function const& func = (*it).second;
+  auto func = static_cast<Function*>(node->getData());
 
   auto args = node->getMember(0);
   TRI_ASSERT(args != nullptr);
   TRI_ASSERT(args->type == NODE_TYPE_LIST);
 
-  size_t const n = args->numMembers();
-  
-  // check number of arguments
-  auto numExpectedArguments = func.numArguments();
-
-  if (n < numExpectedArguments.first || n > numExpectedArguments.second) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, 
-                                  userName,
-                                  static_cast<int>(numExpectedArguments.first),
-                                  static_cast<int>(numExpectedArguments.second));
-  }
-
   _buffer->appendText("aql.");
-  _buffer->appendText(func.name);
+  _buffer->appendText(func->name);
   _buffer->appendText("(");
 
+  size_t const n = args->numMembers();
   for (size_t i = 0; i < n; ++i) {
     if (i > 0) {
       _buffer->appendText(", ");

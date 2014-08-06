@@ -644,27 +644,48 @@ AstNode* Ast::createNodeArrayElement (char const* attributeName,
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeFunctionCall (char const* functionName,
-                                      AstNode const* parameters) {
+                                      AstNode const* arguments) {
   if (functionName == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  std::string const normalizedName = normalizeFunctionName(functionName);
-  char* fname = _query->registerString(normalizedName.c_str(), normalizedName.size(), false);
+  auto normalized = normalizeFunctionName(functionName);
 
   AstNode* node;
 
-  if (normalizedName[0] == '_') {
+  if (normalized.second) {
     // built-in function
     node = createNode(NODE_TYPE_FCALL);
+    // register a pointer to the function
+    auto func = _query->executor()->getFunctionByName(normalized.first);
+
+    TRI_ASSERT(func != nullptr);
+    node->setData(static_cast<void const*>(func));
+
+    TRI_ASSERT(arguments != nullptr);
+    TRI_ASSERT(arguments->type == NODE_TYPE_LIST);
+  
+    // validate number of function call arguments
+    size_t const n = arguments->numMembers();
+    
+    auto numExpectedArguments = func->numArguments();
+    if (n < numExpectedArguments.first || n > numExpectedArguments.second) {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, 
+                                    functionName,
+                                    static_cast<int>(numExpectedArguments.first),
+                                    static_cast<int>(numExpectedArguments.second));
+    }
+
   }
   else {
     // user-defined function
     node = createNode(NODE_TYPE_FCALL_USER);
+    // register the function name
+    char* fname = _query->registerString(normalized.first.c_str(), normalized.first.size(), false);
+    node->setStringValue(fname);
   }
 
-  node->setStringValue(fname);
-  node->addMember(parameters);
+  node->addMember(arguments);
   
   return node;
 }
@@ -809,6 +830,11 @@ void Ast::optimize () {
     if (node->type == NODE_TYPE_OPERATOR_TERNARY) {
       return optimizeTernaryOperator(node);
     }
+
+    // call to built-in function
+    if (node->type == NODE_TYPE_FCALL) {
+      return optimizeFunctionCall(node);
+    }
     
     // reference to a variable
     if (node->type == NODE_TYPE_REFERENCE) {
@@ -875,10 +901,10 @@ std::unordered_set<Variable*> Ast::getReferencedVariables (AstNode const* node) 
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a comparison function
+/// @brief executes an expression with constant parameters
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* Ast::executeConstComparison (AstNode const* node) {
+AstNode* Ast::executeConstExpression (AstNode const* node) {
   TRI_json_t* result = _query->executor()->executeExpression(node); 
 
   if (result == nullptr) {
@@ -1105,7 +1131,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational (AstNode* node) {
     return node;
   }
   
-  return executeConstComparison(node);
+  return executeConstExpression(node);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1227,6 +1253,31 @@ AstNode* Ast::optimizeTernaryOperator (AstNode* node) {
 
   // condition is always false, replace ternary operation with false part
   return falsePart;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizes a call to a built-in function
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::optimizeFunctionCall (AstNode* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_FCALL);
+  TRI_ASSERT(node->numMembers() == 1);
+
+  auto func = static_cast<Function*>(node->getData());
+  TRI_ASSERT(func != nullptr);
+
+  if (! func->isDeterministic) {
+    // non-deterministic function
+    return node;
+  }
+
+  if (! node->getMember(0)->isConstant()) {
+    // arguments to function call are not constant
+    return node;
+  }
+
+  return executeConstExpression(node);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1474,7 +1525,7 @@ void Ast::traverse (AstNode const* node,
 /// @brief normalize a function name
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Ast::normalizeFunctionName (char const* name) {
+std::pair<std::string, bool> Ast::normalizeFunctionName (char const* name) {
   TRI_ASSERT(name != nullptr);
 
   char* upperName = TRI_UpperAsciiStringZ(TRI_UNKNOWN_MEM_ZONE, name);
@@ -1489,11 +1540,11 @@ std::string Ast::normalizeFunctionName (char const* name) {
 
   if (functionName.find(':') == std::string::npos) {
     // prepend default namespace for internal functions
-    functionName = "_AQL::" + functionName;
+    return std::make_pair(functionName, true);
   }
-  // note: user-defined functions do not need to be modified
 
-  return functionName;
+  // user-defined function
+  return std::make_pair(functionName, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
