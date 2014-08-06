@@ -169,7 +169,9 @@
 
     query: function () {
       if (!this.queryView) {
-        this.queryView = new window.queryView();
+        this.queryView = new window.queryView({
+          collection: this.queryCollection
+        });
       }
       this.queryView.render();
       this.naviView.selectMenuItem('query-menu');

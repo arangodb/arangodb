@@ -22,7 +22,7 @@
 
     activeUser: 0,
 
-    parse: function(response)  {
+    parse: function(response) {
       var self = this, toReturn;
 
       _.each(response.result, function(val) {
@@ -37,6 +37,32 @@
         }
       });
       return toReturn;
+    },
+
+    saveQueries: function(data) {
+      var returnValue = false;
+
+      $.ajax({
+        cache: false,
+        type: "PATCH",
+        async: false,
+        url: "/_api/user/" + this.activeUser,
+        data: {
+          extra: {
+            queries: data
+          }
+        },
+        contentType: "application/json",
+        processData: false,
+        success: function() {
+          returnValue = true;
+        },
+        error: function() {
+          returnValue = false;
+        }
+      });
+
+      return returnValue;
     }
 
   });

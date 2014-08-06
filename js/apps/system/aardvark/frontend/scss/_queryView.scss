@@ -42,6 +42,14 @@
   }
 }
 
+.queryMethods {
+  button {
+    a {
+      color: white;
+    }
+  }
+}
+
 .query-toolbar {
   @extend %toolbar;
 }
