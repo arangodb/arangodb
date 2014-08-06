@@ -1005,17 +1005,17 @@ namespace triagens {
 
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                     class AggregateOnUnsortedNode
+// --SECTION--                                               class AggregateNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class AggregateOnUnsortedNode, derived from ExecutionNode
+/// @brief class AggregateNode, derived from ExecutionNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class AggregateOnUnsortedNode : public ExecutionNode {
+    class AggregateNode : public ExecutionNode {
       
       friend class ExecutionBlock;
-      friend class AggregateOnUnsortedBlock;
+      friend class AggregateBlock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -1023,8 +1023,8 @@ namespace triagens {
 
       public:
 
-        AggregateOnUnsortedNode (std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables,
-                                 Variable const* outVariable)
+        AggregateNode (std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables,
+                       Variable const* outVariable)
           : ExecutionNode(), _aggregateVariables(aggregateVariables), _outVariable(outVariable) {
         }
 
@@ -1041,7 +1041,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::string getTypeString () const {
-          return std::string("AggregateOnUnsortedNode");
+          return std::string("AggregateNode");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1057,7 +1057,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new AggregateOnUnsortedNode(_aggregateVariables, _outVariable);
+          auto c = new AggregateNode(_aggregateVariables, _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
