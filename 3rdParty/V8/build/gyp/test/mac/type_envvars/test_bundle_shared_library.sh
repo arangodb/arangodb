@@ -19,5 +19,4 @@ test $DYLIB_INSTALL_NAME_BASE = "/Library/Frameworks"
 test $LD_DYLIB_INSTALL_NAME = \
     "/Library/Frameworks/bundle_shared_library.framework/Versions/A/bundle_shared_library"
 
-# Should be set, but empty.
-[[ ! $SDKROOT && ! ${SDKROOT-_} ]]
+"$(dirname "$0")/test_check_sdkroot.sh"

@@ -12,6 +12,12 @@ import TestGyp
 
 test = TestGyp.TestGyp()
 
+if test.format == 'android':
+  # This test currently fails on android. Investigate why, fix the issues
+  # responsible, and reenable this test on android. See bug:
+  # https://code.google.com/p/gyp/issues/detail?id=436
+  test.skip_test(message='Test fails on android. Fix and reenable.\n')
+
 test.run_gyp('configurations.gyp')
 
 test.set_configuration('Release')

@@ -5,7 +5,6 @@
 {
   'targets': [
     {
-      # TODO(sgk):  a target name of 'all' leads to a scons dependency cycle
       'target_name': 'All',
       'type': 'none',
       'dependencies': [

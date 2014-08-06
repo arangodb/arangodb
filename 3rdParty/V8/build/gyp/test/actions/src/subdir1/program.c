@@ -3,7 +3,7 @@
 extern void prog1(void);
 extern void prog2(void);
 
-int main(int argc, char *argv[])
+int main(void)
 {
   printf("Hello from program.c\n");
   prog1();

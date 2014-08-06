@@ -23,15 +23,15 @@
       'target_name': 'program4',
       'type': 'executable',
       'sources': [
-        'asm-function.asm',
+        'asm-function.assem',
         'program.c',
       ],
       'conditions': [
         ['OS=="linux" or OS=="mac"', {
           'rules': [
             {
-              'rule_name': 'convert_asm',
-              'extension': 'asm',
+              'rule_name': 'convert_assem',
+              'extension': 'assem',
               'inputs': [],
               'outputs': [
                 '<(SHARED_INTERMEDIATE_DIR)/<(RULE_INPUT_ROOT).S',

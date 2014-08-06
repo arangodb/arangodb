@@ -7,6 +7,11 @@ v2.2.2 (XXXX-XX-XX)
   no period was instantly executed and deleted by the task scheduler, before the `register`
   function returned to the caller.
 
+* changed run-tests.sh to execute all suitable tests.
+
+* switch to new version of gyp
+
+
 v2.2.1 (2014-07-24)
 -------------------
 

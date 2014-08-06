@@ -1,11 +1,8 @@
 // -*- mode: c++ -*-
-#include <iostream>
-
-using std::cout;
-using std::endl;
+#include <stdio.h>
 
 namespace gen {
   void c() {
-    cout << "hi c" << endl;
+    printf("hi c\n");
   }
 }

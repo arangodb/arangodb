@@ -77,7 +77,8 @@ def CalculateGeneratorInputInfo(params):
 
 
 def GetAllIncludeDirectories(target_list, target_dicts,
-                             shared_intermediate_dirs, config_name, params):
+                             shared_intermediate_dirs, config_name, params,
+                             compiler_path):
   """Calculate the set of include directories to be used.
 
   Returns:
@@ -87,6 +88,33 @@ def GetAllIncludeDirectories(target_list, target_dicts,
 
   gyp_includes_set = set()
   compiler_includes_list = []
+
+  # Find compiler's default include dirs.
+  if compiler_path:
+    command = shlex.split(compiler_path)
+    command.extend(['-E', '-xc++', '-v', '-'])
+    proc = subprocess.Popen(args=command, stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output = proc.communicate()[1]
+    # Extract the list of include dirs from the output, which has this format:
+    #   ...
+    #   #include "..." search starts here:
+    #   #include <...> search starts here:
+    #    /usr/include/c++/4.6
+    #    /usr/local/include
+    #   End of search list.
+    #   ...
+    in_include_list = False
+    for line in output.splitlines():
+      if line.startswith('#include'):
+        in_include_list = True
+        continue
+      if line.startswith('End of search list.'):
+        break
+      if in_include_list:
+        include_dir = line.strip()
+        if include_dir not in compiler_includes_list:
+          compiler_includes_list.append(include_dir)
 
   flavor = gyp.common.GetFlavor(params)
   if flavor == 'win':
@@ -106,11 +134,10 @@ def GetAllIncludeDirectories(target_list, target_dicts,
       else:
         cflags = config['cflags']
       for cflag in cflags:
-        include_dir = ''
         if cflag.startswith('-I'):
           include_dir = cflag[2:]
-        if include_dir and not include_dir in compiler_includes_list:
-          compiler_includes_list.append(include_dir)
+          if include_dir not in compiler_includes_list:
+            compiler_includes_list.append(include_dir)
 
       # Find standard gyp include dirs.
       if config.has_key('include_dirs'):
@@ -125,9 +152,7 @@ def GetAllIncludeDirectories(target_list, target_dicts,
               include_dir = base_dir + '/' + include_dir
               include_dir = os.path.abspath(include_dir)
 
-            if not include_dir in gyp_includes_set:
-              gyp_includes_set.add(include_dir)
-
+            gyp_includes_set.add(include_dir)
 
   # Generate a list that has all the include dirs.
   all_includes_list = list(gyp_includes_set)
@@ -140,7 +165,7 @@ def GetAllIncludeDirectories(target_list, target_dicts,
   return all_includes_list
 
 
-def GetCompilerPath(target_list, target_dicts, data):
+def GetCompilerPath(target_list, data, options):
   """Determine a command that can be used to invoke the compiler.
 
   Returns:
@@ -148,13 +173,12 @@ def GetCompilerPath(target_list, target_dicts, data):
     the compiler from that.  Otherwise, see if a compiler was specified via the
     CC_target environment variable.
   """
-
   # First, see if the compiler is configured in make's settings.
   build_file, _, _ = gyp.common.ParseQualifiedTarget(target_list[0])
   make_global_settings_dict = data[build_file].get('make_global_settings', {})
   for key, value in make_global_settings_dict:
     if key in ['CC', 'CXX']:
-      return value
+      return os.path.join(options.toplevel_dir, value)
 
   # Check to see if the compiler was specified as an environment variable.
   for key in ['CC_target', 'CC', 'CXX']:
@@ -165,7 +189,8 @@ def GetCompilerPath(target_list, target_dicts, data):
   return 'gcc'
 
 
-def GetAllDefines(target_list, target_dicts, data, config_name, params):
+def GetAllDefines(target_list, target_dicts, data, config_name, params,
+                  compiler_path):
   """Calculate the defines for a project.
 
   Returns:
@@ -202,9 +227,8 @@ def GetAllDefines(target_list, target_dicts, data, config_name, params):
   # Get default compiler defines (if possible).
   if flavor == 'win':
     return all_defines  # Default defines already processed in the loop above.
-  cc_target = GetCompilerPath(target_list, target_dicts, data)
-  if cc_target:
-    command = shlex.split(cc_target)
+  if compiler_path:
+    command = shlex.split(compiler_path)
     command.extend(['-E', '-dM', '-'])
     cpp_proc = subprocess.Popen(args=command, cwd='.',
                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE)
@@ -279,11 +303,13 @@ def GenerateOutputForConfig(target_list, target_dicts, data, params,
 
   eclipse_langs = ['C++ Source File', 'C Source File', 'Assembly Source File',
                    'GNU C++', 'GNU C', 'Assembly']
+  compiler_path = GetCompilerPath(target_list, data, options)
   include_dirs = GetAllIncludeDirectories(target_list, target_dicts,
                                           shared_intermediate_dirs, config_name,
-                                          params)
+                                          params, compiler_path)
   WriteIncludePaths(out, eclipse_langs, include_dirs)
-  defines = GetAllDefines(target_list, target_dicts, data, config_name, params)
+  defines = GetAllDefines(target_list, target_dicts, data, config_name, params,
+                          compiler_path)
   WriteMacros(out, eclipse_langs, defines)
 
   out.write('</cdtprojectproperties>\n')

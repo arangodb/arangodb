@@ -10,13 +10,14 @@ Verifies --generator-output= behavior when using rules.
 
 import TestGyp
 
-# Ninja and Android don't support --generator-output.
-test = TestGyp.TestGyp(formats=['!ninja', '!android'])
+# Android doesn't support --generator-output.
+test = TestGyp.TestGyp(formats=['!android'])
 
 test.writable(test.workpath('rules'), False)
 
 test.run_gyp('rules.gyp',
              '--generator-output=' + test.workpath('gypfiles'),
+             '-G', 'xcode_ninja_target_pattern=^pull_in_all_actions$',
              chdir='rules')
 
 test.writable(test.workpath('rules'), True)

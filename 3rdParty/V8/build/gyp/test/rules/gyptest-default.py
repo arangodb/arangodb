@@ -47,6 +47,10 @@ test.must_match('relocate/src/subdir2/file2.out', 'Hello from file2.in\n')
 test.must_match('relocate/src/subdir2/file1.out2', 'Hello from file1.in\n')
 test.must_match('relocate/src/subdir2/file2.out2', 'Hello from file2.in\n')
 
+test.must_match('relocate/src/subdir2/file1.out4', 'Hello from file1.in\n')
+test.must_match('relocate/src/subdir2/file2.out4', 'Hello from file2.in\n')
+test.must_match('relocate/src/subdir2/file1.copy', 'Hello from file1.in\n')
+
 test.must_match('relocate/src/external/file1.external_rules.out',
                 'Hello from file1.in\n')
 test.must_match('relocate/src/external/file2.external_rules.out',

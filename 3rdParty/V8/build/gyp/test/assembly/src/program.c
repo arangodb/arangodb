@@ -2,7 +2,7 @@
 
 extern int lib1_function(void);
 
-int main(int argc, char *argv[])
+int main(void)
 {
   fprintf(stdout, "Hello from program.c\n");
   fflush(stdout);

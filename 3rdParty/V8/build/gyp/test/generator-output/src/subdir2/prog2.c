@@ -6,7 +6,7 @@
 #include "include3.h"
 #include "deeper.h"
 
-int main(int argc, char *argv[])
+int main(void)
 {
   printf("Hello from prog2.c\n");
   printf("Hello from %s\n", INC_STRING);

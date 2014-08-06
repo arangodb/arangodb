@@ -5,60 +5,40 @@
 # found in the LICENSE file.
 
 """
-Verifies build of an executable with C++ define specified by a gyp define, and
-the use of the environment during regeneration when the gyp file changes.
+Verifies the use of the environment during regeneration when the gyp file
+changes, specifically via build of an executable with C++ flags specified by
+CXXFLAGS.
+
+In this test, gyp happens within a local environment, but build outside of it.
 """
 
-import os
 import TestGyp
 
-env_stack = []
+FORMATS = ('ninja',)
 
+test = TestGyp.TestGyp(formats=FORMATS)
 
-def PushEnv():
-  env_copy = os.environ.copy()
-  env_stack.append(env_copy)
-
-def PopEnv():
-  os.eniron=env_stack.pop()
-
-# Regenerating build files when a gyp file changes is currently only supported
-# by the make and Android generators.
-test = TestGyp.TestGyp(formats=['make', 'android'])
-
-try:
-  PushEnv()
-  os.environ['CXXFLAGS'] = '-O0'
+# We reset the environ after calling gyp. When the auto-regeneration happens,
+# the same define should be reused anyway.
+with TestGyp.LocalEnv({'CXXFLAGS': ''}):
   test.run_gyp('cxxflags.gyp')
-finally:
-  # We clear the environ after calling gyp.  When the auto-regeneration happens,
-  # the same define should be reused anyway.  Reset to empty string first in
-  # case the platform doesn't support unsetenv.
-  PopEnv()
 
 test.build('cxxflags.gyp')
 
 expect = """\
-Using no optimization flag
+No define
 """
 test.run_built_executable('cxxflags', stdout=expect)
 
 test.sleep()
 
-try:
-  PushEnv()
-  os.environ['CXXFLAGS'] = '-O2'
+with TestGyp.LocalEnv({'CXXFLAGS': '-DABC'}):
   test.run_gyp('cxxflags.gyp')
-finally:
-  # We clear the environ after calling gyp.  When the auto-regeneration happens,
-  # the same define should be reused anyway.  Reset to empty string first in
-  # case the platform doesn't support unsetenv.
-  PopEnv()
 
 test.build('cxxflags.gyp')
 
 expect = """\
-Using an optimization flag
+With define
 """
 test.run_built_executable('cxxflags', stdout=expect)
 

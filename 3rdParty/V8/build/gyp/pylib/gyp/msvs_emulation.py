@@ -12,6 +12,7 @@ import re
 import subprocess
 import sys
 
+from gyp.common import OrderedSet
 import gyp.MSVSVersion
 
 windows_quoter_regex = re.compile(r'(\\*)"')
@@ -131,6 +132,54 @@ def _FindDirectXInstallation():
   return dxsdk_dir
 
 
+def GetGlobalVSMacroEnv(vs_version):
+  """Get a dict of variables mapping internal VS macro names to their gyp
+  equivalents. Returns all variables that are independent of the target."""
+  env = {}
+  # '$(VSInstallDir)' and '$(VCInstallDir)' are available when and only when
+  # Visual Studio is actually installed.
+  if vs_version.Path():
+    env['$(VSInstallDir)'] = vs_version.Path()
+    env['$(VCInstallDir)'] = os.path.join(vs_version.Path(), 'VC') + '\\'
+  # Chromium uses DXSDK_DIR in include/lib paths, but it may or may not be
+  # set. This happens when the SDK is sync'd via src-internal, rather than
+  # by typical end-user installation of the SDK. If it's not set, we don't
+  # want to leave the unexpanded variable in the path, so simply strip it.
+  dxsdk_dir = _FindDirectXInstallation()
+  env['$(DXSDK_DIR)'] = dxsdk_dir if dxsdk_dir else ''
+  # Try to find an installation location for the Windows DDK by checking
+  # the WDK_DIR environment variable, may be None.
+  env['$(WDK_DIR)'] = os.environ.get('WDK_DIR', '')
+  return env
+
+def ExtractSharedMSVSSystemIncludes(configs, generator_flags):
+  """Finds msvs_system_include_dirs that are common to all targets, removes
+  them from all targets, and returns an OrderedSet containing them."""
+  all_system_includes = OrderedSet(
+      configs[0].get('msvs_system_include_dirs', []))
+  for config in configs[1:]:
+    system_includes = config.get('msvs_system_include_dirs', [])
+    all_system_includes = all_system_includes & OrderedSet(system_includes)
+  if not all_system_includes:
+    return None
+  # Expand macros in all_system_includes.
+  env = GetGlobalVSMacroEnv(GetVSVersion(generator_flags))
+  expanded_system_includes = OrderedSet([ExpandMacros(include, env)
+                                         for include in all_system_includes])
+  if any(['$' in include for include in expanded_system_includes]):
+    # Some path relies on target-specific variables, bail.
+    return None
+
+  # Remove system includes shared by all targets from the targets.
+  for config in configs:
+    includes = config.get('msvs_system_include_dirs', [])
+    if includes:  # Don't insert a msvs_system_include_dirs key if not needed.
+      # This must check the unexpanded includes list:
+      new_includes = [i for i in includes if i not in all_system_includes]
+      config['msvs_system_include_dirs'] = new_includes
+  return expanded_system_includes
+
+
 class MsvsSettings(object):
   """A class that understands the gyp 'msvs_...' values (especially the
   msvs_settings field). They largely correpond to the VS2008 IDE DOM. This
@@ -139,11 +188,6 @@ class MsvsSettings(object):
   def __init__(self, spec, generator_flags):
     self.spec = spec
     self.vs_version = GetVSVersion(generator_flags)
-    self.dxsdk_dir = _FindDirectXInstallation()
-
-    # Try to find an installation location for the Windows DDK by checking
-    # the WDK_DIR environment variable, may be None.
-    self.wdk_dir = os.environ.get('WDK_DIR')
 
     supported_fields = [
         ('msvs_configuration_attributes', dict),
@@ -163,6 +207,19 @@ class MsvsSettings(object):
 
     self.msvs_cygwin_dirs = spec.get('msvs_cygwin_dirs', ['.'])
 
+    unsupported_fields = [
+        'msvs_prebuild',
+        'msvs_postbuild',
+    ]
+    unsupported = []
+    for field in unsupported_fields:
+      for config in configs.values():
+        if field in config:
+          unsupported += ["%s not supported (target %s)." %
+                          (field, spec['target_name'])]
+    if unsupported:
+      raise Exception('\n'.join(unsupported))
+
   def GetVSMacroEnv(self, base_to_build=None, config=None):
     """Get a dict of variables mapping internal VS macro names to their gyp
     equivalents."""
@@ -181,18 +238,7 @@ class MsvsSettings(object):
         '$(PlatformName)': target_platform,
         '$(ProjectDir)\\': '',
     }
-    # '$(VSInstallDir)' and '$(VCInstallDir)' are available when and only when
-    # Visual Studio is actually installed.
-    if self.vs_version.Path():
-      replacements['$(VSInstallDir)'] = self.vs_version.Path()
-      replacements['$(VCInstallDir)'] = os.path.join(self.vs_version.Path(),
-                                                     'VC') + '\\'
-    # Chromium uses DXSDK_DIR in include/lib paths, but it may or may not be
-    # set. This happens when the SDK is sync'd via src-internal, rather than
-    # by typical end-user installation of the SDK. If it's not set, we don't
-    # want to leave the unexpanded variable in the path, so simply strip it.
-    replacements['$(DXSDK_DIR)'] = self.dxsdk_dir if self.dxsdk_dir else ''
-    replacements['$(WDK_DIR)'] = self.wdk_dir if self.wdk_dir else ''
+    replacements.update(GetGlobalVSMacroEnv(self.vs_version))
     return replacements
 
   def ConvertVSMacros(self, s, base_to_build=None, config=None):
@@ -332,6 +378,15 @@ class MsvsSettings(object):
     else:
       return None
 
+  def GetAsmflags(self, config):
+    """Returns the flags that need to be added to ml invocations."""
+    config = self._TargetConfig(config)
+    asmflags = []
+    safeseh = self._Setting(('MASM', 'UseSafeExceptionHandlers'), config)
+    if safeseh == 'true':
+      asmflags.append('/safeseh')
+    return asmflags
+
   def GetCflags(self, config):
     """Returns the flags that need to be added to .c and .cc compilations."""
     config = self._TargetConfig(config)
@@ -366,6 +421,8 @@ class MsvsSettings(object):
         map={'false': '-', 'true': ''}, prefix='/Zc:wchar_t')
     cl('EnablePREfast', map={'true': '/analyze'})
     cl('AdditionalOptions', prefix='')
+    cl('EnableEnhancedInstructionSet',
+       map={'1': 'SSE', '2': 'SSE2', '3': 'AVX', '4': 'IA32'}, prefix='/arch:')
     cflags.extend(['/FI' + f for f in self._Setting(
         ('VCCLCompilerTool', 'ForcedIncludeFiles'), config, default=[])])
     if self.vs_version.short_name in ('2013', '2013e'):
@@ -374,12 +431,6 @@ class MsvsSettings(object):
     # ninja handles parallelism by itself, don't have the compiler do it too.
     cflags = filter(lambda x: not x.startswith('/MP'), cflags)
     return cflags
-
-  def GetPrecompiledHeader(self, config, gyp_to_build_path):
-    """Returns an object that handles the generation of precompiled header
-    build steps."""
-    config = self._TargetConfig(config)
-    return _PchHelper(self, config, gyp_to_build_path)
 
   def _GetPchFlags(self, config, extension):
     """Get the flags to be added to the cflags for precompiled header support.
@@ -519,6 +570,7 @@ class MsvsSettings(object):
     ld('Profile', map={'true': '/PROFILE'})
     ld('LargeAddressAware',
         map={'1': ':NO', '2': ''}, prefix='/LARGEADDRESSAWARE')
+    ld('ImageHasSafeExceptionHandlers', map={'true': '/SAFESEH'})
     # TODO(scottmg): This should sort of be somewhere else (not really a flag).
     ld('AdditionalDependencies', prefix='')
 
@@ -774,7 +826,7 @@ class PrecompiledHeader(object):
   def GetObjDependencies(self, sources, objs, arch):
     """Given a list of sources files and the corresponding object files,
     returns a list of the pch files that should be depended upon. The
-    additional wrapping in the return value is for interface compatability
+    additional wrapping in the return value is for interface compatibility
     with make.py on Mac, and xcode_emulation.py."""
     assert arch is None
     if not self._PchHeader():
@@ -878,7 +930,8 @@ def _ExtractCLPath(output_of_where):
     if line.startswith('LOC:'):
       return line[len('LOC:'):].strip()
 
-def GenerateEnvironmentFiles(toplevel_build_dir, generator_flags, open_out):
+def GenerateEnvironmentFiles(toplevel_build_dir, generator_flags,
+                             system_includes, open_out):
   """It's not sufficient to have the absolute path to the compiler, linker,
   etc. on Windows, as those tools rely on .dlls being in the PATH. We also
   need to support both x86 and x64 compilers within the same build (to support
@@ -909,6 +962,13 @@ def GenerateEnvironmentFiles(toplevel_build_dir, generator_flags, open_out):
         args, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     variables, _ = popen.communicate()
     env = _ExtractImportantEnvironment(variables)
+
+    # Inject system includes from gyp files into INCLUDE.
+    if system_includes:
+      system_includes = system_includes | OrderedSet(
+                                              env.get('INCLUDE', '').split(';'))
+      env['INCLUDE'] = ';'.join(system_includes)
+
     env_block = _FormatAsEnvironmentBlock(env)
     f = open_out(os.path.join(toplevel_build_dir, 'environment.' + arch), 'wb')
     f.write(env_block)

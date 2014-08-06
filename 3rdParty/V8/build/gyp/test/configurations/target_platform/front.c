@@ -2,7 +2,7 @@
 
 const char *message(void);
 
-int main(int argc, char *argv[]) {
+int main(void) {
   printf("%s\n", message());
   return 0;
 }

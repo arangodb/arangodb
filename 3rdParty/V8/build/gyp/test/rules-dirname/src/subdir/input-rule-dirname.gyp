@@ -5,6 +5,30 @@
 {
   'targets': [
     {
+      'target_name': 'print_rule_input_dirname',
+      'type': 'none',
+      'msvs_cygwin_shell': 0,
+      'sources': [
+        'foo/bar/baz.printvars',
+        'a/b/c.printvars',
+      ],
+      'rules': [
+        {
+          'rule_name': 'printvars',
+          'extension': 'printvars',
+          'inputs': [
+            'printvars.py',
+          ],
+          'outputs': [
+            '<(RULE_INPUT_DIRNAME)/<(RULE_INPUT_ROOT).dirname',
+          ],
+          'action': [
+            'python', '<@(_inputs)', '<(RULE_INPUT_DIRNAME)', '<@(_outputs)',
+          ],
+        },
+      ],
+    },
+    {
       'target_name': 'print_rule_input_path',
       'type': 'none',
       'msvs_cygwin_shell': 0,
@@ -20,36 +44,28 @@
             'printvars.py',
           ],
           'outputs': [
-            '<(RULE_INPUT_DIRNAME)/<(RULE_INPUT_ROOT).printed',
+            '<(RULE_INPUT_DIRNAME)/<(RULE_INPUT_ROOT).path',
           ],
           'action': [
-            'python', '<@(_inputs)', '<(RULE_INPUT_DIRNAME)', '<@(_outputs)',
+            'python', '<@(_inputs)', '<(RULE_INPUT_PATH)', '<@(_outputs)',
           ],
         },
-      ],      
+      ],
     },
     {
       'target_name': 'gencc_int_output',
       'type': 'executable',
       'msvs_cygwin_shell': 0,
-      'msvs_cygwin_dirs': ['../../../../../../<(DEPTH)/third_party/cygwin'],
       'sources': [
+        'nodir.gencc',
         'foo/bar/baz.gencc',
         'a/b/c.gencc',
-	'main.cc',
-      ],
-      'conditions': [
-        ['OS=="win"', {
-          'dependencies': [
-            'cygwin',
-          ],
-        }],
+        'main.cc',
       ],
       'rules': [
         {
           'rule_name': 'gencc',
           'extension': 'gencc',
-          'msvs_external_rule': 1,
           'inputs': [
             '<(DEPTH)/copy-file.py',
           ],
@@ -61,12 +77,44 @@
           ],
           'process_outputs_as_sources': 1,
         },
-      ],      
+      ],
     },
   ],
   'conditions': [
     ['OS=="win"', {
       'targets': [
+        {
+          'target_name': 'gencc_int_output_external',
+          'type': 'executable',
+          'msvs_cygwin_shell': 0,
+          'msvs_cygwin_dirs': ['../../../../../../<(DEPTH)/third_party/cygwin'],
+          'sources': [
+            'nodir.gencc',
+            'foo/bar/baz.gencc',
+            'a/b/c.gencc',
+            'main.cc',
+          ],
+          'dependencies': [
+            'cygwin',
+          ],
+          'rules': [
+            {
+              'rule_name': 'gencc',
+              'extension': 'gencc',
+              'msvs_external_rule': 1,
+              'inputs': [
+                '<(DEPTH)/copy-file.py',
+              ],
+              'outputs': [
+                '<(INTERMEDIATE_DIR)/<(RULE_INPUT_DIRNAME)/<(RULE_INPUT_ROOT).cc',
+              ],
+              'action': [
+                'python', '<@(_inputs)', '<(RULE_INPUT_PATH)', '<@(_outputs)',
+              ],
+              'process_outputs_as_sources': 1,
+            },
+          ],
+        },
         {
           'target_name': 'cygwin',
           'type': 'none',

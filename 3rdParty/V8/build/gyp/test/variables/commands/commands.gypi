@@ -6,6 +6,13 @@
 {
   'variables': {
     'included_variable': 'XYZ',
+
+    'default_str%': 'my_str',
+    'default_empty_str%': '',
+    'default_int%': 0,
+
+    'default_empty_files%': '',
+    'default_int_files%': 0,
   },
   'targets': [
     {

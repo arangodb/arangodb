@@ -5,7 +5,7 @@
 #include "include2.h"
 #include "shadow.h"
 
-int main(int argc, char *argv[])
+int main(void)
 {
   printf("Hello from includes.c\n");
   printf("Hello from %s\n", INC_STRING);

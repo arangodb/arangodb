@@ -19,6 +19,9 @@
           '-DS="A Space"',  # Would normally be in 'defines'
         ],
       },
+      'include_dirs': [
+        '$(SDKROOT)/usr/include/libxml2',
+      ],
     },
   ],
 }

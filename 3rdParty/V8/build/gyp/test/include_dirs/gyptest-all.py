@@ -12,9 +12,6 @@ import TestGyp
 
 test = TestGyp.TestGyp()
 
-if test.format == 'scons':
-  test.skip_test('TODO: http://code.google.com/p/gyp/issues/detail?id=176\n')
-
 test.run_gyp('includes.gyp', chdir='src')
 
 test.relocate('src', 'relocate/src')

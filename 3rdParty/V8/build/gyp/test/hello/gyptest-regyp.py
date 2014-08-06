@@ -11,8 +11,8 @@ Verifies that Makefiles get rebuilt when a source gyp file changes.
 import TestGyp
 
 # Regenerating build files when a gyp file changes is currently only supported
-# by the make and Android generators.
-test = TestGyp.TestGyp(formats=['make', 'android'])
+# by the make generator.
+test = TestGyp.TestGyp(formats=['make'])
 
 test.run_gyp('hello.gyp')
 

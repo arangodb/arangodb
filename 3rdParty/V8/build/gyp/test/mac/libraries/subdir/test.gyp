@@ -13,7 +13,6 @@
       'link_settings': {
         'libraries': [
           'libcrypto.dylib',
-          'libfl.a',
         ],
       },
     },

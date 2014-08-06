@@ -60,6 +60,11 @@
         'var18': '<(zero_int)',
         'var19': ['<!@(python test.py)'],
         'var20': '<!(python test.py)',
+        'var21': '<(default_str)',
+        'var22': '<(default_empty_str)',
+        'var23': '<(default_int)',
+        'var24': '<(default_empty_files)',
+        'var25': '<(default_int_files)',
       },
       'actions': [
         {
