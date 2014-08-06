@@ -2015,21 +2015,30 @@ static v8::Handle<v8::Value> JS_CreateEdgeCollectionVocbase (v8::Arguments const
   return CreateVocBase(argv, TRI_COL_TYPE_EDGE);
 }
 
-void TRI_InitV8index (v8::Handle<v8::Context> context,
-			    TRI_server_t* server,
-			    TRI_vocbase_t* vocbase,
-			    JSLoader* loader,
-			    const size_t threadNumber,
-			    TRI_v8_global_t* v8g){
-  v8::Handle<v8::ObjectTemplate> rt;
-  v8::Handle<v8::FunctionTemplate> ft;
+void TRI_InitV8indexArangoDB (v8::Handle<v8::Context> context,
+			      TRI_server_t* server,
+			      TRI_vocbase_t* vocbase,
+			      JSLoader* loader,
+			      const size_t threadNumber,
+			      TRI_v8_global_t* v8g,
+			      v8::Handle<v8::ObjectTemplate> rt){
+  TRI_AddMethodVocbase(rt, "_create", JS_CreateVocbase, true);
+  TRI_AddMethodVocbase(rt, "_createEdgeCollection", JS_CreateEdgeCollectionVocbase);
+  TRI_AddMethodVocbase(rt, "_createDocumentCollection", JS_CreateDocumentCollectionVocbase);
 
+}
+
+
+void TRI_InitV8indexCollection (v8::Handle<v8::Context> context,
+				TRI_server_t* server,
+				TRI_vocbase_t* vocbase,
+				JSLoader* loader,
+				const size_t threadNumber,
+				TRI_v8_global_t* v8g,
+				v8::Handle<v8::ObjectTemplate> rt){
   TRI_AddMethodVocbase(rt, "dropIndex", JS_DropIndexVocbaseCol);
   TRI_AddMethodVocbase(rt, "ensureIndex", JS_EnsureIndexVocbaseCol);
   TRI_AddMethodVocbase(rt, "lookupIndex", JS_LookupIndexVocbaseCol);
   TRI_AddMethodVocbase(rt, "getIndexes", JS_GetIndexesVocbaseCol);
-  TRI_AddMethodVocbase(rt, "_create", JS_CreateVocbase, true);
-  TRI_AddMethodVocbase(rt, "_createEdgeCollection", JS_CreateEdgeCollectionVocbase);
-  TRI_AddMethodVocbase(rt, "_createDocumentCollection", JS_CreateDocumentCollectionVocbase);
 
 }

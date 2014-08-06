@@ -1285,221 +1285,10 @@ static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
   return scope.Close(result);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                          TRI_DATAFILE_T FUNCTIONS
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              javascript functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns information about the datafiles
-///
-/// @FUN{@FA{collection}.datafileScan(@FA{path})}
-///
-/// Returns information about the datafiles. The collection must be unloaded.
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
-
-  if (collection == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
-  }
-
-  if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "datafileScan(<path>)");
-  }
-
-  string path = TRI_ObjectToString(argv[0]);
-
-  TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
-
-  if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED &&
-      collection->_status != TRI_VOC_COL_STATUS_CORRUPTED) {
-    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
-  }
-
-  TRI_df_scan_t scan = TRI_ScanDatafile(path.c_str());
-
-  // build result
-  v8::Handle<v8::Object> result = v8::Object::New();
-
-  result->Set(v8::String::New("currentSize"), v8::Number::New(scan._currentSize));
-  result->Set(v8::String::New("maximalSize"), v8::Number::New(scan._maximalSize));
-  result->Set(v8::String::New("endPosition"), v8::Number::New(scan._endPosition));
-  result->Set(v8::String::New("numberMarkers"), v8::Number::New(scan._numberMarkers));
-  result->Set(v8::String::New("status"), v8::Number::New(scan._status));
-  result->Set(v8::String::New("isSealed"), v8::Boolean::New(scan._isSealed));
-
-  v8::Handle<v8::Array> entries = v8::Array::New();
-  result->Set(v8::String::New("entries"), entries);
-
-  for (size_t i = 0;  i < scan._entries._length;  ++i) {
-    TRI_df_scan_entry_t* entry = (TRI_df_scan_entry_t*) TRI_AtVector(&scan._entries, i);
-
-    v8::Handle<v8::Object> o = v8::Object::New();
-
-    o->Set(v8::String::New("position"), v8::Number::New(entry->_position));
-    o->Set(v8::String::New("size"), v8::Number::New(entry->_size));
-    o->Set(v8::String::New("realSize"), v8::Number::New(entry->_realSize));
-    o->Set(v8::String::New("tick"), V8TickId(entry->_tick));
-    o->Set(v8::String::New("type"), v8::Number::New((int) entry->_type));
-    o->Set(v8::String::New("status"), v8::Number::New((int) entry->_status));
-
-    entries->Set((uint32_t) i, o);
-  }
-
-  TRI_DestroyDatafileScan(&scan);
-
-  TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-  return scope.Close(result);
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       TRI_VOCBASE_COL_T FUNCTIONS
 // -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              javascript functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief counts the number of documents in a result set
-/// @startDocuBlock collectionCount
-/// `collection.count()`
-///
-/// Returns the number of living documents in the collection.
-///
-/// @EXAMPLES
-///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionCount}
-/// ~ db._create("users");
-///   db.users.count();
-/// ~ db._drop("users");
-/// @END_EXAMPLE_ARANGOSH_OUTPUT
-///
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_CountVocbaseCol (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
-
-  if (collection == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
-  }
-
-  if (argv.Length() != 0) {
-    TRI_V8_EXCEPTION_USAGE(scope, "count()");
-  }
-
-  if (ServerState::instance()->isCoordinator()) {
-    // First get the initial data:
-    string const dbname(collection->_dbName);
-
-    // TODO: someone might rename the collection while we're reading its name...
-    string const collname(collection->_name);
-
-    uint64_t count = 0;
-    int error = triagens::arango::countOnCoordinator(dbname, collname, count);
-
-    if (error != TRI_ERROR_NO_ERROR) {
-      TRI_V8_EXCEPTION(scope, error);
-    }
-
-    return scope.Close(v8::Number::New((double) count));
-  }
-
-  V8ReadTransaction trx(collection->_vocbase, collection->_cid);
-
-  int res = trx.begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION(scope, res);
-  }
-
-  TRI_document_collection_t* document = trx.documentCollection();
-
-  // READ-LOCK start
-  trx.lockRead();
-
-  const TRI_voc_size_t s = document->size(document);
-
-  trx.finish(res);
-  // READ-LOCK end
-
-  return scope.Close(v8::Number::New((double) s));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns information about the datafiles
-/// `collection.datafiles()`
-///
-/// Returns information about the datafiles. The collection must be unloaded.
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_DatafilesVocbaseCol (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), WRP_VOCBASE_COL_TYPE);
-
-  if (collection == nullptr) {
-    TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
-  }
-
-  TRI_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(scope, collection);
-
-  TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
-
-  if (collection->_status != TRI_VOC_COL_STATUS_UNLOADED &&
-      collection->_status != TRI_VOC_COL_STATUS_CORRUPTED) {
-    TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
-  }
-
-  TRI_col_file_structure_t structure = TRI_FileStructureCollectionDirectory(collection->_path);
-
-  // release lock
-  TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
-
-  // build result
-  v8::Handle<v8::Object> result = v8::Object::New();
-
-  // journals
-  v8::Handle<v8::Array> journals = v8::Array::New();
-  result->Set(v8::String::New("journals"), journals);
-
-  for (size_t i = 0;  i < structure._journals._length;  ++i) {
-    journals->Set((uint32_t) i, v8::String::New(structure._journals._buffer[i]));
-  }
-
-  // compactors
-  v8::Handle<v8::Array> compactors = v8::Array::New();
-  result->Set(v8::String::New("compactors"), compactors);
-
-  for (size_t i = 0;  i < structure._compactors._length;  ++i) {
-    compactors->Set((uint32_t) i, v8::String::New(structure._compactors._buffer[i]));
-  }
-
-  // datafiles
-  v8::Handle<v8::Array> datafiles = v8::Array::New();
-  result->Set(v8::String::New("datafiles"), datafiles);
-
-  for (size_t i = 0;  i < structure._datafiles._length;  ++i) {
-    datafiles->Set((uint32_t) i, v8::String::New(structure._datafiles._buffer[i]));
-  }
-
-  // free result
-  TRI_DestroyFileStructureCollection(&structure);
-
-  return scope.Close(result);
-}
 
 
 // -----------------------------------------------------------------------------
@@ -2661,12 +2450,13 @@ extern void TRI_InitV8shaped_json (v8::Handle<v8::Context> context,
 				   triagens::arango::JSLoader* loader,
 				   const size_t threadNumber,
 				   TRI_v8_global_t* v8g);
-extern void TRI_InitV8index (v8::Handle<v8::Context> context,
-			     TRI_server_t* server,
-			     TRI_vocbase_t* vocbase,
-			     JSLoader* loader,
-			     const size_t threadNumber,
-			     TRI_v8_global_t* v8g);
+extern void TRI_InitV8indexArangoDB (v8::Handle<v8::Context> context,
+				     TRI_server_t* server,
+				     TRI_vocbase_t* vocbase,
+				     JSLoader* loader,
+				     const size_t threadNumber,
+				     TRI_v8_global_t* v8g,
+				     v8::Handle<v8::ObjectTemplate>  ArangoDBNS);
 extern void TRI_InitV8cursor (v8::Handle<v8::Context> context,
 			      TRI_server_t* server,
 			      TRI_vocbase_t* vocbase,
@@ -2674,11 +2464,13 @@ extern void TRI_InitV8cursor (v8::Handle<v8::Context> context,
 			      const size_t threadNumber,
 			      TRI_v8_global_t* v8g);
 extern void TRI_InitV8collection (v8::Handle<v8::Context> context,
-			      TRI_server_t* server,
-			      TRI_vocbase_t* vocbase,
-			      JSLoader* loader,
-			      const size_t threadNumber,
-			      TRI_v8_global_t* v8g);
+				  TRI_server_t* server,
+				  TRI_vocbase_t* vocbase,
+				  JSLoader* loader,
+				  const size_t threadNumber,
+				  TRI_v8_global_t* v8g,
+				  v8::Isolate* isolate,
+				  v8::Handle<v8::ObjectTemplate>  ArangoDBNS);
 
 void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
                           TRI_server_t* server,
@@ -2700,12 +2492,10 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // register the startup loader
   v8g->_loader = loader;
 
-
+  v8::Handle<v8::ObjectTemplate> ArangoNS;
   v8::Handle<v8::ObjectTemplate> rt;
   v8::Handle<v8::FunctionTemplate> ft;
   v8::Handle<v8::Template> pt;
-
-  TRI_InitV8shaped_json (context, server, vocbase, loader, threadNumber, v8g);
 
   // .............................................................................
   // generate the TRI_vocbase_t template
@@ -2714,45 +2504,32 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   ft = v8::FunctionTemplate::New();
   ft->SetClassName(TRI_V8_SYMBOL("ArangoDatabase"));
 
-  rt = ft->InstanceTemplate();
-  rt->SetInternalFieldCount(2);
-  rt->SetNamedPropertyHandler(MapGetVocBase);
+  ArangoNS = ft->InstanceTemplate();
+  ArangoNS->SetInternalFieldCount(2);
+  ArangoNS->SetNamedPropertyHandler(MapGetVocBase);
 
   // for any database function added here, be sure to add it to in function
   // JS_CompletionsVocbase, too for the auto-completion
 
-  TRI_AddMethodVocbase(rt, "_id", JS_IdDatabase);
-  TRI_AddMethodVocbase(rt, "_isSystem", JS_IsSystemDatabase);
-  TRI_AddMethodVocbase(rt, "_name", JS_NameDatabase);
-  TRI_AddMethodVocbase(rt, "_path", JS_PathDatabase);
-  TRI_AddMethodVocbase(rt, "_createDatabase", JS_CreateDatabase);
-  TRI_AddMethodVocbase(rt, "_dropDatabase", JS_DropDatabase);
-  TRI_AddMethodVocbase(rt, "_listDatabases", JS_ListDatabases);
-  TRI_AddMethodVocbase(rt, "_useDatabase", JS_UseDatabase);
+  TRI_AddMethodVocbase(ArangoNS, "_id", JS_IdDatabase);
+  TRI_AddMethodVocbase(ArangoNS, "_isSystem", JS_IsSystemDatabase);
+  TRI_AddMethodVocbase(ArangoNS, "_name", JS_NameDatabase);
+  TRI_AddMethodVocbase(ArangoNS, "_path", JS_PathDatabase);
+  TRI_AddMethodVocbase(ArangoNS, "_createDatabase", JS_CreateDatabase);
+  TRI_AddMethodVocbase(ArangoNS, "_dropDatabase", JS_DropDatabase);
+  TRI_AddMethodVocbase(ArangoNS, "_listDatabases", JS_ListDatabases);
+  TRI_AddMethodVocbase(ArangoNS, "_useDatabase", JS_UseDatabase);
 
-  v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
+  TRI_InitV8indexArangoDB(context, server, vocbase, loader, threadNumber, v8g, ArangoNS);
+
+  TRI_InitV8collection(context, server, vocbase, loader, threadNumber, v8g, isolate, ArangoNS);
+
+  v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, ArangoNS);
   TRI_AddGlobalFunctionVocbase(context, "ArangoDatabase", ft->GetFunction());
 
-  // .............................................................................
-  // generate the TRI_vocbase_col_t template
-  // .............................................................................
+  TRI_InitV8shaped_json(context, server, vocbase, loader, threadNumber, v8g);
 
-  ft = v8::FunctionTemplate::New();
-  ft->SetClassName(TRI_V8_SYMBOL("ArangoCollection"));
-
-  rt = ft->InstanceTemplate();
-  rt->SetInternalFieldCount(3);
-
-  TRI_AddMethodVocbase(rt, "count", JS_CountVocbaseCol);
-  TRI_AddMethodVocbase(rt, "datafiles", JS_DatafilesVocbaseCol);
-  TRI_AddMethodVocbase(rt, "datafileScan", JS_DatafileScanVocbaseCol);
-  TRI_InitV8index(context, server, vocbase, loader, threadNumber, v8g);
-
-  v8g->VocbaseColTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
-  TRI_AddGlobalFunctionVocbase(context, "ArangoCollection", ft->GetFunction());
-
-  TRI_InitV8cursor (context, server, vocbase, loader, threadNumber, v8g);
-  TRI_InitV8collection (context, server, vocbase, loader, threadNumber, v8g);
+  TRI_InitV8cursor(context, server, vocbase, loader, threadNumber, v8g);
 
   // .............................................................................
   // generate global functions
