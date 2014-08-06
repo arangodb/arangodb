@@ -529,7 +529,7 @@ void V8Executor::generateCodeCollection (AstNode const* node) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generate JavaScript code for a function call
+/// @brief generate JavaScript code for a call to a built-in function
 ////////////////////////////////////////////////////////////////////////////////
 
 void V8Executor::generateCodeFunctionCall (AstNode const* node) {
@@ -555,6 +555,36 @@ void V8Executor::generateCodeFunctionCall (AstNode const* node) {
     generateCodeNode(args->getMember(i));
   }
   _buffer->appendText(")");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for a call to a user-defined function
+////////////////////////////////////////////////////////////////////////////////
+
+void V8Executor::generateCodeUserFunctionCall (AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->numMembers() == 1);
+  
+  char const* name = node->getStringValue();
+  TRI_ASSERT(name != nullptr);
+
+  auto args = node->getMember(0);
+  TRI_ASSERT(args != nullptr);
+  TRI_ASSERT(args->type == NODE_TYPE_LIST);
+
+  _buffer->appendText("aql.FCALL_USER(\"");
+  _buffer->appendJsonEncoded(name);
+  _buffer->appendText("\", [");
+
+  size_t const n = args->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    if (i > 0) {
+      _buffer->appendText(", ");
+    }
+
+    generateCodeNode(args->getMember(i));
+  }
+  _buffer->appendText("])");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -684,6 +714,10 @@ void V8Executor::generateCodeNode (AstNode const* node) {
 
     case NODE_TYPE_FCALL:
       generateCodeFunctionCall(node);
+      break;
+    
+    case NODE_TYPE_FCALL_USER:
+      generateCodeUserFunctionCall(node);
       break;
     
     case NODE_TYPE_EXPAND:
