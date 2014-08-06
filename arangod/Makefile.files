@@ -112,7 +112,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/V8Server/v8-voccursor.cpp \
 	arangod/V8Server/v8-replication.cpp \
 	arangod/V8Server/v8-collection.cpp \
-	arangod/V8Server/v8-collection_util.cpp \
+	arangod/V8Server/v8-collection-util.cpp \
 	arangod/V8Server/v8-util.cpp \
 	arangod/VocBase/auth.cpp \
 	arangod/VocBase/barrier.cpp \

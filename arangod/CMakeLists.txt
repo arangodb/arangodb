@@ -131,7 +131,7 @@ add_executable(
     V8Server/v8-voccursor.cpp
     V8Server/v8-replication.cpp
     V8Server/v8-collection.cpp
-    V8Server/v8-collection_util.cpp
+    V8Server/v8-collection-util.cpp
     V8Server/v8-util.cpp
     VocBase/auth.cpp
     VocBase/barrier.cpp
