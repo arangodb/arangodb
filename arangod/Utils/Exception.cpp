@@ -34,14 +34,28 @@ using namespace std;
 using namespace triagens::arango;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
+/// @brief constructor, without format string
 ////////////////////////////////////////////////////////////////////////////////
 
 Exception::Exception (int code,
-                      string const& details,
                       char const* file,
                       int line)
-  : _details(details),
+  : _errorMessage(TRI_errno_string(code)),
+    _file(file),
+    _line(line),
+    _code(code) {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor, for creating an exception with an already created
+/// error message (normally based on error templates containing %s, %d etc.)
+////////////////////////////////////////////////////////////////////////////////
+
+Exception::Exception (int code,
+                      string const& errorMessage,
+                      char const* file,
+                      int line)
+  : _errorMessage(errorMessage),
     _file(file),
     _line(line),
     _code(code) {
@@ -74,20 +88,7 @@ char const* Exception::what () const throw () {
 ////////////////////////////////////////////////////////////////////////////////
 
 string Exception::message () const throw () {
-  string message(TRI_errno_string(_code));
-
-  if (strstr(message.c_str(), "%s") != nullptr) {
-    // error message contains "%s" wildcard
-    try {
-      // replace %s with actual details
-      return basics::StringUtils::replace(message, "%s", _details);
-    }
-    catch (...) {
-      return "internal error";
-    }
-  }
-
-  return message;
+  return _errorMessage;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,6 +97,25 @@ string Exception::message () const throw () {
 
 int Exception::code () const throw () {
   return _code;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief construct an error message from a template string
+////////////////////////////////////////////////////////////////////////////////
+        
+std::string Exception::FillExceptionString (int code, 
+                                            ...) {
+  char const* format = TRI_errno_string(code);
+  TRI_ASSERT(format != nullptr);
+
+  char buffer[1024];
+  va_list ap;
+  va_start(ap, code);
+  vsnprintf(buffer, sizeof(buffer) - 1, format, ap);
+  va_end(ap);
+  buffer[sizeof(buffer) - 1] = '\0'; // Windows
+
+  return std::string(buffer);
 }
 
 // -----------------------------------------------------------------------------

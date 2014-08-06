@@ -1489,8 +1489,9 @@ std::string Ast::normalizeFunctionName (char const* name) {
 
   if (functionName.find(':') == std::string::npos) {
     // prepend default namespace for internal functions
-    functionName = "_AQL:" + functionName;
+    functionName = "_AQL::" + functionName;
   }
+  // note: user-defined functions do not need to be modified
 
   return functionName;
 }

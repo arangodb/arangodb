@@ -44,14 +44,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define THROW_ARANGO_EXCEPTION(code)                                           \
-  throw triagens::arango::Exception(code, "", __FILE__, __LINE__)
+  throw triagens::arango::Exception(code, __FILE__, __LINE__)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief throws an exception for internal errors
 ////////////////////////////////////////////////////////////////////////////////
 
-#define THROW_ARANGO_EXCEPTION_STRING(code, details)                           \
-  throw triagens::arango::Exception(code, details, __FILE__, __LINE__)
+#define THROW_ARANGO_EXCEPTION_PARAMS(code, ...)                               \
+  throw triagens::arango::Exception(code, triagens::arango::Exception::FillExceptionString(code, __VA_ARGS__), __FILE__, __LINE__)        
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -67,7 +67,11 @@ namespace triagens {
     class Exception : public virtual std::exception {
       public:
         Exception (int code,
-                   std::string const& details,
+                   char const* file,
+                   int line);
+        
+        Exception (int code,
+                   std::string const& errorMessage,
                    char const* file,
                    int line);
 
@@ -80,8 +84,10 @@ namespace triagens {
         
         int code () const throw();
 
+        static std::string FillExceptionString (int, ...);
+
       protected:
-        std::string const _details;
+        std::string const _errorMessage;
         char const* _file;
         int const _line;
         int const _code;
