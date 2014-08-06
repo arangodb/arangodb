@@ -650,9 +650,6 @@ void TRI_InitV8replication (v8::Handle<v8::Context> context,
 			    JSLoader* loader,
 			    const size_t threadNumber,
 			    TRI_v8_global_t* v8g){
-  v8::Handle<v8::ObjectTemplate> rt;
-  v8::Handle<v8::FunctionTemplate> ft;
-
   // replication functions. not intended to be used by end users
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_STATE", JS_StateLoggerReplication, true);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_CONFIGURE", JS_ConfigureLoggerReplication, true);
