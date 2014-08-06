@@ -1,4 +1,4 @@
-v2.2.2 (XXXX-XX-XX)
+v2.2.2-rc1 (XXXX-XX-XX)
 -------------------
 
 * fixed a race condition on task registration (i.e. `require("org/arangodb/tasks").register()`)
