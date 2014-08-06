@@ -68,8 +68,7 @@ namespace triagens {
           CALCULATION,              // done
           SUBQUERY,                 // done
           SORT,                     // done
-          AGGREGATE_ON_SORTED,
-          AGGREGATE_ON_UNSORTED,    // todo
+          AGGREGATE,                // todo
           LOOKUP_JOIN,
           MERGE_JOIN,
           LOOKUP_INDEX_UNIQUE,
@@ -1033,7 +1032,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual NodeType getType () const {
-          return SORT;
+          return AGGREGATE;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -257,6 +257,19 @@ namespace triagens {
                 totalNrRegs++;
                 break;
               }
+              case ExecutionNode::AGGREGATE: {
+                // FIXME: are there more variables being defined in this
+                // node???
+                auto ep = static_cast<AggregateNode const*>(eb->getPlanNode());
+                if (ep->_outVariable != nullptr) {
+                  nrRegsHere[depth]++;
+                  nrRegs[depth]++;
+                  varInfo.insert(make_pair(ep->_outVariable->id,
+                                           VarInfo(depth, totalNrRegs)));
+                  totalNrRegs++;
+                }
+                break;
+              }
               // TODO: potentially more cases
               default:
                 break;
@@ -272,6 +285,11 @@ namespace triagens {
           v->setSharedPtr(&v);
           walk(v.get());
           v->reset();
+          std::cout << "Varinfo:\n";
+          for (auto x : v->varInfo) {
+            std::cout << x.first << " => " << x.second.depth << "," 
+                      << x.second.registerId << std::endl;
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1447,6 +1465,7 @@ namespace triagens {
 
           for( auto p: en->_elements){
             //We know that staticAnalysis has been run, so _varOverview is set up
+            std::cout << "Looking for " << p.first->id << std::endl;
             auto it = _varOverview->varInfo.find(p.first->id);
             TRI_ASSERT(it != _varOverview->varInfo.end());
             _sortRegisters.push_back(make_pair(it->second.registerId, p.second));
