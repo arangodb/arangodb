@@ -125,6 +125,14 @@ add_executable(
     V8Server/v8-actions.cpp
     V8Server/v8-query.cpp
     V8Server/v8-vocbase.cpp
+    V8Server/v8-wrapshapedjson.cpp
+    V8Server/v8-vocindex.cpp
+    V8Server/v8-voccluster.cpp
+    V8Server/v8-voccursor.cpp
+    V8Server/v8-replication.cpp
+    V8Server/v8-collection.cpp
+    V8Server/v8-collection-util.cpp
+    V8Server/v8-util.cpp
     VocBase/auth.cpp
     VocBase/barrier.cpp
     VocBase/cleanup.cpp
