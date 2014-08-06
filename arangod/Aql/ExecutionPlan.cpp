@@ -414,7 +414,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollect (Ast const* ast,
     outVariable = static_cast<Variable*>(v->getData());
   }
 
-  auto en = addNode(new AggregateOnUnsortedNode(aggregateVariables, outVariable));
+  auto en = addNode(new AggregateNode(aggregateVariables, outVariable));
 
   return addDependency(previous, en);
 }
