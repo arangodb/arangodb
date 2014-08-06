@@ -75,7 +75,7 @@ static int CompareKeyElement (TRI_shaped_json_t const* left,
   result = TRI_CompareShapeTypes(nullptr,
                                  nullptr,
                                  left,
-                                 right->_document,
+                                 right->_document->getShapedJsonPtr(),
                                  &right->_subObjects[rightPosition],
                                  nullptr,
                                  shaper);
@@ -109,10 +109,10 @@ static int CompareElementElement (TRI_skiplist_index_element_t* left,
   TRI_ASSERT(nullptr != left);
   TRI_ASSERT(nullptr != right);
 
-  int result = TRI_CompareShapeTypes(left->_document,
+  int result = TRI_CompareShapeTypes(left->_document->getShapedJsonPtr(),
                                      &left->_subObjects[leftPosition],
                                      nullptr,
-                                     right->_document,
+                                     right->_document->getShapedJsonPtr(),
                                      &right->_subObjects[rightPosition],
                                      nullptr,
                                      shaper);
