@@ -228,7 +228,7 @@ void Scopes::addVariable (Variable* variable) {
 
     if (scope->existsVariable(variable->name)) {
       // duplicate variable name
-      THROW_ARANGO_EXCEPTION_STRING(TRI_ERROR_QUERY_VARIABLE_REDECLARED, variable->name);
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_VARIABLE_REDECLARED, variable->name.c_str());
     }
   }
 
