@@ -31,6 +31,7 @@
 #define ARANGODB_AQL_V8_EXECUTOR_H 1
 
 #include "Basics/Common.h"
+#include "Aql/Function.h"
 
 struct TRI_json_s;
 
@@ -85,6 +86,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         struct TRI_json_s* executeExpression (AstNode const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a reference to a built-in function
+////////////////////////////////////////////////////////////////////////////////
+
+        Function const* getFunctionByName (std::string const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -147,10 +154,16 @@ namespace triagens {
         void generateCodeCollection (AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generate JavaScript code for a function call
+/// @brief generate JavaScript code for a call to a built-in function
 ////////////////////////////////////////////////////////////////////////////////
 
         void generateCodeFunctionCall (AstNode const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for a user-defined function
+////////////////////////////////////////////////////////////////////////////////
+
+        void generateCodeUserFunctionCall (AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate JavaScript code for an expansion (i.e. [*] operator)
@@ -213,11 +226,16 @@ namespace triagens {
         triagens::basics::StringBuffer* _buffer;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief AQL function names
+/// @brief AQL internal function names
 ////////////////////////////////////////////////////////////////////////////////
 
-        static std::unordered_map<int, std::string> const FunctionNames;
+        static std::unordered_map<int, std::string const> const InternalFunctionNames;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief AQL user-callable function names
+////////////////////////////////////////////////////////////////////////////////
+
+        static std::unordered_map<std::string, Function const> const FunctionNames;
 
     };
 

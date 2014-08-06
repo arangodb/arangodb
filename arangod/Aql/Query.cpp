@@ -163,7 +163,7 @@ void Query::registerError (int code,
     THROW_ARANGO_EXCEPTION(code);
   }
   else {
-    THROW_ARANGO_EXCEPTION_STRING(code, details);
+    THROW_ARANGO_EXCEPTION_PARAMS(code, details);
   }
 }
 

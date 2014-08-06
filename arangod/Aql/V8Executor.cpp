@@ -39,10 +39,14 @@
 using namespace triagens::aql;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                  function names used in execution
+// --SECTION--                                             static initialization
 // -----------------------------------------------------------------------------
 
-std::unordered_map<int, std::string> const V8Executor::FunctionNames{ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal functions used in execution
+////////////////////////////////////////////////////////////////////////////////
+
+std::unordered_map<int, std::string const> const V8Executor::InternalFunctionNames{ 
   { static_cast<int>(NODE_TYPE_OPERATOR_UNARY_PLUS),   "UNARY_PLUS" },
   { static_cast<int>(NODE_TYPE_OPERATOR_UNARY_MINUS),  "UNARY_MINUS" },
   { static_cast<int>(NODE_TYPE_OPERATOR_UNARY_NOT),    "LOGICAL_NOT" },
@@ -61,6 +65,156 @@ std::unordered_map<int, std::string> const V8Executor::FunctionNames{
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_AND),   "LOGICAL_AND_FN" },
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_OR),    "LOGICAL_OR_FN" },
   { static_cast<int>(NODE_TYPE_OPERATOR_TERNARY),      "TERNARY_OPERATOR_FN" }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief user-accessible functions
+////////////////////////////////////////////////////////////////////////////////
+
+std::unordered_map<std::string, Function const> const V8Executor::FunctionNames{ 
+  // meanings of the symbols in the function arguments list
+  // ------------------------------------------------------
+  //
+  // . = argument of any type (except collection)
+  // c = collection name, will be converted into list with documents
+  // h = collection name, will be converted into string
+  // z = null
+  // b = bool
+  // n = number
+  // s = string
+  // p = primitive
+  // l = list
+  // a = (hash) array/document
+  // r = regex (a string with a special format). note: the regex type is mutually exclusive with all other types
+
+  // type check functions
+  { "IS_NULL",                     Function("IS_NULL", ".", true) },
+  { "IS_BOOL",                     Function("IS_BOOL", ".", true) },
+  { "IS_NUMBER",                   Function("IS_NUMBER", ".", true) },
+  { "IS_STRING",                   Function("IS_STRING", ".", true) },
+  { "IS_LIST",                     Function("IS_LIST", ".", true) },
+  { "IS_DOCUMENT",                 Function("IS_DOCUMENT", ".", true) },
+  
+  // type cast functions
+  { "TO_NUMBER",                   Function("CAST_NUMBER", ".", true) },
+  { "TO_STRING",                   Function("CAST_STRING", ".", true) },
+  { "TO_BOOL",                     Function("CAST_BOOL", ".", true) },
+  { "TO_LIST",                     Function("CAST_LIST", ".", true) },
+  
+  // string functions
+  { "CONCAT",                      Function("STRING_CONCAT", "sz,sz|+", true) },
+  { "CONCAT_SEPARATOR",            Function("STRING_CONCAT_SEPARATOR", "s,sz,sz|+", true) },
+  { "CHAR_LENGTH",                 Function("CHAR_LENGTH", "s", true) },
+  { "LOWER",                       Function("STRING_LOWER", "s", true) },
+  { "UPPER",                       Function("STRING_UPPER", "s", true) },
+  { "SUBSTRING",                   Function("STRING_SUBSTRING", "s,n|n", true) },
+  { "CONTAINS",                    Function("STRING_CONTAINS", "s,s|b", true) },
+  { "LIKE",                        Function("STRING_LIKE", "s,r|b", true) },
+  { "LEFT",                        Function("STRING_LEFT", "s,n", true) },
+  { "RIGHT",                       Function("STRING_RIGHT", "s,n", true) },
+  { "TRIM",                        Function("STRING_TRIM", "s|n", true) },
+
+  // numeric functions
+  { "FLOOR",                       Function("NUMBER_FLOOR", "n", true) },
+  { "CEIL",                        Function("NUMBER_CEIL", "n", true) },
+  { "ROUND",                       Function("NUMBER_ROUND", "n", true) },
+  { "ABS",                         Function("NUMBER_ABS", "n", true) },
+  { "RAND",                        Function("NUMBER_RAND", "", false) },
+  { "SQRT",                        Function("NUMBER_SQRT", "n", true) },
+  
+  // list functions
+  { "RANGE",                       Function("RANGE", "n,n|n", true) },
+  { "UNION",                       Function("UNION", "l,l|+",true) },
+  { "UNION_DISTINCT",              Function("UNION_DISTINCT", "l,l|+", true) },
+  { "MINUS",                       Function("MINUS", "l,l|+", true) },
+  { "INTERSECTION",                Function("INTERSECTION", "l,l|+", true) },
+  { "FLATTEN",                     Function("FLATTEN", "l|n", true) },
+  { "LENGTH",                      Function("LENGTH", "las", true) },
+  { "MIN",                         Function("MIN", "l", true) },
+  { "MAX",                         Function("MAX", "l", true) },
+  { "SUM",                         Function("SUM", "l", true) },
+  { "MEDIAN",                      Function("MEDIAN", "l", true) }, 
+  { "AVERAGE",                     Function("AVERAGE", "l", true) },
+  { "VARIANCE_SAMPLE",             Function("VARIANCE_SAMPLE", "l", true) },
+  { "VARIANCE_POPULATION",         Function("VARIANCE_POPULATION", "l", true) },
+  { "STDDEV_SAMPLE",               Function("STDDEV_SAMPLE", "l", true) },
+  { "STDDEV_POPULATION",           Function("STDDEV_POPULATION", "l", true) },
+  { "UNIQUE",                      Function("UNIQUE", "l", true) },
+  { "SLICE",                       Function("SLICE", "l,n|n", true) },
+  { "REVERSE",                     Function("REVERSE", "ls", true) },    // note: REVERSE() can be applied on strings, too
+  { "FIRST",                       Function("FIRST", "l", true) },
+  { "LAST",                        Function("LAST", "l", true) },
+  { "NTH",                         Function("NTH", "l,n", true) },
+  { "POSITION",                    Function("POSITION", "l,.|b", true) },
+
+  // document functions
+  { "HAS",                         Function("HAS", "az,s", true) },
+  { "ATTRIBUTES",                  Function("ATTRIBUTES", "a|b,b", true) },
+  { "MERGE",                       Function("MERGE", "a,a|+", true) },
+  { "MERGE_RECURSIVE",             Function("MERGE_RECURSIVE", "a,a|+", true) },
+  { "DOCUMENT",                    Function("DOCUMENT", "h.|.", true) },
+  { "MATCHES",                     Function("MATCHES", ".,l|b", true) },
+  { "UNSET",                       Function("UNSET", "a,sl|+", true) },
+  { "KEEP",                        Function("KEEP", "a,sl|+", true) },
+  { "TRANSLATE",                   Function("TRANSLATE", ".,a|.", true) },
+
+  // geo functions
+  { "NEAR",                        Function("GEO_NEAR", "h,n,n|nz,s", false) },
+  { "WITHIN",                      Function("GEO_WITHIN", "h,n,n,n|s", false) },
+
+  // fulltext functions
+  { "FULLTEXT",                    Function("FULLTEXT", "h,s,s", false) },
+
+  // graph functions
+  { "PATHS",                       Function("GRAPH_PATHS", "c,h|s,b", false )},
+  { "GRAPH_PATHS",                 Function("GENERAL_GRAPH_PATHS", "s|a", false )},
+  { "SHORTEST_PATH",               Function("GRAPH_SHORTEST_PATH", "h,h,s,s,s|a", false )},
+  { "GRAPH_SHORTEST_PATH",         Function("GENERAL_GRAPH_SHORTEST_PATH", "s,als,als|a", false )},
+  { "GRAPH_DISTANCE_TO",           Function("GENERAL_GRAPH_DISTANCE_TO", "s,als,als|a", false )},
+  { "TRAVERSAL",                   Function("GRAPH_TRAVERSAL", "h,h,s,s|a", false )},
+  { "GRAPH_TRAVERSAL",             Function("GENERAL_GRAPH_TRAVERSAL", "s,als,s|a", false )},
+  { "TRAVERSAL_TREE",              Function("GRAPH_TRAVERSAL_TREE", "s,als,s,s|a", false )},
+  { "GRAPH_TRAVERSAL_TREE",        Function("GENERAL_GRAPH_TRAVERSAL_TREE", "s,als,s,s|a", false )},
+  { "EDGES",                       Function("GRAPH_EDGES", "h,s,s|l", false )},
+  { "GRAPH_EDGES",                 Function("GENERAL_GRAPH_EDGES", "s,als|a", false )},
+  { "GRAPH_VERTICES",              Function("GENERAL_GRAPH_VERTICES", "s,als|a", false )},
+  { "NEIGHBORS",                   Function("GRAPH_NEIGHBORS", "h,h,s,s|l", false )},
+  { "GRAPH_NEIGHBORS",             Function("GENERAL_GRAPH_NEIGHBORS", "s,als|a", false )},
+  { "GRAPH_COMMON_NEIGHBORS",      Function("GENERAL_GRAPH_COMMON_NEIGHBORS", "s,als,als|a,a", false )},
+  { "GRAPH_COMMON_PROPERTIES",     Function("GENERAL_GRAPH_COMMON_PROPERTIES", "s,als,als|a", false )},
+  { "GRAPH_ECCENTRICITY",          Function("GENERAL_GRAPH_ECCENTRICITY", "s|a", false )},
+  { "GRAPH_BETWEENNESS",           Function("GENERAL_GRAPH_BETWEENNESS", "s|a", false )},
+  { "GRAPH_CLOSENESS",             Function("GENERAL_GRAPH_CLOSENESS", "s|a", false )},
+  { "GRAPH_ABSOLUTE_ECCENTRICITY", Function("GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY", "s,als|a", false )},
+  { "GRAPH_ABSOLUTE_CLOSENESS",    Function("GENERAL_GRAPH_ABSOLUTE_CLOSENESS", "s,als|a", false )},
+  { "GRAPH_DIAMETER",              Function("GENERAL_GRAPH_DIAMETER", "s|a", false )},
+  { "GRAPH_RADIUS",                Function("GENERAL_GRAPH_RADIUS", "s|a", false )},
+
+  // date functions
+  { "DATE_NOW",                    Function("DATE_NOW", "", false) },
+  { "DATE_TIMESTAMP",              Function("DATE_TIMESTAMP", "ns|ns,ns,ns,ns,ns,ns", true) },
+  { "DATE_ISO8601",                Function("DATE_ISO8601", "ns|ns,ns,ns,ns,ns,ns", true) },
+  { "DATE_DAYOFWEEK",              Function("DATE_DAYOFWEEK", "ns", true) },
+  { "DATE_YEAR",                   Function("DATE_YEAR", "ns", true) },
+  { "DATE_MONTH",                  Function("DATE_MONTH", "ns", true) },
+  { "DATE_DAY",                    Function("DATE_DAY", "ns", true) },
+  { "DATE_HOUR",                   Function("DATE_HOUR", "ns", true) },
+  { "DATE_MINUTE",                 Function("DATE_MINUTE", "ns", true) },
+  { "DATE_SECOND",                 Function("DATE_SECOND", "ns", true) },
+  { "DATE_MILLISECOND",            Function("DATE_MILLISECOND", "ns", true) },
+
+  // misc functions
+  { "FAIL",                        Function("FAIL", "|s", false) },
+  { "PASSTHRU",                    Function("PASSTHRU", ".", false) },
+  { "SLEEP",                       Function("SLEEP", "n", false) },
+  { "COLLECTIONS",                 Function("COLLECTIONS", "", false) },
+  { "NOT_NULL",                    Function("NOT_NULL", ".|+", true) },
+  { "FIRST_LIST",                  Function("FIRST_LIST", ".|+", true) },
+  { "FIRST_DOCUMENT",              Function("FIRST_DOCUMENT", ".|+", true) },
+  { "PARSE_IDENTIFIER",            Function("PARSE_IDENTIFIER", ".", true) },
+  { "SKIPLIST",                    Function("SKIPLIST_QUERY", "h,a|n,n", false) },
+  { "CURRENT_USER",                Function("CURRENT_USER", "", false) },
+  { "CURRENT_DATABASE",            Function("CURRENT_DATABASE", "", false) }
 };
 
 // -----------------------------------------------------------------------------
@@ -96,9 +250,9 @@ V8Executor::~V8Executor () {
 
 V8Expression* V8Executor::generateExpression (AstNode const* node) {
   generateCodeExpression(node);
-
-  std::cout << "CREATED CODE: " << _buffer->c_str() << "\n";
   
+  std::cout << "Executor::generateExpression: " << _buffer->c_str() << "\n";
+
   v8::Handle<v8::Script> compiled = v8::Script::Compile(v8::String::New(_buffer->c_str(), (int) _buffer->length()),
                                                         v8::String::New("--script--"));
   
@@ -111,6 +265,23 @@ V8Expression* V8Executor::generateExpression (AstNode const* node) {
 
   if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
+      if (tryCatch.Exception()->IsObject()) {
+        // cast the exception into an object
+        v8::Handle<v8::Array> objValue = v8::Handle<v8::Array>::Cast(tryCatch.Exception());
+       
+        v8::Handle<v8::String> errorName = v8::String::New("errorName");
+         
+        if (objValue->HasOwnProperty(errorName)) {
+          v8::Handle<v8::Value> errorNum = objValue->Get(errorName);
+
+          if (errorNum->IsNumber()) {
+            int errorCode = static_cast<int>(TRI_ObjectToInt64(errorNum));
+            // TODO: handle errors
+          }
+
+        }
+      }
+          
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
     else {
@@ -122,6 +293,7 @@ V8Expression* V8Executor::generateExpression (AstNode const* node) {
   }
 
   if (val.IsEmpty()) {
+    // out of memory
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
  
@@ -136,7 +308,24 @@ V8Expression* V8Executor::generateExpression (AstNode const* node) {
 TRI_json_t* V8Executor::executeExpression (AstNode const* node) {
   generateCodeExpression(node);
 
+  std::cout << "Executor::ExecuteExpression: " << _buffer->c_str() << "\n";
+
   return execute();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a reference to a built-in function
+////////////////////////////////////////////////////////////////////////////////
+
+Function const* V8Executor::getFunctionByName (std::string const& name) {
+  auto it = FunctionNames.find(name);
+
+  if (it == FunctionNames.end()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, name.c_str());
+  }
+
+  // return the address of the function
+  return &((*it).second);
 }
 
 // -----------------------------------------------------------------------------
@@ -214,9 +403,9 @@ void V8Executor::generateCodeUnaryOperator (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 1);
 
-  auto it = FunctionNames.find(static_cast<int>(node->type));
+  auto it = InternalFunctionNames.find(static_cast<int>(node->type));
 
-  if (it == FunctionNames.end()) {
+  if (it == InternalFunctionNames.end()) {
     // no function found for the type of node
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
@@ -237,9 +426,9 @@ void V8Executor::generateCodeBinaryOperator (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
-  auto it = FunctionNames.find(static_cast<int>(node->type));
+  auto it = InternalFunctionNames.find(static_cast<int>(node->type));
 
-  if (it == FunctionNames.end()) {
+  if (it == InternalFunctionNames.end()) {
     // no function found for the type of node
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
@@ -275,9 +464,9 @@ void V8Executor::generateCodeTernaryOperator (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 3);
 
-  auto it = FunctionNames.find(static_cast<int>(node->type));
+  auto it = InternalFunctionNames.find(static_cast<int>(node->type));
 
-  if (it == FunctionNames.end()) {
+  if (it == InternalFunctionNames.end()) {
     // no function found for the type of node
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
@@ -340,22 +529,22 @@ void V8Executor::generateCodeCollection (AstNode const* node) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generate JavaScript code for a function call
+/// @brief generate JavaScript code for a call to a built-in function
 ////////////////////////////////////////////////////////////////////////////////
 
 void V8Executor::generateCodeFunctionCall (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 1);
   
-  char const* name = node->getStringValue();
-
-  _buffer->appendText("aql.");
-  _buffer->appendText(name);
-  _buffer->appendText("(");
+  auto func = static_cast<Function*>(node->getData());
 
   auto args = node->getMember(0);
   TRI_ASSERT(args != nullptr);
   TRI_ASSERT(args->type == NODE_TYPE_LIST);
+
+  _buffer->appendText("aql.");
+  _buffer->appendText(func->name);
+  _buffer->appendText("(");
 
   size_t const n = args->numMembers();
   for (size_t i = 0; i < n; ++i) {
@@ -366,6 +555,36 @@ void V8Executor::generateCodeFunctionCall (AstNode const* node) {
     generateCodeNode(args->getMember(i));
   }
   _buffer->appendText(")");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for a call to a user-defined function
+////////////////////////////////////////////////////////////////////////////////
+
+void V8Executor::generateCodeUserFunctionCall (AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->numMembers() == 1);
+  
+  char const* name = node->getStringValue();
+  TRI_ASSERT(name != nullptr);
+
+  auto args = node->getMember(0);
+  TRI_ASSERT(args != nullptr);
+  TRI_ASSERT(args->type == NODE_TYPE_LIST);
+
+  _buffer->appendText("aql.FCALL_USER(\"");
+  _buffer->appendJsonEncoded(name);
+  _buffer->appendText("\", [");
+
+  size_t const n = args->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    if (i > 0) {
+      _buffer->appendText(", ");
+    }
+
+    generateCodeNode(args->getMember(i));
+  }
+  _buffer->appendText("])");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -497,6 +716,10 @@ void V8Executor::generateCodeNode (AstNode const* node) {
       generateCodeFunctionCall(node);
       break;
     
+    case NODE_TYPE_FCALL_USER:
+      generateCodeUserFunctionCall(node);
+      break;
+    
     case NODE_TYPE_EXPAND:
       generateCodeExpand(node);
       break;
@@ -560,6 +783,7 @@ TRI_json_t* V8Executor::execute () {
   // it will fail badly
 
   TRI_ASSERT(_buffer != nullptr);
+
   v8::Isolate* isolate = v8::Isolate::GetCurrent(); 
 
   v8::Handle<v8::Script> compiled = v8::Script::Compile(v8::String::New(_buffer->c_str(), (int) _buffer->length()),
