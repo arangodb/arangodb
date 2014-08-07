@@ -647,7 +647,7 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle a dump batch command
 ///
-/// @RESTHEADER{PUT /_api/replication/batch/id, Prolong existing dump batch}
+/// @RESTHEADER{PUT /_api/replication/batch/{id}, Prolong existing dump batch}
 ///
 /// @RESTBODYPARAM{body,json,required}
 /// A JSON object with the batch configration.
@@ -687,7 +687,7 @@ void RestReplicationHandler::handleCommandLoggerSetConfig () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handle a dump batch command
 ///
-/// @RESTHEADER{DELETE /_api/replication/batch/id, Deletes an existing dump batch}
+/// @RESTHEADER{DELETE /_api/replication/batch/{id}, Deletes an existing dump batch}
 ///
 /// @RESTURLPARAMETERS
 ///

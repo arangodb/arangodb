@@ -42,7 +42,7 @@ var API = "/_api/edges";
 /// @startDocuBlock API_EDGE_READINOUTBOUND
 /// @brief get edges
 ///
-/// @RESTHEADER{GET /_api/edges/collection-id, Read in- or outbound edges}
+/// @RESTHEADER{GET /_api/edges/{collection-id}, Read in- or outbound edges}
 ///
 /// @RESTURLPARAMETERS
 ///
