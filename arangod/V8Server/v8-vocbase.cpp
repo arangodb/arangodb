@@ -29,6 +29,7 @@
 
 #include "v8-vocbaseprivate.h"
 #include "v8-wrapshapedjson.h"
+#include "v8-replication.h"
 #include "v8-voccursor.h"
 #include "v8-collection.h"
 
@@ -2408,40 +2409,7 @@ void TRI_V8ReloadRouting (v8::Handle<v8::Context> context) {
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
 
-extern void TRI_InitV8replication (v8::Handle<v8::Context> context,
-				   TRI_server_t* server,
-				   TRI_vocbase_t* vocbase,
-				   JSLoader* loader,
-				   const size_t threadNumber,
-				   TRI_v8_global_t* v8g);
 
-extern void TRI_InitV8shaped_json (v8::Handle<v8::Context> context,
-				   TRI_server_t* server,
-				   TRI_vocbase_t* vocbase,
-				   triagens::arango::JSLoader* loader,
-				   const size_t threadNumber,
-				   TRI_v8_global_t* v8g);
-extern void TRI_InitV8indexArangoDB (v8::Handle<v8::Context> context,
-				     TRI_server_t* server,
-				     TRI_vocbase_t* vocbase,
-				     JSLoader* loader,
-				     const size_t threadNumber,
-				     TRI_v8_global_t* v8g,
-				     v8::Handle<v8::ObjectTemplate>  ArangoDBNS);
-extern void TRI_InitV8cursor (v8::Handle<v8::Context> context,
-			      TRI_server_t* server,
-			      TRI_vocbase_t* vocbase,
-			      JSLoader* loader,
-			      const size_t threadNumber,
-			      TRI_v8_global_t* v8g);
-extern void TRI_InitV8collection (v8::Handle<v8::Context> context,
-				  TRI_server_t* server,
-				  TRI_vocbase_t* vocbase,
-				  JSLoader* loader,
-				  const size_t threadNumber,
-				  TRI_v8_global_t* v8g,
-				  v8::Isolate* isolate,
-				  v8::Handle<v8::ObjectTemplate>  ArangoDBNS);
 
 void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
                           TRI_server_t* server,
