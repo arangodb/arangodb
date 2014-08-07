@@ -258,9 +258,18 @@ namespace triagens {
                 break;
               }
               case ExecutionNode::AGGREGATE: {
-                // FIXME: are there more variables being defined in this
-                // node???
                 auto ep = static_cast<AggregateNode const*>(eb->getPlanNode());
+                for (auto p : ep->_aggregateVariables) {
+                  // p is std::pair<Variable const*,Variable const*>
+                  // and the first is the to be assigned output variable
+                  // for which we need to create a register in the current
+                  // frame:
+                  nrRegsHere[depth]++;
+                  nrRegs[depth]++;
+                  varInfo.insert(make_pair(p.first->id,
+                                           VarInfo(depth, totalNrRegs)));
+                  totalNrRegs++;
+                }
                 if (ep->_outVariable != nullptr) {
                   nrRegsHere[depth]++;
                   nrRegs[depth]++;
