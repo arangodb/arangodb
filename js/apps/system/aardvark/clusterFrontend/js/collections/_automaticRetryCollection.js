@@ -25,7 +25,7 @@
       this._retryCount = 0;
     },
 
-    failureTry: function(retry, err) {
+    failureTry: function(retry, ignore, err) {
       if (err.status === 401) {
         window.App.requestAuth();
       } else {
