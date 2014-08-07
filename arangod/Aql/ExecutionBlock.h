@@ -1522,7 +1522,7 @@ namespace triagens {
           // sort coords
           std::sort(coords.begin(), coords.end(), ourLessThan);
 
-          //copy old points from _buffer into newbuf
+          //copy old blocks from _buffer into newbuf
           std::vector<AqlItemBlock*> newbuf;
           
           for (auto x: _buffer) {
