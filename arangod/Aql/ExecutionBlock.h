@@ -191,10 +191,10 @@ namespace triagens {
 
           // Copy constructor used for a subquery:
           VarOverview (VarOverview const& v) 
-            : varInfo(v.varInfo), nrRegsHere(v.nrRegs), nrRegs(v.nrRegs),
+            : varInfo(v.varInfo), nrRegsHere(v.nrRegsHere), nrRegs(v.nrRegs),
               depth(v.depth+1), totalNrRegs(v.totalNrRegs), me(nullptr) {
             nrRegsHere.push_back(0);
-            nrRegs.push_back(0);
+            nrRegs.push_back(nrRegs.back());
           }
 
           ~VarOverview () {};
@@ -294,11 +294,6 @@ namespace triagens {
           v->setSharedPtr(&v);
           walk(v.get());
           v->reset();
-          std::cout << "Varinfo:\n";
-          for (auto x : v->varInfo) {
-            std::cout << x.first << " => " << x.second.depth << "," 
-                      << x.second.registerId << std::endl;
-          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -334,13 +329,7 @@ namespace triagens {
 /// @brief bind
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual int bind (std::map<std::string, struct TRI_json_s*>* params);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getParameters
-////////////////////////////////////////////////////////////////////////////////
-
-        std::map<std::string, struct TRI_json_s*>* getParameters ();
+        virtual int bind (AqlItemBlock* items, size_t pos);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute
@@ -645,7 +634,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         SingletonBlock (AQL_TRANSACTION_V8* trx, SingletonNode const* ep)
-          : ExecutionBlock(trx, ep) {
+          : ExecutionBlock(trx, ep), _inputRegisterValues(nullptr) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -660,7 +649,21 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int initialize () {
+          _inputRegisterValues = nullptr;   // just in case
           return ExecutionBlock::initialize();
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief bind, store a copy of the register values coming from above
+////////////////////////////////////////////////////////////////////////////////
+
+        int bind (AqlItemBlock* items, size_t pos) {
+          // Create a deep copy of the register values given to us:
+          if (_inputRegisterValues != nullptr) {
+            delete _inputRegisterValues;
+          }
+          _inputRegisterValues = items->slice(pos, pos+1);
+          return TRI_ERROR_NO_ERROR;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -676,7 +679,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int shutdown () {
-          return ExecutionBlock::shutdown();
+          int res = ExecutionBlock::shutdown();
+          if (_inputRegisterValues != nullptr) {
+            delete _inputRegisterValues;
+            _inputRegisterValues = nullptr;
+          }
+          return res;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -688,7 +696,16 @@ namespace triagens {
             return nullptr;
           }
 
-          AqlItemBlock* res(new AqlItemBlock(1, _varOverview->nrRegs[_depth]));
+          AqlItemBlock* res = new AqlItemBlock(1, _varOverview->nrRegs[_depth]);
+          if (_inputRegisterValues != nullptr) {
+            for (RegisterId reg = 0; reg < _inputRegisterValues->getNrRegs(); ++reg) {
+              res->setValue(0, reg, _inputRegisterValues->getValue(0, reg));
+              _inputRegisterValues->eraseValue(0, reg);
+              res->setDocumentCollection(reg,
+                       _inputRegisterValues->getDocumentCollection(reg));
+
+            }
+          }
           _done = true;
           return res;
         }
@@ -698,13 +715,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
-          if (_done) {
-            return nullptr;
-          }
-
-          AqlItemBlock* res(new AqlItemBlock(1, _varOverview->nrRegs[_depth]));
-          _done = true;
-          return res;
+          return getOne();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -744,6 +755,14 @@ namespace triagens {
         int64_t remaining () {
           return _done ? 0 : 1;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the bind data coming from outside
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+        AqlItemBlock* _inputRegisterValues;
 
     };
 

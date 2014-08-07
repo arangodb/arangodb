@@ -68,7 +68,7 @@ namespace triagens {
           CALCULATION,              // done
           SUBQUERY,                 // done
           SORT,                     // done
-          AGGREGATE,                // todo
+          AGGREGATE,                // done
           LOOKUP_JOIN,
           MERGE_JOIN,
           LOOKUP_INDEX_UNIQUE,
