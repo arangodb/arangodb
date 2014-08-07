@@ -933,7 +933,7 @@ int ProcessBitarrayIndexFields (v8::Handle<v8::Object> const obj,
     // "fields" is a list of fields
     v8::Handle<v8::Array> fieldList = v8::Handle<v8::Array>::Cast(obj->Get(TRI_V8_SYMBOL("fields")));
 
-    const uint32_t n = fieldList->Length();
+    uint32_t const n = fieldList->Length();
 
     for (uint32_t i = 0; i < n; ++i) {
       if (! fieldList->Get(i)->IsArray()) {
@@ -948,7 +948,7 @@ int ProcessBitarrayIndexFields (v8::Handle<v8::Object> const obj,
         break;
       }
 
-      const string f = TRI_ObjectToString(fieldPair->Get(0));
+      string const f = TRI_ObjectToString(fieldPair->Get(0));
 
       if (f.empty() || (create && f[0] == '_')) {
         // accessing internal attributes is disallowed
@@ -9903,7 +9903,17 @@ static v8::Handle<v8::Value> MapGetNamedShapedJson (v8::Local<v8::String> name,
   v8::String::Utf8Value const str(name);
   string const key(*str, (size_t) str.length());
 
-  if (key.empty() || key[0] == '_' || strchr(key.c_str(), '.') != 0) {
+  if (key.empty()) {
+    return scope.Close(v8::Handle<v8::Value>());
+  }
+  
+  if (key[0] == '_' && 
+    (key == "_key" || key == "_rev" || key == "_id" || key == "_from" || key == "_to")) {
+    // strip reserved attributes
+    return scope.Close(v8::Handle<v8::Value>());
+  }
+
+  if (strchr(key.c_str(), '.') != nullptr) {
     return scope.Close(v8::Handle<v8::Value>());
   }
 
@@ -9954,7 +9964,7 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
   // get shaped json
   void* marker = TRI_UnwrapClass<void*>(self, WRP_SHAPED_JSON_TYPE);
 
-  if (marker == 0) {
+  if (marker == nullptr) {
     return scope.Close(v8::Array::New());
   }
 
@@ -10000,7 +10010,7 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
     }
   }
 
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
   result->Set(count++, v8g->_IdKey);
   result->Set(count++, v8g->_RevKey);
   result->Set(count++, v8g->_KeyKey);
@@ -10038,7 +10048,7 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
   }
 
   if (key[0] == '_') {
-    if (key == "_id" || key == TRI_VOC_ATTRIBUTE_REV || key == TRI_VOC_ATTRIBUTE_KEY) {
+    if (key == "_key" || key == "_rev" || key == "_id" || key == "_from" || key == "_to") {
       return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
     }
   }
@@ -10069,7 +10079,7 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
   TRI_shape_access_t const* acc = TRI_FindAccessorVocShaper(shaper, sid, pid);
 
   // key not found
-  if (acc == 0 || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
+  if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
     return scope.Close(v8::Handle<v8::Integer>());
   }
 
@@ -10172,7 +10182,7 @@ TRI_index_t* TRI_LookupIndexByHandle (CollectionNameResolver const* resolver,
 
   // extract the index identifier from an object
   else if (val->IsObject()) {
-    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+    TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
     v8::Handle<v8::Object> obj = val->ToObject();
     v8::Handle<v8::Value> iidVal = obj->Get(v8g->IdKey);
