@@ -285,11 +285,6 @@ namespace triagens {
           v->setSharedPtr(&v);
           walk(v.get());
           v->reset();
-          std::cout << "Varinfo:\n";
-          for (auto x : v->varInfo) {
-            std::cout << x.first << " => " << x.second.depth << "," 
-                      << x.second.registerId << std::endl;
-          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
