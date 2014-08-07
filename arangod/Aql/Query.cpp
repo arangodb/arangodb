@@ -205,9 +205,11 @@ QueryResult Query::execute () {
     
         while (nullptr != (value = root->getOne())) {
           AqlValue val = value->getValue(0, 0);
-          TRI_ASSERT(! val.isEmpty());
-          auto doc = value->getDocumentCollection(0);
-          json.add(val.toJson(doc)); 
+
+          if (! val.isEmpty()) {
+            auto doc = value->getDocumentCollection(0);
+            json.add(val.toJson(doc)); 
+          }
           delete value;
         }
 
