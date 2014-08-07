@@ -976,15 +976,7 @@ namespace triagens {
 
         EnumerateListBlock (AQL_TRANSACTION_V8* trx,
                                   EnumerateListNode const* ep) 
-          : ExecutionBlock(trx, ep), _trx(nullptr) {
-          
-          int res = _trx->begin();
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            // transaction failure
-            delete _trx;
-            THROW_ARANGO_EXCEPTION(res);
-          }
+          : ExecutionBlock(trx, ep) {
 
         }
 
@@ -993,10 +985,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~EnumerateListBlock () {
-          if (_trx != nullptr) {
-            // finalize our own transaction
-            delete _trx;
-          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1092,7 +1080,6 @@ namespace triagens {
               AqlValue(new basics::Json(inVariable.at(_pos).json())));
           // deep copy of the inVariable.at(_pos) with correct memory
           // requirements
-          res->setDocumentCollection(cur->getNrRegs(), _trx->documentCollection());
 
           // advance read position in the current block
           if (++_pos == cur->size() ) {
@@ -1124,7 +1111,9 @@ namespace triagens {
           AqlItemBlock* cur = _buffer.front();
           
           // get the thing we are looping over // ~J assumes Json list
+          std::cout << "here 1\n";
           triagens::basics::Json inVariable = cur->getValue(_pos, _inVarRegId)._json;
+          std::cout << "here 2\n";
 
           // ~J assumes Json list
           size_t toSend = std::min(atMost, inVariable.size());
@@ -1135,13 +1124,14 @@ namespace triagens {
           
           // copy 1st row of registers inherited from incoming block 
           for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
+            std::cout << "here loop2 " << i << "\n";
             res->setValue(0, i, cur->getValue(_pos, i).clone());
             res->setDocumentCollection(i, cur->getDocumentCollection(i));
           }
-          res->getDocumentCollections().at(cur->getNrRegs())
-            = _trx->documentCollection();
+          std::cout << "here loop2 out\n";
 
           for (size_t j = 0; j < toSend; j++) {
+            std::cout << "here loop " << j << "\n";
             if (j > 0) {
               // re-use already copied aqlvalues
               for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
@@ -1149,12 +1139,15 @@ namespace triagens {
               }
             }
             // add the new register value . . .
+            std::cout << "here 3\n";
             res->setValue(j, cur->getNrRegs(), 
               AqlValue(new basics::Json(inVariable.at(_pos).json())));
             // deep copy of the inVariable.at(_pos) with correct memory
             // requirements
+            std::cout << "here 4\n";
           }
 
+          std::cout << "here 5\n";
           // advance read position in the current block . . .
           if (++_pos == cur->size() ) {
             delete cur;
@@ -1177,12 +1170,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
                                   
         RegisterId _inVarRegId;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief currently ongoing transaction
-////////////////////////////////////////////////////////////////////////////////
-                                  
-        triagens::arango::SingleCollectionReadOnlyTransaction<triagens::arango::V8TransactionContext<true>>* _trx;
 
     };
 
