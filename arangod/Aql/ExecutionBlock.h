@@ -285,6 +285,11 @@ namespace triagens {
           v->setSharedPtr(&v);
           walk(v.get());
           v->reset();
+          std::cout << "Varinfo:\n";
+          for (auto x : v->varInfo) {
+            std::cout << x.first << " => " << x.second.depth << "," 
+                      << x.second.registerId << std::endl;
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1577,8 +1582,10 @@ namespace triagens {
 
               size_t i = 0;
               for(auto reg: _sortRegisters){
-                int cmp = _buffer[a.first]->getValue(a.second, reg.first).compare(
-                          _buffer[b.first]->getValue(b.second, reg.first), _colls[i]);
+                int cmp = CompareAqlValues(_buffer[a.first]->getValue(a.second, reg.first),
+                                           _colls[i],
+                                           _buffer[b.first]->getValue(b.second, reg.first),
+                                           _colls[i]);
                 if(cmp == -1) {
                   return reg.second;
                 } 
@@ -1794,8 +1801,8 @@ namespace triagens {
           RegisterId registerId = it->second.registerId;
           stripped->setValue(0, 0, res->getValue(0, registerId));
           res->eraseValue(0, registerId);
-          stripped->getDocumentCollections().at(0)
-              = res->getDocumentCollections().at(registerId);
+          stripped->setDocumentCollection(0, res->getDocumentCollection(registerId));
+
           delete res;
           return stripped;
         }

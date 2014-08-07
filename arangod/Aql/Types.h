@@ -214,104 +214,13 @@ namespace triagens {
       }
     };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 3-way comparison for AqlValue objects
-////////////////////////////////////////////////////////////////////////////////
-
-int CompareAqlValues ( AqlValue const& left,  
-                       TRI_document_collection_t const* leftcoll,
-                       AqlValue const& right, 
-                       TRI_document_collection_t const* rightcoll ) {
-        if (_type != right._type) {
-          if (_type == EMPTY) {
-            return -1;
-          }
-          if (right._type == EMPTY) {
-            return 1;
-          }
-          if (_type == JSON && right._type == SHAPED) {
-            triagens::basics::Json rjson = right.toJson(rightcoll);
-            return TRI_CompareValuesJson(_json->json(), rjson.json());
-          }
-          if (_type == SHAPED && right._type == JSON) {
-            triagens::basics::Json ljson = toJson(leftcoll);
-            return TRI_CompareValuesJson(ljson.json(), right._json->json());
-          }
-          // No other comparisons are defined
-          TRI_ASSERT(false);
-        }
-        switch (_type) {
-          case EMPTY: {
-            return 0;
-          }
-          case JSON: {
-            return TRI_CompareValuesJson(_json->json(), right._json->json());
-          }
-          case SHAPED: {
-            TRI_shaped_json_t l;
-            TRI_shaped_json_t r;
-            TRI_EXTRACT_SHAPED_JSON_MARKER(l, _marker);
-            TRI_EXTRACT_SHAPED_JSON_MARKER(r, right._marker);
-                      
-            return TRI_CompareShapeTypes(nullptr, nullptr, &l, leftcoll->getShaper(), 
-                                         nullptr, nullptr, &r, rightcoll->getShaper());
-          }
-          case DOCVEC: { 
-            // use lexicographic ordering of AqlValues regardless of block,
-            // DOCVECs have a single register coming from ReturnNode.
-            size_t lblock = 0;
-            size_t litem = 0;
-            size_t rblock = 0;
-            size_t ritem = 0;
-            
-            while( lblock < _vector->size() && rblock < right._vector->size() ){
-              AqlValue lval = ((*_vector->at(lblock)).getValue(litem, 0);
-              AqlValue rval = right._vector->at(rblock).getValue(ritem, 0);
-              cmp = CompareAqlValues(lval, lval.getDocumentCollection(0)
-                                     rval, rval.getDocumentCollection(0));
-              if(cmp != 0){
-                return cmp;
-              }
-              if(litem == this[lblock].size()-1){
-                litem = 0;
-                lblock++;
-              }
-              if(ritem == right[rblock].size()-1){
-                ritem = 0;
-                rblock++;
-              }
-            }
-
-            if(lblock == _vector->size() && rblock == right._vector->size()){
-              return 0;
-            }
-
-            return (lblock < _vector->size()?-1:1);
-          }
-          case RANGE: {
-            if(_range->_low < right._range->_low){
-              return -1;
-            } 
-            if (_range->_low > right._range->_low){
-              return 1;
-            } 
-            if (_range->_high < _range->_high) {
-              return -1;
-            } 
-            if (_range->_high > _range->_high) {
-              return 1;
-            }
-            return 0;
-          }
-          default: {
-            TRI_ASSERT(false);
-            return 0;
-          }
-        }
-
-
-}
-
+    int CompareAqlValues ( AqlValue const& left,  
+                           TRI_document_collection_t const* leftcoll,
+                           AqlValue const& right, 
+                           TRI_document_collection_t const* rightcoll );
+ 
+  } //closes namespace triagens::aql
+}   //closes namespace triagens
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hash function for AqlValue objects
@@ -319,63 +228,63 @@ int CompareAqlValues ( AqlValue const& left,
 
 namespace std {
 
-template<> struct hash<triagens::aql::AqlValue> {
-  size_t operator () (triagens::aql::AqlValue const& x) const {
-    std::hash<uint32_t> intHash;
-    std::hash<void const*> ptrHash;
-    size_t res = intHash(static_cast<uint32_t>(x._type));
-    switch (x._type) {
-      case triagens::aql::AqlValue::EMPTY: {
-        return res;
-      }
-      case triagens::aql::AqlValue::JSON: {
-        return res ^ ptrHash(x._json);
-      }
-      case triagens::aql::AqlValue::SHAPED: {
-        return res ^ ptrHash(x._marker);
-      }
-      case triagens::aql::AqlValue::DOCVEC: {
-        return res ^ ptrHash(x._vector);
-      }
-      case triagens::aql::AqlValue::RANGE: {
-        return res ^ ptrHash(x._range);
-      }
-      default: {
-        TRI_ASSERT(false);
-        return 0;
+  template<> struct hash<triagens::aql::AqlValue> {
+    size_t operator () (triagens::aql::AqlValue const& x) const {
+      std::hash<uint32_t> intHash;
+      std::hash<void const*> ptrHash;
+      size_t res = intHash(static_cast<uint32_t>(x._type));
+      switch (x._type) {
+        case triagens::aql::AqlValue::EMPTY: {
+          return res;
+        }
+        case triagens::aql::AqlValue::JSON: {
+          return res ^ ptrHash(x._json);
+        }
+        case triagens::aql::AqlValue::SHAPED: {
+          return res ^ ptrHash(x._marker);
+        }
+        case triagens::aql::AqlValue::DOCVEC: {
+          return res ^ ptrHash(x._vector);
+        }
+        case triagens::aql::AqlValue::RANGE: {
+          return res ^ ptrHash(x._range);
+        }
+        default: {
+          TRI_ASSERT(false);
+          return 0;
+        }
       }
     }
-  }
-};
+  };
 
-template<> struct equal_to<triagens::aql::AqlValue> {
-  bool operator () (triagens::aql::AqlValue const& a,
-                    triagens::aql::AqlValue const& b) const {
-    if (a._type != b._type) {
-      return false;
+  template<> struct equal_to<triagens::aql::AqlValue> {
+    bool operator () (triagens::aql::AqlValue const& a,
+                      triagens::aql::AqlValue const& b) const {
+      if (a._type != b._type) {
+        return false;
+      }
+      switch (a._type) {
+        case triagens::aql::AqlValue::JSON: {
+          return a._json == b._json;
+        }
+        case triagens::aql::AqlValue::SHAPED: {
+          return a._marker == b._marker;
+        }
+        case triagens::aql::AqlValue::DOCVEC: {
+          return a._vector == b._vector;
+        }
+        case triagens::aql::AqlValue::RANGE: {
+          return a._range == b._range;
+        }
+        default: {
+          TRI_ASSERT(false);
+          return true;
+        }
+      }
     }
-    switch (a._type) {
-      case triagens::aql::AqlValue::JSON: {
-        return a._json == b._json;
-      }
-      case triagens::aql::AqlValue::SHAPED: {
-        return a._marker == b._marker;
-      }
-      case triagens::aql::AqlValue::DOCVEC: {
-        return a._vector == b._vector;
-      }
-      case triagens::aql::AqlValue::RANGE: {
-        return a._range == b._range;
-      }
-      default: {
-        TRI_ASSERT(false);
-        return true;
-      }
-    }
-  }
-};
+  };
 
-}
+} //closes namespace std
 
 namespace triagens {
   namespace aql {

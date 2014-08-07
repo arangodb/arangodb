@@ -265,6 +265,107 @@ AqlItemBlock* AqlItemBlock::splice (std::vector<AqlItemBlock*>& blocks) {
   return res;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3-way comparison for AqlValue objects
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::CompareAqlValues ( AqlValue const& left,  
+                                      TRI_document_collection_t const* leftcoll,
+                                      AqlValue const& right, 
+                                      TRI_document_collection_t const* rightcoll ) {
+
+        if (left._type != right._type) {
+          if (left._type == AqlValue::EMPTY) {
+            return -1;
+          }
+          if (right._type == AqlValue::EMPTY) {
+            return 1;
+          }
+          if (left._type == AqlValue::JSON && right._type == AqlValue::SHAPED) {
+            triagens::basics::Json rjson = right.toJson(rightcoll);
+            return TRI_CompareValuesJson(left._json->json(), rjson.json());
+          }
+          if (left._type == AqlValue::SHAPED && right._type == AqlValue::JSON) {
+            triagens::basics::Json ljson = left.toJson(leftcoll);
+            return TRI_CompareValuesJson(ljson.json(), right._json->json());
+          }
+          // No other comparisons are defined
+          TRI_ASSERT(false);
+        }
+        switch (left._type) {
+          case AqlValue::EMPTY: {
+            return 0;
+          }
+          case AqlValue::JSON: {
+            return TRI_CompareValuesJson(left._json->json(), right._json->json());
+          }
+          case AqlValue::SHAPED: {
+            TRI_shaped_json_t l;
+            TRI_shaped_json_t r;
+            TRI_EXTRACT_SHAPED_JSON_MARKER(l, left._marker);
+            TRI_EXTRACT_SHAPED_JSON_MARKER(r, right._marker);
+                      
+            return TRI_CompareShapeTypes(nullptr, nullptr, &l, leftcoll->getShaper(), 
+                                         nullptr, nullptr, &r, rightcoll->getShaper());
+          }
+          case AqlValue::DOCVEC: { 
+            // use lexicographic ordering of AqlValues regardless of block,
+            // DOCVECs have a single register coming from ReturnNode.
+            size_t lblock = 0;
+            size_t litem = 0;
+            size_t rblock = 0;
+            size_t ritem = 0;
+            
+            while( lblock < left._vector->size() && rblock < right._vector->size() ){
+              AqlValue lval = left._vector->at(lblock)->getValue(litem, 0);
+              AqlValue rval = right._vector->at(rblock)->getValue(ritem, 0);
+              int cmp = CompareAqlValues(lval, 
+                                         left._vector->at(lblock)->getDocumentCollection(0),
+                                         rval, 
+                                         right._vector->at(rblock)->getDocumentCollection(0));
+              if(cmp != 0){
+                return cmp;
+              }
+              if(++litem == left._vector->size()){
+                litem = 0;
+                lblock++;
+              }
+              if(++ritem == right._vector->size()){
+                ritem = 0;
+                rblock++;
+              }
+            }
+
+            if(lblock == left._vector->size() && rblock == right._vector->size()){
+              return 0;
+            }
+
+            return (lblock < left._vector->size()?-1:1);
+          }
+          case AqlValue::RANGE: {
+            if(left._range->_low < right._range->_low){
+              return -1;
+            } 
+            if (left._range->_low > right._range->_low){
+              return 1;
+            } 
+            if (left._range->_high < left._range->_high) {
+              return -1;
+            } 
+            if (left._range->_high > left._range->_high) {
+              return 1;
+            }
+            return 0;
+          }
+          default: {
+            TRI_ASSERT(false);
+            return 0;
+          }
+        }
+
+
+}
+
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
