@@ -212,12 +212,17 @@ namespace triagens {
           return false;
         }
       }
-    
+    };
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 3-way comparison 
+/// @brief 3-way comparison for AqlValue objects
 ////////////////////////////////////////////////////////////////////////////////
 
-      int compare (AqlValue const& right, TRI_document_collection_t const* collection){
+int CompareAqlValues ( AqlValue const& left,  
+                       TRI_document_collection_t const* leftcoll,
+                       AqlValue const& right, 
+                       TRI_document_collection_t const* rightcoll ) {
+        // is this right? J thinks not.
         if (_type != right._type) {
           TRI_ASSERT(false);
         }
@@ -237,8 +242,36 @@ namespace triagens {
             return TRI_CompareShapeTypes(nullptr, nullptr, &l, nullptr, nullptr, &r, 
                 collection->getShaper());
           }
-          case DOCVEC: {
-            return 0;
+          case DOCVEC: { //ptr to vector of AqlItemBlocks*
+            //use lexicographic ordering of AqlValue regardless of block...
+            size_t lblock = 0;
+            size_t litem = 0;
+            size_t rblock = 0;
+            size_t ritem = 0;
+            
+            while( lblock < _vector->size() && rblock < right._vector->size() ){
+              AqlValue lval = ((*_vector->at(lblock)).getValue(litem, 0);
+              AqlValue rval = right._vector->at(rblock).getValue(ritem, 0);
+
+              if(lval.compare(rval, rval.getDocumentCollection(0))!=0){
+                return this[lblock]->at(litem).compare(right[rblock]->at(ritem),
+                    getDocumentCollection(?));
+              }
+              if(litem==this[lblock].size()-1){
+                litem = 0;
+                lblock++;
+              }
+              if(ritem==right[rblock].size()-1){
+                ritem = 0;
+                rblock++;
+              }
+            }
+
+            if(lblock == _vector->size() && rblock == right._vector->size()){
+              return 0;
+            }
+
+            return (lblock < _vector->size()?-1:1);
           }
           case RANGE: {
             if(_range->_low < right._range->_low){
@@ -257,13 +290,13 @@ namespace triagens {
           }
           default: {
             TRI_ASSERT(false);
-            return true;
+            return 0;
           }
         }
-      }
-    };
-  }
+
+
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hash function for AqlValue objects
