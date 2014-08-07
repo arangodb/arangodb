@@ -295,13 +295,12 @@ var registerFunction = function (name, code, isDeterministic) {
     throw err;
   }
 
-  var exists = false;
-    
   var result = db._executeTransaction({
     collections: {
       write: getStorage().name()
     },
     action: function (params) {
+      var exists = false;
       var collection = require("internal").db._collection(params.collection);
       var name = params.name;
 
@@ -323,7 +322,7 @@ var registerFunction = function (name, code, isDeterministic) {
       };
     
       collection.save(data);
-      return true;
+      return exists;
     },
     params: {
       name: name,
@@ -333,11 +332,9 @@ var registerFunction = function (name, code, isDeterministic) {
     }
   });
 
-  if (result) {
-    internal.reloadAqlFunctions();
-  }
+  internal.reloadAqlFunctions();
 
-  return exists;
+  return result;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
