@@ -379,7 +379,7 @@ function post_api_cursor(req, res) {
 /// @startDocuBlock JSF_post_api_cursor_identifier
 /// @brief return the next results from an existing cursor
 ///
-/// @RESTHEADER{PUT /_api/cursor/cursor-identifier, Read next batch from cursor}
+/// @RESTHEADER{PUT /_api/cursor/{cursor-identifier}, Read next batch from cursor}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -501,7 +501,7 @@ function put_api_cursor (req, res) {
 /// @startDocuBlock JSF_post_api_cursor_delete
 /// @brief dispose an existing cursor
 ///
-/// @RESTHEADER{DELETE /_api/cursor/cursor-identifier, Delete cursor}
+/// @RESTHEADER{DELETE /_api/cursor/{cursor-identifier}, Delete cursor}
 ///
 /// @RESTURLPARAMETERS
 ///
