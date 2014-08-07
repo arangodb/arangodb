@@ -1089,6 +1089,109 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                     SubqueryBlock
+// -----------------------------------------------------------------------------
+
+    class SubqueryBlock : public ExecutionBlock {
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+        SubqueryBlock (AQL_TRANSACTION_V8* trx,
+                       SubqueryNode const* en,
+                       ExecutionBlock* subquery)
+                : ExecutionBlock(trx, en), _outReg(0),
+           _subquery(subquery) {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+        ~SubqueryBlock () {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize
+////////////////////////////////////////////////////////////////////////////////
+
+        int initialize () {
+          int res = ExecutionBlock::initialize();
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
+
+          // We know that staticAnalysis has been run, so _varOverview is set up
+
+          auto en = static_cast<SubqueryNode const*>(getPlanNode());
+
+          auto it3 = _varOverview->varInfo.find(en->_outVariable->id);
+          TRI_ASSERT(it3 != _varOverview->varInfo.end());
+          _outReg = it3->second.registerId;
+
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSome
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual AqlItemBlock* getSome (size_t atLeast,
+                                       size_t atMost) {
+          AqlItemBlock* res = ExecutionBlock::getSome(atLeast, atMost);
+
+          if (res == nullptr) {
+            return nullptr;
+          }
+          for (size_t i = 0; i < res->size(); i++) {
+            _subquery->initialize();
+            _subquery->bind(res, i);
+            _subquery->execute();
+            auto results = new std::vector<AqlItemBlock*>;
+            do {
+              auto tmp = _subquery->getSome(DefaultBatchSize, DefaultBatchSize);
+              if (tmp == nullptr) {
+                break;
+              }
+              results->push_back(tmp);
+            } while(true);
+            res->setValue(i, _outReg, AqlValue(results));
+            _subquery->shutdown();
+          }
+          return res;
+        }
+
+        ExecutionBlock* getSubquery() {
+                return _subquery;
+        }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief we hold a pointer to the expression in the plan
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief output register
+////////////////////////////////////////////////////////////////////////////////
+
+        RegisterId _outReg;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief we need to have an executionblock and where to write the result
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionBlock* _subquery;
+    };
+
+
+////////////////////////////////////////////////////////////////////////////////l--------------------------------------------------------------------------------TODO
+
+
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                       FilterBlock
 // -----------------------------------------------------------------------------
 
