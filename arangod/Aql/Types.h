@@ -292,6 +292,14 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      AqlItemBlock
 // -----------------------------------------------------------------------------
+// an <AqlItemBlock> is a <nrItems>x<nrRegs> vector of <AqlValue>s (not
+// pointers). The size of an <AqlItemBlock> is the number of items. Entries in a
+// given column (i.e. all the values of a given register for all items in the
+// block) have the same type and belong to the same collection. The document
+// collection for a particular column are accessed via <getDocumentCollection>,
+// and the entire array of document collections is accessed by
+// <getDocumentCollections>. There is no access to an entire item, only access to
+// particular registers of an item (via getValue). 
 
     class AqlItemBlock {
 
@@ -402,7 +410,7 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getter for _data
+/// @brief getter for _docColls
 ////////////////////////////////////////////////////////////////////////////////
 
       vector<TRI_document_collection_t const*>& getDocumentCollections () {
