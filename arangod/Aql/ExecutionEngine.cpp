@@ -90,6 +90,11 @@ struct Instanciator : public ExecutionNode::WalkerWorker {
                                           static_cast<EnumerateCollectionNode const*>(en));
         break;
       }
+      case ExecutionNode::ENUMERATE_LIST: {
+        eb = new EnumerateListBlock(engine->getTransaction(),
+                                          static_cast<EnumerateListNode const*>(en));
+        break;
+      }
       case ExecutionNode::CALCULATION: {
         eb = new CalculationBlock(engine->getTransaction(),
                                   static_cast<CalculationNode const*>(en));
@@ -113,6 +118,17 @@ struct Instanciator : public ExecutionNode::WalkerWorker {
       case ExecutionNode::AGGREGATE: {
         eb = new AggregateBlock(engine->getTransaction(),
                              static_cast<AggregateNode const*>(en));
+        break;
+      }
+      case ExecutionNode::SUBQUERY: {
+        auto es = static_cast<SubqueryNode*>(en);
+        auto it = cache.find(es->getSubquery());
+
+        TRI_ASSERT(it != cache.end());
+
+        eb = new SubqueryBlock(engine->getTransaction(),
+                               static_cast<SubqueryNode const*>(en),
+                               it->second);
         break;
       }
       case ExecutionNode::RETURN: {
