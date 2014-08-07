@@ -105,7 +105,7 @@
                     "nickname": "RemoveExistingAqlUserFunction"
                 }
             ],
-            "path": "/_api/aqlfunction/name"
+            "path": "/_api/aqlfunction/{name}"
         }
     ]
 }
