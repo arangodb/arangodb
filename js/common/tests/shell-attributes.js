@@ -151,7 +151,7 @@ function AttributesSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReservedAttributes : function () {
-      var doc = { "_id" : "foo", "_rev": "99", "_key" : "meow", "_from" : "33", "_to": "99", "_test" : false };
+      var doc = { "_id" : "foo", "_rev": "99", "_key" : "meow", "_from" : "33", "_to": "99", "_test" : false, "_boom" : "bang" };
 
       var d1 = c.save(doc);
       var d2 = c.document(d1._id);
@@ -161,17 +161,33 @@ function AttributesSuite () {
       assertEqual(cn + "/meow", d1._id);
       assertEqual(cn + "/meow", d2._id);
       assertEqual(d1._rev, d2._rev);
+      assertFalse(d2._test);
+      assertEqual("bang", d2._boom);
+      assertFalse(d2.hasOwnProperty("_from"));
+      assertFalse(d2.hasOwnProperty("_to"));
       
       // user specified _rev value must have been ignored
       assertTrue(d1._rev !== "99");
-      
-      // test attributes
-      var i;
-      for (i in d2) {
-        if (d2.hasOwnProperty(i)) {
-          assertTrue(i !== "_from" && i !== "_to" && i !== "_test");
-        }
-      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief reserved attribute names
+////////////////////////////////////////////////////////////////////////////////
+
+    testEmbeddedReservedAttributes : function () {
+      var doc = { "_id" : "foo", "_rev": "99", "_key" : "meow", "_from" : "33", "_to": "99", "_test" : false };
+
+      c.save({ _key: "mydoc", _embedded: doc });
+      var d = c.document("mydoc");
+
+      assertEqual(cn + "/mydoc", d._id);
+      assertEqual("mydoc", d._key);
+      assertEqual("foo", d._embedded._id);
+      assertEqual("99", d._embedded._rev);
+      assertEqual("meow", d._embedded._key);
+      assertEqual("33", d._embedded._from);
+      assertEqual("99", d._embedded._to);
+      assertFalse(d._embedded._test);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
