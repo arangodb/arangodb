@@ -31,6 +31,10 @@
 #ifndef ARANGODB_V8SERVER_V8__COLLECTION_H
 #define ARANGODB_V8SERVER_V8__COLLECTION_H 1
 
+#include "Basics/Common.h"
+#include "v8-vocbase.h"
+#include "Utils/CollectionNameResolver.h"
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a coordinator collection
 ////////////////////////////////////////////////////////////////////////////////

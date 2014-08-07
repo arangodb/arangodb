@@ -30,6 +30,12 @@
 #ifndef ARANGODB_V8SERVER_V8__INDEX_H
 #define ARANGODB_V8SERVER_V8__INDEX_H 1
 
+#include "Basics/Common.h"
+
+#include "V8/v8-globals.h"
+#include "VocBase/index.h"
+#include "Utils/CollectionNameResolver.h"
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a index identifier
 ////////////////////////////////////////////////////////////////////////////////

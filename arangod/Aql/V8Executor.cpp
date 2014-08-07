@@ -405,6 +405,18 @@ void V8Executor::generateCodeExpression (AstNode const* node) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generates code for a string value
+////////////////////////////////////////////////////////////////////////////////
+        
+void V8Executor::generateCodeString (char const* value) {
+  TRI_ASSERT(value != nullptr);
+
+  _buffer->appendChar('"');
+  _buffer->appendJsonEncoded(value);
+  _buffer->appendChar('"');
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generate JavaScript code for a list
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -440,11 +452,12 @@ void V8Executor::generateCodeArray (AstNode const* node) {
     }
     
     auto member = node->getMember(i);
-    
-    _buffer->appendText("\"");
-    _buffer->appendJsonEncoded(member->getStringValue());
-    _buffer->appendText("\" : ");
-    generateCodeNode(member->getMember(0));
+
+    if (member != nullptr) {
+      generateCodeString(member->getStringValue());
+      _buffer->appendText(" : ");
+      generateCodeNode(member->getMember(0));
+    }
   }
   _buffer->appendText(" }");
 }
@@ -547,9 +560,9 @@ void V8Executor::generateCodeReference (AstNode const* node) {
   
   auto variable = static_cast<Variable*>(node->getData());
 
-  _buffer->appendText("vars[\"");
-  _buffer->appendJsonEncoded(variable->name.c_str());
-  _buffer->appendText("\"]");
+  _buffer->appendText("vars[");
+  generateCodeString(variable->name.c_str());
+  _buffer->appendText("]");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -561,10 +574,10 @@ void V8Executor::generateCodeVariable (AstNode const* node) {
   TRI_ASSERT(node->numMembers() == 0);
   
   auto variable = static_cast<Variable*>(node->getData());
-
-  _buffer->appendText("vars[\"");
-  _buffer->appendJsonEncoded(variable->name.c_str());
-  _buffer->appendText("\"]");
+  
+  _buffer->appendText("vars[");
+  generateCodeString(variable->name.c_str());
+  _buffer->appendText("]");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -577,9 +590,9 @@ void V8Executor::generateCodeCollection (AstNode const* node) {
   
   char const* name = node->getStringValue();
 
-  _buffer->appendText("aql.GET_DOCUMENTS(\"");
-  _buffer->appendJsonEncoded(name);
-  _buffer->appendText("\")");
+  _buffer->appendText("aql.GET_DOCUMENTS(");
+  generateCodeString(name);
+  _buffer->appendText(")");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -606,7 +619,20 @@ void V8Executor::generateCodeFunctionCall (AstNode const* node) {
       _buffer->appendText(", ");
     }
 
-    generateCodeNode(args->getMember(i));
+    auto member = args->getMember(i);
+
+    if (member != nullptr) {
+      if (member->type == NODE_TYPE_COLLECTION &&
+          func->containsCollectionParameter) {
+        // do a parameter conversion from a collection parameter to a collection name parameter
+        char const* name = member->getStringValue();
+        generateCodeString(name);
+      }
+      else {
+        // generate regular code for the node
+        generateCodeNode(args->getMember(i));
+      }
+    }
   }
   _buffer->appendText(")");
 }
@@ -626,9 +652,9 @@ void V8Executor::generateCodeUserFunctionCall (AstNode const* node) {
   TRI_ASSERT(args != nullptr);
   TRI_ASSERT(args->type == NODE_TYPE_LIST);
 
-  _buffer->appendText("aql.FCALL_USER(\"");
-  _buffer->appendJsonEncoded(name);
-  _buffer->appendText("\", [");
+  _buffer->appendText("aql.FCALL_USER(");
+  generateCodeString(name);
+  _buffer->appendText(", [");
 
   size_t const n = args->numMembers();
   for (size_t i = 0; i < n; ++i) {
@@ -693,9 +719,9 @@ void V8Executor::generateCodeNamedAccess (AstNode const* node) {
 
   _buffer->appendText("aql.DOCUMENT_MEMBER(");
   generateCodeNode(node->getMember(0));
-  _buffer->appendText(", \"");
-  _buffer->appendJsonEncoded(node->getStringValue());
-  _buffer->appendText("\")");
+  _buffer->appendText(", ");
+  generateCodeString(node->getStringValue());
+  _buffer->appendText(")");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

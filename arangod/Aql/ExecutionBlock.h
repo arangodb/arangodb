@@ -191,10 +191,10 @@ namespace triagens {
 
           // Copy constructor used for a subquery:
           VarOverview (VarOverview const& v) 
-            : varInfo(v.varInfo), nrRegsHere(v.nrRegs), nrRegs(v.nrRegs),
+            : varInfo(v.varInfo), nrRegsHere(v.nrRegsHere), nrRegs(v.nrRegs),
               depth(v.depth+1), totalNrRegs(v.totalNrRegs), me(nullptr) {
             nrRegsHere.push_back(0);
-            nrRegs.push_back(0);
+            nrRegs.push_back(nrRegs.back());
           }
 
           ~VarOverview () {};
@@ -294,11 +294,6 @@ namespace triagens {
           v->setSharedPtr(&v);
           walk(v.get());
           v->reset();
-          std::cout << "Varinfo:\n";
-          for (auto x : v->varInfo) {
-            std::cout << x.first << " => " << x.second.depth << "," 
-                      << x.second.registerId << std::endl;
-          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -334,13 +329,7 @@ namespace triagens {
 /// @brief bind
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual int bind (std::map<std::string, struct TRI_json_s*>* params);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getParameters
-////////////////////////////////////////////////////////////////////////////////
-
-        std::map<std::string, struct TRI_json_s*>* getParameters ();
+        virtual int bind (AqlItemBlock* items, size_t pos);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute
@@ -400,36 +389,9 @@ namespace triagens {
       public:
 
         virtual AqlItemBlock* getOne () {
-          if (_done) {
-            return nullptr;
-          }
-
-          if (_buffer.empty()) {
-            if (! getBlock(1, DefaultBatchSize)) {
-              _done = true;
-              return nullptr;
-            }
-            _pos = 0;
-          }
-
-          TRI_ASSERT(! _buffer.empty());
-
-          // Here, _buffer.size() is > 0 and _pos points to a valid place
-          // in it.
-
-          AqlItemBlock* res;
-          AqlItemBlock* cur;
-          cur = _buffer.front();
-          res = cur->slice(_pos, _pos + 1);
-          _pos++;
-          if (_pos >= cur->size()) {
-            _buffer.pop_front();
-            delete cur;
-            _pos = 0;
-          }
-          return res;
+          return getSome (1, 1);
         }
-
+        
         virtual AqlItemBlock* getSome (size_t atLeast, 
                                        size_t atMost) {
           if (_done) {
@@ -645,7 +607,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         SingletonBlock (AQL_TRANSACTION_V8* trx, SingletonNode const* ep)
-          : ExecutionBlock(trx, ep) {
+          : ExecutionBlock(trx, ep), _inputRegisterValues(nullptr) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -660,7 +622,21 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int initialize () {
+          _inputRegisterValues = nullptr;   // just in case
           return ExecutionBlock::initialize();
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief bind, store a copy of the register values coming from above
+////////////////////////////////////////////////////////////////////////////////
+
+        int bind (AqlItemBlock* items, size_t pos) {
+          // Create a deep copy of the register values given to us:
+          if (_inputRegisterValues != nullptr) {
+            delete _inputRegisterValues;
+          }
+          _inputRegisterValues = items->slice(pos, pos+1);
+          return TRI_ERROR_NO_ERROR;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -676,20 +652,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int shutdown () {
-          return ExecutionBlock::shutdown();
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getOne
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlItemBlock* getOne () {
-          if (_done) {
-            return nullptr;
+          int res = ExecutionBlock::shutdown();
+          if (_inputRegisterValues != nullptr) {
+            delete _inputRegisterValues;
+            _inputRegisterValues = nullptr;
           }
-
-          AqlItemBlock* res(new AqlItemBlock(1, _varOverview->nrRegs[_depth]));
-          _done = true;
           return res;
         }
 
@@ -697,12 +664,21 @@ namespace triagens {
 /// @brief getSome
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
+        AqlItemBlock* getSome (size_t, size_t) {
           if (_done) {
             return nullptr;
           }
 
-          AqlItemBlock* res(new AqlItemBlock(1, _varOverview->nrRegs[_depth]));
+          AqlItemBlock* res = new AqlItemBlock(1, _varOverview->nrRegs[_depth]);
+          if (_inputRegisterValues != nullptr) {
+            for (RegisterId reg = 0; reg < _inputRegisterValues->getNrRegs(); ++reg) {
+              res->setValue(0, reg, _inputRegisterValues->getValue(0, reg));
+              _inputRegisterValues->eraseValue(0, reg);
+              res->setDocumentCollection(reg,
+                       _inputRegisterValues->getDocumentCollection(reg));
+
+            }
+          }
           _done = true;
           return res;
         }
@@ -744,6 +720,14 @@ namespace triagens {
         int64_t remaining () {
           return _done ? 0 : 1;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the bind data coming from outside
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+        AqlItemBlock* _inputRegisterValues;
 
     };
 
@@ -872,60 +856,6 @@ namespace triagens {
         int shutdown () {
           int res = ExecutionBlock::shutdown();  // Tell all dependencies
 
-          return res;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getOne
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlItemBlock* getOne () {
-          if (_done) {
-            return nullptr;
-          }
-
-          if (_buffer.empty()) {
-            if (! ExecutionBlock::getBlock(1, DefaultBatchSize)) {
-              _done = true;
-              return nullptr;
-            }
-            _pos = 0;           // this is in the first block
-            _posInAllDocs = 0;  // Note that we know _allDocs.size() > 0,
-                                // otherwise _done would be true already
-          }
-
-          // If we get here, we do have _buffer.front()
-          AqlItemBlock* cur = _buffer.front();
-
-          // Copy stuff from frames above:
-          auto res = new AqlItemBlock(1, _varOverview->nrRegs[_depth]);
-          TRI_ASSERT(cur->getNrRegs() <= res->getNrRegs());
-          for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
-            res->setValue(0, i, cur->getValue(_pos, i).clone());
-          }
-
-          // The result is in the first variable of this depth,
-          // we do not need to do a lookup in _varOverview->varInfo,
-          // but can just take cur->getNrRegs() as registerId:
-          res->setValue(0, cur->getNrRegs(), AqlValue(reinterpret_cast<TRI_df_marker_t const*>(_documents[_posInAllDocs++].getDataPtr())));
-          res->getDocumentCollections().at(cur->getNrRegs()) 
-            = _trx->documentCollection();
-
-          // Advance read position:
-          if (_posInAllDocs >= _documents.size()) {
-            // we have exhausted our local documents buffer
-            _posInAllDocs = 0;
-            
-            // fetch more documents into our buffer
-            if (! moreDocuments()) {
-              initDocuments();
-              if (++_pos >= cur->size()) {
-                _buffer.pop_front();
-                delete cur;
-                _pos = 0;
-              }
-            }
-          }
           return res;
         }
 
@@ -1334,29 +1264,6 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getOne
-////////////////////////////////////////////////////////////////////////////////
-
-      public:
-
-        virtual AqlItemBlock* getOne () {
-          AqlItemBlock* res = ExecutionBlock::getOne();
-
-          if (res == nullptr) {
-            return nullptr;
-          }
-
-          try {
-            doEvaluation(res);
-            return res;
-          }
-          catch (...) {
-            delete res;
-            throw;
-          }
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getSome
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1489,41 +1396,6 @@ namespace triagens {
             _buffer.pop_front();  // Block was useless, just try again
           }
           return true;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getOne
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlItemBlock* getOne () {
-          if (_done) {
-            return nullptr;
-          }
-
-          if (_buffer.empty()) {
-            if (! getBlock(1, DefaultBatchSize)) {
-              _done = true;
-              return nullptr;
-            }
-            _pos = 0;
-          }
-
-          TRI_ASSERT(_buffer.size() > 0);
-
-          // Here, _buffer.size() is > 0 and _pos points to a valid place
-          // in it.
-
-          AqlItemBlock* res;
-          AqlItemBlock* cur;
-          cur = _buffer.front();
-          res = cur->slice(_chosen[_pos], _chosen[_pos+ 1]);
-          _pos++;
-          if (_pos >= _chosen.size()) {
-            _buffer.pop_front();
-            delete cur;
-            _pos = 0;
-          }
-          return res;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1885,44 +1757,6 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getOne
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual AqlItemBlock* getOne () {
-          if (_state == 2) {
-            return nullptr;
-          }
-
-          if (_state == 0) {
-            if (_offset > 0) {
-              ExecutionBlock::skip(_offset);
-              _state = 1;
-              _count = 0;
-              if (_limit == 0) {
-                _state = 2;
-                return nullptr;
-              }
-            }
-          }
-
-          // If we get to here, _state == 1 and _count < _limit
-
-          // Fetch one from above, possibly using our _buffer:
-          auto res = ExecutionBlock::getOne();
-          if (res == nullptr) {
-            _state = 2;
-            return res;
-          }
-          TRI_ASSERT(res->size() == 1);
-
-          if (++_count >= _limit) {
-            _state = 2;
-          }
-
-          return res;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getSome
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2013,32 +1847,6 @@ namespace triagens {
 
         ~ReturnBlock () {
         } 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getOne
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual AqlItemBlock* getOne () {
-          // Fetch one from above, possibly using our _buffer:
-          auto res = ExecutionBlock::getOne();
-          if (res == nullptr) {
-            return res;
-          }
-          TRI_ASSERT(res->size() == 1);
-
-          // Let's steal the actual result and throw away the vars:
-          AqlItemBlock* stripped = new AqlItemBlock(1, 1);
-          auto ep = static_cast<ReturnNode const*>(getPlanNode());
-          auto it = _varOverview->varInfo.find(ep->_inVariable->id);
-          TRI_ASSERT(it != _varOverview->varInfo.end());
-          RegisterId registerId = it->second.registerId;
-          stripped->setValue(0, 0, res->getValue(0, registerId));
-          res->eraseValue(0, registerId);
-          stripped->setDocumentCollection(0, res->getDocumentCollection(registerId));
-
-          delete res;
-          return stripped;
-        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getSome
