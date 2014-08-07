@@ -105,15 +105,20 @@ struct Instanciator : public ExecutionNode::WalkerWorker {
                             static_cast<LimitNode const*>(en));
         break;
       }
+      case ExecutionNode::SORT: {
+        eb = new SortBlock(engine->getTransaction(),
+                             static_cast<SortNode const*>(en));
+        break;
+      }
+      case ExecutionNode::AGGREGATE: {
+        eb = new AggregateBlock(engine->getTransaction(),
+                             static_cast<AggregateNode const*>(en));
+        break;
+      }
       case ExecutionNode::RETURN: {
         eb = new ReturnBlock(engine->getTransaction(),
                              static_cast<ReturnNode const*>(en));
         root = eb;
-        break;
-      }
-      case ExecutionNode::SORT: {
-        eb = new SortBlock(engine->getTransaction(),
-                             static_cast<SortNode const*>(en));
         break;
       }
       default: {
