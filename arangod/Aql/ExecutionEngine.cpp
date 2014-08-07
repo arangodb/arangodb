@@ -90,6 +90,11 @@ struct Instanciator : public ExecutionNode::WalkerWorker {
                                           static_cast<EnumerateCollectionNode const*>(en));
         break;
       }
+      case ExecutionNode::ENUMERATE_LIST: {
+        eb = new EnumerateListBlock(engine->getTransaction(),
+                                          static_cast<EnumerateListNode const*>(en));
+        break;
+      }
       case ExecutionNode::CALCULATION: {
         eb = new CalculationBlock(engine->getTransaction(),
                                   static_cast<CalculationNode const*>(en));
