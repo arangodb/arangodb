@@ -36,8 +36,10 @@
 #include "Ahuacatl/ahuacatl-collections.h"
 #include "Ahuacatl/ahuacatl-result.h"
 #include "Utils/AhuacatlTransaction.h"
-#include "Aql/ExecutionBlock.h"
 
+#include "BasicsC/conversions.h"
+#include "V8/v8-conv.h"
+#include "Utils/transactions.h"
 
 using namespace std;
 using namespace triagens::basics;

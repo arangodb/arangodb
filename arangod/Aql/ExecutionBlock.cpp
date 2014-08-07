@@ -31,6 +31,12 @@
 using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace triagens::aql;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief batch size value
+////////////////////////////////////////////////////////////////////////////////
+  
+size_t const ExecutionBlock::DefaultBatchSize = 1000;
          
 ExecutionBlock::~ExecutionBlock () {        
 }
@@ -63,9 +69,9 @@ void ExecutionBlock::walk (WalkerWorker* worker) {
   }
   // Now handle a subquery:
   if (_exeNode->getType() == ExecutionNode::SUBQUERY) {
-    // auto p = static_cast<SubqueryBlock*>(this);
+    auto p = static_cast<SubqueryBlock*>(this);
     if (worker->enterSubquery(this, nullptr)) { ; // p->_subquery
-      // p->_subquery->walk(worker);
+            p->getSubquery()->walk(worker);
       worker->leaveSubquery(this, nullptr); // p->_subquery
     }
   }

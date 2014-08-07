@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Types.h"
+#include "V8Server/v8-wrapshapedjson.h"
 
 using namespace triagens::aql;
 using Json = triagens::basics::Json;

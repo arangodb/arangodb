@@ -30,8 +30,11 @@
 #include "v8-wrapshapedjson.h"
 #include "v8-vocbaseprivate.h"
 
-#include "Aql/ExecutionBlock.h"
 #include "BasicsC/conversions.h"
+#include "V8/v8-conv.h"
+#include "Utils/transactions.h"
+#include "Utils/V8TransactionContext.h"
+
 
 using namespace std;
 using namespace triagens::basics;
@@ -107,7 +110,7 @@ static void WeakBarrierCallback (v8::Isolate* isolate,
                                  v8::Persistent<v8::Value> object,
                                  void* parameter) {
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData());
-  TRI_barrier_blocker_t* barrier = (TRI_barrier_blocker_t*) parameter;
+  TRI_barrier_blocker_t* barrier = static_cast<TRI_barrier_blocker_t*>(parameter);
 
   TRI_ASSERT(barrier != nullptr);
 
@@ -145,6 +148,7 @@ static void WeakBarrierCallback (v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a TRI_shaped_json_t
 ////////////////////////////////////////////////////////////////////////////////
+
 v8::Handle<v8::Value> TRI_WrapShapedJson (triagens::arango::CollectionNameResolver const* resolver,
                                           TRI_barrier_t* barrier,
                                           TRI_voc_cid_t cid,
@@ -221,6 +225,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (triagens::arango::CollectionNameResolv
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects the keys from the shaped json
 ////////////////////////////////////////////////////////////////////////////////
+
 static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
   v8::HandleScope scope;
 
@@ -280,7 +285,7 @@ static v8::Handle<v8::Array> KeysOfShapedJson (const v8::AccessorInfo& info) {
     }
   }
 
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
   result->Set(count++, v8g->_IdKey);
   result->Set(count++, v8g->_RevKey);
   result->Set(count++, v8g->_KeyKey);
@@ -316,7 +321,9 @@ static v8::Handle<v8::Value> MapGetNamedShapedJson (v8::Local<v8::String> name,
   v8::String::Utf8Value const str(name);
   string const key(*str, (size_t) str.length());
 
-  if (key.empty() || key[0] == '_' || strchr(key.c_str(), '.') != 0) {
+  if (key[0] == '_' && 
+    (key == "_key" || key == "_rev" || key == "_id" || key == "_from" || key == "_to")) {
+    // strip reserved attributes
     return scope.Close(v8::Handle<v8::Value>());
   }
 
@@ -350,7 +357,6 @@ static v8::Handle<v8::Value> MapGetNamedShapedJson (v8::Local<v8::String> name,
   return scope.Close(v8::Handle<v8::Value>());
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a property is present
 ////////////////////////////////////////////////////////////////////////////////
@@ -381,7 +387,7 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
   }
 
   if (key[0] == '_') {
-    if (key == "_id" || key == TRI_VOC_ATTRIBUTE_REV || key == TRI_VOC_ATTRIBUTE_KEY) {
+    if (key == "_key" || key == "_rev" || key == "_id" || key == "_from" || key == "_to") {
       return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
     }
   }
