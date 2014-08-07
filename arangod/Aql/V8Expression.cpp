@@ -27,21 +27,12 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_V8_EXPRESSION_H
-#define ARANGODB_AQL_V8_EXPRESSION_H 1
+#include "Aql/V8Expression.h"
+#include "Aql/V8Executor.h"
+#include "BasicsC/json.h"
+#include "V8/v8-conv.h"
 
-#include "Basics/Common.h"
-#include "Aql/Types.h"
-#include <v8.h>
-
-namespace triagens {
-  namespace aql {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               struct V8Expression
-// -----------------------------------------------------------------------------
-
-    struct V8Expression {
+using namespace triagens::aql;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -51,14 +42,21 @@ namespace triagens {
 /// @brief create the v8 expression
 ////////////////////////////////////////////////////////////////////////////////
 
-      V8Expression (v8::Isolate*,
-                    v8::Persistent<v8::Function>);
+V8Expression::V8Expression (v8::Isolate* isolate,
+                            v8::Persistent<v8::Function> func) 
+  : isolate(isolate),
+    func(func) {
+
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the v8 expression
 ////////////////////////////////////////////////////////////////////////////////
 
-      ~V8Expression ();
+V8Expression::~V8Expression () {
+  func.Dispose(isolate);
+  func.Clear();
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -68,27 +66,42 @@ namespace triagens {
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-      AqlValue execute (AQL_TRANSACTION_V8*,
-                        std::vector<TRI_document_collection_t const*>&,
-                        std::vector<AqlValue>&,
-                        size_t,
-                        std::vector<Variable*> const&,
-                        std::vector<RegisterId> const&);
+AqlValue V8Expression::execute (AQL_TRANSACTION_V8* trx,
+                                std::vector<TRI_document_collection_t const*>& docColls,
+                                std::vector<AqlValue>& argv,
+                                size_t startPos,
+                                std::vector<Variable*> const& vars,
+                                std::vector<RegisterId> const& regs) {
+  size_t const n = vars.size();
+  TRI_ASSERT(regs.size() == n); // assert same vector length
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public variables
-// -----------------------------------------------------------------------------
+  v8::Handle<v8::Object> values = v8::Object::New();
+  for (size_t i = 0; i < n; ++i) {
+    auto varname = vars[i]->name;
+    auto reg = regs[i];
 
-     v8::Isolate* isolate;
+    TRI_ASSERT(! argv[reg].isEmpty());
 
-     v8::Persistent<v8::Function> func;
-    
-    };
-
+    values->Set(v8::String::New(varname.c_str(), (int) varname.size()), argv[startPos + reg].toV8(trx, docColls[reg]));
   }
-}
 
-#endif
+  // set function arguments
+  v8::Handle<v8::Value> args[] = { values };
+
+  // execute the function
+  v8::TryCatch tryCatch;
+  v8::Handle<v8::Value> result = func->Call(func, 1, args);
+    
+  V8Executor::HandleV8Error(tryCatch, result);
+
+  TRI_json_t* json = TRI_ObjectToJson(result);
+
+  if (json == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  return AqlValue(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, json));
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

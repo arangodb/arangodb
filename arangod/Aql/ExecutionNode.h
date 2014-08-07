@@ -1025,6 +1025,7 @@ namespace triagens {
         AggregateNode (std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables,
                        Variable const* outVariable)
           : ExecutionNode(), _aggregateVariables(aggregateVariables), _outVariable(outVariable) {
+          // outVariable can be a nullptr
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1068,7 +1069,7 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief input/output variables for the aggregation (out = in)
+/// @brief input/output variables for the aggregation (out, in)
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<std::pair<Variable const*, Variable const*>> _aggregateVariables;

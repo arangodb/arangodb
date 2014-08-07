@@ -46,6 +46,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/ExecutionNode.cpp \
 	arangod/Aql/ExecutionPlan.cpp \
 	arangod/Aql/Expression.cpp \
+	arangod/Aql/Function.cpp \
 	arangod/Aql/grammar.cpp \
 	arangod/Aql/Parser.cpp \
 	arangod/Aql/Query.cpp \
@@ -53,6 +54,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/Types.cpp \
 	arangod/Aql/tokens.cpp \
 	arangod/Aql/V8Executor.cpp \
+	arangod/Aql/V8Expression.cpp \
 	arangod/Aql/Variable.cpp \
 	arangod/Aql/VariableGenerator.cpp \
 	arangod/BitIndexes/bitarray.cpp \
