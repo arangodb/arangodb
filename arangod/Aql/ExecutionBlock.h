@@ -443,7 +443,7 @@ namespace triagens {
           AqlItemBlock* res;
           while (total < atLeast) {
             if (_buffer.empty()) {
-              if (! getBlock(atLeast - total, atMost - total)) {
+              if (! getBlock(atLeast - total, std::max(atMost - total, DefaultBatchSize))) {
                 _done = true;
                 break;
               }
