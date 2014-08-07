@@ -79,7 +79,7 @@ namespace triagens {
 /// @brief get all dependencies
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<ExecutionBlock*> getDependencies () {
+        std::vector<ExecutionBlock*> getDependencies () {
           return _dependencies;
         }
 
@@ -336,9 +336,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual int execute () {
-          int res;
           for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
-            res = (*it)->execute();
+            int res = (*it)->execute();
             if (res != TRI_ERROR_NO_ERROR) {
               return res;
             }
@@ -352,13 +351,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual int shutdown () {
-          int res;
           for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
-            res = (*it)->shutdown();
+            int res = (*it)->shutdown();
+
             if (res != TRI_ERROR_NO_ERROR) {
               return res;
             }
           }
+
           for (auto it = _buffer.begin(); it != _buffer.end(); ++it) {
             delete *it;
           }
@@ -405,7 +405,7 @@ namespace triagens {
           AqlItemBlock* res;
           while (total < atLeast) {
             if (_buffer.empty()) {
-              if (! getBlock(atLeast - total, atMost - total)) {
+              if (! getBlock(atLeast - total, std::max(atMost - total, DefaultBatchSize))) {
                 _done = true;
                 break;
               }
@@ -474,7 +474,7 @@ namespace triagens {
           // in it.
 
           size_t skipped = 0;
-          vector<AqlItemBlock*> collector;
+          std::vector<AqlItemBlock*> collector;
           while (skipped < number) {
             if (_buffer.empty()) {
               if (! getBlock(number - skipped, number - skipped)) {
@@ -511,6 +511,7 @@ namespace triagens {
             _done = true;
             return false;
           }
+
           return true;
         }
 
@@ -590,8 +591,7 @@ namespace triagens {
 /// @brief batch size value
 ////////////////////////////////////////////////////////////////////////////////
   
-        static size_t const DefaultBatchSize = 1000;
-
+        static size_t const DefaultBatchSize;
     };
 
 // -----------------------------------------------------------------------------
@@ -1300,6 +1300,109 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                     SubqueryBlock
+// -----------------------------------------------------------------------------
+
+    class SubqueryBlock : public ExecutionBlock {
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+        SubqueryBlock (AQL_TRANSACTION_V8* trx,
+                       SubqueryNode const* en,
+                       ExecutionBlock* subquery)
+                : ExecutionBlock(trx, en), _outReg(0),
+           _subquery(subquery) {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+        ~SubqueryBlock () {
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize
+////////////////////////////////////////////////////////////////////////////////
+
+        int initialize () {
+          int res = ExecutionBlock::initialize();
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
+
+          // We know that staticAnalysis has been run, so _varOverview is set up
+
+          auto en = static_cast<SubqueryNode const*>(getPlanNode());
+
+          auto it3 = _varOverview->varInfo.find(en->_outVariable->id);
+          TRI_ASSERT(it3 != _varOverview->varInfo.end());
+          _outReg = it3->second.registerId;
+
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSome
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual AqlItemBlock* getSome (size_t atLeast,
+                                       size_t atMost) {
+          AqlItemBlock* res = ExecutionBlock::getSome(atLeast, atMost);
+
+          if (res == nullptr) {
+            return nullptr;
+          }
+          for (size_t i = 0; i < res->size(); i++) {
+            _subquery->initialize();
+            _subquery->bind(res, i);
+            _subquery->execute();
+            auto results = new std::vector<AqlItemBlock*>;
+            do {
+              auto tmp = _subquery->getSome(DefaultBatchSize, DefaultBatchSize);
+              if (tmp == nullptr) {
+                break;
+              }
+              results->push_back(tmp);
+            } while(true);
+            res->setValue(i, _outReg, AqlValue(results));
+            _subquery->shutdown();
+          }
+          return res;
+        }
+
+        ExecutionBlock* getSubquery() {
+                return _subquery;
+        }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief we hold a pointer to the expression in the plan
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief output register
+////////////////////////////////////////////////////////////////////////////////
+
+        RegisterId _outReg;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief we need to have an executionblock and where to write the result
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionBlock* _subquery;
+    };
+
+
+////////////////////////////////////////////////////////////////////////////////l--------------------------------------------------------------------------------TODO
+
+
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                       FilterBlock
 // -----------------------------------------------------------------------------
 
@@ -1359,15 +1462,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool getBlock (size_t atLeast, size_t atMost) {
-          bool res;
           while (true) {  // will be left by break or return
-            res = ExecutionBlock::getBlock(atLeast, atMost);
-            if (res == false) {
+            if (! ExecutionBlock::getBlock(atLeast, atMost)) {
               return false;
             }
+
             if (_buffer.size() > 1) {
               break;  // Already have a current block
             }
+
             // Now decide about these docs:
             _chosen.clear();
             AqlItemBlock* cur = _buffer.front();
@@ -1377,12 +1480,49 @@ namespace triagens {
                 _chosen.push_back(i);
               }
             }
-            if (_chosen.size() > 0) {
+
+            if (! _chosen.empty()) {
               break;   // OK, there are some docs in the result
             }
+
             _buffer.pop_front();  // Block was useless, just try again
           }
+
           return true;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getOne
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlItemBlock* getOne () {
+          if (_done) {
+            return nullptr;
+          }
+
+          if (_buffer.empty()) {
+            if (! getBlock(1, DefaultBatchSize)) {
+              _done = true;
+              return nullptr;
+            }
+            _pos = 0;
+          }
+
+          TRI_ASSERT(! _buffer.empty());
+
+          // Here, _buffer.size() is > 0 and _pos points to a valid place
+          // in it.
+
+          AqlItemBlock* cur = _buffer.front();
+          AqlItemBlock* res = cur->slice(_chosen[_pos], _chosen[_pos+ 1]);
+          _pos++;
+
+          if (_pos >= _chosen.size()) {
+            _buffer.pop_front();
+            delete cur;
+            _pos = 0;
+          }
+          return res;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1516,7 +1656,115 @@ namespace triagens {
 /// that are chosen
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<size_t> _chosen;
+        std::vector<size_t> _chosen;
+
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    AggregateBlock
+// -----------------------------------------------------------------------------
+
+    class AggregateBlock : public ExecutionBlock  {
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+        AggregateBlock (AQL_TRANSACTION_V8* trx,
+                        ExecutionNode const* ep)
+          : ExecutionBlock(trx, ep),
+            _collectGroups(false) { 
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ~AggregateBlock () {};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize
+////////////////////////////////////////////////////////////////////////////////
+
+        int initialize () {
+          int res = ExecutionBlock::initialize();
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
+
+          auto en = static_cast<AggregateNode const*>(getPlanNode());
+
+          for (auto p : en->_aggregateVariables){
+            //We know that staticAnalysis has been run, so _varOverview is set up
+            auto itOut = _varOverview->varInfo.find(p.first->id);
+            TRI_ASSERT(itOut != _varOverview->varInfo.end());
+            
+            auto itIn = _varOverview->varInfo.find(p.second->id);
+            TRI_ASSERT(itIn != _varOverview->varInfo.end());
+            _aggregateRegisters.push_back(make_pair((*itOut).second.registerId, (*itIn).second.registerId));
+          }
+
+          if (en->_outVariable != nullptr) {
+            auto it = _varOverview->varInfo.find(en->_outVariable->id);
+            TRI_ASSERT(it != _varOverview->varInfo.end());
+            _groupRegister = (*it).second.registerId;
+            _collectGroups = true;
+          }
+
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual int execute () {
+          int res = ExecutionBlock::execute();
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
+
+          getBlock(DefaultBatchSize, DefaultBatchSize);
+
+          if (_buffer.empty()) {
+            _done = true;
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          /*
+          std::vector<TRI_document_collection_t const*> colls;
+          for (RegisterId i = 0; i < _aggregateRegisters.size(); i++) {
+            colls.push_back(_buffer.front()->getDocumentCollection(_aggregateRegisters[i].second));
+          }
+          */
+
+          _done = false;
+          _pos = 0;
+
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pairs, consisting of out register and in register
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<std::pair<RegisterId, RegisterId>> _aggregateRegisters;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the optional register that contains the values for each group
+////////////////////////////////////////////////////////////////////////////////
+        
+        RegisterId _groupRegister;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not elements should be collected for each group
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _collectGroups;
 
     };
 
@@ -1549,6 +1797,7 @@ namespace triagens {
 
         int initialize () {
           int res = ExecutionBlock::initialize();
+
           if (res != TRI_ERROR_NO_ERROR) {
             return res;
           }
@@ -1578,7 +1827,7 @@ namespace triagens {
           while (getBlock(DefaultBatchSize, DefaultBatchSize)) {
           }
 
-          if (_buffer.size()==0){
+          if (_buffer.empty()) {
             _done = true;
             return TRI_ERROR_NO_ERROR;
           }
@@ -1587,7 +1836,7 @@ namespace triagens {
           std::vector<std::pair<size_t, size_t>> coords;
 
           size_t sum = 0;
-          for (auto block:_buffer){
+          for (auto block : _buffer){
             sum += block->size();
           }
 
@@ -1596,14 +1845,14 @@ namespace triagens {
           // install the coords
           size_t count = 0;
 
-          for (auto block:_buffer) {
+          for (auto block :_buffer) {
             for (size_t i = 0; i < block->size(); i++) {
               coords.push_back(std::make_pair(count, i));
             }
             count++;
           }
 
-          std::vector<TRI_document_collection_t const *> colls;
+          std::vector<TRI_document_collection_t const*> colls;
           for (RegisterId i = 0; i < _sortRegisters.size(); i++) {
             colls.push_back(_buffer.front()->getDocumentCollection(_sortRegisters[i].first));
           }
@@ -1617,7 +1866,10 @@ namespace triagens {
           //copy old blocks from _buffer into newbuf
           std::vector<AqlItemBlock*> newbuf;
           
-          for (auto x: _buffer) {
+          // reserve enough space in newbuf here because we know the target size
+          newbuf.reserve(_buffer.size());
+
+          for (auto x : _buffer) {
             newbuf.push_back(x);
           }
           _buffer.clear();
@@ -1645,7 +1897,7 @@ namespace triagens {
             _buffer.push_back(next);
           }
            
-          for ( auto x: newbuf){
+          for (auto x : newbuf){
             delete x;
           }
 

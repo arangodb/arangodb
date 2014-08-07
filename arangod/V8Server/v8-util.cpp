@@ -28,14 +28,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-vocbaseprivate.h"
-#include "Aql/ExecutionBlock.h"
+#include "BasicsC/conversions.h"
 #include "BasicsC/conversions.h"
 #include "VocBase/key-generator.h"
+#include "V8/v8-conv.h"
+#include "Utils/DocumentHelper.h"
 
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
-using namespace triagens::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the vocbase pointer from the current V8 context

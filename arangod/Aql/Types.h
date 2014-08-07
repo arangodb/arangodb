@@ -38,8 +38,6 @@
 #include "V8/v8-conv.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/voc-shaper.h"
-#include "V8Server/v8-vocbase.h"
-#include "V8Server/v8-wrapshapedjson.h"
 #include "Utils/V8TransactionContext.h"
 #include "Utils/AqlTransaction.h"
 

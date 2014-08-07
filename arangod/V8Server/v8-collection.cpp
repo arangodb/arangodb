@@ -29,13 +29,19 @@
 
 #include "v8-collection.h"
 #include "v8-vocbaseprivate.h"
+#include "v8-wrapshapedjson.h"
 
 #include "Ahuacatl/ahuacatl-collections.h"
 #include "Ahuacatl/ahuacatl-explain.h"
-#include "Aql/ExecutionBlock.h"
-#include "Aql/Query.h"
+
 #include "Basics/Utf8Helper.h"
 #include "BasicsC/conversions.h"
+#include "BasicsC/json-utilities.h"
+#include "V8/v8-conv.h"
+#include "Utils/transactions.h"
+#include "Utils/V8TransactionContext.h"
+
+#include "Aql/Query.h"
 #include "Utils/V8ResolverGuard.h"
 #include "V8/v8-utils.h"
 #include "Wal/LogfileManager.h"
@@ -4233,24 +4239,17 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
   return scope.Close(result);
 }
 
-extern void TRI_InitV8indexCollection (v8::Handle<v8::Context> context,
-				       TRI_server_t* server,
-				       TRI_vocbase_t* vocbase,
-				       JSLoader* loader,
-				       const size_t threadNumber,
-				       TRI_v8_global_t* v8g,
-				       v8::Handle<v8::ObjectTemplate> rt);
   // .............................................................................
   // generate the TRI_vocbase_col_t template
   // .............................................................................
-extern void TRI_InitV8collection (v8::Handle<v8::Context> context,
-				  TRI_server_t* server,
-				  TRI_vocbase_t* vocbase,
-				  JSLoader* loader,
-				  const size_t threadNumber,
-				  TRI_v8_global_t* v8g,
-				  v8::Isolate* isolate,
-				  v8::Handle<v8::ObjectTemplate>  ArangoDBNS){
+void TRI_InitV8collection (v8::Handle<v8::Context> context,
+                           TRI_server_t* server,
+                           TRI_vocbase_t* vocbase,
+                           JSLoader* loader,
+                           const size_t threadNumber,
+                           TRI_v8_global_t* v8g,
+                           v8::Isolate* isolate,
+                           v8::Handle<v8::ObjectTemplate>  ArangoDBNS){
 
   TRI_AddMethodVocbase(ArangoDBNS, "_changeMode", JS_ChangeOperationModeVocbase);
   TRI_AddMethodVocbase(ArangoDBNS, "_collection", JS_CollectionVocbase);

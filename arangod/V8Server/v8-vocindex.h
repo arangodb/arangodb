@@ -31,10 +31,11 @@
 #define ARANGODB_V8SERVER_V8__INDEX_H 1
 
 #include "Basics/Common.h"
-
+#include "VocBase/server.h"
 #include "V8/v8-globals.h"
 #include "VocBase/index.h"
 #include "Utils/CollectionNameResolver.h"
+#include "v8-vocbase.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a index identifier
@@ -45,4 +46,12 @@ TRI_index_t* TRI_LookupIndexByHandle (triagens::arango::CollectionNameResolver c
                                       v8::Handle<v8::Value>,
                                       bool,
                                       v8::Handle<v8::Object>*);
+
+void TRI_InitV8indexCollection (v8::Handle<v8::Context> context,
+                                TRI_server_t* server,
+                                TRI_vocbase_t* vocbase,
+                                triagens::arango::JSLoader* loader,
+                                const size_t threadNumber,
+                                TRI_v8_global_t* v8g,
+                                v8::Handle<v8::ObjectTemplate> rt);
 #endif
