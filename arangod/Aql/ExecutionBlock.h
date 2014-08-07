@@ -1160,6 +1160,8 @@ namespace triagens {
           // add the new register value and corresponding doc. collection
           res->setValue(0, cur->getNrRegs(), 
               AqlValue(new basics::Json(inVariable.at(_pos).json())));
+          // deep copy of the inVariable.at(_pos) with correct memory
+          // requirements
           res->setDocumentCollection(cur->getNrRegs(), _trx->documentCollection());
 
           // advance read position in the current block
@@ -1175,7 +1177,7 @@ namespace triagens {
 /// @brief getSome
 ////////////////////////////////////////////////////////////////////////////////
 
-      /*  AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
+        AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
           if (_done) {
             return nullptr;
           }
@@ -1186,62 +1188,53 @@ namespace triagens {
               return nullptr;
             }
             _pos = 0;           // this is in the first block
-            _posInAllDocs = 0;  // Note that we know _allDocs.size() > 0,
-                                // otherwise _done would be true already
           }
 
-          // If we get here, we do have _buffer.front()
+          // if we make it here, then _buffer.front() exists
           AqlItemBlock* cur = _buffer.front();
-          size_t const curRegs = cur->getNrRegs();
+          
+          // get the thing we are looping over // ~J assumes Json list
+          triagens::basics::Json inVariable = cur->getValue(_pos, _inVarRegId)._json;
 
-          size_t available = _documents.size() - _posInAllDocs;
-          size_t toSend = std::min(atMost, available);
-            
+          // ~J assumes Json list
+          size_t toSend = std::min(atMost, inVariable.size());
+         
+          //create the result
           auto res = new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]);
-          TRI_ASSERT(curRegs <= res->getNrRegs());
-
-          // only copy 1st row of registers inherited from previous frame(s)
-          for (RegisterId i = 0; i < curRegs; i++) {
+          TRI_ASSERT(cur->getNrRegs() <= res->getNrRegs());
+          
+          // copy 1st row of registers inherited from incoming block 
+          for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
             res->setValue(0, i, cur->getValue(_pos, i).clone());
+            res->setDocumentCollection(i, cur->getDocumentCollection(i));
           }
-          res->getDocumentCollections().at(curRegs)
+          res->getDocumentCollections().at(cur->getNrRegs())
             = _trx->documentCollection();
 
           for (size_t j = 0; j < toSend; j++) {
             if (j > 0) {
               // re-use already copied aqlvalues
-              for (RegisterId i = 0; i < curRegs; i++) {
+              for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
                 res->setValue(j, i, res->getValue(0, i));
               }
             }
-
-            // The result is in the first variable of this depth,
-            // we do not need to do a lookup in _varOverview->varInfo,
-            // but can just take cur->getNrRegs() as registerId:
-            res->setValue(j, curRegs, AqlValue(reinterpret_cast<TRI_df_marker_t const*>(_documents[_posInAllDocs++].getDataPtr())));
+            // add the new register value . . .
+            res->setValue(j, cur->getNrRegs(), 
+              AqlValue(new basics::Json(inVariable.at(_pos).json())));
+            // deep copy of the inVariable.at(_pos) with correct memory
+            // requirements
           }
 
-          // Advance read position:
-          if (_posInAllDocs >= _documents.size()) {
-            // we have exhausted our local documents buffer
-            _posInAllDocs = 0;
-
-            // fetch more documents into our buffer
-            if (! moreDocuments()) {
-              // nothing more to read, re-initialize fetching of documents
-              initDocuments();
-              if (++_pos >= cur->size()) {
-                _buffer.pop_front();
-                delete cur;
-                _pos = 0;
-              }
-            }
+          // advance read position in the current block . . .
+          if (++_pos == cur->size() ) {
+            delete cur;
+            _buffer.pop_front();
+            _pos = 0;
           }
           return res;
-        } */
+        } 
 
       private:
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief current position in the _inVariable
