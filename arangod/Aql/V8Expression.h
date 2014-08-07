@@ -96,30 +96,8 @@ namespace triagens {
         // execute the function
         v8::TryCatch tryCatch;
         v8::Handle<v8::Value> result = func->Call(func, 1, args);
-
-        if (tryCatch.HasCaught()) {
-          if (tryCatch.CanContinue()) {
-            if (tryCatch.Exception()->IsObject()) {
-              // cast the exception into an object
-              v8::Handle<v8::Array> objValue = v8::Handle<v8::Array>::Cast(tryCatch.Exception());
-              v8::Handle<v8::String> errorNum = v8::String::New("errorNum");
-        
-              if (objValue->HasOwnProperty(errorNum)) {
-                v8::Handle<v8::Value> errorNumValue = objValue->Get(errorNum);
-
-                if (errorNumValue->IsNumber()) {
-                  int errorCode = static_cast<int>(TRI_ObjectToInt64(errorNumValue));
-                  THROW_ARANGO_EXCEPTION(errorCode);
-                }
-              }
-            }
-          }
-          // TODO: handle case when we can NOT continue
-        }
-         
-        if (result.IsEmpty()) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-        }
+    
+        V8Executor::HandleV8Error(tryCatch, result);
 
         TRI_json_t* json = TRI_ObjectToJson(result);
 

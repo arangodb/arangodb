@@ -178,14 +178,17 @@
 
     controller.get("/healthcheck", function(req, res) {
       var out = getStarter().isHealthy();
-      var stf = JSON.stringify(out);
+      var answer = true;
       if (out.error) {
-        require("console").log("Cluster HealthCheck Error:", out.error);
-        require("console").log("Cluster HealthCheck Result:", stf);
-        res.json(false);
-        return;
+        _.each(out.results, function(res) {
+          if (res.answering) {
+            answer = (_.any(res.answering, function(i) {
+              return i === true;
+            }));
+          }
+        });
       }
-      res.json(true);
+      res.json(answer);
     });
 
     controller.get("/shutdown", function(req, res) {
@@ -194,6 +197,24 @@
       if (shutdownInfo.error) {
         require("console").log("%s", JSON.stringify(shutdownInfo.results));
       }
+      plans.removeRunInfo();
+    });
+
+    controller.get("/upgrade", function(req, res) {
+      //uname pswd
+      
+      var k = getStarter();
+      var u = plans.getCredentials();
+      var r = k.upgrade(u.name, u.passwd);
+      if (r.error === true) {
+        res.json(r);
+        res.status = 500;
+      }
+      else {
+        plans.replaceRunInfo(r.runInfo);
+        res.json("ok");
+      }
+     
     });
 
     controller.get("/cleanup", function(req, res) {

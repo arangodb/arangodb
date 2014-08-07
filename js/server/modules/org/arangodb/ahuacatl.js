@@ -75,7 +75,7 @@ function THROW (error, data) {
   var err = new ArangoError();
 
   err.errorNum = error.code;
-  if (data) {
+  if (typeof data === "string") {
     err.errorMessage = error.message.replace(/%s/, data);
   }
   else {

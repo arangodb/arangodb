@@ -67,6 +67,8 @@ arangoDatabase, btoa, _*/
     },
 
     initialize: function () {
+      this.footerView = new window.FooterView();
+      this.footerView.render();
       var self = this;
       this.dygraphConfig = window.dygraphConfig;
       window.modalView = new window.ModalView();
@@ -91,8 +93,6 @@ arangoDatabase, btoa, _*/
       this.clusterPlan.fetch({
         async: false
       });
-      this.footerView = new window.FooterView();
-      this.footerView.render();
       $(window).resize(function() {
         self.handleResize();
       });
@@ -174,6 +174,17 @@ arangoDatabase, btoa, _*/
           serverToShow : this.serverToShow
       });
       this.dashboardView.render();
+    },
+
+    clusterUnreachable: function() {
+      if (this.showClusterView) {
+        this.showClusterView.stopUpdating();
+        this.shutdownView.unrender();
+      }
+      if (!this.unreachableView) {
+        this.unreachableView = new window.ClusterUnreachableView();
+      }
+      this.unreachableView.render();
     }
 
   });
