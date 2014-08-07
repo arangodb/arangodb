@@ -249,8 +249,9 @@ namespace triagens {
             TRI_EXTRACT_SHAPED_JSON_MARKER(l, _marker);
             TRI_EXTRACT_SHAPED_JSON_MARKER(r, right._marker);
                       
-            return TRI_CompareShapeTypes(nullptr, nullptr, &l, nullptr, nullptr, &r, 
-                collection->getShaper());
+            return TRI_CompareShapeTypes(
+                nullptr, nullptr, &l, collection->getShaper(),
+                nullptr, nullptr, &r, collection->getShaper());
           }
           case DOCVEC: {
             return 0;
