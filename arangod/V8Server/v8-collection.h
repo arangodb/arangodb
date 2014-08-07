@@ -33,6 +33,7 @@
 
 #include "Basics/Common.h"
 #include "v8-vocbase.h"
+#include "VocBase/server.h"
 #include "Utils/CollectionNameResolver.h"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,4 +63,14 @@ bool EqualCollection (triagens::arango::CollectionNameResolver const* resolver,
 /// @brief wraps a TRI_vocbase_col_t
 ////////////////////////////////////////////////////////////////////////////////
 v8::Handle<v8::Object> WrapCollection (TRI_vocbase_col_t const* collection);
+
+void TRI_InitV8collection (v8::Handle<v8::Context> context,
+                           TRI_server_t* server,
+                           TRI_vocbase_t* vocbase,
+                           triagens::arango::JSLoader* loader,
+                           const size_t threadNumber,
+                           TRI_v8_global_t* v8g,
+                           v8::Isolate* isolate,
+                           v8::Handle<v8::ObjectTemplate>  ArangoDBNS);
+
 #endif
