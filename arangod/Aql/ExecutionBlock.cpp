@@ -35,7 +35,14 @@ using namespace triagens::aql;
 ExecutionBlock::~ExecutionBlock () {        
 }
 
-int ExecutionBlock::bind (std::map<std::string, struct TRI_json_s*>* params) {
+int ExecutionBlock::bind (AqlItemBlock* items, size_t pos) {
+  int res;
+  for (auto d : _dependencies) {
+    res = d->bind(items, pos);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  }
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -51,10 +58,8 @@ void ExecutionBlock::walk (WalkerWorker* worker) {
 
   worker->before(this);
   // Now the children in their natural order:
-  for (auto it = _dependencies.begin();
-            it != _dependencies.end();
-            ++it) {
-    (*it)->walk(worker);
+  for (auto c : _dependencies) {
+    c->walk(worker);
   }
   // Now handle a subquery:
   if (_exeNode->getType() == ExecutionNode::SUBQUERY) {
