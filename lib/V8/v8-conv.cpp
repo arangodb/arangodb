@@ -1501,6 +1501,11 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
     return TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, booleanParameter->Value());
   }
 
+  if (parameter->IsBooleanObject()) {
+    v8::Handle<v8::BooleanObject> bo = v8::Handle<v8::BooleanObject>::Cast(parameter);
+    return TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, bo->BooleanValue());
+  }
+
   if (parameter->IsNull()) {
     return TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE);
   }
@@ -1509,8 +1514,13 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
     v8::Handle<v8::Number> numberParameter = parameter->ToNumber();
     return TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, numberParameter->Value());
   }
+  
+  if (parameter->IsNumberObject()) {
+    v8::Handle<v8::NumberObject> no = v8::Handle<v8::NumberObject>::Cast(parameter);
+    return TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, no->NumberValue());
+  }
 
-  if (parameter->IsString()) {
+  if (parameter->IsString() || parameter->IsStringObject()) {
     v8::Handle<v8::String> stringParameter= parameter->ToString();
     TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, stringParameter);
     // move the string pointer into the JSON object
@@ -1523,9 +1533,9 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
       return j;
     }
 
-    return 0;
+    return nullptr;
   }
-
+  
   if (parameter->IsArray()) {
     v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
     const uint32_t n = arrayParameter->Length();
@@ -1543,6 +1553,13 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
       }
     }
     return listJson;
+  }
+  
+  if (parameter->IsRegExp() || 
+      parameter->IsFunction() || 
+      parameter->IsExternal() || 
+      parameter->IsDate()) {
+    return nullptr;
   }
 
   if (parameter->IsObject()) {
@@ -1597,7 +1614,7 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
     return arrayJson;
   }
 
-  return 0;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
