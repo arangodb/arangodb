@@ -219,6 +219,21 @@ namespace triagens {
 
       int compare (AqlValue const& right, TRI_document_collection_t const* collection){
         if (_type != right._type) {
+          if (_type == EMPTY) {
+            return -1;
+          }
+          if (right._type == EMPTY) {
+            return 1;
+          }
+          if (_type == JSON && right._type == SHAPED) {
+            triagens::basics::Json rjson = right.toJson(collection);
+            return TRI_CompareValuesJson(_json->json(), rjson.json());
+          }
+          if (_type == SHAPED && right._type == JSON) {
+            triagens::basics::Json ljson = toJson(collection);
+            return TRI_CompareValuesJson(ljson.json(), right._json->json());
+          }
+          // No other comparisons are defined
           TRI_ASSERT(false);
         }
         switch (_type) {
