@@ -30,6 +30,12 @@
 #ifndef ARANGODB_V8SERVER_V8__VOCBASE_PRIVATE_H
 #define ARANGODB_V8SERVER_V8__VOCBASE_PRIVATE_H
 
+#include "Basics/Common.h"
+#include "V8/v8-utils.h"
+#include "v8-vocbase.h"
+#include "Ahuacatl/ahuacatl-error.h"
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapped class for TRI_vocbase_t
 ///
