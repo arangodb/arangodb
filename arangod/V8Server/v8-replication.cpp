@@ -29,8 +29,7 @@
 
 #include "v8-vocbaseprivate.h"
 
-#include "Ahuacatl/ahuacatl-collections.h"
-#include "Aql/ExecutionBlock.h"
+#include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "Wal/LogfileManager.h"
 

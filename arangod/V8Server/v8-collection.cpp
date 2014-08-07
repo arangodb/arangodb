@@ -29,13 +29,19 @@
 
 #include "v8-collection.h"
 #include "v8-vocbaseprivate.h"
+#include "v8-wrapshapedjson.h"
 
 #include "Ahuacatl/ahuacatl-collections.h"
 #include "Ahuacatl/ahuacatl-explain.h"
-#include "Aql/ExecutionBlock.h"
-#include "Aql/Query.h"
+
 #include "Basics/Utf8Helper.h"
 #include "BasicsC/conversions.h"
+#include "BasicsC/json-utilities.h"
+#include "V8/v8-conv.h"
+#include "Utils/transactions.h"
+#include "Utils/V8TransactionContext.h"
+
+#include "Aql/Query.h"
 #include "Utils/V8ResolverGuard.h"
 #include "V8/v8-utils.h"
 #include "Wal/LogfileManager.h"

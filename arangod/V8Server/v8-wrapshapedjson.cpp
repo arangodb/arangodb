@@ -30,8 +30,11 @@
 #include "v8-wrapshapedjson.h"
 #include "v8-vocbaseprivate.h"
 
-#include "Aql/ExecutionBlock.h"
 #include "BasicsC/conversions.h"
+#include "V8/v8-conv.h"
+#include "Utils/transactions.h"
+#include "Utils/V8TransactionContext.h"
+
 
 using namespace std;
 using namespace triagens::basics;
