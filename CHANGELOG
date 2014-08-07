@@ -1,8 +1,63 @@
-v2.2.1 (XXXX-XX-XX)
+v2.2.2-rc1 (XXXX-XX-XX)
+-------------------
+
+* allow storing non-reserved attribute names starting with an underscore
+
+  Previous versions of ArangoDB parsed away all attribute names that started with an 
+  underscore (e.g. `_test', '_foo', `_bar`) on all levels of a document (root level
+  and sub-attribute levels). While this behavior was documented, it was unintuitive and
+  prevented storing documents inside other documents, e.g.:
+
+      {
+        "_key" : "foo",
+        "_type" : "mydoc",
+        "references" : [
+          {
+            "_key" : "something",
+            "_rev" : "...",
+            "value" : 1
+          },
+          { 
+            "_key" : "something else",
+            "_rev" : "...",
+            "value" : 2
+          }
+        ]
+      }
+
+  In the above example, previous versions of ArangoDB removed all attributes and
+  sub-attributes that started with underscores, meaning the embedded documents would lose
+  some of their attributes. 2.2.2 should preserve such attributes, and will also allow
+  storing user-defined attribute names on the top-level even if they start with underscores
+  (such as `_type` in the above example).
+
+* fix conversion of JavaScript String, Number and Boolean objects to JSON.
+
+  Objects created in JavaScript using `new Number(...)`, `new String(...)`, or
+  `new Boolean(...)` were not converted to JSON correctly.
+
+* fixed a race condition on task registration (i.e. `require("org/arangodb/tasks").register()`)
+
+  this race condition led to undefined behavior when a just-created task with no offset and
+  no period was instantly executed and deleted by the task scheduler, before the `register`
+  function returned to the caller.
+
+* changed run-tests.sh to execute all suitable tests.
+
+* switch to new version of gyp
+
+* fixed upgrade button
+
+
+v2.2.1 (2014-07-24)
 -------------------
 
 * fixed hanging write-ahead log recovery for certain cases that involved dropping
   databases
+
+* fixed issue with --check-version: when creating a new database the check failed
+
+* issue #947 Foxx applicationContext missing some properties
 
 * fixed issue with --check-version: when creating a new database the check failed
 

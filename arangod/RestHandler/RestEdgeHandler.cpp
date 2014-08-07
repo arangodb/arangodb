@@ -353,7 +353,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @startDocuBlock API_EDGE_READ
 /// @brief reads a single edge
 ///
-/// @RESTHEADER{GET /_api/edge/document-handle, Read edge}
+/// @RESTHEADER{GET /_api/edge/{document-handle}, Read edge}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -433,7 +433,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @startDocuBlock API_EDGE_READ_HEAD
 /// @brief reads a single edge head
 ///
-/// @RESTHEADER{HEAD /_api/edge/document-handle, Read edge header}
+/// @RESTHEADER{HEAD /_api/edge/{document-handle}, Read edge header}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -480,7 +480,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @startDocuBlock API_EDGE_REPLACE
 /// @brief replaces an edge
 ///
-/// @RESTHEADER{PUT /_api/edge/document-handle,replaces an edge}
+/// @RESTHEADER{PUT /_api/edge/{document-handle},replaces an edge}
 ///
 /// @RESTBODYPARAM{edge,json,required}
 /// A JSON representation of the new edge data.
@@ -608,7 +608,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @startDocuBlock API_EDGE_UPDATES
 /// @brief updates an edge
 ///
-/// @RESTHEADER{PATCH /_api/edge/document-handle, Patches edge}
+/// @RESTHEADER{PATCH /_api/edge/{document-handle}, Patches edge}
 ///
 /// @RESTBODYPARAM{document,json,required}
 /// A JSON representation of the edge update.
@@ -712,7 +712,7 @@ bool RestEdgeHandler::createDocumentCoordinator (string const& collname,
 /// @startDocuBlock API_EDGE_DELETE
 /// @brief deletes an edge
 ///
-/// @RESTHEADER{DELETE /_api/edge/document-handle, Deletes edge}
+/// @RESTHEADER{DELETE /_api/edge/{document-handle}, Deletes edge}
 ///
 /// @RESTURLPARAMETERS
 ///
