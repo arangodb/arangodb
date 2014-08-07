@@ -27,69 +27,15 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "v8-vocbase.h"
+#include "v8-vocbaseprivate.h"
 
-#include "Ahuacatl/ahuacatl-codegen.h"
 #include "Ahuacatl/ahuacatl-collections.h"
-#include "Ahuacatl/ahuacatl-context.h"
-#include "Ahuacatl/ahuacatl-explain.h"
-#include "Ahuacatl/ahuacatl-result.h"
 #include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionNode.h"
-#include "Aql/ExecutionPlan.h"
-#include "Aql/ExecutionEngine.h"
-#include "Aql/Query.h"
-#include "Basics/StringUtils.h"
-#include "Basics/Utf8Helper.h"
-#include "BasicsC/conversions.h"
-#include "BasicsC/files.h"
-#include "BasicsC/json.h"
-#include "BasicsC/json-utilities.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
-#include "CapConstraint/cap-constraint.h"
-#include "FulltextIndex/fulltext-index.h"
-#include "HttpServer/ApplicationEndpointServer.h"
-#include "Replication/InitialSyncer.h"
-#include "Rest/SslInterface.h"
-#include "ShapedJson/shape-accessor.h"
-#include "ShapedJson/shaped-json.h"
-#include "Utils/AhuacatlGuard.h"
-#include "Utils/AhuacatlTransaction.h"
-#include "Utils/DocumentHelper.h"
-#include "Utils/transactions.h"
-#include "Utils/V8ResolverGuard.h"
-#include "V8/v8-conv.h"
-#include "V8/v8-execution.h"
 #include "V8/v8-utils.h"
 #include "Wal/LogfileManager.h"
-#include "VocBase/auth.h"
-#include "VocBase/datafile.h"
-#include "VocBase/document-collection.h"
-#include "VocBase/edge-collection.h"
-#include "VocBase/general-cursor.h"
-#include "VocBase/key-generator.h"
-#include "VocBase/replication-applier.h"
+
 #include "VocBase/replication-dump.h"
-#include "VocBase/server.h"
-#include "VocBase/voc-shaper.h"
-#include "VocBase/index.h"
-#include "v8.h"
-#include "V8/JSLoader.h"
-#include "Basics/JsonHelper.h"
-#include "Cluster/AgencyComm.h"
-#include "Cluster/ClusterComm.h"
-#include "Cluster/ClusterInfo.h"
-#include "Cluster/ClusterMethods.h"
-#include "Cluster/ServerState.h"
-
-#include "unicode/timezone.h"
-#include "unicode/utypes.h"
-#include "unicode/datefmt.h"
-#include "unicode/smpdtfmt.h"
-#include "unicode/dtfmtsym.h"
-
-#include "v8-vocbaseprivate.h"
+#include "Replication/InitialSyncer.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -650,6 +596,7 @@ void TRI_InitV8replication (v8::Handle<v8::Context> context,
 			    JSLoader* loader,
 			    const size_t threadNumber,
 			    TRI_v8_global_t* v8g){
+
   // replication functions. not intended to be used by end users
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_STATE", JS_StateLoggerReplication, true);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_CONFIGURE", JS_ConfigureLoggerReplication, true);
@@ -663,6 +610,4 @@ void TRI_InitV8replication (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_SHUTDOWN", JS_ShutdownApplierReplication, true);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_STATE", JS_StateApplierReplication, true);
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_APPLIER_FORGET", JS_ForgetApplierReplication, true);
-
-
 }

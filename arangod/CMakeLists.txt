@@ -65,6 +65,7 @@ add_executable(
     Aql/ExecutionNode.cpp
     Aql/ExecutionPlan.cpp
     Aql/Expression.cpp
+    Aql/Function.cpp
     Aql/grammar.cpp
     Aql/Parser.cpp
     Aql/Query.cpp
@@ -72,6 +73,7 @@ add_executable(
     Aql/Types.cpp
     Aql/tokens.cpp
     Aql/V8Executor.cpp
+    Aql/V8Expression.cpp
     Aql/Variable.cpp
     Aql/VariableGenerator.cpp
     BitIndexes/bitarray.cpp

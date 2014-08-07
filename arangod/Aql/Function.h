@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, built-in function
+/// @brief Aql, built-in AQL function
 ///
 /// @file
 ///
@@ -43,19 +43,20 @@ namespace triagens {
 
       Function () = delete;
 
-      Function (std::string const& name,
-                std::string const& arguments,
-                bool isDeterministic)
-        : name(name),
-          arguments(arguments),
-          isDeterministic(isDeterministic) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the function
+////////////////////////////////////////////////////////////////////////////////
 
-        initArguments();
-      }
+      Function (std::string const&,
+                std::string const&,
+                bool);
 
-      ~Function () {
-      }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy the function
+////////////////////////////////////////////////////////////////////////////////
 
+      ~Function ();
+      
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
@@ -78,66 +79,19 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a positional argument needs to be converted from a
+/// collection parameter to a collection name parameter
+////////////////////////////////////////////////////////////////////////////////
+      
+      bool mustConvertArgument (size_t) const;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief parse the argument list and set the minimum and maximum number of
 /// arguments
 ////////////////////////////////////////////////////////////////////////////////
 
-      void initArguments () {
-        minRequiredArguments = maxRequiredArguments = 0;
-
-        // setup some parsing state
-        bool inOptional = false;
-        bool foundArg   = false;
-
-        char const* p = arguments.c_str();
-        while (true) {
-          char const c = *p++;
-
-          switch (c) {
-            case '\0':
-              // end of argument list
-              if (foundArg) {
-                if (! inOptional) {
-                  ++minRequiredArguments;
-                }
-                ++maxRequiredArguments;
-              }
-              return;
-
-            case '|':
-              // beginning of optional arguments
-              TRI_ASSERT(! inOptional);
-              if (foundArg) {
-                ++minRequiredArguments;
-                ++maxRequiredArguments;
-              }
-              inOptional = true;
-              foundArg = false;
-              break;
-
-            case ',':
-              // next argument
-              TRI_ASSERT(foundArg);
-
-              if (! inOptional) {
-                ++minRequiredArguments;
-              }
-              ++maxRequiredArguments;
-              foundArg = false;
-              break;
-
-            case '+':
-              // repeated optional argument
-              TRI_ASSERT(inOptional);
-              maxRequiredArguments = MaxArguments;
-              return;
-
-            default:
-              foundArg = true;
-          }
-        }
-      }
-
+      void initArguments ();
+      
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
@@ -160,6 +114,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       bool const           isDeterministic;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the function contains a collection parameter that
+/// will cause some special conversion during function calls
+////////////////////////////////////////////////////////////////////////////////
+
+      bool                 containsCollectionParameter;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief minimum number of required arguments
