@@ -32,6 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/Function.h"
+#include "V8/v8-globals.h"
 
 struct TRI_json_s;
 
@@ -92,6 +93,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Function const* getFunctionByName (std::string const&);
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a V8 exception has occurred and throws an appropriate C++ 
+/// exception from it if so
+////////////////////////////////////////////////////////////////////////////////
+
+        static void HandleV8Error (v8::TryCatch&,
+                                   v8::Handle<v8::Value>&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -207,17 +216,17 @@ namespace triagens {
 
         triagens::basics::StringBuffer* initBuffer ();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the contents of the string buffer
-////////////////////////////////////////////////////////////////////////////////
-
-        struct TRI_json_s* execute ();
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compile a V8 function from the code contained in the buffer
+////////////////////////////////////////////////////////////////////////////////
+  
+        v8::Handle<v8::Value> compileExpression ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a string buffer used for operations

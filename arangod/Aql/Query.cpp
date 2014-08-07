@@ -215,19 +215,12 @@ QueryResult Query::execute () {
       }
       catch (...) {
         delete engine;
-        delete plan;
-        // TODO: convert exception code
-        return QueryResult(TRI_ERROR_INTERNAL);
+        throw;
       }
-    }
-    catch (triagens::arango::Exception const& ex) {
-      delete plan;
-      return QueryResult(ex.code(), ex.message());
     }
     catch (...) {
       delete plan;
-      // TODO: convert exception code
-      return QueryResult(TRI_ERROR_INTERNAL);
+      throw;
     }
 
     delete plan;
