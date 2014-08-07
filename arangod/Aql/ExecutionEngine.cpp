@@ -111,6 +111,17 @@ struct Instanciator : public ExecutionNode::WalkerWorker {
         root = eb;
         break;
       }
+      case ExecutionNode::SUBQUERY: {
+        auto es = static_cast<SubqueryNode*>(en);
+        auto it = cache.find(es->getSubquery());
+
+        TRI_ASSERT(it != cache.end());
+
+        eb = new SubqueryBlock(engine->getTransaction(),
+                               static_cast<SubqueryNode const*>(en),
+                               it->second);
+        break;
+      }
       case ExecutionNode::SORT: {
         eb = new SortBlock(engine->getTransaction(),
                              static_cast<SortNode const*>(en));
