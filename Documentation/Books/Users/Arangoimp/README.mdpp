@@ -220,14 +220,9 @@ ArangoDB:
 - *_rev*: this attribute contains the revision number of a document. However, the
   revision numbers are managed by ArangoDB and cannot be specified on import. Thus 
   any value in this attribute is ignored on import.
-- all other attributes starting with an underscore are discarded on import without
-  any warnings.
 
 If you import values into *_key*, you should make sure they are valid and unique.
 
 When importing data into an edge collection, you should make sure that all import
 documents can *_from* and *_to* and that their values point to existing documents.
-
-Finally you should make sure that all other attributes in the import file do not
-start with an underscore - otherwise they might be discarded.
 

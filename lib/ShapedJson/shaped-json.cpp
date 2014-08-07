@@ -44,7 +44,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-static bool FillShapeValueJson (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TRI_json_t const* json, bool, bool);
+static bool FillShapeValueJson (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TRI_json_t const* json, size_t, bool, bool);
 static TRI_json_t* JsonShapeData (TRI_shaper_t* shaper, TRI_shape_t const* shape, char const* data, uint64_t size);
 static bool StringifyJsonShapeData (TRI_shaper_t* shaper, TRI_string_buffer_t* buffer, TRI_shape_t const* shape, char const* data, uint64_t size);
 
@@ -470,6 +470,7 @@ static bool FillShapeValueString (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
 static bool FillShapeValueList (TRI_shaper_t* shaper,
                                 TRI_shape_value_t* dst,
                                 TRI_json_t const* json,
+                                size_t level,
                                 bool create,
                                 bool isLocked) {
   size_t i, n;
@@ -506,7 +507,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
     dst->_size = sizeof(TRI_shape_length_list_t);
     dst->_value = (ptr = static_cast<char*>(TRI_Allocate(shaper->_memoryZone, dst->_size, false)));
 
-    if (dst->_value == NULL) {
+    if (dst->_value == nullptr) {
       return false;
     }
 
@@ -518,7 +519,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
   // convert into TRI_shape_value_t array
   p = (values = static_cast<TRI_shape_value_t*>(TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shape_value_t) * n, true)));
 
-  if (p == NULL) {
+  if (p == nullptr) {
     return false;
   }
 
@@ -526,12 +527,12 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
   e = values + n;
 
   for (i = 0;  i < n;  ++i, ++p) {
-    TRI_json_t const* el = (TRI_json_t const*) TRI_AtVector(&json->_value._objects, i);
-    bool ok = FillShapeValueJson(shaper, p, el, create, isLocked);
+    TRI_json_t const* el = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
+    bool ok = FillShapeValueJson(shaper, p, el, level + 1, create, isLocked);
 
     if (! ok) {
       for (e = p, p = values;  p < e;  ++p) {
-        if (p->_value != NULL) {
+        if (p->_value != nullptr) {
           TRI_Free(shaper->_memoryZone, p->_value);
         }
       }
@@ -774,6 +775,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
 static bool FillShapeValueArray (TRI_shaper_t* shaper,
                                  TRI_shape_value_t* dst,
                                  TRI_json_t const* json,
+                                 size_t level,
                                  bool create,
                                  bool isLocked) {
   size_t i, n;
@@ -808,7 +810,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
   // convert into TRI_shape_value_t array
   p = (values = static_cast<TRI_shape_value_t*>(TRI_Allocate(shaper->_memoryZone, n * sizeof(TRI_shape_value_t), true)));
 
-  if (p == NULL) {
+  if (p == nullptr) {
     return false;
   }
 
@@ -817,36 +819,49 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
   v = 0;
 
   for (i = 0;  i < n;  ++i, ++p) {
-    bool ok;
+    TRI_json_t const* key = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, 2 * i));
+    TRI_ASSERT(key != nullptr);
 
-    TRI_json_t* key = static_cast<TRI_json_t*>(TRI_AtVector(&json->_value._objects, 2 * i));
-    TRI_json_t* val = static_cast<TRI_json_t*>(TRI_AtVector(&json->_value._objects, 2 * i + 1));
+    char const* k = key->_value._string.data;
 
-    TRI_ASSERT(key != NULL);
-    TRI_ASSERT(val != NULL);
-
-    if (key->_value._string.data == NULL ||
-        key->_value._string.length == 1 ||
-        key->_value._string.data[0] == '_') {
-      // empty or reserved attribute name
+    if (k == nullptr ||
+        key->_value._string.length == 1) {
+      // empty attribute name
       p--;
       continue;
     }
 
+    if (*k == '_' && level == 0) {
+      // on top level, strip reserved attributes before shaping
+      if (strcmp(k, "_key") == 0 || 
+          strcmp(k, "_rev") == 0 ||
+          strcmp(k, "_id") == 0 ||
+          strcmp(k, "_from") == 0 ||
+          strcmp(k, "_to") == 0) {
+        // found a reserved attribute - discard it
+        --p;
+        continue;
+      }
+    }
+
     // first find an identifier for the name
-    p->_aid = shaper->findOrCreateAttributeByName(shaper, key->_value._string.data);
+    p->_aid = shaper->findOrCreateAttributeByName(shaper, k);
 
     // convert value
+    bool ok;
     if (p->_aid == 0) {
       ok = false;
     }
     else {
-      ok = FillShapeValueJson(shaper, p, val, create, isLocked);
+      TRI_json_t const* val = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, 2 * i + 1));
+      TRI_ASSERT(val != nullptr);
+
+      ok = FillShapeValueJson(shaper, p, val, level + 1, create, isLocked);
     }
 
     if (! ok) {
       for (e = p, p = values;  p < e;  ++p) {
-        if (p->_value != NULL) {
+        if (p->_value != nullptr) {
           TRI_Free(shaper->_memoryZone, p->_value);
         }
       }
@@ -893,13 +908,13 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
     + n * sizeof(TRI_shape_aid_t)
     + (f + 1) * sizeof(TRI_shape_size_t);
 
-  a = (TRI_array_shape_t*) (ptr = static_cast<char*>(TRI_Allocate(shaper->_memoryZone, i, true)));
+  a = reinterpret_cast<TRI_array_shape_t*>(ptr = static_cast<char*>(TRI_Allocate(shaper->_memoryZone, i, true)));
 
-  if (ptr == NULL) {
+  if (ptr == nullptr) {
     e = values + n;
 
     for (p = values;  p < e;  ++p) {
-      if (p->_value != NULL) {
+      if (p->_value != nullptr) {
         TRI_Free(shaper->_memoryZone, p->_value);
       }
     }
@@ -937,11 +952,11 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
   dst->_size = total;
   dst->_value = (ptr = static_cast<char*>(TRI_Allocate(shaper->_memoryZone, dst->_size, true)));
 
-  if (ptr == NULL) {
+  if (ptr == nullptr) {
     e = values + n;
 
     for (p = values;  p < e;  ++p) {
-      if (p->_value != NULL) {
+      if (p->_value != nullptr) {
         TRI_Free(shaper->_memoryZone, p->_value);
       }
     }
@@ -982,7 +997,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
 
   // free TRI_shape_value_t array
   for (p = values;  p < e;  ++p) {
-    if (p->_value != NULL) {
+    if (p->_value != nullptr) {
       TRI_Free(shaper->_memoryZone, p->_value);
     }
   }
@@ -992,7 +1007,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
   // lookup this shape
   found = shaper->findShape(shaper, &a->base, create);
 
-  if (found == NULL) {
+  if (found == nullptr) {
     TRI_Free(shaper->_memoryZone, a);
     return false;
   }
@@ -1009,6 +1024,7 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
 static bool FillShapeValueJson (TRI_shaper_t* shaper,
                                 TRI_shape_value_t* dst,
                                 TRI_json_t const* json,
+                                size_t level,
                                 bool create,
                                 bool isLocked) {
   switch (json->_type) {
@@ -1029,10 +1045,10 @@ static bool FillShapeValueJson (TRI_shaper_t* shaper,
       return FillShapeValueString(shaper, dst, json);
 
     case TRI_JSON_ARRAY:
-      return FillShapeValueArray(shaper, dst, json, create, isLocked);
+      return FillShapeValueArray(shaper, dst, json, level, create, isLocked);
 
     case TRI_JSON_LIST:
-      return FillShapeValueList(shaper, dst, json, create, isLocked);
+      return FillShapeValueList(shaper, dst, json, level, create, isLocked);
   }
 
   return false;
@@ -1143,8 +1159,8 @@ static TRI_json_t* JsonShapeDataArray (TRI_shaper_t* shaper,
   // create an array with the appropriate size
   array = TRI_CreateArray2Json(shaper->_memoryZone, (size_t) n);
 
-  if (array == NULL) {
-    return NULL;
+  if (array == nullptr) {
+    return nullptr;
   }
 
   qtr = (char const*) shape;
@@ -1159,7 +1175,7 @@ static TRI_json_t* JsonShapeDataArray (TRI_shaper_t* shaper,
   offsetsF = (TRI_shape_size_t const*) qtr;
 
   shapeCache._sid = 0;
-  shapeCache._shape = NULL;
+  shapeCache._shape = nullptr;
 
   for (i = 0;  i < f;  ++i, ++sids, ++aids, ++offsetsF) {
     TRI_shape_sid_t sid = *sids;
@@ -1180,21 +1196,21 @@ static TRI_json_t* JsonShapeDataArray (TRI_shaper_t* shaper,
       shapeCache._sid = sid;
     }
 
-    if (subshape == NULL) {
+    if (subshape == nullptr) {
       LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
       continue;
     }
 
     name = shaper->lookupAttributeId(shaper, aid);
 
-    if (name == NULL) {
+    if (name == nullptr) {
       LOG_WARNING("cannot find attribute #%u", (unsigned int) aid);
       continue;
     }
 
     element = JsonShapeData(shaper, subshape, data + offset, offsetsF[1] - offset);
 
-    if (element == NULL) {
+    if (element == nullptr) {
       LOG_WARNING("cannot decode element for shape #%u", (unsigned int) sid);
       continue;
     }
@@ -1224,21 +1240,21 @@ static TRI_json_t* JsonShapeDataArray (TRI_shaper_t* shaper,
       shapeCache._sid = sid;
     }
 
-    if (subshape == NULL) {
+    if (subshape == nullptr) {
       LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
       continue;
     }
 
     name = shaper->lookupAttributeId(shaper, aid);
 
-    if (name == NULL) {
+    if (name == nullptr) {
       LOG_WARNING("cannot find attribute #%u", (unsigned int) aid);
       continue;
     }
 
     element = JsonShapeData(shaper, subshape, data + offset, offsetsV[1] - offset);
 
-    if (element == NULL) {
+    if (element == nullptr) {
       LOG_WARNING("cannot decode element for shape #%u", (unsigned int) sid);
       continue;
     }
@@ -1250,7 +1266,7 @@ static TRI_json_t* JsonShapeDataArray (TRI_shaper_t* shaper,
   if (shaper->_memoryZone->_failed) {
     TRI_FreeJson(shaper->_memoryZone, array);
 
-    return NULL;
+    return nullptr;
   }
 
   return array;
@@ -1265,7 +1281,6 @@ static TRI_json_t* JsonShapeDataList (TRI_shaper_t* shaper,
                                       char const* data,
                                       uint64_t size) {
   char const* ptr;
-  TRI_json_t* list;
   TRI_shape_sid_t const* sids;
   TRI_shape_size_t const* offsets;
   TRI_shape_length_list_t l;
@@ -1276,10 +1291,10 @@ static TRI_json_t* JsonShapeDataList (TRI_shaper_t* shaper,
   l = * (TRI_shape_length_list_t const*) ptr;
 
   // create a list with the appropriate size
-  list = TRI_CreateList2Json(shaper->_memoryZone, (size_t) l);
+  TRI_json_t* list = TRI_CreateList2Json(shaper->_memoryZone, (size_t) l);
 
-  if (list == NULL) {
-    return NULL;
+  if (list == nullptr) {
+    return nullptr;
   }
 
   ptr += sizeof(TRI_shape_length_list_t);
@@ -1289,7 +1304,7 @@ static TRI_json_t* JsonShapeDataList (TRI_shaper_t* shaper,
   offsets = (TRI_shape_size_t const*) ptr;
 
   shapeCache._sid = 0;
-  shapeCache._shape = NULL;
+  shapeCache._shape = nullptr;
 
   for (i = 0;  i < l;  ++i, ++sids, ++offsets) {
     TRI_shape_sid_t sid = *sids;
@@ -1308,14 +1323,14 @@ static TRI_json_t* JsonShapeDataList (TRI_shaper_t* shaper,
       shapeCache._sid = sid;
     }
 
-    if (subshape == NULL) {
+    if (subshape == nullptr) {
       LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
       continue;
     }
 
     element = JsonShapeData(shaper, subshape, data + offset, offsets[1] - offset);
 
-    if (element == NULL) {
+    if (element == nullptr) {
       LOG_WARNING("cannot decode element for shape #%u", (unsigned int) sid);
       continue;
     }
@@ -1327,7 +1342,7 @@ static TRI_json_t* JsonShapeDataList (TRI_shaper_t* shaper,
   if (shaper->_memoryZone->_failed) {
     TRI_FreeJson(shaper->_memoryZone, list);
 
-    return NULL;
+    return nullptr;
   }
 
   return list;
@@ -1342,33 +1357,31 @@ static TRI_json_t* JsonShapeDataHomogeneousList (TRI_shaper_t* shaper,
                                                  char const* data,
                                                  uint64_t size) {
   TRI_homogeneous_list_shape_t const* s;
-  TRI_json_t* list;
   TRI_shape_length_list_t i;
   TRI_shape_length_list_t l;
   TRI_shape_sid_t sid;
   TRI_shape_size_t const* offsets;
-  TRI_shape_t const* subshape;
   char const* ptr;
 
   s = (TRI_homogeneous_list_shape_t const*) shape;
   sid = s->_sidEntry;
 
-  subshape = shaper->lookupShapeId(shaper, sid);
+  TRI_shape_t const* subshape = shaper->lookupShapeId(shaper, sid);
 
-  if (subshape == NULL) {
+  if (subshape == nullptr) {
     LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
 
-    return NULL;
+    return nullptr;
   }
 
   ptr = data;
   l = * (TRI_shape_length_list_t const*) ptr;
 
   // create a list with the appropriate size
-  list = TRI_CreateList2Json(shaper->_memoryZone, (size_t) l);
+  TRI_json_t* list = TRI_CreateList2Json(shaper->_memoryZone, (size_t) l);
 
-  if (list == NULL) {
-    return NULL;
+  if (list == nullptr) {
+    return nullptr;
   }
 
   ptr += sizeof(TRI_shape_length_list_t);
@@ -1382,7 +1395,7 @@ static TRI_json_t* JsonShapeDataHomogeneousList (TRI_shaper_t* shaper,
 
     element = JsonShapeData(shaper, subshape, data + offset, offsets[1] - offset);
 
-    if (element == NULL) {
+    if (element == nullptr) {
       LOG_WARNING("cannot decode element for shape #%u", (unsigned int) sid);
       continue;
     }
@@ -1394,7 +1407,7 @@ static TRI_json_t* JsonShapeDataHomogeneousList (TRI_shaper_t* shaper,
   if (shaper->_memoryZone->_failed) {
     TRI_FreeJson(shaper->_memoryZone, list);
 
-    return NULL;
+    return nullptr;
   }
 
   return list;
@@ -1409,34 +1422,32 @@ static TRI_json_t* JsonShapeDataHomogeneousSizedList (TRI_shaper_t* shaper,
                                                       char const* data,
                                                       uint64_t size) {
   TRI_homogeneous_sized_list_shape_t const* s;
-  TRI_json_t* list;
   TRI_shape_length_list_t i;
   TRI_shape_length_list_t l;
   TRI_shape_sid_t sid;
   TRI_shape_size_t length;
   TRI_shape_size_t offset;
-  TRI_shape_t const* subshape;
   char const* ptr;
 
   s = (TRI_homogeneous_sized_list_shape_t const*) shape;
   sid = s->_sidEntry;
 
-  subshape = shaper->lookupShapeId(shaper, sid);
+  TRI_shape_t const* subshape = shaper->lookupShapeId(shaper, sid);
 
-  if (subshape == NULL) {
+  if (subshape == nullptr) {
     LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
 
-    return NULL;
+    return nullptr;
   }
 
   ptr = data;
   l = * (TRI_shape_length_list_t const*) ptr;
 
   // create a list with the appropriate size
-  list = TRI_CreateList2Json(shaper->_memoryZone, (size_t) l);
+  TRI_json_t* list = TRI_CreateList2Json(shaper->_memoryZone, (size_t) l);
 
-  if (list == NULL) {
-    return NULL;
+  if (list == nullptr) {
+    return nullptr;
   }
 
   length = s->_sizeEntry;
@@ -1447,7 +1458,7 @@ static TRI_json_t* JsonShapeDataHomogeneousSizedList (TRI_shaper_t* shaper,
 
     element = JsonShapeData(shaper, subshape, data + offset, length);
 
-    if (element == NULL) {
+    if (element == nullptr) {
       LOG_WARNING("cannot decode element for shape #%u", (unsigned int) sid);
       continue;
     }
@@ -1467,8 +1478,8 @@ static TRI_json_t* JsonShapeData (TRI_shaper_t* shaper,
                                   TRI_shape_t const* shape,
                                   char const* data,
                                   uint64_t size) {
-  if (shape == NULL) {
-    return NULL;
+  if (shape == nullptr) {
+    return nullptr;
   }
 
   switch (shape->_type) {
@@ -2226,13 +2237,12 @@ TRI_shaped_json_t* TRI_ShapedJsonJson (TRI_shaper_t* shaper,
                                        bool create,
                                        bool isLocked) {
   TRI_shape_value_t dst;
-  bool ok;
 
   dst._value = 0;
-  ok = FillShapeValueJson(shaper, &dst, json, create, isLocked);
+  bool ok = FillShapeValueJson(shaper, &dst, json, 0, create, isLocked);
 
   if (! ok) {
-    return NULL;
+    return nullptr;
   }
 
 #ifdef DEBUG_JSON_SHAPER
@@ -2244,9 +2254,9 @@ TRI_shaped_json_t* TRI_ShapedJsonJson (TRI_shaper_t* shaper,
   // no need to prefill shaped with 0's as all attributes are set directly afterwards
   TRI_shaped_json_t* shaped = static_cast<TRI_shaped_json_t*>(TRI_Allocate(shaper->_memoryZone, sizeof(TRI_shaped_json_t), false));
 
-  if (shaped == NULL) {
+  if (shaped == nullptr) {
     TRI_Free(shaper->_memoryZone, dst._value);
-    return NULL;
+    return nullptr;
   }
 
   shaped->_sid = dst._sid;
