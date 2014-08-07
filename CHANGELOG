@@ -1,6 +1,11 @@
 v2.2.2-rc1 (XXXX-XX-XX)
 -------------------
 
+* fix conversion of JavaScript String, Number and Boolean objects to JSON.
+
+  Objects created in JavaScript using `new Number(...)`, `new String(...)`, or
+  `new Boolean(...)` were not converted to JSON correctly.
+
 * fixed a race condition on task registration (i.e. `require("org/arangodb/tasks").register()`)
 
   this race condition led to undefined behavior when a just-created task with no offset and
