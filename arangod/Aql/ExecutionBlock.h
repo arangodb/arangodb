@@ -389,7 +389,7 @@ namespace triagens {
       public:
 
         virtual AqlItemBlock* getOne () {
-          return getSome (1, 1);
+          return getSome(1, 1);
         }
         
         virtual AqlItemBlock* getSome (size_t atLeast, 
@@ -1060,7 +1060,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AqlItemBlock* getOne () {
-          
           if (_done) {
             return nullptr;
           }
@@ -1410,11 +1409,6 @@ namespace triagens {
         ExecutionBlock* _subquery;
     };
 
-
-////////////////////////////////////////////////////////////////////////////////l--------------------------------------------------------------------------------TODO
-
-
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       FilterBlock
 // -----------------------------------------------------------------------------
@@ -1502,40 +1496,6 @@ namespace triagens {
           }
 
           return true;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getOne
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlItemBlock* getOne () {
-          if (_done) {
-            return nullptr;
-          }
-
-          if (_buffer.empty()) {
-            if (! getBlock(1, DefaultBatchSize)) {
-              _done = true;
-              return nullptr;
-            }
-            _pos = 0;
-          }
-
-          TRI_ASSERT(! _buffer.empty());
-
-          // Here, _buffer.size() is > 0 and _pos points to a valid place
-          // in it.
-
-          AqlItemBlock* cur = _buffer.front();
-          AqlItemBlock* res = cur->slice(_chosen[_pos], _chosen[_pos+ 1]);
-          _pos++;
-
-          if (_pos >= _chosen.size()) {
-            _buffer.pop_front();
-            delete cur;
-            _pos = 0;
-          }
-          return res;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
