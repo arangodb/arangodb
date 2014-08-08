@@ -734,14 +734,15 @@ namespace triagens {
 /// @brief skip
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool skip (size_t number) {
+        size_t skipSome (size_t atLeast, size_t atMost) {
           if (_done) {
-            return true;
+            return 0; //nothing to skip
           }
-          if (number > 0) {
+          if (atLeast > 0) {
             _done = true;
+            return 1; // 1 thing to skip
           }
-          return _done;
+          return 0; // atLeast = 0, skip nothing . . . 
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1161,95 +1162,94 @@ namespace triagens {
         } 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief skip a number of outputs, return true if there is nothing further to
-//  come and false otherwise or if convenient.
+// skip between atLeast and atMost returns the number actually skipped . . . 
+// will only return less than atLeast if there aren't atLeast many
+// things to skip overall.
 ////////////////////////////////////////////////////////////////////////////////
 
-/*        bool skip (size_t number) {
+        size_t skipSome (size_t atLeast, size_t atMost) {
+          
+          size_t skipped = 0;
+
           if (_done) {
-            return true;
+            return skipped;
           }
 
-          if (_buffer.empty()) {
-            if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
-              _done = true;
-              return true;
+          while (skipped < atLeast) {
+            if (_buffer.empty()) {
+              if (! getBlock(DefaultBatchSize, DefaultBatchSize)){ 
+                _done = true;
+                break;
+              }
+              _pos = 0;
             }
-            _pos = 0;           // this is in the first block
-          }
 
-          // if we make it here, then _buffer.front() exists
-          AqlItemBlock* cur = _buffer.front();
+            // if we make it here, then _buffer.front() exists
+            AqlItemBlock* cur = _buffer.front();
           
-          // get the thing we are looping over 
-          AqlValue inVarReg = cur->getValue(_pos, _inVarRegId);
-          size_t sizeInVar;
-          
-          // get the size of the thing we are looping over
-          switch (inVarReg._type) {
-            case AqlValue::JSON: {
-              if(!inVarReg._json->isList()){
+            // get the thing we are looping over 
+            AqlValue inVarReg = cur->getValue(_pos, _inVarRegId);
+            size_t sizeInVar;
+            
+            // get the size of the thing we are looping over
+            switch (inVarReg._type) {
+              case AqlValue::JSON: {
+                if(!inVarReg._json->isList()){
+                  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+                }
+                sizeInVar = inVarReg._json->size();
+                break;
+              }
+              case AqlValue::RANGE: {
+                sizeInVar = inVarReg._range->_high - inVarReg._range->_low;
+                break;
+              }
+              case AqlValue::DOCVEC: {
+                  if(_index == 0){// this is a (maybe) new DOCVEC
+                    _DOCVECsize = 0;
+                    //we require the total number of items 
+                    for (size_t i = 0; i < inVarReg._vector->size(); i++) {
+                      _DOCVECsize += inVarReg._vector->at(i)->size();
+                    }
+                  }
+                  sizeInVar = _DOCVECsize;
+                break;
+              }
+              default: {
                 THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
               }
-              sizeInVar = inVarReg._json->size();
-              break;
             }
-            case AqlValue::RANGE: {
-              sizeInVar = inVarReg._range->_high - inVarReg._range->_low;
-              break;
-            }
-            case AqlValue::DOCVEC: {
-                if( _index == 0){// this is a (maybe) new DOCVEC
-                  _DOCVECsize = 0;
-                  //we require the total number of items 
-                  for (size_t i = 0; i < inVarReg._vector->size(); i++) {
-                    _DOCVECsize += inVarReg._vector->at(i)->size();
-                  }
+           
+            if(atMost < sizeInVar * (cur->size() - _pos) + (sizeInVar - _index)) {
+              // eat just enough of the current block!
+              size_t q = ((atMost - sizeInVar + _index) / sizeInVar) + 1; 
+              _pos += q;
+              _index = atMost + _index  - q * sizeInVar;
+              if (inVarReg._type == AqlValue::DOCVEC){
+                // handle _thisblock and _seen
+                _thisblock = 0;
+                _seen = 0;
+                while(_seen + inVarReg._vector->at(_thisblock + 1)->size() < _index){
+                  _seen += inVarReg._vector->at(_thisblock )->size();
+                  _thisblock++;
                 }
-                sizeInVar = _DOCVECsize;
-              break;
-            }
-            default: {
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-            }
-          }
-         
-          size_t toSkip = std::min(number, sizeInVar - _index); 
-
-          //create the result
-          auto res = new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]);
-          
-          inheritRegisters(cur, res, _pos);
-
-          // we don't have a collection
-          res->setDocumentCollection(cur->getNrRegs(), nullptr);
-
-          for (size_t j = 0; j < toSend; j++) {
-            if (j > 0) {
-              // re-use already copied aqlvalues
-              for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
-                res->setValue(j, i, res->getValue(0, i));
               }
+              skipped = atMost;
             }
-            // add the new register value . . .
-            res->setValue(j, cur->getNrRegs(), getAqlValue(inVarReg));
-            // deep copy of the inVariable.at(_pos) with correct memory
-            // requirements
-            ++_index; 
-          }
-          if (_index == sizeInVar) {
-            _index = 0;
-            _thisblock = 0;
-            _seen = 0;
-            // advance read position in the current block . . .
-            if (++_pos == cur->size() ) {
+            else {
+              // eat the whole of the current block and proceed . . .
+              skipped += sizeInVar * (cur->size() - _pos) + (sizeInVar - _index);
+              _index = 0;
+              _thisblock = 0;
+              _seen = 0;
               delete cur;
               _buffer.pop_front();
               _pos = 0;
             }
           }
-          return res;
-        } */
+            
+        return skipped;
+      } 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AqlValue from the inVariable using the current _index
