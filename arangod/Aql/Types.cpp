@@ -50,7 +50,6 @@ void AqlValue::destroy () {
         }
         delete _vector;
       }
-      delete _vector;
       break;
     }
     case RANGE: {
