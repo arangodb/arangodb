@@ -696,6 +696,10 @@ namespace triagens {
           if (_done) {
             return nullptr;
           }
+          std::cout << _depth << " ";
+          for (auto i: _varOverview->nrRegs)
+            std::cout << i << " ";
+          std::cout << "\n";
 
           AqlItemBlock* res = new AqlItemBlock(1, _varOverview->nrRegs[_depth]);
           if (_inputRegisterValues != nullptr) {
@@ -1376,21 +1380,44 @@ namespace triagens {
             return nullptr;
           }
           for (size_t i = 0; i < res->size(); i++) {
-            _subquery->initialize();
-            _subquery->bind(res, i);
-            _subquery->execute();
+            int ret;
+            ret = _subquery->initialize();
+            if (ret == TRI_ERROR_NO_ERROR) {
+              ret = _subquery->bind(res, i);
+            }
+            if (ret == TRI_ERROR_NO_ERROR) {
+              ret = _subquery->execute();
+            }
+            if (ret != TRI_ERROR_NO_ERROR) {
+              delete res;
+              THROW_ARANGO_EXCEPTION(ret);
+            }
+
             auto results = new std::vector<AqlItemBlock*>;
-            do {
-              auto tmp = _subquery->getSome(DefaultBatchSize, DefaultBatchSize);
-              if (tmp == nullptr) {
-                break;
+            try {
+              do {
+                auto tmp = _subquery->getSome(DefaultBatchSize, DefaultBatchSize);
+                if (tmp == nullptr) {
+                  break;
+                }
+                results->push_back(tmp);
               }
-              results->push_back(tmp);
-            } 
-            while(true);
+              while(true);
+            }
+            catch (...) {
+              delete res;
+              delete results;
+              throw;
+            }
 
             res->setValue(i, _outReg, AqlValue(results));
-            _subquery->shutdown();
+
+            ret = _subquery->shutdown();
+            if (ret != TRI_ERROR_NO_ERROR) {
+              delete res;
+              THROW_ARANGO_EXCEPTION(ret);
+            }
+
           }
           return res;
         }
