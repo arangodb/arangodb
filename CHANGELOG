@@ -1,4 +1,4 @@
-v2.2.2-rc1 (XXXX-XX-XX)
+v2.2.2 (2014-08-08)
 -------------------
 
 * allow storing non-reserved attribute names starting with an underscore
