@@ -1698,43 +1698,51 @@ namespace triagens {
           size_t total = 0;
           vector<AqlItemBlock*> collector;
           AqlItemBlock* res;
-          while (total < atLeast) {
-            if (_buffer.empty()) {
-              if (! getBlock(atLeast - total, atMost - total)) {
-                _done = true;
-                break;
+          try {
+            while (total < atLeast) {
+              if (_buffer.empty()) {
+                if (! getBlock(atLeast - total, atMost - total)) {
+                  _done = true;
+                  break;
+                }
+                _pos = 0;
               }
-              _pos = 0;
+              // If we get here, then _buffer.size() > 0 and _pos points to a
+              // valid place in it.
+              AqlItemBlock* cur = _buffer.front();
+              if (_chosen.size() - _pos + total > atMost) {
+                // The current block of chosen ones is too large for atMost:
+                collector.push_back(cur->slice(_chosen, 
+                                    _pos, _pos + (atMost - total)));
+                _pos += atMost - total;
+                total = atMost;
+              }
+              else if (_pos > 0 || _chosen.size() < cur->size()) {
+                // The current block fits into our result, but it is already
+                // half-eaten or needs to be copied anyway:
+                collector.push_back(cur->steal(_chosen, _pos, _chosen.size()));
+                total += _chosen.size() - _pos;
+                delete cur;
+                _buffer.pop_front();
+                _chosen.clear();
+                _pos = 0;
+              } 
+              else {
+                // The current block fits into our result and is fresh and
+                // takes them all, so we can just hand it on:
+                collector.push_back(cur);
+                total += cur->size();
+                _buffer.pop_front();
+                _chosen.clear();
+                _pos = 0;
+              }
             }
-            // If we get here, then _buffer.size() > 0 and _pos points to a
-            // valid place in it.
-            AqlItemBlock* cur = _buffer.front();
-            if (_chosen.size() - _pos + total > atMost) {
-              // The current block of chosen ones is too large for atMost:
-              collector.push_back(cur->slice(_chosen, 
-                                  _pos, _pos + (atMost - total)));
-              _pos += atMost - total;
-              total = atMost;
+          }
+          catch (...) {
+            for (auto c : collector) {
+              delete c;
             }
-            else if (_pos > 0 || _chosen.size() < cur->size()) {
-              // The current block fits into our result, but it is already
-              // half-eaten or needs to be copied anyway:
-              collector.push_back(cur->slice(_chosen, _pos, _chosen.size()));
-              total += _chosen.size() - _pos;
-              delete cur;
-              _buffer.pop_front();
-              _chosen.clear();
-              _pos = 0;
-            } 
-            else {
-              // The current block fits into our result and is fresh and
-              // takes them all, so we can just hand it on:
-              collector.push_back(cur);
-              total += cur->size();
-              _buffer.pop_front();
-              _chosen.clear();
-              _pos = 0;
-            }
+            throw;
           }
           if (collector.empty()) {
             return nullptr;
