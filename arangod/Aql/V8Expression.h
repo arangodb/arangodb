@@ -31,11 +31,14 @@
 #define ARANGODB_AQL_V8_EXPRESSION_H 1
 
 #include "Basics/Common.h"
+#include "Aql/AqlValue.h"
 #include "Aql/Types.h"
 #include <v8.h>
 
 namespace triagens {
   namespace aql {
+
+    struct Variable;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               struct V8Expression

@@ -32,16 +32,55 @@
 #include <ShapedJson/shaped-json.h>
 
 #include "Aql/Types.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionNode.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/transactions.h"
 #include "Utils/V8TransactionContext.h"
 
-struct TRI_json_s;
-
 namespace triagens {
   namespace aql {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   AggregatorGroup
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief details about the current group
+////////////////////////////////////////////////////////////////////////////////
+
+    struct AggregatorGroup {
+      std::vector<AqlValue> groupValues;
+      std::vector<TRI_document_collection_t const*> collections;
+
+      std::vector<AqlItemBlock*> groupBlocks;
+
+      size_t firstRow;
+      size_t lastRow;
+
+      ~AggregatorGroup () {
+        reset();
+      }
+          
+      void initialize (size_t capacity) {
+        groupValues.reserve(capacity);
+        collections.reserve(capacity);
+            
+        for (size_t i = 0; i < capacity; ++i) {
+          groupValues[i] = AqlValue();
+          collections[i] = nullptr;
+        }
+      }
+
+      void reset () {
+        for (auto it = groupBlocks.begin(); it != groupBlocks.end(); ++it) {
+          delete (*it);
+        }
+        groupBlocks.clear();
+      }
+
+    };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    ExecutionBlock
@@ -152,9 +191,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         struct VarInfo {
-          unsigned int depth;
-          RegisterId registerId;
-          VarInfo(int depth, int registerId) : depth(depth), registerId(registerId) {}
+          unsigned int const depth;
+          RegisterId const registerId;
+
+          VarInfo () = delete;
+          VarInfo (int depth, int registerId) : depth(depth), registerId(registerId) {
+          }
         };
 
         struct VarOverview : public WalkerWorker {
@@ -217,6 +259,7 @@ namespace triagens {
                 nrRegsHere.push_back(1);
                 nrRegs.push_back(1 + nrRegs.back());
                 auto ep = static_cast<EnumerateCollectionNode const*>(eb->getPlanNode());
+                TRI_ASSERT(ep != nullptr);
                 varInfo.insert(make_pair(ep->_outVariable->id,
                                          VarInfo(depth, totalNrRegs)));
                 totalNrRegs++;
@@ -227,6 +270,7 @@ namespace triagens {
                 nrRegsHere.push_back(1);
                 nrRegs.push_back(1 + nrRegs.back());
                 auto ep = static_cast<EnumerateListNode const*>(eb->getPlanNode());
+                TRI_ASSERT(ep != nullptr);
                 varInfo.insert(make_pair(ep->_outVariable->id,
                                          VarInfo(depth, totalNrRegs)));
                 totalNrRegs++;
@@ -236,6 +280,7 @@ namespace triagens {
                 nrRegsHere[depth]++;
                 nrRegs[depth]++;
                 auto ep = static_cast<CalculationNode const*>(eb->getPlanNode());
+                TRI_ASSERT(ep != nullptr);
                 varInfo.insert(make_pair(ep->_outVariable->id,
                                          VarInfo(depth, totalNrRegs)));
                 totalNrRegs++;
@@ -245,6 +290,7 @@ namespace triagens {
                 nrRegsHere[depth]++;
                 nrRegs[depth]++;
                 auto ep = static_cast<ProjectionNode const*>(eb->getPlanNode());
+                TRI_ASSERT(ep != nullptr);
                 varInfo.insert(make_pair(ep->_outVariable->id,
                                          VarInfo(depth, totalNrRegs)));
                 totalNrRegs++;
@@ -254,6 +300,7 @@ namespace triagens {
                 nrRegsHere[depth]++;
                 nrRegs[depth]++;
                 auto ep = static_cast<SubqueryNode const*>(eb->getPlanNode());
+                TRI_ASSERT(ep != nullptr);
                 varInfo.insert(make_pair(ep->_outVariable->id,
                                          VarInfo(depth, totalNrRegs)));
                 totalNrRegs++;
@@ -300,6 +347,10 @@ namespace triagens {
           }
 
         };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief static analysis
+////////////////////////////////////////////////////////////////////////////////
 
         void staticAnalysis (ExecutionBlock* super = nullptr);
 
@@ -547,7 +598,7 @@ namespace triagens {
           if (nr == 0) {
             return true;
           } 
-          return !hasMore();
+          return ! hasMore();
         }
 
         virtual int64_t count () {
@@ -730,14 +781,15 @@ namespace triagens {
 /// @brief skip
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool skip (size_t number) {
+        size_t skipSome (size_t atLeast, size_t atMost) {
           if (_done) {
-            return true;
+            return 0; //nothing to skip
           }
-          if (number > 0) {
+          if (atLeast > 0) {
             _done = true;
+            return 1; // 1 thing to skip
           }
-          return _done;
+          return 0; // atLeast = 0, skip nothing . . . 
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1159,95 +1211,94 @@ namespace triagens {
         } 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief skip a number of outputs, return true if there is nothing further to
-//  come and false otherwise or if convenient.
+// skip between atLeast and atMost returns the number actually skipped . . . 
+// will only return less than atLeast if there aren't atLeast many
+// things to skip overall.
 ////////////////////////////////////////////////////////////////////////////////
 
-/*        bool skip (size_t number) {
+        size_t skipSome (size_t atLeast, size_t atMost) {
+          
+          size_t skipped = 0;
+
           if (_done) {
-            return true;
+            return skipped;
           }
 
-          if (_buffer.empty()) {
-            if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
-              _done = true;
-              return true;
+          while (skipped < atLeast) {
+            if (_buffer.empty()) {
+              if (! getBlock(DefaultBatchSize, DefaultBatchSize)){ 
+                _done = true;
+                break;
+              }
+              _pos = 0;
             }
-            _pos = 0;           // this is in the first block
-          }
 
-          // if we make it here, then _buffer.front() exists
-          AqlItemBlock* cur = _buffer.front();
+            // if we make it here, then _buffer.front() exists
+            AqlItemBlock* cur = _buffer.front();
           
-          // get the thing we are looping over 
-          AqlValue inVarReg = cur->getValue(_pos, _inVarRegId);
-          size_t sizeInVar;
-          
-          // get the size of the thing we are looping over
-          switch (inVarReg._type) {
-            case AqlValue::JSON: {
-              if(!inVarReg._json->isList()){
+            // get the thing we are looping over 
+            AqlValue inVarReg = cur->getValue(_pos, _inVarRegId);
+            size_t sizeInVar;
+            
+            // get the size of the thing we are looping over
+            switch (inVarReg._type) {
+              case AqlValue::JSON: {
+                if(!inVarReg._json->isList()){
+                  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+                }
+                sizeInVar = inVarReg._json->size();
+                break;
+              }
+              case AqlValue::RANGE: {
+                sizeInVar = inVarReg._range->_high - inVarReg._range->_low;
+                break;
+              }
+              case AqlValue::DOCVEC: {
+                  if(_index == 0){// this is a (maybe) new DOCVEC
+                    _DOCVECsize = 0;
+                    //we require the total number of items 
+                    for (size_t i = 0; i < inVarReg._vector->size(); i++) {
+                      _DOCVECsize += inVarReg._vector->at(i)->size();
+                    }
+                  }
+                  sizeInVar = _DOCVECsize;
+                break;
+              }
+              default: {
                 THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
               }
-              sizeInVar = inVarReg._json->size();
-              break;
             }
-            case AqlValue::RANGE: {
-              sizeInVar = inVarReg._range->_high - inVarReg._range->_low;
-              break;
-            }
-            case AqlValue::DOCVEC: {
-                if( _index == 0){// this is a (maybe) new DOCVEC
-                  _DOCVECsize = 0;
-                  //we require the total number of items 
-                  for (size_t i = 0; i < inVarReg._vector->size(); i++) {
-                    _DOCVECsize += inVarReg._vector->at(i)->size();
-                  }
+           
+            if(atMost < sizeInVar * (cur->size() - _pos) + (sizeInVar - _index)) {
+              // eat just enough of the current block!
+              size_t q = ((atMost - sizeInVar + _index) / sizeInVar) + 1; 
+              _pos += q;
+              _index = atMost + _index  - q * sizeInVar;
+              if (inVarReg._type == AqlValue::DOCVEC){
+                // handle _thisblock and _seen
+                _thisblock = 0;
+                _seen = 0;
+                while(_seen + inVarReg._vector->at(_thisblock + 1)->size() < _index){
+                  _seen += inVarReg._vector->at(_thisblock )->size();
+                  _thisblock++;
                 }
-                sizeInVar = _DOCVECsize;
-              break;
-            }
-            default: {
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-            }
-          }
-         
-          size_t toSkip = std::min(number, sizeInVar - _index); 
-
-          //create the result
-          auto res = new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]);
-          
-          inheritRegisters(cur, res, _pos);
-
-          // we don't have a collection
-          res->setDocumentCollection(cur->getNrRegs(), nullptr);
-
-          for (size_t j = 0; j < toSend; j++) {
-            if (j > 0) {
-              // re-use already copied aqlvalues
-              for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
-                res->setValue(j, i, res->getValue(0, i));
               }
+              skipped = atMost;
             }
-            // add the new register value . . .
-            res->setValue(j, cur->getNrRegs(), getAqlValue(inVarReg));
-            // deep copy of the inVariable.at(_pos) with correct memory
-            // requirements
-            ++_index; 
-          }
-          if (_index == sizeInVar) {
-            _index = 0;
-            _thisblock = 0;
-            _seen = 0;
-            // advance read position in the current block . . .
-            if (++_pos == cur->size() ) {
+            else {
+              // eat the whole of the current block and proceed . . .
+              skipped += sizeInVar * (cur->size() - _pos) + (sizeInVar - _index);
+              _index = 0;
+              _thisblock = 0;
+              _seen = 0;
               delete cur;
               _buffer.pop_front();
               _pos = 0;
             }
           }
-          return res;
-        } */
+            
+        return skipped;
+      } 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AqlValue from the inVariable using the current _index
@@ -1363,6 +1414,7 @@ namespace triagens {
           for (auto it = inVars.begin(); it != inVars.end(); ++it) {            
             _inVars.push_back(*it);
             auto it2 = _varOverview->varInfo.find((*it)->id);
+
             TRI_ASSERT(it2 != _varOverview->varInfo.end());
             _inRegs.push_back(it2->second.registerId);
           }
@@ -1842,7 +1894,8 @@ namespace triagens {
         AggregateBlock (AQL_TRANSACTION_V8* trx,
                         ExecutionNode const* ep)
           : ExecutionBlock(trx, ep),
-            _collectDetails(false) { 
+            _groupRegister(0),
+            _variableNames() {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1878,17 +1931,29 @@ namespace triagens {
             auto it = _varOverview->varInfo.find(en->_outVariable->id);
             TRI_ASSERT(it != _varOverview->varInfo.end());
             _groupRegister = (*it).second.registerId;
-            _collectDetails = true;
+
+            TRI_ASSERT(_groupRegister > 0);
+
+            // construct a mapping of all register ids to variable names
+            // we need this mapping to generate the grouped output
+
+            for (size_t i = 0; i < _varOverview->varInfo.size(); ++i) {
+              _variableNames.push_back(""); // init with some default value
+            }
+
+            // iterate over all our variables
+            for (auto it = _varOverview->varInfo.begin(); it != _varOverview->varInfo.end(); ++it) {
+              // find variable in the global variable map
+              auto itVar = en->_variableMap.find((*it).first);
+
+              if (itVar != en->_variableMap.end()) {
+                _variableNames[(*it).second.registerId] = (*itVar).second;
+              }
+            }
           }
          
           // reserve space for the current row 
-          _currentGroup.groupValues.reserve(_aggregateRegisters.size());
-          _currentGroup.collections.reserve(_aggregateRegisters.size());
-
-          for (size_t i = 0; i < _aggregateRegisters.size(); ++i) {
-            _currentGroup.groupValues[i] = AqlValue();
-            _currentGroup.collections[i] = nullptr;
-          }
+          _currentGroup.initialize(_aggregateRegisters.size());
           
           return TRI_ERROR_NO_ERROR;
         }
@@ -1902,17 +1967,8 @@ namespace triagens {
             return nullptr;
           }
 
-std::cout << "AGGREGATE::GETSOME\n";
           if (_buffer.empty()) {
             if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
-
-                // return the last group if we're running out of input
-                // TODO: last group is lost at the moment
-//                auto res = new AqlItemBlock(1, _varOverview->nrRegs[_depth]);
-//                emitRow(res, 0, _previousRow);
-//                clearGroup();
-std::cout << "AGGREGATE::GETSOME - DONE\n";
-
               _done = true;
               return nullptr;
             }
@@ -1926,7 +1982,6 @@ std::cout << "AGGREGATE::GETSOME - DONE\n";
           auto res = new AqlItemBlock(atMost, _varOverview->nrRegs[_depth]);
           TRI_ASSERT(curRegs <= res->getNrRegs());
 
-std::cout << "POS: " << _pos << "\n";
           inheritRegisters(cur, res, _pos);
            
           size_t j = 0;
@@ -1938,18 +1993,16 @@ std::cout << "POS: " << _pos << "\n";
             if (_currentGroup.groupValues[0].isEmpty()) {
               // we never had any previous group
               newGroup = true;
-              std::cout << "NEED TO CREATE NEW GROUP\n";
             }
             else {
               // we already had a group, check if the group has changed
-              std::cout << "HAVE A GROUP\n";
               size_t i = 0;
 
               for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
-                int res = CompareAqlValues(_currentGroup.groupValues[i], 
-                                           _currentGroup.collections[i],
-                                           cur->getValue(_pos, (*it).second), 
-                                           cur->getDocumentCollection((*it).second));
+                int res = AqlValue::Compare(_currentGroup.groupValues[i], 
+                                            _currentGroup.collections[i],
+                                            cur->getValue(_pos, (*it).second), 
+                                            cur->getDocumentCollection((*it).second));
                 if (res != 0) {
                   // group change
                   newGroup = true;
@@ -1960,17 +2013,10 @@ std::cout << "POS: " << _pos << "\n";
             }
 
             if (newGroup) {
-              std::cout << "CREATING GROUP...\n";
               if (! _currentGroup.groupValues[0].isEmpty()) {
                 // need to emit the current group first
-              std::cout << "EMITTING OLD GROUP INTO ROW #" << j << "\n";
-                size_t i = 0;
-                for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
-              std::cout << "REGISTER #" << (*it).first << "\n";
-                  res->setValue(j, (*it).first, _currentGroup.groupValues[i]);
-                  ++i;
-                }
-            
+                emitGroup(cur, res, j);
+                // increase output row count
                 ++j;
               }
 
@@ -1979,30 +2025,89 @@ std::cout << "POS: " << _pos << "\n";
               for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
                 _currentGroup.groupValues[i] = cur->getValue(_pos, (*it).second).clone();
                 _currentGroup.collections[i] = cur->getDocumentCollection((*it).second);
-                std::cout << "GROUP VALUE #" << i << ": " << _currentGroup.groupValues[i].toString(_currentGroup.collections[i]) << "\n";
                 ++i;
               }
+              
+              _currentGroup.firstRow = _pos;
             }
 
-            if (_collectDetails) {
-//              _currentGroup.groupDetails.
-            }
+            _currentGroup.lastRow = _pos;
 
             if (++_pos >= cur->size()) {
               _buffer.pop_front();
-              delete cur;
               _pos = 0;
-std::cout << "SHRINKING BLOCK TO " << j << " ROWS\n";
-          res->shrink(j);
-              return res;
+           
+              bool hasMore = ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize);
+
+              if (! hasMore) {
+                try {
+                  emitGroup(cur, res, j);
+                  ++j;
+                  delete cur;
+                  cur = nullptr;
+
+                  TRI_ASSERT(j > 0);
+                  res->shrink(j);
+                
+                  _done = true;
+                  return res;
+                }
+                catch (...) {
+                  delete cur;
+                  throw;
+                }
+              }
+
+              // hasMore
+
+              delete cur;
+              cur = _buffer.front();
             }
           }
 
-std::cout << "SHRINKING BLOCK TO " << j << " ROWS\n";
+          TRI_ASSERT(j > 0);
           res->shrink(j);
 
           return res;
         }
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief writes the current group data into the result
+////////////////////////////////////////////////////////////////////////////////
+
+        void emitGroup (AqlItemBlock const* cur,
+                        AqlItemBlock* res, 
+                        size_t row) {
+          size_t i = 0;
+          for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
+            res->setValue(row, (*it).first, _currentGroup.groupValues[i]);
+            ++i;
+          }
+            
+          if (_groupRegister > 0) {
+            // emit group details
+            TRI_ASSERT(_currentGroup.firstRow <= _currentGroup.lastRow);
+
+            auto block = cur->slice(_currentGroup.firstRow, _currentGroup.lastRow + 1);
+            try {
+              _currentGroup.groupBlocks.push_back(block);
+            }
+            catch (...) {
+              delete block;
+              throw;
+            }
+
+            // finally set the group details
+            res->setValue(row, _groupRegister, AqlValue::CreateFromBlocks(_currentGroup.groupBlocks, _variableNames));
+
+            // and reset the group so a new one can start
+            _currentGroup.reset();
+          }
+        }
+
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pairs, consisting of out register and in register
@@ -2010,23 +2115,24 @@ std::cout << "SHRINKING BLOCK TO " << j << " ROWS\n";
 
         std::vector<std::pair<RegisterId, RegisterId>> _aggregateRegisters;
 
-        struct {
-          std::vector<AqlValue> groupValues;
-          std::vector<TRI_document_collection_t const*> collections;
-        }
-        _currentGroup;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief details about the current group
+////////////////////////////////////////////////////////////////////////////////
+
+        AggregatorGroup _currentGroup;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the optional register that contains the values for each group
+/// if no values should be returned, then this has a value of 0
 ////////////////////////////////////////////////////////////////////////////////
         
         RegisterId _groupRegister;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not elements should be collected for each group
+/// @brief list of variables names for the registers
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool _collectDetails;
+        std::vector<std::string> _variableNames;
 
     };
 
@@ -2193,11 +2299,11 @@ std::cout << "SHRINKING BLOCK TO " << j << " ROWS\n";
                              std::pair<size_t, size_t> const& b) {
 
               size_t i = 0;
-              for(auto reg: _sortRegisters){
-                int cmp = CompareAqlValues(_buffer[a.first]->getValue(a.second, reg.first),
-                                           _colls[i],
-                                           _buffer[b.first]->getValue(b.second, reg.first),
-                                           _colls[i]);
+              for(auto reg : _sortRegisters){
+                int cmp = AqlValue::Compare(_buffer[a.first]->getValue(a.second, reg.first),
+                                            _colls[i],
+                                            _buffer[b.first]->getValue(b.second, reg.first),
+                                            _colls[i]);
                 if(cmp == -1) {
                   return reg.second;
                 } 

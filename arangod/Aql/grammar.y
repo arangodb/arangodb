@@ -689,7 +689,8 @@ reference:
       // expanded variable access, e.g. variable[*]
 
       // create a temporary iterator variable
-      char const* iteratorName = parser->ast()->variables()->nextName().c_str();
+      std::string const nextName = parser->ast()->variables()->nextName();
+      char const* iteratorName = nextName.c_str();
       auto iterator = parser->ast()->createNodeIterator(iteratorName, $1);
 
       parser->pushStack(iterator);
@@ -701,7 +702,8 @@ reference:
       auto iterator = static_cast<AstNode*>(parser->popStack());
       auto expand = parser->ast()->createNodeExpand(iterator, $4);
       
-      char const* variableName = parser->ast()->variables()->nextName().c_str();
+      std::string const nextName = parser->ast()->variables()->nextName();
+      char const* variableName = nextName.c_str();
       auto let = parser->ast()->createNodeLet(variableName, expand, false);
       parser->ast()->addOperation(let);
       

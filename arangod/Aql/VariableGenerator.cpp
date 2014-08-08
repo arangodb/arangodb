@@ -60,6 +60,25 @@ VariableGenerator::~VariableGenerator () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a map of all variable ids with their names
+////////////////////////////////////////////////////////////////////////////////
+
+std::unordered_map<VariableId, std::string const> VariableGenerator::variables (bool includeTemporaries) const {
+  std::unordered_map<VariableId, std::string const> result;
+
+  for (auto it = _variables.begin(); it != _variables.end(); ++it) {
+    // check if we should include this variable...
+    if (! includeTemporaries && ! (*it).second->isUserDefined()) {
+      continue;
+    }
+
+    result.insert(std::make_pair((*it).first, (*it).second->name));
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a variable
 ////////////////////////////////////////////////////////////////////////////////
 

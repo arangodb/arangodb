@@ -1369,7 +1369,7 @@ AstNode* Ast::optimizeLet (AstNode* node,
     }  
   }
   else if (pass == 1) {
-    if (! v->isReferenceCounted()) {
+    if (! v->isReferenceCounted() && false) {
       // this optimizes away the assignment of variables which are never read
       // (i.e. assigned-only variables). this is currently not free of side-effects:
       // for example, in the following query, the variable 'x' would be optimized 
@@ -1381,6 +1381,9 @@ AstNode* Ast::optimizeLet (AstNode* node,
       // TODO: also decrease the refcount of all variables used in the expression
       // (i.e. getReferencedVariables(expression)). this might produce further unused
       // variables
+
+      // TODO: COLLECT needs all variables in the scope if they do not appear directly
+      // in any expression
       return createNodeNop();
     }
   }
