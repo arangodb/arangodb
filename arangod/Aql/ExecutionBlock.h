@@ -45,6 +45,46 @@ namespace triagens {
   namespace aql {
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   AggregatorGroup
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief details about the current group
+////////////////////////////////////////////////////////////////////////////////
+
+    struct AggregatorGroup {
+      std::vector<AqlValue> groupValues;
+      std::vector<TRI_document_collection_t const*> collections;
+
+      std::vector<AqlItemBlock*> groupBlocks;
+
+      size_t firstRow;
+      size_t lastRow;
+
+      ~AggregatorGroup () {
+        reset();
+      }
+          
+      void initialize (size_t capacity) {
+        groupValues.reserve(capacity);
+        collections.reserve(capacity);
+            
+        for (size_t i = 0; i < capacity; ++i) {
+          groupValues[i] = AqlValue();
+          collections[i] = nullptr;
+        }
+      }
+
+      void reset () {
+        for (auto it = groupBlocks.begin(); it != groupBlocks.end(); ++it) {
+          delete (*it);
+        }
+        groupBlocks.clear();
+      }
+
+    };
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    ExecutionBlock
 // -----------------------------------------------------------------------------
 
@@ -1892,13 +1932,6 @@ namespace triagens {
 
           if (_buffer.empty()) {
             if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
-
-                // return the last group if we're running out of input
-                // TODO: last group is lost at the moment
-//                auto res = new AqlItemBlock(1, _varOverview->nrRegs[_depth]);
-//                emitRow(res, 0, _previousRow);
-//                clearGroup();
-
               _done = true;
               return nullptr;
             }
@@ -1929,10 +1962,10 @@ namespace triagens {
               size_t i = 0;
 
               for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
-                int res = CompareAqlValues(_currentGroup.groupValues[i], 
-                                           _currentGroup.collections[i],
-                                           cur->getValue(_pos, (*it).second), 
-                                           cur->getDocumentCollection((*it).second));
+                int res = AqlValue::Compare(_currentGroup.groupValues[i], 
+                                            _currentGroup.collections[i],
+                                            cur->getValue(_pos, (*it).second), 
+                                            cur->getDocumentCollection((*it).second));
                 if (res != 0) {
                   // group change
                   newGroup = true;
@@ -2030,7 +2063,7 @@ namespace triagens {
             }
 
             // finally set the group details
-            res->setValue(row, _groupRegister, AqlValue::createFromBlocks(_currentGroup.groupBlocks, _variableNames));
+            res->setValue(row, _groupRegister, AqlValue::CreateFromBlocks(_currentGroup.groupBlocks, _variableNames));
 
             // and reset the group so a new one can start
             _currentGroup.reset();
@@ -2049,42 +2082,7 @@ namespace triagens {
 /// @brief details about the current group
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct Group {
-          std::vector<AqlValue> groupValues;
-          std::vector<TRI_document_collection_t const*> collections;
-
-          std::vector<AqlItemBlock*> groupBlocks;
-
-          size_t firstRow;
-          size_t lastRow;
-
-          ~Group () {
-            reset();
-          }
-          
-          void initialize (size_t capacity) {
-            groupValues.reserve(capacity);
-            collections.reserve(capacity);
-            
-            for (size_t i = 0; i < capacity; ++i) {
-              groupValues[i] = AqlValue();
-              collections[i] = nullptr;
-            }
-          }
-
-          void reset () {
-            for (auto it = groupBlocks.begin(); it != groupBlocks.end(); ++it) {
-              delete (*it);
-            }
-            groupBlocks.clear();
-          }
-        };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief details about the current group
-////////////////////////////////////////////////////////////////////////////////
-
-        Group _currentGroup;
+        AggregatorGroup _currentGroup;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the optional register that contains the values for each group
@@ -2264,11 +2262,11 @@ namespace triagens {
                              std::pair<size_t, size_t> const& b) {
 
               size_t i = 0;
-              for(auto reg: _sortRegisters){
-                int cmp = CompareAqlValues(_buffer[a.first]->getValue(a.second, reg.first),
-                                           _colls[i],
-                                           _buffer[b.first]->getValue(b.second, reg.first),
-                                           _colls[i]);
+              for(auto reg : _sortRegisters){
+                int cmp = AqlValue::Compare(_buffer[a.first]->getValue(a.second, reg.first),
+                                            _colls[i],
+                                            _buffer[b.first]->getValue(b.second, reg.first),
+                                            _colls[i]);
                 if(cmp == -1) {
                   return reg.second;
                 } 
