@@ -373,6 +373,25 @@ namespace triagens {
 
       protected:
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copy register data from one block (src) into another (dst)
+/// register values are either copied/cloned or stolen
+////////////////////////////////////////////////////////////////////////////////
+          
+        void inheritRegisters (AqlItemBlock const* src,
+                               AqlItemBlock* dst,
+                               size_t row) {
+          RegisterId const n = src->getNrRegs();
+
+          for (RegisterId i = 0; i < n; i++) {
+            dst->setValue(0, i, src->getValue(row, i).clone());
+
+            // copy collection
+            dst->setDocumentCollection(i, src->getDocumentCollection(i));
+          }
+        }
+
+
         bool getBlock (size_t atLeast, size_t atMost) {
           AqlItemBlock* docs = _dependencies[0]->getSome(atLeast, atMost);
           if (docs == nullptr) {
@@ -888,11 +907,9 @@ namespace triagens {
           TRI_ASSERT(curRegs <= res->getNrRegs());
 
           // only copy 1st row of registers inherited from previous frame(s)
-          for (RegisterId i = 0; i < curRegs; i++) {
-            res->setValue(0, i, cur->getValue(_pos, i).clone());
-            res->setDocumentCollection(i, cur->getDocumentCollection(i));
-          }
-          // inject our own collection
+          inheritRegisters(cur, res, _pos);
+
+          // set our collection for our output register
           res->setDocumentCollection(curRegs, _trx->documentCollection());
 
           for (size_t j = 0; j < toSend; j++) {
@@ -1093,11 +1110,9 @@ namespace triagens {
           //create the result
           auto res = new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]);
           
-          // copy 1st row of registers inherited from incoming block 
-          for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
-            res->setValue(0, i, cur->getValue(_pos, i).clone());
-            res->setDocumentCollection(i, cur->getDocumentCollection(i));
-          }
+          inheritRegisters(cur, res, _pos);
+
+          // we don't have a collection
           res->setDocumentCollection(cur->getNrRegs(), nullptr);
 
           for (size_t j = 0; j < toSend; j++) {
@@ -1357,7 +1372,9 @@ namespace triagens {
                 break;
               }
               results->push_back(tmp);
-            } while(true);
+            } 
+            while(true);
+
             res->setValue(i, _outReg, AqlValue(results));
             _subquery->shutdown();
           }
@@ -1681,10 +1698,8 @@ namespace triagens {
           if (j == 0) {
             // first row in block
             TRI_ASSERT(cur->getNrRegs() <= res->getNrRegs());
-            for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
-              res->setValue(0, i, cur->getValue(_pos, i).clone());
-              res->setDocumentCollection(i, cur->getDocumentCollection(i));
-            }
+          
+            inheritRegisters(cur, res, _pos);
           }
 
           for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
@@ -1738,10 +1753,7 @@ namespace triagens {
           auto res = new AqlItemBlock(atMost, _varOverview->nrRegs[_depth]);
           TRI_ASSERT(curRegs <= res->getNrRegs());
 
-          // only copy 1st row of registers inherited from previous frame(s)
-          for (RegisterId i = 0; i < curRegs; i++) {
-            res->setValue(0, i, cur->getValue(_pos, i).clone());
-          }
+          inheritRegisters(cur, res, _pos);
             
           readRow();
 
@@ -2163,8 +2175,7 @@ namespace triagens {
             stripped->setValue(i, 0, res->getValue(i, registerId));
             res->eraseValue(i, registerId);
           }
-          stripped->getDocumentCollections().at(0)
-              = res->getDocumentCollections().at(registerId);
+          stripped->setDocumentCollection(0, res->getDocumentCollection(registerId));
           delete res;
           return stripped;
         }
