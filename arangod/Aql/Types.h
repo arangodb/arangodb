@@ -353,9 +353,9 @@ namespace triagens {
 /// @brief setValue, set the current value of a register
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setValue (size_t index, RegisterId varNr, AqlValue zeug) {
+      void setValue (size_t index, RegisterId varNr, AqlValue value) {
         TRI_ASSERT(_data[index * _nrRegs + varNr].isEmpty());
-        _data[index * _nrRegs + varNr] = zeug;
+        _data[index * _nrRegs + varNr] = value;
       }
 
 ////////////////////////////////////////////////////////////////////////////////
