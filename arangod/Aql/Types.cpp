@@ -109,10 +109,13 @@ v8::Handle<v8::Value> AqlValue::toV8 (AQL_TRANSACTION_V8* trx,
                                       TRI_document_collection_t const* document) const {
   switch (_type) {
     case JSON: {
+      TRI_ASSERT(_json != nullptr);
       return TRI_ObjectJson(_json->json());
     }
 
     case SHAPED: {
+      TRI_ASSERT(document != nullptr);
+      TRI_ASSERT(_marker != nullptr);
       return TRI_WrapShapedJson<AQL_TRANSACTION_V8>(*trx, document->_info._cid, _marker);
     }
 
@@ -184,6 +187,9 @@ Json AqlValue::toJson (TRI_document_collection_t const* document) const {
     }
 
     case SHAPED: {
+      TRI_ASSERT(document != nullptr);
+      TRI_ASSERT(_marker != nullptr);
+
       TRI_shaper_t* shaper = document->getShaper();
       TRI_shaped_json_t shaped;
       TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, _marker);
