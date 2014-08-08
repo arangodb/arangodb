@@ -703,6 +703,10 @@ namespace triagens {
           if (_done) {
             return nullptr;
           }
+          std::cout << _depth << " ";
+          for (auto i: _varOverview->nrRegs)
+            std::cout << i << " ";
+          std::cout << "\n";
 
           AqlItemBlock* res = new AqlItemBlock(1, _varOverview->nrRegs[_depth]);
           if (_inputRegisterValues != nullptr) {
@@ -1475,21 +1479,44 @@ namespace triagens {
             return nullptr;
           }
           for (size_t i = 0; i < res->size(); i++) {
-            _subquery->initialize();
-            _subquery->bind(res, i);
-            _subquery->execute();
+            int ret;
+            ret = _subquery->initialize();
+            if (ret == TRI_ERROR_NO_ERROR) {
+              ret = _subquery->bind(res, i);
+            }
+            if (ret == TRI_ERROR_NO_ERROR) {
+              ret = _subquery->execute();
+            }
+            if (ret != TRI_ERROR_NO_ERROR) {
+              delete res;
+              THROW_ARANGO_EXCEPTION(ret);
+            }
+
             auto results = new std::vector<AqlItemBlock*>;
-            do {
-              auto tmp = _subquery->getSome(DefaultBatchSize, DefaultBatchSize);
-              if (tmp == nullptr) {
-                break;
+            try {
+              do {
+                auto tmp = _subquery->getSome(DefaultBatchSize, DefaultBatchSize);
+                if (tmp == nullptr) {
+                  break;
+                }
+                results->push_back(tmp);
               }
-              results->push_back(tmp);
-            } 
-            while(true);
+              while(true);
+            }
+            catch (...) {
+              delete res;
+              delete results;
+              throw;
+            }
 
             res->setValue(i, _outReg, AqlValue(results));
-            _subquery->shutdown();
+
+            ret = _subquery->shutdown();
+            if (ret != TRI_ERROR_NO_ERROR) {
+              delete res;
+              THROW_ARANGO_EXCEPTION(ret);
+            }
+
           }
           return res;
         }
@@ -1805,29 +1832,6 @@ namespace triagens {
           
           return TRI_ERROR_NO_ERROR;
         }
-/*
-        void emitRow (AqlItemBlock* res, 
-                      size_t j,
-                      AqlItemBlock* cur,
-                      void* row) {
-          std::cout << "EMIT ROW: " << j << "\n";
-
-          if (j == 0) {
-            // first row in block
-            TRI_ASSERT(cur->getNrRegs() <= res->getNrRegs());
-          
-            inheritRegisters(cur, res, _pos);
-          }
-
-          for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
-            // TODO: return the actual group values
-            res->setValue(j, (*it).first, AqlValue(new basics::Json(42)));
-          }
-          
-          clearGroup();
-        }
-
-*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getSome
@@ -1864,7 +1868,7 @@ std::cout << "AGGREGATE::GETSOME - DONE\n";
 
 std::cout << "POS: " << _pos << "\n";
           inheritRegisters(cur, res, _pos);
-            
+           
           size_t j = 0;
 
           while (j < atMost) {
@@ -1874,9 +1878,11 @@ std::cout << "POS: " << _pos << "\n";
             if (_currentGroup.groupValues[0].isEmpty()) {
               // we never had any previous group
               newGroup = true;
+              std::cout << "NEED TO CREATE NEW GROUP\n";
             }
             else {
               // we already had a group, check if the group has changed
+              std::cout << "HAVE A GROUP\n";
               size_t i = 0;
 
               for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
@@ -1894,13 +1900,18 @@ std::cout << "POS: " << _pos << "\n";
             }
 
             if (newGroup) {
+              std::cout << "CREATING GROUP...\n";
               if (! _currentGroup.groupValues[0].isEmpty()) {
                 // need to emit the current group first
+              std::cout << "EMITTING OLD GROUP INTO ROW #" << j << "\n";
                 size_t i = 0;
                 for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
+              std::cout << "REGISTER #" << (*it).first << "\n";
                   res->setValue(j, (*it).first, _currentGroup.groupValues[i]);
                   ++i;
                 }
+            
+                ++j;
               }
 
               // construct the new group
@@ -1908,7 +1919,7 @@ std::cout << "POS: " << _pos << "\n";
               for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
                 _currentGroup.groupValues[i] = cur->getValue(_pos, (*it).second).clone();
                 _currentGroup.collections[i] = cur->getDocumentCollection((*it).second);
-                // std::cout << "GROUP VALUE #" << i << ": " << _currentGroup.groupValues[i].toString(_currentGroup.collections[i]) << "\n";
+                std::cout << "GROUP VALUE #" << i << ": " << _currentGroup.groupValues[i].toString(_currentGroup.collections[i]) << "\n";
                 ++i;
               }
             }
@@ -1917,15 +1928,18 @@ std::cout << "POS: " << _pos << "\n";
 //              _currentGroup.groupDetails.
             }
 
-            ++j;
-            
             if (++_pos >= cur->size()) {
               _buffer.pop_front();
               delete cur;
               _pos = 0;
+std::cout << "SHRINKING BLOCK TO " << j << " ROWS\n";
+          res->shrink(j);
               return res;
             }
           }
+
+std::cout << "SHRINKING BLOCK TO " << j << " ROWS\n";
+          res->shrink(j);
 
           return res;
         }

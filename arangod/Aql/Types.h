@@ -330,9 +330,11 @@ namespace triagens {
 
         ~AqlItemBlock () {
           std::unordered_set<AqlValue> cache;
+
           for (size_t i = 0; i < _nrItems * _nrRegs; i++) {
             if (! _data[i].isEmpty()) {
               auto it = cache.find(_data[i]);
+
               if (it == cache.end()) {
                 cache.insert(_data[i]);
                 _data[i].destroy();
@@ -342,19 +344,45 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief shrink the block to the specified number of rows
+////////////////////////////////////////////////////////////////////////////////
+
+        void shrink (size_t nrItems) {
+          if (nrItems == _nrItems) {
+            // nothing to do
+            return;
+          }
+          if (nrItems > _nrItems) {
+            // cannot use shrink() to increase the size of the block
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+          }
+
+          // erase all stored values in the region that we freed
+          for (size_t i = nrItems; i < _nrItems; ++i) {
+            for (RegisterId j = 0; j < _nrRegs; ++j) {
+              eraseValue(i, j);
+            }
+          }
+
+          // adjust the size of the block
+          _nrItems = nrItems;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief getValue, get the value of a register
 ////////////////////////////////////////////////////////////////////////////////
 
-      AqlValue getValue (size_t index, RegisterId varNr) const {
-        return _data[index * _nrRegs + varNr];
-      }
+        AqlValue getValue (size_t index, RegisterId varNr) const {
+          return _data[index * _nrRegs + varNr];
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setValue, set the current value of a register
 ////////////////////////////////////////////////////////////////////////////////
 
       void setValue (size_t index, RegisterId varNr, AqlValue value) {
-        TRI_ASSERT(_data[index * _nrRegs + varNr].isEmpty());
+        TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
+        TRI_ASSERT(_data.at(index * _nrRegs + varNr).isEmpty());
         _data[index * _nrRegs + varNr] = value;
       }
 
@@ -363,121 +391,141 @@ namespace triagens {
 /// this is used if the value is stolen and later released from elsewhere
 ////////////////////////////////////////////////////////////////////////////////
 
-      void eraseValue (size_t index, RegisterId varNr) {
-        _data[index * _nrRegs + varNr].erase();
-      }
+        void eraseValue (size_t index, RegisterId varNr) {
+          _data[index * _nrRegs + varNr].erase();
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getDocumentCollection
 ////////////////////////////////////////////////////////////////////////////////
 
-      TRI_document_collection_t const* getDocumentCollection (RegisterId varNr) const {
-        return _docColls[varNr];
-      }
+        TRI_document_collection_t const* getDocumentCollection (RegisterId varNr) const {
+          return _docColls[varNr];
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setDocumentCollection, set the current value of a variable or attribute
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setDocumentCollection (RegisterId varNr, TRI_document_collection_t const* docColl) {
-        _docColls[varNr] = docColl;
-      }
+        void setDocumentCollection (RegisterId varNr, TRI_document_collection_t const* docColl) {
+          _docColls[varNr] = docColl;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getter for _nrRegs
 ////////////////////////////////////////////////////////////////////////////////
 
-      RegisterId getNrRegs () const {
-        return _nrRegs;
-      }
+        RegisterId getNrRegs () const {
+          return _nrRegs;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getter for _nrItems
 ////////////////////////////////////////////////////////////////////////////////
 
-      size_t size () const {
-        return _nrItems;
-      }
+        size_t size () const {
+          return _nrItems;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getter for _data
 ////////////////////////////////////////////////////////////////////////////////
 
-      vector<AqlValue>& getData () {
-        return _data;
-      }
+        vector<AqlValue>& getData () {
+          return _data;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getter for _docColls
 ////////////////////////////////////////////////////////////////////////////////
 
-      vector<TRI_document_collection_t const*>& getDocumentCollections () {
-        return _docColls;
-      }
+        vector<TRI_document_collection_t const*>& getDocumentCollections () {
+          return _docColls;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief slice/clone
 ////////////////////////////////////////////////////////////////////////////////
 
-      AqlItemBlock* slice (size_t from, size_t to) {
-        TRI_ASSERT(from < to && to <= _nrItems);
+        AqlItemBlock* slice (size_t from, size_t to) {
+          TRI_ASSERT(from < to && to <= _nrItems);
 
-        std::unordered_map<AqlValue, AqlValue> cache;
-        auto res = new AqlItemBlock(to - from, _nrRegs);
-        for (RegisterId col = 0; col < _nrRegs; col++) {
-          res->_docColls[col] = _docColls[col];
-        }
-        for (size_t row = from; row < to; row++) {
-          for (RegisterId col = 0; col < _nrRegs; col++) {
-            AqlValue& a(_data[row * _nrRegs + col]);
+          std::unordered_map<AqlValue, AqlValue> cache;
 
-            if (! a.isEmpty()) {
-              auto it = cache.find(a);
-              if (it == cache.end()) {
-                AqlValue b = a.clone();
-                res->_data[(row - from) * _nrRegs + col] = b;
-                cache.insert(make_pair(a,b));
-              }
-              else {
-                res->_data[(row - from) * _nrRegs + col] = it->second;
+          AqlItemBlock* res = nullptr;
+          try {
+            res = new AqlItemBlock(to - from, _nrRegs);
+
+            for (RegisterId col = 0; col < _nrRegs; col++) {
+              res->_docColls[col] = _docColls[col];
+            }
+            for (size_t row = from; row < to; row++) {
+              for (RegisterId col = 0; col < _nrRegs; col++) {
+                AqlValue& a(_data[row * _nrRegs + col]);
+
+                if (! a.isEmpty()) {
+                  auto it = cache.find(a);
+                  if (it == cache.end()) {
+                    AqlValue b = a.clone();
+                    res->_data[(row - from) * _nrRegs + col] = b;
+                    cache.insert(make_pair(a,b));
+                  }
+                  else {
+                    res->_data[(row - from) * _nrRegs + col] = it->second;
+                  }
+                }
               }
             }
+
+            return res;
+          }
+          catch (...) {
+            delete res;
+            throw;
           }
         }
-        return res;
-      }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief slice/clone for a subset
 ////////////////////////////////////////////////////////////////////////////////
 
-      AqlItemBlock* slice (vector<size_t>& chosen, size_t from, size_t to) {
-        TRI_ASSERT(from < to && to <= chosen.size());
+        AqlItemBlock* slice (vector<size_t>& chosen, size_t from, size_t to) {
+          TRI_ASSERT(from < to && to <= chosen.size());
 
-        std::unordered_map<AqlValue, AqlValue> cache;
-        auto res = new AqlItemBlock(to - from, _nrRegs);
-        for (RegisterId col = 0; col < _nrRegs; col++) {
-          res->_docColls[col] = _docColls[col];
-        }
-        for (size_t row = from; row < to; row++) {
-          for (RegisterId col = 0; col < _nrRegs; col++) {
-            AqlValue& a(_data[chosen[row] * _nrRegs + col]);
+          std::unordered_map<AqlValue, AqlValue> cache;
 
-            if (! a.isEmpty()) {
-              auto it = cache.find(a);
-              if (it == cache.end()) {
-                AqlValue b = a.clone();
-                res->_data[(row - from) * _nrRegs + col] = b;
-                cache.insert(make_pair(a,b));
-              }
-              else {
-                res->_data[(row - from) * _nrRegs + col] = it->second;
+          AqlItemBlock* res = nullptr;
+          try {
+            res = new AqlItemBlock(to - from, _nrRegs);
+
+            for (RegisterId col = 0; col < _nrRegs; col++) {
+              res->_docColls[col] = _docColls[col];
+            }
+            for (size_t row = from; row < to; row++) {
+              for (RegisterId col = 0; col < _nrRegs; col++) {
+                AqlValue& a(_data[chosen[row] * _nrRegs + col]);
+
+                if (! a.isEmpty()) {
+                  auto it = cache.find(a);
+                  if (it == cache.end()) {
+                    AqlValue b = a.clone();
+                    res->_data[(row - from) * _nrRegs + col] = b;
+                    cache.insert(make_pair(a,b));
+                  }
+                  else {
+                    res->_data[(row - from) * _nrRegs + col] = it->second;
+                  }
+                }
               }
             }
+          
+            return res;
+          }
+          catch (...) {
+            delete res;
+            throw;
           }
         }
-        return res;
-      }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief splice multiple blocks, note that the new block now owns all
@@ -485,7 +533,7 @@ namespace triagens {
 /// set to nullptr, just to be sure.
 ////////////////////////////////////////////////////////////////////////////////
 
-      static AqlItemBlock* splice(std::vector<AqlItemBlock*>& blocks);
+        static AqlItemBlock* splice (std::vector<AqlItemBlock*>& blocks);
 
     };
 
