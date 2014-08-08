@@ -123,6 +123,8 @@ v8::Handle<v8::Value> AqlValue::toV8 (AQL_TRANSACTION_V8* trx,
     }
 
     case DOCVEC: {
+      TRI_ASSERT(_vector != nullptr);
+
       // calculate the result list length
       size_t totalSize = 0;
       for (auto it = _vector->begin(); it != _vector->end(); ++it) {
@@ -239,11 +241,42 @@ Json AqlValue::toJson (TRI_document_collection_t const* document) const {
     }
           
     case DOCVEC: {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+      TRI_ASSERT(_vector != nullptr);
+
+      // calculate the result list length
+      size_t totalSize = 0;
+      for (auto it = _vector->begin(); it != _vector->end(); ++it) {
+        totalSize += (*it)->size();
+      }
+
+      // allocate the result list
+      Json json(Json::List, static_cast<size_t>(totalSize));
+
+      for (auto it = _vector->begin(); it != _vector->end(); ++it) {
+        auto current = (*it);
+        size_t const n = current->size();
+        auto vecCollection = current->getDocumentCollection(0);
+        for (size_t i = 0; i < n; ++i) {
+          json.add(current->getValue(i, 0).toJson(vecCollection));
+        }
+      }
+
+      return json;
     }
           
     case RANGE: {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+      TRI_ASSERT(_range != nullptr);
+
+      // allocate the buffer for the result
+      int64_t const n = _range->_high - _range->_low + 1;
+      Json json(Json::List, static_cast<size_t>(n));
+
+      for (int64_t i = _range->_low; i <= _range->_high; ++i) {
+        // is it safe to use a double here (precision loss)?
+        json.add(Json(static_cast<double>(i)));
+      }
+
+      return json;
     }
 
     case EMPTY: {

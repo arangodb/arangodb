@@ -696,10 +696,6 @@ namespace triagens {
           if (_done) {
             return nullptr;
           }
-          std::cout << _depth << " ";
-          for (auto i: _varOverview->nrRegs)
-            std::cout << i << " ";
-          std::cout << "\n";
 
           AqlItemBlock* res = new AqlItemBlock(1, _varOverview->nrRegs[_depth]);
           if (_inputRegisterValues != nullptr) {
@@ -1209,7 +1205,9 @@ namespace triagens {
 
         CalculationBlock (AQL_TRANSACTION_V8* trx,
                           CalculationNode const* en)
-          : ExecutionBlock(trx, en), _expression(en->expression()), _outReg(0) {
+          : ExecutionBlock(trx, en), 
+            _expression(en->expression()), 
+            _outReg(0) {
 
         }
 
@@ -1226,12 +1224,12 @@ namespace triagens {
 
         int initialize () {
           int res = ExecutionBlock::initialize();
+
           if (res != TRI_ERROR_NO_ERROR) {
             return res;
           }
 
           // We know that staticAnalysis has been run, so _varOverview is set up
-
           auto en = static_cast<CalculationNode const*>(getPlanNode());
 
           std::unordered_set<Variable*> inVars = _expression->variables();
@@ -1241,6 +1239,14 @@ namespace triagens {
             auto it2 = _varOverview->varInfo.find((*it)->id);
             TRI_ASSERT(it2 != _varOverview->varInfo.end());
             _inRegs.push_back(it2->second.registerId);
+          }
+          
+          // check if the expression is "only" a reference to another variable
+          // this allows further optimizations inside doEvaluation
+          _isReference = (_expression->node()->type == NODE_TYPE_REFERENCE);
+
+          if (_isReference) {
+            TRI_ASSERT(_inRegs.size() == 1);
           }
 
           auto it3 = _varOverview->varInfo.find(en->_outVariable->id);
@@ -1259,18 +1265,31 @@ namespace triagens {
         void doEvaluation (AqlItemBlock* result) {
           TRI_ASSERT(result != nullptr);
 
-          vector<AqlValue>& data(result->getData());
-          vector<TRI_document_collection_t const*> 
-              docColls(result->getDocumentCollections());
+          size_t const n = result->size();
+          if (_isReference) {
+            // the expression is a reference to a variable only.
+            // no need to execute the expression at all
+            result->setDocumentCollection(_outReg, result->getDocumentCollection(_inRegs[0]));
 
-          RegisterId nrRegs = result->getNrRegs();
+            for (size_t i = 0; i < n; i++) {
+              // must clone, otherwise all the results become invalid
+              result->setValue(i, _outReg, result->getValue(i, _inRegs[0]).clone());
+            }
+          }
+          else {
+            vector<AqlValue>& data(result->getData());
+            vector<TRI_document_collection_t const*> docColls(result->getDocumentCollections());
 
-          for (size_t i = 0; i < result->size(); i++) {
-            AqlValue res = _expression->execute(_trx, docColls, data, nrRegs * i,
-                                                _inVars, _inRegs);
-            result->setValue(i, _outReg, res);
+            RegisterId nrRegs = result->getNrRegs();
+            result->setDocumentCollection(_outReg, nullptr);
+            for (size_t i = 0; i < n; i++) {
+              // need to execute the expression
+              result->setValue(i, _outReg, _expression->execute(_trx, docColls, data, nrRegs * i, _inVars, _inRegs));
+            }
           }
         }
+
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getSome
@@ -1318,6 +1337,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         RegisterId _outReg;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the expression is a simple variable reference
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _isReference;
 
     };
 
