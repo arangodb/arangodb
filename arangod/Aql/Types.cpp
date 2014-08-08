@@ -288,6 +288,47 @@ Json AqlValue::toJson (TRI_document_collection_t const* document) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AqlValue from a vector of AqlItemBlock*s
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue AqlValue::createFromBlocks (std::vector<AqlItemBlock*> const& src,
+                                     std::vector<std::string> const& variableNames) {
+  size_t totalSize = 0;
+
+  for (auto it = src.begin(); it != src.end(); ++it) {
+    totalSize += (*it)->size();
+  }
+
+  auto json = new Json(Json::List, totalSize);
+
+  try {
+    for (auto it = src.begin(); it != src.end(); ++it) {
+      auto current = (*it);
+      RegisterId const n = current->getNrRegs();
+
+      for (size_t i = 0; i < current->size(); ++i) {
+        Json values(Json::Array);
+
+        for (RegisterId j = 0; j < n; ++j) {
+          if (variableNames[j][0] != '\0') {
+            // temporaries don't have a name and won't be included
+            values.set(variableNames[j].c_str(), current->getValue(i, j).toJson(current->getDocumentCollection(j)));
+          }
+        }
+
+        json->add(values);
+      }
+    }
+
+    return AqlValue(json);
+  }
+  catch (...) {
+    delete json;
+    throw;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief splice multiple blocks, note that the new block now owns all
 /// AqlValue pointers in the old blocks, therefore, the latter are all
 /// set to nullptr, just to be sure.
