@@ -171,6 +171,9 @@ namespace triagens {
           // in nrRegsHere from index 0 to i (inclusively) and the two
           // have the same length:
           std::vector<RegisterId>                 nrRegs;
+          
+          // We collect the subquery blocks to deal with them at the end:
+          std::vector<ExecutionBlock*>            subQueries;
 
           // Local for the walk:
           unsigned int depth;
@@ -190,9 +193,11 @@ namespace triagens {
           }
 
           // Copy constructor used for a subquery:
-          VarOverview (VarOverview const& v) 
+          VarOverview (VarOverview const& v, unsigned int newdepth) 
             : varInfo(v.varInfo), nrRegsHere(v.nrRegsHere), nrRegs(v.nrRegs),
-              depth(v.depth+1), totalNrRegs(v.totalNrRegs), me(nullptr) {
+              depth(newdepth+1), totalNrRegs(v.nrRegs[newdepth]), me(nullptr) {
+            nrRegs.resize(depth);
+            nrRegsHere.resize(depth);
             nrRegsHere.push_back(0);
             nrRegs.push_back(nrRegs.back());
           }
@@ -201,10 +206,6 @@ namespace triagens {
 
           virtual bool enterSubquery (ExecutionBlock* super,
                                       ExecutionBlock* sub) {
-            shared_ptr<VarOverview> vv(new VarOverview(*this));
-            vv->setSharedPtr(&vv);
-            sub->walk(vv.get());
-            vv->reset();
             return false;  // do not walk into subquery
           }
 
@@ -255,6 +256,7 @@ namespace triagens {
                 varInfo.insert(make_pair(ep->_outVariable->id,
                                          VarInfo(depth, totalNrRegs)));
                 totalNrRegs++;
+                subQueries.push_back(eb);
                 break;
               }
               case ExecutionNode::AGGREGATE: {
@@ -290,9 +292,19 @@ namespace triagens {
         };
 
         void staticAnalysis () {
-          shared_ptr<VarOverview> v(new VarOverview());
+          shared_ptr<VarOverview> v;
+          if (_varOverview.get() == nullptr) {
+            v.reset(new VarOverview());
+          }
+          else {
+            v.reset(new VarOverview(*_varOverview, _depth));
+          }
           v->setSharedPtr(&v);
           walk(v.get());
+          // Now handle the subqueries:
+          for (auto s : v->subQueries) {
+            s->staticAnalysis();
+          }
           v->reset();
         }
 
