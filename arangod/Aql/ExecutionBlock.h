@@ -1388,6 +1388,7 @@ namespace triagens {
           for (auto it = inVars.begin(); it != inVars.end(); ++it) {            
             _inVars.push_back(*it);
             auto it2 = _varOverview->varInfo.find((*it)->id);
+
             TRI_ASSERT(it2 != _varOverview->varInfo.end());
             _inRegs.push_back(it2->second.registerId);
           }

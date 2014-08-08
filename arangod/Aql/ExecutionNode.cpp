@@ -27,6 +27,7 @@
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/Collection.h"
+#include "Aql/WalkerWorker.h"
 
 using namespace triagens::basics;
 using namespace triagens::aql;
@@ -52,39 +53,6 @@ Json ExecutionNode::toJson (TRI_memory_zone_t* zone) {
   catch (std::exception& e) {
     return Json();
   }
-  return json;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief toJsonHelper, for a generic node
-////////////////////////////////////////////////////////////////////////////////
-
-Json ExecutionNode::toJsonHelperGeneric (std::map<ExecutionNode*, int>& indexTab,
-                                         triagens::basics::Json& nodes,
-                                         TRI_memory_zone_t* zone) {
-  auto iter = indexTab.find(this);
-  if (iter != indexTab.end()) {
-    return Json();
-  }
-
-  for (size_t i = 0; i < _dependencies.size(); i++) {
-    _dependencies[i]->toJsonHelper(indexTab, nodes, zone);
-  }
-  Json json;
-  json = Json(Json::Array,2)
-           ("type", Json(getTypeString()));
-  Json deps(Json::List, _dependencies.size());
-  for (size_t i = 0; i < _dependencies.size(); i++) {
-    auto it = indexTab.find(_dependencies[i]);
-    if (it != indexTab.end()) {
-      deps(Json(static_cast<double>(it->second)));
-    }
-    else {
-      deps(Json("unknown"));
-    }
-  }
-  json("dependencies", deps);
-  json("index", Json(static_cast<double>(nodes.size())));
 
   return json;
 }
@@ -93,14 +61,11 @@ Json ExecutionNode::toJsonHelperGeneric (std::map<ExecutionNode*, int>& indexTab
 /// @brief convert to a string, basically for debugging purposes
 ////////////////////////////////////////////////////////////////////////////////
 
-static void someSpaces (std::string& st, int nr) {
-  for (int i = 0; i < nr; i++) {
+void ExecutionNode::appendAsString (std::string& st, int indent) {
+  for (int i = 0; i < indent; i++) {
     st.push_back(' ');
   }
-}
-
-void ExecutionNode::appendAsString (std::string& st, int indent) {
-  someSpaces(st, indent);
+  
   st.push_back('<');
   st.append(getTypeString());
   if (_dependencies.size() != 0) {
@@ -147,17 +112,54 @@ void ExecutionNode::walk (WalkerWorker* worker) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                methods of SingletonNode
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJsonHelper, for a generic node
+////////////////////////////////////////////////////////////////////////////////
+
+Json ExecutionNode::toJsonHelperGeneric (std::map<ExecutionNode*, int>& indexTab,
+                                         triagens::basics::Json& nodes,
+                                         TRI_memory_zone_t* zone) {
+  auto iter = indexTab.find(this);
+  if (iter != indexTab.end()) {
+    return Json();
+  }
+
+  for (size_t i = 0; i < _dependencies.size(); i++) {
+    _dependencies[i]->toJsonHelper(indexTab, nodes, zone);
+  }
+  Json json;
+  json = Json(Json::Array,2)
+           ("type", Json(getTypeString()));
+  Json deps(Json::List, _dependencies.size());
+  for (size_t i = 0; i < _dependencies.size(); i++) {
+    auto it = indexTab.find(_dependencies[i]);
+    if (it != indexTab.end()) {
+      deps(Json(static_cast<double>(it->second)));
+    }
+    else {
+      deps(Json("unknown"));
+    }
+  }
+  json("dependencies", deps);
+  json("index", Json(static_cast<double>(nodes.size())));
+
+  return json;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          methods of SingletonNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson, for SingletonNode
 ////////////////////////////////////////////////////////////////////////////////
 
-void SingletonNode::toJsonHelper (
-                std::map<ExecutionNode*, int>& indexTab,
-                triagens::basics::Json& nodes,
-                TRI_memory_zone_t* zone) {
+void SingletonNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
+                                  triagens::basics::Json& nodes,
+                                  TRI_memory_zone_t* zone) {
   Json json(ExecutionNode::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
   if (json.isEmpty()) {
     return;

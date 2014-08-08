@@ -30,6 +30,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/WalkerWorker.h"
 #include "Utils/Exception.h"
 
 using namespace triagens::aql;
@@ -68,7 +69,7 @@ ExecutionEngine::~ExecutionEngine () {
 // --SECTION--                     walker class for ExecutionNode to instanciate
 // -----------------------------------------------------------------------------
 
-struct Instanciator : public ExecutionNode::WalkerWorker {
+struct Instanciator : public WalkerWorker {
   ExecutionBlock* root;
   ExecutionEngine* engine;
   std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;

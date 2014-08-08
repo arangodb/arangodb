@@ -54,9 +54,8 @@ namespace triagens {
       int64_t const _high;
     };
 
-  };
-
-} //closes namespace std
+  }
+} 
 
 #endif
 
