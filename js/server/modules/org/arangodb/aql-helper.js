@@ -30,6 +30,7 @@
 
 var internal = require("internal");
 var arangodb = require("org/arangodb");
+var _ = require("underscore");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         AQL test helper functions
@@ -143,6 +144,19 @@ function getRawQueryResults (query, bindVars) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the results of a query, version for AQL2
+////////////////////////////////////////////////////////////////////////////////
+
+function getRawQueryResultsAQL2 (query, bindVars) {
+  var queryResult = internal.AQL_EXECUTE(query, bindVars, { 
+    count: true, 
+    batchSize : 3000 
+  });
+
+  return queryResult.docs;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the results of a query in a normalised way
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -153,6 +167,38 @@ function getQueryResults (query, bindVars, recursive) {
     result = result.map(function (row) {
       return normalizeRow(row, recursive);
     });
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the results of a query in a normalised way, AQL2 version
+////////////////////////////////////////////////////////////////////////////////
+
+function getQueryResultsAQL2 (query, bindVars, recursive) {
+  var result = getRawQueryResultsAQL2(query, bindVars);
+
+  if (Array.isArray(result)) {
+    result = result.map(function (row) {
+      return normalizeRow(row, recursive);
+    });
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the results of a query in a normalised way, version to
+/// run both the old and the new (AQL2) query
+////////////////////////////////////////////////////////////////////////////////
+
+function getQueryResults2 (query, bindVars, recursive) {
+  var result = getQueryResults(query, bindVars, recursive);
+  var result2 = getQueryResultsAQL2(query, bindVars, recursive);
+
+  if (! _.isEqual(result, result2)) {
+    throw "Old and new AQL return different results!";
   }
 
   return result;
@@ -173,6 +219,30 @@ function assertQueryError (errorCode, query, bindVars) {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief assert a specific error code when running a query, case of both
+/// new and old AQL
+////////////////////////////////////////////////////////////////////////////////
+
+function assertQueryError2 (errorCode, query, bindVars) {
+  try {
+    getQueryResults(query, bindVars);
+    fail();
+  }
+  catch (e) {
+    assertTrue(e.errorNum !== undefined, "unexpected error format");
+    assertEqual(errorCode, e.errorNum, "unexpected error code");
+  }
+  try {
+    getQueryResultsAQL2(query, bindVars);
+    fail();
+  }
+  catch (e2) {
+    assertTrue(e2.errorNum !== undefined, "unexpected error format");
+    assertEqual(errorCode, e2.errorNum, "unexpected error code");
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    module exports
 // -----------------------------------------------------------------------------
@@ -183,7 +253,9 @@ exports.getQueryExplanation   = getQueryExplanation;
 exports.getModifyQueryResults = getModifyQueryResults;
 exports.getRawQueryResults    = getRawQueryResults;
 exports.getQueryResults       = getQueryResults;
+exports.getQueryResults2      = getQueryResults2;
 exports.assertQueryError      = assertQueryError;
+exports.assertQueryError2     = assertQueryError2;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
