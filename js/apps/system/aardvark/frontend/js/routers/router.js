@@ -66,9 +66,6 @@
       });
 
       this.userCollection = new window.ArangoUsers();
-      this.userCollection.fetch({
-        async: false
-      });
 
       this.arangoCollectionsStore = new window.arangoCollections();
       this.arangoDocumentStore = new window.arangoDocument();
@@ -89,9 +86,7 @@
         userCollection: this.userCollection
       });
 
-      this.queryCollection = new window.ArangoQueries([],{
-        activeUser: self.userCollection.activeUser
-      });
+      this.queryCollection = new window.ArangoQueries();
 
       this.footerView.render();
       this.naviView.render();
