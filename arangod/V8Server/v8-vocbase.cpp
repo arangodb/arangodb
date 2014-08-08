@@ -35,13 +35,17 @@
 
 #include "Ahuacatl/ahuacatl-collections.h"
 #include "Ahuacatl/ahuacatl-explain.h"
-#include "Aql/ExecutionBlock.h"
 #include "Aql/Query.h"
 #include "Basics/Utf8Helper.h"
-#include "HttpServer/ApplicationEndpointServer.h"
+
+#include "BasicsC/conversions.h"
+#include "BasicsC/json-utilities.h"
+#include "Utils/transactions.h"
 #include "Utils/AhuacatlGuard.h"
 #include "Utils/AhuacatlTransaction.h"
 #include "Utils/V8ResolverGuard.h"
+
+#include "HttpServer/ApplicationEndpointServer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-execution.h"
 #include "V8/v8-utils.h"
