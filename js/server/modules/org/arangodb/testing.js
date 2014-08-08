@@ -331,10 +331,6 @@ function findTests () {
               return fs.join(makePath("js/server/tests"),x);
             }).sort();
 
-
-  require("internal").print(tests_shell_server_aql);
-  require("internal").print(tests_shell_server_aql_extended);
-
   tests_shell_server = tests_shell_common.concat(tests_shell_server_only);
   tests_shell_client = tests_shell_common.concat(tests_shell_client_only);
   foundTests = true;
