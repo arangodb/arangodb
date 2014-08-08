@@ -1115,7 +1115,7 @@ namespace triagens {
               break;
             }
             default: {
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "EnumerateListBlock: unexpected type in register");
             }
           }
          
@@ -1735,7 +1735,7 @@ namespace triagens {
           }
 
           if (_buffer.empty()) {
-            if (! getBlock(1, DefaultBatchSize)) {
+            if (! getBlock(DefaultBatchSize, DefaultBatchSize)) {
               _done = true;
               return false;
             }
