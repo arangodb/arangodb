@@ -217,6 +217,7 @@ namespace triagens {
                 nrRegsHere.push_back(1);
                 nrRegs.push_back(1 + nrRegs.back());
                 auto ep = static_cast<EnumerateCollectionNode const*>(eb->getPlanNode());
+                TRI_ASSERT(ep != nullptr);
                 varInfo.insert(make_pair(ep->_outVariable->id,
                                          VarInfo(depth, totalNrRegs)));
                 totalNrRegs++;
@@ -227,6 +228,7 @@ namespace triagens {
                 nrRegsHere.push_back(1);
                 nrRegs.push_back(1 + nrRegs.back());
                 auto ep = static_cast<EnumerateListNode const*>(eb->getPlanNode());
+                TRI_ASSERT(ep != nullptr);
                 varInfo.insert(make_pair(ep->_outVariable->id,
                                          VarInfo(depth, totalNrRegs)));
                 totalNrRegs++;
@@ -236,6 +238,7 @@ namespace triagens {
                 nrRegsHere[depth]++;
                 nrRegs[depth]++;
                 auto ep = static_cast<CalculationNode const*>(eb->getPlanNode());
+                TRI_ASSERT(ep != nullptr);
                 varInfo.insert(make_pair(ep->_outVariable->id,
                                          VarInfo(depth, totalNrRegs)));
                 totalNrRegs++;
@@ -245,6 +248,7 @@ namespace triagens {
                 nrRegsHere[depth]++;
                 nrRegs[depth]++;
                 auto ep = static_cast<ProjectionNode const*>(eb->getPlanNode());
+                TRI_ASSERT(ep != nullptr);
                 varInfo.insert(make_pair(ep->_outVariable->id,
                                          VarInfo(depth, totalNrRegs)));
                 totalNrRegs++;
@@ -254,6 +258,7 @@ namespace triagens {
                 nrRegsHere[depth]++;
                 nrRegs[depth]++;
                 auto ep = static_cast<SubqueryNode const*>(eb->getPlanNode());
+                TRI_ASSERT(ep != nullptr);
                 varInfo.insert(make_pair(ep->_outVariable->id,
                                          VarInfo(depth, totalNrRegs)));
                 totalNrRegs++;
@@ -1269,6 +1274,7 @@ namespace triagens {
                   _seen += inVarReg._vector->at(_thisblock)->size();
                   _thisblock++;
                 }
+                return out;
             }
             default: {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
