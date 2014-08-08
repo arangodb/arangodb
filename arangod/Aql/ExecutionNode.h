@@ -42,6 +42,7 @@ namespace triagens {
   namespace aql {
 
     class ExecutionBlock;
+    class WalkerWorker;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class ExecutionNode, abstract base class of all execution Nodes
@@ -85,7 +86,7 @@ namespace triagens {
         };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
+// --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,6 +110,12 @@ namespace triagens {
 
         virtual ~ExecutionNode () { 
         }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+      
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -192,73 +199,49 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief convert to a string, basically for debugging purposes
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void appendAsString (std::string& st, int indent = 0);
+        
+        void walk (WalkerWorker* worker);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON, returns an AUTOFREE Json object
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::basics::Json toJson (
-                         TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+        triagens::basics::Json toJson (TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helpers for export to JSON, appends an entry to nodes, indexMap is the
 /// map from nodes to indices in list
 ////////////////////////////////////////////////////////////////////////////////
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
       protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJsonHelper, for a generic node
+////////////////////////////////////////////////////////////////////////////////
 
         triagens::basics::Json toJsonHelperGeneric (
                   std::map<ExecutionNode*, int>& indexTab,
                   triagens::basics::Json& nodes,
                   TRI_memory_zone_t* zone);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson
+////////////////////////////////////////////////////////////////////////////////
+
         virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
                                    triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) = 0;
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to a string, basically for debugging purposes
-////////////////////////////////////////////////////////////////////////////////
-
-      public:
-
-        virtual void appendAsString (std::string& st, int indent = 0);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief functionality to walk an execution plan recursively
-////////////////////////////////////////////////////////////////////////////////
-
-        class WalkerWorker {
-          public:
-            WalkerWorker () {};
-            virtual ~WalkerWorker () {};
-            virtual void before (ExecutionNode* en) {};
-            virtual void after (ExecutionNode* en) {};
-            virtual bool enterSubquery (ExecutionNode* super, 
-                                        ExecutionNode* sub) {
-              return true;
-            };
-            virtual void leaveSubquery (ExecutionNode* super,
-                                        ExecutionNode* sub) {};
-            bool done (ExecutionNode* en) {
-              if (_done.find(en) == _done.end()) {
-                _done.insert(en);
-                return false;
-              }
-              else {
-                return true;
-              }
-            }
-            void reset () {
-              _done.clear();
-            }
-          private:
-            std::unordered_set<ExecutionNode*> _done;
-        };
-
-        void walk (WalkerWorker* worker);
-
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
+// --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
