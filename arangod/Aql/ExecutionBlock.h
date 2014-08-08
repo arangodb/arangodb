@@ -1100,7 +1100,7 @@ namespace triagens {
               break;
             }
             case AqlValue::RANGE: {
-              sizeInVar = inVarReg._range->_high - inVarReg._range->_low;
+              sizeInVar = inVarReg._range->_high - inVarReg._range->_low + 1;
               break;
             }
             case AqlValue::DOCVEC: {
@@ -1140,7 +1140,7 @@ namespace triagens {
             res->setValue(j, cur->getNrRegs(), getAqlValue(inVarReg));
             // deep copy of the inVariable.at(_pos) with correct memory
             // requirements
-            ++_index; 
+            // Note that _index has been increased by 1 by getAqlValue!
           }
           if (_index == sizeInVar) {
             _index = 0;
@@ -1256,22 +1256,23 @@ namespace triagens {
         AqlValue getAqlValue (AqlValue inVarReg) {
           switch (inVarReg._type) {
             case AqlValue::JSON: {
-              return AqlValue(new basics::Json(inVarReg._json->at(_index).copy()));
+              return AqlValue(new basics::Json(inVarReg._json->at(_index++).copy()));
             }
             case AqlValue::RANGE: {
               return AqlValue(new 
-                  basics::Json(static_cast<double>(inVarReg._range->_low + _index)));
+                  basics::Json(static_cast<double>(inVarReg._range->_low + _index++)));
             }
             case AqlValue::DOCVEC: { // incoming doc vec has a single column 
-                AqlValue out = inVarReg._vector->at(_thisblock)->getValue(_index -
-                    _seen, 0).clone();
-                if(++_index == (inVarReg._vector->at(_thisblock)->size() + _seen)){
-                  _seen += inVarReg._vector->at(_thisblock)->size();
-                  _thisblock++;
-                }
+              AqlValue out = inVarReg._vector->at(_thisblock)->getValue(_index -
+                  _seen, 0).clone();
+              if(++_index == (inVarReg._vector->at(_thisblock)->size() + _seen)){
+                _seen += inVarReg._vector->at(_thisblock)->size();
+                _thisblock++;
+              }
+              return out;
             }
             default: {
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected value in variable to iterate over");
             }
           }
         }
