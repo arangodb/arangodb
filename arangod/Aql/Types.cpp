@@ -50,7 +50,6 @@ void AqlValue::destroy () {
         }
         delete _vector;
       }
-      delete _vector;
       break;
     }
     case RANGE: {
@@ -92,6 +91,10 @@ AqlValue AqlValue::clone () const {
 
     case RANGE: {
       return AqlValue(_range->_low, _range->_high);
+    }
+
+    case EMPTY: {
+      return AqlValue();
     }
 
     default: {
