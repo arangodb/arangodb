@@ -261,6 +261,10 @@ namespace triagens {
                 break;
               }
               case ExecutionNode::AGGREGATE: {
+                depth++;
+                nrRegsHere.push_back(0);
+                nrRegs.push_back(nrRegs.back());
+
                 auto ep = static_cast<AggregateNode const*>(eb->getPlanNode());
                 for (auto p : ep->_aggregateVariables) {
                   // p is std::pair<Variable const*,Variable const*>
@@ -282,6 +286,11 @@ namespace triagens {
                 }
                 break;
               }
+              case ExecutionNode::SORT: {
+                // sort sorts in place and does not produce new registers
+                break;
+              }
+
               // TODO: potentially more cases
               default:
                 break;
@@ -1005,18 +1014,6 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize fetching of documents
-////////////////////////////////////////////////////////////////////////////////
-
-        // void initDocuments () {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief continue fetching of documents
-////////////////////////////////////////////////////////////////////////////////
-
-        //bool moreDocuments () {
-        
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize, here we get the inVariable
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1659,7 +1656,7 @@ namespace triagens {
         AggregateBlock (AQL_TRANSACTION_V8* trx,
                         ExecutionNode const* ep)
           : ExecutionBlock(trx, ep),
-            _collectGroups(false) { 
+            _collectDetails(false) { 
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1695,22 +1692,26 @@ namespace triagens {
             auto it = _varOverview->varInfo.find(en->_outVariable->id);
             TRI_ASSERT(it != _varOverview->varInfo.end());
             _groupRegister = (*it).second.registerId;
-            _collectGroups = true;
+            _collectDetails = true;
+          }
+         
+          // reserve space for the current row 
+          _currentGroup.groupValues.reserve(_aggregateRegisters.size());
+          _currentGroup.collections.reserve(_aggregateRegisters.size());
+
+          for (size_t i = 0; i < _aggregateRegisters.size(); ++i) {
+            _currentGroup.groupValues[i] = AqlValue();
+            _currentGroup.collections[i] = nullptr;
           }
           
-          _previousRow = nullptr;
-          _groupItems.clear();
-
           return TRI_ERROR_NO_ERROR;
         }
-
-        void readRow () {
-        }
-
+/*
         void emitRow (AqlItemBlock* res, 
                       size_t j,
                       AqlItemBlock* cur,
                       void* row) {
+          std::cout << "EMIT ROW: " << j << "\n";
 
           if (j == 0) {
             // first row in block
@@ -1727,15 +1728,7 @@ namespace triagens {
           clearGroup();
         }
 
-        void clearGroup () {
-          _groupItems.clear();
-          _previousRow = nullptr;
-        }
-
-        int compareRows (void* l, void* r) {
-          // all rows are unequal
-          return 1;
-        }
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getSome
@@ -1746,16 +1739,16 @@ namespace triagens {
             return nullptr;
           }
 
+std::cout << "AGGREGATE::GETSOME\n";
           if (_buffer.empty()) {
             if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
 
-              if (_previousRow != nullptr) {
                 // return the last group if we're running out of input
                 // TODO: last group is lost at the moment
 //                auto res = new AqlItemBlock(1, _varOverview->nrRegs[_depth]);
 //                emitRow(res, 0, _previousRow);
-                clearGroup();
-              }
+//                clearGroup();
+std::cout << "AGGREGATE::GETSOME - DONE\n";
 
               _done = true;
               return nullptr;
@@ -1770,33 +1763,62 @@ namespace triagens {
           auto res = new AqlItemBlock(atMost, _varOverview->nrRegs[_depth]);
           TRI_ASSERT(curRegs <= res->getNrRegs());
 
+std::cout << "POS: " << _pos << "\n";
           inheritRegisters(cur, res, _pos);
             
-          readRow();
-
           size_t j = 0;
 
           while (j < atMost) {
-            if (_previousRow == nullptr) {
-              // this is the very first input row. build a new group
-              _previousRow = _currentRow;
-              _groupItems.push_back(_currentRow);
-            }
-            else if (compareRows(_previousRow, _currentRow) == 0) {
-              // this is a follow-up input row and it matches the current group
-              _groupItems.push_back(_currentRow);
+            // read the next input tow
+
+            bool newGroup = false;
+            if (_currentGroup.groupValues[0].isEmpty()) {
+              // we never had any previous group
+              newGroup = true;
             }
             else {
-              // different group
+              // we already had a group, check if the group has changed
+              size_t i = 0;
 
-              // emit the previous group
-              emitRow(res, j, cur, _previousRow);
-              ++j;
-
-              // and build a new group
-              _previousRow = _currentRow;
-              _groupItems.push_back(_currentRow);
+              for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
+                int res = CompareAqlValues(_currentGroup.groupValues[i], 
+                                           _currentGroup.collections[i],
+                                           cur->getValue(_pos, (*it).second), 
+                                           cur->getDocumentCollection((*it).second));
+                if (res != 0) {
+                  // group change
+                  newGroup = true;
+                  break;
+                }
+                ++i;
+              }
             }
+
+            if (newGroup) {
+              if (! _currentGroup.groupValues[0].isEmpty()) {
+                // need to emit the current group first
+                size_t i = 0;
+                for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
+                  res->setValue(j, (*it).first, _currentGroup.groupValues[i]);
+                  ++i;
+                }
+              }
+
+              // construct the new group
+              size_t i = 0;
+              for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
+                _currentGroup.groupValues[i] = cur->getValue(_pos, (*it).second).clone();
+                _currentGroup.collections[i] = cur->getDocumentCollection((*it).second);
+                // std::cout << "GROUP VALUE #" << i << ": " << _currentGroup.groupValues[i].toString(_currentGroup.collections[i]) << "\n";
+                ++i;
+              }
+            }
+
+            if (_collectDetails) {
+//              _currentGroup.groupDetails.
+            }
+
+            ++j;
             
             if (++_pos >= cur->size()) {
               _buffer.pop_front();
@@ -1804,24 +1826,8 @@ namespace triagens {
               _pos = 0;
               return res;
             }
-            
-            readRow();
           }
-/*
-          for (size_t j = 0; j < atMost; j++) {
-            if (j > 0) {
-              // re-use already copied aqlvalues
-              for (RegisterId i = 0; i < curRegs; i++) {
-                res->setValue(j, i, res->getValue(0, i));
-              }
-            }
 
-            // The result is in the first variable of this depth,
-            // we do not need to do a lookup in _varOverview->varInfo,
-            // but can just take cur->getNrRegs() as registerId:
-            res->setValue(j, curRegs, AqlValue(reinterpret_cast<TRI_df_marker_t const*>(_documents[_posInAllDocs++].getDataPtr())));
-          }
-          */
           return res;
         }
 
@@ -1831,12 +1837,11 @@ namespace triagens {
 
         std::vector<std::pair<RegisterId, RegisterId>> _aggregateRegisters;
 
-
-        void* _previousRow;
-        void* _currentRow;
-
-        std::vector<void*> _groupItems;
-
+        struct {
+          std::vector<AqlValue> groupValues;
+          std::vector<TRI_document_collection_t const*> collections;
+        }
+        _currentGroup;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the optional register that contains the values for each group
@@ -1848,7 +1853,7 @@ namespace triagens {
 /// @brief whether or not elements should be collected for each group
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool _collectGroups;
+        bool _collectDetails;
 
     };
 
@@ -1865,8 +1870,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         SortBlock (AQL_TRANSACTION_V8* trx,
-                        ExecutionNode const* ep)
-          : ExecutionBlock(trx, ep) { 
+                   ExecutionNode const* ep)
+          : ExecutionBlock(trx, ep),
+            _stable(false) { 
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1945,7 +1951,12 @@ namespace triagens {
           OurLessThan ourLessThan(_buffer, _sortRegisters, colls);
           
           // sort coords
-          std::sort(coords.begin(), coords.end(), ourLessThan);
+          if (_stable) {
+            std::stable_sort(coords.begin(), coords.end(), ourLessThan);
+          }
+          else {
+            std::sort(coords.begin(), coords.end(), ourLessThan);
+          }
 
           //copy old blocks from _buffer into newbuf
           std::vector<AqlItemBlock*> newbuf;
@@ -2038,6 +2049,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<std::pair<RegisterId, bool>> _sortRegisters;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the sort should be stable
+////////////////////////////////////////////////////////////////////////////////
+            
+        bool _stable;
 
     };
 
