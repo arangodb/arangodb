@@ -493,54 +493,61 @@ namespace triagens {
           return false;
         }
 
-        virtual bool skip (size_t number) {
+        // skip between atLeast and atMost using the same setup as getSome,
+        // returns the number actually skipped . . . 
+        // will only return less than atLeast if there aren't atLeast many
+        // things to skip overall.
+        virtual size_t skipSome (size_t atLeast, size_t atMost) {
+          
+          size_t skipped = 0;
+          
           if (_done) {
-            return false;
+            return skipped;
           }
           
-          // Here, if _buffer.size() is > 0 then _pos points to a valid place
-          // in it.
-
-          size_t skipped = 0;
-          std::vector<AqlItemBlock*> collector;
-          while (skipped < number) {
+          while (skipped < atLeast) {
             if (_buffer.empty()) {
-              if (! getBlock(number - skipped, number - skipped)) {
+              if (! getBlock(atLeast - skipped, 
+                    std::max(atMost - skipped, DefaultBatchSize))) {
                 _done = true;
-                return false;
+                break;
               }
               _pos = 0;
             }
+            // get the current block 
             AqlItemBlock* cur = _buffer.front();
-            if (cur->size() - _pos + skipped > number) {
-              // The current block is too large:
-              _pos += number - skipped;
-              skipped = number;
+            
+            if (cur->size() - _pos + skipped > atMost) {
+              // eat just enough of the current block . . .
+              _pos += atMost - skipped;
+              skipped = atMost;
             }
-            else {
-              // The current block fits into our result, but it might be
-              // half-eaten already:
+            else { 
+              // eat the rest of the current block and then proceed to the next
+              // course if any . . .
               skipped += cur->size() - _pos;
               delete cur;
               _buffer.pop_front();
               _pos = 0;
             } 
           }
+          return skipped;
+        }
+        
+        // skip exactly <number> outputs, returns <true> if _done after
+        // skipping, and <false> otherwise . . .
+        bool skip (size_t number) {
+          size_t skipped = skipSome(number, number);
+          size_t nr = skipped;
 
-          // When we get here, we have skipped enough documents and
-          // kept our data structures OK.
-          // If _buffer.size() == 0, we have to try to get another block
-          // just to be sure to get the return value right:
-          if (! _buffer.empty()) {
+          while ( nr != 0 && skipped < number ){
+            nr = skipSome(number - skipped, number - skipped);
+            skipped += nr;
+          }
+          if (nr == 0) {
             return true;
-          }
-
-          if (! getBlock(DefaultBatchSize, DefaultBatchSize)) {
-            _done = true;
-            return false;
-          }
-
-          return true;
+          } 
+          return !hasMore();
         }
 
         virtual int64_t count () {
@@ -1087,6 +1094,7 @@ namespace triagens {
           AqlValue inVarReg = cur->getValue(_pos, _inVarRegId);
           size_t sizeInVar;
 
+          // get the size of the thing we are looping over
           switch (inVarReg._type) {
             case AqlValue::JSON: {
               if(!inVarReg._json->isList()){
@@ -1151,6 +1159,97 @@ namespace triagens {
           }
           return res;
         } 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief skip a number of outputs, return true if there is nothing further to
+//  come and false otherwise or if convenient.
+////////////////////////////////////////////////////////////////////////////////
+
+/*        bool skip (size_t number) {
+          if (_done) {
+            return true;
+          }
+
+          if (_buffer.empty()) {
+            if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
+              _done = true;
+              return true;
+            }
+            _pos = 0;           // this is in the first block
+          }
+
+          // if we make it here, then _buffer.front() exists
+          AqlItemBlock* cur = _buffer.front();
+          
+          // get the thing we are looping over 
+          AqlValue inVarReg = cur->getValue(_pos, _inVarRegId);
+          size_t sizeInVar;
+          
+          // get the size of the thing we are looping over
+          switch (inVarReg._type) {
+            case AqlValue::JSON: {
+              if(!inVarReg._json->isList()){
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+              }
+              sizeInVar = inVarReg._json->size();
+              break;
+            }
+            case AqlValue::RANGE: {
+              sizeInVar = inVarReg._range->_high - inVarReg._range->_low;
+              break;
+            }
+            case AqlValue::DOCVEC: {
+                if( _index == 0){// this is a (maybe) new DOCVEC
+                  _DOCVECsize = 0;
+                  //we require the total number of items 
+                  for (size_t i = 0; i < inVarReg._vector->size(); i++) {
+                    _DOCVECsize += inVarReg._vector->at(i)->size();
+                  }
+                }
+                sizeInVar = _DOCVECsize;
+              break;
+            }
+            default: {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+            }
+          }
+         
+          size_t toSkip = std::min(number, sizeInVar - _index); 
+
+          //create the result
+          auto res = new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]);
+          
+          inheritRegisters(cur, res, _pos);
+
+          // we don't have a collection
+          res->setDocumentCollection(cur->getNrRegs(), nullptr);
+
+          for (size_t j = 0; j < toSend; j++) {
+            if (j > 0) {
+              // re-use already copied aqlvalues
+              for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
+                res->setValue(j, i, res->getValue(0, i));
+              }
+            }
+            // add the new register value . . .
+            res->setValue(j, cur->getNrRegs(), getAqlValue(inVarReg));
+            // deep copy of the inVariable.at(_pos) with correct memory
+            // requirements
+            ++_index; 
+          }
+          if (_index == sizeInVar) {
+            _index = 0;
+            _thisblock = 0;
+            _seen = 0;
+            // advance read position in the current block . . .
+            if (++_pos == cur->size() ) {
+              delete cur;
+              _buffer.pop_front();
+              _pos = 0;
+            }
+          }
+          return res;
+        } */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AqlValue from the inVariable using the current _index
