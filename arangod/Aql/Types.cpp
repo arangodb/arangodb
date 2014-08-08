@@ -288,64 +288,6 @@ Json AqlValue::toJson (TRI_document_collection_t const* document) const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief splice multiple blocks, note that the new block now owns all
-/// AqlValue pointers in the old blocks, therefore, the latter are all
-/// set to nullptr, just to be sure.
-////////////////////////////////////////////////////////////////////////////////
-
-AqlItemBlock* AqlItemBlock::splice (std::vector<AqlItemBlock*>& blocks) {
-  TRI_ASSERT(! blocks.empty());
-
-  auto it = blocks.begin();
-  TRI_ASSERT(it != blocks.end());
-  size_t totalSize = (*it)->size();
-  RegisterId nrRegs = (*it)->getNrRegs();
-
-  while (true) {
-    if (++it == blocks.end()) {
-      break;
-    }
-    totalSize += (*it)->size();
-    TRI_ASSERT((*it)->getNrRegs() == nrRegs);
-  }
-
-  TRI_ASSERT(totalSize > 0);
-  TRI_ASSERT(nrRegs > 0);
-
-  auto res = new AqlItemBlock(totalSize, nrRegs);
-  size_t pos = 0;
-  for (it = blocks.begin(); it != blocks.end(); ++it) {
-    // handle collections
-    if (it == blocks.begin()) {
-      // copy collection info over
-      for (RegisterId col = 0; col < nrRegs; ++col) {
-        res->setDocumentCollection(col, (*it)->getDocumentCollection(col));
-      }
-    }
-    else {
-      for (RegisterId col = 0; col < nrRegs; ++col) {
-        TRI_ASSERT(res->getDocumentCollection(col) ==
-                   (*it)->getDocumentCollection(col));
-      }
-    }
-
-    TRI_ASSERT((*it) != res);
-    size_t const n = (*it)->size();
-    for (size_t row = 0; row < n; ++row) {
-      for (RegisterId col = 0; col < nrRegs; ++col) {
-        // copy over value
-        res->setValue(pos + row, col, (*it)->getValue(row, col));
-        // delete old value
-        (*it)->eraseValue(row, col);
-      }
-    }
-    pos += (*it)->size();
-  }
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief 3-way comparison for AqlValue objects
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -454,6 +396,65 @@ int triagens::aql::CompareAqlValues (AqlValue const& left,
       return 0;
     }
   }
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief splice multiple blocks, note that the new block now owns all
+/// AqlValue pointers in the old blocks, therefore, the latter are all
+/// set to nullptr, just to be sure.
+////////////////////////////////////////////////////////////////////////////////
+
+AqlItemBlock* AqlItemBlock::splice (std::vector<AqlItemBlock*>& blocks) {
+  TRI_ASSERT(! blocks.empty());
+
+  auto it = blocks.begin();
+  TRI_ASSERT(it != blocks.end());
+  size_t totalSize = (*it)->size();
+  RegisterId nrRegs = (*it)->getNrRegs();
+
+  while (true) {
+    if (++it == blocks.end()) {
+      break;
+    }
+    totalSize += (*it)->size();
+    TRI_ASSERT((*it)->getNrRegs() == nrRegs);
+  }
+
+  TRI_ASSERT(totalSize > 0);
+  TRI_ASSERT(nrRegs > 0);
+
+  auto res = new AqlItemBlock(totalSize, nrRegs);
+  size_t pos = 0;
+  for (it = blocks.begin(); it != blocks.end(); ++it) {
+    // handle collections
+    if (it == blocks.begin()) {
+      // copy collection info over
+      for (RegisterId col = 0; col < nrRegs; ++col) {
+        res->setDocumentCollection(col, (*it)->getDocumentCollection(col));
+      }
+    }
+    else {
+      for (RegisterId col = 0; col < nrRegs; ++col) {
+        TRI_ASSERT(res->getDocumentCollection(col) ==
+                   (*it)->getDocumentCollection(col));
+      }
+    }
+
+    TRI_ASSERT((*it) != res);
+    size_t const n = (*it)->size();
+    for (size_t row = 0; row < n; ++row) {
+      for (RegisterId col = 0; col < nrRegs; ++col) {
+        // copy over value
+        res->setValue(pos + row, col, (*it)->getValue(row, col));
+        // delete old value
+        (*it)->eraseValue(row, col);
+      }
+    }
+    pos += (*it)->size();
+  }
+
+  return res;
 }
 
 // Local Variables:
