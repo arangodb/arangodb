@@ -189,7 +189,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor (Ast const* ast,
   }
   else if (expression->type == NODE_TYPE_REFERENCE) {
     // second operand is already a variable
-    auto inVariable = static_cast<Variable*>(variable->getData());
+    auto inVariable = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(inVariable != nullptr);
     en = addNode(new EnumerateListNode(inVariable, v));
   }
