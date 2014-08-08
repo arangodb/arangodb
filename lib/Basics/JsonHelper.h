@@ -304,7 +304,7 @@ namespace triagens {
 
       public:
 
-        Json ()
+        explicit Json ()
           : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(AUTOFREE) {
         }
          
@@ -312,7 +312,7 @@ namespace triagens {
 /// @brief generic constructor for a type_e
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json (type_e t, autofree_e autofree = AUTOFREE) 
+        explicit Json (type_e t, autofree_e autofree = AUTOFREE) 
           : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
           make(t, 0);
         }
@@ -321,7 +321,7 @@ namespace triagens {
 /// @brief generic constructor for a memzone and a type_e
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json (TRI_memory_zone_t* z, type_e t, autofree_e autofree = AUTOFREE)
+        explicit Json (TRI_memory_zone_t* z, type_e t, autofree_e autofree = AUTOFREE)
           : _zone(z), _json(nullptr), _autofree(autofree) {
           make(t, 0);
         }
@@ -330,7 +330,7 @@ namespace triagens {
 /// @brief generic constructor for a type_e with a size hint
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json (type_e t, size_t size_hint, autofree_e autofree = AUTOFREE)
+        explicit Json (type_e t, size_t size_hint, autofree_e autofree = AUTOFREE)
           : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
           make(t, size_hint);
         }
@@ -339,7 +339,7 @@ namespace triagens {
 /// @brief generic constructor for a memzone, a type_e and a size hint
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json (TRI_memory_zone_t* z, type_e t, size_t size_hint, 
+        explicit Json (TRI_memory_zone_t* z, type_e t, size_t size_hint, 
               autofree_e autofree = AUTOFREE)
           : _zone(z), _json(nullptr), _autofree(autofree) {
           make(t, size_hint);
@@ -349,7 +349,7 @@ namespace triagens {
 /// @brief constructor for a bool
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json (bool x, autofree_e autofree = AUTOFREE) 
+        explicit Json (bool x, autofree_e autofree = AUTOFREE) 
           : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateBooleanJson(_zone, x);
           if (_json == nullptr) {
@@ -361,7 +361,7 @@ namespace triagens {
 /// @brief constructor for a memzone and a bool
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json (TRI_memory_zone_t* z, bool x, autofree_e autofree = AUTOFREE) 
+        explicit Json (TRI_memory_zone_t* z, bool x, autofree_e autofree = AUTOFREE) 
           : _zone(z), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateBooleanJson(_zone, x);
           if (_json == nullptr) {
@@ -373,7 +373,7 @@ namespace triagens {
 /// @brief constructor for an int32_t
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json (int32_t x, autofree_e autofree = AUTOFREE) 
+        explicit Json (int32_t x, autofree_e autofree = AUTOFREE) 
           : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateNumberJson(_zone, static_cast<double>(x));
           if (_json == nullptr) {
@@ -385,7 +385,7 @@ namespace triagens {
 /// @brief constructor for a memzone and an int32_t
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json (TRI_memory_zone_t* z, int32_t x, autofree_e autofree = AUTOFREE) 
+        explicit Json (TRI_memory_zone_t* z, int32_t x, autofree_e autofree = AUTOFREE) 
           : _zone(z), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateNumberJson(_zone, static_cast<double>(x));
           if (_json == nullptr) {
@@ -397,7 +397,7 @@ namespace triagens {
 /// @brief constructor for a double
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json (double x, autofree_e autofree = AUTOFREE) 
+        explicit Json (double x, autofree_e autofree = AUTOFREE) 
           : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateNumberJson(_zone, x);
           if (_json == nullptr) {
@@ -409,7 +409,7 @@ namespace triagens {
 /// @brief constructor for a memzone and a double
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json (TRI_memory_zone_t* z, double x, autofree_e autofree = AUTOFREE) 
+        explicit Json (TRI_memory_zone_t* z, double x, autofree_e autofree = AUTOFREE) 
           : _zone(z), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateNumberJson(_zone, x);
           if (_json == nullptr) {
@@ -421,7 +421,7 @@ namespace triagens {
 /// @brief constructor for a char const*
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json (char const* x, autofree_e autofree = AUTOFREE) 
+        explicit Json (char const* x, autofree_e autofree = AUTOFREE) 
           : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateStringCopyJson(_zone, x);
           if (_json == nullptr) {
@@ -433,7 +433,7 @@ namespace triagens {
 /// @brief constructor for a memzone and a char const*
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json (TRI_memory_zone_t* z, char const* x, autofree_e autofree = AUTOFREE) 
+        explicit Json (TRI_memory_zone_t* z, char const* x, autofree_e autofree = AUTOFREE) 
           : _zone(z), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateStringCopyJson(_zone, x);
           if (_json == nullptr) {
@@ -445,7 +445,7 @@ namespace triagens {
 /// @brief constructor for a string
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json (std::string const x, autofree_e autofree = AUTOFREE) 
+        explicit Json (std::string const x, autofree_e autofree = AUTOFREE) 
           : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateString2CopyJson(_zone, x.c_str(), x.size());
           if (_json == nullptr) {
@@ -457,7 +457,7 @@ namespace triagens {
 /// @brief constructor for a memzone and a string
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json (TRI_memory_zone_t* z, std::string const x, autofree_e autofree = AUTOFREE) 
+        explicit Json (TRI_memory_zone_t* z, std::string const x, autofree_e autofree = AUTOFREE) 
           : _zone(z), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateString2CopyJson(_zone, x.c_str(), x.size());
           if (_json == nullptr) {
@@ -469,7 +469,7 @@ namespace triagens {
 /// @brief constructor for a memzone and a TRI_json_t*
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json (TRI_memory_zone_t* z, TRI_json_t* j, autofree_e autofree = AUTOFREE)
+        explicit Json (TRI_memory_zone_t* z, TRI_json_t* j, autofree_e autofree = AUTOFREE)
           : _zone(z), _json(j), _autofree(autofree) {
         }
 
@@ -569,10 +569,11 @@ namespace triagens {
         }
         
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief copy recursively, even if NOFREE is set!
+/// @brief copy recursively, even if NOFREE is set! Note that the copy is
+//  AUTOFREE
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json copy () const {
+        Json copy (autofree_e autofree = AUTOFREE) const {
           Json c;
           c._zone = _zone;
           if (_json != nullptr) {
@@ -581,7 +582,7 @@ namespace triagens {
           else {
             c._json = nullptr;
           }
-          c._autofree = _autofree;
+          c._autofree = AUTOFREE;
           return c;
         }
 
@@ -681,7 +682,7 @@ namespace triagens {
               return Json(_zone, j, NOFREE);
             }
             else {
-              return Json(_zone, Json::Null, true);
+              return Json(_zone, Json::Null, AUTOFREE);
             }
           }
           else {
