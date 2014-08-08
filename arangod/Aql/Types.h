@@ -181,10 +181,17 @@ namespace triagens {
       triagens::basics::Json toJson (TRI_document_collection_t const*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AqlValue from a vector of AqlItemBlock*s
+////////////////////////////////////////////////////////////////////////////////
+
+      static AqlValue createFromBlocks (std::vector<AqlItemBlock*> const&,
+                                        std::vector<std::string> const&);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief a quick method to decide whether a value is empty
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool isEmpty () {
+      inline bool isEmpty () const {
         return _type == EMPTY;
       }
 
@@ -447,7 +454,7 @@ namespace triagens {
 /// @brief slice/clone
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlItemBlock* slice (size_t from, size_t to) {
+        AqlItemBlock* slice (size_t from, size_t to) const {
           TRI_ASSERT(from < to && to <= _nrItems);
 
           std::unordered_map<AqlValue, AqlValue> cache;
@@ -461,7 +468,7 @@ namespace triagens {
             }
             for (size_t row = from; row < to; row++) {
               for (RegisterId col = 0; col < _nrRegs; col++) {
-                AqlValue& a(_data[row * _nrRegs + col]);
+                AqlValue const& a(_data[row * _nrRegs + col]);
 
                 if (! a.isEmpty()) {
                   auto it = cache.find(a);

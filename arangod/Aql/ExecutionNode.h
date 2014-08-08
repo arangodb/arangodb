@@ -138,7 +138,7 @@ namespace triagens {
 /// @brief get all dependencies
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<ExecutionNode*> getDependencies () const {
+        std::vector<ExecutionNode*> getDependencies () const {
           return _dependencies;
         }
 
@@ -149,6 +149,7 @@ namespace triagens {
 
         bool removeDependency (ExecutionNode* ep) {
           auto it = _dependencies.begin(); 
+
           while (it != _dependencies.end()) {
             if (*it == ep) {
               _dependencies.erase(it);
@@ -1023,8 +1024,12 @@ namespace triagens {
       public:
 
         AggregateNode (std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables,
-                       Variable const* outVariable)
-          : ExecutionNode(), _aggregateVariables(aggregateVariables), _outVariable(outVariable) {
+                       Variable const* outVariable,
+                       std::unordered_map<VariableId, std::string const> const& variableMap)
+          : ExecutionNode(), 
+            _aggregateVariables(aggregateVariables), 
+            _outVariable(outVariable),
+            _variableMap(variableMap) {
           // outVariable can be a nullptr
         }
 
@@ -1057,7 +1062,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new AggregateNode(_aggregateVariables, _outVariable);
+          auto c = new AggregateNode(_aggregateVariables, _outVariable, _variableMap);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -1079,6 +1084,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Variable const* _outVariable;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief map of all variable ids and names (needed to construct group data)
+////////////////////////////////////////////////////////////////////////////////
+                       
+        std::unordered_map<VariableId, std::string const> const _variableMap;
 
     };
 
