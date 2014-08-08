@@ -677,7 +677,7 @@ void V8Executor::generateCodeExpand (AstNode const* node) {
 
   _buffer->appendText("(function () { var r = []; return ");
   generateCodeNode(node->getMember(0));
-  _buffer->appendText(".forEach(function (v) { r.push_back(");
+  _buffer->appendText(".forEach(function (v) { r.push(");
   generateCodeNode(node->getMember(1));
   _buffer->appendText("); }); })()");
 }
@@ -721,6 +721,21 @@ void V8Executor::generateCodeNamedAccess (AstNode const* node) {
   generateCodeNode(node->getMember(0));
   _buffer->appendText(", ");
   generateCodeString(node->getStringValue());
+  _buffer->appendText(")");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for a bound attribute access
+////////////////////////////////////////////////////////////////////////////////
+
+void V8Executor::generateCodeBoundAccess (AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->numMembers() == 2);
+
+  _buffer->appendText("aql.DOCUMENT_MEMBER(");
+  generateCodeNode(node->getMember(0));
+  _buffer->appendText(", ");
+  generateCodeNode(node->getMember(1));
   _buffer->appendText(")");
 }
 
@@ -777,9 +792,11 @@ void V8Executor::generateCodeNode (AstNode const* node) {
     case NODE_TYPE_OPERATOR_BINARY_TIMES:
     case NODE_TYPE_OPERATOR_BINARY_DIV:
     case NODE_TYPE_OPERATOR_BINARY_MOD:
+    case NODE_TYPE_OPERATOR_BINARY_AND:
+    case NODE_TYPE_OPERATOR_BINARY_OR:
       generateCodeBinaryOperator(node);
       break;
-    
+
     case NODE_TYPE_OPERATOR_TERNARY:
       generateCodeTernaryOperator(node);
       break;
@@ -814,6 +831,10 @@ void V8Executor::generateCodeNode (AstNode const* node) {
 
     case NODE_TYPE_ATTRIBUTE_ACCESS:
       generateCodeNamedAccess(node);
+      break;
+
+    case NODE_TYPE_BOUND_ATTRIBUTE_ACCESS:
+      generateCodeBoundAccess(node);
       break;
 
     case NODE_TYPE_INDEXED_ACCESS:
