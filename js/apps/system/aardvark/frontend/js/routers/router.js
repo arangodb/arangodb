@@ -66,6 +66,9 @@
       });
 
       this.userCollection = new window.ArangoUsers();
+      this.userCollection.fetch({
+        async: false
+      });
 
       this.arangoCollectionsStore = new window.arangoCollections();
       this.arangoDocumentStore = new window.arangoDocument();
