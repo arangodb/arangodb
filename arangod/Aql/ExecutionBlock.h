@@ -195,7 +195,8 @@ namespace triagens {
           // Copy constructor used for a subquery:
           VarOverview (VarOverview const& v, unsigned int newdepth) 
             : varInfo(v.varInfo), nrRegsHere(v.nrRegsHere), nrRegs(v.nrRegs),
-              depth(newdepth+1), totalNrRegs(v.nrRegs[newdepth]), me(nullptr) {
+              subQueries(), depth(newdepth+1), 
+              totalNrRegs(v.nrRegs[newdepth]), me(nullptr) {
             nrRegs.resize(depth);
             nrRegsHere.resize(depth);
             nrRegsHere.push_back(0);
