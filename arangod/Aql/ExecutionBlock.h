@@ -1038,7 +1038,7 @@ namespace triagens {
           
           auto it = _varOverview->varInfo.find(en->_inVariable->id);
           if (it == _varOverview->varInfo.end()){
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "variable not foudn");
           }
           
           _inVarRegId = (*it).second.registerId;
