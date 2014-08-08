@@ -1022,7 +1022,6 @@ namespace triagens {
           
           _inVarRegId = (*it).second.registerId;
           
-         
           return TRI_ERROR_NO_ERROR;
         }
 
@@ -1038,7 +1037,10 @@ namespace triagens {
           }
 
           // handle local data (if any) 
-           _index = 0; // index in _inVariable for next run
+           _index = 0;     // index in _inVariable for next run
+           _thisblock = 0; // the current block in the _inVariable DOCVEC
+           _seen = 0;      // the sum of the sizes of the blocks in the _inVariable
+                           // DOCVEC that preceed _thisblock
 
           return TRI_ERROR_NO_ERROR;
         }
@@ -1072,15 +1074,22 @@ namespace triagens {
               if(!inVarReg._json->isList()){
                 THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
               }
-              sizeInVar =  inVarReg._json->size();
+              sizeInVar = inVarReg._json->size();
               break;
             }
             case AqlValue::RANGE: {
-              sizeInVar =  inVarReg._range->_high - inVarReg._range->_low;
+              sizeInVar = inVarReg._range->_high - inVarReg._range->_low;
               break;
             }
             case AqlValue::DOCVEC: {
-              sizeInVar =  0;
+                if( _index == 0){// this is a (maybe) new DOCVEC
+                  _DOCVECsize = 0;
+                  //we require the total number of items 
+                  for (size_t i = 0; i < inVarReg._vector->size(); i++) {
+                    _DOCVECsize += inVarReg._vector->at(i)->size();
+                  }
+                }
+                sizeInVar = _DOCVECsize;
               break;
             }
             default: {
@@ -1088,7 +1097,7 @@ namespace triagens {
             }
           }
          
-          size_t   toSend = std::min(atMost, sizeInVar-_index); 
+          size_t toSend = std::min(atMost, sizeInVar - _index); 
 
           //create the result
           auto res = new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]);
@@ -1114,6 +1123,9 @@ namespace triagens {
             ++_index; 
           }
           if (_index == sizeInVar) {
+            _index = 0;
+            _thisblock = 0;
+            _seen = 0;
             // advance read position in the current block . . .
             if (++_pos == cur->size() ) {
               delete cur;
@@ -1139,20 +1151,25 @@ namespace triagens {
               return AqlValue(new 
                   basics::Json(static_cast<double>(inVarReg._range->_low + _index)));
             }
-            /*case AqlValue::DOCVEC: {
-            }*/
+            case AqlValue::DOCVEC: { // incoming doc vec has a single column 
+                AqlValue out = inVarReg._vector->at(_thisblock)->getValue(_index -
+                    _seen, 0).clone();
+                if(++_index == (inVarReg._vector->at(_thisblock)->size() + _seen)){
+                  _seen += inVarReg._vector->at(_thisblock)->size();
+                  _thisblock++;
+                }
+            }
             default: {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
             }
           }
         }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief current position in the _inVariable
 ////////////////////////////////////////////////////////////////////////////////
         
-        size_t _index;
+        size_t _index, _thisblock, _seen, _DOCVECsize;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the register index containing the inVariable of the EnumerateListNode
