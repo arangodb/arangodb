@@ -380,10 +380,11 @@ namespace triagens {
 /// @brief setValue, set the current value of a register
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setValue (size_t index, RegisterId varNr, AqlValue value) {
-          TRI_ASSERT(_data[index * _nrRegs + varNr].isEmpty());
-          _data[index * _nrRegs + varNr] = value;
-        }
+      void setValue (size_t index, RegisterId varNr, AqlValue value) {
+        TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
+        TRI_ASSERT(_data.at(index * _nrRegs + varNr).isEmpty());
+        _data[index * _nrRegs + varNr] = value;
+      }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief eraseValue, erase the current value of a register not freeing it
