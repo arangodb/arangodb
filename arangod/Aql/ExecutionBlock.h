@@ -1022,7 +1022,7 @@ namespace triagens {
           
           _inVarRegId = (*it).second.registerId;
           
-          _index = 0; // index in _inVariable for current run
+          _index = 0; // index in _inVariable for next run
 
           return TRI_ERROR_NO_ERROR;
         }
@@ -1041,53 +1041,6 @@ namespace triagens {
           // handle local data (if any) 
 
           return TRI_ERROR_NO_ERROR;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getOne
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlItemBlock* getOne () {
-          
-          if (_done) {
-            return nullptr;
-          }
-
-          if (_buffer.empty()) {
-            if (! ExecutionBlock::getBlock(1, DefaultBatchSize)) {
-              _done = true;
-              return nullptr;
-            }
-            _pos = 0;           // this is in the first block
-          } 
-            
-          // if we make it here, then _buffer.front() exists
-          AqlItemBlock* cur = _buffer.front();
-
-          // copy stuff from the incoming block . . .
-          auto res = new AqlItemBlock(1, _varOverview->nrRegs[_depth]);
-          TRI_ASSERT(cur->getNrRegs() <= res->getNrRegs());
-          for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
-            res->setValue(0, i, cur->getValue(_pos, i).clone());
-            res->setDocumentCollection(i, cur->getDocumentCollection(i));
-          }
-          
-          // get the thing we are looping over
-          triagens::basics::Json inVariable = cur->getValue(_pos, _inVarRegId)._json;
-          
-          // add the new register value and corresponding doc. collection
-          res->setValue(0, cur->getNrRegs(), 
-              AqlValue(new basics::Json(inVariable.at(_pos).json())));
-          // deep copy of the inVariable.at(_pos) with correct memory
-          // requirements
-
-          // advance read position in the current block
-          if (++_pos == cur->size() ) {
-            delete cur;
-            _buffer.pop_front();
-            _pos = 0;
-          }
-          return res;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1111,27 +1064,22 @@ namespace triagens {
           AqlItemBlock* cur = _buffer.front();
           
           // get the thing we are looping over // ~J assumes Json list
-          std::cout << "here 1\n";
-          triagens::basics::Json inVariable = cur->getValue(_pos, _inVarRegId)._json;
-          std::cout << "here 2\n";
+          auto inVariable = cur->getValue(_pos, _inVarRegId)._json;
 
           // ~J assumes Json list
-          size_t toSend = std::min(atMost, inVariable.size());
+          size_t toSend = std::min(atMost, inVariable->size()-_index); 
          
           //create the result
           auto res = new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]);
-          TRI_ASSERT(cur->getNrRegs() <= res->getNrRegs());
           
           // copy 1st row of registers inherited from incoming block 
           for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
-            std::cout << "here loop2 " << i << "\n";
             res->setValue(0, i, cur->getValue(_pos, i).clone());
             res->setDocumentCollection(i, cur->getDocumentCollection(i));
           }
-          std::cout << "here loop2 out\n";
+          res->setDocumentCollection(cur->getNrRegs(), nullptr);
 
           for (size_t j = 0; j < toSend; j++) {
-            std::cout << "here loop " << j << "\n";
             if (j > 0) {
               // re-use already copied aqlvalues
               for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
@@ -1139,20 +1087,19 @@ namespace triagens {
               }
             }
             // add the new register value . . .
-            std::cout << "here 3\n";
             res->setValue(j, cur->getNrRegs(), 
-              AqlValue(new basics::Json(inVariable.at(_pos).json())));
+              AqlValue(new basics::Json(inVariable->at(_index).copy())));
             // deep copy of the inVariable.at(_pos) with correct memory
             // requirements
-            std::cout << "here 4\n";
+            ++_index; 
           }
-
-          std::cout << "here 5\n";
-          // advance read position in the current block . . .
-          if (++_pos == cur->size() ) {
-            delete cur;
-            _buffer.pop_front();
-            _pos = 0;
+          if (_index == inVariable->size()){
+            // advance read position in the current block . . .
+            if (++_pos == cur->size() ) {
+              delete cur;
+              _buffer.pop_front();
+              _pos = 0;
+            }
           }
           return res;
         } 
