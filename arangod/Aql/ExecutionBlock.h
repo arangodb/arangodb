@@ -173,7 +173,7 @@ namespace triagens {
           std::vector<RegisterId>                 nrRegs;
           
           // We collect the subquery blocks to deal with them at the end:
-          std::vector<ExecutionBlock*>            subQueries;
+          std::vector<ExecutionBlock*>            subQueryBlocks;
 
           // Local for the walk:
           unsigned int depth;
@@ -195,7 +195,7 @@ namespace triagens {
           // Copy constructor used for a subquery:
           VarOverview (VarOverview const& v, unsigned int newdepth) 
             : varInfo(v.varInfo), nrRegsHere(v.nrRegsHere), nrRegs(v.nrRegs),
-              subQueries(), depth(newdepth+1), 
+              subQueryBlocks(), depth(newdepth+1), 
               totalNrRegs(v.nrRegs[newdepth]), me(nullptr) {
             nrRegs.resize(depth);
             nrRegsHere.resize(depth);
@@ -257,7 +257,7 @@ namespace triagens {
                 varInfo.insert(make_pair(ep->_outVariable->id,
                                          VarInfo(depth, totalNrRegs)));
                 totalNrRegs++;
-                subQueries.push_back(eb);
+                subQueryBlocks.push_back(eb);
                 break;
               }
               case ExecutionNode::AGGREGATE: {
@@ -292,22 +292,7 @@ namespace triagens {
 
         };
 
-        void staticAnalysis () {
-          shared_ptr<VarOverview> v;
-          if (_varOverview.get() == nullptr) {
-            v.reset(new VarOverview());
-          }
-          else {
-            v.reset(new VarOverview(*_varOverview, _depth));
-          }
-          v->setSharedPtr(&v);
-          walk(v.get());
-          // Now handle the subqueries:
-          for (auto s : v->subQueries) {
-            s->staticAnalysis();
-          }
-          v->reset();
-        }
+        void staticAnalysis (ExecutionBlock* super = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Methods for execution
@@ -397,7 +382,9 @@ namespace triagens {
           RegisterId const n = src->getNrRegs();
 
           for (RegisterId i = 0; i < n; i++) {
-            dst->setValue(0, i, src->getValue(row, i).clone());
+            if (! src->getValue(row, i).isEmpty()) {
+              dst->setValue(0, i, src->getValue(row, i).clone());
+            }
 
             // copy collection
             dst->setDocumentCollection(i, src->getDocumentCollection(i));
