@@ -201,8 +201,8 @@ void Scopes::endNested () {
     TRI_ASSERT(scope != nullptr);
     ScopeType type = scope->type();
 
-    if (type == AQL_SCOPE_MAIN) {
-      // main scope cannot be closed here
+    if (type == AQL_SCOPE_MAIN || type == AQL_SCOPE_SUBQUERY) {
+      // main and subquery scopes cannot be closed here
       break;
     }
 

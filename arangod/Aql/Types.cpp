@@ -413,7 +413,7 @@ int triagens::aql::CompareAqlValues (AqlValue const& left,
                                    left._vector->at(lblock)->getDocumentCollection(0),
                                    rval, 
                                    right._vector->at(rblock)->getDocumentCollection(0));
-        if (cmp != 0){
+        if (cmp != 0) {
           return cmp;
         }
         if (++litem == left._vector->size()) {
@@ -434,10 +434,10 @@ int triagens::aql::CompareAqlValues (AqlValue const& left,
       return (lblock < left._vector->size() ? -1 : 1);
     }
     case AqlValue::RANGE: {
-      if (left._range->_low < right._range->_low){
+      if (left._range->_low < right._range->_low) {
         return -1;
       } 
-      if (left._range->_low > right._range->_low){
+      if (left._range->_low > right._range->_low) {
         return 1;
       } 
       if (left._range->_high < left._range->_high) {
