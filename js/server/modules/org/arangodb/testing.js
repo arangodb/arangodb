@@ -313,7 +313,7 @@ function findTests () {
             }).sort();
   tests_shell_server_aql = _.filter(fs.list(makePath("js/server/tests")),
             function (p) {
-              return p.substr(0,9) === "aql-" &&
+              return p.substr(0,4) === "aql-" &&
                      p.substr(-3) === ".js" &&
                      p.indexOf("ranges-combined") === -1;
             }).map(
@@ -323,7 +323,7 @@ function findTests () {
   tests_shell_server_aql_extended = 
             _.filter(fs.list(makePath("js/server/tests")),
             function (p) {
-              return p.substr(0,9) === "aql-" &&
+              return p.substr(0,4) === "aql-" &&
                      p.substr(-3) === ".js" &&
                      p.indexOf("ranges-combined") !== -1;
             }).map(
