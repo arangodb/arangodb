@@ -129,7 +129,6 @@ add_executable(
     V8Server/v8-vocbase.cpp
     V8Server/v8-wrapshapedjson.cpp
     V8Server/v8-vocindex.cpp
-    V8Server/v8-voccluster.cpp
     V8Server/v8-voccursor.cpp
     V8Server/v8-replication.cpp
     V8Server/v8-collection.cpp

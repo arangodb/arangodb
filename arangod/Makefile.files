@@ -110,7 +110,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/V8Server/v8-vocbase.cpp \
 	arangod/V8Server/v8-wrapshapedjson.cpp \
 	arangod/V8Server/v8-vocindex.cpp \
-	arangod/V8Server/v8-voccluster.cpp \
 	arangod/V8Server/v8-voccursor.cpp \
 	arangod/V8Server/v8-replication.cpp \
 	arangod/V8Server/v8-collection.cpp \
