@@ -291,6 +291,7 @@
           this.updateLocalQueries();
           this.renderSelectboxes();
           this.updateTable();
+          self.allowUpload = false;
         }
       }
     },
@@ -542,9 +543,9 @@
       var self = this;
       var inputEditor = ace.edit("aqlEditor");
       var selectedText = inputEditor.session.getTextRange(inputEditor.getSelectionRange());
-      
+
       this.switchTab("result-switch");
-      
+
       var sizeBox = $('#querySize');
       var data = {
         query: selectedText || inputEditor.getValue(),
