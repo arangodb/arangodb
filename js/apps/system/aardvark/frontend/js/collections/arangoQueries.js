@@ -154,9 +154,6 @@
 
       var newQueries = self.currentExtra;
 
-      console.log(newQueries);
-      console.log(oldQueries);
-
       var nameTaken = false;
 
       _.each(oldQueries.queries, function(query) {
@@ -164,7 +161,6 @@
         _.each(newQueries.queries, function(newQuery) {
           if (newQuery.name === query.name) {
             nameTaken = true;
-            console.log("taken");
           }
         });
 
