@@ -28,19 +28,10 @@
 #ifndef ARANGODB_AQL_AQL_ITEM_BLOCK_H
 #define ARANGODB_AQL_AQL_ITEM_BLOCK_H 1
 
+#include "Basics/Common.h"
+#include "Aql/AqlValue.h"
 #include "Aql/Types.h"
-//#include <functional>
-
-//#include <Basics/JsonHelper.h>
-//#include <BasicsC/json-utilities.h>
-
-//#include "Aql/AstNode.h"
-//#include "Aql/Variable.h"
-//#include "V8/v8-conv.h"
 #include "VocBase/document-collection.h"
-//#include "VocBase/voc-shaper.h"
-//#include "Utils/V8TransactionContext.h"
-//#include "Utils/AqlTransaction.h"
 
 namespace triagens {
   namespace aql {

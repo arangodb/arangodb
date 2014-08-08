@@ -26,15 +26,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/AqlItemBlock.h"
-//#include "Basics/JsonHelper.h"
-//#include "Utils/AqlTransaction.h"
-//#include "Utils/V8TransactionContext.h"
-//#include "V8/v8-conv.h"
-//#include "V8Server/v8-wrapshapedjson.h"
-//#include "VocBase/voc-shaper.h"
 
 using namespace triagens::aql;
-//using Json = triagens::basics::Json;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      AqlItemBlock

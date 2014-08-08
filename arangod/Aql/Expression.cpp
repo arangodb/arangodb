@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Expression.h"
+#include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
 #include "Aql/Types.h"
 #include "Aql/V8Executor.h"
@@ -85,11 +86,11 @@ std::unordered_set<Variable*> Expression::variables () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
-                       std::vector<TRI_document_collection_t const*>& docColls,
-                       std::vector<AqlValue>& argv,
-                       size_t startPos,
-                       std::vector<Variable*> const& vars,
-                       std::vector<RegisterId> const& regs) {
+                              std::vector<TRI_document_collection_t const*>& docColls,
+                              std::vector<AqlValue>& argv,
+                              size_t startPos,
+                              std::vector<Variable*> const& vars,
+                              std::vector<RegisterId> const& regs) {
   return _func->execute(trx, docColls, argv, startPos, vars, regs);
 }
 
