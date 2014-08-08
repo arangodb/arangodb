@@ -1022,8 +1022,7 @@ namespace triagens {
           
           _inVarRegId = (*it).second.registerId;
           
-          _index = 0; // index in _inVariable for next run
-
+         
           return TRI_ERROR_NO_ERROR;
         }
 
@@ -1039,6 +1038,7 @@ namespace triagens {
           }
 
           // handle local data (if any) 
+           _index = 0; // index in _inVariable for next run
 
           return TRI_ERROR_NO_ERROR;
         }
@@ -1063,12 +1063,33 @@ namespace triagens {
           // if we make it here, then _buffer.front() exists
           AqlItemBlock* cur = _buffer.front();
           
-          // get the thing we are looping over // ~J assumes Json list
-          auto inVariable = cur->getValue(_pos, _inVarRegId)._json;
+          // get the thing we are looping over 
+          AqlValue inVarReg = cur->getValue(_pos, _inVarRegId);
+          size_t sizeInVar;
 
-          // ~J assumes Json list
-          size_t toSend = std::min(atMost, inVariable->size()-_index); 
+          switch (inVarReg._type) {
+            case AqlValue::JSON: {
+              if(!inVarReg._json->isList()){
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+              }
+              sizeInVar =  inVarReg._json->size();
+              break;
+            }
+            case AqlValue::RANGE: {
+              sizeInVar =  inVarReg._range->_high - inVarReg._range->_low;
+              break;
+            }
+            case AqlValue::DOCVEC: {
+              sizeInVar =  0;
+              break;
+            }
+            default: {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+            }
+          }
          
+          size_t   toSend = std::min(atMost, sizeInVar-_index); 
+
           //create the result
           auto res = new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]);
           
@@ -1087,13 +1108,12 @@ namespace triagens {
               }
             }
             // add the new register value . . .
-            res->setValue(j, cur->getNrRegs(), 
-              AqlValue(new basics::Json(inVariable->at(_index).copy())));
+            res->setValue(j, cur->getNrRegs(), getAqlValue(inVarReg));
             // deep copy of the inVariable.at(_pos) with correct memory
             // requirements
             ++_index; 
           }
-          if (_index == inVariable->size()){
+          if (_index == sizeInVar) {
             // advance read position in the current block . . .
             if (++_pos == cur->size() ) {
               delete cur;
@@ -1104,7 +1124,29 @@ namespace triagens {
           return res;
         } 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AqlValue from the inVariable using the current _index
+////////////////////////////////////////////////////////////////////////////////
+
       private:
+
+        AqlValue getAqlValue (AqlValue inVarReg) {
+          switch (inVarReg._type) {
+            case AqlValue::JSON: {
+              return AqlValue(new basics::Json(inVarReg._json->at(_index).copy()));
+            }
+            case AqlValue::RANGE: {
+              return AqlValue(new 
+                  basics::Json(static_cast<double>(inVarReg._range->_low + _index)));
+            }
+            /*case AqlValue::DOCVEC: {
+            }*/
+            default: {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+            }
+          }
+        }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief current position in the _inVariable
