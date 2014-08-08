@@ -1094,7 +1094,7 @@ namespace triagens {
           switch (inVarReg._type) {
             case AqlValue::JSON: {
               if(!inVarReg._json->isList()){
-                THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+                THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "EnumerateListBlock: JSON is not a list");
               }
               sizeInVar = inVarReg._json->size();
               break;
