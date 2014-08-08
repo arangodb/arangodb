@@ -39,8 +39,6 @@
 #include "Utils/transactions.h"
 #include "Utils/V8TransactionContext.h"
 
-struct TRI_json_s;
-
 namespace triagens {
   namespace aql {
 
@@ -349,6 +347,10 @@ namespace triagens {
           }
 
         };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief static analysis
+////////////////////////////////////////////////////////////////////////////////
 
         void staticAnalysis (ExecutionBlock* super = nullptr);
 
