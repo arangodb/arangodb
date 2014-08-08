@@ -16,7 +16,7 @@
                             "code": "403"
                         },
                         {
-                            "reason": "is returned if the server cannot generate the result due to an out-of-memory error.",
+                            "reason": "is returned if the server cannot generate the result due to an out-of-memory error. @endDocuBlock",
                             "code": "500"
                         }
                     ],
@@ -72,10 +72,10 @@
                         }
                     ],
                     "notes": "Returns fatal, error, warning or info log messages from the server's global log. The result is a JSON object with the following attributes: <br><br>  <ul class=\"swagger-list\"><li><em>lid</em>: a list of log entry identifiers. Each log message is uniquely identified by its <b>lid</b> and the identifiers are in ascending order.  <li><em>level</em>: a list of the log-levels for all log entries.  <li><em>timestamp</em>: a list of the timestamps as seconds since 1970-01-01 for all log entries.  <li><em>text</em> a list of the texts of all log entries  <li><em>totalAmount</em>: the total amount of log entries before pagination.",
-                    "summary": "reads the global log from the server",
+                    "summary": " Read global log from the server",
                     "httpMethod": "GET",
                     "examples": "",
-                    "nickname": "readsTheGlobalLogFromTheServer"
+                    "nickname": "ReadGlobalLogFromTheServer"
                 }
             ],
             "path": "/_admin/log"

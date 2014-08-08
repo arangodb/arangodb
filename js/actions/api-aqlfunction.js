@@ -186,7 +186,7 @@ function post_api_aqlfunction (req, res) {
 /// @startDocuBlock JSF_delete_api_aqlfunction
 /// @brief remove an existing AQL user function
 ///
-/// @RESTHEADER{DELETE /_api/aqlfunction/name, Remove existing AQL user function}
+/// @RESTHEADER{DELETE /_api/aqlfunction/{name}, Remove existing AQL user function}
 ///
 /// @RESTURLPARAMETERS
 ///

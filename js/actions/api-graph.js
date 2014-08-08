@@ -1223,12 +1223,15 @@ function post_graph_all_vertices (req, res, g) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get neighbors of a vertex
 ///
-/// @RESTHEADER{POST /_api/graph/`graph-name`/vertices/`vertice-name`,get vertices}
+/// @RESTHEADER{POST /_api/graph/`graph-name`/vertices/`vertex-name`,get vertices}
 ///
 /// @RESTURLPARAMETERS
 ///
 /// @RESTURLPARAM{graph-name,string,required}
 /// The name of the graph
+///
+/// @RESTURLPARAM{vertex-name,string,required}
+/// The key of the vertex
 ///
 /// @RESTBODYPARAM{graph,json,required}
 /// The call expects a JSON hash array as body to filter the result:
