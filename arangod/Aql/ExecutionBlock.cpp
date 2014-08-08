@@ -78,6 +78,29 @@ void ExecutionBlock::walk (WalkerWorker* worker) {
   worker->after(this);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief static analysis
+////////////////////////////////////////////////////////////////////////////////
+
+void ExecutionBlock::staticAnalysis (ExecutionBlock* super) {
+  // The super is only for the case of subqueries.
+  shared_ptr<VarOverview> v;
+  if (super == nullptr) {
+    v.reset(new VarOverview());
+  }
+  else {
+    v.reset(new VarOverview(*(super->_varOverview), super->_depth));
+  }
+  v->setSharedPtr(&v);
+  walk(v.get());
+  // Now handle the subqueries:
+  for (auto s : v->subQueryBlocks) {
+    auto sq = static_cast<SubqueryBlock*>(s);
+    sq->getSubquery()->staticAnalysis(s);
+  }
+  v->reset();
+}
+
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"

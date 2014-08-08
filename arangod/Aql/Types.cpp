@@ -94,6 +94,10 @@ AqlValue AqlValue::clone () const {
       return AqlValue(_range->_low, _range->_high);
     }
 
+    case EMPTY: {
+      return AqlValue();
+    }
+
     default: {
       TRI_ASSERT(false);
     }
