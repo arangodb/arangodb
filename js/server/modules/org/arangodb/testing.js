@@ -41,6 +41,7 @@
 ///   - "boost"
 ///   - "shell_server"
 ///   - "shell_server_ahuacatl"
+///   - "shell_server_aql"
 ///   - "http_server"
 ///   - "ssl_server"
 ///   - "shell_client"
@@ -60,6 +61,7 @@
 ///   - `skipBoost`: if set to true the boost unittests are skipped
 ///   - `skipGeo`: if set to true the geo index tests are skipped
 ///   - `skipAhuacatl`: if set to true the ahuacatl tests are skipped
+///   - `skipAql`: if set to true the AQL tests are skipped
 ///   - `skipRanges`: if set to true the ranges tests are skipped
 ///   - `valgrind`: if set to true the arangods are run with the valgrind
 ///     memory checker
@@ -98,6 +100,7 @@ var optionsDefaults = { "cluster": false,
                         "skipBoost": false,
                         "skipGeo": false,
                         "skipAhuacatl": false,
+                        "skipAql": false,
                         "skipRanges": false,
                         "username": "root",
                         "password": "",
@@ -258,6 +261,8 @@ var tests_shell_server;
 var tests_shell_client;
 var tests_shell_server_ahuacatl;
 var tests_shell_server_ahuacatl_extended;
+var tests_shell_server_aql;
+var tests_shell_server_aql_extended;
 
 function findTests () {
   if (foundTests) {
@@ -300,6 +305,25 @@ function findTests () {
             _.filter(fs.list(makePath("js/server/tests")),
             function (p) {
               return p.substr(0,9) === "ahuacatl-" &&
+                     p.substr(-3) === ".js" &&
+                     p.indexOf("ranges-combined") !== -1;
+            }).map(
+            function(x) {
+              return fs.join(makePath("js/server/tests"),x);
+            }).sort();
+  tests_shell_server_aql = _.filter(fs.list(makePath("js/server/tests")),
+            function (p) {
+              return p.substr(0,4) === "aql-" &&
+                     p.substr(-3) === ".js" &&
+                     p.indexOf("ranges-combined") === -1;
+            }).map(
+            function(x) {
+              return fs.join(makePath("js/server/tests"),x);
+            }).sort();
+  tests_shell_server_aql_extended = 
+            _.filter(fs.list(makePath("js/server/tests")),
+            function (p) {
+              return p.substr(0,4) === "aql-" &&
                      p.substr(-3) === ".js" &&
                      p.indexOf("ranges-combined") !== -1;
             }).map(
@@ -417,6 +441,18 @@ testFuncs.shell_server_ahuacatl = function(options) {
     }
     return performTests(options, tests_shell_server_ahuacatl.concat(
                                  tests_shell_server_ahuacatl_extended));
+  }
+  return "skipped";
+};
+
+testFuncs.shell_server_aql = function(options) {
+  findTests();
+  if (!options.skipAql) {
+    if (options.skipRanges) {
+      return performTests(options, tests_shell_server_aql);
+    }
+    return performTests(options, tests_shell_server_aql.concat(
+                                 tests_shell_server_aql_extended));
   }
   return "skipped";
 };
@@ -918,6 +954,7 @@ var allTests =
     "boost",
     "shell_server",
     "shell_server_ahuacatl",
+    "shell_server_aql",
     "http_server",
     "ssl_server",
     "shell_client",
@@ -945,6 +982,7 @@ function printUsage () {
   print('         "skipBoost": skip the boost unittests');
   print('         "skipGeo": skip the geo index tests');
   print('         "skipAhuacatl": skip the ahuacatl tests');
+  print('         "skipAql": skip the AQL tests');
   print('         "skipRanges": skip the ranges tests');
   print('         "valgrind": arangods are run with valgrind');
   print('         "cluster": tests are run on a small local cluster');
