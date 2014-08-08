@@ -315,10 +315,21 @@ namespace triagens {
         size_t     _nrItems;
         RegisterId _nrRegs;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the following is a means to say which pointers have already
+/// been handed on to another block and therefore do must not be
+/// freed. Set with "setHandedOn". Note that one should only set this
+/// immediately before destruction, since otherwise it is not clear
+/// whether the memory pointed to by the mentioned AqlValues is still
+/// valid!
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_set<AqlValue>* _handedOn;
+
       public:
 
         AqlItemBlock (size_t nrItems, RegisterId nrRegs)
-          : _nrItems(nrItems), _nrRegs(nrRegs) {
+          : _nrItems(nrItems), _nrRegs(nrRegs), _handedOn(nullptr) {
           if (nrItems > 0 && nrRegs > 0) {
             _data.reserve(nrItems * nrRegs);
             for (size_t i = 0; i < nrItems * nrRegs; ++i) {
@@ -338,18 +349,28 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~AqlItemBlock () {
-          std::unordered_set<AqlValue> cache;
-
+          if (_handedOn == nullptr) {
+            _handedOn = new std::unordered_set<AqlValue>();
+          }
           for (size_t i = 0; i < _nrItems * _nrRegs; i++) {
             if (! _data[i].isEmpty()) {
-              auto it = cache.find(_data[i]);
+              auto it = _handedOn->find(_data[i]);
 
-              if (it == cache.end()) {
-                cache.insert(_data[i]);
+              if (it == _handedOn->end()) {
+                _handedOn->insert(_data[i]);
                 _data[i].destroy();
               }
             }
           }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief
+////////////////////////////////////////////////////////////////////////////////
+
+        void setHandedOn (std::unordered_set<AqlValue>* handedOn) {
+          TRI_ASSERT(_handedOn == nullptr);   // must set this only once
+          _handedOn = handedOn;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
