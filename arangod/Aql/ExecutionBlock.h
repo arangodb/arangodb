@@ -1719,29 +1719,6 @@ namespace triagens {
           
           return TRI_ERROR_NO_ERROR;
         }
-/*
-        void emitRow (AqlItemBlock* res, 
-                      size_t j,
-                      AqlItemBlock* cur,
-                      void* row) {
-          std::cout << "EMIT ROW: " << j << "\n";
-
-          if (j == 0) {
-            // first row in block
-            TRI_ASSERT(cur->getNrRegs() <= res->getNrRegs());
-          
-            inheritRegisters(cur, res, _pos);
-          }
-
-          for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
-            // TODO: return the actual group values
-            res->setValue(j, (*it).first, AqlValue(new basics::Json(42)));
-          }
-          
-          clearGroup();
-        }
-
-*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getSome
@@ -1778,7 +1755,7 @@ std::cout << "AGGREGATE::GETSOME - DONE\n";
 
 std::cout << "POS: " << _pos << "\n";
           inheritRegisters(cur, res, _pos);
-            
+           
           size_t j = 0;
 
           while (j < atMost) {
@@ -1788,9 +1765,11 @@ std::cout << "POS: " << _pos << "\n";
             if (_currentGroup.groupValues[0].isEmpty()) {
               // we never had any previous group
               newGroup = true;
+              std::cout << "NEED TO CREATE NEW GROUP\n";
             }
             else {
               // we already had a group, check if the group has changed
+              std::cout << "HAVE A GROUP\n";
               size_t i = 0;
 
               for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
@@ -1808,13 +1787,18 @@ std::cout << "POS: " << _pos << "\n";
             }
 
             if (newGroup) {
+              std::cout << "CREATING GROUP...\n";
               if (! _currentGroup.groupValues[0].isEmpty()) {
                 // need to emit the current group first
+              std::cout << "EMITTING OLD GROUP INTO ROW #" << j << "\n";
                 size_t i = 0;
                 for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
+              std::cout << "REGISTER #" << (*it).first << "\n";
                   res->setValue(j, (*it).first, _currentGroup.groupValues[i]);
                   ++i;
                 }
+            
+                ++j;
               }
 
               // construct the new group
@@ -1822,7 +1806,7 @@ std::cout << "POS: " << _pos << "\n";
               for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
                 _currentGroup.groupValues[i] = cur->getValue(_pos, (*it).second).clone();
                 _currentGroup.collections[i] = cur->getDocumentCollection((*it).second);
-                // std::cout << "GROUP VALUE #" << i << ": " << _currentGroup.groupValues[i].toString(_currentGroup.collections[i]) << "\n";
+                std::cout << "GROUP VALUE #" << i << ": " << _currentGroup.groupValues[i].toString(_currentGroup.collections[i]) << "\n";
                 ++i;
               }
             }
@@ -1831,15 +1815,18 @@ std::cout << "POS: " << _pos << "\n";
 //              _currentGroup.groupDetails.
             }
 
-            ++j;
-            
             if (++_pos >= cur->size()) {
               _buffer.pop_front();
               delete cur;
               _pos = 0;
+std::cout << "SHRINKING BLOCK TO " << j << " ROWS\n";
+          res->shrink(j);
               return res;
             }
           }
+
+std::cout << "SHRINKING BLOCK TO " << j << " ROWS\n";
+          res->shrink(j);
 
           return res;
         }
