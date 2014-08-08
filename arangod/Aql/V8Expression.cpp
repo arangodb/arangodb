@@ -29,6 +29,7 @@
 
 #include "Aql/V8Expression.h"
 #include "Aql/V8Executor.h"
+#include "Aql/Variable.h"
 #include "BasicsC/json.h"
 #include "V8/v8-conv.h"
 

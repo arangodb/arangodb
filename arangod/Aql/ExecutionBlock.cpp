@@ -28,18 +28,33 @@
 #include "Aql/ExecutionBlock.h"
 #include "Utils/Exception.h"
 
-using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace triagens::aql;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              class ExecutionBlock
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief batch size value
 ////////////////////////////////////////////////////////////////////////////////
   
 size_t const ExecutionBlock::DefaultBatchSize = 1000;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
          
 ExecutionBlock::~ExecutionBlock () {        
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
 
 int ExecutionBlock::bind (AqlItemBlock* items, size_t pos) {
   int res;
@@ -105,5 +120,4 @@ void ExecutionBlock::staticAnalysis (ExecutionBlock* super) {
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-
 
