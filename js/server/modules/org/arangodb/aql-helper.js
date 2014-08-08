@@ -148,12 +148,20 @@ function getRawQueryResults (query, bindVars) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function getRawQueryResultsAQL2 (query, bindVars) {
-  var queryResult = internal.AQL_EXECUTE(query, bindVars, { 
-    count: true, 
-    batchSize : 3000 
-  });
-
-  return queryResult.docs;
+  var queryResult;
+  if (typeof bindVars == "object") {
+    queryResult = AQL_EXECUTE(query, bindVars, { 
+      count: true, 
+      batchSize : 3000 
+    });
+  }
+  else {
+    queryResult = AQL_EXECUTE(query, {}, {
+      count: true,
+      batchSize : 3000
+    });
+  }
+  return queryResult.json;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -198,7 +206,9 @@ function getQueryResults2 (query, bindVars, recursive) {
   var result2 = getQueryResultsAQL2(query, bindVars, recursive);
 
   if (! _.isEqual(result, result2)) {
-    throw "Old and new AQL return different results!";
+    require("internal").print("Old and new AQL return different results!");
+    require("internal").print("Old result:\n", result);
+    require("internal").print("New result:\n", result2);
   }
 
   return result;
