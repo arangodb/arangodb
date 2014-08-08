@@ -350,7 +350,7 @@ namespace triagens {
 
         ~AqlItemBlock () {
           if (_handedOn == nullptr) {
-            _handedOn = new std::unordered_set<AqlValue>();
+            _handedOn = new std::unordered_set<AqlValue>;
           }
           for (size_t i = 0; i < _nrItems * _nrRegs; i++) {
             if (! _data[i].isEmpty()) {
@@ -475,7 +475,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief slice/clone
+/// @brief slice/clone, this does a deep copy of all entries
 ////////////////////////////////////////////////////////////////////////////////
 
         AqlItemBlock* slice (size_t from, size_t to) {
@@ -517,7 +517,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief slice/clone for a subset
+/// @brief slice/clone for a subset, this does a deep copy of all entries
 ////////////////////////////////////////////////////////////////////////////////
 
         AqlItemBlock* slice (vector<size_t>& chosen, size_t from, size_t to) {
@@ -556,6 +556,54 @@ namespace triagens {
             delete res;
             throw;
           }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief steal for a subset, this does not copy the entries, rather,
+/// it remembers which it has taken. This is stored in the
+/// this AqlItemBlock. It is highly recommended to delete it right
+/// after this operation, because it is unclear, when the values
+/// to which our AqlValues point will vanish.
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlItemBlock* steal (vector<size_t>& chosen, size_t from, size_t to) {
+          TRI_ASSERT(from < to && to <= chosen.size());
+
+          auto cache = new std::unordered_set<AqlValue>;
+
+          AqlItemBlock* res = nullptr;
+          try {
+            res = new AqlItemBlock(to - from, _nrRegs);
+          }
+          catch (...) {
+            delete cache;
+            throw;
+          }
+          try {
+            for (RegisterId col = 0; col < _nrRegs; col++) {
+              res->_docColls[col] = _docColls[col];
+            }
+            for (size_t row = from; row < to; row++) {
+              for (RegisterId col = 0; col < _nrRegs; col++) {
+                AqlValue& a(_data[chosen[row] * _nrRegs + col]);
+
+                if (! a.isEmpty()) {
+                  res->_data[(row - from) * _nrRegs + col] = a;
+                  auto it = cache->find(a);
+                  if (it == cache->end()) {
+                    cache->insert(a);
+                  }
+                }
+              }
+            }
+          }
+          catch (...) {
+            delete res;
+            delete cache;
+            throw;
+          }
+          setHandedOn(cache);
+          return res;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
