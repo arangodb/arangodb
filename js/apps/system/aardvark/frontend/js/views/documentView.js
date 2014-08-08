@@ -113,6 +113,7 @@
       }
       catch (e) {
         this.errorConfirmation();
+        this.disableSaveButton();
       }
 
       model = JSON.stringify(model);
