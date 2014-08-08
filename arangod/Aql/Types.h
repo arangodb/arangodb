@@ -291,13 +291,22 @@ namespace triagens {
 // --SECTION--                                                      AqlItemBlock
 // -----------------------------------------------------------------------------
 // an <AqlItemBlock> is a <nrItems>x<nrRegs> vector of <AqlValue>s (not
-// pointers). The size of an <AqlItemBlock> is the number of items. Entries in a
-// given column (i.e. all the values of a given register for all items in the
-// block) have the same type and belong to the same collection. The document
-// collection for a particular column are accessed via <getDocumentCollection>,
+// pointers). The size of an <AqlItemBlock> is the number of items.
+// Entries in a given column (i.e. all the values of a given register
+// for all items in the block) have the same type and belong to the
+// same collection (if they are of type SHAPED). The document collection
+// for a particular column is accessed via <getDocumentCollection>,
 // and the entire array of document collections is accessed by
-// <getDocumentCollections>. There is no access to an entire item, only access to
-// particular registers of an item (via getValue). 
+// <getDocumentCollections>. There is no access to an entire item, only
+// access to particular registers of an item (via getValue).
+//
+// An AqlItemBlock is responsible to explicitly destroy all the
+// <AqlValue>s it contains at destruction time. It is however allowed
+// that multiple of the <AqlValue>s in it are pointing to identical
+// structures, and thus must be destroyed only once for all identical
+// copies. Furthermore, when parts of an AqlItemBlock are handed on
+// to another AqlItemBlock, then the <AqlValue>s inside must be copied
+// (deep copy) to make the blocks independent.
 
     class AqlItemBlock {
 
@@ -344,7 +353,8 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shrink the block to the specified number of rows
+/// @brief shrink the block to the specified number of rows, further
+/// rows are erased without destroying the AqlValues in there!
 ////////////////////////////////////////////////////////////////////////////////
 
         void shrink (size_t nrItems) {
