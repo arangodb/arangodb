@@ -1091,6 +1091,7 @@ namespace triagens {
           size_t sizeInVar;
 
           // get the size of the thing we are looping over
+          collection = nullptr;
           switch (inVarReg._type) {
             case AqlValue::JSON: {
               if(!inVarReg._json->isList()){
@@ -1104,14 +1105,15 @@ namespace triagens {
               break;
             }
             case AqlValue::DOCVEC: {
-                if( _index == 0){// this is a (maybe) new DOCVEC
-                  _DOCVECsize = 0;
-                  //we require the total number of items 
-                  for (size_t i = 0; i < inVarReg._vector->size(); i++) {
-                    _DOCVECsize += inVarReg._vector->at(i)->size();
-                  }
+              if( _index == 0){// this is a (maybe) new DOCVEC
+                _DOCVECsize = 0;
+                //we require the total number of items 
+                for (size_t i = 0; i < inVarReg._vector->size(); i++) {
+                  _DOCVECsize += inVarReg._vector->at(i)->size();
                 }
-                sizeInVar = _DOCVECsize;
+                collection = inVarReg._vector->at(0)->getDocumentCollection(0);
+              }
+              sizeInVar = _DOCVECsize;
               break;
             }
             default: {
@@ -1127,7 +1129,7 @@ namespace triagens {
           inheritRegisters(cur, res, _pos);
 
           // we don't have a collection
-          res->setDocumentCollection(cur->getNrRegs(), nullptr);
+          res->setDocumentCollection(cur->getNrRegs(), collection);
 
           for (size_t j = 0; j < toSend; j++) {
             if (j > 0) {
@@ -1281,7 +1283,31 @@ namespace triagens {
 /// @brief current position in the _inVariable
 ////////////////////////////////////////////////////////////////////////////////
         
-        size_t _index, _thisblock, _seen, _DOCVECsize;
+        size_t _index;
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief current block in DOCVEC
+////////////////////////////////////////////////////////////////////////////////
+        
+        size_t _thisblock;
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of elements in DOCVEC before the current block
+////////////////////////////////////////////////////////////////////////////////
+        
+        size_t _seen;
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief total number of elements in DOCVEC
+////////////////////////////////////////////////////////////////////////////////
+        
+        size_t _DOCVECsize;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief document collection from DOCVEC
+////////////////////////////////////////////////////////////////////////////////
+        
+        TRI_document_collection_t const* collection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the register index containing the inVariable of the EnumerateListNode
