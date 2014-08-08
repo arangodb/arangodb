@@ -385,6 +385,25 @@ namespace triagens {
 
       protected:
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copy register data from one block (src) into another (dst)
+/// register values are either copied/cloned or stolen
+////////////////////////////////////////////////////////////////////////////////
+          
+        void inheritRegisters (AqlItemBlock const* src,
+                               AqlItemBlock* dst,
+                               size_t row) {
+          RegisterId const n = src->getNrRegs();
+
+          for (RegisterId i = 0; i < n; i++) {
+            dst->setValue(0, i, src->getValue(row, i).clone());
+
+            // copy collection
+            dst->setDocumentCollection(i, src->getDocumentCollection(i));
+          }
+        }
+
+
         bool getBlock (size_t atLeast, size_t atMost) {
           AqlItemBlock* docs = _dependencies[0]->getSome(atLeast, atMost);
           if (docs == nullptr) {
@@ -401,7 +420,7 @@ namespace triagens {
       public:
 
         virtual AqlItemBlock* getOne () {
-          return getSome (1, 1);
+          return getSome(1, 1);
         }
         
         virtual AqlItemBlock* getSome (size_t atLeast, 
@@ -772,7 +791,6 @@ namespace triagens {
             delete _trx;
             THROW_ARANGO_EXCEPTION(res);
           }
-
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -901,11 +919,10 @@ namespace triagens {
           TRI_ASSERT(curRegs <= res->getNrRegs());
 
           // only copy 1st row of registers inherited from previous frame(s)
-          for (RegisterId i = 0; i < curRegs; i++) {
-            res->setValue(0, i, cur->getValue(_pos, i).clone());
-          }
-          res->getDocumentCollections().at(curRegs)
-            = _trx->documentCollection();
+          inheritRegisters(cur, res, _pos);
+
+          // set our collection for our output register
+          res->setDocumentCollection(curRegs, _trx->documentCollection());
 
           for (size_t j = 0; j < toSend; j++) {
             if (j > 0) {
@@ -1034,8 +1051,7 @@ namespace triagens {
           
           _inVarRegId = (*it).second.registerId;
           
-          _index = 0; // index in _inVariable for next run
-
+         
           return TRI_ERROR_NO_ERROR;
         }
 
@@ -1051,6 +1067,7 @@ namespace triagens {
           }
 
           // handle local data (if any) 
+           _index = 0; // index in _inVariable for next run
 
           return TRI_ERROR_NO_ERROR;
         }
@@ -1075,20 +1092,39 @@ namespace triagens {
           // if we make it here, then _buffer.front() exists
           AqlItemBlock* cur = _buffer.front();
           
-          // get the thing we are looping over // ~J assumes Json list
-          auto inVariable = cur->getValue(_pos, _inVarRegId)._json;
+          // get the thing we are looping over 
+          AqlValue inVarReg = cur->getValue(_pos, _inVarRegId);
+          size_t sizeInVar;
 
-          // ~J assumes Json list
-          size_t toSend = std::min(atMost, inVariable->size()-_index); 
+          switch (inVarReg._type) {
+            case AqlValue::JSON: {
+              if(!inVarReg._json->isList()){
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+              }
+              sizeInVar =  inVarReg._json->size();
+              break;
+            }
+            case AqlValue::RANGE: {
+              sizeInVar =  inVarReg._range->_high - inVarReg._range->_low;
+              break;
+            }
+            case AqlValue::DOCVEC: {
+              sizeInVar =  0;
+              break;
+            }
+            default: {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+            }
+          }
          
+          size_t   toSend = std::min(atMost, sizeInVar-_index); 
+
           //create the result
           auto res = new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]);
           
-          // copy 1st row of registers inherited from incoming block 
-          for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
-            res->setValue(0, i, cur->getValue(_pos, i).clone());
-            res->setDocumentCollection(i, cur->getDocumentCollection(i));
-          }
+          inheritRegisters(cur, res, _pos);
+
+          // we don't have a collection
           res->setDocumentCollection(cur->getNrRegs(), nullptr);
 
           for (size_t j = 0; j < toSend; j++) {
@@ -1099,13 +1135,12 @@ namespace triagens {
               }
             }
             // add the new register value . . .
-            res->setValue(j, cur->getNrRegs(), 
-              AqlValue(new basics::Json(inVariable->at(_index).copy())));
+            res->setValue(j, cur->getNrRegs(), getAqlValue(inVarReg));
             // deep copy of the inVariable.at(_pos) with correct memory
             // requirements
             ++_index; 
           }
-          if (_index == inVariable->size()){
+          if (_index == sizeInVar) {
             // advance read position in the current block . . .
             if (++_pos == cur->size() ) {
               delete cur;
@@ -1116,7 +1151,29 @@ namespace triagens {
           return res;
         } 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AqlValue from the inVariable using the current _index
+////////////////////////////////////////////////////////////////////////////////
+
       private:
+
+        AqlValue getAqlValue (AqlValue inVarReg) {
+          switch (inVarReg._type) {
+            case AqlValue::JSON: {
+              return AqlValue(new basics::Json(inVarReg._json->at(_index).copy()));
+            }
+            case AqlValue::RANGE: {
+              return AqlValue(new 
+                  basics::Json(static_cast<double>(inVarReg._range->_low + _index)));
+            }
+            /*case AqlValue::DOCVEC: {
+            }*/
+            default: {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+            }
+          }
+        }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief current position in the _inVariable
@@ -1327,7 +1384,9 @@ namespace triagens {
                 break;
               }
               results->push_back(tmp);
-            } while(true);
+            } 
+            while(true);
+
             res->setValue(i, _outReg, AqlValue(results));
             _subquery->shutdown();
           }
@@ -1355,11 +1414,6 @@ namespace triagens {
 
         ExecutionBlock* _subquery;
     };
-
-
-////////////////////////////////////////////////////////////////////////////////l--------------------------------------------------------------------------------TODO
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       FilterBlock
@@ -1448,40 +1502,6 @@ namespace triagens {
           }
 
           return true;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getOne
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlItemBlock* getOne () {
-          if (_done) {
-            return nullptr;
-          }
-
-          if (_buffer.empty()) {
-            if (! getBlock(1, DefaultBatchSize)) {
-              _done = true;
-              return nullptr;
-            }
-            _pos = 0;
-          }
-
-          TRI_ASSERT(! _buffer.empty());
-
-          // Here, _buffer.size() is > 0 and _pos points to a valid place
-          // in it.
-
-          AqlItemBlock* cur = _buffer.front();
-          AqlItemBlock* res = cur->slice(_chosen[_pos], _chosen[_pos+ 1]);
-          _pos++;
-
-          if (_pos >= _chosen.size()) {
-            _buffer.pop_front();
-            delete cur;
-            _pos = 0;
-          }
-          return res;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1672,39 +1692,132 @@ namespace triagens {
             _groupRegister = (*it).second.registerId;
             _collectGroups = true;
           }
+          
+          _previousRow = nullptr;
+          _groupItems.clear();
 
           return TRI_ERROR_NO_ERROR;
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute
-////////////////////////////////////////////////////////////////////////////////
+        void readRow () {
+        }
 
-        virtual int execute () {
-          int res = ExecutionBlock::execute();
+        void emitRow (AqlItemBlock* res, 
+                      size_t j,
+                      AqlItemBlock* cur,
+                      void* row) {
 
-          if (res != TRI_ERROR_NO_ERROR) {
-            return res;
+          if (j == 0) {
+            // first row in block
+            TRI_ASSERT(cur->getNrRegs() <= res->getNrRegs());
+          
+            inheritRegisters(cur, res, _pos);
           }
 
-          getBlock(DefaultBatchSize, DefaultBatchSize);
+          for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
+            // TODO: return the actual group values
+            res->setValue(j, (*it).first, AqlValue(new basics::Json(42)));
+          }
+          
+          clearGroup();
+        }
+
+        void clearGroup () {
+          _groupItems.clear();
+          _previousRow = nullptr;
+        }
+
+        int compareRows (void* l, void* r) {
+          // all rows are unequal
+          return 1;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSome
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
+          if (_done) {
+            return nullptr;
+          }
 
           if (_buffer.empty()) {
-            _done = true;
-            return TRI_ERROR_NO_ERROR;
+            if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
+
+              if (_previousRow != nullptr) {
+                // return the last group if we're running out of input
+                // TODO: last group is lost at the moment
+//                auto res = new AqlItemBlock(1, _varOverview->nrRegs[_depth]);
+//                emitRow(res, 0, _previousRow);
+                clearGroup();
+              }
+
+              _done = true;
+              return nullptr;
+            }
+            _pos = 0;           // this is in the first block
           }
 
-          /*
-          std::vector<TRI_document_collection_t const*> colls;
-          for (RegisterId i = 0; i < _aggregateRegisters.size(); i++) {
-            colls.push_back(_buffer.front()->getDocumentCollection(_aggregateRegisters[i].second));
+          // If we get here, we do have _buffer.front()
+          AqlItemBlock* cur = _buffer.front();
+          size_t const curRegs = cur->getNrRegs();
+
+          auto res = new AqlItemBlock(atMost, _varOverview->nrRegs[_depth]);
+          TRI_ASSERT(curRegs <= res->getNrRegs());
+
+          inheritRegisters(cur, res, _pos);
+            
+          readRow();
+
+          size_t j = 0;
+
+          while (j < atMost) {
+            if (_previousRow == nullptr) {
+              // this is the very first input row. build a new group
+              _previousRow = _currentRow;
+              _groupItems.push_back(_currentRow);
+            }
+            else if (compareRows(_previousRow, _currentRow) == 0) {
+              // this is a follow-up input row and it matches the current group
+              _groupItems.push_back(_currentRow);
+            }
+            else {
+              // different group
+
+              // emit the previous group
+              emitRow(res, j, cur, _previousRow);
+              ++j;
+
+              // and build a new group
+              _previousRow = _currentRow;
+              _groupItems.push_back(_currentRow);
+            }
+            
+            if (++_pos >= cur->size()) {
+              _buffer.pop_front();
+              delete cur;
+              _pos = 0;
+              return res;
+            }
+            
+            readRow();
+          }
+/*
+          for (size_t j = 0; j < atMost; j++) {
+            if (j > 0) {
+              // re-use already copied aqlvalues
+              for (RegisterId i = 0; i < curRegs; i++) {
+                res->setValue(j, i, res->getValue(0, i));
+              }
+            }
+
+            // The result is in the first variable of this depth,
+            // we do not need to do a lookup in _varOverview->varInfo,
+            // but can just take cur->getNrRegs() as registerId:
+            res->setValue(j, curRegs, AqlValue(reinterpret_cast<TRI_df_marker_t const*>(_documents[_posInAllDocs++].getDataPtr())));
           }
           */
-
-          _done = false;
-          _pos = 0;
-
-          return TRI_ERROR_NO_ERROR;
+          return res;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1712,6 +1825,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<std::pair<RegisterId, RegisterId>> _aggregateRegisters;
+
+
+        void* _previousRow;
+        void* _currentRow;
+
+        std::vector<void*> _groupItems;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the optional register that contains the values for each group
@@ -2067,8 +2187,7 @@ namespace triagens {
             stripped->setValue(i, 0, res->getValue(i, registerId));
             res->eraseValue(i, registerId);
           }
-          stripped->getDocumentCollections().at(0)
-              = res->getDocumentCollections().at(registerId);
+          stripped->setDocumentCollection(0, res->getDocumentCollection(registerId));
           delete res;
           return stripped;
         }
