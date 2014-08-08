@@ -154,11 +154,26 @@
 
       var newQueries = self.currentExtra;
 
+      console.log(newQueries);
+      console.log(oldQueries);
+
+      var nameTaken = false;
+
       _.each(oldQueries.queries, function(query) {
-        newQueries.queries.push({
-          name: query.name,
-          value: query.value
+
+        _.each(newQueries.queries, function(newQuery) {
+          if (newQuery.name === query.name) {
+            nameTaken = true;
+            console.log("taken");
+          }
         });
+
+        if (nameTaken === false) {
+          newQueries.queries.push({
+            name: query.name,
+            value: query.value
+          });
+        }
       });
 
       $.ajax({
