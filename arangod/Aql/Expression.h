@@ -34,7 +34,13 @@
 #include "Basics/JsonHelper.h"
 #include "Utils/AqlTransaction.h"
 
+struct TRI_json_s;
+
 namespace triagens {
+  namespace basics {
+    class Json;
+  }
+
   namespace aql {
 
     class AqlItemBlock;
@@ -48,6 +54,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     class Expression {
+
+      enum ExpressionType {
+        UNPROCESSED,
+        JSON,
+        V8
+      };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -124,19 +136,30 @@ namespace triagens {
 /// @brief the V8 executor
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8Executor*       _executor;
+        V8Executor*               _executor;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the AST node that contains the expression to execute
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode const*    _node;
+        AstNode const*            _node;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a v8 function that will be executed for the expression
+/// if the expression is a constant, it will be stored as plain JSON instead
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8Expression*     _func;
+        union {
+          V8Expression*           _func;
+
+          struct TRI_json_s*      _data;
+        };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief type of expression
+////////////////////////////////////////////////////////////////////////////////
+
+        ExpressionType            _type;
 
     };
 
