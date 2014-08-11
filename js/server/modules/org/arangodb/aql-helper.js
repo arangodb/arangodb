@@ -86,7 +86,7 @@ function assertParseError (errorCode, query) {
   }
   catch (e) {
     assertTrue(e.errorNum !== undefined, "unexpected error format");
-    assertEqual(errorCode, e.errorNum, "unexpected error code");
+    assertEqual(errorCode, e.errorNum, "unexpected error code (" + e.errorMessage + "): ");
   }
 }
 
@@ -229,7 +229,7 @@ function assertQueryError (errorCode, query, bindVars) {
   }
   catch (e) {
     assertTrue(e.errorNum !== undefined, "unexpected error format");
-    assertEqual(errorCode, e.errorNum, "unexpected error code");
+    assertEqual(errorCode, e.errorNum, "unexpected error code (" + e.errorMessage + "): ");
   }
 }
 
@@ -245,7 +245,7 @@ function assertQueryError2 (errorCode, query, bindVars) {
   }
   catch (e) {
     assertTrue(e.errorNum !== undefined, "unexpected error format");
-    assertEqual(errorCode, e.errorNum, "unexpected error code");
+    assertEqual(errorCode, e.errorNum, "unexpected error code (" + e.errorMessage + "): ");
   }
   try {
     getQueryResultsAQL2(query, bindVars);
@@ -253,7 +253,7 @@ function assertQueryError2 (errorCode, query, bindVars) {
   }
   catch (e2) {
     assertTrue(e2.errorNum !== undefined, "unexpected error format");
-    assertEqual(errorCode, e2.errorNum, "unexpected error code");
+    assertEqual(errorCode, e2.errorNum, "unexpected error code (" + e2.errorMessage + "): ");
   }
 }
 
