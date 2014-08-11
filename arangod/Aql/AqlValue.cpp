@@ -243,7 +243,7 @@ std::string AqlValue::toString (TRI_document_collection_t const* document) const
 Json AqlValue::toJson (TRI_document_collection_t const* document) const {
   switch (_type) {
     case JSON: {
-      return *_json;
+      return _json->copy();
     }
 
     case SHAPED: {

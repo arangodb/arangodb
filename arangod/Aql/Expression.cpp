@@ -68,8 +68,9 @@ Expression::~Expression () {
     delete _func;
   }
   else if (_type == JSON) {
-    // _json is freed automatically by AqlItemBlock
+    TRI_ASSERT(_data != nullptr);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _data);
+    // _json is freed automatically by AqlItemBlock
   }
 }
 
@@ -99,6 +100,11 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
     if (_node->isConstant()) {
       // generate a constant value
       _data = _node->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
+
+      if (_data == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+
       _type = JSON;
     }
     else {
