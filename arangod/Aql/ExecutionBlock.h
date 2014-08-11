@@ -1127,86 +1127,100 @@ namespace triagens {
             return nullptr;
           }
 
-          if (_buffer.empty()) {
-            if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
-              _done = true;
-              return nullptr;
-            }
-            _pos = 0;           // this is in the first block
-          }
+          AqlItemBlock* res;
 
-          // if we make it here, then _buffer.front() exists
-          AqlItemBlock* cur = _buffer.front();
-          
-          // get the thing we are looping over 
-          AqlValue inVarReg = cur->getValue(_pos, _inVarRegId);
-          size_t sizeInVar;
+          do {
+            // repeatedly try to get more stuff from upstream
+            // note that the value of the variable we have to loop over
+            // can contain zero entries, in which case we have to 
+            // try again!
 
-          // get the size of the thing we are looping over
-          collection = nullptr;
-          switch (inVarReg._type) {
-            case AqlValue::JSON: {
-              if(!inVarReg._json->isList()){
-                THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "EnumerateListBlock: JSON is not a list");
+            if (_buffer.empty()) {
+              if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
+                _done = true;
+                return nullptr;
               }
-              sizeInVar = inVarReg._json->size();
-              break;
+              _pos = 0;           // this is in the first block
             }
-            case AqlValue::RANGE: {
-              sizeInVar = inVarReg._range->_high - inVarReg._range->_low + 1;
-              break;
-            }
-            case AqlValue::DOCVEC: {
-              if( _index == 0){// this is a (maybe) new DOCVEC
-                _DOCVECsize = 0;
-                //we require the total number of items 
-                for (size_t i = 0; i < inVarReg._vector->size(); i++) {
-                  _DOCVECsize += inVarReg._vector->at(i)->size();
+
+            // if we make it here, then _buffer.front() exists
+            AqlItemBlock* cur = _buffer.front();
+            
+            // get the thing we are looping over 
+            AqlValue inVarReg = cur->getValue(_pos, _inVarRegId);
+            size_t sizeInVar;
+
+            // get the size of the thing we are looping over
+            collection = nullptr;
+            switch (inVarReg._type) {
+              case AqlValue::JSON: {
+                if(!inVarReg._json->isList()){
+                  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "EnumerateListBlock: JSON is not a list");
                 }
-                collection = inVarReg._vector->at(0)->getDocumentCollection(0);
+                sizeInVar = inVarReg._json->size();
+                break;
               }
-              sizeInVar = _DOCVECsize;
-              break;
-            }
-            default: {
-              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "EnumerateListBlock: unexpected type in register");
-            }
-          }
-         
-          size_t toSend = std::min(atMost, sizeInVar - _index); 
-
-          //create the result
-          auto res = new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]);
-          
-          inheritRegisters(cur, res, _pos);
-
-          // we don't have a collection
-          res->setDocumentCollection(cur->getNrRegs(), collection);
-
-          for (size_t j = 0; j < toSend; j++) {
-            if (j > 0) {
-              // re-use already copied aqlvalues
-              for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
-                res->setValue(j, i, res->getValue(0, i));
+              case AqlValue::RANGE: {
+                sizeInVar = inVarReg._range->_high - inVarReg._range->_low + 1;
+                break;
+              }
+              case AqlValue::DOCVEC: {
+                if( _index == 0){// this is a (maybe) new DOCVEC
+                  _DOCVECsize = 0;
+                  //we require the total number of items 
+                  for (size_t i = 0; i < inVarReg._vector->size(); i++) {
+                    _DOCVECsize += inVarReg._vector->at(i)->size();
+                  }
+                  collection = inVarReg._vector->at(0)->getDocumentCollection(0);
+                }
+                sizeInVar = _DOCVECsize;
+                break;
+              }
+              default: {
+                THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "EnumerateListBlock: unexpected type in register");
               }
             }
-            // add the new register value . . .
-            res->setValue(j, cur->getNrRegs(), getAqlValue(inVarReg));
-            // deep copy of the inVariable.at(_pos) with correct memory
-            // requirements
-            // Note that _index has been increased by 1 by getAqlValue!
-          }
-          if (_index == sizeInVar) {
-            _index = 0;
-            _thisblock = 0;
-            _seen = 0;
-            // advance read position in the current block . . .
-            if (++_pos == cur->size() ) {
-              delete cur;
-              _buffer.pop_front();
-              _pos = 0;
+
+            if (sizeInVar == 0) { 
+              res = nullptr;
             }
-          }
+            else {
+              size_t toSend = std::min(atMost, sizeInVar - _index); 
+
+              //create the result
+              res = new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]);
+              
+              inheritRegisters(cur, res, _pos);
+
+              // we don't have a collection
+              res->setDocumentCollection(cur->getNrRegs(), collection);
+
+              for (size_t j = 0; j < toSend; j++) {
+                if (j > 0) {
+                  // re-use already copied aqlvalues
+                  for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
+                    res->setValue(j, i, res->getValue(0, i));
+                  }
+                }
+                // add the new register value . . .
+                res->setValue(j, cur->getNrRegs(), getAqlValue(inVarReg));
+                // deep copy of the inVariable.at(_pos) with correct memory
+                // requirements
+                // Note that _index has been increased by 1 by getAqlValue!
+              }
+            }
+            if (_index == sizeInVar) {
+              _index = 0;
+              _thisblock = 0;
+              _seen = 0;
+              // advance read position in the current block . . .
+              if (++_pos == cur->size() ) {
+                delete cur;
+                _buffer.pop_front();
+                _pos = 0;
+              }
+            }
+          } while (res == nullptr);
           return res;
         } 
 

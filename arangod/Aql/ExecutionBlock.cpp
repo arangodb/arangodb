@@ -114,6 +114,12 @@ void ExecutionBlock::staticAnalysis (ExecutionBlock* super) {
     sq->getSubquery()->staticAnalysis(s);
   }
   v->reset();
+  // Now print the result:
+  for (auto it : _varOverview->varInfo) {
+    std::cout << "Variable ID:" << it.first << " RegisterId:" 
+              << it.second.registerId << " Depth:" << it.second.depth
+              << std::endl;
+  }
 }
 
 // Local Variables:
