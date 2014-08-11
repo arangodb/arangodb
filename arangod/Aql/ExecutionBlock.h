@@ -58,6 +58,13 @@ namespace triagens {
 
       size_t firstRow;
       size_t lastRow;
+      bool rowsAreValid;
+
+      AggregatorGroup () 
+        : firstRow(0),
+          lastRow(0),
+          rowsAreValid(false) {
+      }
 
       ~AggregatorGroup () {
         reset();
@@ -66,7 +73,7 @@ namespace triagens {
       void initialize (size_t capacity) {
         groupValues.reserve(capacity);
         collections.reserve(capacity);
-            
+
         for (size_t i = 0; i < capacity; ++i) {
           groupValues[i] = AqlValue();
           collections[i] = nullptr;
@@ -78,7 +85,45 @@ namespace triagens {
           delete (*it);
         }
         groupBlocks.clear();
+        groupValues[0].erase();
       }
+
+      void setFirstRow (size_t value) {
+        firstRow = value;
+        rowsAreValid = true;
+      }
+      
+      void setLastRow (size_t value) {
+        lastRow = value;
+        rowsAreValid = true;
+      }
+
+      void addValues (AqlItemBlock const* src,
+                      RegisterId groupRegister) {
+        if (groupRegister == 0) {
+          // nothing to do
+          return;
+        }
+
+        if (rowsAreValid) {
+          // emit group details 
+          TRI_ASSERT(firstRow <= lastRow);
+
+          auto block = src->slice(firstRow, lastRow + 1);
+          try {
+            groupBlocks.push_back(block);
+          }
+          catch (...) {
+            delete block;
+            throw;
+          }
+        }
+
+        firstRow = lastRow = 0;
+        // the next statement ensures we don't add the same value (row) twice
+        rowsAreValid = false;
+      }
+            
 
     };
 
@@ -2082,9 +2127,9 @@ namespace triagens {
           if (_done) {
             return nullptr;
           }
-
+                
           if (_buffer.empty()) {
-            if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
+            if (! ExecutionBlock::getBlock(atLeast, atMost)) {
               _done = true;
               return nullptr;
             }
@@ -2097,6 +2142,7 @@ namespace triagens {
           size_t const curRegs = cur->getNrRegs();
 
           auto res = new AqlItemBlock(atMost, _varOverview->nrRegs[_depth]);
+
           TRI_ASSERT(curRegs <= res->getNrRegs());
 
           inheritRegisters(cur, res, _pos);
@@ -2105,7 +2151,7 @@ namespace triagens {
 
           while (j < atMost) {
             // read the next input tow
-
+          
             bool newGroup = false;
             if (_currentGroup.groupValues[0].isEmpty()) {
               // we never had any previous group
@@ -2132,10 +2178,21 @@ namespace triagens {
             if (newGroup) {
               if (! _currentGroup.groupValues[0].isEmpty()) {
                 // need to emit the current group first
+
                 emitGroup(cur, res, j);
+
                 // increase output row count
                 ++j;
+                
+                if (j == atMost) {
+                  // output is full
+
+                  // do NOT advance input pointer
+                  return res;
+                }
               }
+
+              // still space left in the output to create a new group
 
               // construct the new group
               size_t i = 0;
@@ -2145,19 +2202,24 @@ namespace triagens {
                 ++i;
               }
               
-              _currentGroup.firstRow = _pos;
+              _currentGroup.setFirstRow(_pos);
             }
-
-            _currentGroup.lastRow = _pos;
+              
+            _currentGroup.setLastRow(_pos);
 
             if (++_pos >= cur->size()) {
               _buffer.pop_front();
               _pos = 0;
-           
-              bool hasMore = ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize);
+          
+              bool hasMore = ! _buffer.empty();
+              if (! hasMore) {
+                hasMore = ExecutionBlock::getBlock(atLeast, atMost);
+              }
 
               if (! hasMore) {
+                // no more input. we're done
                 try {
+                  // emit last buffered group
                   emitGroup(cur, res, j);
                   ++j;
                   delete cur;
@@ -2177,12 +2239,14 @@ namespace triagens {
 
               // hasMore
 
+              // move over the last group details into the group before we delete the block
+              _currentGroup.addValues(cur, _groupRegister);
+
               delete cur;
               cur = _buffer.front();
-              _currentGroup.firstRow = 0;
-              _currentGroup.lastRow = 0;
             }
           }
+
 
           TRI_ASSERT(j > 0);
           res->shrink(j);
@@ -2296,6 +2360,7 @@ namespace triagens {
         void emitGroup (AqlItemBlock const* cur,
                         AqlItemBlock* res, 
                         size_t row) {
+
           size_t i = 0;
           for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
             res->setValue(row, (*it).first, _currentGroup.groupValues[i]);
@@ -2303,24 +2368,14 @@ namespace triagens {
           }
             
           if (_groupRegister > 0) {
-            // emit group details
-            TRI_ASSERT(_currentGroup.firstRow <= _currentGroup.lastRow);
+            // set the group values
+            _currentGroup.addValues(cur, _groupRegister);
 
-            auto block = cur->slice(_currentGroup.firstRow, _currentGroup.lastRow + 1);
-            try {
-              _currentGroup.groupBlocks.push_back(block);
-            }
-            catch (...) {
-              delete block;
-              throw;
-            }
-
-            // finally set the group details
             res->setValue(row, _groupRegister, AqlValue::CreateFromBlocks(_currentGroup.groupBlocks, _variableNames));
-
-            // and reset the group so a new one can start
-            _currentGroup.reset();
           }
+           
+          // reset the group so a new one can start
+          _currentGroup.reset();
         }
 
       private:
