@@ -457,7 +457,7 @@ namespace triagens {
 /// @brief constructor for a memzone and a string
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit Json (TRI_memory_zone_t* z, std::string const x, autofree_e autofree = AUTOFREE) 
+        explicit Json (TRI_memory_zone_t* z, std::string const& x, autofree_e autofree = AUTOFREE) 
           : _zone(z), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateString2CopyJson(_zone, x.c_str(), x.size());
           if (_json == nullptr) {
@@ -698,6 +698,17 @@ namespace triagens {
             else {
               return Json(_zone, Json::Null, AUTOFREE);
             }
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy the contents of the JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        void destroy () {
+          if (_json != nullptr) {
+            TRI_FreeJson(_zone, _json);
+            _json = nullptr;
           }
         }
 

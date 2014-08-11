@@ -98,7 +98,7 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
   if (_type == UNPROCESSED) {
     if (_node->isConstant()) {
       // generate a constant value
-      _data = _node->toJson(TRI_UNKNOWN_MEM_ZONE);
+      _data = _node->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
       _type = JSON;
     }
     else {
