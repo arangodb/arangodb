@@ -886,8 +886,10 @@ std::unordered_set<Variable*> Ast::getReferencedVariables (AstNode const* node) 
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
-      auto result = static_cast<std::unordered_set<Variable*>*>(data);
-      result->insert(variable);
+      if (variable->needsRegister()) {
+        auto result = static_cast<std::unordered_set<Variable*>*>(data);
+        result->insert(variable);
+      }
     }
   };
 
