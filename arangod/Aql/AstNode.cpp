@@ -76,14 +76,15 @@ TRI_json_t* AstNode::toJsonValue (TRI_memory_zone_t* zone) const {
       case VALUE_TYPE_INT:
         return TRI_CreateNumberJson(zone, static_cast<double>(value.value._int));
       case VALUE_TYPE_DOUBLE:
-        return TRI_CreateNumberJson(zone, value.value._int);
+        return TRI_CreateNumberJson(zone, value.value._double);
       case VALUE_TYPE_STRING:
         return TRI_CreateStringCopyJson(zone, value.value._string);
       default: {
       }
     }
   }
-  else if (type == NODE_TYPE_LIST) {
+  
+  if (type == NODE_TYPE_LIST) {
     size_t const n = numMembers();
     TRI_json_t* list = TRI_CreateList2Json(zone, n);
 
@@ -104,21 +105,24 @@ TRI_json_t* AstNode::toJsonValue (TRI_memory_zone_t* zone) const {
     }
     return list;
   }
-  else if (type == NODE_TYPE_ARRAY) {
+  
+  if (type == NODE_TYPE_ARRAY) {
     size_t const n = numMembers();
-    TRI_json_t* list = TRI_CreateArray2Json(zone, n);
+    TRI_json_t* array = TRI_CreateArray2Json(zone, n);
 
     for (size_t i = 0; i < n; ++i) {
       auto member = getMember(i);
 
       if (member != nullptr) {
-        TRI_json_t* j = member->toJsonValue(zone);
+        TRI_json_t* j = member->getMember(0)->toJsonValue(zone);
 
         if (j != nullptr) {
-          TRI_Insert3ArrayJson(zone, list, member->getStringValue(), j);
+          TRI_Insert3ArrayJson(zone, array, member->getStringValue(), j);
         }
       }
     }
+
+    return array;
   }
 
   return nullptr;
