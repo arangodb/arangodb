@@ -61,6 +61,74 @@ AstNode::~AstNode () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a JSON representation of the node value
+/// the caller is responsible for freeing the JSON later
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* AstNode::toJsonValue (TRI_memory_zone_t* zone) const {
+  if (type == NODE_TYPE_VALUE) {
+    // dump value of "value" node
+    switch (value.type) {
+      case VALUE_TYPE_NULL:
+        return TRI_CreateNullJson(zone);
+      case VALUE_TYPE_BOOL:
+        return TRI_CreateBooleanJson(zone, value.value._bool);
+      case VALUE_TYPE_INT:
+        return TRI_CreateNumberJson(zone, static_cast<double>(value.value._int));
+      case VALUE_TYPE_DOUBLE:
+        return TRI_CreateNumberJson(zone, value.value._double);
+      case VALUE_TYPE_STRING:
+        return TRI_CreateStringCopyJson(zone, value.value._string);
+      default: {
+      }
+    }
+  }
+  
+  if (type == NODE_TYPE_LIST) {
+    size_t const n = numMembers();
+    TRI_json_t* list = TRI_CreateList2Json(zone, n);
+
+    if (list == nullptr) {
+      return nullptr;
+    }
+
+    for (size_t i = 0; i < n; ++i) {
+      auto member = getMember(i);
+
+      if (member != nullptr) {
+        TRI_json_t* j = member->toJsonValue(zone);
+
+        if (j != nullptr) {
+          TRI_PushBack3ListJson(zone, list, j);
+        }
+      }
+    }
+    return list;
+  }
+  
+  if (type == NODE_TYPE_ARRAY) {
+    size_t const n = numMembers();
+    TRI_json_t* array = TRI_CreateArray2Json(zone, n);
+
+    for (size_t i = 0; i < n; ++i) {
+      auto member = getMember(i);
+
+      if (member != nullptr) {
+        TRI_json_t* j = member->getMember(0)->toJsonValue(zone);
+
+        if (j != nullptr) {
+          TRI_Insert3ArrayJson(zone, array, member->getStringValue(), j);
+        }
+      }
+    }
+
+    return array;
+  }
+
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return a JSON representation of the node
 /// the caller is responsible for freeing the JSON later
 ////////////////////////////////////////////////////////////////////////////////
