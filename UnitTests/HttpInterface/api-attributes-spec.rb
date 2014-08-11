@@ -89,7 +89,8 @@ describe ArangoDB do
       doc.parsed_response['_rev'].should_not eq('99')
       doc.parsed_response.should_not have_key('_from')
       doc.parsed_response.should_not have_key('_to')
-      doc.parsed_response.should_not have_key('_test')
+      doc.parsed_response.should have_key('_test')
+      doc.parsed_response['_test'].should eq('c')
       doc.parsed_response.should have_key('meow')
       doc.parsed_response['meow'].should eq('d')
       doc.parsed_response['foo'].should eq('002')
@@ -101,7 +102,7 @@ describe ArangoDB do
 
     it "creates a document with nested attribute names" do
       cmd = api + "?collection=" + @cn
-      body = "{ \"a\" : \"1\", \"b\" : { \"b\" : \"2\" , \"a\" : \"3\", \"\": \"4\", \"_from\": \"5\", \"c\" : 6 } }"
+      body = "{ \"a\" : \"1\", \"b\" : { \"b\" : \"2\" , \"a\" : \"3\", \"\": \"4\", \"_key\": \"moetoer\", \"_from\": \"5\", \"_lol\" : false, \"c\" : 6 } }"
       doc = ArangoDB.log_post("#{prefix}-create-duplicate-names", cmd, :body => body)
 
       doc.code.should eq(201)
@@ -118,11 +119,13 @@ describe ArangoDB do
       doc.parsed_response.should have_key('b')
 
       doc.parsed_response['b'].should_not have_key('')
-      doc.parsed_response['b'].should_not have_key('_from')
+      doc.parsed_response['b'].should have_key('_from')
+      doc.parsed_response['b'].should have_key('_key')
+      doc.parsed_response['b'].should have_key('_lol')
       doc.parsed_response['b'].should have_key('b')
       doc.parsed_response['b'].should have_key('a')
       doc.parsed_response['b'].should have_key('c')
-      doc.parsed_response['b'].should eq({ "b" => "2", "a" => "3", "c" => 6 })
+      doc.parsed_response['b'].should eq({ "b" => "2", "a" => "3", "_key" => "moetoer", "_from" => "5", "_lol" => false, "c" => 6 })
     end
 
 ################################################################################
