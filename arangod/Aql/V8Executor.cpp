@@ -173,7 +173,7 @@ std::unordered_map<std::string, Function const> const V8Executor::FunctionNames{
   { "GRAPH_DISTANCE_TO",           Function("GENERAL_GRAPH_DISTANCE_TO", "s,als,als|a", false )},
   { "TRAVERSAL",                   Function("GRAPH_TRAVERSAL", "h,h,s,s|a", false )},
   { "GRAPH_TRAVERSAL",             Function("GENERAL_GRAPH_TRAVERSAL", "s,als,s|a", false )},
-  { "TRAVERSAL_TREE",              Function("GRAPH_TRAVERSAL_TREE", "s,als,s,s|a", false )},
+  { "TRAVERSAL_TREE",              Function("GRAPH_TRAVERSAL_TREE", "h,h,s,s,s|a", false )},
   { "GRAPH_TRAVERSAL_TREE",        Function("GENERAL_GRAPH_TRAVERSAL_TREE", "s,als,s,s|a", false )},
   { "EDGES",                       Function("GRAPH_EDGES", "h,s,s|l", false )},
   { "GRAPH_EDGES",                 Function("GENERAL_GRAPH_EDGES", "s,als|a", false )},
