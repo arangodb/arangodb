@@ -549,7 +549,6 @@ namespace triagens {
         // will only return less than atLeast if there aren't atLeast many
         // things to skip overall.
         virtual size_t skipSome (size_t atLeast, size_t atMost) {
-          
           size_t skipped = 0;
           
           if (_done) {
@@ -590,7 +589,6 @@ namespace triagens {
         bool skip (size_t number) {
           size_t skipped = skipSome(number, number);
           size_t nr = skipped;
-
           while ( nr != 0 && skipped < number ){
             nr = skipSome(number - skipped, number - skipped);
             skipped += nr;
@@ -1285,13 +1283,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         size_t skipSome (size_t atLeast, size_t atMost) {
-          
+
           size_t skipped = 0;
 
           if (_done) {
             return skipped;
           }
-
+        
           while (skipped < atLeast) {
             if (_buffer.empty()) {
               if (! getBlock(DefaultBatchSize, DefaultBatchSize)){ 
@@ -1318,30 +1316,36 @@ namespace triagens {
                 break;
               }
               case AqlValue::RANGE: {
-                sizeInVar = inVarReg._range->_high - inVarReg._range->_low;
+                sizeInVar = inVarReg._range->_high - inVarReg._range->_low + 1;
                 break;
               }
               case AqlValue::DOCVEC: {
-                  if(_index == 0){// this is a (maybe) new DOCVEC
-                    _DOCVECsize = 0;
-                    //we require the total number of items 
-                    for (size_t i = 0; i < inVarReg._vector->size(); i++) {
-                      _DOCVECsize += inVarReg._vector->at(i)->size();
-                    }
+                if(_index == 0){// this is a (maybe) new DOCVEC
+                  _DOCVECsize = 0;
+                  //we require the total number of items 
+                  for (size_t i = 0; i < inVarReg._vector->size(); i++) {
+                    _DOCVECsize += inVarReg._vector->at(i)->size();
                   }
-                  sizeInVar = _DOCVECsize;
+                }
+                sizeInVar = _DOCVECsize;
                 break;
               }
               default: {
                 THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
               }
             }
-           
-            if(atMost < sizeInVar * (cur->size() - _pos) + (sizeInVar - _index)) {
+            
+            if (atMost < sizeInVar - _index) {
+              // eat just enough of the current block!
+              _index += atMost;
+              skipped = atMost;
+            } 
+            else if (atMost < sizeInVar * (cur->size() - _pos) + (sizeInVar - _index)) {
               // eat just enough of the current block!
               size_t q = ((atMost - sizeInVar + _index) / sizeInVar) + 1; 
               _pos += q;
               _index = atMost + _index  - q * sizeInVar;
+
               if (inVarReg._type == AqlValue::DOCVEC){
                 // handle _thisblock and _seen
                 _thisblock = 0;
@@ -1355,7 +1359,7 @@ namespace triagens {
             }
             else {
               // eat the whole of the current block and proceed . . .
-              skipped += sizeInVar * (cur->size() - _pos) + (sizeInVar - _index);
+              skipped += sizeInVar * (cur->size() - _pos) + (sizeInVar - _index) - 1;
               _index = 0;
               _thisblock = 0;
               _seen = 0;
@@ -1364,9 +1368,8 @@ namespace triagens {
               _pos = 0;
             }
           }
-            
-        return skipped;
-      } 
+          return skipped;
+        } 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AqlValue from the inVariable using the current _index
@@ -1478,6 +1481,7 @@ namespace triagens {
           auto en = static_cast<CalculationNode const*>(getPlanNode());
 
           std::unordered_set<Variable*> inVars = _expression->variables();
+          _inRegs.clear();
 
           for (auto it = inVars.begin(); it != inVars.end(); ++it) {            
             _inVars.push_back(*it);
@@ -1498,7 +1502,7 @@ namespace triagens {
           auto it3 = _varOverview->varInfo.find(en->_outVariable->id);
           TRI_ASSERT(it3 != _varOverview->varInfo.end());
           _outReg = it3->second.registerId;
-          
+
           return TRI_ERROR_NO_ERROR;
         }
 
@@ -1985,6 +1989,10 @@ namespace triagens {
 
           auto en = static_cast<AggregateNode const*>(getPlanNode());
 
+          // Reinitialise if we are called a second time:
+          _aggregateRegisters.clear();
+          _variableNames.clear();
+
           for (auto p : en->_aggregateVariables){
             //We know that staticAnalysis has been run, so _varOverview is set up
             auto itOut = _varOverview->varInfo.find(p.first->id);
@@ -2241,6 +2249,8 @@ namespace triagens {
 
           auto en = static_cast<SortNode const*>(getPlanNode());
 
+          _sortRegisters.clear();
+
           for( auto p: en->_elements){
             //We know that staticAnalysis has been run, so _varOverview is set up
             auto it = _varOverview->varInfo.find(p.first->id);
@@ -2455,7 +2465,7 @@ namespace triagens {
 
           if (_state == 0) {
             if (_offset > 0) {
-              ExecutionBlock::skip(_offset);
+              ExecutionBlock::_dependencies[0]->skip(_offset);
               _state = 1;
               _count = 0;
               if (_limit == 0) {
