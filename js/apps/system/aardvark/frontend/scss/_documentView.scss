@@ -43,7 +43,11 @@
       float: left;
     }
   }
+}
 
+.document-link:hover {
+  cursor: pointer;
+  text-decoration: underline;
 }
 
 .jsoneditor {

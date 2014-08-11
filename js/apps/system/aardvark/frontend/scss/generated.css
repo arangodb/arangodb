@@ -5815,6 +5815,10 @@ input.gv-radio-button {
   .document-info .document-type-container div {
     float: left; }
 
+.document-link:hover {
+  cursor: pointer;
+  text-decoration: underline; }
+
 .jsoneditor .tree div {
   font-size: 11pt; }
 .jsoneditor .ace_layer div {
