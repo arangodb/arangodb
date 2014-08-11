@@ -671,6 +671,8 @@ namespace triagens {
 
         std::shared_ptr<VarOverview> _varOverview;
 
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief batch size value
 ////////////////////////////////////////////////////////////////////////////////
@@ -2056,6 +2058,7 @@ namespace triagens {
 
           // If we get here, we do have _buffer.front()
           AqlItemBlock* cur = _buffer.front();
+
           size_t const curRegs = cur->getNrRegs();
 
           auto res = new AqlItemBlock(atMost, _varOverview->nrRegs[_depth]);
@@ -2078,11 +2081,11 @@ namespace triagens {
               size_t i = 0;
 
               for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
-                int res = AqlValue::Compare(_currentGroup.groupValues[i], 
+                int cmp = AqlValue::Compare(_currentGroup.groupValues[i], 
                                             _currentGroup.collections[i],
                                             cur->getValue(_pos, (*it).second), 
                                             cur->getDocumentCollection((*it).second));
-                if (res != 0) {
+                if (cmp != 0) {
                   // group change
                   newGroup = true;
                   break;
@@ -2141,6 +2144,8 @@ namespace triagens {
 
               delete cur;
               cur = _buffer.front();
+              _currentGroup.firstRow = 0;
+              _currentGroup.lastRow = 0;
             }
           }
 
@@ -2286,7 +2291,7 @@ namespace triagens {
           std::vector<std::pair<size_t, size_t>> coords;
 
           size_t sum = 0;
-          for (auto block : _buffer){
+          for (auto block : _buffer) {
             sum += block->size();
           }
 
@@ -2295,7 +2300,7 @@ namespace triagens {
           // install the coords
           size_t count = 0;
 
-          for (auto block :_buffer) {
+          for (auto block : _buffer) {
             for (size_t i = 0; i < block->size(); i++) {
               coords.push_back(std::make_pair(count, i));
             }
@@ -2330,29 +2335,26 @@ namespace triagens {
           _buffer.clear();
           
           count = 0;
-          RegisterId nrregs = newbuf.front()->getNrRegs();
+          RegisterId const nrregs = newbuf.front()->getNrRegs();
           
           //install the rearranged values from <newbuf> into <_buffer>
           while (count < sum) {
-            size_t size_next 
-              = (sum - count > DefaultBatchSize ?  DefaultBatchSize : sum - count);
-            AqlItemBlock* next = new AqlItemBlock(size_next, nrregs);
-            for (size_t i = 0; i < size_next; i++) {
+            size_t sizeNext = (sum - count > DefaultBatchSize ?  DefaultBatchSize : sum - count);
+            AqlItemBlock* next = new AqlItemBlock(sizeNext, nrregs);
+            for (size_t i = 0; i < sizeNext; i++) {
               for (RegisterId j = 0; j < nrregs; j++) {
-                next->setValue(i, j, 
-                    newbuf[coords[count].first]->getValue(coords[count].second, j));
+                next->setValue(i, j, newbuf[coords[count].first]->getValue(coords[count].second, j));
                 newbuf[coords[count].first]->eraseValue(coords[count].second, j);
               }
               count++;
             }
             for (RegisterId j = 0; j < nrregs; j++) {
-              next->setDocumentCollection(j, 
-                               newbuf.front()->getDocumentCollection(j));
+              next->setDocumentCollection(j, newbuf.front()->getDocumentCollection(j));
             }
             _buffer.push_back(next);
           }
-           
-          for (auto x : newbuf){
+          
+          for (auto x : newbuf) {
             delete x;
           }
 
@@ -2373,23 +2375,25 @@ namespace triagens {
             OurLessThan (std::deque<AqlItemBlock*>& buffer,  
                          std::vector<std::pair<RegisterId, bool>>& sortRegisters,
                          std::vector<TRI_document_collection_t const*>& colls) 
-              : _buffer(buffer), _sortRegisters(sortRegisters), _colls(colls) {
+              : _buffer(buffer), 
+                _sortRegisters(sortRegisters), 
+                _colls(colls) {
             }
 
             bool operator() (std::pair<size_t, size_t> const& a, 
                              std::pair<size_t, size_t> const& b) {
 
               size_t i = 0;
-              for(auto reg : _sortRegisters){
+              for (auto reg : _sortRegisters) {
                 int cmp = AqlValue::Compare(_buffer[a.first]->getValue(a.second, reg.first),
                                             _colls[i],
                                             _buffer[b.first]->getValue(b.second, reg.first),
                                             _colls[i]);
-                if(cmp == -1) {
+                if (cmp == -1) {
                   return reg.second;
                 } 
                 else if (cmp == 1) {
-                  return !reg.second;
+                  return ! reg.second;
                 }
                 i++;
               }
