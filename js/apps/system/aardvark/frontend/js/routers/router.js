@@ -86,9 +86,7 @@
         userCollection: this.userCollection
       });
 
-      this.queryCollection = new window.ArangoQueries([],{
-        activeUser: self.userCollection.activeUser
-      });
+      this.queryCollection = new window.ArangoQueries();
 
       this.footerView.render();
       this.naviView.render();

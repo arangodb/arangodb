@@ -429,7 +429,7 @@ bool RestDocumentHandler::readDocument () {
 /// @startDocuBlock REST_DOCUMENT_READ
 /// @brief reads a single document
 ///
-/// @RESTHEADER{GET /_api/document/document-handle,Read document}
+/// @RESTHEADER{GET /_api/document/{document-handle},Read document}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -835,7 +835,7 @@ bool RestDocumentHandler::getAllDocumentsCoordinator (
 /// @startDocuBlock REST_DOCUMENT_READ_HEAD
 /// @brief reads a single document head
 ///
-/// @RESTHEADER{HEAD /_api/document/document-handle,Read document header}
+/// @RESTHEADER{HEAD /_api/document/{document-handle},Read document header}
 ///
 /// @RESTURLPARAMETERS
 ///
@@ -917,7 +917,7 @@ bool RestDocumentHandler::checkDocument () {
 /// @startDocuBlock REST_DOCUMENT_REPLACE
 /// @brief replaces a document
 ///
-/// @RESTHEADER{PUT /_api/document/document-handle,Replace document}
+/// @RESTHEADER{PUT /_api/document/{document-handle},Replace document}
 ///
 /// @RESTBODYPARAM{document,json,required}
 /// A JSON representation of the new document.
@@ -1138,7 +1138,7 @@ bool RestDocumentHandler::replaceDocument () {
 /// @startDocuBlock REST_DOCUMENT_UPDATE
 /// @brief updates a document
 ///
-/// @RESTHEADER{PATCH /_api/document/document-handle, Patch document}
+/// @RESTHEADER{PATCH /_api/document/{document-handle}, Patch document}
 ///
 /// @RESTBODYPARAM{document,json,required}
 /// A JSON representation of the document update.
@@ -1554,7 +1554,7 @@ bool RestDocumentHandler::modifyDocumentCoordinator (
 /// @startDocuBlock REST_DOCUMENT_DELETE
 /// @brief deletes a document
 ///
-/// @RESTHEADER{DELETE /_api/document/document-handle, Deletes document}
+/// @RESTHEADER{DELETE /_api/document/{document-handle}, Deletes document}
 ///
 /// @RESTURLPARAMETERS
 ///
