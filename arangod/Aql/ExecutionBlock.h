@@ -1243,7 +1243,7 @@ namespace triagens {
             // get the size of the thing we are looping over
             switch (inVarReg._type) {
               case AqlValue::JSON: {
-                if(!inVarReg._json->isList()){
+                if(! inVarReg._json->isList()){
                   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
                 }
                 sizeInVar = inVarReg._json->size();
