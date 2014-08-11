@@ -101,7 +101,15 @@ AqlValue V8Expression::execute (AQL_TRANSACTION_V8* trx,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  return AqlValue(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, json));
+  try {
+    auto j = new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, json);
+    return AqlValue(j);
+  }
+  catch (...) {
+    // prevent memleak
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    throw;
+  }
 }
 
 // -----------------------------------------------------------------------------
