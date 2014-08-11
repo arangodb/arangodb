@@ -99,6 +99,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AqlValue getValue (size_t index, RegisterId varNr) const {
+          TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
           return _data[index * _nrRegs + varNr];
         }
 
