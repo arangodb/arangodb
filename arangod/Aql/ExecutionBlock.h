@@ -1090,7 +1090,7 @@ namespace triagens {
           
           auto it = _varOverview->varInfo.find(en->_inVariable->id);
           if (it == _varOverview->varInfo.end()){
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "variable not foudn");
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "variable not found");
           }
           
           _inVarRegId = (*it).second.registerId;
@@ -1155,7 +1155,8 @@ namespace triagens {
             switch (inVarReg._type) {
               case AqlValue::JSON: {
                 if(!inVarReg._json->isList()){
-                  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "EnumerateListBlock: JSON is not a list");
+                  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                      "EnumerateListBlock: JSON is not a list");
                 }
                 sizeInVar = inVarReg._json->size();
                 break;
@@ -1177,7 +1178,8 @@ namespace triagens {
                 break;
               }
               default: {
-                THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "EnumerateListBlock: unexpected type in register");
+                THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                    "EnumerateListBlock: unexpected type in register");
               }
             }
 
@@ -1257,7 +1259,7 @@ namespace triagens {
             // get the size of the thing we are looping over
             switch (inVarReg._type) {
               case AqlValue::JSON: {
-                if(!inVarReg._json->isList()){
+                if(! inVarReg._json->isList()){
                   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
                 }
                 sizeInVar = inVarReg._json->size();

@@ -675,11 +675,11 @@ void V8Executor::generateCodeExpand (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
-  _buffer->appendText("(function () { var r = []; return ");
+  _buffer->appendText("(function () { var r = []; ");
   generateCodeNode(node->getMember(0));
   _buffer->appendText(".forEach(function (v) { r.push(");
   generateCodeNode(node->getMember(1));
-  _buffer->appendText("); }); })()");
+  _buffer->appendText("); }); return r; })()");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
