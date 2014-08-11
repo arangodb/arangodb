@@ -1013,6 +1013,58 @@ namespace triagens {
           return res;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+// skip between atLeast and atMost, returns the number actually skipped . . . 
+// will only return less than atLeast if there aren't atLeast many
+// things to skip overall.
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t skipSome (size_t atLeast, size_t atMost) {
+          
+          size_t skipped = 0;
+
+          if (_done) {
+            return skipped;
+          }
+          
+          while (skipped < atLeast) {
+            if (_buffer.empty()) {
+              if (! getBlock(DefaultBatchSize, DefaultBatchSize)) {
+                _done = true;
+                return skipped;
+              }
+              _pos = 0;           // this is in the first block
+              _posInAllDocs = 0;  // Note that we know _allDocs.size() > 0,
+                                  // otherwise _done would be true already
+            }
+
+            // if we get here, then _buffer.front() exists
+            AqlItemBlock* cur = _buffer.front();
+            
+            if (atMost > _documents.size() - _posInAllDocs) {
+              skipped += _documents.size() - _posInAllDocs;
+              _posInAllDocs = 0;
+
+              // fetch more documents into our buffer
+              if (! moreDocuments()) {
+                // nothing more to read, re-initialize fetching of documents
+                initDocuments();
+                if (++_pos >= cur->size()) {
+                  _buffer.pop_front();
+                  delete cur;
+                  _pos = 0;
+                } 
+              }
+            }
+            else {
+              skipped = atMost;
+              _posInAllDocs += atMost;
+            }
+          }
+        return skipped;
+      }
+
+
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1244,7 +1296,7 @@ namespace triagens {
             if (_buffer.empty()) {
               if (! getBlock(DefaultBatchSize, DefaultBatchSize)){ 
                 _done = true;
-                break;
+                return skipped;
               }
               _pos = 0;
             }
