@@ -1239,7 +1239,7 @@ namespace triagens {
             else {
               size_t toSend = std::min(atMost, sizeInVar - _index); 
 
-              //create the result
+              // create the result
               res = new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]);
               
               inheritRegisters(cur, res, _pos);
@@ -1272,7 +1272,9 @@ namespace triagens {
                 _pos = 0;
               }
             }
-          } while (res == nullptr);
+          } 
+          while (res == nullptr);
+
           return res;
         } 
 
@@ -2553,20 +2555,25 @@ namespace triagens {
         virtual AqlItemBlock* getSome (size_t atLeast, 
                                        size_t atMost) {
           auto res = ExecutionBlock::getSome(atLeast, atMost);
+
           if (res == nullptr) {
             return res;
           }
+
+          size_t const n = res->size();
 
           // Let's steal the actual result and throw away the vars:
           auto ep = static_cast<ReturnNode const*>(getPlanNode());
           auto it = _varOverview->varInfo.find(ep->_inVariable->id);
           TRI_ASSERT(it != _varOverview->varInfo.end());
-          RegisterId registerId = it->second.registerId;
-          AqlItemBlock* stripped = new AqlItemBlock(res->size(), 1);
-          for (size_t i = 0; i < res->size(); i++) {
+          RegisterId const registerId = it->second.registerId;
+          AqlItemBlock* stripped = new AqlItemBlock(n, 1);
+
+          for (size_t i = 0; i < n; i++) {
             stripped->setValue(i, 0, res->getValue(i, registerId));
             res->eraseValue(i, registerId);
           }
+          
           stripped->setDocumentCollection(0, res->getDocumentCollection(registerId));
           delete res;
           return stripped;
