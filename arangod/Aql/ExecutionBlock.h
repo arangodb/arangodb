@@ -1478,6 +1478,7 @@ namespace triagens {
           auto en = static_cast<CalculationNode const*>(getPlanNode());
 
           std::unordered_set<Variable*> inVars = _expression->variables();
+          _inRegs.clear();
 
           for (auto it = inVars.begin(); it != inVars.end(); ++it) {            
             _inVars.push_back(*it);
@@ -1498,7 +1499,7 @@ namespace triagens {
           auto it3 = _varOverview->varInfo.find(en->_outVariable->id);
           TRI_ASSERT(it3 != _varOverview->varInfo.end());
           _outReg = it3->second.registerId;
-          
+
           return TRI_ERROR_NO_ERROR;
         }
 
@@ -1985,6 +1986,10 @@ namespace triagens {
 
           auto en = static_cast<AggregateNode const*>(getPlanNode());
 
+          // Reinitialise if we are called a second time:
+          _aggregateRegisters.clear();
+          _variableNames.clear();
+
           for (auto p : en->_aggregateVariables){
             //We know that staticAnalysis has been run, so _varOverview is set up
             auto itOut = _varOverview->varInfo.find(p.first->id);
@@ -2240,6 +2245,8 @@ namespace triagens {
           }
 
           auto en = static_cast<SortNode const*>(getPlanNode());
+
+          _sortRegisters.clear();
 
           for( auto p: en->_elements){
             //We know that staticAnalysis has been run, so _varOverview is set up
