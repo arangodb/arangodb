@@ -514,6 +514,7 @@ AstNode* Ast::createNodeIndexedAccess (AstNode const* accessed,
 AstNode* Ast::createNodeExpand (AstNode const* iterator,
                                 AstNode const* expansion) {
   AstNode* node = createNode(NODE_TYPE_EXPAND);
+
   node->addMember(iterator);
   node->addMember(expansion);
 
@@ -936,6 +937,11 @@ AstNode* Ast::optimizeFilter (AstNode* node) {
   TRI_ASSERT(node->type == NODE_TYPE_FILTER);
   TRI_ASSERT(node->numMembers() == 1);
   
+  if (node->getIntValue(true) != static_cast<int64_t>(FILTER_UNKNOWN)) {
+    // already processed filter
+    return node;
+  }
+  
   AstNode* operand = node->getMember(0);
   if (! operand->isConstant()) {
     // unable to optimize non-constant expression
@@ -946,8 +952,6 @@ AstNode* Ast::optimizeFilter (AstNode* node) {
     _query->registerError(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
     return node;
   }
-
-  TRI_ASSERT(node->getIntValue(true) == static_cast<int64_t>(FILTER_UNKNOWN));
 
   if (operand->getBoolValue()) {
     // FILTER is always true
