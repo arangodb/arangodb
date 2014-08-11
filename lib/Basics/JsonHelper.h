@@ -582,7 +582,7 @@ namespace triagens {
           else {
             c._json = nullptr;
           }
-          c._autofree = AUTOFREE;
+          c._autofree = autofree;
           return c;
         }
 
