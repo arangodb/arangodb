@@ -209,6 +209,9 @@ function getQueryResults2 (query, bindVars, recursive) {
     require("internal").print("Old and new AQL return different results!");
     require("internal").print("Old result:\n", result);
     require("internal").print("New result:\n", result2);
+
+    require("internal").print("Failed Query was:\n", query);
+
     throw "Results between AQL and AQL2 differ";
   }
 
