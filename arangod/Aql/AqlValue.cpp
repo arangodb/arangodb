@@ -68,6 +68,7 @@ void AqlValue::destroy () {
     case JSON: {
       if (_json != nullptr) {
         delete _json;
+        _json = nullptr;
       }
       break;
     }
@@ -92,6 +93,9 @@ void AqlValue::destroy () {
       TRI_ASSERT(false);
     }
   }
+ 
+  // to avoid double freeing     
+  _type = EMPTY;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
