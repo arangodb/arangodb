@@ -1478,9 +1478,6 @@ namespace triagens {
           auto en = static_cast<CalculationNode const*>(getPlanNode());
 
           std::unordered_set<Variable*> inVars = _expression->variables();
-          for (auto it : inVars) {
-            std::cout << it->name << ":" << it->id << std::endl;
-          }
 
           for (auto it = inVars.begin(); it != inVars.end(); ++it) {            
             _inVars.push_back(*it);
