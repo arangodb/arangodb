@@ -689,7 +689,7 @@ reference:
       // expanded variable access, e.g. variable[*]
 
       // create a temporary iterator variable
-      std::string const nextName = parser->ast()->variables()->nextName();
+      std::string const nextName = parser->ast()->variables()->nextName() + "_";
       char const* iteratorName = nextName.c_str();
       auto iterator = parser->ast()->createNodeIterator(iteratorName, $1);
 

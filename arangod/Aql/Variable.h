@@ -109,8 +109,19 @@ namespace triagens {
 
       inline bool isUserDefined () const {
         char const c = name[0];
-        // variables starting with a number are user-defined
+        // variables starting with a number are not user-defined
         return (c < '0' || c > '9');
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the variable needs a register assigned
+////////////////////////////////////////////////////////////////////////////////
+
+      inline bool needsRegister () const {
+        char const cf = name[0];
+        char const cb = name.back();
+        // variables starting with a number are not user-defined
+        return (cf < '0' || cf > '9') || cb != '_';
       }
 
 ////////////////////////////////////////////////////////////////////////////////
