@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,9 +22,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -33,6 +34,8 @@ var actions = require("org/arangodb/actions");
 var internal = require("internal");
 var console = require("console");
 var users = require("org/arangodb/users");
+
+var targetDatabaseVersion = require("org/arangodb/database-version").CURRENT_VERSION;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -45,7 +48,6 @@ var users = require("org/arangodb/users");
 actions.defineHttp({
   url : "",
   prefix : true,
-  context : "admin",
 
   callback : function (req, res) {
     try {
@@ -70,6 +72,33 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief _admin/database/version
+/// @startDocuBlock JSF_get_admin_database_version
+///
+/// @RESTHEADER{GET /_admin/database/target-version, Return the required version of the database}
+///
+/// @RESTDESCRIPTION
+///
+/// Returns the database-version that this server requires.
+/// The version is returned in the *version* attribute of the result.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Is returned in all cases.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/database/target-version",
+  prefix : false,
+
+  callback : function (req, res) {
+    actions.resultOk(req, res, actions.HTTP_OK, { version: String(targetDatabaseVersion) });
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the role of a server in a cluster
 /// @startDocuBlock JSF_get_admin_server_role
 ///
@@ -83,7 +112,7 @@ actions.defineHttp({
 /// - *COORDINATOR*: the server is a coordinator in a cluster
 /// - *PRIMARY*: the server is a primary database server in a cluster
 /// - *SECONDARY*: the server is a secondary database server in a cluster
-/// - *UNDEFINED*: in a cluster, *UNDEFINED* is returned if the server role cannot be 
+/// - *UNDEFINED*: in a cluster, *UNDEFINED* is returned if the server role cannot be
 ///    determined. On a single server, *UNDEFINED* is the only possible return
 ///    value.
 ///
@@ -96,7 +125,6 @@ actions.defineHttp({
 
 actions.defineHttp({
   url : "_admin/server/role",
-  context : "admin",
   prefix : false,
 
   callback : function (req, res) {
@@ -143,7 +171,6 @@ actions.defineHttp({
 
 actions.defineHttp({
   url : "_admin/wal/flush",
-  context : "admin",
   prefix : false,
 
   callback : function (req, res) {
@@ -153,7 +180,7 @@ actions.defineHttp({
     }
 
     /*jslint node: true, stupid: true */
-    internal.wal.flush(req.parameters.waitForSync === "true", 
+    internal.wal.flush(req.parameters.waitForSync === "true",
                        req.parameters.waitForCollector === "true");
     actions.resultOk(req, res, actions.HTTP_OK);
   }
@@ -169,7 +196,7 @@ actions.defineHttp({
 ///
 /// Configures the behavior of the write-ahead log. The body of the request
 /// must be a JSON object with the following attributes:
-/// - *allowOversizeEntries*: whether or not operations that are bigger than a 
+/// - *allowOversizeEntries*: whether or not operations that are bigger than a
 ///   single logfile can be executed and stored
 /// - *logfileSize*: the size of each write-ahead logfile
 /// - *historicLogfiles*: the maximum number of historic logfiles to keep
@@ -177,7 +204,7 @@ actions.defineHttp({
 ///   allocates in the background
 /// - *throttleWait*: the maximum wait time that operations will wait before
 ///   they get aborted if case of write-throttling (in milliseconds)
-/// - *throttleWhenPending*: the number of unprocessed garbage-collection 
+/// - *throttleWhenPending*: the number of unprocessed garbage-collection
 ///   operations that, when reached, will activate write-throttling. A value of
 ///   *0* means that write-throttling will not be triggered.
 ///
@@ -194,7 +221,7 @@ actions.defineHttp({
 /// @endDocuBlock
 ///
 /// @EXAMPLES
-/// 
+///
 /// @EXAMPLE_ARANGOSH_RUN{RestWalPropertiesPut}
 ///     var url = "/_admin/wal/properties";
 ///     var body = {
@@ -202,9 +229,9 @@ actions.defineHttp({
 ///       allowOversizeEntries: true
 ///     };
 ///     var response = logCurlRequest('PUT', url, JSON.stringify(body));
-/// 
+///
 ///     assert(response.code === 200);
-/// 
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
@@ -230,7 +257,7 @@ actions.defineHttp({
 ///   synchronized write-ahead log data (in milliseconds)
 /// - *throttleWait*: the maximum wait time that operations will wait before
 ///   they get aborted if case of write-throttling (in milliseconds)
-/// - *throttleWhenPending*: the number of unprocessed garbage-collection 
+/// - *throttleWhenPending*: the number of unprocessed garbage-collection
 ///   operations that, when reached, will activate write-throttling. A value of
 ///   *0* means that write-throttling will not be triggered.
 ///
@@ -244,13 +271,13 @@ actions.defineHttp({
 /// @endDocuBlock
 ///
 /// @EXAMPLES
-/// 
+///
 /// @EXAMPLE_ARANGOSH_RUN{RestWalPropertiesGet}
 ///     var url = "/_admin/wal/properties";
 ///     var response = logCurlRequest('GET', url);
-/// 
+///
 ///     assert(response.code === 200);
-/// 
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
@@ -258,7 +285,6 @@ actions.defineHttp({
 
 actions.defineHttp({
   url : "_admin/wal/properties",
-  context : "admin",
   prefix : false,
 
   callback : function (req, res) {
@@ -289,7 +315,6 @@ actions.defineHttp({
 
 actions.defineHttp({
   url : "_admin/auth/reload",
-  context : "admin",
   prefix : false,
 
   callback : function (req, res) {
@@ -304,7 +329,6 @@ actions.defineHttp({
 
 actions.defineHttp({
   url : "_admin/aql/reload",
-  context : "admin",
   prefix : false,
 
   callback : function (req, res) {
@@ -332,7 +356,6 @@ actions.defineHttp({
 
 actions.defineHttp({
   url : "_admin/routing/reload",
-  context : "admin",
   prefix : false,
 
   callback : function (req, res) {
@@ -343,12 +366,11 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current routing information 
+/// @brief returns the current routing information
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
   url : "_admin/routing/routes",
-  context : "admin",
   prefix : false,
 
   callback : function (req, res) {
@@ -376,7 +398,6 @@ actions.defineHttp({
 
 actions.defineHttp({
   url : "_admin/modules/flush",
-  context : "admin",
   prefix : false,
 
   callback : function (req, res) {
@@ -406,7 +427,6 @@ actions.defineHttp({
 
 actions.defineHttp({
   url : "_admin/time",
-  context : "admin",
   prefix : false,
 
   callback : function (req, res) {
@@ -434,7 +454,6 @@ actions.defineHttp({
 
 actions.defineHttp({
   url : "_admin/sleep",
-  context : "admin",
   prefix : false,
 
   callback : function (req, res) {
@@ -472,7 +491,6 @@ actions.defineHttp({
 
 actions.defineHttp({
   url : "_admin/echo",
-  context : "admin",
   prefix : true,
 
   callback : function (req, res) {
@@ -500,20 +518,20 @@ actions.defineHttp({
 /// In case of a distribution, the returned object contains the total count in
 /// *count* and the distribution list in *counts*. The sum (or total) of the
 /// individual values is returned in *sum*.
-/// 
+///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{200}
 /// Statistics were returned successfully.
-/// 
+///
 /// @EXAMPLES
-/// 
+///
 /// @EXAMPLE_ARANGOSH_RUN{RestAdminStatistics1}
 ///     var url = "/_admin/statistics";
 ///     var response = logCurlRequest('GET', url);
-/// 
+///
 ///     assert(response.code === 200);
-/// 
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
@@ -521,7 +539,6 @@ actions.defineHttp({
 
 actions.defineHttp({
   url : "_admin/statistics",
-  context : "admin",
   prefix : false,
 
   callback : function (req, res) {
@@ -548,7 +565,7 @@ actions.defineHttp({
 /// @startDocuBlock JSF_get_admin_statistics_description
 ///
 /// @RESTHEADER{GET /_admin/statistics-description, Statistics description}
-/// 
+///
 /// @RESTDESCRIPTION
 ///
 /// Returns a description of the statistics returned by */_admin/statistics*.
@@ -572,18 +589,18 @@ actions.defineHttp({
 /// - *units*: Units in which the figure is measured.
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{200}
 /// Description was returned successfully.
-/// 
+///
 /// @EXAMPLES
-/// 
+///
 /// @EXAMPLE_ARANGOSH_RUN{RestAdminStatisticsDescription1}
 ///     var url = "/_admin/statistics-description";
 ///     var response = logCurlRequest('GET', url);
-/// 
+///
 ///     assert(response.code === 200);
-/// 
+///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
@@ -591,7 +608,6 @@ actions.defineHttp({
 
 actions.defineHttp({
   url : "_admin/statistics-description",
-  context : "admin",
   prefix : false,
 
   callback : function (req, res) {
@@ -611,13 +627,13 @@ actions.defineHttp({
             name: "Client Connection Statistics",
             description: "Statistics about the connections."
           },
-          
+
           {
             group: "http",
             name: "HTTP Request Statistics",
             description: "Statistics about the HTTP requests."
           },
-          
+
           {
             group: "server",
             name: "Server Statistics",
@@ -636,7 +652,7 @@ actions.defineHttp({
             group: "system",
             identifier: "userTime",
             name: "User Time",
-            description: "Amount of time that this process has been scheduled in user mode, " + 
+            description: "Amount of time that this process has been scheduled in user mode, " +
                          "measured in seconds.",
             type: "accumulated",
             units: "seconds"
@@ -665,7 +681,7 @@ actions.defineHttp({
             group: "system",
             identifier: "residentSize",
             name: "Resident Set Size",
-            description: "The total size of the number of pages the process has in real memory. " + 
+            description: "The total size of the number of pages the process has in real memory. " +
                          "This is just the pages which count toward text, data, or stack space. " +
                          "This does not include pages which have not been demand-loaded in, " +
                          "or which are swapped out. The resident set size is reported in bytes.",
@@ -720,7 +736,7 @@ actions.defineHttp({
           // .............................................................................
           // client statistics
           // .............................................................................
-          
+
           {
             group: "client",
             identifier: "httpConnections",
@@ -759,7 +775,7 @@ actions.defineHttp({
             cuts: internal.requestTimeDistribution,
             units: "seconds"
           },
-          
+
           {
             group: "client",
             identifier: "bytesSent",
@@ -789,7 +805,7 @@ actions.defineHttp({
             cuts: internal.connectionTimeDistribution,
             units: "seconds"
           },
-          
+
           {
             group: "http",
             identifier: "requestsTotal",
@@ -798,7 +814,7 @@ actions.defineHttp({
             type: "accumulated",
             units: "number"
           },
-          
+
           {
             group: "http",
             identifier: "requestsAsync",
@@ -807,7 +823,7 @@ actions.defineHttp({
             type: "accumulated",
             units: "number"
           },
-          
+
           {
             group: "http",
             identifier: "requestsGet",
@@ -816,7 +832,7 @@ actions.defineHttp({
             type: "accumulated",
             units: "number"
           },
-          
+
           {
             group: "http",
             identifier: "requestsHead",
@@ -825,7 +841,7 @@ actions.defineHttp({
             type: "accumulated",
             units: "number"
           },
-          
+
           {
             group: "http",
             identifier: "requestsPost",
@@ -834,7 +850,7 @@ actions.defineHttp({
             type: "accumulated",
             units: "number"
           },
-          
+
           {
             group: "http",
             identifier: "requestsPut",
@@ -843,7 +859,7 @@ actions.defineHttp({
             type: "accumulated",
             units: "number"
           },
-          
+
           {
             group: "http",
             identifier: "requestsPatch",
@@ -852,7 +868,7 @@ actions.defineHttp({
             type: "accumulated",
             units: "number"
           },
-          
+
           {
             group: "http",
             identifier: "requestsDelete",
@@ -861,7 +877,7 @@ actions.defineHttp({
             type: "accumulated",
             units: "number"
           },
-          
+
           {
             group: "http",
             identifier: "requestsOptions",
@@ -870,7 +886,7 @@ actions.defineHttp({
             type: "accumulated",
             units: "number"
           },
-          
+
           {
             group: "http",
             identifier: "requestsOther",
@@ -921,21 +937,20 @@ actions.defineHttp({
 /// @RESTHEADER{POST /_admin/test, Runs tests on server}
 ///
 /// @RESTBODYPARAM{body,javascript,required}
-/// A JSON body containing an attribute "tests" which lists the files 
+/// A JSON body containing an attribute "tests" which lists the files
 /// containing the test suites.
 ///
 /// @RESTDESCRIPTION
 ///
 /// Executes the specified tests on the server and returns an object with the
-/// test results. The object has an attribute "error" which states whether 
-/// any error occurred. The object also has an attribute "passed" which 
+/// test results. The object has an attribute "error" which states whether
+/// any error occurred. The object also has an attribute "passed" which
 /// indicates which tests passed and which did not.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
   url : "_admin/test",
-  context : "admin",
   prefix : false,
 
   callback : function (req, res) {
@@ -944,7 +959,7 @@ actions.defineHttp({
     if (body === undefined) {
       return;
     }
-   
+
     var tests = body.tests;
     if (! Array.isArray(tests)) {
       actions.resultError(req, res,
@@ -955,7 +970,7 @@ actions.defineHttp({
 
     var jsUnity = require("jsunity");
     var testResults = { passed: { }, error: false };
-    
+
     tests.forEach (function (test) {
       var result = false;
       try {
@@ -980,7 +995,7 @@ actions.defineHttp({
 /// @RESTHEADER{POST /_admin/execute, Execute program}
 ///
 /// @RESTBODYPARAM{body,javascript,required}
-/// The body to be executed. 
+/// The body to be executed.
 ///
 /// @RESTDESCRIPTION
 ///
@@ -996,7 +1011,6 @@ actions.defineHttp({
 
 actions.defineHttp({
   url : "_admin/execute",
-  context : "admin",
   prefix : false,
 
   callback : function (req, res) {
@@ -1025,5 +1039,5 @@ actions.defineHttp({
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

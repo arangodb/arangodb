@@ -106,7 +106,6 @@ function require (path) {
 
   if (typeof STARTUP_PATH !== "undefined") {
     startupPath = STARTUP_PATH;
-    delete STARTUP_PATH;
   }
 
 ////////////////////////////////////////////////////////////////////////////////

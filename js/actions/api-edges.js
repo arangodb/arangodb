@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,9 +22,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Achim Brandt
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -32,11 +33,6 @@ var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
 
 var API = "/_api/edges";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock API_EDGE_READINOUTBOUND
@@ -79,7 +75,7 @@ var API = "/_api/edges";
 ///
 ///     var url = "/_api/edges/edges?vertex=vertices/1";
 ///     var response = logCurlRequest('GET', url);
-/// 
+///
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
@@ -103,7 +99,7 @@ var API = "/_api/edges";
 ///
 ///     var url = "/_api/edges/edges?vertex=vertices/1&direction=in";
 ///     var response = logCurlRequest('GET', url);
-/// 
+///
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
@@ -127,7 +123,7 @@ var API = "/_api/edges";
 ///
 ///     var url = "/_api/edges/edges?vertex=vertices/1&direction=out";
 ///     var response = logCurlRequest('GET', url);
-/// 
+///
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
@@ -140,10 +136,10 @@ var API = "/_api/edges";
 
 function get_edges (req, res) {
   if (req.suffix.length !== 1) {
-    actions.resultBad(req, 
-                      res, 
+    actions.resultBad(req,
+                      res,
                       arangodb.ERROR_HTTP_BAD_PARAMETER,
-                      "expect GET /" + API + 
+                      "expect GET /" + API +
                       "/<collection-identifier>?vertex=<vertex-handle>&direction=<direction>");
     return;
   }
@@ -174,7 +170,7 @@ function get_edges (req, res) {
                       "<direction> must be any, in, or out, not: " + JSON.stringify(direction));
     return;
   }
-  
+
   actions.resultOk(req, res, actions.HTTP_OK, { edges: e });
 }
 
@@ -184,7 +180,6 @@ function get_edges (req, res) {
 
 actions.defineHttp({
   url : API,
-  context : "api",
 
   callback : function (req, res) {
     try {
@@ -201,11 +196,11 @@ actions.defineHttp({
   }
 });
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

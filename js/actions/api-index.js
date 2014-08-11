@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,9 +22,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Achim Brandt
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -36,11 +37,6 @@ var API = "_api/index";
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_get_api_index
@@ -83,7 +79,7 @@ var API = "_api/index";
 function get_api_indexes (req, res) {
   var name = req.parameters.collection;
   var collection = arangodb.db._collection(name);
-  
+
   if (collection === null) {
     actions.collectionNotFound(req, res, name);
     return;
@@ -93,13 +89,13 @@ function get_api_indexes (req, res) {
 
   for (i = 0;  i < indexes.length;  ++i) {
     var index = indexes[i];
-    
+
     list.push(index);
     ids[index.id] = index;
   }
 
   var result = { indexes : list, identifiers : ids };
-  
+
   actions.resultOk(req, res, actions.HTTP_OK, result);
 }
 
@@ -167,7 +163,7 @@ function get_api_index (req, res) {
   else if (req.suffix.length === 2) {
     var name = decodeURIComponent(req.suffix[0]);
     var collection = arangodb.db._collection(name);
-    
+
     if (collection === null) {
       actions.collectionNotFound(req, res, name);
       return;
@@ -218,7 +214,7 @@ function get_api_index (req, res) {
 ///
 /// - *size*: The maximal number of documents for the collection. If specified,
 ///   the value must be greater than zero.
-/// 
+///
 /// - *byteSize*: The maximal size of the active document data in the collection
 ///   (in bytes). If specified, the value must be at least 16384.
 ///
@@ -258,9 +254,9 @@ function get_api_index (req, res) {
 ///     db._create(cn, { waitForSync: true });
 ///
 ///     var url = "/_api/index?collection=" + cn;
-///     var body = { 
-///       type: "cap", 
-///       size : 10 
+///     var body = {
+///       type: "cap",
+///       size : 10
 ///     };
 ///
 ///     var response = logCurlRequest('POST', url, JSON.stringify(body));
@@ -292,7 +288,7 @@ function get_api_index (req, res) {
 ///
 /// - *type*: must be equal to *"geo"*.
 ///
-/// - *fields*: A list with one or two attribute paths. 
+/// - *fields*: A list with one or two attribute paths.
 ///
 ///   If it is a list with one attribute path *location*, then a geo-spatial
 ///   index on all documents is created using *location* as path to the
@@ -310,12 +306,12 @@ function get_api_index (req, res) {
 ///
 /// - *geoJson*: If a geo-spatial index on a *location* is constructed
 ///   and *geoJson* is *true*, then the order within the list is longitude
-///   followed by latitude. This corresponds to the format described in 
+///   followed by latitude. This corresponds to the format described in
 ///   http://geojson.org/geojson-spec.html#positions
 ///
 /// - *constraint*: If *constraint* is *true*, then a geo-spatial
-///   constraint is created. The constraint is a non-unique variant of the index. 
-///   **Note**: It is also possible to set the *unique* attribute instead of 
+///   constraint is created. The constraint is a non-unique variant of the index.
+///   **Note**: It is also possible to set the *unique* attribute instead of
 ///   the *constraint* attribute.
 ///
 /// - *ignoreNull*: If a geo-spatial constraint is created and
@@ -332,7 +328,7 @@ function get_api_index (req, res) {
 ///
 /// @RESTRETURNCODE{201}
 /// If the index does not already exist and could be created, then a *HTTP 201*
-/// is returned.  
+/// is returned.
 ///
 /// @RESTRETURNCODE{404}
 /// If the *collection-name* is unknown, then a *HTTP 404* is returned.
@@ -410,7 +406,7 @@ function get_api_index (req, res) {
 ///
 /// @RESTRETURNCODE{201}
 /// If the index does not already exist and could be created, then a *HTTP 201*
-/// is returned.  
+/// is returned.
 ///
 /// @RESTRETURNCODE{400}
 /// If the collection already contains documents and you try to create a unique
@@ -545,7 +541,7 @@ function get_api_index (req, res) {
 ///
 /// - *type*: must be equal to *"fulltext"*.
 ///
-/// - *fields*: A list of attribute names. Currently, the list is limited 
+/// - *fields*: A list of attribute names. Currently, the list is limited
 ///   to exactly one attribute, so the value of *fields* should look like
 ///   this for example: *[ "text" ]*.
 ///
@@ -635,9 +631,9 @@ function get_api_index (req, res) {
 ///     db._create(cn, { waitForSync: true });
 ///
 ///     var url = "/_api/index?collection=" + cn;
-///     var body = '{ ' + 
-///       '"type" : "bitarray", ' + 
-///       '"unique" : false, ' + 
+///     var body = '{ ' +
+///       '"type" : "bitarray", ' +
+///       '"unique" : false, ' +
 ///       '"fields" : [ "x", [0,1,[]], "y", ["a","b",[]] ] ' +
 ///     '}';
 ///
@@ -675,26 +671,26 @@ function get_api_index (req, res) {
 ///
 /// Most indexes (a notable exception being the cap constraint) require the
 /// list of attributes to be indexed in the *fields* attribute of the index
-/// details. Depending on the index type, a single attribute or multiple 
-/// attributes may be indexed. 
-/// 
+/// details. Depending on the index type, a single attribute or multiple
+/// attributes may be indexed.
+///
 /// Indexing system attributes such as *_id*, *_key*, *_from*, and *_to*
-/// is not supported by any index type. Manually creating an index that 
+/// is not supported by any index type. Manually creating an index that
 /// relies on any of these attributes is unsupported.
 ///
 /// Some indexes can be created as unique or non-unique variants. Uniqueness
 /// can be controlled for most indexes by specifying the *unique* in the
-/// index details. Setting it to *true* will create a unique index. 
+/// index details. Setting it to *true* will create a unique index.
 /// Setting it to *false* or omitting the *unique* attribute will
 /// create a non-unique index.
 ///
-/// **Note**: The following index types do not support uniqueness, and using 
+/// **Note**: The following index types do not support uniqueness, and using
 /// the *unique* attribute with these types may lead to an error:
 /// - cap constraints
 /// - fulltext indexes
 /// - bitarray indexes
 ///
-/// **Note**: Unique indexes on non-shard keys are not supported in a 
+/// **Note**: Unique indexes on non-shard keys are not supported in a
 /// cluster.
 ///
 /// @RESTRETURNCODES
@@ -741,7 +737,7 @@ function post_api_index (req, res) {
     body.collection = name;
   }
 
-  // fill "unique" attribute from "constraint" attribute to be downward-compatible 
+  // fill "unique" attribute from "constraint" attribute to be downward-compatible
   // with old geo index API
   if (body.hasOwnProperty("constraint") && ! body.hasOwnProperty("unique")) {
     body.unique = body.constraint;
@@ -749,7 +745,7 @@ function post_api_index (req, res) {
 
   // rewrite bitarray fields
   if (body.type === "bitarray") {
-    if (typeof body.fields === "object" && 
+    if (typeof body.fields === "object" &&
         Array.isArray(body.fields) &&
         body.fields.length > 0) {
       if (! Array.isArray(body.fields[0])) {
@@ -762,7 +758,7 @@ function post_api_index (req, res) {
     }
   }
 
-  // create the index 
+  // create the index
   var index = collection.ensureIndex(body);
   if (index.isNewlyCreated) {
     actions.resultOk(req, res, actions.HTTP_CREATED, index);
@@ -845,7 +841,6 @@ function delete_api_index (req, res) {
 
 actions.defineHttp({
   url : API,
-  context : "api",
 
   callback : function (req, res) {
     try {
@@ -868,11 +863,11 @@ actions.defineHttp({
   }
 });
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

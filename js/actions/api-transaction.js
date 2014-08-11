@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,9 +22,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -54,33 +55,33 @@ var actions = require("org/arangodb/actions");
 ///   transaction (mandatory). *collections* must be a JSON array that can
 ///   have the optional sub-attributes *read* and *write*. *read*
 ///   and *write* must each be either lists of collections names or strings
-///   with a single collection name. 
+///   with a single collection name.
 ///
 /// - *action*: the actual transaction operations to be executed, in the
 ///   form of stringified Javascript code. The code will be executed on server
 ///   side, with late binding. It is thus critical that the code specified in
-///   *action* properly sets up all the variables it needs. 
+///   *action* properly sets up all the variables it needs.
 ///   If the code specified in *action* ends with a return statement, the
 ///   value returned will also be returned by the REST API in the *result*
 ///   attribute if the transaction committed successfully.
 ///
 /// The following optional attributes may also be specified in the request:
 ///
-/// - *waitForSync*: an optional boolean flag that, if set, will force the 
+/// - *waitForSync*: an optional boolean flag that, if set, will force the
 ///   transaction to write all data to disk before returning.
 ///
 /// - *lockTimeout*: an optional numeric value that can be used to set a
-///   timeout for waiting on collection locks. If not specified, a default 
-///   value will be used. Setting *lockTimeout* to *0* will make ArangoDB 
+///   timeout for waiting on collection locks. If not specified, a default
+///   value will be used. Setting *lockTimeout* to *0* will make ArangoDB
 ///   not time out waiting for a lock.
 ///
 /// - *params*: optional arguments passed to *action*.
 ///
-/// If the transaction is fully executed and committed on the server, 
-/// *HTTP 200* will be returned. Additionally, the return value of the 
+/// If the transaction is fully executed and committed on the server,
+/// *HTTP 200* will be returned. Additionally, the return value of the
 /// code defined in *action* will be returned in the *result* attribute.
-/// 
-/// For successfully committed transactions, the returned JSON object has the 
+///
+/// For successfully committed transactions, the returned JSON object has the
 /// following properties:
 ///
 /// - *error*: boolean flag to indicate if an error occurred (*false*
@@ -104,16 +105,16 @@ var actions = require("org/arangodb/actions");
 ///
 /// - *errorMessage*: a descriptive error message
 ///
-/// If a transaction fails to commit, either by an exception thrown in the 
-/// *action* code, or by an internal error, the server will respond with 
-/// an error. 
+/// If a transaction fails to commit, either by an exception thrown in the
+/// *action* code, or by an internal error, the server will respond with
+/// an error.
 /// Any other errors will be returned with any of the return codes
 /// *HTTP 400*, *HTTP 409*, or *HTTP 500*.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// If the transaction is fully executed and committed on the server, 
+/// If the transaction is fully executed and committed on the server,
 /// *HTTP 200* will be returned.
 ///
 /// @RESTRETURNCODE{400}
@@ -125,8 +126,8 @@ var actions = require("org/arangodb/actions");
 /// will respond with *HTTP 404*.
 ///
 /// @RESTRETURNCODE{500}
-/// Exceptions thrown by users will make the server respond with a return code of 
-/// *HTTP 500* 
+/// Exceptions thrown by users will make the server respond with a return code of
+/// *HTTP 500*
 ///
 /// @EXAMPLES
 ///
@@ -137,10 +138,10 @@ var actions = require("org/arangodb/actions");
 ///     db._drop(cn);
 ///     var products = db._create(cn);
 ///     var url = "/_api/transaction";
-///     var body = { 
-///       collections: { 
-///         write : "products" 
-///       }, 
+///     var body = {
+///       collections: {
+///         write : "products"
+///       },
 ///       action: "function () { var db = require('internal').db; db.products.save({});  return db.products.count(); }"
 ///     };
 ///
@@ -163,9 +164,9 @@ var actions = require("org/arangodb/actions");
 ///     products.save({ "a": 1});
 ///     materials.save({ "b": 1});
 ///     var url = "/_api/transaction";
-///     var body = { 
-///       collections: { 
-///         write : [ "products", "materials" ] 
+///     var body = {
+///       collections: {
+///         write : [ "products", "materials" ]
 ///       },
 ///       action: "function () { var db = require('internal').db; db.products.save({}); db.materials.save({}); return 'worked!'; }"
 ///     };
@@ -185,9 +186,9 @@ var actions = require("org/arangodb/actions");
 ///     db._drop(cn);
 ///     var products = db._create(cn);
 ///     var url = "/_api/transaction";
-///     var body = { 
-///       collections: { 
-///         write : "products" 
+///     var body = {
+///       collections: {
+///         write : "products"
 ///       },
 ///       action : "function () { var db = require('internal').db; db.products.save({ _key: 'abc'}); db.products.save({ _key: 'abc'}); }"
 ///     };
@@ -207,10 +208,10 @@ var actions = require("org/arangodb/actions");
 ///     var products = db._create(cn, { waitForSync: true });
 ///     products.save({ "a": 1 });
 ///     var url = "/_api/transaction";
-///     var body = { 
+///     var body = {
 ///       collections: {
-///         read : "products" 
-///       }, 
+///         read : "products"
+///       },
 ///       action : "function () { throw 'doh!'; }"
 ///     };
 ///
@@ -227,10 +228,10 @@ var actions = require("org/arangodb/actions");
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     var url = "/_api/transaction";
-///     var body = { 
+///     var body = {
 ///       collections: {
-///         read : "products" 
-///       }, 
+///         read : "products"
+///       },
 ///       action : "function () { return true; }"
 ///     };
 ///
@@ -239,7 +240,7 @@ var actions = require("org/arangodb/actions");
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
-/// @endDocuBlock 
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_api_transaction(req, res) {
@@ -260,18 +261,17 @@ function post_api_transaction(req, res) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief gateway 
+/// @brief gateway
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
   url : "_api/transaction",
-  context : "api",
 
   callback : function (req, res) {
     try {
       switch (req.requestType) {
-        case actions.POST: 
-          post_api_transaction(req, res); 
+        case actions.POST:
+          post_api_transaction(req, res);
           break;
 
         default:
@@ -284,7 +284,11 @@ actions.defineHttp({
   }
 });
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
+
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

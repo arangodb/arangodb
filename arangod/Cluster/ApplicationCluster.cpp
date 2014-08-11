@@ -132,9 +132,26 @@ void ApplicationCluster::setupOptions (map<string, basics::ProgramOptionsDescrip
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationCluster::prepare () {
+
   // initialise ServerState library
   ServerState::initialise();
 
+  // set authentication data
+  ServerState::instance()->setAuthentication(_username, _password);
+
+  // overwrite memory area
+  _username = _password = "someotherusername";
+
+  ServerState::instance()->setDataPath(_dataPath);
+  ServerState::instance()->setLogPath(_logPath);
+  ServerState::instance()->setAgentPath(_agentPath);
+  ServerState::instance()->setArangodPath(_arangodPath);
+  ServerState::instance()->setDBserverConfig(_dbserverConfig);
+  ServerState::instance()->setCoordinatorConfig(_coordinatorConfig);
+  ServerState::instance()->setDisableDispatcherFrontend(_disableDispatcherFrontend);
+  ServerState::instance()->setDisableDispatcherKickstarter(_disableDispatcherKickstarter);
+
+  // check the cluster state
   _enableCluster = (! _agencyEndpoints.empty() || ! _agencyPrefix.empty());
 
   if (! enabled()) {
@@ -196,22 +213,6 @@ bool ApplicationCluster::prepare () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationCluster::start () {
-
-  // set authentication data
-  ServerState::instance()->setAuthentication(_username, _password);
-
-  // overwrite memory area
-  _username = _password = "someotherusername";
-
-  ServerState::instance()->setDataPath(_dataPath);
-  ServerState::instance()->setLogPath(_logPath);
-  ServerState::instance()->setAgentPath(_agentPath);
-  ServerState::instance()->setArangodPath(_arangodPath);
-  ServerState::instance()->setDBserverConfig(_dbserverConfig);
-  ServerState::instance()->setCoordinatorConfig(_coordinatorConfig);
-  ServerState::instance()->setDisableDispatcherFrontend(_disableDispatcherFrontend);
-  ServerState::instance()->setDisableDispatcherKickstarter(_disableDispatcherKickstarter);
-
   if (! enabled()) {
     return true;
   }
