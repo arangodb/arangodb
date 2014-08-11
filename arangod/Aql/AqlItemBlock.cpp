@@ -64,6 +64,7 @@ AqlItemBlock::AqlItemBlock (size_t nrItems,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the block
+/// TODO: dtor is not exception-safe
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlItemBlock::~AqlItemBlock () {
@@ -81,6 +82,9 @@ AqlItemBlock::~AqlItemBlock () {
       }
     }
   }
+
+  TRI_ASSERT(_handedOn != nullptr);
+  delete _handedOn;
 }
 
 // -----------------------------------------------------------------------------
