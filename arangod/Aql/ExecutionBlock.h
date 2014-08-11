@@ -1283,34 +1283,35 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         size_t skipSome (size_t atLeast, size_t atMost) {
-
+          
+          if (_done) {
+            return 0;
+          }
+          
           size_t skipped = 0;
 
-          if (_done) {
-            return skipped;
-          }
-        
-          while (skipped < atLeast) {
+          while ( skipped < atLeast ) {
             if (_buffer.empty()) {
-              if (! getBlock(DefaultBatchSize, DefaultBatchSize)){ 
+              if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
                 _done = true;
                 return skipped;
               }
-              _pos = 0;
+              _pos = 0;           // this is in the first block
             }
 
             // if we make it here, then _buffer.front() exists
             AqlItemBlock* cur = _buffer.front();
-          
+            
             // get the thing we are looping over 
             AqlValue inVarReg = cur->getValue(_pos, _inVarRegId);
             size_t sizeInVar;
-            
+
             // get the size of the thing we are looping over
             switch (inVarReg._type) {
               case AqlValue::JSON: {
-                if(! inVarReg._json->isList()){
-                  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+                if(! inVarReg._json->isList()) {
+                  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                      "EnumerateListBlock: JSON is not a list");
                 }
                 sizeInVar = inVarReg._json->size();
                 break;
@@ -1320,7 +1321,7 @@ namespace triagens {
                 break;
               }
               case AqlValue::DOCVEC: {
-                if(_index == 0){// this is a (maybe) new DOCVEC
+                if( _index == 0) { // this is a (maybe) new DOCVEC
                   _DOCVECsize = 0;
                   //we require the total number of items 
                   for (size_t i = 0; i < inVarReg._vector->size(); i++) {
@@ -1331,35 +1332,19 @@ namespace triagens {
                 break;
               }
               default: {
-                THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+                THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                    "EnumerateListBlock: unexpected type in register");
               }
             }
-            
+           
             if (atMost < sizeInVar - _index) {
-              // eat just enough of the current block!
+              // eat just enough of inVariable . . .
               _index += atMost;
               skipped = atMost;
             } 
-            else if (atMost < sizeInVar * (cur->size() - _pos) + (sizeInVar - _index)) {
-              // eat just enough of the current block!
-              size_t q = ((atMost - sizeInVar + _index) / sizeInVar) + 1; 
-              _pos += q;
-              _index = atMost + _index  - q * sizeInVar;
-
-              if (inVarReg._type == AqlValue::DOCVEC){
-                // handle _thisblock and _seen
-                _thisblock = 0;
-                _seen = 0;
-                while(_seen + inVarReg._vector->at(_thisblock + 1)->size() < _index){
-                  _seen += inVarReg._vector->at(_thisblock )->size();
-                  _thisblock++;
-                }
-              }
-              skipped = atMost;
-            }
             else {
-              // eat the whole of the current block and proceed . . .
-              skipped += sizeInVar * (cur->size() - _pos) + (sizeInVar - _index) - 1;
+              // eat the whole of the current inVariable and proceed . . .
+              skipped += (sizeInVar - _index);
               _index = 0;
               _thisblock = 0;
               _seen = 0;
@@ -1369,7 +1354,7 @@ namespace triagens {
             }
           }
           return skipped;
-        } 
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AqlValue from the inVariable using the current _index
