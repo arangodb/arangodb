@@ -15,6 +15,8 @@
       "click #saveDocumentButton" : "saveDocument",
       "click #deleteDocumentButton" : "deleteDocumentModal",
       "click #confirmDeleteDocument" : "deleteDocument",
+      "click #document-from" : "navigateToDocument",
+      "click #document-to" : "navigateToDocument",
       "dblclick #documentEditor tr" : "addProperty"
     },
 
@@ -82,6 +84,13 @@
       }
     },
 
+    navigateToDocument: function(e) {
+      var navigateTo = $(e.target).attr("documentLink");
+      if (navigateTo) {
+        window.App.navigate(navigateTo, {trigger: true});
+      }
+    },
+
     fillInfo: function(type) {
       var _id = this.collection.first().get("_id"),
       _key = this.collection.first().get("_key"),
@@ -95,8 +104,18 @@
       $('#document-rev').text(_rev);
 
       if (_from && _to) {
+
+        var hrefFrom = "collection/"
+        + encodeURIComponent(_from.split("/")[0]) + "/"
+        + encodeURIComponent(_from.split("/")[1]);
+        var hrefTo = "collection/"
+        + encodeURIComponent(_to.split("/")[0]) + "/"
+        + encodeURIComponent(_to.split("/")[1]);
+
         $('#document-from').text(_from);
+        $('#document-from').attr("documentLink", hrefFrom);
         $('#document-to').text(_to);
+        $('#document-to').attr("documentLink", hrefTo);
       }
       else {
         $('.edge-info-container').hide();
