@@ -2203,7 +2203,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         size_t skipSome (size_t atLeast, size_t atMost) {
-          cout << "~J ~J HERE!\n";
           if (_done) {
             return 0;
           }
