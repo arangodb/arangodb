@@ -34,9 +34,12 @@
 #include "Aql/V8Executor.h"
 #include "Aql/V8Expression.h"
 #include "Aql/Variable.h"
+#include "Basics/JsonHelper.h"
+#include "BasicsC/json.h"
 #include "Utils/Exception.h"
 
 using namespace triagens::aql;
+using Json = triagens::basics::Json;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -50,13 +53,10 @@ Expression::Expression (V8Executor* executor,
                         AstNode const* node)
   : _executor(executor),
     _node(node),
-    _func(nullptr) {
+    _type(UNPROCESSED) {
 
   TRI_ASSERT(_executor != nullptr);
   TRI_ASSERT(_node != nullptr);
-
-  // TODO: catch return value and store in V8 persistent handle
-  _func = _executor->generateExpression(node);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -64,8 +64,13 @@ Expression::Expression (V8Executor* executor,
 ////////////////////////////////////////////////////////////////////////////////
 
 Expression::~Expression () {
-  if (_func != nullptr) {
+  if (_type == V8) {
     delete _func;
+  }
+  else if (_type == JSON) {
+    TRI_ASSERT(_data != nullptr);
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _data);
+    // _json is freed automatically by AqlItemBlock
   }
 }
 
@@ -91,7 +96,35 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
                               size_t startPos,
                               std::vector<Variable*> const& vars,
                               std::vector<RegisterId> const& regs) {
-  return _func->execute(trx, docColls, argv, startPos, vars, regs);
+  if (_type == UNPROCESSED) {
+    if (_node->isConstant()) {
+      // generate a constant value
+      _data = _node->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
+
+      if (_data == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
+
+      _type = JSON;
+    }
+    else {
+      // generate a V8 expression
+      _func = _executor->generateExpression(_node);
+      _type = V8;
+    }
+  }
+
+  // and execute
+  if (_type == JSON) {
+    TRI_ASSERT(_data != nullptr);
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, _data, Json::NOFREE));
+  }
+
+  if (_type == V8) {
+    return _func->execute(trx, docColls, argv, startPos, vars, regs);
+  }
+  
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
 // -----------------------------------------------------------------------------

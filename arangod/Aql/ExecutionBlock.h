@@ -1204,7 +1204,7 @@ namespace triagens {
             collection = nullptr;
             switch (inVarReg._type) {
               case AqlValue::JSON: {
-                if(!inVarReg._json->isList()){
+                if(! inVarReg._json->isList()) {
                   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                       "EnumerateListBlock: JSON is not a list");
                 }
@@ -1216,7 +1216,7 @@ namespace triagens {
                 break;
               }
               case AqlValue::DOCVEC: {
-                if( _index == 0){// this is a (maybe) new DOCVEC
+                if( _index == 0) { // this is a (maybe) new DOCVEC
                   _DOCVECsize = 0;
                   //we require the total number of items 
                   for (size_t i = 0; i < inVarReg._vector->size(); i++) {
