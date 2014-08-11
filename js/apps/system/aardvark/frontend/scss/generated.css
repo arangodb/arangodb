@@ -5167,6 +5167,9 @@ pre.gv-object-view {
       white-space: nowrap !important;
       width: 40px; }
 
+.queryImport {
+  margin-bottom: 10px; }
+
 .display-none {
   display: none; }
 
