@@ -1446,10 +1446,12 @@ static v8::Handle<v8::Value> JS_Load (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "cannot read file");
   }
 
-  TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(), v8::String::New(content, (int) length), argv[0], false);
+  v8::Handle<v8::Value> result =
+    TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(), v8::String::New(content, (int) length), argv[0], false);
+
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
-  return scope.Close(v8::Undefined());
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

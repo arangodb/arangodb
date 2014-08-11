@@ -88,24 +88,17 @@ int32_t TRI_GetVocBaseColType ();
 /// @brief run version check
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_V8RunVersionCheck (void*,
-                            triagens::arango::JSLoader*,
-                            v8::Handle<v8::Context>);
+bool TRI_UpgradeDatabase (TRI_vocbase_t*,
+                          triagens::arango::JSLoader*,
+                          v8::Handle<v8::Context>);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run upgrade check
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_V8RunUpgradeCheck (void* vocbase,
-                           triagens::arango::JSLoader* startupLoader,
-                           v8::Handle<v8::Context> context);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize foxx
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_V8InitialiseFoxx (void*,
-                           v8::Handle<v8::Context>);
+int TRI_CheckDatabaseVersion (TRI_vocbase_t* vocbase,
+                              triagens::arango::JSLoader* startupLoader,
+                              v8::Handle<v8::Context> context);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reloads routing

@@ -343,13 +343,14 @@ sub formatFile ($$$) {
       if (($authorSeen && ! $disclaimerSeen) || $holderSeen) {
 	print $out "/// DISCLAIMER\n";
 	print $out "///\n";
+
 	if ($year != 2014) {
 	  print $out "/// Copyright 2014-$year ArangoDB GmbH, Cologne, Germany\n";
 	}
 	else {
 	  print $out "/// Copyright $year ArangoDB GmbH, Cologne, Germany\n";
 	}
-	print $out "/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany\n";
+
 	print $out "///\n";
 	print $out "$disclaimerText";
 	print $out "///\n";

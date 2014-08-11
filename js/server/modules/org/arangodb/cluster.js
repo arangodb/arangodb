@@ -963,27 +963,80 @@ var dispatcherDisabled = function () {
 /// @brief coordinatorId
 ////////////////////////////////////////////////////////////////////////////////
 
-var coordinatorId= function () {
+var coordinatorId = function () {
   if (! isCoordinator()) {
     console.error("not a coordinator");
   }  
   return ArangoServerState.id();
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief bootstrap db servers
+////////////////////////////////////////////////////////////////////////////////
+
+var bootstrapDbServers = function (isRelaunch) {
+  ArangoClusterInfo.reloadDBServers();
+
+  var dbServers = ArangoClusterInfo.getDBServers();
+  var ops = [];
+  var i;
+
+  var options = {
+    coordTransactionID: ArangoClusterInfo.uniqid(),
+    timeout: 90
+  };
+
+  for (i = 0;  i < dbServers.length;  ++i) {
+    var server = dbServers[i];
+
+    var op = ArangoClusterComm.asyncRequest(
+      "POST",
+      "server:" + server,
+      "_system",
+      "/_admin/cluster/bootstrapDbServer",
+      '{"isRelaunch": ' + (isRelaunch ? "true" : "false") + '}',
+      {},
+      options);
+
+    ops.push(op);
+  }
+
+  var result = true;
+
+  for (i = 0;  i < ops.length;  ++i) {
+    var r = ArangoClusterComm.wait(ops[i]);
+
+    if (r.status === "RECEIVED") {
+      console.info("bootstraped DB server %s", dbServers[i]);
+    }
+    else if (r.status === "TIMEOUT") {
+      console.error("cannot bootstrap DB server %s: operation timed out", dbServers[i]);
+      result = false;
+    }
+    else {
+      console.error("cannot bootstrap DB server %s: %s", dbServers[i], JSON.stringify(r));
+      result = false;
+    }
+  }
+
+  return result;
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
 
-exports.coordinatorId        = coordinatorId;
-exports.dispatcherDisabled   = dispatcherDisabled;
-exports.handlePlanChange     = handlePlanChange;
-exports.isCluster            = isCluster;
-exports.isCoordinator        = isCoordinator;
-exports.isCoordinatorRequest = isCoordinatorRequest;
-exports.role                 = role;
-exports.shardList            = shardList;
-exports.status               = status;
-exports.wait                 = wait;
+exports.bootstrapDbServers     = bootstrapDbServers;
+exports.coordinatorId          = coordinatorId;
+exports.dispatcherDisabled     = dispatcherDisabled;
+exports.handlePlanChange       = handlePlanChange;
+exports.isCluster              = isCluster;
+exports.isCoordinator          = isCoordinator;
+exports.isCoordinatorRequest   = isCoordinatorRequest;
+exports.role                   = role;
+exports.shardList              = shardList;
+exports.status                 = status;
+exports.wait                   = wait;
 
 exports.Kickstarter = Kickstarter;
 exports.Planner = Planner;

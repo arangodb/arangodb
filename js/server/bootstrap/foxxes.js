@@ -1,12 +1,10 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, evil: true */
-/*global require, exports, module, ArangoServerState */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief open actions
+/// @brief initialise foxxes for a database
 ///
 /// @file
-/// Actions that are mapped under the "_open" path. Allowing to execute the
-/// actions without authorization.
 ///
 /// DISCLAIMER
 ///
@@ -27,37 +25,46 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var actions = require("org/arangodb/actions");
-var console = require("console");
-
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                                 initialise foxxes
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ceberus password manager
+/// @brief initialise foxxes
 ////////////////////////////////////////////////////////////////////////////////
 
-actions.defineHttp({
-  url: "_open/cerberus",
-  prefix : true,
+(function () {
+  var internal = require("internal");
+  var db = internal.db;
 
-  callback : function (req, res) {
-    req.user = null;
-    req.database = "_system";
+  return {
+    foxx: function () {
+      require("org/arangodb/foxx/manager").initializeFoxx();
+    },
 
-    var suffix = "system/cerberus";
-    suffix = suffix.split("/");
-    suffix = suffix.concat(req.suffix);
+    foxxes: function () {
+      try {
+        db._useDatabase("_system");
 
-    req.suffix = suffix;
+        var databases = db._listDatabases();
+        var i;
 
-    actions.routeRequest(req, res);
-  }
-});
+        for (i = 0;  i < databases.length;  ++i) {
+          db._useDatabase(databases[i]);
+ 
+          require("org/arangodb/foxx/manager").initializeFoxx();
+        }
+      }
+      catch (err) {
+        db._useDatabase("_system");
+        throw err;
+      }
+    }
+  };
+}());
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

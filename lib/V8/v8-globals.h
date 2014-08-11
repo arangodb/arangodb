@@ -37,6 +37,18 @@
 #include "Basics/ReadWriteLock.h"
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                              forward declarations
+// -----------------------------------------------------------------------------
+
+struct TRI_vocbase_s;
+
+namespace triagens {
+  namespace arango {
+    class JSLoader;
+  }
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros
 // -----------------------------------------------------------------------------
 
@@ -381,6 +393,12 @@ typedef struct TRI_v8_global_s {
 ////////////////////////////////////////////////////////////////////////////////
 
   v8::Persistent<v8::String> AddressKey;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "allowUseDatabase" key name
+////////////////////////////////////////////////////////////////////////////////
+
+  v8::Persistent<v8::String> AllowUseDatabaseKey;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief "bodyFromFile" key name
@@ -744,7 +762,7 @@ typedef struct TRI_v8_global_s {
 /// @brief pointer to the vocbase (TRI_vocbase_t*)
 ////////////////////////////////////////////////////////////////////////////////
 
-  void* _vocbase;
+  struct TRI_vocbase_s* _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not useDatabase() is allowed
@@ -767,14 +785,13 @@ typedef struct TRI_v8_global_s {
 /// @brief pointer to the startup loader (JSLoader*)
 ////////////////////////////////////////////////////////////////////////////////
 
-  void* _loader;
+  triagens::arango::JSLoader* _loader;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cancel has been caught
 ////////////////////////////////////////////////////////////////////////////////
 
-    bool _canceled;
-
+  bool _canceled;
 }
 TRI_v8_global_t;
 

@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,10 +22,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Achim Brandt
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -39,34 +40,14 @@ var arangodb = require("org/arangodb");
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief url prefix
 ////////////////////////////////////////////////////////////////////////////////
 
 var GRAPH_URL_PREFIX = "_api/graph";
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief context
-////////////////////////////////////////////////////////////////////////////////
-
-var GRAPH_CONTEXT = "api";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get graph by request parameter (throws exception)
@@ -134,61 +115,52 @@ function edge_by_request (req, g) {
 /// @brief returns true if a "if-match" or "if-none-match" error happens
 ////////////////////////////////////////////////////////////////////////////////
 
-function matchError (req, res, doc, errorCode) {  
+function matchError (req, res, doc, errorCode) {
 
   if (req.headers["if-none-match"] !== undefined) {
     if (doc._rev === req.headers["if-none-match"].replace(/(^["']|["']$)/g, '')) {
-      // error      
+      // error
       res.responseCode = actions.HTTP_NOT_MODIFIED;
       res.contentType = "application/json; charset=utf-8";
       res.body = '';
-      res.headers = {};      
+      res.headers = {};
       return true;
     }
-  }  
-  
+  }
+
   if (req.headers["if-match"] !== undefined) {
     if (doc._rev !== req.headers["if-match"].replace(/(^["']|["']$)/g, '')) {
       // error
-      actions.resultError(req, 
-                          res, 
-                          actions.HTTP_PRECONDITION_FAILED, 
-                          errorCode, 
-                          "wrong revision", 
+      actions.resultError(req,
+                          res,
+                          actions.HTTP_PRECONDITION_FAILED,
+                          errorCode,
+                          "wrong revision",
                           {});
       return true;
     }
-  }  
-  
+  }
+
   var rev = req.parameters.rev;
   if (rev !== undefined) {
     if (doc._rev !== rev) {
       // error
-      actions.resultError(req, 
-                          res, 
-                          actions.HTTP_PRECONDITION_FAILED, 
-                          errorCode, 
-                          "wrong revision", 
+      actions.resultError(req,
+                          res,
+                          actions.HTTP_PRECONDITION_FAILED,
+                          errorCode,
+                          "wrong revision",
                           {});
       return true;
     }
-  }  
-  
+  }
+
   return false;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   graph functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a graph
@@ -196,7 +168,7 @@ function matchError (req, res, doc, errorCode) {
 /// @RESTHEADER{POST /_api/graph,create graph}
 ///
 /// @RESTQUERYPARAMETERS
-/// 
+///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until document has been sync to disk.
 ///
@@ -213,7 +185,7 @@ function matchError (req, res, doc, errorCode) {
 /// list of all graph properties.
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{201}
 /// is returned if the graph was created successfully and `waitForSync` was
 /// `true`.
@@ -230,10 +202,10 @@ function matchError (req, res, doc, errorCode) {
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestGraphPostGraph}
 ///     var url = "/_api/graph/";
-///     var response = logCurlRequest('POST', 
-///                                   url, 
+///     var response = logCurlRequest('POST',
+///                                   url,
 ///                                   {_key : "graph", vertices : "vertices", edges : "edges"});
-/// 
+///
 ///     assert(response.code === 201);
 ///
 ///     logJsonResponse(response);
@@ -292,7 +264,7 @@ function post_graph_graph (req, res) {
 /// @RESTHEADERPARAMETERS
 ///
 /// @RESTHEADERPARAM{If-None-Match,string,optional}
-/// If `graph-name` is specified, then this header can be used to check 
+/// If `graph-name` is specified, then this header can be used to check
 /// whether a specific graph has changed or not.
 ///
 /// If the "If-None-Match" header is given, then it must contain exactly one
@@ -300,7 +272,7 @@ function post_graph_graph (req, res) {
 /// given etag. Otherwise a `HTTP 304` is returned.
 ///
 /// @RESTHEADERPARAM{If-Match,string,optional}
-/// If `graph-name` is specified, then this header can be used to check 
+/// If `graph-name` is specified, then this header can be used to check
 /// whether a specific graph has changed or not.
 ///
 /// If the "If-Match" header is given, then it must contain exactly one
@@ -310,16 +282,16 @@ function post_graph_graph (req, res) {
 ///
 /// @RESTDESCRIPTION
 ///
-/// If `graph-name` is specified, returns an object with an attribute `graph` 
+/// If `graph-name` is specified, returns an object with an attribute `graph`
 /// containing a JSON hash with all properties of the specified graph.
 ///
 /// If `graph-name` is not specified, returns a list of graph objects.
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{200}
 /// is returned if the graph was found (in case `graph-name` was specified)
-/// or the list of graphs was assembled successfully (in case `graph-name` 
+/// or the list of graphs was assembled successfully (in case `graph-name`
 /// was not specified).
 ///
 /// @RESTRETURNCODE{404}
@@ -328,12 +300,12 @@ function post_graph_graph (req, res) {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{304}
-/// "If-None-Match" header is given and the current graph has not a different 
+/// "If-None-Match" header is given and the current graph has not a different
 /// version. This response code may only be returned if `graph-name` is
 /// specified in the request.
 ///
 /// @RESTRETURNCODE{412}
-/// "If-Match" header or `rev` is given and the current graph has 
+/// "If-Match" header or `rev` is given and the current graph has
 /// a different version. This response code may only be returned if `graph-name`
 /// is specified in the request.
 ///
@@ -346,7 +318,7 @@ function post_graph_graph (req, res) {
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var url = "/_api/graph/graph";
 ///     var response = logCurlRequest('GET', url);
-/// 
+///
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
@@ -363,7 +335,7 @@ function post_graph_graph (req, res) {
 ///     new Graph("graph2", "vertices2", "edges2");
 ///     var url = "/_api/graph";
 ///     var response = logCurlRequest('GET', url);
-/// 
+///
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
@@ -379,11 +351,11 @@ function post_graph_graph (req, res) {
 function get_graph_graph (req, res) {
   try {
     var g = graph_by_request(req);
-    
+
     if (matchError(req, res, g._properties, arangodb.ERROR_GRAPH_INVALID_GRAPH)) {
       return;
-    } 
-    
+    }
+
     var headers = {
       "Etag" : g._properties._rev
     };
@@ -418,7 +390,7 @@ function get_graph_graph (req, res) {
 /// Deletes graph, edges and vertices
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{200}
 /// is returned if the graph was deleted and `waitForSync` was
 /// `true`.
@@ -432,7 +404,7 @@ function get_graph_graph (req, res) {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// "If-Match" header or `rev` is given and the current graph has 
+/// "If-Match" header or `rev` is given and the current graph has
 /// a different version
 ///
 /// *Examples*
@@ -444,7 +416,7 @@ function get_graph_graph (req, res) {
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var url = "/_api/graph/graph";
 ///     var response = logCurlRequest('DELETE', url);
-/// 
+///
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
@@ -475,7 +447,7 @@ function delete_graph_graph (req, res) {
     actions.resultNotFound(req, res, arangodb.ERROR_GRAPH_INVALID_GRAPH, err);
     return;
   }
-  
+
   if (matchError(req, res, g._properties, arangodb.ERROR_GRAPH_INVALID_GRAPH)) {
     return;
   }
@@ -484,7 +456,7 @@ function delete_graph_graph (req, res) {
   if (req.parameters.waitForSync) {
     waitForSync = true;
   }
-    
+
   g.drop(waitForSync);
 
   waitForSync = waitForSync || g._gdb.properties().waitForSync;
@@ -493,18 +465,9 @@ function delete_graph_graph (req, res) {
   actions.resultOk(req, res, returnCode, { "deleted" : true });
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  vertex functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a graph vertex
@@ -517,7 +480,7 @@ function delete_graph_graph (req, res) {
 /// The name of the graph
 ///
 /// @RESTQUERYPARAMETERS
-/// 
+///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until document has been sync to disk.
 ///
@@ -533,7 +496,7 @@ function delete_graph_graph (req, res) {
 /// list of all vertex properties.
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{201}
 /// is returned if the graph was created successfully and `waitForSync` was
 /// `true`.
@@ -549,7 +512,7 @@ function delete_graph_graph (req, res) {
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var url = "/_api/graph/graph/vertex";
 ///     var response = logCurlRequest('POST', url, {"_key" : "v1", "optional1" : "val1" });
-/// 
+///
 ///     assert(response.code === 202);
 ///
 ///     logJsonResponse(response);
@@ -572,7 +535,7 @@ function post_graph_vertex (req, res, g) {
     if (req.parameters.waitForSync) {
       waitForSync = true;
     }
-    
+
     var v = g.addVertex(id, json, waitForSync);
 
     if (v === null || v._properties === undefined) {
@@ -582,9 +545,9 @@ function post_graph_vertex (req, res, g) {
     var headers = {
       "Etag" : v._properties._rev
     };
-    
+
     var returnCode = waitForSync ? actions.HTTP_CREATED : actions.HTTP_ACCEPTED;
-    
+
     actions.resultOk(req, res, returnCode, { "vertex" : v._properties }, headers );
   }
   catch (err) {
@@ -606,7 +569,7 @@ function post_graph_vertex (req, res, g) {
 /// The name of the vertex
 ///
 /// @RESTQUERYPARAMETERS
-/// 
+///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// Revision of a vertex
 ///
@@ -628,12 +591,12 @@ function post_graph_vertex (req, res, g) {
 /// list of all vertex properties.
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{200}
 /// is returned if the graph was found
 ///
 /// @RESTRETURNCODE{304}
-/// "If-Match" header is given and the current graph has not a different 
+/// "If-Match" header is given and the current graph has not a different
 /// version
 ///
 /// @RESTRETURNCODE{404}
@@ -641,7 +604,7 @@ function post_graph_vertex (req, res, g) {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// "If-None-Match" header or `rev` is given and the current graph has 
+/// "If-None-Match" header or `rev` is given and the current graph has
 /// a different version
 ///
 /// *Examples*
@@ -654,7 +617,7 @@ function post_graph_vertex (req, res, g) {
 ///     g.addVertex("v1", {"optional1" : "val1" });
 ///     var url = "/_api/graph/graph/vertex/v1";
 ///     var response = logCurlRequest('GET', url);
-/// 
+///
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
@@ -674,15 +637,15 @@ function get_graph_vertex (req, res, g) {
     actions.resultNotFound(req, res, arangodb.ERROR_GRAPH_INVALID_VERTEX, err);
     return;
   }
- 
+
   if (matchError(req, res, v._properties, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
     return;
-  } 
- 
+  }
+
   var headers = {
     "Etag" : v._properties._rev
   };
-    
+
   actions.resultOk(req, res, actions.HTTP_OK, { "vertex" : v._properties}, headers);
 }
 
@@ -700,7 +663,7 @@ function get_graph_vertex (req, res, g) {
 /// The name of the vertex
 ///
 /// @RESTQUERYPARAMETERS
-/// 
+///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until document has been sync to disk.
 ///
@@ -719,7 +682,7 @@ function get_graph_vertex (req, res, g) {
 /// Deletes vertex and all in and out edges of the vertex
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{200}
 /// is returned if the vertex was deleted and `waitForSync` was
 /// `true`.
@@ -733,7 +696,7 @@ function get_graph_vertex (req, res, g) {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// "If-Match" header or `rev` is given and the current vertex has 
+/// "If-Match" header or `rev` is given and the current vertex has
 /// a different version
 ///
 /// *Examples*
@@ -744,7 +707,7 @@ function get_graph_vertex (req, res, g) {
 ///     g.addVertex("v1", {"optional1" : "val1" });
 ///     var url = "/_api/graph/graph/vertex/v1";
 ///     var response = logCurlRequest('DELETE', url);
-/// 
+///
 ///     assert(response.code === 202);
 ///
 ///     logJsonResponse(response);
@@ -764,10 +727,10 @@ function delete_graph_vertex (req, res, g) {
     actions.resultNotFound(req, res, arangodb.ERROR_GRAPH_INVALID_VERTEX, err);
     return;
   }
-    
+
   if (matchError(req, res, v._properties, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
     return;
-  } 
+  }
 
   var waitForSync = g._vertices.properties().waitForSync;
   if (req.parameters.waitForSync) {
@@ -798,15 +761,15 @@ function update_graph_vertex (req, res, g, isPatch) {
 
   if (matchError(req, res, v._properties, arangodb.ERROR_GRAPH_INVALID_VERTEX)) {
     return;
-  } 
+  }
 
   try {
     var json = actions.getJsonBody(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX);
 
     if (json === undefined) {
-      actions.resultBad(req, 
-                        res, 
-                        arangodb.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX, 
+      actions.resultBad(req,
+                        res,
+                        arangodb.ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX,
                         "error in request body");
       return;
     }
@@ -815,7 +778,7 @@ function update_graph_vertex (req, res, g, isPatch) {
     if (req.parameters.waitForSync) {
       waitForSync = true;
     }
-    
+
     var shallow = json._shallowCopy;
 
     var id2 = null;
@@ -828,10 +791,10 @@ function update_graph_vertex (req, res, g, isPatch) {
         keepNull = true;
       }
 
-      id2 = g._vertices.update(v._properties, json, true, keepNull, waitForSync);      
+      id2 = g._vertices.update(v._properties, json, true, keepNull, waitForSync);
     }
     else {
-      id2 = g._vertices.replace(v._properties, shallow, true, waitForSync);      
+      id2 = g._vertices.replace(v._properties, shallow, true, waitForSync);
     }
 
     var result = g._vertices.document(id2);
@@ -841,7 +804,7 @@ function update_graph_vertex (req, res, g, isPatch) {
     };
 
     var returnCode = waitForSync ? actions.HTTP_CREATED : actions.HTTP_ACCEPTED;
-    
+
     actions.resultOk(req, res, returnCode, { "vertex" : result }, headers );
   }
   catch (err2) {
@@ -863,7 +826,7 @@ function update_graph_vertex (req, res, g, isPatch) {
 /// The name of the vertex
 ///
 /// @RESTQUERYPARAMETERS
-/// 
+///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until vertex has been sync to disk.
 ///
@@ -888,7 +851,7 @@ function update_graph_vertex (req, res, g, isPatch) {
 /// list of all vertex properties.
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{201}
 /// is returned if the vertex was updated successfully and `waitForSync` was
 /// `true`.
@@ -902,7 +865,7 @@ function update_graph_vertex (req, res, g, isPatch) {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// "If-Match" header or `rev` is given and the current vertex has 
+/// "If-Match" header or `rev` is given and the current vertex has
 /// a different version
 ///
 /// *Examples*
@@ -913,7 +876,7 @@ function update_graph_vertex (req, res, g, isPatch) {
 ///     g.addVertex("v1", {"optional1" : "val1" });
 ///     var url = "/_api/graph/graph/vertex/v1";
 ///     var response = logCurlRequest('PUT', url, { "optional1" : "val2" });
-/// 
+///
 ///     assert(response.code === 202);
 ///
 ///     logJsonResponse(response);
@@ -941,7 +904,7 @@ function put_graph_vertex (req, res, g) {
 /// The name of the vertex
 ///
 /// @RESTQUERYPARAMETERS
-/// 
+///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until vertex has been sync to disk.
 ///
@@ -965,19 +928,19 @@ function put_graph_vertex (req, res, g) {
 /// @RESTDESCRIPTION
 /// Partially updates the vertex properties.
 ///
-/// Setting an attribute value to `null` in the patch document will cause a value 
-/// of `null` be saved for the attribute by default. If the intention is to 
-/// delete existing attributes with the patch command, the URL parameter 
-/// `keepNull` can be used with a value of `false`. 
-/// This will modify the behavior of the patch command to remove any attributes 
-/// from the existing document that are contained in the patch document 
+/// Setting an attribute value to `null` in the patch document will cause a value
+/// of `null` be saved for the attribute by default. If the intention is to
+/// delete existing attributes with the patch command, the URL parameter
+/// `keepNull` can be used with a value of `false`.
+/// This will modify the behavior of the patch command to remove any attributes
+/// from the existing document that are contained in the patch document
 /// with an attribute value of `null`.
 ///
 /// Returns an object with an attribute `vertex` containing a
 /// list of all vertex properties.
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{201}
 /// is returned if the vertex was updated successfully and `waitForSync` was
 /// `true`.
@@ -991,7 +954,7 @@ function put_graph_vertex (req, res, g) {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// "If-Match" header or `rev` is given and the current vertex has 
+/// "If-Match" header or `rev` is given and the current vertex has
 /// a different version
 ///
 /// *Examples*
@@ -1002,12 +965,12 @@ function put_graph_vertex (req, res, g) {
 ///     g.addVertex("v1", { "optional1" : "val1" });
 ///     var url = "/_api/graph/graph/vertex/v1";
 ///     var response = logCurlRequest('PATCH', url, { "optional1" : "vertexPatch" });
-/// 
+///
 ///     assert(response.code === 202);
 ///
 ///     logJsonResponse(response);
 ///     var response = logCurlRequest('PATCH', url, { "optional1" : null });
-/// 
+///
 ///     assert(response.code === 202);
 ///
 ///     logJsonResponse(response);
@@ -1062,13 +1025,13 @@ function process_property_filter (data, num, property, collname) {
       if (data.filter === "") { data.filter = " FILTER"; } else { data.filter += " &&";}
       data.filter += " HAS(" + collname + ", @key" + num.toString() + ") ";
       data.bindVars["key" + num.toString()] = property.key;
-      return;    
+      return;
   }
   if (property.key !== undefined && property.compare === "HAS_NOT") {
       if (data.filter === "") { data.filter = " FILTER"; } else { data.filter += " &&";}
       data.filter += " !HAS(" + collname + ", @key" + num.toString() + ") ";
       data.bindVars["key" + num.toString()] = property.key;
-      return;    
+      return;
   }
   if (property.key !== undefined && property.value !== undefined) {
       if (data.filter === "") { data.filter = " FILTER"; } else { data.filter += " &&";}
@@ -1145,7 +1108,7 @@ function process_labels_filter (data, labels, collname) {
 /// - `compare`: a compare operator
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{201}
 /// is returned if the cursor was created
 ///
@@ -1163,7 +1126,7 @@ function process_labels_filter (data, labels, collname) {
 ///     g.addVertex("v5", { "optional1" : "val1" });
 ///     var url = "/_api/graph/graph/vertices";
 ///     var response = logCurlRequest('POST', url, {"batchSize" : 100 });
-/// 
+///
 ///     assert(response.code === 201);
 ///
 ///     logJsonResponse(response);
@@ -1200,7 +1163,7 @@ function post_graph_all_vertices (req, res, g) {
 
     var cursor = internal.AQL_QUERY(query,
                                     data.bindVars,
-                                    { 
+                                    {
                                       count: json.count,
                                       batchSize: json.batchSize || 1000
                                     });
@@ -1258,7 +1221,7 @@ function post_graph_all_vertices (req, res, g) {
 /// - `compare`: a compare operator
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{201}
 /// is returned if the cursor was created
 ///
@@ -1282,7 +1245,7 @@ function post_graph_all_vertices (req, res, g) {
 ///     var body = '{"batchSize" : 100, "filter" : {"direction" : "any", "properties":';
 ///     body += '[] }}';
 ///     var response = logCurlRequest('POST', url, body);
-/// 
+///
 ///     assert(response.code === 201);
 ///     logJsonResponse(response);
 ///     db._drop("edges");
@@ -1308,7 +1271,7 @@ function post_graph_all_vertices (req, res, g) {
 ///     var body = '{"batchSize" : 100, "filter" : {"direction" : "out", "properties":';
 ///     body += '[ { "key": "optional1", "value": "val2", "compare" : "==" }, ] }}';
 ///     var response = logCurlRequest('POST', url, body);
-/// 
+///
 ///     assert(response.code === 201);
 ///
 ///     logJsonResponse(response);
@@ -1351,7 +1314,7 @@ function post_graph_vertex_vertices (req, res, g) {
         direction = "outbound";
       }
     }
-    
+
     if (json.filter !== undefined && json.filter.properties !== undefined) {
       process_properties_filter(data, json.filter.properties, "n.edge");
     }
@@ -1361,9 +1324,9 @@ function post_graph_vertex_vertices (req, res, g) {
     }
 
     // build aql query
-    var query = 'FOR n IN NEIGHBORS( @@vertexColl, @@edgeColl, @id, "' + direction + '") ' + 
+    var query = 'FOR n IN NEIGHBORS( @@vertexColl, @@edgeColl, @id, "' + direction + '") ' +
             data.filter + limit + " RETURN n.vertex ";
-    
+
     var cursor = internal.AQL_QUERY(query,
                                     data.bindVars,
                                     {
@@ -1400,7 +1363,7 @@ function post_graph_vertex_vertices (req, res, g) {
 /// The name of the graph
 ///
 /// @RESTQUERYPARAMETERS
-/// 
+///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until edge has been sync to disk.
 ///
@@ -1422,7 +1385,7 @@ function post_graph_vertex_vertices (req, res, g) {
 /// list of all edge properties.
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{201}
 /// is returned if the edge was created successfully and `waitForSync` was
 /// `true`.
@@ -1441,7 +1404,7 @@ function post_graph_vertex_vertices (req, res, g) {
 ///     g.addVertex("vert2");
 ///     var body = {"_key" : "edge1", "_from" : "vert2", "_to" : "vert1", "optional1" : "val1"};
 ///     var response = logCurlRequest('POST', url, body);
-/// 
+///
 ///     assert(response.code === 202);
 ///
 ///     logJsonResponse(response);
@@ -1456,9 +1419,9 @@ function post_graph_edge (req, res, g) {
     var json = actions.getJsonBody(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CREATE_EDGE);
 
     if (json === undefined) {
-      actions.resultBad(req, 
-                        res, 
-                        arangodb.ERROR_GRAPH_COULD_NOT_CREATE_EDGE, 
+      actions.resultBad(req,
+                        res,
+                        arangodb.ERROR_GRAPH_COULD_NOT_CREATE_EDGE,
                         "error in request body");
       return;
     }
@@ -1467,7 +1430,7 @@ function post_graph_edge (req, res, g) {
     if (req.parameters.waitForSync) {
       waitForSync = true;
     }
-    
+
     var id = json._key;
     var out = g.getVertex(json._from);
     var ine = g.getVertex(json._to);
@@ -1482,7 +1445,7 @@ function post_graph_edge (req, res, g) {
     var headers = {
       "Etag" : e._properties._rev
     };
-    
+
     var returnCode = waitForSync ? actions.HTTP_CREATED : actions.HTTP_ACCEPTED;
 
     actions.resultOk(req, res, returnCode, { "edge" : e._properties }, headers);
@@ -1506,7 +1469,7 @@ function post_graph_edge (req, res, g) {
 /// The name of the edge
 ///
 /// @RESTQUERYPARAMETERS
-/// 
+///
 /// @RESTQUERYPARAM{rev,string,optional}
 /// Revision of an edge
 ///
@@ -1528,12 +1491,12 @@ function post_graph_edge (req, res, g) {
 /// list of all edge properties.
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{200}
 /// is returned if the edge was found
 ///
 /// @RESTRETURNCODE{304}
-/// "If-Match" header is given and the current edge has not a different 
+/// "If-Match" header is given and the current edge has not a different
 /// version
 ///
 /// @RESTRETURNCODE{404}
@@ -1541,7 +1504,7 @@ function post_graph_edge (req, res, g) {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// "If-None-Match" header or `rev` is given and the current edge has 
+/// "If-None-Match" header or `rev` is given and the current edge has
 /// a different version
 ///
 /// *Examples*
@@ -1552,9 +1515,9 @@ function post_graph_edge (req, res, g) {
 ///     var url = "/_api/graph/graph/edge/edge1";
 ///     var v1 = g.addVertex("vert1");
 ///     var v2 = g.addVertex("vert2");
-///     g.addEdge(v1, v2, "edge1", { "optional1" : "val1" }); 
+///     g.addEdge(v1, v2, "edge1", { "optional1" : "val1" });
 ///     var response = logCurlRequest('GET', url);
-/// 
+///
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
@@ -1572,12 +1535,12 @@ function get_graph_edge (req, res, g) {
 
     if (matchError(req, res, e._properties, arangodb.ERROR_GRAPH_INVALID_EDGE)) {
       return;
-    } 
- 
+    }
+
     var headers = {
       "Etag" : e._properties._rev
     };
- 
+
     actions.resultOk(req, res, actions.HTTP_OK, { "edge" : e._properties}, headers);
   }
   catch (err) {
@@ -1599,7 +1562,7 @@ function get_graph_edge (req, res, g) {
 /// The name of the edge
 ///
 /// @RESTQUERYPARAMETERS
-/// 
+///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until edge has been sync to disk.
 ///
@@ -1618,7 +1581,7 @@ function get_graph_edge (req, res, g) {
 /// Deletes an edge of the graph
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{200}
 /// is returned if the edge was deletd successfully and `waitForSync` was
 /// `true`.
@@ -1632,7 +1595,7 @@ function get_graph_edge (req, res, g) {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// "If-Match" header or `rev` is given and the current edge has 
+/// "If-Match" header or `rev` is given and the current edge has
 /// a different version
 ///
 /// *Examples*
@@ -1642,10 +1605,10 @@ function get_graph_edge (req, res, g) {
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var v1 = g.addVertex("vert1");
 ///     var v2 = g.addVertex("vert2");
-///     g.addEdge(v1, v2, "edge1", { "optional1" : "val1" }); 
+///     g.addEdge(v1, v2, "edge1", { "optional1" : "val1" });
 ///     var url = "/_api/graph/graph/edge/edge1";
 ///     var response = logCurlRequest('DELETE', url);
-/// 
+///
 ///     assert(response.code === 202);
 ///
 ///     logJsonResponse(response);
@@ -1668,13 +1631,13 @@ function delete_graph_edge (req, res, g) {
 
   if (matchError(req, res, e._properties, arangodb.ERROR_GRAPH_INVALID_EDGE)) {
     return;
-  } 
- 
+  }
+
   var waitForSync = g._edges.properties().waitForSync;
   if (req.parameters.waitForSync) {
     waitForSync = true;
   }
-    
+
   g.removeEdge(e, waitForSync);
 
   var returnCode = waitForSync ? actions.HTTP_OK : actions.HTTP_ACCEPTED;
@@ -1699,15 +1662,15 @@ function update_graph_edge (req, res, g, isPatch) {
 
   if (matchError(req, res, e._properties, arangodb.ERROR_GRAPH_INVALID_EDGE)) {
     return;
-  } 
-  
+  }
+
   try {
     var json = actions.getJsonBody(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE);
 
     if (json === undefined) {
-      actions.resultBad(req, 
-                        res, 
-                        arangodb.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, 
+      actions.resultBad(req,
+                        res,
+                        arangodb.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE,
                         "error in request body");
       return;
     }
@@ -1716,10 +1679,10 @@ function update_graph_edge (req, res, g, isPatch) {
     if (req.parameters.waitForSync) {
       waitForSync = true;
     }
-    
+
     var shallow = json._shallowCopy;
     shallow.$label = e._properties.$label;
-    
+
     var id2 = null;
     if (isPatch) {
       var keepNull = req.parameters.keepNull;
@@ -1729,11 +1692,11 @@ function update_graph_edge (req, res, g, isPatch) {
       else {
         keepNull = true;
       }
-    
-      id2 = g._edges.update(e._properties, shallow, true, keepNull, waitForSync);      
+
+      id2 = g._edges.update(e._properties, shallow, true, keepNull, waitForSync);
     }
     else {
-      id2 = g._edges.replace(e._properties, shallow, true, waitForSync);      
+      id2 = g._edges.replace(e._properties, shallow, true, waitForSync);
     }
 
     var result = g._edges.document(id2);
@@ -1741,14 +1704,14 @@ function update_graph_edge (req, res, g, isPatch) {
     var headers = {
       "Etag" : result._rev
     };
- 
+
     var returnCode = waitForSync ? actions.HTTP_CREATED : actions.HTTP_ACCEPTED;
-    
+
     actions.resultOk(req, res, returnCode, { "edge" : result}, headers );
   }
   catch (err2) {
     actions.resultBad(req, res, arangodb.ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, err2);
-  }  
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1765,7 +1728,7 @@ function update_graph_edge (req, res, g, isPatch) {
 /// The name of the edge
 ///
 /// @RESTQUERYPARAMETERS
-/// 
+///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until edge has been sync to disk.
 ///
@@ -1792,7 +1755,7 @@ function update_graph_edge (req, res, g, isPatch) {
 /// list of all edge properties.
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{201}
 /// is returned if the edge was updated successfully and `waitForSync` was
 /// `true`.
@@ -1806,7 +1769,7 @@ function update_graph_edge (req, res, g, isPatch) {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// "If-Match" header or `rev` is given and the current edge has 
+/// "If-Match" header or `rev` is given and the current edge has
 /// a different version
 ///
 /// *Examples*
@@ -1816,10 +1779,10 @@ function update_graph_edge (req, res, g, isPatch) {
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var v1 = g.addVertex("vert1");
 ///     var v2 = g.addVertex("vert2");
-///     g.addEdge(v1, v2, "edge1", { "optional1" : "val1" }); 
+///     g.addEdge(v1, v2, "edge1", { "optional1" : "val1" });
 ///     var url = "/_api/graph/graph/edge/edge1";
 ///     var response = logCurlRequest('PUT', url, { "optional1" : "val2" });
-/// 
+///
 ///     assert(response.code === 202);
 ///
 ///     logJsonResponse(response);
@@ -1847,7 +1810,7 @@ function put_graph_edge (req, res, g) {
 /// The name of the edge
 ///
 /// @RESTQUERYPARAMETERS
-/// 
+///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until edge has been sync to disk.
 ///
@@ -1871,19 +1834,19 @@ function put_graph_edge (req, res, g) {
 /// @RESTDESCRIPTION
 /// Partially updates the edge properties.
 ///
-/// Setting an attribute value to `null` in the patch document will cause a value 
-/// of `null` be saved for the attribute by default. If the intention is to 
-/// delete existing attributes with the patch command, the URL parameter 
-/// `keepNull` can be used with a value of `false`. 
-/// This will modify the behavior of the patch command to remove any attributes 
-/// from the existing document that are contained in the patch document 
+/// Setting an attribute value to `null` in the patch document will cause a value
+/// of `null` be saved for the attribute by default. If the intention is to
+/// delete existing attributes with the patch command, the URL parameter
+/// `keepNull` can be used with a value of `false`.
+/// This will modify the behavior of the patch command to remove any attributes
+/// from the existing document that are contained in the patch document
 /// with an attribute value of `null`.
 ///
 /// Returns an object with an attribute `edge` containing a
 /// list of all edge properties.
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{201}
 /// is returned if the edge was updated successfully and `waitForSync` was
 /// `true`.
@@ -1897,7 +1860,7 @@ function put_graph_edge (req, res, g) {
 /// The response body contains an error document in this case.
 ///
 /// @RESTRETURNCODE{412}
-/// "If-Match" header or `rev` is given and the current edge has 
+/// "If-Match" header or `rev` is given and the current edge has
 /// a different version
 ///
 /// *Examples*
@@ -1907,10 +1870,10 @@ function put_graph_edge (req, res, g) {
 ///     var g = new Graph("graph", "vertices", "edges");
 ///     var v1 = g.addVertex("vert1");
 ///     var v2 = g.addVertex("vert2");
-///     g.addEdge(v1, v2, "edge1", { "optional1" : "val1" }); 
+///     g.addEdge(v1, v2, "edge1", { "optional1" : "val1" });
 ///     var url = "/_api/graph/graph/edge/edge1";
 ///     var response = logCurlRequest('PATCH', url, { "optional3" : "val3" });
-/// 
+///
 ///     assert(response.code === 202);
 ///
 ///     logJsonResponse(response);
@@ -1957,7 +1920,7 @@ function patch_graph_edge (req, res, g) {
 /// - `compare`: a compare operator
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{201}
 /// is returned if the cursor was created
 ///
@@ -1973,13 +1936,13 @@ function patch_graph_edge (req, res, g) {
 ///     var v3 = g.addVertex("v3", { "optional1" : "val1" });
 ///     var v4 = g.addVertex("v4", { "optional1" : "val1" });
 ///     var v5 = g.addVertex("v5", { "optional1" : "val1" });
-///     g.addEdge(v1, v2, "edge1", { "optional1" : "val1" }); 
-///     g.addEdge(v1, v3, "edge2", { "optional1" : "val1" }); 
-///     g.addEdge(v2, v4, "edge3", { "optional1" : "val1" }); 
-///     g.addEdge(v1, v5, "edge4", { "optional1" : "val1" }); 
+///     g.addEdge(v1, v2, "edge1", { "optional1" : "val1" });
+///     g.addEdge(v1, v3, "edge2", { "optional1" : "val1" });
+///     g.addEdge(v2, v4, "edge3", { "optional1" : "val1" });
+///     g.addEdge(v1, v5, "edge4", { "optional1" : "val1" });
 ///     var url = "/_api/graph/graph/edges";
 ///     var response = logCurlRequest('POST', url, {"batchSize" : 100 });
-/// 
+///
 ///     assert(response.code === 201);
 ///
 ///     logJsonResponse(response);
@@ -2024,7 +1987,7 @@ function post_graph_all_edges (req, res, g) {
                                     data.bindVars,
                                     {
                                       count: json.count,
-                                      batchSize: json.batchSize || 1000 
+                                      batchSize: json.batchSize || 1000
                                     });
 
     // error occurred
@@ -2084,7 +2047,7 @@ function post_graph_all_edges (req, res, g) {
 /// - `compare`: a compare operator
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{201}
 /// is returned if the cursor was created
 ///
@@ -2100,14 +2063,14 @@ function post_graph_all_edges (req, res, g) {
 ///     var v3 = g.addVertex("v3", { "optional1" : "val1" });
 ///     var v4 = g.addVertex("v4", { "optional1" : "val1" });
 ///     var v5 = g.addVertex("v5", { "optional1" : "val1" });
-///     g.addEdge(v1, v2, "edge1", { "optional1" : "val1" }); 
-///     g.addEdge(v1, v3, "edge2", { "optional1" : "val1" }); 
-///     g.addEdge(v2, v4, "edge3", { "optional1" : "val1" }); 
-///     g.addEdge(v1, v5, "edge4", { "optional1" : "val1" }); 
+///     g.addEdge(v1, v2, "edge1", { "optional1" : "val1" });
+///     g.addEdge(v1, v3, "edge2", { "optional1" : "val1" });
+///     g.addEdge(v2, v4, "edge3", { "optional1" : "val1" });
+///     g.addEdge(v1, v5, "edge4", { "optional1" : "val1" });
 ///     var url = "/_api/graph/graph/edges/v2";
 ///     var body = '{"batchSize" : 100, "filter" : { "direction" : "any" }}';
 ///     var response = logCurlRequest('POST', url, body);
-/// 
+///
 ///     assert(response.code === 201);
 ///
 ///     logJsonResponse(response);
@@ -2158,7 +2121,7 @@ function post_graph_vertex_edges (req, res, g) {
       process_labels_filter(data, json.filter.labels, "e");
     }
 
-    var query = 'FOR e in EDGES( @@edgeColl , @id , "' + direction + '") ' 
+    var query = 'FOR e in EDGES( @@edgeColl , @id , "' + direction + '") '
             + data.filter + limit + " RETURN e";
 
     var cursor = internal.AQL_QUERY(query,
@@ -2420,7 +2383,6 @@ function delete_graph (req, res) {
 
 actions.defineHttp({
   url : GRAPH_URL_PREFIX,
-  context : GRAPH_CONTEXT,
 
   callback : function (req, res) {
     try {
@@ -2455,15 +2417,11 @@ actions.defineHttp({
   }
 });
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

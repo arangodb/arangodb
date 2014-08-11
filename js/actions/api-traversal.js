@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,9 +22,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -38,11 +39,6 @@ var graph = require("org/arangodb/general-graph");
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a "bad parameter" error
@@ -390,14 +386,14 @@ function notFound (req, res, code, message) {
 ///       expander: "var connections = [ ];" +
 ///                 "if (vertex.name === \"Alice\") {" +
 ///                 "config.datasource.getInEdges(vertex).forEach(function (e) {" +
-///                 "connections.push({ " + 
-///                 "vertex: require(\"internal\").db._document(e._from), " + 
+///                 "connections.push({ " +
+///                 "vertex: require(\"internal\").db._document(e._from), " +
 ///                 "edge: e" +
 ///                 "});" +
 ///                 "});" +
 ///                 "}" +
 ///                 "if (vertex.name === \"Eve\") {" +
-///                 "config.datasource.getOutEdges(vertex).forEach(function (e) {" + 
+///                 "config.datasource.getOutEdges(vertex).forEach(function (e) {" +
 ///                 "connections.push({" +
 ///                 "vertex: require(\"internal\").db._document(e._to), " +
 ///                 "edge: e" +
@@ -737,10 +733,6 @@ function post_api_traversal(req, res) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       initialiser
 // -----------------------------------------------------------------------------
@@ -751,7 +743,6 @@ function post_api_traversal(req, res) {
 
 actions.defineHttp({
   url : "_api/traversal",
-  context : "api",
 
   callback : function (req, res) {
     try {
@@ -770,11 +761,11 @@ actions.defineHttp({
   }
 });
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

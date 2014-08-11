@@ -86,37 +86,6 @@ function createStatisticsCollection (name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief createCollections
-///
-/// This cannot be called during version check, because the collections are
-/// system wide and the version checks might not yet know, that it is running
-/// on a cluster coordinate.
-///
-/// TODO need to fix this
-////////////////////////////////////////////////////////////////////////////////
-
-function createStatisticsCollections () {
-  'use strict';
-
-  if (initialized) {
-    return true;
-  }
-
-  initialized = true;
-
-  var names = [ "_statisticsRaw", "_statistics", "_statistics15" ];
-  var i;
-
-  for (i = 0;  i < names.length;  ++i) {
-    if (! createStatisticsCollection(names[i])) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief collectGarbage
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -484,13 +453,42 @@ exports.STATISTICS_HISTORY_INTERVAL = 15 * 60;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief createCollections
+///
+/// This cannot be called during version check, because the collections are
+/// system wide and the version checks might not yet know, that it is running
+/// on a cluster coordinate.
+////////////////////////////////////////////////////////////////////////////////
+
+exports.createStatisticsCollections = function () {
+  'use strict';
+
+  if (initialized) {
+    return true;
+  }
+
+  initialized = true;
+
+  var names = [ "_statisticsRaw", "_statistics", "_statistics15" ];
+  var i;
+
+  for (i = 0;  i < names.length;  ++i) {
+    if (! createStatisticsCollection(names[i])) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a statistics entry
 ////////////////////////////////////////////////////////////////////////////////
   
 exports.historian = function () {
   "use strict";
 
-  if (! createStatisticsCollections()) {
+  if (! exports.createStatisticsCollections()) {
     return;
   }
 
@@ -551,7 +549,7 @@ exports.historian = function () {
 exports.historianAverage = function () {
   "use strict";
 
-  if (! createStatisticsCollections()) {
+  if (! exports.createStatisticsCollections()) {
     return;
   }
 
@@ -605,7 +603,7 @@ exports.historianAverage = function () {
 exports.garbageCollector = function () {
   'use strict';
 
-  if (! createStatisticsCollections()) {
+  if (! exports.createStatisticsCollections()) {
     return;
   }
 
@@ -616,6 +614,45 @@ exports.garbageCollector = function () {
   collectGarbage("_statistics15", time - 30 * 24 * 60 * 60);
 };
   
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialise the module
+////////////////////////////////////////////////////////////////////////////////
+
+exports.startup = function () {
+  'use strict';
+
+  if (typeof internal.registerTask !== "function") {
+    return;
+  }
+
+  var interval = exports.STATISTICS_INTERVAL;
+  var interval15 = exports.STATISTICS_HISTORY_INTERVAL;
+
+  internal.registerTask({
+    id: "statistics-collector",
+    name: "statistics-collector",
+    offset: interval / 10,
+    period: interval,
+    command: "require('org/arangodb/statistics').historian();"
+  });
+
+  internal.registerTask({
+    id: "statistics-average-collector",
+    name: "statistics-average-collector",
+    offset: 2 * interval,
+    period: interval15,
+    command: "require('org/arangodb/statistics').historianAverage();"
+  });
+
+  internal.registerTask({
+    id: "statistics-gc",
+    name: "statistics-gc",
+    offset: Math.random() * interval15 / 2,
+    period: interval15 / 2,
+    command: "require('org/arangodb/statistics').garbageCollector();"
+  });
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

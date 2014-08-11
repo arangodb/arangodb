@@ -62,6 +62,12 @@ var logger = {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief CURRENT_VERSION
+////////////////////////////////////////////////////////////////////////////////
+
+exports.CURRENT_VERSION = 3;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief VERSION_MATCH
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -151,15 +157,7 @@ exports.databaseVersion = function () {
   }
     
   // extract server version
-  var currentServerVersion = db._version().match(/^(\d+\.\d+).*$/);
-
-  // server version is invalid for some reason
-  if (! currentServerVersion) {
-    logger.error("Unexpected ArangoDB server version: " + db._version());
-    return { result: exports.NO_SERVER_VERSION };
-  }
-  
-  var currentVersion = parseFloat(currentServerVersion[1]);
+  var currentVersion = exports.CURRENT_VERSION;
   
   // version match!
   if (lastVersion === currentVersion) {

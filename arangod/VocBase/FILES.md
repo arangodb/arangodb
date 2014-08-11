@@ -32,12 +32,12 @@ The file will contain a JSON array with a "version" attribute. The version attri
 will contain the version number that ArangoDB was last started with.
 
 It will also contain a "tasks" attribute with an array of all the tasks that are
-or were already executed by the upgrade procedure in js/server/version-check.js.
+or were already executed by the upgrade procedure in js/server/upgrade-database.js.
 Every successful upgrade task will be inserted into the "tasks" array with a value of
 true. Every failed upgrade task will be inserted into the "tasks" array with a value
 of false.
 Failed upgrade tasks will get re-executed on server startup if the task is still
-present in the js/server/version-check.js file.
+present in the js/server/upgrade-database.js file.
 
 The VERSION file will be created on the first start of ArangoDB if the database
 directory is still empty.
