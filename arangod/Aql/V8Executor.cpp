@@ -677,7 +677,14 @@ void V8Executor::generateCodeExpand (AstNode const* node) {
 
   _buffer->appendText("(function () { var r = []; ");
   generateCodeNode(node->getMember(0));
-  _buffer->appendText(".forEach(function (v) { r.push(");
+  _buffer->appendText(".forEach(function (v) { ");
+  auto iterator = node->getMember(0);
+  auto variable = static_cast<Variable*>(iterator->getMember(0)->getData());
+  _buffer->appendText("vars[\"");
+  _buffer->appendText(variable->name);
+  _buffer->appendText("\"] = v; ");
+
+  _buffer->appendText("r.push(");
   generateCodeNode(node->getMember(1));
   _buffer->appendText("); }); return r; })()");
 }
