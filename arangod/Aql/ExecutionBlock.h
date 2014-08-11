@@ -1287,34 +1287,35 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         size_t skipSome (size_t atLeast, size_t atMost) {
-
+          
+          if (_done) {
+            return 0;
+          }
+          
           size_t skipped = 0;
 
-          if (_done) {
-            return skipped;
-          }
-        
-          while (skipped < atLeast) {
+          while ( skipped < atLeast ) {
             if (_buffer.empty()) {
-              if (! getBlock(DefaultBatchSize, DefaultBatchSize)){ 
+              if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
                 _done = true;
                 return skipped;
               }
-              _pos = 0;
+              _pos = 0;           // this is in the first block
             }
 
             // if we make it here, then _buffer.front() exists
             AqlItemBlock* cur = _buffer.front();
-          
+            
             // get the thing we are looping over 
             AqlValue inVarReg = cur->getValue(_pos, _inVarRegId);
             size_t sizeInVar;
-            
+
             // get the size of the thing we are looping over
             switch (inVarReg._type) {
               case AqlValue::JSON: {
-                if(! inVarReg._json->isList()){
-                  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+                if(! inVarReg._json->isList()) {
+                  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                      "EnumerateListBlock: JSON is not a list");
                 }
                 sizeInVar = inVarReg._json->size();
                 break;
@@ -1324,7 +1325,7 @@ namespace triagens {
                 break;
               }
               case AqlValue::DOCVEC: {
-                if(_index == 0){// this is a (maybe) new DOCVEC
+                if( _index == 0) { // this is a (maybe) new DOCVEC
                   _DOCVECsize = 0;
                   //we require the total number of items 
                   for (size_t i = 0; i < inVarReg._vector->size(); i++) {
@@ -1335,35 +1336,19 @@ namespace triagens {
                 break;
               }
               default: {
-                THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+                THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                    "EnumerateListBlock: unexpected type in register");
               }
             }
-            
+           
             if (atMost < sizeInVar - _index) {
-              // eat just enough of the current block!
+              // eat just enough of inVariable . . .
               _index += atMost;
               skipped = atMost;
             } 
-            else if (atMost < sizeInVar * (cur->size() - _pos) + (sizeInVar - _index)) {
-              // eat just enough of the current block!
-              size_t q = ((atMost - sizeInVar + _index) / sizeInVar) + 1; 
-              _pos += q;
-              _index = atMost + _index  - q * sizeInVar;
-
-              if (inVarReg._type == AqlValue::DOCVEC){
-                // handle _thisblock and _seen
-                _thisblock = 0;
-                _seen = 0;
-                while(_seen + inVarReg._vector->at(_thisblock + 1)->size() < _index){
-                  _seen += inVarReg._vector->at(_thisblock )->size();
-                  _thisblock++;
-                }
-              }
-              skipped = atMost;
-            }
             else {
-              // eat the whole of the current block and proceed . . .
-              skipped += sizeInVar * (cur->size() - _pos) + (sizeInVar - _index) - 1;
+              // eat the whole of the current inVariable and proceed . . .
+              skipped += (sizeInVar - _index);
               _index = 0;
               _thisblock = 0;
               _seen = 0;
@@ -1373,7 +1358,7 @@ namespace triagens {
             }
           }
           return skipped;
-        } 
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AqlValue from the inVariable using the current _index
@@ -1890,6 +1875,56 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief skipSome
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t skipSome (size_t atLeast, size_t atMost) {
+          if (_done) {
+            return 0;
+          }
+
+          // Here, if _buffer.size() is > 0 then _pos points to a valid place
+          // in it.
+          size_t skipped = 0;
+
+          while (skipped < atLeast) {
+            if (_buffer.empty()) {
+              if (! getBlock(atLeast - skipped, atMost - skipped)) {
+                _done = true;
+                break;
+              }
+              _pos = 0;
+            }
+            // If we get here, then _buffer.size() > 0 and _pos points to a
+            // valid place in it.
+            AqlItemBlock* cur = _buffer.front();
+            if (_chosen.size() - _pos + skipped > atMost) {
+              // The current block of chosen ones is too large for atMost:
+              _pos += atMost - skipped;
+              skipped = atMost;
+            }
+            else if (_pos > 0 || _chosen.size() < cur->size()) {
+              // The current block fits into our result, but it is already
+              // half-eaten or needs to be copied anyway:
+              skipped += _chosen.size() - _pos;
+              delete cur;
+              _buffer.pop_front();
+              _chosen.clear();
+              _pos = 0;
+            } 
+            else {
+              // The current block fits into our result and is fresh and
+              // takes them all, so we can just hand it on:
+              skipped += cur->size();
+              _buffer.pop_front();
+              _chosen.clear();
+              _pos = 0;
+            }
+          }
+          return skipped;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief hasMore
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2154,6 +2189,103 @@ namespace triagens {
 
           return res;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief skipSome
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t skipSome (size_t atLeast, size_t atMost) {
+          if (_done) {
+            return 0;
+          }
+
+          if (_buffer.empty()) {
+            if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
+              _done = true;
+              return 0;
+            }
+            _pos = 0;           // this is in the first block
+          }
+
+          // If we get here, we do have _buffer.front()
+          AqlItemBlock* cur = _buffer.front();
+          size_t skipped = 0;
+
+          while (skipped < atLeast) {
+            // read the next input tow
+
+            bool newGroup = false;
+            if (_currentGroup.groupValues[0].isEmpty()) {
+              // we never had any previous group
+              newGroup = true;
+            }
+            else {
+              // we already had a group, check if the group has changed
+              size_t i = 0;
+
+              for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
+                int res = AqlValue::Compare(_currentGroup.groupValues[i], 
+                                            _currentGroup.collections[i],
+                                            cur->getValue(_pos, (*it).second), 
+                                            cur->getDocumentCollection((*it).second));
+                if (res != 0) {
+                  // group change
+                  newGroup = true;
+                  break;
+                }
+                ++i;
+              }
+            }
+
+            if (newGroup) {
+              if (! _currentGroup.groupValues[0].isEmpty()) {
+                // increase output row count
+                ++skipped;
+              }
+
+              // construct the new group
+              size_t i = 0;
+              for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
+                _currentGroup.groupValues[i] = cur->getValue(_pos, (*it).second).clone();
+                _currentGroup.collections[i] = cur->getDocumentCollection((*it).second);
+                ++i;
+              }
+              
+              _currentGroup.firstRow = _pos;
+            }
+
+            _currentGroup.lastRow = _pos;
+
+            if (++_pos >= cur->size()) {
+              _buffer.pop_front();
+              _pos = 0;
+           
+              bool hasMore = ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize);
+
+              if (! hasMore) {
+                try {
+                  ++skipped;
+                  delete cur;
+                  cur = nullptr;
+                  _done = true;
+                  return skipped;
+                }
+                catch (...) {
+                  delete cur;
+                  throw;
+                }
+              }
+
+              // hasMore
+
+              delete cur;
+              cur = _buffer.front();
+            }
+          }
+
+          return skipped;
+        }
+
 
       private:
 

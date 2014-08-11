@@ -86,7 +86,7 @@ function assertParseError (errorCode, query) {
   }
   catch (e) {
     assertTrue(e.errorNum !== undefined, "unexpected error format");
-    assertEqual(errorCode, e.errorNum, "unexpected error code");
+    assertEqual(errorCode, e.errorNum, "unexpected error code (" + e.errorMessage + "): ");
   }
 }
 
@@ -209,6 +209,9 @@ function getQueryResults2 (query, bindVars, recursive) {
     require("internal").print("Old and new AQL return different results!");
     require("internal").print("Old result:\n", result);
     require("internal").print("New result:\n", result2);
+
+    require("internal").print("Failed Query was:\n", query);
+
     throw "Results between AQL and AQL2 differ";
   }
 
@@ -226,7 +229,7 @@ function assertQueryError (errorCode, query, bindVars) {
   }
   catch (e) {
     assertTrue(e.errorNum !== undefined, "unexpected error format");
-    assertEqual(errorCode, e.errorNum, "unexpected error code");
+    assertEqual(errorCode, e.errorNum, "unexpected error code (" + e.errorMessage + "): ");
   }
 }
 
@@ -242,7 +245,7 @@ function assertQueryError2 (errorCode, query, bindVars) {
   }
   catch (e) {
     assertTrue(e.errorNum !== undefined, "unexpected error format");
-    assertEqual(errorCode, e.errorNum, "unexpected error code");
+    assertEqual(errorCode, e.errorNum, "unexpected error code (" + e.errorMessage + "): ");
   }
   try {
     getQueryResultsAQL2(query, bindVars);
@@ -250,7 +253,7 @@ function assertQueryError2 (errorCode, query, bindVars) {
   }
   catch (e2) {
     assertTrue(e2.errorNum !== undefined, "unexpected error format");
-    assertEqual(errorCode, e2.errorNum, "unexpected error code");
+    assertEqual(errorCode, e2.errorNum, "unexpected error code (" + e2.errorMessage + "): ");
   }
 }
 
