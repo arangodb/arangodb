@@ -1375,7 +1375,7 @@ ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu, div.navlogo, 
 div.navmenu, div.footer-right, div.footer-right p, ul.headerButtonList li, div .tile div.iconSet span, div .bigtile div.iconSet span, div.headerBar > div.headerButtonBar, .fixedDropdown button, .dashboard-sub-bar-menu, .query-button, .arango-tab li, .show-save-state, div.gv_colour_list, .docsThirdCol {
   float: right; }
 
-div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonBar:after, .detail-chart:after, .dashboard-sub-bar:after, .dashboard-medium-chart .dashboard-medium-chart-menu:after, .dashboard-medium-chart .dashboard-medium-chart-inner:after, .dashboard-tendency-container .dashboard-tendency-chart:after, .dashboard-bar-chart-container .dashboard-bar-chart:after, .dashboard-row:after, #distributionChartDiv:after, .lineChartDiv:after, .arango-tab:after, .pagination-line li:after {
+div.tileList:after, div.resizecontainer:after, div.headerBar > div.headerButtonBar:after, .detail-chart:after, .dashboard-sub-bar:after, .dashboard-medium-chart .dashboard-medium-chart-menu:after, .dashboard-medium-chart .dashboard-medium-chart-inner:after, .dashboard-tendency-container .dashboard-tendency-chart:after, .dashboard-bar-chart-container .dashboard-bar-chart:after, .dashboard-row:after, #distributionChartDiv:after, .lineChartDiv:after, .arango-tab:after, .pagination-line li:after, .document-info .document-info-container .document-inner-info-container .document-attribute:after {
   clear: both;
   content: '.';
   display: block;
@@ -5786,6 +5786,46 @@ input.gv-radio-button {
 @media (min-width: 1042px) and (max-width: 1284px) {
   .arango-collection-ul a {
     font-size: 13px; } }
+.document-info {
+  background-color: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  margin-bottom: 8px;
+  margin-top: -10px;
+  min-height: 65px;
+  padding: 5px; }
+  .document-info .document-info-container {
+    clear: both;
+    width: 100%; }
+    .document-info .document-info-container .document-inner-info-container {
+      float: left;
+      margin-top: 5px;
+      margin-left: 10px; }
+      .document-info .document-info-container .document-inner-info-container .document-attribute {
+        margin-right: 20px; }
+        .document-info .document-info-container .document-inner-info-container .document-attribute div {
+          float: left; }
+  .document-info .document-bold-font {
+    font-family: droid sans mono, monospace, courier new, courier, sans-serif;
+    font-size: 11pt;
+    min-width: 55px; }
+  .document-info .document-thin-font {
+    color: green;
+    font-family: droid sans mono, monospace, courier new, courier, sans-serif;
+    font-size: 11pt; }
+  .document-info .document-type-container div {
+    float: left; }
+
+.jsoneditor .tree div {
+  font-size: 11pt; }
+.jsoneditor .ace_layer div {
+  font-size: 11pt; }
+.jsoneditor .ace_text-layer div {
+  font-size: 11pt; }
+.jsoneditor .ace_line_group div {
+  font-size: 11pt; }
+.jsoneditor .outer .tree > table > tbody > tr:first-of-type {
+  visibility: hidden; }
+
 .hotkeysList .hotkeysLabel {
   clear: both;
   color: #000;
