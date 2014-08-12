@@ -301,16 +301,12 @@
           true,
           [
             {
-              rule: Joi.string().required(),
-              msg: "No collection name given."
-            },
-           // {
-           //   rule: Joi.string().regex(),
-           //   msg: "Only the symbols '_' and '-' are allowed."
-           // },
-            {
               rule: Joi.string().regex(/^[a-zA-Z]/),
               msg: "Collection name must always start with a letter."
+            },
+            {
+              rule: Joi.string().required(),
+              msg: "No collection name given."
             }
           ]
         )
@@ -364,15 +360,15 @@
           false,
           [
             {
-              rule: Joi.string().regex(/[0-9]+/),
-              msg: "Only numbers allowed."
+              rule: Joi.string().required(),
+              msg: "No journal size given."
             },
             {
-              rule: Joi.string().min(1),
-              msg: "Must be at least 1."
+              rule: Joi.string().regex(/^[0-9]*$/),
+              msg: "Must be a number."
             }
           ]
-        )
+      )
       );
       advancedTableContent.push(
         window.modalView.createSelectEntry(
