@@ -38,7 +38,7 @@ struct TRI_json_s;
 namespace triagens {
   namespace aql {
 
-    typedef std::unordered_map<std::string, struct TRI_json_s const*> BindParametersType;
+    typedef std::unordered_map<std::string, std::pair<struct TRI_json_s const*, bool>> BindParametersType;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class BindParameters
