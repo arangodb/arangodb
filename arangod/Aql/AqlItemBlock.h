@@ -121,12 +121,18 @@ namespace triagens {
 
         void eraseValue (size_t index, RegisterId varNr) {
           auto it = _valueCount.find(_data[index * _nrRegs + varNr]);
-          _data[index * _nrRegs + varNr].erase();
           if (it != _valueCount.end()) {
             if (--it->second == 0) {
-              _valueCount.erase(it);
+              try {
+                _valueCount.erase(it);
+              }
+              catch (...) {
+                it->second++;
+                throw;
+              }
             }
           }
+          _data[index * _nrRegs + varNr].erase();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,6 +160,20 @@ namespace triagens {
           }
           else {
             return it->second;
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief steal, steal an AqlValue from an AqlItemBlock, it will never free
+/// the same value again. Note that once you do this for a single AqlValue
+/// you should delete the AqlItemBlock soon, because the stolen AqlValues
+/// might be deleted at any time!
+////////////////////////////////////////////////////////////////////////////////
+
+        void steal (AqlValue v) {
+          auto it = _valueCount.find(v);
+          if (it != _valueCount.end()) {
+            _valueCount.erase(it);
           }
         }
 

@@ -43,22 +43,23 @@ using namespace triagens::aql;
 
 AqlItemBlock::AqlItemBlock (size_t nrItems, 
                             RegisterId nrRegs)
-  : _nrItems(nrItems), 
-    _nrRegs(nrRegs) {
+  : _nrItems(nrItems), _nrRegs(nrRegs) {
+
+  TRI_ASSERT(nrItems > 0);  // no, empty AqlItemBlocks are not allowed!
 
   if (nrItems > 0 && nrRegs > 0) {
     _data.reserve(nrItems * nrRegs);
     for (size_t i = 0; i < nrItems * nrRegs; ++i) {
       _data.emplace_back();
     }
- }
+  }
  
- if (nrRegs > 0) {
-   _docColls.reserve(nrRegs);
-   for (size_t i = 0; i < nrRegs; ++i) {
-     _docColls.push_back(nullptr);
-   }
- }
+  if (nrRegs > 0) {
+    _docColls.reserve(nrRegs);
+    for (size_t i = 0; i < nrRegs; ++i) {
+      _docColls.push_back(nullptr);
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
