@@ -2288,11 +2288,11 @@ namespace triagens {
               size_t i = 0;
 
               for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
-                int res = AqlValue::Compare(_currentGroup.groupValues[i], 
+                int cmp = AqlValue::Compare(_currentGroup.groupValues[i], 
                                             _currentGroup.collections[i],
                                             cur->getValue(_pos, (*it).second), 
                                             cur->getDocumentCollection((*it).second));
-                if (res != 0) {
+                if (cmp != 0) {
                   // group change
                   newGroup = true;
                   break;
@@ -2305,6 +2305,9 @@ namespace triagens {
               if (! _currentGroup.groupValues[0].isEmpty()) {
                 // increase output row count
                 ++skipped;
+                if ( skipped == atMost) {
+                  return skipped;
+                }
               }
 
               // construct the new group
@@ -2315,17 +2318,16 @@ namespace triagens {
                 ++i;
               }
               
-              _currentGroup.firstRow = _pos;
             }
-
-            _currentGroup.lastRow = _pos;
 
             if (++_pos >= cur->size()) {
               _buffer.pop_front();
               _pos = 0;
            
-              bool hasMore = ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize);
-
+              bool hasMore = ! _buffer.empty();
+              if (!hasMore) {
+                hasMore = ExecutionBlock::getBlock(atLeast, atMost);
+              }
               if (! hasMore) {
                 try {
                   ++skipped;
