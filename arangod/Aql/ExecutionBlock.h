@@ -785,49 +785,11 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getSome
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlItemBlock* getSome (size_t, size_t) {
-          if (_done) {
-            return nullptr;
-          }
-
-          AqlItemBlock* res = new AqlItemBlock(1, _varOverview->nrRegs[_depth]);
-          if (_inputRegisterValues != nullptr) {
-            for (RegisterId reg = 0; reg < _inputRegisterValues->getNrRegs(); ++reg) {
-              res->setValue(0, reg, _inputRegisterValues->getValue(0, reg));
-              _inputRegisterValues->eraseValue(0, reg);
-              res->setDocumentCollection(reg,
-                       _inputRegisterValues->getDocumentCollection(reg));
-
-            }
-          }
-          _done = true;
-          return res;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief hasMore
 ////////////////////////////////////////////////////////////////////////////////
 
         bool hasMore () {
           return ! _done;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief skip
-////////////////////////////////////////////////////////////////////////////////
-
-        size_t skipSome (size_t atLeast, size_t atMost) {
-          if (_done) {
-            return 0; //nothing to skip
-          }
-          if (atLeast > 0) {
-            _done = true;
-            return 1; // 1 thing to skip
-          }
-          return 0; // atLeast = 0, skip nothing . . . 
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -851,6 +813,40 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getOrSkipSome
+////////////////////////////////////////////////////////////////////////////////
+
+        int getOrSkipSome (size_t atLeast, size_t atMost, bool skip, AqlItemBlock*& result, 
+            size_t& skipped) {
+
+          if (_done) {
+            return TRI_ERROR_NO_ERROR;
+          }
+          
+          if(!skip){
+            result = new AqlItemBlock(1, _varOverview->nrRegs[_depth]);
+            if (_inputRegisterValues != nullptr) {
+              skipped++;
+              for (RegisterId reg = 0; reg < _inputRegisterValues->getNrRegs(); ++reg) {
+                result->setValue(0, reg, _inputRegisterValues->getValue(0, reg));
+                _inputRegisterValues->eraseValue(0, reg);
+                result->setDocumentCollection(reg,
+                         _inputRegisterValues->getDocumentCollection(reg));
+
+              }
+            }
+          } 
+          else {
+            if (_inputRegisterValues != nullptr) {
+              skipped++;
+            }
+          }
+          
+          _done = true;
+          return TRI_ERROR_NO_ERROR;
+        }
 
         AqlItemBlock* _inputRegisterValues;
 
