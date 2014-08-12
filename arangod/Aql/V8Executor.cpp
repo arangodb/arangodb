@@ -624,7 +624,8 @@ void V8Executor::generateCodeFunctionCall (AstNode const* node) {
 
     if (member != nullptr) {
       if (member->type == NODE_TYPE_COLLECTION &&
-          func->containsCollectionParameter) {
+          func->containsCollectionParameter &&
+          func->mustConvertArgument(i)) {
         // do a parameter conversion from a collection parameter to a collection name parameter
         char const* name = member->getStringValue();
         generateCodeString(name);
