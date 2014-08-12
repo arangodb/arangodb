@@ -269,6 +269,9 @@ namespace std {
         case triagens::aql::AqlValue::RANGE: {
           return a._range == b._range;
         }
+        // case triagens::aql::AqlValue::EMPTY intentionally not handled here!
+        // (should fall through and fail!)
+
         default: {
           TRI_ASSERT(false);
           return true;
