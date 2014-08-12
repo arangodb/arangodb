@@ -1439,10 +1439,15 @@ namespace triagens {
               }
               return out;
             }
-            default: {
-              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected value in variable to iterate over");
+            
+            case AqlValue::SHAPED: 
+            case AqlValue::EMPTY: {
+              // error
+              break;
             }
           }
+              
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected value in variable to iterate over");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
