@@ -623,12 +623,18 @@ void V8Executor::generateCodeFunctionCall (AstNode const* node) {
     auto member = args->getMember(i);
 
     if (member != nullptr) {
-      if (member->type == NODE_TYPE_COLLECTION &&
-          func->containsCollectionParameter &&
+      if (func->containsCollectionParameter && 
           func->mustConvertArgument(i)) {
-        // do a parameter conversion from a collection parameter to a collection name parameter
-        char const* name = member->getStringValue();
-        generateCodeString(name);
+        // the parameter at this position must be a collection name that is converted to a string
+        if (member->type == NODE_TYPE_COLLECTION) {
+          // do a parameter conversion from a collection parameter to a collection name parameter
+          char const* name = member->getStringValue();
+          generateCodeString(name);
+        }
+        else {
+          // the parameter at the position is not a collection name... fail
+          THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func->name.c_str());
+        }
       }
       else {
         // generate regular code for the node
