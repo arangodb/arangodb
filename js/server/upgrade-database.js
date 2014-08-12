@@ -80,13 +80,13 @@
 /// @brief for cluster global part (shared collections)
 ////////////////////////////////////////////////////////////////////////////////
 
-    var CLUSTER_COORDINATOR = 2002;
+    var CLUSTER_COORDINATOR_GLOBAL = 2002;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief db server global part (DB server local!)
 ////////////////////////////////////////////////////////////////////////////////
 
-    var CLUSTER_DB_SERVER = 2003;
+    var CLUSTER_DB_SERVER_LOCAL = 2003;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief for new databases
@@ -116,8 +116,8 @@
     constant2name[MODE_DEVELOPMENT] = "dev";
     constant2name[CLUSTER_NONE] = "standalone";
     constant2name[CLUSTER_LOCAL] = "cluster-local";
-    constant2name[CLUSTER_COORDINATOR] = "coordinator";
-    constant2name[CLUSTER_DB_SERVER] = "db-server";
+    constant2name[CLUSTER_COORDINATOR_GLOBAL] = "coordinator-global";
+    constant2name[CLUSTER_DB_SERVER_LOCAL] = "db-server-local";
     constant2name[DATABASE_INIT] = "init";
     constant2name[DATABASE_UPGRADE] = "upgrade";
     constant2name[DATABASE_EXISTING] = "existing";
@@ -414,10 +414,10 @@
       else {
         if (args.isCluster) {
           if (args.isDbServer) {
-            cluster = CLUSTER_DB_SERVER;
+            cluster = CLUSTER_DB_SERVER_LOCAL;
           }
           else {
-            cluster = CLUSTER_COORDINATOR;
+            cluster = CLUSTER_COORDINATOR_GLOBAL;
           }
         }
         else {
@@ -425,8 +425,8 @@
         }
       }
 
-      // CLUSTER_COORDINATOR is special, assume init and upgrade
-      if (cluster === CLUSTER_DB_SERVER || cluster === CLUSTER_COORDINATOR) {
+      // CLUSTER_COORDINATOR_GLOBAL is special, init or upgrade are passed in from the dispatcher
+      if (cluster === CLUSTER_DB_SERVER_LOCAL || cluster === CLUSTER_COORDINATOR_GLOBAL) {
         if (args.isRelaunch) {
           return runTasks(mode, cluster, DATABASE_UPGRADE);
         }
@@ -646,7 +646,7 @@
       description: "setup _users collection",
 
       mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
       database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
 
       task: function () {
@@ -665,7 +665,7 @@
       description: "create index on 'user' attribute in _users collection",
 
       mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
       database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
 
       task: function () {
@@ -692,7 +692,7 @@
       description: "add default root user",
 
       mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
       database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
 
       task: function () {
@@ -737,7 +737,7 @@
       description: "setup _graphs collection",
 
       mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
       database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
 
       task: function () {
@@ -829,7 +829,7 @@
       description: "setup _modules collection",
 
       mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
       database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
 
       task: function () {
@@ -850,7 +850,7 @@
       description: "setup _routing collection",
 
       mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
       database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
 
       task: function () {
@@ -894,7 +894,7 @@
       description: "insert default routes for admin interface",
 
       mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
       database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
 
       task: function () {
@@ -947,7 +947,7 @@
       description: "update _graphs to new document stucture containing edgeDefinitions",
 
       mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
       database:    [ DATABASE_UPGRADE ],
 
       task: function () {
@@ -1004,7 +1004,7 @@
       description: "setup _aal collection",
 
       mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
       database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
 
       task: function () {
@@ -1026,7 +1026,7 @@
       description: "create index on collection attribute in _aal collection",
 
       mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
       database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
 
       task: function () {
@@ -1053,7 +1053,7 @@
       description: "setup _aqlfunctions collection",
 
       mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
       database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
 
       task: function () {
@@ -1074,7 +1074,7 @@
       description: "migrate _aqlfunctions name",
 
       mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
       database:    [ DATABASE_UPGRADE ],
 
       task: function () {
@@ -1121,7 +1121,7 @@
       description: "Remove all old Foxx Routes",
 
       mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
       database:    [ DATABASE_UPGRADE ],
 
       task: function () {
@@ -1148,7 +1148,7 @@
       description: "create statistics collections",
 
       mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE, CLUSTER_LOCAL, CLUSTER_COORDINATOR ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_LOCAL, CLUSTER_COORDINATOR_GLOBAL ],
       database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
 
       task: function () {
@@ -1167,7 +1167,7 @@
       description: "setup _configuration collection",
 
       mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
       database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
 
       task: function () {
@@ -1192,7 +1192,7 @@
       description: "mount system apps on correct endpoints",
 
       mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
       database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
 
       task: function () {
