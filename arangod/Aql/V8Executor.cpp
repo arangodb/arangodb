@@ -851,7 +851,8 @@ void V8Executor::generateCodeNode (AstNode const* node) {
       break;
 
     case NODE_TYPE_VARIABLE:
-      // we're not expecting a variable here
+    case NODE_TYPE_PARAMETER:
+      // we're not expecting these types here
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 
     default:
