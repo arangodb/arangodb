@@ -1309,7 +1309,7 @@
       description: "setup _queues collection",
 
       mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
       database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
 
       task: function () {
@@ -1328,7 +1328,7 @@
       description: "setup _jobs collection",
 
       mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
       database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
 
       task: function () {
