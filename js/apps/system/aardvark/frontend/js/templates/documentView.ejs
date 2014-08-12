@@ -5,8 +5,42 @@
 
 
   <div id="tableDiv" class="innerContent">
+    <div class="document-info">
+
+      <div class="document-type-container">
+        <div id="document-type" class="document-bold-font"></div>
+        <div id="document-id" class="document-thin-font"></div>
+      </div>
+
+      <div class="document-info-container">
+
+        <div class="document-inner-info-container">
+          <div class="document-attribute">
+            <div class="document-bold-font">_rev:</div>
+            <div id="document-rev" class="document-thin-font"></div>
+          </div>
+          <div class="document-attribute">
+            <div class="document-bold-font">_key:</div>
+            <div id="document-key" class="document-thin-font"></div>
+          </div>
+        </div>
+
+        <div class="document-inner-info-container edge-info-container">
+          <div class="document-attribute">
+            <div class="document-bold-font">_from:</div>
+            <div id="document-from" class="document-thin-font document-link"></div>
+          </div>
+          <div class="document-attribute">
+            <div class="document-bold-font">_to:</div>
+            <div id="document-to" class="document-thin-font document-link"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
     <div id="documentEditor" class="document-editor"></div>
-    <button id="saveDocumentButton" class="button-success pull-right">Save</button>
+      <button id="saveDocumentButton" class="button-success pull-right">Save</button>
+      <button id="deleteDocumentButton" class="button-danger pull-right">Delete</button>
     <div class="pull-left shortcuts showHotkeyHelp">
     </div>
 	</div>

@@ -40,7 +40,13 @@
       'click #arangoQueryTable .table-cell1': 'editCustomQuery',
       'click #arangoQueryTable .table-cell2 a': 'deleteAQL',
       'click #confirmQueryImport': 'importCustomQueries',
-      'click #confirmQueryExport': 'exportCustomQueries'
+      'click #confirmQueryExport': 'exportCustomQueries',
+      'click #importQueriesToggle': 'showImportMenu'
+    },
+
+    showImportMenu: function(e) {
+      $('#importQueriesToggle').toggleClass('activated');
+      $('#importHeader').slideToggle(200);
     },
 
     createCustomQueryModal: function(){
@@ -291,6 +297,7 @@
           this.updateLocalQueries();
           this.renderSelectboxes();
           this.updateTable();
+          $('#customs-switch').click();
           self.allowUpload = false;
         }
       }
