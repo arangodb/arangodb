@@ -147,7 +147,8 @@ QueryResult Parser::parse () {
 /// @brief register a parse error, position is specified as line / column
 ////////////////////////////////////////////////////////////////////////////////
 
-void Parser::registerParseError (char const* format,
+void Parser::registerParseError (int errorCode,
+                                 char const* format,
                                  char const* data,
                                  int line,
                                  int column) {
@@ -157,16 +158,18 @@ void Parser::registerParseError (char const* format,
            format,
            data);
 
-  return registerParseError(buffer, line, column);
+  return registerParseError(errorCode, buffer, line, column);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register a parse error, position is specified as line / column
 ////////////////////////////////////////////////////////////////////////////////
 
-void Parser::registerParseError (char const* data,
+void Parser::registerParseError (int errorCode,
+                                 char const* data,
                                  int line,
                                  int column) {
+  TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
   TRI_ASSERT(data != nullptr);
 
   // extract the query string part where the error happened
@@ -182,7 +185,7 @@ void Parser::registerParseError (char const* data,
            line,
            column + 1);
 
-  registerError(TRI_ERROR_QUERY_PARSE, buffer);
+  registerError(errorCode, buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

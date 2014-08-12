@@ -186,9 +186,17 @@ v8::Handle<v8::Value> AqlValue::toV8 (AQL_TRANSACTION_V8* trx,
       v8::Handle<v8::Array> result = v8::Array::New(static_cast<int>(n));
       
       uint32_t j = 0; // output row count
-      for (int64_t i = _range->_low; i <= _range->_high; ++i) {
-        // is it safe to use a double here (precision loss)?
-        result->Set(j++, v8::Number::New(static_cast<double>(i)));
+      if (_range->_low <= _range->_high) {
+        for (int64_t i = _range->_low; i <= _range->_high; ++i) {
+          // is it safe to use a double here (precision loss)?
+          result->Set(j++, v8::Number::New(static_cast<double>(i)));
+        }
+      }
+      else {
+        for (int64_t i = _range->_low; i >= _range->_high; --i) {
+          // is it safe to use a double here (precision loss)?
+          result->Set(j++, v8::Number::New(static_cast<double>(i)));
+        }
       }
 
       return result;
