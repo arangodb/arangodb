@@ -1,3 +1,5 @@
+/*jslint */
+/*global assertEqual, assertTrue, fail*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, graph functions
 ///
@@ -30,7 +32,7 @@ var db = require("org/arangodb").db;
 var graph = require("org/arangodb/general-graph");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
-var getRawQueryResults = helper.getRawQueryResults
+var getRawQueryResults = helper.getRawQueryResults;
 var assertQueryError = helper.assertQueryError;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,13 +55,13 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       db._drop("UnitTestsAhuacatlEdge2");
       db._drop("UnitTestsAhuacatlOrphan");
 
-      vertex1 = db._create("UnitTestsAhuacatlVertex1");
-      vertex2 = db._create("UnitTestsAhuacatlVertex2");
-      vertex3 = db._create("UnitTestsAhuacatlVertex3");
-      vertex4 = db._create("UnitTestsAhuacatlVertex4");
-      edge1 = db._createEdgeCollection("UnitTestsAhuacatlEdge1");
-      edge2 = db._createEdgeCollection("UnitTestsAhuacatlEdge2");
-      oprhan = db._create("UnitTestsAhuacatlOrphan");
+      var vertex1 = db._create("UnitTestsAhuacatlVertex1");
+      var vertex2 = db._create("UnitTestsAhuacatlVertex2");
+      var vertex3 = db._create("UnitTestsAhuacatlVertex3");
+      var vertex4 = db._create("UnitTestsAhuacatlVertex4");
+      var edge1 = db._createEdgeCollection("UnitTestsAhuacatlEdge1");
+      var edge2 = db._createEdgeCollection("UnitTestsAhuacatlEdge2");
+      var oprhan = db._create("UnitTestsAhuacatlOrphan");
 
       vertex1.save({ _key: "v1", hugo: true});
       vertex1.save({ _key: "v2", hugo: true});
@@ -85,8 +87,8 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       makeEdge("UnitTestsAhuacatlVertex2/v3", "UnitTestsAhuacatlVertex4/v8", edge2);
 
       try {
-        db._collection("_graphs").remove("_graphs/bla3")
-      } catch (err) {
+        db._collection("_graphs").remove("_graphs/bla3");
+      } catch (ignore) {
       }
       graph._create(
         "bla3",
@@ -129,7 +131,6 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       actual = getRawQueryResults("FOR e IN GRAPH_VERTICES('bla3', {}, {direction : 'any', vertexCollectionRestriction : 'UnitTestsAhuacatlOrphan'}) RETURN e");
       assertEqual(actual[0]._id, 'UnitTestsAhuacatlOrphan/orphan');
 
-      var actual;
       actual = getQueryResults("FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'any'}) SORT e.what RETURN e.what");
       assertEqual(actual, [ "v1->v2", "v1->v5", "v2->v1" ]);
 
@@ -251,12 +252,13 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgesExceptions: function () {
+      return undefined;
       //assertQueryError(errors.ERROR_GRAPH_INVALID_GRAPH.code, "FOR e IN GRAPH_EDGES('notExistingGraph', 'UnitTestsAhuacatlVertex1/v1', 'outbound') RETURN e.what");
 
       //assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "FOR e IN GRAPH_EDGES('bla3', 'UnitTestsAhuacatlVertex1/v1', 'noDirection') RETURN e.what");
     }
 
-  }
+  };
 }
 
 
@@ -272,9 +274,9 @@ function ahuacatlQueryGeneralCommonTestSuite() {
       db._drop("UnitTestsAhuacatlVertex2");
       db._drop("UnitTestsAhuacatlEdge1");
 
-      vertex1 = db._create("UnitTestsAhuacatlVertex1");
-      vertex2 = db._create("UnitTestsAhuacatlVertex2");
-      edge1 = db._createEdgeCollection("UnitTestsAhuacatlEdge1");
+      var vertex1 = db._create("UnitTestsAhuacatlVertex1");
+      var vertex2 = db._create("UnitTestsAhuacatlVertex2");
+      var edge1 = db._createEdgeCollection("UnitTestsAhuacatlEdge1");
 
       vertex1.save({ _key: "v1", hugo: true});
       vertex1.save({ _key: "v2", hugo: true});
@@ -301,8 +303,8 @@ function ahuacatlQueryGeneralCommonTestSuite() {
       makeEdge("UnitTestsAhuacatlVertex1/v3", "UnitTestsAhuacatlVertex2/v8", edge1);
 
       try {
-        db._collection("_graphs").remove("_graphs/bla3")
-      } catch (err) {
+        db._collection("_graphs").remove("_graphs/bla3");
+      } catch (ignore) {
       }
       graph._create(
         "bla3",
@@ -324,8 +326,8 @@ function ahuacatlQueryGeneralCommonTestSuite() {
       db._drop("UnitTestsAhuacatlVertex2");
       db._drop("UnitTestsAhuacatlEdge1");
       try {
-        db._collection("_graphs").remove("_graphs/bla3")
-      } catch (err) {
+        db._collection("_graphs").remove("_graphs/bla3");
+      } catch (ignore) {
       }
     },
 
@@ -334,7 +336,7 @@ function ahuacatlQueryGeneralCommonTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdgesAny: function () {
-      actual = getQueryResults("FOR e IN GRAPH_COMMON_NEIGHBORS('bla3', 'UnitTestsAhuacatlVertex1/v3' , 'UnitTestsAhuacatlVertex2/v6',  {direction : 'any'}) SORT  ATTRIBUTES(e)[0]  RETURN e");
+      var actual = getQueryResults("FOR e IN GRAPH_COMMON_NEIGHBORS('bla3', 'UnitTestsAhuacatlVertex1/v3' , 'UnitTestsAhuacatlVertex2/v6',  {direction : 'any'}) SORT  ATTRIBUTES(e)[0]  RETURN e");
 
       assertEqual(actual[0]["UnitTestsAhuacatlVertex1/v3"]["UnitTestsAhuacatlVertex2/v6"][0]._id, "UnitTestsAhuacatlVertex1/v2");
       assertEqual(actual[0]["UnitTestsAhuacatlVertex1/v3"]["UnitTestsAhuacatlVertex2/v6"][1]._id, "UnitTestsAhuacatlVertex2/v7");
@@ -345,7 +347,7 @@ function ahuacatlQueryGeneralCommonTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCommonNeighborsIn: function () {
-      actual = getQueryResults("FOR e IN GRAPH_COMMON_NEIGHBORS('bla3', {} , {},  {direction : 'inbound'}, {direction : 'inbound'}) SORT TO_STRING(ATTRIBUTES(e))  RETURN e");
+      var actual = getQueryResults("FOR e IN GRAPH_COMMON_NEIGHBORS('bla3', {} , {},  {direction : 'inbound'}, {direction : 'inbound'}) SORT TO_STRING(ATTRIBUTES(e))  RETURN e");
 
       assertEqual(actual[0]["UnitTestsAhuacatlVertex1/v3"]["UnitTestsAhuacatlVertex2/v6"][0]._id, "UnitTestsAhuacatlVertex1/v2");
       assertEqual(actual[1]["UnitTestsAhuacatlVertex2/v5"]["UnitTestsAhuacatlVertex2/v8"][0]._id, "UnitTestsAhuacatlVertex1/v3");
@@ -365,7 +367,7 @@ function ahuacatlQueryGeneralCommonTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCommonNeighborsOut: function () {
-      actual = getQueryResults("FOR e IN GRAPH_COMMON_NEIGHBORS('bla3', { hugo : true } , {heinz : 1}, " +
+      var actual = getQueryResults("FOR e IN GRAPH_COMMON_NEIGHBORS('bla3', { hugo : true } , {heinz : 1}, " +
         " {direction : 'outbound', minDepth : 1, maxDepth : 3}, {direction : 'outbound', minDepth : 1, maxDepth : 3}) SORT e RETURN e");
       assertEqual(Object.keys(actual[0])[0], "UnitTestsAhuacatlVertex1/v2");
       assertEqual(Object.keys(actual[0][Object.keys(actual[0])[0]]), ["UnitTestsAhuacatlVertex2/v8", "UnitTestsAhuacatlVertex1/v3"]);
@@ -386,7 +388,7 @@ function ahuacatlQueryGeneralCommonTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCommonNeighborsMixedOptions: function () {
-      actual = getQueryResults("FOR e IN GRAPH_COMMON_NEIGHBORS('bla3', {} , {},  " +
+      var actual = getQueryResults("FOR e IN GRAPH_COMMON_NEIGHBORS('bla3', {} , {},  " +
         "{direction : 'outbound', vertexCollectionRestriction : 'UnitTestsAhuacatlVertex1'}, " +
         "{direction : 'inbound', minDepth : 1, maxDepth : 2, vertexCollectionRestriction : 'UnitTestsAhuacatlVertex2'}) SORT TO_STRING(e) RETURN e");
       assertEqual(Object.keys(actual[0])[0], "UnitTestsAhuacatlVertex1/v2");
@@ -411,7 +413,7 @@ function ahuacatlQueryGeneralCommonTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCommonProperties: function () {
-      actual = getQueryResults("FOR e IN GRAPH_COMMON_PROPERTIES('bla3', { } , {},  {}) SORT  ATTRIBUTES(e)[0] RETURN e");
+      var actual = getQueryResults("FOR e IN GRAPH_COMMON_PROPERTIES('bla3', { } , {},  {}) SORT  ATTRIBUTES(e)[0] RETURN e");
       assertEqual(actual[0]["UnitTestsAhuacatlVertex1/v1"].length, 1);
       assertEqual(actual[1]["UnitTestsAhuacatlVertex1/v2"].length, 1);
       assertEqual(actual[2]["UnitTestsAhuacatlVertex1/v3"].length, 1);
@@ -427,14 +429,14 @@ function ahuacatlQueryGeneralCommonTestSuite() {
     },
 
     testCommonPropertiesWithFilters: function () {
-      actual = getQueryResults("FOR e IN GRAPH_COMMON_PROPERTIES('bla3', {ageing : true} , {harald : 'meier'},  {}) SORT  ATTRIBUTES(e)[0]  RETURN e");
+      var actual = getQueryResults("FOR e IN GRAPH_COMMON_PROPERTIES('bla3', {ageing : true} , {harald : 'meier'},  {}) SORT  ATTRIBUTES(e)[0]  RETURN e");
       assertEqual(actual[0]["UnitTestsAhuacatlVertex2/v5"].length, 1);
       assertEqual(actual[1]["UnitTestsAhuacatlVertex2/v6"].length, 3);
 
     },
 
     testCommonPropertiesWithFiltersAndIgnoringKeyHarald: function () {
-      actual = getQueryResults("FOR e IN GRAPH_COMMON_PROPERTIES('bla3', {} , {},  {ignoreProperties : 'harald'}) SORT  ATTRIBUTES(e)[0]  RETURN e");
+      var actual = getQueryResults("FOR e IN GRAPH_COMMON_PROPERTIES('bla3', {} , {},  {ignoreProperties : 'harald'}) SORT  ATTRIBUTES(e)[0]  RETURN e");
 
       assertEqual(actual[0]["UnitTestsAhuacatlVertex1/v1"].length, 1);
       assertEqual(actual[1]["UnitTestsAhuacatlVertex1/v2"].length, 1);
@@ -446,7 +448,7 @@ function ahuacatlQueryGeneralCommonTestSuite() {
       assertEqual(actual[5]["UnitTestsAhuacatlVertex2/v8"].length, 1);
 
     }
-  }
+  };
 }
 
 
@@ -469,27 +471,27 @@ function ahuacatlQueryGeneralPathsTestSuite() {
       db._drop("UnitTestsAhuacatlEdge1");
       db._drop("UnitTestsAhuacatlEdge2");
 
-      e1 = "UnitTestsAhuacatlEdge1";
-      e2 = "UnitTestsAhuacatlEdge2";
+      var e1 = "UnitTestsAhuacatlEdge1";
+      var e2 = "UnitTestsAhuacatlEdge2";
 
-      vertex1 = db._create("UnitTestsAhuacatlVertex1");
-      vertex2 = db._create("UnitTestsAhuacatlVertex2");
-      vertex3 = db._create("UnitTestsAhuacatlVertex3");
-      vertex4 = db._create("UnitTestsAhuacatlVertex4");
-      edge1 = db._createEdgeCollection(e1);
-      edge2 = db._createEdgeCollection(e2);
+      var vertex1 = db._create("UnitTestsAhuacatlVertex1");
+      var vertex2 = db._create("UnitTestsAhuacatlVertex2");
+      var vertex3 = db._create("UnitTestsAhuacatlVertex3");
+      var vertex4 = db._create("UnitTestsAhuacatlVertex4");
+      db._createEdgeCollection(e1);
+      db._createEdgeCollection(e2);
 
       var v1 = vertex1.save({ _key: "v1" });
       var v2 = vertex1.save({ _key: "v2" });
       var v3 = vertex2.save({ _key: "v3" });
       var v4 = vertex2.save({ _key: "v4" });
       var v5 = vertex3.save({ _key: "v5" });
-      /*var v6 =*/ vertex3.save({ _key: "v6" }); // not used
+      vertex3.save({ _key: "v6" }); // not used
       var v7 = vertex4.save({ _key: "v7" });
 
       try {
-        db._collection("_graphs").remove("_graphs/bla3")
-      } catch (err) {
+        db._collection("_graphs").remove("_graphs/bla3");
+      } catch (ignore) {
       }
       var g = graph._create(
         "bla3",
@@ -533,32 +535,93 @@ function ahuacatlQueryGeneralPathsTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testPaths: function () {
-      var actual, result = {}, i = 0, ed;
+      var actual;
 
-      actual = getQueryResults("FOR e IN GRAPH_PATHS('bla3') SORT e.source._key,e.destination._key RETURN [e.source._key,e.destination._key,e.edges]");
+      actual = getQueryResults(
+          "FOR e IN GRAPH_PATHS('bla3') "
+        + "SORT e.source._key, e.destination._key "
+        + "RETURN {src: e.source._key, dest: e.destination._key, edges: e.edges, length: LENGTH(e.edges)}"
+      );
+      assertEqual(actual.length, 12);
       actual.forEach(function (p) {
-        i++;
-        ed = "";
-        p[2].forEach(function (e) {
-          ed += "|" + e._from.split("/")[1] + "->" + e._to.split("/")[1];
-        });
-        result[i + ":" + p[0] + p[1]] = ed;
+        switch (p.src) {
+          case "v1":
+            switch (p.dest) {
+              case "v1":
+                assertEqual(p.length, 0);
+                break;
+              case "v2":
+                assertEqual(p.length, 1);
+                assertEqual(p.edges[0].what, "v1->v2");
+                break;
+              case "v5":
+                if (p.length === 1) {
+                  assertEqual(p.edges[0].what, "v1->v5");
+
+                } else {
+                  assertEqual(p.length, 2);
+                  assertEqual(p.edges[0].what, "v1->v2");
+                  assertEqual(p.edges[1].what, "v2->v5");
+                }
+                break;
+              default:
+                fail("Found unknown path");
+            }
+            break;
+          case "v2":
+            switch (p.dest) {
+              case "v2":
+                assertEqual(p.length, 0);
+                break;
+              case "v1":
+                assertEqual(p.length, 1);
+                assertEqual(p.edges[0].what, "v2->v1");
+                break;
+              case "v5":
+                if (p.length === 1) {
+                  assertEqual(p.edges[0].what, "v2->v5");
+
+                } else {
+                  assertEqual(p.length, 2);
+                  assertEqual(p.edges[0].what, "v2->v1");
+                  assertEqual(p.edges[1].what, "v1->v5");
+                }
+                break;
+              default:
+                fail("Found unknown path");
+            }
+            break;
+           case "v3":
+            switch (p.dest) {
+              case "v3":
+                assertEqual(p.length, 0);
+                break;
+              case "v5":
+                assertEqual(p.length, 1);
+                assertEqual(p.edges[0].what, "v3->v5");
+                break;
+              default:
+                fail("Found unknown path");
+            }
+            break;
+            case "v4":
+            switch (p.dest) {
+              case "v4":
+                assertEqual(p.length, 0);
+                break;
+              case "v7":
+                assertEqual(p.length, 1);
+                assertEqual(p.edges[0].what, "v4->v7");
+                break;
+              default:
+                fail("Found unknown path");
+            }
+            break;
+ 
+          default:
+            fail("Found unknown path");
+        }
       });
-
-      assertEqual(result["1:v1v1"], "");
-      assertEqual(result["2:v1v2"], "|v1->v2");
-      assertEqual(result["3:v1v5"], "|v1->v2|v2->v5");
-      assertEqual(result["4:v1v5"], "|v1->v5");
-      assertEqual(result["5:v2v1"], "|v2->v1");
-      assertEqual(result["6:v2v2"], "");
-      assertEqual(result["7:v2v5"], "|v2->v5");
-      assertEqual(result["8:v2v5"], "|v2->v1|v1->v5");
-      assertEqual(result["9:v3v3"], "");
-      assertEqual(result["10:v3v5"], "|v3->v5");
-      assertEqual(result["11:v4v4"], "");
-      assertEqual(result["12:v4v7"], "|v4->v7");
-
-
     },
 
     testPathsWithDirectionAnyAndMaxLength1: function () {
@@ -614,7 +677,7 @@ function ahuacatlQueryGeneralPathsTestSuite() {
       assertEqual(result["8:v7v4"], "|v4->v7");
     }
 
-  }
+  };
 }
 
 
@@ -637,13 +700,13 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
       db._drop("UnitTests_KenntAnderenBerliner");
       db._drop("UnitTests_KenntAnderen");
 
-      KenntAnderenBerliner = "UnitTests_KenntAnderenBerliner";
-      KenntAnderen = "UnitTests_KenntAnderen";
+      var KenntAnderenBerliner = "UnitTests_KenntAnderenBerliner";
+      var KenntAnderen = "UnitTests_KenntAnderen";
 
-      Berlin = db._create("UnitTests_Berliner");
-      Hamburg = db._create("UnitTests_Hamburger");
-      Frankfurt = db._create("UnitTests_Frankfurter");
-      Leipzig = db._create("UnitTests_Leipziger");
+      var Berlin = db._create("UnitTests_Berliner");
+      var Hamburg = db._create("UnitTests_Hamburger");
+      var Frankfurt = db._create("UnitTests_Frankfurter");
+      var Leipzig = db._create("UnitTests_Leipziger");
       db._createEdgeCollection(KenntAnderenBerliner);
       db._createEdgeCollection(KenntAnderen);
 
@@ -656,8 +719,8 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
       var Gerda = Leipzig.save({ _key: "Gerda", gender: "female", age: 40});
 
       try {
-        db._collection("_graphs").remove("_graphs/werKenntWen")
-      } catch (err) {
+        db._collection("_graphs").remove("_graphs/werKenntWen");
+      } catch (ignore) {
       }
       var g = graph._create(
         "werKenntWen",
@@ -722,7 +785,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
     },
 
     testGRAPH_TRAVERSALWithExamples: function () {
-      var actual, result = [];
+      var actual;
 
       actual = getQueryResults("FOR e IN GRAPH_TRAVERSAL('werKenntWen', {}, 'outbound') RETURN e");
       assertEqual(actual.length , 7);
@@ -767,7 +830,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
 
     },
     testGRAPH_SHORTEST_PATH: function () {
-      var actual, result = [];
+      var actual;
 
       actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar', " +
         " 'UnitTests_Frankfurter/Emil', {direction : 'outbound', algorithm : 'Floyd-Warshall'}) SORT e.startVertex, e.vertex._id RETURN [e.startVertex, e.vertex._id]");
@@ -1093,7 +1156,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
     },
 
     testGRAPH_SHORTEST_PATH_WITH_DIJSKTRA: function () {
-      var actual, result = [];
+      var actual;
 
       actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar', " +
         " 'UnitTests_Frankfurter/Emil', {direction : 'outbound', algorithm : 'dijkstra'}) SORT e.startVertex, e.vertex._id RETURN [e.startVertex, e.vertex._id]");
@@ -1130,7 +1193,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
     },
 
     testGRAPH_CLOSENESS: function () {
-      var actual, result = [];
+      var actual;
       actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {algorithm : 'Floyd-Warshall'})");
       assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), 0.69);
       assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), 0.92);
@@ -1161,7 +1224,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
 
 
     testGRAPH_CLOSENESS_OUTBOUND: function () {
-      var actual, result = [];
+      var actual;
       actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {direction : 'outbound', algorithm : 'Floyd-Warshall'})");
       assertEqual(actual[0]["UnitTests_Berliner/Anton"], 0);
       assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), 0.94);
@@ -1183,7 +1246,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
     },
 
     testGRAPH_CLOSENESS_INBOUND: function () {
-      var actual, result = [];
+      var actual;
       actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {direction : 'inbound', algorithm : 'Floyd-Warshall'})");
       assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), 0.88);
       assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), 0.44);
@@ -1206,7 +1269,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
 
 
     testGRAPH_ECCENTRICITY: function () {
-      var actual, result = [];
+      var actual;
       actual = getQueryResults("RETURN GRAPH_ECCENTRICITY('werKenntWen', {algorithm : 'Floyd-Warshall'})");
       assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(1), 0.6);
       assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), 0.75);
@@ -1244,7 +1307,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
     },
 
     testGRAPH_BETWEENNESS: function () {
-      var actual, result = [];
+      var actual;
 
       actual = getQueryResults("RETURN GRAPH_ABSOLUTE_BETWEENNESS('werKenntWen', {algorithm : 'Floyd-Warshall'})");
       assertEqual(actual[0]["UnitTests_Berliner/Anton"], 0);
@@ -1300,14 +1363,13 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
     },
 
     testGRAPH_DIAMETER_AND_RADIUS: function () {
-      var actual, result = [];
+      var actual;
       actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {algorithm : 'Floyd-Warshall'})");
       assertEqual(actual[0], 3);
 
       actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
       assertEqual(actual[0].toFixed(1), 450.1);
 
-      var actual, result = [];
       actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {algorithm : 'Floyd-Warshall'})");
       assertEqual(actual[0], 5);
 
@@ -1322,7 +1384,6 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
       actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {direction : 'inbound', weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
       assertEqual(actual[0].toFixed(1), 250.1);
 
-      var actual, result = [];
       actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {direction : 'inbound', algorithm : 'Floyd-Warshall'})");
       assertEqual(actual[0], 5);
 
@@ -1335,7 +1396,6 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
       actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {direction : 'outbound', weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
       assertEqual(actual[0].toFixed(1), 0.2);
 
-      var actual, result = [];
       actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {direction : 'outbound', algorithm : 'Floyd-Warshall'})");
       assertEqual(actual[0], 5);
 
@@ -1402,7 +1462,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
     },
 
     testGRAPH_CLOSENESS_WITH_DIJSKTRA: function () {
-      var actual, result = [];
+      var actual;
       actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {algorithm : 'dijkstra'})");
 
       assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), 0.69);
@@ -1427,7 +1487,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
 
 
     testGRAPH_CLOSENESS_OUTBOUND_WITH_DIJSKTRA: function () {
-      var actual, result = [];
+      var actual;
       actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {algorithm : 'dijkstra', direction : 'outbound'})");
       assertEqual(actual[0]["UnitTests_Berliner/Anton"], 0);
       assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), 0.94);
@@ -1450,7 +1510,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
 
 
     testGRAPH_CLOSENESS_INBOUND_WITH_DIJSKTRA: function () {
-      var actual, result = [];
+      var actual;
       actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {algorithm : 'dijkstra', direction : 'inbound'})");
       assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(2), 0.88);
       assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), 0.44);
@@ -1473,7 +1533,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
 
 
     testGRAPH_ECCENTRICITY_WITH_DIJSKTRA: function () {
-      var actual, result = [];
+      var actual;
       actual = getQueryResults("RETURN GRAPH_ECCENTRICITY('werKenntWen', {algorithm : 'dijkstra'})");
       assertEqual(actual[0]["UnitTests_Berliner/Anton"].toFixed(1), 0.6);
       assertEqual(actual[0]["UnitTests_Berliner/Berta"].toFixed(2), 0.75);
@@ -1514,14 +1574,13 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
     },
 
     testGRAPH_DIAMETER_AND_RADIUS_WITH_DIJSKTRA: function () {
-      var actual, result = [];
+      var actual;
       actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {algorithm : 'dijkstra'})");
       assertEqual(actual[0], 3);
 
       actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {algorithm : 'dijkstra', weight : 'entfernung', defaultWeight : 80})");
       assertEqual(actual[0].toFixed(1), 450.1);
 
-      var actual, result = [];
       actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {algorithm : 'dijkstra'})");
       assertEqual(actual[0], 5);
 
@@ -1583,7 +1642,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
 
 
     }
-  }
+  };
 }
 
 
@@ -1606,27 +1665,27 @@ function ahuacatlQueryGeneralCyclesSuite() {
       db._drop("UnitTests_KenntAnderenBerliner");
       db._drop("UnitTests_KenntAnderen");
 
-      KenntAnderenBerliner = "UnitTests_KenntAnderenBerliner";
-      KenntAnderen = "UnitTests_KenntAnderen";
+      var KenntAnderenBerliner = "UnitTests_KenntAnderenBerliner";
+      var KenntAnderen = "UnitTests_KenntAnderen";
 
-      Berlin = db._create("UnitTests_Berliner");
-      Hamburg = db._create("UnitTests_Hamburger");
-      Frankfurt = db._create("UnitTests_Frankfurter");
-      Leipzig = db._create("UnitTests_Leipziger");
+      var Berlin = db._create("UnitTests_Berliner");
+      var Hamburg = db._create("UnitTests_Hamburger");
+      var Frankfurt = db._create("UnitTests_Frankfurter");
+      var Leipzig = db._create("UnitTests_Leipziger");
       db._createEdgeCollection(KenntAnderenBerliner);
       db._createEdgeCollection(KenntAnderen);
 
       var Anton = Berlin.save({ _key: "Anton", gender: "male", age: 20});
       var Berta = Berlin.save({ _key: "Berta", gender: "female", age: 25});
       var Caesar = Hamburg.save({ _key: "Caesar", gender: "male", age: 30});
-      var Dieter = Hamburg.save({ _key: "Dieter", gender: "male", age: 20});
-      var Emil = Frankfurt.save({ _key: "Emil", gender: "male", age: 25});
+      Hamburg.save({ _key: "Dieter", gender: "male", age: 20});
+      Frankfurt.save({ _key: "Emil", gender: "male", age: 25});
       var Fritz = Frankfurt.save({ _key: "Fritz", gender: "male", age: 30});
-      var Gerda = Leipzig.save({ _key: "Gerda", gender: "female", age: 40});
+      Leipzig.save({ _key: "Gerda", gender: "female", age: 40});
 
       try {
-        db._collection("_graphs").remove("_graphs/werKenntWen")
-      } catch (err) {
+        db._collection("_graphs").remove("_graphs/werKenntWen");
+      } catch (ignore) {
       }
       var g = graph._create(
         "werKenntWen",
@@ -1670,7 +1729,7 @@ function ahuacatlQueryGeneralCyclesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGRAPH_SHORTEST_PATH: function () {
-      var actual, result = [];
+      var actual;
 
       actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', {}, " +
         "{}, {direction : 'inbound', algorithm : 'Floyd-Warshall'}) SORT e.startVertex, e.vertex._id RETURN [e.startVertex, e.vertex._id, e.distance]");
@@ -1877,7 +1936,7 @@ function ahuacatlQueryGeneralCyclesSuite() {
 
     testGRAPH_CLOSENESS: function () {
 
-      var actual, result = [];
+      var actual;
       actual = getQueryResults("RETURN GRAPH_ABSOLUTE_CLOSENESS('werKenntWen', {}, {algorithm : 'Floyd-Warshall'})");
       assertEqual(actual[0]["UnitTests_Berliner/Anton"], 4);
       assertEqual(actual[0]["UnitTests_Berliner/Berta"], 4);
@@ -1888,7 +1947,6 @@ function ahuacatlQueryGeneralCyclesSuite() {
       assertEqual(actual[0]["UnitTests_Leipziger/Gerda"], 0);
 
 
-      var actual, result = [];
       actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {algorithm : 'Floyd-Warshall'})");
 
       assertEqual(actual[0]["UnitTests_Berliner/Anton"], 1);
@@ -1911,7 +1969,7 @@ function ahuacatlQueryGeneralCyclesSuite() {
 
 
     testGRAPH_CLOSENESS_OUTBOUND: function () {
-      var actual, result = [];
+      var actual;
       actual = getQueryResults("RETURN GRAPH_ABSOLUTE_CLOSENESS('werKenntWen',{}, {direction : 'outbound', algorithm : 'Floyd-Warshall'})");
       assertEqual(actual[0]["UnitTests_Berliner/Anton"], 4);
       assertEqual(actual[0]["UnitTests_Berliner/Berta"], 4);
@@ -1932,7 +1990,7 @@ function ahuacatlQueryGeneralCyclesSuite() {
     },
 
     testGRAPH_CLOSENESS_INBOUND: function () {
-      var actual, result = [];
+      var actual;
       actual = getQueryResults("RETURN GRAPH_ABSOLUTE_CLOSENESS('werKenntWen', {}, {direction : 'inbound', algorithm : 'Floyd-Warshall'})");
 
       assertEqual(actual[0]["UnitTests_Berliner/Anton"], 6);
@@ -1955,7 +2013,7 @@ function ahuacatlQueryGeneralCyclesSuite() {
 
 
     testGRAPH_ECCENTRICITY: function () {
-      var actual, result = [];
+      var actual;
 
       actual = getQueryResults("RETURN GRAPH_ABSOLUTE_ECCENTRICITY('werKenntWen',{}, {algorithm : 'Floyd-Warshall'})");
       assertEqual(actual[0]["UnitTests_Berliner/Anton"], 2);
@@ -2015,7 +2073,7 @@ function ahuacatlQueryGeneralCyclesSuite() {
     },
 
     testGRAPH_BETWEENNESS: function () {
-      var actual, result = [];
+      var actual;
 
       actual = getQueryResults("RETURN GRAPH_ABSOLUTE_BETWEENNESS('werKenntWen', {algorithm : 'Floyd-Warshall'})");
       assertEqual(actual[0]["UnitTests_Berliner/Anton"], 1);
@@ -2069,14 +2127,13 @@ function ahuacatlQueryGeneralCyclesSuite() {
     },
 
     testGRAPH_DIAMETER_AND_RADIUS: function () {
-      var actual, result = [];
+      var actual;
       actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {algorithm : 'Floyd-Warshall'})");
       assertEqual(actual[0], 2);
 
       actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
       assertEqual(actual[0], 9);
 
-      var actual, result = [];
       actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {algorithm : 'Floyd-Warshall'})");
       assertEqual(actual[0], 2);
 
@@ -2091,7 +2148,6 @@ function ahuacatlQueryGeneralCyclesSuite() {
       actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {direction : 'inbound', weight : 'entfernung', defaultWeight : 80, algorithm : 'Floyd-Warshall'})");
       assertEqual(actual[0], 13);
 
-      var actual, result = [];
       actual = getQueryResults("RETURN GRAPH_DIAMETER('werKenntWen', {direction : 'inbound', algorithm : 'Floyd-Warshall'})");
       assertEqual(actual[0], 3);
 
@@ -2102,7 +2158,7 @@ function ahuacatlQueryGeneralCyclesSuite() {
       assertEqual(actual[0], 2);
 
      }
-  }
+  };
 }
 
 
