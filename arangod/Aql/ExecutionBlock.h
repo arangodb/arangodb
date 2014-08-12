@@ -565,7 +565,7 @@ namespace triagens {
             return collector[0];
           }
           else {
-            res = AqlItemBlock::splice(collector);
+            res = AqlItemBlock::concatenate(collector);
             for (auto it = collector.begin(); 
                  it != collector.end(); ++it) {
               delete (*it);
@@ -1909,7 +1909,7 @@ namespace triagens {
             return collector[0];
           }
           else {
-            res = AqlItemBlock::splice(collector);
+            res = AqlItemBlock::concatenate(collector);
             for (auto it = collector.begin(); 
                  it != collector.end(); ++it) {
               delete (*it);
@@ -2511,41 +2511,114 @@ namespace triagens {
             std::sort(coords.begin(), coords.end(), ourLessThan);
           }
 
-          //copy old blocks from _buffer into newbuf
-          std::vector<AqlItemBlock*> newbuf;
+          // here we collect the new blocks (later swapped into _buffer):
+          std::deque<AqlItemBlock*> newbuffer;
           
-          // reserve enough space in newbuf here because we know the target size
-          newbuf.reserve(_buffer.size());
+          try {  // If we throw from here, the catch will delete the new
+                 // blocks in newbuffer
+            _buffer.clear();
+            
+            count = 0;
+            RegisterId const nrregs = _buffer.front()->getNrRegs();
+            
+            // install the rearranged values from _buffer into newbuffer
 
-          for (auto x : _buffer) {
-            newbuf.push_back(x);
-          }
-          _buffer.clear();
-          
-          count = 0;
-          RegisterId const nrregs = newbuf.front()->getNrRegs();
-          
-          //install the rearranged values from <newbuf> into <_buffer>
-          while (count < sum) {
-            size_t sizeNext = (sum - count > DefaultBatchSize ?  DefaultBatchSize : sum - count);
-            AqlItemBlock* next = new AqlItemBlock(sizeNext, nrregs);
-            for (size_t i = 0; i < sizeNext; i++) {
-              for (RegisterId j = 0; j < nrregs; j++) {
-                next->setValue(i, j, newbuf[coords[count].first]->getValue(coords[count].second, j));
-                newbuf[coords[count].first]->eraseValue(coords[count].second, j);
+            while (count < sum) {
+              size_t sizeNext = std::min(sum - count, DefaultBatchSize);
+              AqlItemBlock* next = new AqlItemBlock(sizeNext, nrregs);
+              try {
+                newbuffer.push_back(next);
               }
-              count++;
+              catch (...) {
+                delete next;
+                throw;
+              }
+              std::unordered_map<AqlValue, AqlValue> cache;  
+                  // only copy as much as needed!
+              for (size_t i = 0; i < sizeNext; i++) {
+                for (RegisterId j = 0; j < nrregs; j++) {
+                  AqlValue a = _buffer[coords[count].first]->getValue(coords[count].second, j);
+                  // If we have already dealt with this value for the next
+                  // block, then we just put the same value again:
+                  auto it = cache.find(a);
+                  if (it != cache.end()) {
+                    AqlValue b = it->second;
+                    // If one of the following throws, all is well, because
+                    // the new block already has either a copy or stolen
+                    // the AqlValue:
+                    _buffer[coords[count].first]->eraseValue(coords[count].second, j);
+                    next->setValue(i, j, b);
+                  }
+                  else {
+                    // We need to copy a, if it has already been stolen from
+                    // its original buffer, which we know by looking at the
+                    // valueCount there.
+                    auto vCount = _buffer[coords[count].first]->valueCount(a);
+                    if (vCount == 0) {
+                      // Was already stolen for another block
+                      AqlValue b = a.clone();
+                      try {
+                        cache.insert(make_pair(a,b));
+                      }
+                      catch (...) {
+                        b.destroy();
+                        throw;
+                      }
+                      try {
+                        next->setValue(i, j, b);
+                      }
+                      catch (...) {
+                        b.destroy();
+                        cache.erase(a);
+                        throw;
+                      }
+                      // It does not matter whether the following works or not,
+                      // since the original block keeps its responsibility 
+                      // for a:
+                      _buffer[coords[count].first]->eraseValue(coords[count].second, j);
+                    }
+                    else {
+                      // Here we are the first to want to inherit a, so we
+                      // steal it:
+                      _buffer[coords[count].first]->steal(a);
+                      // If this has worked, responsibility is now with the
+                      // new block or indeed with us!
+                      try {
+                        next->setValue(i, j, a);
+                      }
+                      catch (...) {
+                        a.destroy();
+                        throw;
+                      }
+                      _buffer[coords[count].first]->eraseValue(coords[count].second, j);
+                      // This might throw as well, however, the responsibility
+                      // is already with the new block.
+
+                      // If the following does not work, we will create a
+                      // few unnecessary copies, but this does not matter:
+                      cache.insert(make_pair(a,a));
+                    }
+                  }
+                }
+                count++;
+              }
+              cache.clear();
+              for (RegisterId j = 0; j < nrregs; j++) {
+                next->setDocumentCollection(j, _buffer.front()->getDocumentCollection(j));
+              }
             }
-            for (RegisterId j = 0; j < nrregs; j++) {
-              next->setDocumentCollection(j, newbuf.front()->getDocumentCollection(j));
-            }
-            _buffer.push_back(next);
           }
-          
-          for (auto x : newbuf) {
+          catch (...) {
+            for (auto x : newbuffer) {
+              delete x;
+            }
+          }
+          _buffer.swap(newbuffer);  // does not throw since allocators
+                                    // are the same
+          for (auto x : newbuffer) {
             delete x;
           }
-
+          
           _done = false;
           _pos = 0;
 
