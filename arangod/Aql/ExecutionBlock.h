@@ -566,7 +566,7 @@ namespace triagens {
             return collector[0];
           }
           else {
-            res = AqlItemBlock::splice(collector);
+            res = AqlItemBlock::concatenate(collector);
             for (auto it = collector.begin(); 
                  it != collector.end(); ++it) {
               delete (*it);
@@ -1910,7 +1910,7 @@ namespace triagens {
             return collector[0];
           }
           else {
-            res = AqlItemBlock::splice(collector);
+            res = AqlItemBlock::concatenate(collector);
             for (auto it = collector.begin(); 
                  it != collector.end(); ++it) {
               delete (*it);
