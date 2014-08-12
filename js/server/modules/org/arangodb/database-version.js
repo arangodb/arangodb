@@ -65,7 +65,15 @@ var logger = {
 /// @brief CURRENT_VERSION
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.CURRENT_VERSION = 3;
+exports.CURRENT_VERSION = (function() {
+  var v = db._version().replace(/-[a-zA-Z0-9_\-]*$/g, '').split('.');
+
+  var major = parseFloat(v[0], 10) || 0;
+  var minor = parseFloat(v[1], 10) || 0;
+  var patch = parseFloat(v[2], 10) || 0;
+
+  return (((major * 100) + minor) * 100) + patch;
+}());
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief VERSION_MATCH
@@ -160,7 +168,7 @@ exports.databaseVersion = function () {
   var currentVersion = exports.CURRENT_VERSION;
   
   // version match!
-  if (lastVersion === currentVersion) {
+  if (Math.floor(lastVersion / 100) === Math.floor(currentVersion / 100)) {
     return {
       result: exports.VERSION_MATCH,
       serverVersion: currentVersion,
