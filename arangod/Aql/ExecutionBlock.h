@@ -39,7 +39,7 @@
 #include "Utils/transactions.h"
 #include "Utils/V8TransactionContext.h"
 
-#define DEBUG
+//#define DEBUG
 
 namespace triagens {
   namespace aql {
@@ -532,8 +532,8 @@ namespace triagens {
         //~J remove virtual  when all subclass skipSome methods are removed
         virtual AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
           #ifdef DEBUG
-            cout << getPlanNode()->getTypeString() << "::getSome(" << " atLeast = " << atLeast << 
-              ", atMost = " << atMost << " ) IN!\n";
+            cout << getPlanNode()->getTypeString() << "::getSome(" << " atLeast = " << 
+              atLeast << ", atMost = " << atMost << " ) IN!\n";
           #endif
           size_t skipped = 0;
           AqlItemBlock* result = nullptr;
@@ -542,8 +542,8 @@ namespace triagens {
             THROW_ARANGO_EXCEPTION(out);
           }
           #ifdef DEBUG
-            cout << getPlanNode()->getTypeString() << "::getSome(" << " atLeast = " << atLeast << 
-              ", atMost = " << atMost << " ) OUT!\n";
+            cout << getPlanNode()->getTypeString() << "::getSome(" << " atLeast = " << 
+              atLeast << ", atMost = " << atMost << " ) OUT!\n";
           #endif
           return result;
         }
@@ -551,8 +551,8 @@ namespace triagens {
         //~J remove virtual  when all subclass skipSome methods are removed
         virtual size_t skipSome (size_t atLeast, size_t atMost) {
           #ifdef DEBUG
-            cout << getPlanNode()->getTypeString() << "::skipSome(" << " atLeast = " << atLeast << 
-              ", atMost = " << atMost << " ) IN!\n";
+            cout << getPlanNode()->getTypeString() << "::skipSome(" << " atLeast = " 
+              << atLeast << ", atMost = " << atMost << " ) IN!\n";
           #endif
           size_t skipped = 0;
           AqlItemBlock* result = nullptr;
@@ -562,8 +562,8 @@ namespace triagens {
             THROW_ARANGO_EXCEPTION(out);
           }
           #ifdef DEBUG
-            cout << getPlanNode()->getTypeString() << "::skipSome(" << " atLeast = " << atLeast << 
-              ", atMost = " << atMost << " ) OUT!\n";
+            cout << getPlanNode()->getTypeString() << "::skipSome(" << " atLeast = " << 
+              atLeast << ", atMost = " << atMost << " ) OUT!\n";
           #endif
           return skipped;
         } 
@@ -572,7 +572,8 @@ namespace triagens {
         // skipping, and <false> otherwise . . .
         bool skip (size_t number) {
           #ifdef DEBUG
-            cout << getPlanNode()->getTypeString() << "::skip(" << " number = " << number << " ) IN!\n";
+            cout << getPlanNode()->getTypeString() << "::skip(" << " number = " << 
+              number << " ) IN!\n";
           #endif
           
           size_t skipped = skipSome(number, number);
@@ -583,12 +584,14 @@ namespace triagens {
           }
           if (nr == 0) {
             #ifdef DEBUG
-              cout << getPlanNode()->getTypeString() << "::skip(" << " number = " << number << " ) OUT!\n";
+              cout << getPlanNode()->getTypeString() << "::skip(" << " number = " << 
+                number << " ) OUT!\n";
             #endif
             return true;
           } 
           #ifdef DEBUG
-            cout << getPlanNode()->getTypeString() << "::skip(" << " number = " << number << " ) OUT!\n";
+            cout << getPlanNode()->getTypeString() << "::skip(" << " number = " << 
+              number << " ) OUT!\n";
           #endif
           return ! hasMore();
         }
@@ -633,7 +636,8 @@ namespace triagens {
         virtual int getOrSkipSome (size_t atLeast, size_t atMost, bool skipping, 
                                    AqlItemBlock*& result, size_t& skipped) {
           #ifdef DEBUG
-            cout << getPlanNode()->getTypeString() << "::getOrSkipSome(" << " atLeast = " << atLeast << 
+            cout << getPlanNode()->getTypeString() << "::getOrSkipSome(" 
+              << " atLeast = " << atLeast << 
               ", atMost = " << atMost << ", skipping = " <<  skipping << " ) IN!\n";
           #endif
           
@@ -650,7 +654,8 @@ namespace triagens {
                 _dependencies[0]->skip(atLeast - skipped);
                 skipped = atLeast;
           #ifdef DEBUG
-            cout << getPlanNode()->getTypeString() << "::getOrSkipSome(" << " atLeast = " << atLeast << 
+            cout << getPlanNode()->getTypeString() << "::getOrSkipSome(" 
+              << " atLeast = " << atLeast << 
               ", atMost = " << atMost << " ) OUT!\n";
           #endif
                 return TRI_ERROR_NO_ERROR;
@@ -659,7 +664,8 @@ namespace triagens {
                 if (! getBlock(atLeast - skipped, std::max(atMost - skipped, DefaultBatchSize))) {
                   _done = true;
           #ifdef DEBUG
-            cout << getPlanNode()->getTypeString() << "::getOrSkipSome(" << " atLeast = " << atLeast << 
+            cout << getPlanNode()->getTypeString() << "::getOrSkipSome(" 
+              << " atLeast = " << atLeast << 
               ", atMost = " << atMost << " ) OUT!\n";
           #endif
                   break; // must still put things in the result from the collector . . .
@@ -715,7 +721,8 @@ namespace triagens {
             }
           }
           #ifdef DEBUG
-            cout << getPlanNode()->getTypeString() << "::getOrSkipSome(" << " atLeast = " << atLeast << 
+            cout << getPlanNode()->getTypeString() << "::getOrSkipSome(" 
+              << " atLeast = " << atLeast << 
               ", atMost = " << atMost << " ) OUT!\n";
           #endif
           return TRI_ERROR_NO_ERROR;
@@ -1104,7 +1111,9 @@ namespace triagens {
             // The result is in the first variable of this depth,
             // we do not need to do a lookup in _varOverview->varInfo,
             // but can just take cur->getNrRegs() as registerId:
-            res->setValue(j, curRegs, AqlValue(reinterpret_cast<TRI_df_marker_t const*>(_documents[_posInAllDocs++].getDataPtr())));
+            res->setValue(j, curRegs, 
+                AqlValue(reinterpret_cast<TRI_df_marker_t 
+                  const*>(_documents[_posInAllDocs++].getDataPtr())));
           }
 
           // Advance read position:
@@ -1915,20 +1924,20 @@ namespace triagens {
 /// @brief getSome
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
+        int getOrSkipSome (size_t atLeast, size_t atMost, bool skipping, 
+                                   AqlItemBlock*& result, size_t& skipped) {
+
           if (_done) {
-            return nullptr;
+            return TRI_ERROR_NO_ERROR;
           }
 
-          // Here, if _buffer.size() is > 0 then _pos points to a valid place
-          // in it.
-          size_t total = 0;
+          // if _buffer.size() is > 0 then _pos is valid
           vector<AqlItemBlock*> collector;
-          AqlItemBlock* res;
+
           try {
-            while (total < atLeast) {
+            while (skipped < atLeast) {
               if (_buffer.empty()) {
-                if (! getBlock(atLeast - total, atMost - total)) {
+                if (! getBlock(atLeast - skipped, atMost - skipped)) {
                   _done = true;
                   break;
                 }
@@ -1937,18 +1946,22 @@ namespace triagens {
               // If we get here, then _buffer.size() > 0 and _pos points to a
               // valid place in it.
               AqlItemBlock* cur = _buffer.front();
-              if (_chosen.size() - _pos + total > atMost) {
+              if (_chosen.size() - _pos + skipped > atMost) {
                 // The current block of chosen ones is too large for atMost:
-                collector.push_back(cur->slice(_chosen, 
-                                    _pos, _pos + (atMost - total)));
-                _pos += atMost - total;
-                total = atMost;
+                if(!skipping){
+                  collector.push_back(cur->slice(_chosen, 
+                                    _pos, _pos + (atMost - skipped)));
+                }
+                _pos += atMost - skipped;
+                skipped = atMost;
               }
               else if (_pos > 0 || _chosen.size() < cur->size()) {
                 // The current block fits into our result, but it is already
                 // half-eaten or needs to be copied anyway:
-                collector.push_back(cur->steal(_chosen, _pos, _chosen.size()));
-                total += _chosen.size() - _pos;
+                if(!skipping){
+                  collector.push_back(cur->steal(_chosen, _pos, _chosen.size()));
+                }
+                skipped += _chosen.size() - _pos;
                 delete cur;
                 _buffer.pop_front();
                 _chosen.clear();
@@ -1957,8 +1970,13 @@ namespace triagens {
               else {
                 // The current block fits into our result and is fresh and
                 // takes them all, so we can just hand it on:
-                collector.push_back(cur);
-                total += cur->size();
+                if(!skipping){
+                  collector.push_back(cur);
+                } 
+                else {
+                  delete cur;
+                }
+                skipped += cur->size();
                 _buffer.pop_front();
                 _chosen.clear();
                 _pos = 0;
@@ -1971,27 +1989,26 @@ namespace triagens {
             }
             throw;
           }
-          if (collector.empty()) {
-            return nullptr;
-          }
-          else if (collector.size() == 1) {
-            return collector[0];
-          }
-          else {
-            res = AqlItemBlock::splice(collector);
-            for (auto it = collector.begin(); 
-                 it != collector.end(); ++it) {
-              delete (*it);
+          if (!skipping) {
+            if (collector.size() == 1) {
+              result = collector[0];
             }
-            return res;
+            else if (collector.size() > 1 ) {
+              result = AqlItemBlock::splice(collector);
+              for (auto it = collector.begin(); 
+                   it != collector.end(); ++it) {
+                delete (*it);
+              }
+            }
           }
+          return TRI_ERROR_NO_ERROR;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief skipSome
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t skipSome (size_t atLeast, size_t atMost) {
+       /* size_t skipSome (size_t atLeast, size_t atMost) {
           if (_done) {
             return 0;
           }
@@ -2035,7 +2052,7 @@ namespace triagens {
             }
           }
           return skipped;
-        }
+        } */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hasMore
