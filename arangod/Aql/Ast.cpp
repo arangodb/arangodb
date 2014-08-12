@@ -1348,7 +1348,7 @@ AstNode* Ast::optimizeRange (AstNode* node) {
   TRI_ASSERT(node->numMembers() == 2);
 
   AstNode* lhs = node->getMember(0);
-  AstNode* rhs  = node->getMember(1);
+  AstNode* rhs = node->getMember(1);
 
   if (lhs == nullptr || rhs == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -1360,19 +1360,9 @@ AstNode* Ast::optimizeRange (AstNode* node) {
 
   if (! lhs->isNumericValue() || ! rhs->isNumericValue()) {
     _query->registerError(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
-    return node;
   }
 
-  double const l = lhs->getDoubleValue(); 
-  double const r = rhs->getDoubleValue(); 
-
-  if (l < r) {
-    return node;
-  }
-
-  // x..y with x > y, replace with empty list
-
-  return createNodeList();
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -45,7 +45,7 @@ int Aqllex (YYSTYPE*,
 void Aqlerror (YYLTYPE* locp, 
                triagens::aql::Parser* parser,
                char const* message) {
-  parser->registerParseError(message, locp->first_line, locp->first_column);
+  parser->registerParseError(TRI_ERROR_QUERY_PARSE, message, locp->first_line, locp->first_column);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -275,22 +275,28 @@ collect_statement:
 
       auto scopes = parser->ast()->scopes();
 
-      scopes->endNested();
-      scopes->start(triagens::aql::AQL_SCOPE_COLLECT);
+      // check if we are in the main scope
+      bool reRegisterVariables = (scopes->type() != triagens::aql::AQL_SCOPE_MAIN); 
 
-      size_t const n = list->numMembers();
-      for (size_t i = 0; i < n; ++i) {
-        auto member = list->getMember(i);
+      if (reRegisterVariables) {
+        // end the active scopes
+        scopes->endNested();
+        // start a new scope
+        scopes->start(triagens::aql::AQL_SCOPE_COLLECT);
 
-        if (member != nullptr) {
-          TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
-          auto v = static_cast<Variable*>(member->getMember(0)->getData());
-          scopes->addVariable(v);
+        size_t const n = list->numMembers();
+        for (size_t i = 0; i < n; ++i) {
+          auto member = list->getMember(i);
+
+          if (member != nullptr) {
+            TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
+            auto v = static_cast<Variable*>(member->getMember(0)->getData());
+            scopes->addVariable(v);
+          }
         }
       }
 
       auto node = parser->ast()->createNodeCollect(list, $4);
-
       parser->ast()->addOperation(node);
     }
   ;
@@ -644,7 +650,7 @@ query_options:
       }
 
       if (! TRI_CaseEqualString($1, "OPTIONS")) {
-        parser->registerParseError("unexpected qualifier '%s', expecting 'OPTIONS'", $1, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", $1, yylloc.first_line, yylloc.first_column);
       }
 
       $$ = $2;
@@ -798,7 +804,7 @@ numeric_value:
       double value = TRI_DoubleString($1);
 
       if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-        parser->registerParseError(TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE), yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE), yylloc.first_line, yylloc.first_column);
       }
      
       $$ = parser->ast()->createNodeValueDouble(value); 
@@ -843,7 +849,7 @@ collection_name:
       }
       
       if (strlen($1) < 2 || $1[0] != '@') {
-        parser->registerParseError(TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1, yylloc.first_line, yylloc.first_column);
       }
 
       $$ = parser->ast()->createNodeParameter($1);
@@ -886,7 +892,7 @@ integer_value:
 
       int64_t value = TRI_Int64String($1);
       if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-        parser->registerParseError(TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE), yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE), yylloc.first_line, yylloc.first_column);
       }
 
       $$ = parser->ast()->createNodeValueInt(value);
