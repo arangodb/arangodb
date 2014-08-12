@@ -203,12 +203,15 @@ QueryResult Query::execute () {
  
         AqlItemBlock* value;
     
-        while (nullptr != (value = root->getOne())) {
-          AqlValue val = value->getValue(0, 0);
+        while (nullptr != (value = root->getSome(1, ExecutionBlock::DefaultBatchSize))) {
+          auto doc = value->getDocumentCollection(0);
+          size_t const n = value->size();
+          for (size_t i = 0; i < n; ++i) {
+            AqlValue val = value->getValue(i, 0);
 
-          if (! val.isEmpty()) {
-            auto doc = value->getDocumentCollection(0);
-            json.add(val.toJson(doc)); 
+            if (! val.isEmpty()) {
+              json.add(val.toJson(doc)); 
+            }
           }
           delete value;
         }
