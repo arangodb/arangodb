@@ -488,6 +488,7 @@ AstNode* Ast::createNodeAttributeAccess (AstNode const* accessed,
 AstNode* Ast::createNodeBoundAttributeAccess (AstNode const* accessed,
                                               AstNode const* parameter) {
   AstNode* node = createNode(NODE_TYPE_BOUND_ATTRIBUTE_ACCESS);
+  node->setStringValue(parameter->getStringValue());
   node->addMember(accessed);
   node->addMember(parameter);
 
@@ -723,20 +724,25 @@ void Ast::injectBindParameters (BindParameters& parameters) {
 
   auto func = [&](AstNode* node, void* data) -> AstNode* {
     if (node->type == NODE_TYPE_PARAMETER) {
+      // found a bind parameter in the query string
       char const* param = node->getStringValue();
 
       if (param == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
-        
+
       auto it = p.find(std::string(param));
 
       if (it == p.end()) {
+        // query uses a bind parameter that was not defined by the user
         _query->registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param);
         return nullptr;
       }
 
-      auto value = (*it).second;
+      // mark the bind parameter as being used
+      (*it).second.second = true;
+
+      auto value = (*it).second.first;
 
       if (*param == '@') {
         // collection parameter
@@ -760,21 +766,37 @@ void Ast::injectBindParameters (BindParameters& parameters) {
         }
       }
       else {
-        node = nodeFromJson((*it).second);
+        node = nodeFromJson(value);
+      }
+    }
+
+    else if (node->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
+      // look at second sub-node. this is the (replaced) bind parameter
+      auto name = node->getMember(1);
+
+      if (name->type != NODE_TYPE_VALUE ||
+          name->value.type != VALUE_TYPE_STRING ||
+          *name->value.value._string == '\0') {
+        // if no string value was inserted for the parameter name, this is an error
+        THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, node->getStringValue());
       }
     }
 
     return node;
   };
 
-  if (! p.empty()) {
-    _root = traverse(_root, func, &p); 
-  }
+  _root = traverse(_root, func, &p); 
   
   if (_writeCollection != nullptr &&
       _writeCollection->type == NODE_TYPE_COLLECTION) {
 
     _query->collections()->add(_writeCollection->getStringValue(), TRI_TRANSACTION_WRITE);
+  }
+
+  for (auto it = p.begin(); it != p.end(); ++it) {
+    if (! (*it).second.second) {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED, (*it).first.c_str());
+    }
   }
 }
 
@@ -1125,18 +1147,22 @@ AstNode* Ast::optimizeBinaryOperatorRelational (AstNode* node) {
   
   bool const lhsIsConst = lhs->isConstant(); 
   bool const rhsIsConst = rhs->isConstant(); 
-
-  if (! lhsIsConst || ! rhsIsConst) {
+  
+  if (! rhsIsConst) {
     return node;
   }
-
+  
   if (node->type == NODE_TYPE_OPERATOR_BINARY_IN &&
       rhs->type != NODE_TYPE_LIST) {
     // right operand of IN must be a list
     _query->registerError(TRI_ERROR_QUERY_LIST_EXPECTED);
     return node;
   }
-  
+
+  if (! lhsIsConst) {
+    return node;
+  }
+
   return executeConstExpression(node);
 }
 
