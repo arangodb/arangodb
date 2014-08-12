@@ -103,12 +103,14 @@ namespace triagens {
         TRI_ASSERT(_data.at(index * _nrRegs + varNr).isEmpty());
 
         // First update the reference count, if this fails, the value is empty
-        auto it = _valueCount.find(value);
-        if (it == _valueCount.end()) {
-          _valueCount.insert(make_pair(value, 1));
-        }
-        else {
-          it->second++;
+        if (! value.isEmpty()) {
+          auto it = _valueCount.find(value);
+          if (it == _valueCount.end()) {
+            _valueCount.insert(make_pair(value, 1));
+          }
+          else {
+            it->second++;
+          }
         }
 
         _data[index * _nrRegs + varNr] = value;
@@ -120,19 +122,21 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void eraseValue (size_t index, RegisterId varNr) {
-          auto it = _valueCount.find(_data[index * _nrRegs + varNr]);
-          if (it != _valueCount.end()) {
-            if (--it->second == 0) {
-              try {
-                _valueCount.erase(it);
-              }
-              catch (...) {
-                it->second++;
-                throw;
+          if (! _data[index * _nrRegs + varNr].isEmpty()) {
+            auto it = _valueCount.find(_data[index * _nrRegs + varNr]);
+            if (it != _valueCount.end()) {
+              if (--it->second == 0) {
+                try {
+                  _valueCount.erase(it);
+                }
+                catch (...) {
+                  it->second++;
+                  throw;
+                }
               }
             }
+            _data[index * _nrRegs + varNr].erase();
           }
-          _data[index * _nrRegs + varNr].erase();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -143,7 +147,9 @@ namespace triagens {
         void eraseAll () {
           size_t const n = _data.size();
           for (size_t i = 0; i < n; ++i) {
-            _data[i].erase();
+            if (! _data[i].isEmpty()) {
+              _data[i].erase();
+            }
           }
           _valueCount.clear();
         }
@@ -171,9 +177,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void steal (AqlValue v) {
-          auto it = _valueCount.find(v);
-          if (it != _valueCount.end()) {
-            _valueCount.erase(it);
+          if (! v.isEmpty()) {
+            auto it = _valueCount.find(v);
+            if (it != _valueCount.end()) {
+              _valueCount.erase(it);
+            }
           }
         }
 

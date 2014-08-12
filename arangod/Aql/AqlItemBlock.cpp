@@ -81,7 +81,7 @@ AqlItemBlock::~AqlItemBlock () {
           }
         }
       }
-      // Note that if we do not know the thing it has been stolen from us!
+      // Note that if we do not know it the thing it has been stolen from us!
     }
   }
 }
@@ -296,7 +296,9 @@ AqlItemBlock* AqlItemBlock::concatenate (std::vector<AqlItemBlock*> const& block
       for (size_t row = 0; row < n; ++row) {
         for (RegisterId col = 0; col < nrRegs; ++col) {
           // copy over value
-          res->setValue(pos + row, col, (*it)->getValue(row, col));
+          if (! (*it)->getValue(row, col).isEmpty()) {
+            res->setValue(pos + row, col, (*it)->getValue(row, col));
+          }
         }
       }
       (*it)->eraseAll();
