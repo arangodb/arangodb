@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global Backbone, $, window, _ */
+/*global Backbone, $, window, setTimeout,  _ */
 /*global templateEngine*/
 
 (function () {
@@ -325,6 +325,13 @@
       if (this.enableHotKeys) {
         this.createModalHotkeys();
       }
+
+      //if input-field is available -> autofocus first one
+      var focus = $('#modal-dialog').find('input');
+      if (focus) {
+        setTimeout(function() {$(focus[0]).focus();}, 800);
+      }
+
     },
 
     hide: function() {
