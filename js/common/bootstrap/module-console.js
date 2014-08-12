@@ -1,4 +1,4 @@
-/*jslint indent: 2, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, sloppy: true */
+/*jslint indent: 2, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, sloppy: true, proto: true */
 /*global require, SYS_GETLINE, SYS_LOG, jqconsole */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,6 +90,40 @@
     log(level, groupLevel + msg);
   }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief try to prettify
+////////////////////////////////////////////////////////////////////////////////
+
+  function prepareArgs (args) {
+    var ShapedJson = require("internal").ShapedJson;
+    var result = [];
+    var i;
+
+    if (0 < args.length && typeof args[0] !== "string") {
+      result.push("%s");
+    }
+    
+    for (i = 0;  i < args.length;  ++i) {
+      var arg = args[i];
+
+      if (typeof arg === "object") {
+        if (ShapedJson !== undefined && arg instanceof ShapedJson) {
+          arg = inspect(arg, {prettyPrint: false});
+        }
+        else if (arg === null) {
+          arg = "null";
+        }
+        else if (arg.__proto__ === Object.prototype || Array.isArray(arg)) {
+          arg = inspect(arg, {prettyPrint: false});
+        }
+      }
+
+      result.push(arg);
+    }
+
+    return result;
+  }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -109,7 +143,7 @@
     var msg;
 
     try {
-      msg = sprintf.apply(sprintf, args);
+      msg = sprintf.apply(sprintf, prepareArgs(args));
     }
     catch (err) {
       msg = err + ": " + args;
@@ -130,7 +164,7 @@
     var msg;
 
     try {
-      msg = sprintf.apply(sprintf, arguments);
+      msg = sprintf.apply(sprintf, prepareArgs(arguments));
     }
     catch (err) {
       msg = err + ": " + arguments;
@@ -149,7 +183,7 @@
     var msg;
 
     try {
-      msg = sprintf.apply(sprintf, arguments);
+      msg = sprintf.apply(sprintf, prepareArgs(arguments));
     }
     catch (err) {
       msg = err + ": " + arguments;
@@ -183,7 +217,7 @@
     var msg;
 
     try {
-      msg = sprintf.apply(sprintf, arguments);
+      msg = sprintf.apply(sprintf, prepareArgs(arguments));
     }
     catch (err) {
       msg = err + ": " + arguments;
@@ -202,7 +236,7 @@
     var msg;
 
     try {
-      msg = sprintf.apply(sprintf, arguments);
+      msg = sprintf.apply(sprintf, prepareArgs(arguments));
     }
     catch (err) {
       msg = err + ": " + arguments;
@@ -235,7 +269,7 @@
     var msg;
 
     try {
-      msg = sprintf.apply(sprintf, arguments);
+      msg = sprintf.apply(sprintf, prepareArgs(arguments));
     }
     catch (err) {
       msg = err + ": " + arguments;
@@ -255,7 +289,7 @@
     var msg;
 
     try {
-      msg = sprintf.apply(sprintf, arguments);
+      msg = sprintf.apply(sprintf, prepareArgs(arguments));
     }
     catch (err) {
       msg = err + ": " + arguments;
@@ -285,7 +319,7 @@
     var msg;
 
     try {
-      msg = sprintf.apply(sprintf, arguments);
+      msg = sprintf.apply(sprintf, prepareArgs(arguments));
     }
     catch (err) {
       msg = err + ": " + arguments;
@@ -304,7 +338,7 @@
     var msg;
 
     try {
-      msg = sprintf.apply(sprintf, arguments);
+      msg = sprintf.apply(sprintf, prepareArgs(arguments));
     }
     catch (err) {
       msg = err + ": " + arguments;
@@ -371,7 +405,7 @@
   exports.trace = function () {
     var err = new Error();
     err.name = 'trace';
-    err.message = sprintf.apply(sprintf, arguments);
+    err.message = sprintf.apply(sprintf, prepareArgs(arguments));
     Error.captureStackTrace(err, exports.trace);
     logGroup("info", err.stack);
   };
@@ -386,7 +420,7 @@
     var msg;
 
     try {
-      msg = sprintf.apply(sprintf, arguments);
+      msg = sprintf.apply(sprintf, prepareArgs(arguments));
     }
     catch (err) {
       msg = err + ": " + arguments;
@@ -405,7 +439,7 @@
     var msg;
 
     try {
-      msg = sprintf.apply(sprintf, arguments);
+      msg = sprintf.apply(sprintf, prepareArgs(arguments));
     }
     catch (err) {
       msg = err + ": " + arguments;
