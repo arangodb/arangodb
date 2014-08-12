@@ -39,6 +39,8 @@
 #include "Utils/transactions.h"
 #include "Utils/V8TransactionContext.h"
 
+#define DEBUG
+
 namespace triagens {
   namespace aql {
 
@@ -497,11 +499,24 @@ namespace triagens {
         }
 
         bool getBlock (size_t atLeast, size_t atMost) {
+          #ifdef DEBUG
+            cout << getPlanNode()->getTypeString() << "::getBlock(" << " atLeast = " << atLeast << 
+              ", atMost = " << atMost << " ) IN!\n";
+          #endif
+
           AqlItemBlock* docs = _dependencies[0]->getSome(atLeast, atMost);
           if (docs == nullptr) {
+            #ifdef DEBUG
+              cout << getPlanNode()->getTypeString() << "::getBlock(" 
+                << " atLeast = " << atLeast << ", atMost = " << atMost << " ) OUT!\n";
+            #endif
             return false;
           }
           _buffer.push_back(docs);
+          #ifdef DEBUG
+            cout << getPlanNode()->getTypeString() << "::getBlock(" << " atLeast = " << atLeast << 
+              ", atMost = " << atMost << " ) OUT!\n";
+          #endif
           return true;
         }
 
@@ -514,18 +529,31 @@ namespace triagens {
         virtual AqlItemBlock* getOne () {
           return getSome(1, 1);
         }
-       
-        AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
+        //~J remove virtual  when all subclass skipSome methods are removed
+        virtual AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
+          #ifdef DEBUG
+            cout << getPlanNode()->getTypeString() << "::getSome(" << " atLeast = " << atLeast << 
+              ", atMost = " << atMost << " ) IN!\n";
+          #endif
           size_t skipped = 0;
           AqlItemBlock* result = nullptr;
           int out = getOrSkipSome(atLeast, atMost, false, result, skipped);
           if (out != TRI_ERROR_NO_ERROR) {
             THROW_ARANGO_EXCEPTION(out);
           }
+          #ifdef DEBUG
+            cout << getPlanNode()->getTypeString() << "::getSome(" << " atLeast = " << atLeast << 
+              ", atMost = " << atMost << " ) OUT!\n";
+          #endif
           return result;
         }
          
-        size_t skipSome (size_t atLeast, size_t atMost) {
+        //~J remove virtual  when all subclass skipSome methods are removed
+        virtual size_t skipSome (size_t atLeast, size_t atMost) {
+          #ifdef DEBUG
+            cout << getPlanNode()->getTypeString() << "::skipSome(" << " atLeast = " << atLeast << 
+              ", atMost = " << atMost << " ) IN!\n";
+          #endif
           size_t skipped = 0;
           AqlItemBlock* result = nullptr;
           int out = getOrSkipSome(atLeast, atMost, true, result, skipped);
@@ -533,12 +561,20 @@ namespace triagens {
           if (out != TRI_ERROR_NO_ERROR) {
             THROW_ARANGO_EXCEPTION(out);
           }
+          #ifdef DEBUG
+            cout << getPlanNode()->getTypeString() << "::skipSome(" << " atLeast = " << atLeast << 
+              ", atMost = " << atMost << " ) OUT!\n";
+          #endif
           return skipped;
         } 
         
         // skip exactly <number> outputs, returns <true> if _done after
         // skipping, and <false> otherwise . . .
         bool skip (size_t number) {
+          #ifdef DEBUG
+            cout << getPlanNode()->getTypeString() << "::skip(" << " number = " << number << " ) IN!\n";
+          #endif
+          
           size_t skipped = skipSome(number, number);
           size_t nr = skipped;
           while ( nr != 0 && skipped < number ){
@@ -546,8 +582,14 @@ namespace triagens {
             skipped += nr;
           }
           if (nr == 0) {
+            #ifdef DEBUG
+              cout << getPlanNode()->getTypeString() << "::skip(" << " number = " << number << " ) OUT!\n";
+            #endif
             return true;
           } 
+          #ifdef DEBUG
+            cout << getPlanNode()->getTypeString() << "::skip(" << " number = " << number << " ) OUT!\n";
+          #endif
           return ! hasMore();
         }
 
@@ -585,11 +627,16 @@ namespace triagens {
       protected:
         
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generic method to get or skip some . . .
+/// @brief generic method to get or skip some
 ////////////////////////////////////////////////////////////////////////////////
         
-        virtual int getOrSkipSome (size_t atLeast, size_t atMost, bool skip, 
+        virtual int getOrSkipSome (size_t atLeast, size_t atMost, bool skipping, 
                                    AqlItemBlock*& result, size_t& skipped) {
+          #ifdef DEBUG
+            cout << getPlanNode()->getTypeString() << "::getOrSkipSome(" << " atLeast = " << atLeast << 
+              ", atMost = " << atMost << ", skipping = " <<  skipping << " ) IN!\n";
+          #endif
+          
           if (_done) {
             return TRI_ERROR_NO_ERROR;
           }
@@ -599,18 +646,33 @@ namespace triagens {
 
           while (skipped < atLeast) {
             if (_buffer.empty()) {
-              if (! getBlock(atLeast - skipped, std::max(atMost - skipped, DefaultBatchSize))) {
-                _done = true;
+              if (skipping) {
+                _dependencies[0]->skip(atLeast - skipped);
+                skipped = atLeast;
+          #ifdef DEBUG
+            cout << getPlanNode()->getTypeString() << "::getOrSkipSome(" << " atLeast = " << atLeast << 
+              ", atMost = " << atMost << " ) OUT!\n";
+          #endif
                 return TRI_ERROR_NO_ERROR;
+              } 
+              else {
+                if (! getBlock(atLeast - skipped, std::max(atMost - skipped, DefaultBatchSize))) {
+                  _done = true;
+          #ifdef DEBUG
+            cout << getPlanNode()->getTypeString() << "::getOrSkipSome(" << " atLeast = " << atLeast << 
+              ", atMost = " << atMost << " ) OUT!\n";
+          #endif
+                  break; // must still put things in the result from the collector . . .
+                }
+                _pos = 0;
               }
-              _pos = 0;
             }
             
             AqlItemBlock* cur = _buffer.front();
             
             if (cur->size() - _pos > atMost - skipped) {
               // The current block is too large for atMost:
-              if(!skip){
+              if(!skipping){
                 collector.push_back(cur->slice(_pos, _pos + (atMost - skipped)));
               }
               _pos += atMost - skipped;
@@ -619,7 +681,7 @@ namespace triagens {
             else if (_pos > 0) {
               // The current block fits into our result, but it is already
               // half-eaten:
-              if(!skip){
+              if(!skipping){
                 collector.push_back(cur->slice(_pos, cur->size()));
               }
               skipped += cur->size() - _pos;
@@ -629,7 +691,7 @@ namespace triagens {
             } 
             else {
               // The current block fits into our result and is fresh:
-              if(!skip){
+              if(!skipping){
                 collector.push_back(cur);
               } 
               else {
@@ -641,7 +703,7 @@ namespace triagens {
             }
           }
           
-          if (!skip) {
+          if (!skipping) {
             if (collector.size() == 1) {
               result = collector[0];
             }
@@ -652,6 +714,10 @@ namespace triagens {
               }
             }
           }
+          #ifdef DEBUG
+            cout << getPlanNode()->getTypeString() << "::getOrSkipSome(" << " atLeast = " << atLeast << 
+              ", atMost = " << atMost << " ) OUT!\n";
+          #endif
           return TRI_ERROR_NO_ERROR;
         }
 
@@ -818,10 +884,18 @@ namespace triagens {
 /// @brief getOrSkipSome
 ////////////////////////////////////////////////////////////////////////////////
 
-        int getOrSkipSome (size_t atLeast, size_t atMost, bool skip, AqlItemBlock*& result, 
-            size_t& skipped) {
+        int getOrSkipSome (size_t atLeast, size_t atMost, bool skip, 
+                           AqlItemBlock*& result, size_t& skipped) {
 
+          #ifdef DEBUG
+            cout << "SingletonBlock::getOrSkipSome(" << " atLeast = " << atLeast << 
+              ", atMost = " << atMost << ", skip = " << skip << " ) IN!\n";
+          #endif
           if (_done) {
+            #ifdef DEBUG
+              cout << "SingletonBlock::getOrSkipSome(" << " atLeast = " << atLeast << 
+                ", atMost = " << atMost << ", skip = " << skip << " ) OUT!\n";
+            #endif
             return TRI_ERROR_NO_ERROR;
           }
           
@@ -845,12 +919,17 @@ namespace triagens {
           }
           
           _done = true;
+          #ifdef DEBUG
+            cout << "SingletonBlock::getOrSkipSome(" << " atLeast = " << atLeast << 
+              ", atMost = " << atMost << ", skip = " << skip << " ) OUT!\n";
+          #endif
           return TRI_ERROR_NO_ERROR;
         }
 
         AqlItemBlock* _inputRegisterValues;
 
     };
+
 
 
 // -----------------------------------------------------------------------------
@@ -2647,7 +2726,17 @@ namespace triagens {
 
         virtual AqlItemBlock* getSome (size_t atLeast, 
                                        size_t atMost) {
+
+          #ifdef DEBUG
+            cout << "LimitBlock::getSome(" << " atLeast = " << atLeast << 
+              ", atMost = " << atMost << " ) IN!\n";
+          #endif
+
           if (_state == 2) {
+          #ifdef DEBUG
+            cout << "LimitBlock::getSome(" << " atLeast = " << atLeast << 
+              ", atMost = " << atMost << " ) OUT!\n";
+          #endif
             return nullptr;
           }
 
@@ -2658,6 +2747,10 @@ namespace triagens {
               _count = 0;
               if (_limit == 0) {
                 _state = 2;
+          #ifdef DEBUG
+            cout << "LimitBlock::getSome(" << " atLeast = " << atLeast << 
+              ", atMost = " << atMost << " ) OUT!\n";
+          #endif
                 return nullptr;
               }
             }
@@ -2674,6 +2767,10 @@ namespace triagens {
 
           auto res = ExecutionBlock::getSome(atLeast, atMost);
           if (res == nullptr) {
+          #ifdef DEBUG
+            cout << "LimitBlock::getSome(" << " atLeast = " << atLeast << 
+              ", atMost = " << atMost << " ) OUT!\n";
+          #endif
             return res;
           }
           _count += res->size();
@@ -2681,6 +2778,10 @@ namespace triagens {
             _state = 2;
           }
 
+          #ifdef DEBUG
+            cout << "LimitBlock::getSome(" << " atLeast = " << atLeast << 
+              ", atMost = " << atMost << " ) OUT!\n";
+          #endif
           return res;
         }
 
