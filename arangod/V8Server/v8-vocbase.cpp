@@ -10422,7 +10422,7 @@ int TRI_CheckDatabaseVersion (TRI_vocbase_t* vocbase,
   TRI_vocbase_t* orig = v8g->_vocbase;
   v8g->_vocbase = vocbase;
 
-  v8::Handle<v8::Value> result = startupLoader->executeGlobalScript(context, "server/version-check.js");
+  v8::Handle<v8::Value> result = startupLoader->executeGlobalScript(context, "server/check-version.js");
   int code = (int) TRI_ObjectToInt64(result);
 
   v8g->_vocbase = orig;

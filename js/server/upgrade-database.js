@@ -459,7 +459,7 @@
         }
 
         // same version
-        if (lastVersion === currentVersion) {
+        if (Math.floor(lastVersion / 100) === Math.floor(currentVersion / 100)) {
           return runTasks(mode, cluster, DATABASE_EXISTING, lastVersion);
         }
 
