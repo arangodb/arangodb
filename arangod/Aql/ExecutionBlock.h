@@ -2315,10 +2315,7 @@ namespace triagens {
                 ++i;
               }
               
-              _currentGroup.firstRow = _pos;
             }
-
-            _currentGroup.lastRow = _pos;
 
             if (++_pos >= cur->size()) {
               _buffer.pop_front();
