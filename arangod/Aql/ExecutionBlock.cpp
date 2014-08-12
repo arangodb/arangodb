@@ -50,6 +50,10 @@ size_t const ExecutionBlock::DefaultBatchSize = 1000;
 ////////////////////////////////////////////////////////////////////////////////
          
 ExecutionBlock::~ExecutionBlock () {        
+  for (auto it = _buffer.begin(); it != _buffer.end(); ++it) {
+    delete *it;
+  }
+  _buffer.clear();
 }
 
 // -----------------------------------------------------------------------------
