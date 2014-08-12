@@ -172,12 +172,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ExecutionNode* operator[] (size_t pos) const {
-          if (pos > _dependencies.size()) {
+          if (pos >= _dependencies.size()) {
             return nullptr;
           }
-          else {
-            return _dependencies.at(pos);
-          }
+
+          return _dependencies.at(pos);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
