@@ -1147,18 +1147,22 @@ AstNode* Ast::optimizeBinaryOperatorRelational (AstNode* node) {
   
   bool const lhsIsConst = lhs->isConstant(); 
   bool const rhsIsConst = rhs->isConstant(); 
-
-  if (! lhsIsConst || ! rhsIsConst) {
+  
+  if (! rhsIsConst) {
     return node;
   }
-
+  
   if (node->type == NODE_TYPE_OPERATOR_BINARY_IN &&
       rhs->type != NODE_TYPE_LIST) {
     // right operand of IN must be a list
     _query->registerError(TRI_ERROR_QUERY_LIST_EXPECTED);
     return node;
   }
-  
+
+  if (! lhsIsConst) {
+    return node;
+  }
+
   return executeConstExpression(node);
 }
 
