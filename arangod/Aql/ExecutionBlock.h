@@ -1085,7 +1085,7 @@ namespace triagens {
             // if we get here, then _buffer.front() exists
             AqlItemBlock* cur = _buffer.front();
             
-            if (atMost > _documents.size() - _posInAllDocs) {
+            if (atMost >= skipped + _documents.size() - _posInAllDocs) {
               skipped += _documents.size() - _posInAllDocs;
               _posInAllDocs = 0;
 
@@ -1101,8 +1101,8 @@ namespace triagens {
               }
             }
             else {
+              _posInAllDocs += atMost - skipped;
               skipped = atMost;
-              _posInAllDocs += atMost;
             }
           }
         return skipped;
