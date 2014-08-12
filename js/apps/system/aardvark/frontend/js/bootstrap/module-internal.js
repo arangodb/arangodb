@@ -1442,13 +1442,17 @@
       limitString: false,
       names: [],
       output: "",
-      path: "~",
       prettyPrint: true,
+      path: "~",
       seen: [],
       showFunction: true,
       useColor: false,
       useToString: false
     };
+
+    if (options.hasOwnProperty("prettyPrint")) {
+      context.prettyPrint = options.prettyPrint;
+    }
 
     printRecursive(object, context);
 
