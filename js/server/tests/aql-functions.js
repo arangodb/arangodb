@@ -4027,7 +4027,9 @@ function ahuacatlFunctionsTestSuite () {
       assertEqual([ 1 ], actual);
 
       // allow some tolerance for the time diff
-      assertTrue(diff >= 1.5 && diff <= 2.5);
+      // TODO: we're currently sleeping twice because we're testing
+      // old AQL against new AQL. when we're done comparing, remove the 2 *
+      assertTrue(diff >= 2 * 1.5 && diff <= 2 * 2.5);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
