@@ -186,6 +186,7 @@ std::unordered_map<std::string, Function const> const V8Executor::FunctionNames{
   { "GRAPH_BETWEENNESS",           Function("GENERAL_GRAPH_BETWEENNESS", "s|a", false )},
   { "GRAPH_CLOSENESS",             Function("GENERAL_GRAPH_CLOSENESS", "s|a", false )},
   { "GRAPH_ABSOLUTE_ECCENTRICITY", Function("GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY", "s,als|a", false )},
+  { "GRAPH_ABSOLUTE_BETWEENNESS",  Function("GENERAL_GRAPH_ABSOLUTE_BETWEENNESS", "s,als|a", false)},
   { "GRAPH_ABSOLUTE_CLOSENESS",    Function("GENERAL_GRAPH_ABSOLUTE_CLOSENESS", "s,als|a", false )},
   { "GRAPH_DIAMETER",              Function("GENERAL_GRAPH_DIAMETER", "s|a", false )},
   { "GRAPH_RADIUS",                Function("GENERAL_GRAPH_RADIUS", "s|a", false )},
