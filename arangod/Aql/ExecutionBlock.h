@@ -2540,63 +2540,65 @@ namespace triagens {
                   AqlValue a = _buffer[coords[count].first]->getValue(coords[count].second, j);
                   // If we have already dealt with this value for the next
                   // block, then we just put the same value again:
-                  auto it = cache.find(a);
-                  if (it != cache.end()) {
-                    AqlValue b = it->second;
-                    // If one of the following throws, all is well, because
-                    // the new block already has either a copy or stolen
-                    // the AqlValue:
-                    _buffer[coords[count].first]->eraseValue(coords[count].second, j);
-                    next->setValue(i, j, b);
-                  }
-                  else {
-                    // We need to copy a, if it has already been stolen from
-                    // its original buffer, which we know by looking at the
-                    // valueCount there.
-                    auto vCount = _buffer[coords[count].first]->valueCount(a);
-                    if (vCount == 0) {
-                      // Was already stolen for another block
-                      AqlValue b = a.clone();
-                      try {
-                        cache.insert(make_pair(a,b));
-                      }
-                      catch (...) {
-                        b.destroy();
-                        throw;
-                      }
-                      try {
-                        next->setValue(i, j, b);
-                      }
-                      catch (...) {
-                        b.destroy();
-                        cache.erase(a);
-                        throw;
-                      }
-                      // It does not matter whether the following works or not,
-                      // since the original block keeps its responsibility 
-                      // for a:
+                  if (! a.isEmpty()) {
+                    auto it = cache.find(a);
+                    if (it != cache.end()) {
+                      AqlValue b = it->second;
+                      // If one of the following throws, all is well, because
+                      // the new block already has either a copy or stolen
+                      // the AqlValue:
                       _buffer[coords[count].first]->eraseValue(coords[count].second, j);
+                      next->setValue(i, j, b);
                     }
                     else {
-                      // Here we are the first to want to inherit a, so we
-                      // steal it:
-                      _buffer[coords[count].first]->steal(a);
-                      // If this has worked, responsibility is now with the
-                      // new block or indeed with us!
-                      try {
-                        next->setValue(i, j, a);
+                      // We need to copy a, if it has already been stolen from
+                      // its original buffer, which we know by looking at the
+                      // valueCount there.
+                      auto vCount = _buffer[coords[count].first]->valueCount(a);
+                      if (vCount == 0) {
+                        // Was already stolen for another block
+                        AqlValue b = a.clone();
+                        try {
+                          cache.insert(make_pair(a,b));
+                        }
+                        catch (...) {
+                          b.destroy();
+                          throw;
+                        }
+                        try {
+                          next->setValue(i, j, b);
+                        }
+                        catch (...) {
+                          b.destroy();
+                          cache.erase(a);
+                          throw;
+                        }
+                        // It does not matter whether the following works or not,
+                        // since the original block keeps its responsibility 
+                        // for a:
+                        _buffer[coords[count].first]->eraseValue(coords[count].second, j);
                       }
-                      catch (...) {
-                        a.destroy();
-                        throw;
-                      }
-                      _buffer[coords[count].first]->eraseValue(coords[count].second, j);
-                      // This might throw as well, however, the responsibility
-                      // is already with the new block.
+                      else {
+                        // Here we are the first to want to inherit a, so we
+                        // steal it:
+                        _buffer[coords[count].first]->steal(a);
+                        // If this has worked, responsibility is now with the
+                        // new block or indeed with us!
+                        try {
+                          next->setValue(i, j, a);
+                        }
+                        catch (...) {
+                          a.destroy();
+                          throw;
+                        }
+                        _buffer[coords[count].first]->eraseValue(coords[count].second, j);
+                        // This might throw as well, however, the responsibility
+                        // is already with the new block.
 
-                      // If the following does not work, we will create a
-                      // few unnecessary copies, but this does not matter:
-                      cache.insert(make_pair(a,a));
+                        // If the following does not work, we will create a
+                        // few unnecessary copies, but this does not matter:
+                        cache.insert(make_pair(a,a));
+                      }
                     }
                   }
                 }
