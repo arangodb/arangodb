@@ -50,7 +50,7 @@
 
   // set-up foxx routes for this database
   if (result) {
-    internal.loadStartup("server/bootstrap/foxxes.js").foxxes();
+    internal.loadStartup("server/bootstrap/foxxes.js").foxx();
   }
   else {
     console.error("cannot initialise database '%s', upgrade script failed", db._name());
