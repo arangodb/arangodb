@@ -594,30 +594,34 @@ namespace triagens {
             return TRI_ERROR_NO_ERROR;
           }
 
-          // Here, if _buffer.size() is > 0 then _pos points to a valid place
-          // in it.
-          
+          // if _buffer.size() is > 0 then _pos points to a valid place . . .
           vector<AqlItemBlock*> collector;
-          AqlItemBlock* res;
+
           while (skipped < atLeast) {
             if (_buffer.empty()) {
               if (! getBlock(atLeast - skipped, std::max(atMost - skipped, DefaultBatchSize))) {
                 _done = true;
-                break;
+                return TRI_ERROR_NO_ERROR;
               }
               _pos = 0;
             }
+            
             AqlItemBlock* cur = _buffer.front();
-            if (cur->size() - _pos + skipped > atMost) {
+            
+            if (cur->size() - _pos > atMost - skipped) {
               // The current block is too large for atMost:
-              collector.push_back(cur->slice(_pos, _pos + (atMost - skipped)));
+              if(!skip){
+                collector.push_back(cur->slice(_pos, _pos + (atMost - skipped)));
+              }
               _pos += atMost - skipped;
               skipped = atMost;
             }
             else if (_pos > 0) {
               // The current block fits into our result, but it is already
               // half-eaten:
-              collector.push_back(cur->slice(_pos, cur->size()));
+              if(!skip){
+                collector.push_back(cur->slice(_pos, cur->size()));
+              }
               skipped += cur->size() - _pos;
               delete cur;
               _buffer.pop_front();
@@ -625,26 +629,30 @@ namespace triagens {
             } 
             else {
               // The current block fits into our result and is fresh:
-              collector.push_back(cur);
+              if(!skip){
+                collector.push_back(cur);
+              } 
+              else {
+                delete cur;
+              }
               skipped += cur->size();
               _buffer.pop_front();
               _pos = 0;
             }
           }
-          if (collector.empty()) {
-            return nullptr;
-          }
-          else if (collector.size() == 1) {
-            return collector[0];
-          }
-          else {
-            res = AqlItemBlock::splice(collector);
-            for (auto it = collector.begin(); 
-                 it != collector.end(); ++it) {
-              delete (*it);
+          
+          if (!skip) {
+            if (collector.size() == 1) {
+              result = collector[0];
             }
-            return res;
+            else if (collector.size() > 0) {
+              result = AqlItemBlock::splice(collector);
+              for (auto it = collector.begin(); it != collector.end(); ++it) {
+                delete (*it);
+              }
+            }
           }
+          return TRI_ERROR_NO_ERROR;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2109,7 +2117,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 
-        int getOrSkipSome (size_t atLeast, size_t atMost, bool skip, AqlItemBlock*& result, 
+        /*int getOrSkipSome (size_t atLeast, size_t atMost, bool skip, AqlItemBlock*& result, 
             size_t& skipped) {
 
           if (_done) {
@@ -2240,7 +2248,7 @@ namespace triagens {
           res->shrink(j);
 
           return res;
-        }
+        }*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief skipSome
