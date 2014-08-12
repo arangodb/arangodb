@@ -125,7 +125,7 @@ will produce the following result:
 
 !SUBSUBSECTION Operator precedence
 
-The operator precedence in AQL is similar as in other familliar languages (lowest precedence first):
+The operator precedence in AQL is similar as in other familiar languages (lowest precedence first):
 
 - *? :* ternary operator
 - *||* logical or
@@ -135,9 +135,9 @@ The operator precedence in AQL is similar as in other familliar languages (lowes
 - *<*, *<=*, *>=*, *>* less than, less equal,
   greater equal, greater than
 - *+*, *-* addition, subtraction
-- ***, */*, *%* multiplication, division, modulus
+- \*, */*, *%* multiplication, division, modulus
 - *!*, *+*, *-* logical negation, unary plus, unary minus
-- *[*]* expansion
+- *[\]* expansion
 - *()* function call
 - *.* member access
 - *[]* indexed value access
