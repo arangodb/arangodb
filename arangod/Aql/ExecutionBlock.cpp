@@ -85,9 +85,9 @@ void ExecutionBlock::walk (WalkerWorker* worker) {
   // Now handle a subquery:
   if (_exeNode->getType() == ExecutionNode::SUBQUERY) {
     auto p = static_cast<SubqueryBlock*>(this);
-    if (worker->enterSubquery(this, p->getSubquery())) { ;
-            p->getSubquery()->walk(worker);
-            worker->leaveSubquery(this, p->getSubquery());
+    if (worker->enterSubquery(this, p->getSubquery())) {
+      p->getSubquery()->walk(worker);
+      worker->leaveSubquery(this, p->getSubquery());
     }
   }
   worker->after(this);
