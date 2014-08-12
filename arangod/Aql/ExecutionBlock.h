@@ -2751,7 +2751,16 @@ namespace triagens {
 
           if (_state == 0) {
             if (_offset > 0) {
-              ExecutionBlock::_dependencies[0]->skip(_offset);
+              // TODO: here we're calling getSome to skip over elements
+              // this must be implemented properly using skip() when it works
+              // ATM skip() doesn't work here in the following case:
+              // FOR i IN 0..99 LIMIT 10,50 LIMIT 1,20 RETURN i (returns wrong rows ATM)
+              // ExecutionBlock::_dependencies[0]->skip(_offset);
+              auto tmp = ExecutionBlock::_dependencies[0]->getSome(_offset, _offset);
+              if (tmp != nullptr) {
+                delete tmp;
+              }
+
               _state = 1;
               _count = 0;
               if (_limit == 0) {

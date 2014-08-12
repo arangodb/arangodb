@@ -252,7 +252,7 @@ V8Executor::~V8Executor () {
 V8Expression* V8Executor::generateExpression (AstNode const* node) {
   generateCodeExpression(node);
   
-  std::cout << "Executor::generateExpression: " << _buffer->c_str() << "\n";
+  // std::cout << "Executor::generateExpression: " << _buffer->c_str() << "\n";
 
   v8::TryCatch tryCatch;
   // compile the expression
@@ -272,7 +272,7 @@ V8Expression* V8Executor::generateExpression (AstNode const* node) {
 TRI_json_t* V8Executor::executeExpression (AstNode const* node) {
   generateCodeExpression(node);
 
-  std::cout << "Executor::ExecuteExpression: " << _buffer->c_str() << "\n";
+  // std::cout << "Executor::ExecuteExpression: " << _buffer->c_str() << "\n";
   
   // note: if this function is called without an already opened handle scope,
   // it will fail badly
