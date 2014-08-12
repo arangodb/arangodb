@@ -234,7 +234,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief static analysis, walker class and information collector
 ////////////////////////////////////////////////////////////////////////////////
-
+        
         struct VarInfo {
           unsigned int const depth;
           RegisterId const registerId;
@@ -496,7 +496,6 @@ namespace triagens {
           }
         }
 
-
         bool getBlock (size_t atLeast, size_t atMost) {
           AqlItemBlock* docs = _dependencies[0]->getSome(atLeast, atMost);
           if (docs == nullptr) {
@@ -515,38 +514,111 @@ namespace triagens {
         virtual AqlItemBlock* getOne () {
           return getSome(1, 1);
         }
+       
+        AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
+          size_t skipped = 0;
+          AqlItemBlock* result = nullptr;
+          int out = getOrSkipSome(atLeast, atMost, false, result, skipped);
+          if (out != TRI_ERROR_NO_ERROR) {
+            THROW_ARANGO_EXCEPTION(out);
+          }
+          return result;
+        }
+         
+        size_t skipSome (size_t atLeast, size_t atMost) {
+          size_t skipped = 0;
+          AqlItemBlock* result = nullptr;
+          int out = getOrSkipSome(atLeast, atMost, true, result, skipped);
+          TRI_ASSERT(result == nullptr);
+          if (out != TRI_ERROR_NO_ERROR) {
+            THROW_ARANGO_EXCEPTION(out);
+          }
+          return skipped;
+        } 
         
-        virtual AqlItemBlock* getSome (size_t atLeast, 
-                                       size_t atMost) {
+        // skip exactly <number> outputs, returns <true> if _done after
+        // skipping, and <false> otherwise . . .
+        bool skip (size_t number) {
+          size_t skipped = skipSome(number, number);
+          size_t nr = skipped;
+          while ( nr != 0 && skipped < number ){
+            nr = skipSome(number - skipped, number - skipped);
+            skipped += nr;
+          }
+          if (nr == 0) {
+            return true;
+          } 
+          return ! hasMore();
+        }
+
+        virtual bool hasMore () {
           if (_done) {
-            return nullptr;
+            return false;
+          }
+          if (! _buffer.empty()) {
+            return true;
+          }
+          if (getBlock(DefaultBatchSize, DefaultBatchSize)) {
+            return true;
+          }
+          _done = true;
+          return false;
+        }
+
+        virtual int64_t count () {
+          return _dependencies[0]->count();
+        }
+
+        virtual int64_t remaining () {
+          int64_t sum = 0;
+          for (auto it = _buffer.begin(); it != _buffer.end(); ++it) {
+            sum += (*it)->size();
+          }
+          return sum + _dependencies[0]->remaining();
+        }
+
+        ExecutionNode const* getPlanNode () {
+          return _exeNode;
+        }
+
+
+      protected:
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generic method to get or skip some . . .
+////////////////////////////////////////////////////////////////////////////////
+        
+        virtual int getOrSkipSome (size_t atLeast, size_t atMost, bool skip, 
+                                   AqlItemBlock*& result, size_t& skipped) {
+          if (_done) {
+            return TRI_ERROR_NO_ERROR;
           }
 
           // Here, if _buffer.size() is > 0 then _pos points to a valid place
           // in it.
-          size_t total = 0;
+          
           vector<AqlItemBlock*> collector;
           AqlItemBlock* res;
-          while (total < atLeast) {
+          while (skipped < atLeast) {
             if (_buffer.empty()) {
-              if (! getBlock(atLeast - total, std::max(atMost - total, DefaultBatchSize))) {
+              if (! getBlock(atLeast - skipped, std::max(atMost - skipped, DefaultBatchSize))) {
                 _done = true;
                 break;
               }
               _pos = 0;
             }
             AqlItemBlock* cur = _buffer.front();
-            if (cur->size() - _pos + total > atMost) {
+            if (cur->size() - _pos + skipped > atMost) {
               // The current block is too large for atMost:
-              collector.push_back(cur->slice(_pos, _pos + (atMost - total)));
-              _pos += atMost - total;
-              total = atMost;
+              collector.push_back(cur->slice(_pos, _pos + (atMost - skipped)));
+              _pos += atMost - skipped;
+              skipped = atMost;
             }
             else if (_pos > 0) {
               // The current block fits into our result, but it is already
               // half-eaten:
               collector.push_back(cur->slice(_pos, cur->size()));
-              total += cur->size() - _pos;
+              skipped += cur->size() - _pos;
               delete cur;
               _buffer.pop_front();
               _pos = 0;
@@ -554,7 +626,7 @@ namespace triagens {
             else {
               // The current block fits into our result and is fresh:
               collector.push_back(cur);
-              total += cur->size();
+              skipped += cur->size();
               _buffer.pop_front();
               _pos = 0;
             }
@@ -575,96 +647,9 @@ namespace triagens {
           }
         }
 
-        virtual bool hasMore () {
-          if (_done) {
-            return false;
-          }
-          if (! _buffer.empty()) {
-            return true;
-          }
-          if (getBlock(DefaultBatchSize, DefaultBatchSize)) {
-            return true;
-          }
-          _done = true;
-          return false;
-        }
-
-        // skip between atLeast and atMost using the same setup as getSome,
-        // returns the number actually skipped . . . 
-        // will only return less than atLeast if there aren't atLeast many
-        // things to skip overall.
-        virtual size_t skipSome (size_t atLeast, size_t atMost) {
-          size_t skipped = 0;
-          
-          if (_done) {
-            return skipped;
-          }
-          
-          while (skipped < atLeast) {
-            if (_buffer.empty()) {
-              if (! getBlock(atLeast - skipped, 
-                    std::max(atMost - skipped, DefaultBatchSize))) {
-                _done = true;
-                break;
-              }
-              _pos = 0;
-            }
-            // get the current block 
-            AqlItemBlock* cur = _buffer.front();
-            
-            if (cur->size() - _pos + skipped > atMost) {
-              // eat just enough of the current block . . .
-              _pos += atMost - skipped;
-              skipped = atMost;
-            }
-            else { 
-              // eat the rest of the current block and then proceed to the next
-              // course if any . . .
-              skipped += cur->size() - _pos;
-              delete cur;
-              _buffer.pop_front();
-              _pos = 0;
-            } 
-          }
-          return skipped;
-        }
-        
-        // skip exactly <number> outputs, returns <true> if _done after
-        // skipping, and <false> otherwise . . .
-        bool skip (size_t number) {
-          size_t skipped = skipSome(number, number);
-          size_t nr = skipped;
-          while ( nr != 0 && skipped < number ){
-            nr = skipSome(number - skipped, number - skipped);
-            skipped += nr;
-          }
-          if (nr == 0) {
-            return true;
-          } 
-          return ! hasMore();
-        }
-
-        virtual int64_t count () {
-          return _dependencies[0]->count();
-        }
-
-        virtual int64_t remaining () {
-          int64_t sum = 0;
-          for (auto it = _buffer.begin(); it != _buffer.end(); ++it) {
-            sum += (*it)->size();
-          }
-          return sum + _dependencies[0]->remaining();
-        }
-
-        ExecutionNode const* getPlanNode () {
-          return _exeNode;
-        }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the transaction for this query
 ////////////////////////////////////////////////////////////////////////////////
-
-      protected:
 
         AQL_TRANSACTION_V8* _trx;
 
@@ -2123,7 +2108,10 @@ namespace triagens {
 /// @brief getSome
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
+
+        int getOrSkipSome (size_t atLeast, size_t atMost, bool skip, AqlItemBlock*& result, 
+            size_t& skipped) {
+
           if (_done) {
             return nullptr;
           }
