@@ -1183,8 +1183,8 @@ namespace triagens {
           
           // get the inVariable register id . . .
           // staticAnalysis has been run, so _varOverview is set up
-          
           auto it = _varOverview->varInfo.find(en->_inVariable->id);
+
           if (it == _varOverview->varInfo.end()){
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "variable not found");
           }
@@ -1224,7 +1224,7 @@ namespace triagens {
           }
 
           AqlItemBlock* res;
-
+         
           do {
             // repeatedly try to get more stuff from upstream
             // note that the value of the variable we have to loop over
@@ -1257,25 +1257,36 @@ namespace triagens {
                 sizeInVar = inVarReg._json->size();
                 break;
               }
+
               case AqlValue::RANGE: {
-                sizeInVar = inVarReg._range->_high - inVarReg._range->_low + 1;
+                sizeInVar = inVarReg._range->size();
                 break;
               }
+
               case AqlValue::DOCVEC: {
                 if( _index == 0) { // this is a (maybe) new DOCVEC
                   _DOCVECsize = 0;
                   //we require the total number of items 
+
                   for (size_t i = 0; i < inVarReg._vector->size(); i++) {
                     _DOCVECsize += inVarReg._vector->at(i)->size();
                   }
-                  collection = inVarReg._vector->at(0)->getDocumentCollection(0);
                 }
                 sizeInVar = _DOCVECsize;
+                if (sizeInVar > 0) {
+                  collection = inVarReg._vector->at(0)->getDocumentCollection(0);
+                }
                 break;
               }
-              default: {
+
+              case AqlValue::SHAPED: {
                 THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                    "EnumerateListBlock: unexpected type in register");
+                    "EnumerateListBlock: cannot iterate over shaped value");
+              }
+              
+              case AqlValue::EMPTY: {
+                THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                    "EnumerateListBlock: cannot iterate over empty value");
               }
             }
 
