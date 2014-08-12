@@ -58,6 +58,13 @@ namespace triagens {
 
       size_t firstRow;
       size_t lastRow;
+      bool rowsAreValid;
+
+      AggregatorGroup () 
+        : firstRow(0),
+          lastRow(0),
+          rowsAreValid(false) {
+      }
 
       ~AggregatorGroup () {
         reset();
@@ -66,7 +73,7 @@ namespace triagens {
       void initialize (size_t capacity) {
         groupValues.reserve(capacity);
         collections.reserve(capacity);
-            
+
         for (size_t i = 0; i < capacity; ++i) {
           groupValues[i] = AqlValue();
           collections[i] = nullptr;
@@ -78,7 +85,45 @@ namespace triagens {
           delete (*it);
         }
         groupBlocks.clear();
+        groupValues[0].erase();
       }
+
+      void setFirstRow (size_t value) {
+        firstRow = value;
+        rowsAreValid = true;
+      }
+      
+      void setLastRow (size_t value) {
+        lastRow = value;
+        rowsAreValid = true;
+      }
+
+      void addValues (AqlItemBlock const* src,
+                      RegisterId groupRegister) {
+        if (groupRegister == 0) {
+          // nothing to do
+          return;
+        }
+
+        if (rowsAreValid) {
+          // emit group details 
+          TRI_ASSERT(firstRow <= lastRow);
+
+          auto block = src->slice(firstRow, lastRow + 1);
+          try {
+            groupBlocks.push_back(block);
+          }
+          catch (...) {
+            delete block;
+            throw;
+          }
+        }
+
+        firstRow = lastRow = 0;
+        // the next statement ensures we don't add the same value (row) twice
+        rowsAreValid = false;
+      }
+            
 
     };
 
@@ -671,6 +716,8 @@ namespace triagens {
 
         std::shared_ptr<VarOverview> _varOverview;
 
+      public:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief batch size value
 ////////////////////////////////////////////////////////////////////////////////
@@ -1239,7 +1286,7 @@ namespace triagens {
             else {
               size_t toSend = std::min(atMost, sizeInVar - _index); 
 
-              //create the result
+              // create the result
               res = new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]);
               
               inheritRegisters(cur, res, _pos);
@@ -1272,7 +1319,9 @@ namespace triagens {
                 _pos = 0;
               }
             }
-          } while (res == nullptr);
+          } 
+          while (res == nullptr);
+
           return res;
         } 
 
@@ -2078,9 +2127,9 @@ namespace triagens {
           if (_done) {
             return nullptr;
           }
-
+                
           if (_buffer.empty()) {
-            if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
+            if (! ExecutionBlock::getBlock(atLeast, atMost)) {
               _done = true;
               return nullptr;
             }
@@ -2089,9 +2138,11 @@ namespace triagens {
 
           // If we get here, we do have _buffer.front()
           AqlItemBlock* cur = _buffer.front();
+
           size_t const curRegs = cur->getNrRegs();
 
           auto res = new AqlItemBlock(atMost, _varOverview->nrRegs[_depth]);
+
           TRI_ASSERT(curRegs <= res->getNrRegs());
 
           inheritRegisters(cur, res, _pos);
@@ -2100,7 +2151,7 @@ namespace triagens {
 
           while (j < atMost) {
             // read the next input tow
-
+          
             bool newGroup = false;
             if (_currentGroup.groupValues[0].isEmpty()) {
               // we never had any previous group
@@ -2111,11 +2162,11 @@ namespace triagens {
               size_t i = 0;
 
               for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
-                int res = AqlValue::Compare(_currentGroup.groupValues[i], 
+                int cmp = AqlValue::Compare(_currentGroup.groupValues[i], 
                                             _currentGroup.collections[i],
                                             cur->getValue(_pos, (*it).second), 
                                             cur->getDocumentCollection((*it).second));
-                if (res != 0) {
+                if (cmp != 0) {
                   // group change
                   newGroup = true;
                   break;
@@ -2127,10 +2178,21 @@ namespace triagens {
             if (newGroup) {
               if (! _currentGroup.groupValues[0].isEmpty()) {
                 // need to emit the current group first
+
                 emitGroup(cur, res, j);
+
                 // increase output row count
                 ++j;
+                
+                if (j == atMost) {
+                  // output is full
+
+                  // do NOT advance input pointer
+                  return res;
+                }
               }
+
+              // still space left in the output to create a new group
 
               // construct the new group
               size_t i = 0;
@@ -2140,19 +2202,24 @@ namespace triagens {
                 ++i;
               }
               
-              _currentGroup.firstRow = _pos;
+              _currentGroup.setFirstRow(_pos);
             }
-
-            _currentGroup.lastRow = _pos;
+              
+            _currentGroup.setLastRow(_pos);
 
             if (++_pos >= cur->size()) {
               _buffer.pop_front();
               _pos = 0;
-           
-              bool hasMore = ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize);
+          
+              bool hasMore = ! _buffer.empty();
+              if (! hasMore) {
+                hasMore = ExecutionBlock::getBlock(atLeast, atMost);
+              }
 
               if (! hasMore) {
+                // no more input. we're done
                 try {
+                  // emit last buffered group
                   emitGroup(cur, res, j);
                   ++j;
                   delete cur;
@@ -2172,10 +2239,14 @@ namespace triagens {
 
               // hasMore
 
+              // move over the last group details into the group before we delete the block
+              _currentGroup.addValues(cur, _groupRegister);
+
               delete cur;
               cur = _buffer.front();
             }
           }
+
 
           TRI_ASSERT(j > 0);
           res->shrink(j);
@@ -2289,6 +2360,7 @@ namespace triagens {
         void emitGroup (AqlItemBlock const* cur,
                         AqlItemBlock* res, 
                         size_t row) {
+
           size_t i = 0;
           for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
             res->setValue(row, (*it).first, _currentGroup.groupValues[i]);
@@ -2296,24 +2368,14 @@ namespace triagens {
           }
             
           if (_groupRegister > 0) {
-            // emit group details
-            TRI_ASSERT(_currentGroup.firstRow <= _currentGroup.lastRow);
+            // set the group values
+            _currentGroup.addValues(cur, _groupRegister);
 
-            auto block = cur->slice(_currentGroup.firstRow, _currentGroup.lastRow + 1);
-            try {
-              _currentGroup.groupBlocks.push_back(block);
-            }
-            catch (...) {
-              delete block;
-              throw;
-            }
-
-            // finally set the group details
             res->setValue(row, _groupRegister, AqlValue::CreateFromBlocks(_currentGroup.groupBlocks, _variableNames));
-
-            // and reset the group so a new one can start
-            _currentGroup.reset();
           }
+           
+          // reset the group so a new one can start
+          _currentGroup.reset();
         }
 
       private:
@@ -2416,7 +2478,7 @@ namespace triagens {
           std::vector<std::pair<size_t, size_t>> coords;
 
           size_t sum = 0;
-          for (auto block : _buffer){
+          for (auto block : _buffer) {
             sum += block->size();
           }
 
@@ -2425,7 +2487,7 @@ namespace triagens {
           // install the coords
           size_t count = 0;
 
-          for (auto block :_buffer) {
+          for (auto block : _buffer) {
             for (size_t i = 0; i < block->size(); i++) {
               coords.push_back(std::make_pair(count, i));
             }
@@ -2460,29 +2522,26 @@ namespace triagens {
           _buffer.clear();
           
           count = 0;
-          RegisterId nrregs = newbuf.front()->getNrRegs();
+          RegisterId const nrregs = newbuf.front()->getNrRegs();
           
           //install the rearranged values from <newbuf> into <_buffer>
           while (count < sum) {
-            size_t size_next 
-              = (sum - count > DefaultBatchSize ?  DefaultBatchSize : sum - count);
-            AqlItemBlock* next = new AqlItemBlock(size_next, nrregs);
-            for (size_t i = 0; i < size_next; i++) {
+            size_t sizeNext = (sum - count > DefaultBatchSize ?  DefaultBatchSize : sum - count);
+            AqlItemBlock* next = new AqlItemBlock(sizeNext, nrregs);
+            for (size_t i = 0; i < sizeNext; i++) {
               for (RegisterId j = 0; j < nrregs; j++) {
-                next->setValue(i, j, 
-                    newbuf[coords[count].first]->getValue(coords[count].second, j));
+                next->setValue(i, j, newbuf[coords[count].first]->getValue(coords[count].second, j));
                 newbuf[coords[count].first]->eraseValue(coords[count].second, j);
               }
               count++;
             }
             for (RegisterId j = 0; j < nrregs; j++) {
-              next->setDocumentCollection(j, 
-                               newbuf.front()->getDocumentCollection(j));
+              next->setDocumentCollection(j, newbuf.front()->getDocumentCollection(j));
             }
             _buffer.push_back(next);
           }
-           
-          for (auto x : newbuf){
+          
+          for (auto x : newbuf) {
             delete x;
           }
 
@@ -2503,23 +2562,25 @@ namespace triagens {
             OurLessThan (std::deque<AqlItemBlock*>& buffer,  
                          std::vector<std::pair<RegisterId, bool>>& sortRegisters,
                          std::vector<TRI_document_collection_t const*>& colls) 
-              : _buffer(buffer), _sortRegisters(sortRegisters), _colls(colls) {
+              : _buffer(buffer), 
+                _sortRegisters(sortRegisters), 
+                _colls(colls) {
             }
 
             bool operator() (std::pair<size_t, size_t> const& a, 
                              std::pair<size_t, size_t> const& b) {
 
               size_t i = 0;
-              for(auto reg : _sortRegisters){
+              for (auto reg : _sortRegisters) {
                 int cmp = AqlValue::Compare(_buffer[a.first]->getValue(a.second, reg.first),
                                             _colls[i],
                                             _buffer[b.first]->getValue(b.second, reg.first),
                                             _colls[i]);
-                if(cmp == -1) {
+                if (cmp == -1) {
                   return reg.second;
                 } 
                 else if (cmp == 1) {
-                  return !reg.second;
+                  return ! reg.second;
                 }
                 i++;
               }
@@ -2685,20 +2746,25 @@ namespace triagens {
         virtual AqlItemBlock* getSome (size_t atLeast, 
                                        size_t atMost) {
           auto res = ExecutionBlock::getSome(atLeast, atMost);
+
           if (res == nullptr) {
             return res;
           }
+
+          size_t const n = res->size();
 
           // Let's steal the actual result and throw away the vars:
           auto ep = static_cast<ReturnNode const*>(getPlanNode());
           auto it = _varOverview->varInfo.find(ep->_inVariable->id);
           TRI_ASSERT(it != _varOverview->varInfo.end());
-          RegisterId registerId = it->second.registerId;
-          AqlItemBlock* stripped = new AqlItemBlock(res->size(), 1);
-          for (size_t i = 0; i < res->size(); i++) {
+          RegisterId const registerId = it->second.registerId;
+          AqlItemBlock* stripped = new AqlItemBlock(n, 1);
+
+          for (size_t i = 0; i < n; i++) {
             stripped->setValue(i, 0, res->getValue(i, registerId));
             res->eraseValue(i, registerId);
           }
+          
           stripped->setDocumentCollection(0, res->getDocumentCollection(registerId));
           delete res;
           return stripped;
