@@ -95,7 +95,17 @@ AqlValue V8Expression::execute (AQL_TRANSACTION_V8* trx,
     
   V8Executor::HandleV8Error(tryCatch, result);
 
-  TRI_json_t* json = TRI_ObjectToJson(result);
+  // no exception was thrown if we get here
+  TRI_json_t* json = nullptr;
+
+  if (result->IsUndefined()) {
+    // expression does not have any (defined) value. replace with null
+    json = TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE);
+  }
+  else {
+    // expression had a result. convert it to JSON
+    json = TRI_ObjectToJson(result);
+  }
 
   if (json == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
