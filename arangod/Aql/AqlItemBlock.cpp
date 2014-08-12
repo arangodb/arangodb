@@ -230,12 +230,14 @@ AqlItemBlock* AqlItemBlock::steal (vector<size_t>& chosen,
         AqlValue& a(_data[chosen[row] * _nrRegs + col]);
 
         if (! a.isEmpty()) {
-          res->setValue(row - from, col, a);
-          eraseValue(chosen[row], col);
-          auto it = _valueCount.find(a);
-          if (it != _valueCount.end()) {
-            _valueCount.erase(it);  // we are no longer responsible
+          steal(a);
+          try {
+            res->setValue(row - from, col, a);
           }
+          catch (...) {
+            a.destroy();
+          }
+          eraseValue(chosen[row], col);
         }
       }
     }

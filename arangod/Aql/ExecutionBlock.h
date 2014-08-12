@@ -2834,13 +2834,32 @@ namespace triagens {
           RegisterId const registerId = it->second.registerId;
           AqlItemBlock* stripped = new AqlItemBlock(n, 1);
 
-          for (size_t i = 0; i < n; i++) {
-            stripped->setValue(i, 0, res->getValue(i, registerId));
-            res->eraseValue(i, registerId);
+          try {
+            for (size_t i = 0; i < n; i++) {
+              AqlValue a = res->getValue(i, registerId);
+              if (! a.isEmpty()) {
+                res->steal(a);
+                try {
+                  stripped->setValue(i, 0, a);
+                }
+                catch (...) {
+                  a.destroy();
+                }
+                // If the following does not go well, we do not care, since
+                // the value is already stolen and installed in stripped
+                res->eraseValue(i, registerId);
+              }
+            }
+          }
+          catch (...) {
+            delete stripped;
+            delete res;
+            throw;
           }
           
           stripped->setDocumentCollection(0, res->getDocumentCollection(registerId));
           delete res;
+
           return stripped;
         }
 
