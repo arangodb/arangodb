@@ -95,6 +95,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   function prepareArgs (args) {
+    var ShapedJson = require("internal").ShapedJson;
     var result = [];
     var i;
 
@@ -106,7 +107,13 @@
       var arg = args[i];
 
       if (typeof arg === "object") {
-        if (arg.__proto__ === Object.prototype) {
+        if (ShapedJson !== undefined && arg instanceof ShapedJson) {
+          arg = inspect(arg, {prettyPrint: false});
+        }
+        else if (arg === null) {
+          arg = "null";
+        }
+        else if (arg.__proto__ === Object.prototype || Array.isArray(arg)) {
           arg = inspect(arg, {prettyPrint: false});
         }
       }
