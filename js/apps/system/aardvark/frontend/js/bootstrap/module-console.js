@@ -90,6 +90,23 @@
     log(level, groupLevel + msg);
   }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief try to prettify
+////////////////////////////////////////////////////////////////////////////////
+
+  function prepareArgs (args) {
+    var result = [];
+    var i;
+    
+    for (i = 0;  i < args.length;  ++i) {
+      var arg = args[i];
+
+      result.push(arg);
+    }
+
+    return result;
+  }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -109,7 +126,7 @@
     var msg;
 
     try {
-      msg = sprintf.apply(sprintf, args);
+      msg = sprintf.apply(sprintf, prepareArgs(args));
     }
     catch (err) {
       msg = err + ": " + args;
@@ -130,7 +147,7 @@
     var msg;
 
     try {
-      msg = sprintf.apply(sprintf, arguments);
+      msg = sprintf.apply(sprintf, prepareArgs(arguments));
     }
     catch (err) {
       msg = err + ": " + arguments;
@@ -149,7 +166,7 @@
     var msg;
 
     try {
-      msg = sprintf.apply(sprintf, arguments);
+      msg = sprintf.apply(sprintf, prepareArgs(arguments));
     }
     catch (err) {
       msg = err + ": " + arguments;
@@ -183,7 +200,7 @@
     var msg;
 
     try {
-      msg = sprintf.apply(sprintf, arguments);
+      msg = sprintf.apply(sprintf, prepareArgs(arguments));
     }
     catch (err) {
       msg = err + ": " + arguments;
@@ -202,7 +219,7 @@
     var msg;
 
     try {
-      msg = sprintf.apply(sprintf, arguments);
+      msg = sprintf.apply(sprintf, prepareArgs(arguments));
     }
     catch (err) {
       msg = err + ": " + arguments;
@@ -235,7 +252,7 @@
     var msg;
 
     try {
-      msg = sprintf.apply(sprintf, arguments);
+      msg = sprintf.apply(sprintf, prepareArgs(arguments));
     }
     catch (err) {
       msg = err + ": " + arguments;
@@ -255,7 +272,7 @@
     var msg;
 
     try {
-      msg = sprintf.apply(sprintf, arguments);
+      msg = sprintf.apply(sprintf, prepareArgs(arguments));
     }
     catch (err) {
       msg = err + ": " + arguments;
@@ -285,7 +302,7 @@
     var msg;
 
     try {
-      msg = sprintf.apply(sprintf, arguments);
+      msg = sprintf.apply(sprintf, prepareArgs(arguments));
     }
     catch (err) {
       msg = err + ": " + arguments;
@@ -304,7 +321,7 @@
     var msg;
 
     try {
-      msg = sprintf.apply(sprintf, arguments);
+      msg = sprintf.apply(sprintf, prepareArgs(arguments));
     }
     catch (err) {
       msg = err + ": " + arguments;
@@ -371,7 +388,7 @@
   exports.trace = function () {
     var err = new Error();
     err.name = 'trace';
-    err.message = sprintf.apply(sprintf, arguments);
+    err.message = sprintf.apply(sprintf, prepareArgs(arguments));
     Error.captureStackTrace(err, exports.trace);
     logGroup("info", err.stack);
   };
@@ -386,7 +403,7 @@
     var msg;
 
     try {
-      msg = sprintf.apply(sprintf, arguments);
+      msg = sprintf.apply(sprintf, prepareArgs(arguments));
     }
     catch (err) {
       msg = err + ": " + arguments;
@@ -405,7 +422,7 @@
     var msg;
 
     try {
-      msg = sprintf.apply(sprintf, arguments);
+      msg = sprintf.apply(sprintf, prepareArgs(arguments));
     }
     catch (err) {
       msg = err + ": " + arguments;
