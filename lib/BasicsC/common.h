@@ -199,9 +199,77 @@ static inline uint64_t TRI_IncModU64(uint64_t i, uint64_t len) {
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 
+#if HAVE_BACKTRACE
+
+#include <execinfo.h>
+
+#ifdef __cplusplus
+#define TRI_USE_DEMANGLING
+#include <cxxabi.h>
+#endif
+
+#endif
+static inline void _backtrace(void)
+{
+#if HAVE_BACKTRACE
+  void *stack_frames[50];
+  size_t size, i;
+  char **strings;
+
+  size = backtrace(stack_frames, sizeof(stack_frames) / sizeof(void*));
+  strings = backtrace_symbols(stack_frames, size);
+  for (i = 0; i < size; i++) {
+    if (strings != NULL) {
+#ifdef TRI_USE_DEMANGLING
+      char *mangled_name = nullptr, *offset_begin = nullptr, *offset_end = nullptr;
+
+      // find parantheses and +address offset surrounding mangled name
+      for (char *p = strings[i]; *p; ++p) {
+        if (*p == '(') {
+          mangled_name = p; 
+        }
+        else if (*p == '+') {
+          offset_begin = p;
+        }
+        else if (*p == ')') {
+          offset_end = p;
+          break;
+        }
+      }
+
+      // if the line could be processed, attempt to demangle the symbol
+      if (mangled_name && offset_begin && offset_end && 
+          mangled_name < offset_begin) {
+            *mangled_name++ = '\0';
+            *offset_begin++ = '\0';
+            *offset_end++ = '\0';
+            int status = 0;
+            char * demangled_name = abi::__cxa_demangle(mangled_name, 0, 0, &status);
+            if (status == 0) {
+              fprintf(stderr, "%s %s\n", strings[i], demangled_name);
+            }
+            else {
+              fprintf(stderr, "%s\n", strings[i]);
+            }
+            free(demangled_name);
+      }
+      else
+#endif
+        {
+          fprintf(stderr, "%s\n", strings[i]);
+        }
+    }
+    else
+      fprintf(stderr, "%p\n", stack_frames[i]);
+  }
+  free(strings);  
+#endif
+}
+
+
 #ifndef TRI_ASSERT
-#define TRI_ASSERT(expr) assert(expr)
-#define TRI_ASSERT_EXPENSIVE(expr) assert(expr)
+#define TRI_ASSERT(expr) { if (!(expr)) _backtrace(); assert(expr);}
+#define TRI_ASSERT_EXPENSIVE(expr) {if (!(expr)) _backtrace(); assert(expr);}
 #endif
 
 #else
