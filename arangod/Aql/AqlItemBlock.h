@@ -86,15 +86,6 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief setHandedOn
-////////////////////////////////////////////////////////////////////////////////
-
-        void setHandedOn (std::unordered_set<AqlValue>* handedOn) {
-          TRI_ASSERT(_handedOn == nullptr);   // must set this only once
-          _handedOn = handedOn;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getValue, get the value of a register
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -110,6 +101,18 @@ namespace triagens {
       void setValue (size_t index, RegisterId varNr, AqlValue value) {
         TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
         TRI_ASSERT(_data.at(index * _nrRegs + varNr).isEmpty());
+
+        // First update the reference count, if this fails, the value is empty
+        if (! value.isEmpty()) {
+          auto it = _valueCount.find(value);
+          if (it == _valueCount.end()) {
+            _valueCount.insert(make_pair(value, 1));
+          }
+          else {
+            it->second++;
+          }
+        }
+
         _data[index * _nrRegs + varNr] = value;
       }
 
@@ -119,7 +122,21 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void eraseValue (size_t index, RegisterId varNr) {
-          _data[index * _nrRegs + varNr].erase();
+          if (! _data[index * _nrRegs + varNr].isEmpty()) {
+            auto it = _valueCount.find(_data[index * _nrRegs + varNr]);
+            if (it != _valueCount.end()) {
+              if (--it->second == 0) {
+                try {
+                  _valueCount.erase(it);
+                }
+                catch (...) {
+                  it->second++;
+                  throw;
+                }
+              }
+            }
+            _data[index * _nrRegs + varNr].erase();
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -130,7 +147,41 @@ namespace triagens {
         void eraseAll () {
           size_t const n = _data.size();
           for (size_t i = 0; i < n; ++i) {
-            _data[i].erase();
+            if (! _data[i].isEmpty()) {
+              _data[i].erase();
+            }
+          }
+          _valueCount.clear();
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief valueCount
+/// this is used if the value is stolen and later released from elsewhere
+////////////////////////////////////////////////////////////////////////////////
+
+        uint32_t valueCount (AqlValue v) {
+          auto it = _valueCount.find(v);
+          if (it == _valueCount.end()) {
+            return 0;
+          }
+          else {
+            return it->second;
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief steal, steal an AqlValue from an AqlItemBlock, it will never free
+/// the same value again. Note that once you do this for a single AqlValue
+/// you should delete the AqlItemBlock soon, because the stolen AqlValues
+/// might be deleted at any time!
+////////////////////////////////////////////////////////////////////////////////
+
+        void steal (AqlValue v) {
+          if (! v.isEmpty()) {
+            auto it = _valueCount.find(v);
+            if (it != _valueCount.end()) {
+              _valueCount.erase(it);
+            }
           }
         }
 
@@ -215,43 +266,56 @@ namespace triagens {
         AqlItemBlock* steal (vector<size_t>& chosen, size_t from, size_t to);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief splice multiple blocks, note that the new block now owns all
+/// @brief concatenate multiple blocks, note that the new block now owns all
 /// AqlValue pointers in the old blocks, therefore, the latter are all
 /// set to nullptr, just to be sure.
 ////////////////////////////////////////////////////////////////////////////////
 
-        static AqlItemBlock* splice (std::vector<AqlItemBlock*> const& blocks);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-        std::vector<AqlValue> _data;
-
-        std::vector<TRI_document_collection_t const*> _docColls;
-
-        size_t     _nrItems;
-
-        RegisterId _nrRegs;
-
+        static AqlItemBlock* concatenate (std::vector<AqlItemBlock*> const& blocks);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
+      private:
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _handedOn, the following is a means to say which pointers
-/// have already been handed on to another block and therefore do must
-/// not be freed. Set with "setHandedOn". Note that one should only set
-/// this immediately before destruction, since otherwise it is not clear
-/// whether the memory pointed to by the mentioned AqlValues is still
-/// valid!
+/// @brief _data, the actual data as a single vector of dimensions _nrItems
+/// times _nrRegs
 ////////////////////////////////////////////////////////////////////////////////
 
-      private:
-        std::unordered_set<AqlValue>* _handedOn;
+        std::vector<AqlValue> _data;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _docColls, for every column a possible collection, which contains
+/// all AqlValues of type SHAPED in this column.
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<TRI_document_collection_t const*> _docColls;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _valueCount, since we have to allow for identical AqlValues
+/// in an AqlItemBlock, this map keeps track over which AqlValues we
+/// have in this AqlItemBlock and how often.
+/// setValue above puts values in the map and increases the count if they 
+/// are already there, eraseValue decreases the count. One can ask the
+/// count with valueCount.
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_map<AqlValue, uint32_t> _valueCount;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _nrItems, number of rows
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t     _nrItems;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _nrRegs, number of rows
+////////////////////////////////////////////////////////////////////////////////
+
+        RegisterId _nrRegs;
+
     };
 
   }  // namespace triagens::aql

@@ -49,6 +49,15 @@ namespace triagens {
         : _low(low), 
           _high(high) {
       }
+
+      size_t size () const {
+        if (_low <= _high) {
+          // e.g. 1..1, 1..10 etc.
+          return _high - _low + 1;
+        }
+        // e.g. 10..1
+        return _low - _high + 1;
+      }
         
       int64_t const _low;
       int64_t const _high;

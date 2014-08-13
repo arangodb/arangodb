@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, assertTrue, assertEqual, fail */
+/*global require, exports, assertTrue, assertEqual, AQL_EXECUTE, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aql test helper functions
@@ -149,7 +149,7 @@ function getRawQueryResults (query, bindVars) {
 
 function getRawQueryResultsAQL2 (query, bindVars) {
   var queryResult;
-  if (typeof bindVars == "object") {
+  if (typeof bindVars === "object") {
     queryResult = AQL_EXECUTE(query, bindVars, { 
       count: true, 
       batchSize : 3000 
@@ -196,6 +196,91 @@ function getQueryResultsAQL2 (query, bindVars, recursive) {
   return result;
 }
 
+function typeName (value) {
+  if (value === null) {
+    return "null";
+  }
+  if (value === undefined) {
+    return "undefined";
+  }
+  if (value instanceof Array) {
+    return "array";
+  }
+
+  var type = typeof value;
+
+  if (type === "object") {
+    return "object";
+  }
+  if (type === "string") {
+    return "string";
+  }
+  if (type === "boolean") {
+    return "boolean";
+  }
+  if (type === "number") {
+    return "number";
+  }
+
+  throw "unknown variable type";
+}
+
+function isEqual (lhs, rhs) {
+  var ltype = typeName(lhs), rtype = typeName(rhs), i;
+
+  if (ltype !== rtype) {
+    return false;
+  }
+
+  if (ltype === "null" || ltype === "undefined") {
+    return true;
+  }
+  
+  if (ltype === "array") {
+    if (lhs.length !== rhs.length) {
+      return false;
+    }
+    for (i = 0; i < lhs.length; ++i) {
+      if (! isEqual(lhs[i], rhs[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  if (ltype === "object") {
+    var lkeys = Object.keys(lhs), rkeys = Object.keys(rhs);
+    if (lkeys.length !== rkeys.length) {
+      return false;
+    }
+    for (i = 0; i < lkeys.length; ++i) {
+      var key = lkeys[i];
+      if (! isEqual(lhs[key], rhs[key])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  if (ltype === "boolean") {
+    return (lhs === rhs);
+  }
+  if (ltype === "string") {
+    return (lhs === rhs);
+  }
+  if (ltype === "number") {
+    if (isNaN(lhs)) {
+      return isNaN(rhs);
+    }
+    if (! isFinite(lhs)) {
+      return (lhs === rhs);
+    }
+    return (lhs.toFixed(10) === rhs.toFixed(10));
+  }
+  
+  throw "unknown variable type";
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the results of a query in a normalised way, version to
 /// run both the old and the new (AQL2) query
@@ -205,7 +290,7 @@ function getQueryResults2 (query, bindVars, recursive) {
   var result = getQueryResults(query, bindVars, recursive);
   var result2 = getQueryResultsAQL2(query, bindVars, recursive);
 
-  if (! _.isEqual(result, result2)) {
+  if (! isEqual(result, result2)) { 
     require("internal").print("Old and new AQL return different results!");
     require("internal").print("Old result:\n", result);
     require("internal").print("New result:\n", result2);
@@ -239,6 +324,8 @@ function assertQueryError (errorCode, query, bindVars) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function assertQueryError2 (errorCode, query, bindVars) {
+  /* 
+    probably not needed here, as we want to check only that an AQL2 query fails
   try {
     getQueryResults(query, bindVars);
     fail();
@@ -247,6 +334,7 @@ function assertQueryError2 (errorCode, query, bindVars) {
     assertTrue(e.errorNum !== undefined, "unexpected error format [" + query + "]");
     assertEqual(errorCode, e.errorNum, "unexpected error code (" + e.errorMessage + "): ");
   }
+  */
   try {
     getQueryResultsAQL2(query, bindVars);
     fail();

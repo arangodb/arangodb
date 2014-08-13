@@ -293,14 +293,10 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       for (var i = 0; i < tests.length; ++i) {
         var test = tests[i];
 
-        var query = "FOR c IN " + cn + " LIMIT " + test.offset + ", " + test.limit + " LIMIT " + test.offset2 + ", " + test.limit2 + " RETURN c";
+        var query = "FOR c IN " + cn + " SORT c.value LIMIT " + test.offset + ", " + test.limit + " LIMIT " + test.offset2 + ", " + test.limit2 + " RETURN c";
 
         var actual = getQueryResults(query);
         assertEqual(test.expectedLength, actual.length);
-
-        var explain = getQueryExplanation(query);
-        assertEqual("for", explain[0].type);
-        assertEqual(test.offset + test.limit, explain[0]["expression"]["extra"]["limit"]);
       }
     },
 
@@ -671,10 +667,10 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitNested3 : function () {
-      var query = "FOR o IN [ 1, 2, 3 ] FOR i IN [ 5, 6, 7 ] LIMIT 1, 1 RETURN { o: o, i: i }";
+      var query = "FOR o IN [ 1, 2, 3 ] FOR i IN [ 5, 6, 7 ] SORT o, i LIMIT 1, 1 RETURN { o: o, i: i }";
 
       var actual = getQueryResults(query);
-      assertEqual([ { i: 6, o: 2 } ], actual);
+      assertEqual([ { i: 6, o: 1 } ], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

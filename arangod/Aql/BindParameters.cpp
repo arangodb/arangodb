@@ -92,15 +92,15 @@ void BindParameters::process () {
     TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AtVector(&_json->_value._objects, i + 1));
 
     if (value == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE); // TODO: add parameter name
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, k.c_str()); 
     }
 
     if (k[0] == '@' && ! TRI_IsStringJson(value)) {
       // collection bind parameter
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE); // TODO: add parameter name
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, k.c_str()); 
     }
 
-    _parameters.insert(std::make_pair(k, value));
+    _parameters.insert(std::make_pair(k, std::make_pair(value, false)));
   }
   
   _processed = true;

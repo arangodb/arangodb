@@ -43,23 +43,23 @@ using namespace triagens::aql;
 
 AqlItemBlock::AqlItemBlock (size_t nrItems, 
                             RegisterId nrRegs)
-  : _nrItems(nrItems), 
-    _nrRegs(nrRegs),
-    _handedOn(nullptr) {
+  : _nrItems(nrItems), _nrRegs(nrRegs) {
+
+  TRI_ASSERT(nrItems > 0);  // no, empty AqlItemBlocks are not allowed!
 
   if (nrItems > 0 && nrRegs > 0) {
     _data.reserve(nrItems * nrRegs);
     for (size_t i = 0; i < nrItems * nrRegs; ++i) {
       _data.emplace_back();
     }
- }
+  }
  
- if (nrRegs > 0) {
-   _docColls.reserve(nrRegs);
-   for (size_t i = 0; i < nrRegs; ++i) {
-     _docColls.push_back(nullptr);
-   }
- }
+  if (nrRegs > 0) {
+    _docColls.reserve(nrRegs);
+    for (size_t i = 0; i < nrRegs; ++i) {
+      _docColls.push_back(nullptr);
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,23 +68,22 @@ AqlItemBlock::AqlItemBlock (size_t nrItems,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlItemBlock::~AqlItemBlock () {
-  if (_handedOn == nullptr) {
-    _handedOn = new std::unordered_set<AqlValue>;
-  }
-
   for (size_t i = 0; i < _nrItems * _nrRegs; i++) {
     if (! _data[i].isEmpty()) {
-      auto it = _handedOn->find(_data[i]);
-
-      if (it == _handedOn->end()) {
-        _handedOn->insert(_data[i]);
-        _data[i].destroy();
+      auto it = _valueCount.find(_data[i]);
+      if (it != _valueCount.end()) { // if we know it, we are still responsible
+        if (--(it->second) == 0) {
+          _data[i].destroy();
+          try {
+            _valueCount.erase(it);
+          }
+          catch (...) {
+          }
+        }
       }
+      // Note that if we do not know it the thing it has been stolen from us!
     }
   }
-
-  TRI_ASSERT(_handedOn != nullptr);
-  delete _handedOn;
 }
 
 // -----------------------------------------------------------------------------
@@ -120,7 +119,7 @@ void AqlItemBlock::shrink (size_t nrItems) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief slice/clone
+/// @brief slice/clone, this does a deep copy of all entries
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlItemBlock* AqlItemBlock::slice (size_t from, 
@@ -163,7 +162,8 @@ AqlItemBlock* AqlItemBlock::slice (size_t from,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief slice/clone chosen columns for a subset
+/// @brief slice/clone chosen rows for a subset, this does a deep copy
+/// of all entries
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlItemBlock* AqlItemBlock::slice (std::vector<size_t>& chosen, 
@@ -209,60 +209,54 @@ AqlItemBlock* AqlItemBlock::slice (std::vector<size_t>& chosen,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief steal for a subset, this does not copy the entries, rather,
 /// it remembers which it has taken. This is stored in the
-/// this AqlItemBlock. It is highly recommended to delete it right
-/// after this operation, because it is unclear, when the values
-/// to which our AqlValues point will vanish.
+/// this by removing the value counts in _valueCount. 
+/// It is highly recommended to delete this object right after this
+/// operation, because it is unclear, when the values to which our
+/// AqlValues point will vanish! In particular, do not use setValue
+/// any more.
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlItemBlock* AqlItemBlock::steal (vector<size_t>& chosen, 
                                    size_t from, size_t to) {
   TRI_ASSERT(from < to && to <= chosen.size());
 
-  auto cache = new std::unordered_set<AqlValue>;
-
-  AqlItemBlock* res = nullptr;
-  try {
-    res = new AqlItemBlock(to - from, _nrRegs);
-  }
-  catch (...) {
-    delete cache;
-    throw;
+  AqlItemBlock* res = new AqlItemBlock(to - from, _nrRegs);
+  for (RegisterId col = 0; col < _nrRegs; col++) {
+    res->_docColls[col] = _docColls[col];
   }
   try {
-    for (RegisterId col = 0; col < _nrRegs; col++) {
-      res->_docColls[col] = _docColls[col];
-    }
     for (size_t row = from; row < to; row++) {
       for (RegisterId col = 0; col < _nrRegs; col++) {
         AqlValue& a(_data[chosen[row] * _nrRegs + col]);
 
         if (! a.isEmpty()) {
-          res->_data[(row - from) * _nrRegs + col] = a;
-          auto it = cache->find(a);
-          if (it == cache->end()) {
-            cache->insert(a);
+          steal(a);
+          try {
+            res->setValue(row - from, col, a);
           }
+          catch (...) {
+            a.destroy();
+          }
+          eraseValue(chosen[row], col);
         }
       }
     }
   }
   catch (...) {
     delete res;
-    delete cache;
     throw;
   }
-  setHandedOn(cache);
   return res;
 }
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief splice multiple blocks, note that the new block now owns all
+/// @brief concatenate multiple blocks, note that the new block now owns all
 /// AqlValue pointers in the old blocks, therefore, the latter are all
 /// set to nullptr, just to be sure.
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlItemBlock* AqlItemBlock::splice (std::vector<AqlItemBlock*> const& blocks) {
+AqlItemBlock* AqlItemBlock::concatenate (std::vector<AqlItemBlock*> const& blocks) {
   TRI_ASSERT(! blocks.empty());
 
   auto it = blocks.begin();
@@ -282,33 +276,40 @@ AqlItemBlock* AqlItemBlock::splice (std::vector<AqlItemBlock*> const& blocks) {
   TRI_ASSERT(nrRegs > 0);
 
   auto res = new AqlItemBlock(totalSize, nrRegs);
-  size_t pos = 0;
-  for (it = blocks.begin(); it != blocks.end(); ++it) {
-    // handle collections
-    if (it == blocks.begin()) {
-      // copy collection info over
-      for (RegisterId col = 0; col < nrRegs; ++col) {
-        res->setDocumentCollection(col, (*it)->getDocumentCollection(col));
+  try {
+    size_t pos = 0;
+    for (it = blocks.begin(); it != blocks.end(); ++it) {
+      // handle collections
+      if (it == blocks.begin()) {
+        // copy collection info over
+        for (RegisterId col = 0; col < nrRegs; ++col) {
+          res->setDocumentCollection(col, (*it)->getDocumentCollection(col));
+        }
       }
-    }
-    else {
-      for (RegisterId col = 0; col < nrRegs; ++col) {
-        TRI_ASSERT(res->getDocumentCollection(col) ==
-                   (*it)->getDocumentCollection(col));
+      else {
+        for (RegisterId col = 0; col < nrRegs; ++col) {
+          TRI_ASSERT(res->getDocumentCollection(col) ==
+                     (*it)->getDocumentCollection(col));
+        }
       }
-    }
 
-    TRI_ASSERT((*it) != res);
-    size_t const n = (*it)->size();
-    for (size_t row = 0; row < n; ++row) {
-      for (RegisterId col = 0; col < nrRegs; ++col) {
-        // copy over value
-        res->setValue(pos + row, col, (*it)->getValue(row, col));
-        // delete old value
-        (*it)->eraseValue(row, col);
+      TRI_ASSERT((*it) != res);
+      size_t const n = (*it)->size();
+      for (size_t row = 0; row < n; ++row) {
+        for (RegisterId col = 0; col < nrRegs; ++col) {
+          // copy over value
+          if (! (*it)->getValue(row, col).isEmpty()) {
+            res->setValue(pos + row, col, (*it)->getValue(row, col));
+          }
+        }
       }
+      (*it)->eraseAll();
+      pos += (*it)->size();
     }
-    pos += (*it)->size();
+  }
+  catch (...) {
+    delete res;
+    throw;
   }
 
   return res;
