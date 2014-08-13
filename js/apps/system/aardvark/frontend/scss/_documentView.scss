@@ -1,0 +1,84 @@
+.document-info {
+
+  background-color: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  margin-bottom: 8px;
+  margin-top: -10px;
+  min-height: 65px;
+  padding: 5px;
+
+  .document-info-container {
+    clear: both;
+    width: 100%;
+
+    .document-inner-info-container {
+      float: left;
+      margin-top: 5px;
+      margin-left: 10px;
+
+      .document-attribute {
+        margin-right: 20px;
+        @extend %clear-float;
+        div {
+          float: left;
+        }
+      }
+    }
+  }
+
+  .document-bold-font {
+    font-family: droid sans mono, monospace, courier new, courier, sans-serif;
+    font-size: 11pt;
+    min-width: 55px;
+  }
+
+  .document-thin-font {
+    color: green;
+    font-family: droid sans mono, monospace, courier new, courier, sans-serif;
+    font-size: 11pt;
+  }
+
+  .document-type-container {
+    div {
+      float: left;
+    }
+  }
+}
+
+.document-link:hover {
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.jsoneditor {
+  .tree {
+    div {
+      font-size: 11pt;
+    }
+  }
+
+  .ace_layer {
+    div {
+      font-size: 11pt;
+    }
+  }
+
+  .ace_text-layer {
+    div {
+      font-size: 11pt;
+    }
+  }
+
+  .ace_line_group {
+    div {
+      font-size: 11pt;
+    }
+  }
+
+  .outer {
+    .tree > table > tbody > tr:first-of-type {
+     visibility: hidden;
+    }
+  }
+
+}

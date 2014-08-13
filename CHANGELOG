@@ -1,4 +1,12 @@
-v2.2.2-rc1 (XXXX-XX-XX)
+v2.3.0 (XXXX-XX-XX)
+-------------------
+
+* automatically call `toJSON` function of JavaScript objects (if present)
+  when serializing them into database documents. This change allows 
+  storing JavaScript date objects in the database in a sensible manner.
+
+
+v2.2.2 (2014-08-08)
 -------------------
 
 * allow storing non-reserved attribute names starting with an underscore

@@ -51,25 +51,10 @@ RestActionHandler::RestActionHandler (HttpRequest* request,
   : RestVocbaseBaseHandler(request),
     _action(0),
     _queue(),
-    _allowed(false),
     _dataLock(),
     _data(0) {
 
   _action = TRI_LookupActionVocBase(request);
-
-  // check if the action is allowed
-  if (_action != 0) {
-    for (set<string>::const_iterator i = data->_contexts.begin();  i != data->_contexts.end();  ++i) {
-      if (_action->_contexts.find(*i) != _action->_contexts.end()) {
-        _allowed = true;
-        break;
-      }
-    }
-
-    if (! _allowed) {
-      _action = 0;
-    }
-  }
 
   // use the queue from options if an action is known
   if (_action != 0) {
@@ -119,11 +104,6 @@ HttpHandler::status_t RestActionHandler::execute () {
   // need an action
   if (_action == 0) {
     generateNotImplemented(_request->requestPath());
-  }
-
-  // need permission
-  else if (! _allowed) {
-    generateForbidden();
   }
 
   // execute

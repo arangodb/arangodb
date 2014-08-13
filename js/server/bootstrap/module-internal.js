@@ -4,7 +4,8 @@
          AHUACATL_RUN, AHUACATL_PARSE, AHUACATL_EXPLAIN, WAL_FLUSH, WAL_PROPERTIES,
          REPLICATION_LOGGER_STATE, REPLICATION_LOGGER_CONFIGURE, REPLICATION_SERVER_ID,
          REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_SHUTDOWN, 
-         REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE, REPLICATION_SYNCHRONISE */ 
+         REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE, REPLICATION_SYNCHRONISE,
+         ENABLE_STATISTICS */ 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -39,29 +40,57 @@
 
 (function () {
   var internal = require("internal");
+  var fs = require("fs");
   var console = require("console");
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hide global variables
+/// @brief db
 ////////////////////////////////////////////////////////////////////////////////
 
   internal.db = db;
   delete db;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ArangoCollection
+////////////////////////////////////////////////////////////////////////////////
+
   internal.ArangoCollection = ArangoCollection;
   delete ArangoCollection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ArangoDatabase
+////////////////////////////////////////////////////////////////////////////////
 
   internal.ArangoDatabase = ArangoDatabase;
   delete ArangoDatabase;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ArangoCursor
+////////////////////////////////////////////////////////////////////////////////
+
   internal.ArangoCursor = ArangoCursor;
   delete ArangoCursor;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ShapedJson
+////////////////////////////////////////////////////////////////////////////////
 
   internal.ShapedJson = ShapedJson;
   delete ShapedJson;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enableStatistics
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.enableStatistics = ENABLE_STATISTICS;
+  delete ENABLE_STATISTICS;
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -84,10 +113,6 @@
 
   internal.AQL_EXPLAIN = AHUACATL_EXPLAIN;
   delete AHUACATL_EXPLAIN;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resets engine in development mode
@@ -125,69 +150,72 @@
 /// @brief defines an action
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_DEFINE_ACTION === "undefined") {
-    internal.defineAction = function() {
-      console.error("SYS_DEFINE_ACTION not available");
-    };
+  if (typeof SYS_DEFINE_ACTION !== "undefined") {
+    internal.defineAction = SYS_DEFINE_ACTION;
+    delete SYS_DEFINE_ACTION;
+  }
 
-    internal.actionLoaded = function() {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief autoload modules from database
+////////////////////////////////////////////////////////////////////////////////
+
+  // autoload specific modules
+  internal.autoloadModules = function () {
+    'use strict';
+
+    console.debug("autoloading actions");
+
+    var modules = internal.db._collection("_modules");
+
+    if (modules !== null) {
+      modules = modules.byExample({ autoload: true }).toArray();
+
+      modules.forEach(function(module) {
+
+        // this module is only meant to be executed in one thread
+        if (internal.threadNumber !== 0 && ! module.perThread) {
+          return;
+        }
+
+        console.debug("autoloading module: %s", module.path);
+
+        try {
+
+          // require a module 
+          if (module.path !== undefined) {
+            require(module.path);
+          }
+
+          // execute a user function
+          else if (module.func !== undefined) {
+            /*jslint evil: true */
+            var func = new Function(module.func);
+            /*jslint evil: false */
+            func();
+          }
+        }
+        catch (err) {
+          console.error("error while loading startup module '%s': %s", module.name || module.path, String(err));
+        }
+      });
+    }
+
+    console.debug("autoloading actions finished");
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes a string in all V8 contexts
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION === "undefined") {
+    internal.executeGlobalContextFunction = function() {
+      // nothing to do. we're probably in --console mode
     };
   }
   else {
-    internal.defineAction = SYS_DEFINE_ACTION;
-    delete SYS_DEFINE_ACTION;
-
-    // autoload specific actions
-    internal.actionLoaded = function () {
-      'use strict';
-
-      console.debug("autoloading actions");
-
-      var modules = internal.db._collection("_modules");
-
-      if (modules !== null) {
-        modules = modules.byExample({ autoload: true }).toArray();
-
-        modules.forEach(function(module) {
-          if (internal.threadNumber !== 0 && ! module.perThread) {
-            // module is only meant to be executed in one thread
-            return;
-          }
-
-          console.debug("autoloading module: %s", module.path);
-
-          try {
-            if (module.path !== undefined) {
-              // require a module 
-              require(module.path);
-            }
-            else if (module.func !== undefined) {
-              // execute a user function
-              /*jslint evil: true */
-              var func = new Function(module.func);
-              /*jslint evil: false */
-              func();
-            }
-          }
-          catch (err) {
-            console.error("error while loading startup module '%s': %s", module.name || module.path, String(err));
-          }
-        });
-      }
-
-      console.debug("autoloading actions finished");
-    };
+    internal.executeGlobalContextFunction = SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
+    delete SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
   }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize foxx applications
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.initializeFoxx = function () {
-    'use strict';
-
-    require("org/arangodb/foxx/manager").initializeFoxx();
-  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reloads the AQL user functions
@@ -203,20 +231,6 @@
       internal.executeGlobalContextFunction("reloadAql");
       require("org/arangodb/ahuacatl").reload();
     };
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a string in all V8 contexts
-////////////////////////////////////////////////////////////////////////////////
-
-  if (typeof SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION === "undefined") {
-    internal.executeGlobalContextFunction = function() {
-      // nothing to do. we're probably in --console mode
-    };
-  }
-  else {
-    internal.executeGlobalContextFunction = SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
-    delete SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -299,6 +313,14 @@
     internal.serverId = REPLICATION_SERVER_ID;
     delete REPLICATION_SERVER_ID;
   }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief loadStartup
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.loadStartup = function (path) {
+    return internal.load(fs.join(internal.startupPath, path));
+  };
 
 }());
 

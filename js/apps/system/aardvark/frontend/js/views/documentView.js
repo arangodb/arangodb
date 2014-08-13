@@ -13,28 +13,119 @@
 
     events: {
       "click #saveDocumentButton" : "saveDocument",
+      "click #deleteDocumentButton" : "deleteDocumentModal",
+      "click #confirmDeleteDocument" : "deleteDocument",
+      "click #document-from" : "navigateToDocument",
+      "click #document-to" : "navigateToDocument",
       "dblclick #documentEditor tr" : "addProperty"
     },
 
     editor: 0,
 
     typeCheck: function (type) {
-      var result;
+      var result, type2;
       if (type === 'edge') {
         result = this.collection.getEdge(this.colid, this.docid);
+        type2 = "Edge: ";
       }
       else if (type === 'document') {
         result = this.collection.getDocument(this.colid, this.docid);
+        type2 = "Document: ";
       }
       if (result === true) {
+        this.fillInfo(type2);
         this.fillEditor();
         return true;
+      }
+    },
+
+    deleteDocumentModal: function() {
+      var buttons = [], tableContent = [];
+      tableContent.push(
+        window.modalView.createReadOnlyEntry(
+          'doc-delete-button',
+          'Delete',
+          'Delete this ' + this.type + '?',
+          undefined,
+          undefined,
+          false,
+          /[<>&'"]/
+      )
+      );
+      buttons.push(
+        window.modalView.createDeleteButton('Delete', this.deleteDocument.bind(this))
+      );
+      window.modalView.show('modalTable.ejs', 'Delete Document', buttons, tableContent, undefined,
+      null);
+    },
+
+    deleteDocument: function() {
+
+      var result;
+
+      if (this.type === 'document') {
+        result = this.collection.deleteDocument(this.colid, this.docid);
+        if (result === false) {
+          arangoHelper.arangoError('Document error:','Could not delete');
+          return;
+        }
+      }
+      else if (this.type === 'edge') {
+        result = this.collection.deleteEdge(this.colid, this.docid);
+        if (result === false) {
+          arangoHelper.arangoError('Edge error:', 'Could not delete');
+          return;
+        }
+      }
+      if (result === true) {
+        var navigateTo =  "collection/" + encodeURIComponent(this.colid) + '/documents/1';
+        window.modalView.hide();
+        window.App.navigate(navigateTo, {trigger: true});
+      }
+    },
+
+    navigateToDocument: function(e) {
+      var navigateTo = $(e.target).attr("documentLink");
+      if (navigateTo) {
+        window.App.navigate(navigateTo, {trigger: true});
+      }
+    },
+
+    fillInfo: function(type) {
+      var _id = this.collection.first().get("_id"),
+      _key = this.collection.first().get("_key"),
+      _rev = this.collection.first().get("_rev"),
+      _from = this.collection.first().get("_from"),
+      _to = this.collection.first().get("_to");
+
+      $('#document-type').text(type);
+      $('#document-id').text(_id);
+      $('#document-key').text(_key);
+      $('#document-rev').text(_rev);
+
+      if (_from && _to) {
+
+        var hrefFrom = "collection/"
+        + encodeURIComponent(_from.split("/")[0]) + "/"
+        + encodeURIComponent(_from.split("/")[1]);
+        var hrefTo = "collection/"
+        + encodeURIComponent(_to.split("/")[0]) + "/"
+        + encodeURIComponent(_to.split("/")[1]);
+
+        $('#document-from').text(_from);
+        $('#document-from').attr("documentLink", hrefFrom);
+        $('#document-to').text(_to);
+        $('#document-to').attr("documentLink", hrefTo);
+      }
+      else {
+        $('.edge-info-container').hide();
       }
     },
 
     fillEditor: function() {
       var toFill = this.removeReadonlyKeys(this.collection.first().attributes);
       this.editor.set(toFill);
+      $('.ace_content').attr('font-size','11pt');
     },
 
     jsonContentChanged: function() {
@@ -113,6 +204,7 @@
       }
       catch (e) {
         this.errorConfirmation();
+        this.disableSaveButton();
       }
 
       model = JSON.stringify(model);

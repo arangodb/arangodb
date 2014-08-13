@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,9 +22,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Achim Brandt
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -37,11 +38,6 @@ var API = "_api/collection";
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a prefixed URL
@@ -73,7 +69,7 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
 
     result.doCompact     = properties.doCompact;
     result.isVolatile    = properties.isVolatile;
-    result.journalSize   = properties.journalSize;      
+    result.journalSize   = properties.journalSize;
     result.keyOptions    = properties.keyOptions;
     result.waitForSync   = properties.waitForSync;
 
@@ -101,18 +97,9 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper to parse arguments for creating collections
@@ -143,15 +130,15 @@ function parseBodyForCreateCollection (req, res) {
   if (body.hasOwnProperty("isSystem")) {
     r.parameter.isSystem = body.isSystem;
   }
-  
+
   if (body.hasOwnProperty("isVolatile")) {
     r.parameter.isVolatile = body.isVolatile;
   }
-  
+
   if (body.hasOwnProperty("journalSize")) {
     r.parameter.journalSize = body.journalSize;
   }
-  
+
   if (body.hasOwnProperty("keyOptions")) {
     r.parameter.keyOptions = body.keyOptions;
   }
@@ -159,15 +146,15 @@ function parseBodyForCreateCollection (req, res) {
   if (body.hasOwnProperty("type")) {
     r.type = body.type;
   }
-  
+
   if (body.hasOwnProperty("waitForSync")) {
     r.parameter.waitForSync = body.waitForSync;
   }
-  
+
   if (body.hasOwnProperty("shardKeys") && cluster.isCoordinator()) {
     r.parameter.shardKeys = body.shardKeys || { };
   }
-  
+
   if (body.hasOwnProperty("numberOfShards") && cluster.isCoordinator()) {
     r.parameter.numberOfShards = body.numberOfShards || 0;
   }
@@ -178,7 +165,7 @@ function parseBodyForCreateCollection (req, res) {
   
   return r;
 }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_post_api_collection
 /// @brief creates a collection
@@ -203,7 +190,7 @@ function parseBodyForCreateCollection (req, res) {
 ///
 /// - *journalSize* (optional, default is a
 ///   configuration parameter): The maximal size of
-///   a journal or datafile.  
+///   a journal or datafile.
 /// **Note**: This also limits the maximal
 ///   size of a single object. Must be at least 1MB.
 ///
@@ -217,21 +204,21 @@ function parseBodyForCreateCollection (req, res) {
 ///   collection data is kept in-memory only and not made persistent. Unloading
 ///   the collection will cause the collection data to be discarded. Stopping
 ///   or re-starting the server will also cause full loss of data in the
-///   collection. Setting this option will make the resulting collection be 
+///   collection. Setting this option will make the resulting collection be
 ///   slightly faster than regular collections because ArangoDB does not
-///   enforce any synchronisation to disk and does not calculate any CRC 
+///   enforce any synchronisation to disk and does not calculate any CRC
 ///   checksums for datafiles (as there are no datafiles).
 ///
-///   This option should threrefore be used for cache-type collections only, 
+///   This option should threrefore be used for cache-type collections only,
 ///   and not for data that cannot be re-created otherwise.
 ///
 /// - *keyOptions* (optional) additional options for key generation. If
 ///   specified, then *keyOptions* should be a JSON array containing the
 ///   following attributes (note: some of them are optional):
-///   - *type*: specifies the type of the key generator. The currently 
+///   - *type*: specifies the type of the key generator. The currently
 ///     available generators are *traditional* and *autoincrement*.
 ///   - *allowUserKeys*: if set to *true*, then it is allowed to supply
-///     own key values in the *_key* attribute of a document. If set to 
+///     own key values in the *_key* attribute of a document. If set to
 ///     *false*, then the key generator will solely be responsible for
 ///     generating keys and supplying own key values in the *_key* attribute
 ///     of documents is considered an error.
@@ -253,16 +240,16 @@ function parseBodyForCreateCollection (req, res) {
 ///   attribute determines which document attributes are used to determine the
 ///   target shard for documents. Documents are sent to shards based on the
 ///   values of their shard key attributes. The values of all shard
-///   key attributes in a document are hashed, and the hash value is used to 
-///   determine the target shard. 
+///   key attributes in a document are hashed, and the hash value is used to
+///   determine the target shard.
 /// **Note**: Values of shard key attributes cannot be changed once set.
 ///   This option is meaningless in a single server setup.
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionCreateCollection}
 ///     var url = "/_api/collection";
-///     var body = { 
-///       name: "testCollectionBasics" 
+///     var body = {
+///       name: "testCollectionBasics"
 ///     };
 ///
 ///     var response = logCurlRequest('POST', url, JSON.stringify(body));
@@ -270,9 +257,9 @@ function parseBodyForCreateCollection (req, res) {
 ///     assert(response.code === 200);
 ///
 ///     logJsonResponse(response);
-///     body = { 
-///       name: "testCollectionEdges", 
-///       type : 3 
+///     body = {
+///       name: "testCollectionEdges",
+///       type : 3
 ///     };
 ///
 ///     var response = logCurlRequest('POST', url, JSON.stringify(body));
@@ -287,12 +274,12 @@ function parseBodyForCreateCollection (req, res) {
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestCollectionCreateKeyopt}
 ///     var url = "/_api/collection";
-///     var body = { 
-///       name: "testCollectionUsers", 
-///       keyOptions : { 
-///         type : "autoincrement", 
-///         increment : 5, 
-///         allowUserKeys : true 
+///     var body = {
+///       name: "testCollectionUsers",
+///       keyOptions : {
+///         type : "autoincrement",
+///         increment : 5,
+///         allowUserKeys : true
 ///       }
 ///     };
 ///
@@ -313,7 +300,7 @@ function post_api_collection (req, res) {
   if (r.bodyIsEmpty) {
     return;   // error in JSON, is already reported
   }
-    
+
   if (r.name === "") {
     actions.resultBad(req, res, arangodb.ERROR_ARANGO_ILLEGAL_NAME,
                       "name must be non-empty");
@@ -350,7 +337,7 @@ function post_api_collection (req, res) {
       result.numberOfShards = collection.numberOfShards;
       result.distributeShardsLike = collection.distributeShardsLike || "";
     }
-    
+
     var headers = {
       location: databasePrefix(req, "/" + API + "/" + result.name)
     };
@@ -374,7 +361,7 @@ function post_api_collection (req, res) {
 /// Whether or not system collections should be excluded from the result.
 ///
 /// @RESTDESCRIPTION
-/// Returns an object with an attribute *collections* containing a 
+/// Returns an object with an attribute *collections* containing a
 /// list of all collection descriptions. The same information is also
 /// available in the *names* as hash map with the collection names
 /// as keys.
@@ -439,7 +426,7 @@ function get_api_collections (req, res) {
 ///
 /// @RESTURLPARAM{collection-name,string,required}
 /// The name of the collection.
-/// 
+///
 /// @RESTDESCRIPTION
 /// The result is an object describing the collection with the following
 /// attributes:
@@ -467,9 +454,9 @@ function get_api_collections (req, res) {
 /// If the *collection-name* is unknown, then a *HTTP 404* is
 /// returned.
 /// @endDocuBlock
-/////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
-/////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_get_api_collection_properties
 ///
 /// @RESTHEADER{GET /_api/collection/{collection-name}/properties, Read properties of a collection}
@@ -498,8 +485,8 @@ function get_api_collections (req, res) {
 /// In a cluster setup, the result will also contain the following attributes:
 /// - *numberOfShards*: the number of shards of the collection.
 ///
-/// - *shardKeys*: contains the names of document attributes that are used to 
-///   determine the target shard for documents. 
+/// - *shardKeys*: contains the names of document attributes that are used to
+///   determine the target shard for documents.
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{400}
@@ -543,9 +530,9 @@ function get_api_collections (req, res) {
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_get_api_collection_count
 ///
 /// @RESTHEADER{GET /_api/collection/{collection-name}/count, Return number of documents in a collection}
@@ -592,9 +579,9 @@ function get_api_collections (req, res) {
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_get_api_collection_figures
 ///
 /// @RESTHEADER{GET /_api/collection/{collection-name}/figures, Return statistics for a collection}
@@ -606,16 +593,16 @@ function get_api_collections (req, res) {
 ///
 /// @RESTDESCRIPTION
 /// In addition to the above, the result also contains the number of documents
-/// and additional statistical information about the collection.  
+/// and additional statistical information about the collection.
 /// **Note** : This will always load the collection into memory.
 ///
 /// - *count*: The number of documents currently present in the collection.
 ///
-/// * *figures.alive.count*: The number of curretly active documents in all datafiles 
+/// * *figures.alive.count*: The number of curretly active documents in all datafiles
 ///   and journals of the collection. Documents that are contained in the
 ///   write-ahead log only are not reported in this figure.
 ///
-/// * *figures.alive.size*: The total size in bytes used by all active documents of 
+/// * *figures.alive.size*: The total size in bytes used by all active documents of
 ///   the collection. Documents that are contained in the write-ahead log only are
 ///   not reported in this figure.
 ///
@@ -658,7 +645,7 @@ function get_api_collections (req, res) {
 ///   not reported in this figure.
 /// * *figures.attributes.size*: The total size of the attribute data (in bytes).
 ///   Note: the value includes data of attributes that are not in use anymore.
-///   Attributes that are contained in the write-ahead log only are not 
+///   Attributes that are contained in the write-ahead log only are not
 ///   reported in this figure.
 ///
 /// * *figures.indexes.count*: The total number of indexes defined for the
@@ -678,7 +665,7 @@ function get_api_collections (req, res) {
 ///
 /// **Note**: collection data that are stored in the write-ahead log only are
 /// not reported in the results. When the write-ahead log is collected, documents
-/// might be added to journals and datafiles of the collection, which may modify 
+/// might be added to journals and datafiles of the collection, which may modify
 /// the figures of the collection.
 ///
 /// Additionally, the filesizes of collection and index parameter JSON files are
@@ -691,8 +678,8 @@ function get_api_collections (req, res) {
 ///
 /// That means that the figures reported do not reflect the actual disk
 /// usage of the collection with 100% accuracy. The actual disk usage of
-/// a collection is normally slightly higher than the sum of the reported 
-/// *fileSize* values. Still the sum of the *fileSize* values can still be 
+/// a collection is normally slightly higher than the sum of the reported
+/// *fileSize* values. Still the sum of the *fileSize* values can still be
 /// used as a lower bound approximation of the disk usage.
 ///
 /// @RESTRETURNCODES
@@ -725,9 +712,9 @@ function get_api_collections (req, res) {
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
 /// @endDocuBlock
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_get_api_collection_revision
 ///
 /// @RESTHEADER{GET /_api/collection/{collection-name}/revision, Return collection revision id}
@@ -775,7 +762,7 @@ function get_api_collections (req, res) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_get_api_collection_checksum
 ///
 /// @RESTHEADER{GET /_api/collection/{collection-name}/checksum, Return checksum for the collection}
@@ -794,23 +781,23 @@ function get_api_collections (req, res) {
 /// Whether or not to include document body data in the checksum calculation.
 ///
 /// @RESTDESCRIPTION
-/// Will calculate a checksum of the meta-data (keys and optionally revision ids) and 
+/// Will calculate a checksum of the meta-data (keys and optionally revision ids) and
 /// optionally the document data in the collection.
 ///
 /// The checksum can be used to compare if two collections on different ArangoDB
-/// instances contain the same contents. The current revision of the collection is 
-/// returned too so one can make sure the checksums are calculated for the same 
+/// instances contain the same contents. The current revision of the collection is
+/// returned too so one can make sure the checksums are calculated for the same
 /// state of data.
 ///
 /// By default, the checksum will only be calculated on the *_key* system attribute
-/// of the documents contained in the collection. For edge collections, the system 
+/// of the documents contained in the collection. For edge collections, the system
 /// attributes *_from* and *_to* will also be included in the calculation.
 ///
 /// By setting the optional URL parameter *withRevisions* to *true*, then revision
 /// ids (*_rev* system attributes) are included in the checksumming.
 ///
-/// By providing the optional URL parameter *withData* with a value of *true*, 
-/// the user-defined document attributes will be included in the calculation too. 
+/// By providing the optional URL parameter *withData* with a value of *true*,
+/// the user-defined document attributes will be included in the calculation too.
 /// **Note**: Including user-defined attributes will make the checksumming slower.
 ///
 /// The response is a JSON object with the following attributes:
@@ -878,25 +865,25 @@ function get_api_collection (req, res) {
   // .............................................................................
   // /_api/collection
   // .............................................................................
-    
+
   if (req.suffix.length === 0 && req.parameters.id === undefined) {
     get_api_collections(req, res);
     return;
   }
-    
+
   // .............................................................................
   // /_api/collection/<name>
   // .............................................................................
 
   name = decodeURIComponent(req.suffix[0]);
-    
+
   var collection = arangodb.db._collection(name);
 
   if (collection === null) {
     actions.collectionNotFound(req, res, name);
     return;
   }
-      
+
   var headers;
 
   // .............................................................................
@@ -905,8 +892,8 @@ function get_api_collection (req, res) {
 
   if (req.suffix.length === 1) {
     result = collectionRepresentation(collection, false, false, false);
-    headers = { 
-      location : databasePrefix(req, "/" + API + "/" + collection.name()) 
+    headers = {
+      location : databasePrefix(req, "/" + API + "/" + collection.name())
     };
     actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     return;
@@ -929,7 +916,7 @@ function get_api_collection (req, res) {
           withRevisions = true;
         }
       }
-      
+
       if (req.parameters.hasOwnProperty('withData')) {
         value = req.parameters.withData.toLowerCase();
         if (value === 'true' || value === 'yes' || value === 'on' || value === 'y' || value === '1') {
@@ -943,15 +930,15 @@ function get_api_collection (req, res) {
       result.revision = checksum.revision;
       actions.resultOk(req, res, actions.HTTP_OK, result);
     }
-    
+
     // .............................................................................
     // /_api/collection/<identifier>/figures
     // .............................................................................
 
     else if (sub === "figures") {
       result = collectionRepresentation(collection, true, true, true);
-      headers = { 
-        location : databasePrefix(req, "/" + API + "/" + collection.name() + "/figures") 
+      headers = {
+        location : databasePrefix(req, "/" + API + "/" + collection.name() + "/figures")
       };
       actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
@@ -962,8 +949,8 @@ function get_api_collection (req, res) {
 
     else if (sub === "count") {
       result = collectionRepresentation(collection, true, true, false);
-      headers = { 
-        location : databasePrefix(req, "/" + API + "/" + collection.name() + "/count") 
+      headers = {
+        location : databasePrefix(req, "/" + API + "/" + collection.name() + "/count")
       };
       actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
@@ -974,8 +961,8 @@ function get_api_collection (req, res) {
 
     else if (sub === "properties") {
       result = collectionRepresentation(collection, true, false, false);
-      headers = { 
-        location : databasePrefix(req, "/" + API + "/" + collection.name() + "/properties") 
+      headers = {
+        location : databasePrefix(req, "/" + API + "/" + collection.name() + "/properties")
       };
       actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
@@ -1019,8 +1006,8 @@ function get_api_collection (req, res) {
 /// The request might optionally contain the following attribute:
 ///
 /// - *count*: If set, this controls whether the return value should include
-///   the number of documents in the collection. Setting *count* to 
-///   *false* may speed up loading a collection. The default value for 
+///   the number of documents in the collection. Setting *count* to
+///   *false* may speed up loading a collection. The default value for
 ///   *count* is *true*.
 ///
 /// On success an object with the following attributes is returned:
@@ -1236,7 +1223,7 @@ function put_api_collection_truncate (req, res, collection) {
 ///   - 3: edges collection
 ///
 /// **Note**: some other collection properties, such as *type*, *isVolatile*,
-/// *numberOfShards* or *shardKeys* cannot be changed once a collection is 
+/// *numberOfShards* or *shardKeys* cannot be changed once a collection is
 /// created.
 ///
 /// @EXAMPLES
@@ -1361,12 +1348,12 @@ function put_api_collection_rename (req, res, collection) {
 /// The name of the collection.
 ///
 /// @RESTDESCRIPTION
-/// Rotates the journal of a collection. The current journal of the collection will be closed 
+/// Rotates the journal of a collection. The current journal of the collection will be closed
 /// and made a read-only datafile. The purpose of the rotate method is to make the data in
 /// the file available for compaction (compaction is only performed for read-only datafiles, and
 /// not for journals).
 ///
-/// Saving new data in the collection subsequently will create a new journal file 
+/// Saving new data in the collection subsequently will create a new journal file
 /// automatically if there is no current journal.
 ///
 /// If returns an object with the attributes
@@ -1580,7 +1567,6 @@ function delete_api_collection (req, res) {
 
 actions.defineHttp({
   url : API,
-  context : "api",
 
   callback : function (req, res) {
     try {
@@ -1606,15 +1592,11 @@ actions.defineHttp({
   }
 });
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

@@ -1,16 +1,15 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, evil: true */
-/*global require, exports, module, ArangoServerState */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, STARTUP_PATH, SYS_LOAD */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief open actions
+/// @brief basic initialisation
 ///
 /// @file
-/// Actions that are mapped under the "_open" path. Allowing to execute the
-/// actions without authorization.
 ///
 /// DISCLAIMER
 ///
 /// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -27,37 +26,40 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-
-var actions = require("org/arangodb/actions");
-var console = require("console");
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                load files required during startup
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ceberus password manager
-////////////////////////////////////////////////////////////////////////////////
+(function () {
+  var startupPath = STARTUP_PATH;
+  var load = SYS_LOAD;
 
-actions.defineHttp({
-  url: "_open/cerberus",
-  prefix : true,
-
-  callback : function (req, res) {
-    req.user = null;
-    req.database = "_system";
-
-    var suffix = "system/cerberus";
-    suffix = suffix.split("/");
-    suffix = suffix.concat(req.suffix);
-
-    req.suffix = suffix;
-
-    actions.routeRequest(req, res);
+  if (startupPath === "") {
+    startupPath = ".";
   }
-});
+
+  load(startupPath + "/common/bootstrap/modules.js");
+  load(startupPath + "/common/bootstrap/module-internal.js");
+  load(startupPath + "/common/bootstrap/module-fs.js");
+  load(startupPath + "/common/bootstrap/module-console.js");
+  load(startupPath + "/common/bootstrap/errors.js");
+  load(startupPath + "/common/bootstrap/monkeypatches.js");
+  load(startupPath + "/server/bootstrap/module-internal.js");
+}());
+
+// global Buffer
+var Buffer = require("buffer").Buffer;
+
+// extend prototypes for internally defined classes
+require("org/arangodb");
+
+// load the actions from the actions directory
+require("org/arangodb/actions").startup();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

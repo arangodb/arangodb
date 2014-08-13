@@ -393,24 +393,26 @@ namespace triagens {
         };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Methods for execution
+/// Lifecycle is:
+///    CONSTRUCTOR
+///    then the ExecutionEngine automatically calls
+///      staticAnalysis() once, including subqueries
+///    then the ExecutionEngine automatically calls 
+///      initialize() once, including subqueries
+///    possibly repeat many times:
+///      initCursor(...)   (optionally with bind parameters)
+///      // use cursor functionality
+///    then the ExecutionEngine automatically calls
+///      shutdown()
+///    DESTRUCTOR
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief static analysis
 ////////////////////////////////////////////////////////////////////////////////
 
         void staticAnalysis (ExecutionBlock* super = nullptr);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Methods for execution
-/// Lifecycle is:
-///    staticAnalysis()
-///    initialize()
-///    possibly repeat many times:
-///      bind(...)
-///      execute(...)
-///      // use cursor functionality
-///    shutdown()
-/// It should be possible to perform the sequence from initialize to shutdown
-/// multiple times.
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize
@@ -428,28 +430,13 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief bind
+/// @brief initCursor, could be called multiple times
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual int bind (AqlItemBlock* items, size_t pos);
+        virtual int initCursor (AqlItemBlock* items, size_t pos);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief execute
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual int execute () {
-          for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
-            int res = (*it)->execute();
-            if (res != TRI_ERROR_NO_ERROR) {
-              return res;
-            }
-          }
-          _done = false;
-          return TRI_ERROR_NO_ERROR;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown
+/// @brief shutdown, will be called exactly once for the whole query
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual int shutdown () {
@@ -468,13 +455,13 @@ namespace triagens {
           return TRI_ERROR_NO_ERROR;
         }
 
-      protected:
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copy register data from one block (src) into another (dst)
 /// register values are cloned
 ////////////////////////////////////////////////////////////////////////////////
           
+      protected:
+
         void inheritRegisters (AqlItemBlock const* src,
                                AqlItemBlock* dst,
                                size_t row) {
@@ -816,15 +803,18 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief bind, store a copy of the register values coming from above
+/// @brief initCursor, store a copy of the register values coming from above
 ////////////////////////////////////////////////////////////////////////////////
 
-        int bind (AqlItemBlock* items, size_t pos) {
+        int initCursor (AqlItemBlock* items, size_t pos) {
           // Create a deep copy of the register values given to us:
           if (_inputRegisterValues != nullptr) {
             delete _inputRegisterValues;
           }
-          _inputRegisterValues = items->slice(pos, pos+1);
+          if (items != nullptr) {
+            _inputRegisterValues = items->slice(pos, pos+1);
+          }
+          _done = false;
           return TRI_ERROR_NO_ERROR;
         }
 
@@ -1027,37 +1017,26 @@ namespace triagens {
           std::string collectionName(p->_collname);
           collectionName.push_back('/');
 
-          initDocuments();
-
           return TRI_ERROR_NO_ERROR;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief execute, here we release our docs from this collection
+/// @brief initCursor, here we release our docs from this collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        int execute () {
-          int res = ExecutionBlock::execute();
-
+        int initCursor (AqlItemBlock* items, size_t pos) {
+          int res = ExecutionBlock::initCursor(items, pos);
           if (res != TRI_ERROR_NO_ERROR) {
             return res;
           }
+
+          initDocuments();
 
           if (_totalCount == 0) {
             _done = true;
           }
 
           return TRI_ERROR_NO_ERROR;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown, here we release our docs from this collection
-////////////////////////////////////////////////////////////////////////////////
-
-        int shutdown () {
-          int res = ExecutionBlock::shutdown();  // Tell all dependencies
-
-          return res;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1274,8 +1253,8 @@ namespace triagens {
 /// @brief execute, here we release our docs from this collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        int execute () {
-          int res = ExecutionBlock::execute();
+        int initCursor (AqlItemBlock* items, size_t pos) {
+          int res = ExecutionBlock::initCursor(items, pos);
 
           if (res != TRI_ERROR_NO_ERROR) {
             return res;
@@ -1786,7 +1765,7 @@ namespace triagens {
           TRI_ASSERT(it3 != _varOverview->varInfo.end());
           _outReg = it3->second.registerId;
 
-          return TRI_ERROR_NO_ERROR;
+          return getSubquery()->initialize();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1802,14 +1781,7 @@ namespace triagens {
           }
 
           for (size_t i = 0; i < res->size(); i++) {
-            int ret;
-            ret = _subquery->initialize();
-            if (ret == TRI_ERROR_NO_ERROR) {
-              ret = _subquery->bind(res.get(), i);
-            }
-            if (ret == TRI_ERROR_NO_ERROR) {
-              ret = _subquery->execute();
-            }
+            int ret = _subquery->initCursor(res.get(), i);
             if (ret != TRI_ERROR_NO_ERROR) {
               THROW_ARANGO_EXCEPTION(ret);
             }
@@ -1834,12 +1806,6 @@ namespace triagens {
               delete results;
               throw;
             }
-
-            ret = _subquery->shutdown();
-            if (ret != TRI_ERROR_NO_ERROR) {
-              THROW_ARANGO_EXCEPTION(ret);
-            }
-
           }
           return res.release();
         }
@@ -2241,7 +2207,8 @@ namespace triagens {
               size_t i = 0;
 
               for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
-                int cmp = AqlValue::Compare(_currentGroup.groupValues[i], 
+                int cmp = AqlValue::Compare(_trx,
+                                            _currentGroup.groupValues[i], 
                                             _currentGroup.collections[i],
                                             cur->getValue(_pos, (*it).second), 
                                             cur->getDocumentCollection((*it).second));
@@ -2363,7 +2330,7 @@ namespace triagens {
             _currentGroup.addValues(cur, _groupRegister);
 
             res->setValue(row, _groupRegister, 
-                AqlValue::CreateFromBlocks(_currentGroup.groupBlocks, _variableNames));
+                AqlValue::CreateFromBlocks(_trx, _currentGroup.groupBlocks, _variableNames));
             // FIXME: can throw:
           }
            
@@ -2450,11 +2417,11 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief execute
+/// @brief initCursor
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual int execute () {
-          int res = ExecutionBlock::execute();
+        virtual int initCursor (AqlItemBlock* items, size_t pos) {
+          int res = ExecutionBlock::initCursor(items, pos);
           if (res != TRI_ERROR_NO_ERROR) {
             return res;
           }
@@ -2467,6 +2434,21 @@ namespace triagens {
             return TRI_ERROR_NO_ERROR;
           }
 
+          doSorting();
+          
+          _done = false;
+          _pos = 0;
+
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dosorting
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
+
+        void doSorting () {
           // coords[i][j] is the <j>th row of the <i>th block
           std::vector<std::pair<size_t, size_t>> coords;
 
@@ -2493,7 +2475,7 @@ namespace triagens {
           }
 
           // comparison function
-          OurLessThan ourLessThan(_buffer, _sortRegisters, colls);
+          OurLessThan ourLessThan(_trx, _buffer, _sortRegisters, colls);
           
           // sort coords
           if (_stable) {
@@ -2612,14 +2594,8 @@ namespace triagens {
           for (auto x : newbuffer) {
             delete x;
           }
-          
-          _done = false;
-          _pos = 0;
 
-          return TRI_ERROR_NO_ERROR;
         }
-
-      private:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief OurLessThan
@@ -2627,10 +2603,12 @@ namespace triagens {
         
         class OurLessThan {
           public:
-            OurLessThan (std::deque<AqlItemBlock*>& buffer,  
+            OurLessThan (AQL_TRANSACTION_V8* trx,
+                         std::deque<AqlItemBlock*>& buffer,  
                          std::vector<std::pair<RegisterId, bool>>& sortRegisters,
                          std::vector<TRI_document_collection_t const*>& colls) 
-              : _buffer(buffer), 
+              : _trx(trx), 
+                _buffer(buffer), 
                 _sortRegisters(sortRegisters), 
                 _colls(colls) {
             }
@@ -2640,7 +2618,8 @@ namespace triagens {
 
               size_t i = 0;
               for (auto reg : _sortRegisters) {
-                int cmp = AqlValue::Compare(_buffer[a.first]->getValue(a.second, reg.first),
+                int cmp = AqlValue::Compare(_trx,
+                                            _buffer[a.first]->getValue(a.second, reg.first),
                                             _colls[i],
                                             _buffer[b.first]->getValue(b.second, reg.first),
                                             _colls[i]);
@@ -2657,6 +2636,7 @@ namespace triagens {
             }
 
           private:
+            AQL_TRANSACTION_V8* _trx;
             std::deque<AqlItemBlock*>& _buffer;
             std::vector<std::pair<RegisterId, bool>>& _sortRegisters;
             std::vector<TRI_document_collection_t const*>& _colls;
@@ -2710,18 +2690,33 @@ namespace triagens {
           if (res != TRI_ERROR_NO_ERROR) {
             return res;
           }
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initCursor
+////////////////////////////////////////////////////////////////////////////////
+
+        int initCursor (AqlItemBlock* items, size_t pos) {
+          int res = ExecutionBlock::initCursor(items, pos);
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
           _state = 0;
           _count = 0;
           return TRI_ERROR_NO_ERROR;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getSome
+/// @brief getOrSkipSome
 ////////////////////////////////////////////////////////////////////////////////
         
-        virtual size_t skipSome (size_t atLeast, size_t atMost) {
+        virtual int getOrSkipSome (size_t atLeast, size_t atMost, bool skipping, 
+                                   AqlItemBlock*& result, size_t& skipped) {
+          TRI_ASSERT(result == nullptr && skipped == 0);
+
           if (_state == 2) {
-            return 0;
+            return TRI_ERROR_NO_ERROR;
           }
           
           if (_state == 0) {
@@ -2732,7 +2727,7 @@ namespace triagens {
             _count = 0;
             if (_limit == 0) {
               _state = 2;
-              return 0;
+              return TRI_ERROR_NO_ERROR;
             }
           }
 
@@ -2745,55 +2740,16 @@ namespace triagens {
             }
           }
 
-          size_t skipped = ExecutionBlock::skipSome(atLeast, atMost);
+          ExecutionBlock::getOrSkipSome(atLeast, atMost, skipping, result, skipped);
           if (skipped == 0) {
-            return 0;
+            return TRI_ERROR_NO_ERROR;
           }
           _count += skipped;
           if (_count >= _limit) {
             _state = 2;
           }
 
-          return skipped;
-        }
-
-        virtual AqlItemBlock* getSome (size_t atLeast, 
-                                       size_t atMost) {
-          if (_state == 2) {
-            return nullptr;
-          }
-
-          if (_state == 0) {
-            if (_offset > 0) {
-              ExecutionBlock::_dependencies[0]->skip(_offset);
-            }
-            _state = 1;
-            _count = 0;
-            if (_limit == 0) {
-              _state = 2;
-              return nullptr;
-            }
-          }
-
-          // If we get to here, _state == 1 and _count < _limit
-
-          if (atMost > _limit - _count) {
-            atMost = _limit - _count;
-            if (atLeast > atMost) {
-              atLeast = atMost;
-            }
-          }
-
-          auto res = ExecutionBlock::getSome(atLeast, atMost);
-          if (res == nullptr) {
-            return res;
-          }
-          _count += res->size();
-          if (_count >= _limit) {
-            _state = 2;
-          }
-
-          return res;
+          return TRI_ERROR_NO_ERROR;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

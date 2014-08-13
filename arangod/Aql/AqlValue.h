@@ -154,36 +154,40 @@ namespace triagens {
 /// @brief construct a V8 value as input for the expression execution in V8
 ////////////////////////////////////////////////////////////////////////////////
 
-      v8::Handle<v8::Value> toV8 (AQL_TRANSACTION_V8* trx, 
+      v8::Handle<v8::Value> toV8 (AQL_TRANSACTION_V8*, 
                                   TRI_document_collection_t const*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toString method
 ////////////////////////////////////////////////////////////////////////////////
 
-      std::string toString (TRI_document_collection_t const*) const;
+      std::string toString (AQL_TRANSACTION_V8*,
+                            TRI_document_collection_t const*) const;
       
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson method
 ////////////////////////////////////////////////////////////////////////////////
       
-      triagens::basics::Json toJson (TRI_document_collection_t const*) const;
+      triagens::basics::Json toJson (AQL_TRANSACTION_V8*,
+                                     TRI_document_collection_t const*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AqlValue from a vector of AqlItemBlock*s
 ////////////////////////////////////////////////////////////////////////////////
 
-      static AqlValue CreateFromBlocks (std::vector<AqlItemBlock*> const&,
+      static AqlValue CreateFromBlocks (AQL_TRANSACTION_V8*,
+                                        std::vector<AqlItemBlock*> const&,
                                         std::vector<std::string> const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 3-way comparison for AqlValue objects
 ////////////////////////////////////////////////////////////////////////////////
     
-      static int Compare (AqlValue const& left,  
-                          TRI_document_collection_t const* leftcoll,
-                          AqlValue const& right, 
-                          TRI_document_collection_t const* rightcoll);
+      static int Compare (AQL_TRANSACTION_V8*,
+                          AqlValue const&,  
+                          TRI_document_collection_t const*,
+                          AqlValue const&, 
+                          TRI_document_collection_t const*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables

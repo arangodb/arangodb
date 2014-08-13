@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global _, Backbone, templateEngine, window, setTimeout, clearTimeout, arangoHelper, $*/
+/*global _, Backbone, templateEngine, window, setTimeout, clearTimeout, arangoHelper, Joi, $*/
 
 (function() {
   "use strict";
@@ -298,7 +298,17 @@
           "",
           false,
           "",
-          true
+          true,
+          [
+            {
+              rule: Joi.string().regex(/^[a-zA-Z]/),
+              msg: "Collection name must always start with a letter."
+            },
+            {
+              rule: Joi.string().required(),
+              msg: "No collection name given."
+            }
+          ]
         )
       );
       tableContent.push(
@@ -347,8 +357,18 @@
           "",
           "The maximal size of a journal or datafile (in MB). Must be at least 1.",
           "",
-          false
-        )
+          false,
+          [
+            {
+              rule: Joi.string().required(),
+              msg: "No journal size given."
+            },
+            {
+              rule: Joi.string().regex(/^[0-9]*$/),
+              msg: "Must be a number."
+            }
+          ]
+      )
       );
       advancedTableContent.push(
         window.modalView.createSelectEntry(

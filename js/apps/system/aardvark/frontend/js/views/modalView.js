@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global Backbone, $, window, _ */
+/*global Backbone, $, window, setTimeout, Joi, _ */
 /*global templateEngine*/
 
 (function () {
@@ -46,7 +46,8 @@
     if (regexp){
       // returns true if the string contains the match
       obj.validateInput = function(el){
-        return regexp.test(el.val());
+        //return regexp.test(el.val());
+        return regexp;
       };
     }
     return obj;
@@ -299,12 +300,54 @@
 
       self.testInput = (function(){
         _.each(tableContent,function(r){
-          if(r.validateInput){
+
+          if(r.validateInput) {
+            //catch result of validation and act
             $('#' + r.id).on('keyup', function(){
-              if(r.validateInput($('#' + r.id))){
+
+              var validation = r.validateInput($('#' + r.id));
+              var error = false, msg;
+
+              _.each(validation, function(validator, key) {
+
+                var schema = Joi.object().keys({
+                  toCheck: validator.rule
+                });
+
+                Joi.validate({
+                  toCheck: $('#' + r.id).val()
+                },
+                schema,
+                function (err, value) {
+
+                  if (err) {
+                    msg = validator.msg;
+                    error = true;
+                  }
+                });
+              });
+              var errorElement = $('#'+r.id).next()[0];
+
+              if(error === true){
+                // if validation throws an error
                 $('#' + r.id).addClass('invalid-input');
-              } else {
+
+                if (errorElement) {
+                  //error element available
+                  $(errorElement).text(msg);
+                }
+                else {
+                  //render error element
+                  $('#' + r.id).after('<p class="errorMessage">' + msg+ '</p>');
+                }
+
+              }
+              else {
+                //validation throws success
                 $('#' + r.id).removeClass('invalid-input');
+                if (errorElement) {
+                  $(errorElement).remove();
+                }
               }
             });
           }
@@ -325,6 +368,13 @@
       if (this.enableHotKeys) {
         this.createModalHotkeys();
       }
+
+      //if input-field is available -> autofocus first one
+      var focus = $('#modal-dialog').find('input');
+      if (focus) {
+        setTimeout(function() {$(focus[0]).focus();}, 800);
+      }
+
     },
 
     hide: function() {

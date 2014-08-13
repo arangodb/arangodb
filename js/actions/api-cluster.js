@@ -1,5 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 140, sloppy: true, vars: true, white: true, plusplus: true, evil: true */
-/*global require, exports, module, SYS_CLUSTER_TEST, ArangoServerState, ArangoClusterComm, ArangoClusterInfo */
+/*global require, exports, module, SYS_CLUSTER_TEST, ArangoServerState, ArangoClusterComm, ArangoClusterInfo,
+         UPGRADE_ARGS: true */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cluster actions
@@ -8,7 +9,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014-2014 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,20 +23,19 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2013-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 var actions = require("org/arangodb/actions");
 var cluster = require("org/arangodb/cluster");
 var internal = require("internal");
 var console = require("console");
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
+var fs = require("fs");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -167,9 +167,8 @@ var console = require("console");
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : "_admin/cluster-test",
-  context : "admin",
-  prefix : true,
+  url: "_admin/cluster-test",
+  prefix: true,
 
   callback : function (req, res) {
     var path;
@@ -298,9 +297,9 @@ function parseAuthorization (authorization) {
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : "_admin/clusterPlanner",
-  context : "admin",
-  prefix : "false",
+  url: "_admin/clusterPlanner",
+  prefix: false,
+
   callback : function (req, res) {
     if (ArangoServerState.disableDispatcherKickstarter() === true) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN);
@@ -389,9 +388,9 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : "_admin/clusterDispatch",
-  context : "admin",
-  prefix : "false",
+  url: "_admin/clusterDispatch",
+  prefix: false,
+
   callback : function (req, res) {
     if (ArangoServerState.disableDispatcherKickstarter() === true) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN);
@@ -540,9 +539,9 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : "_admin/clusterCheckPort",
-  context : "admin",
-  prefix : "false",
+  url: "_admin/clusterCheckPort",
+  prefix: false,
+
   callback : function (req, res) {
     if (ArangoServerState.disableDispatcherKickstarter() === true) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN);
@@ -604,9 +603,9 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : "_admin/clusterStatistics",
-  context : "admin",
-  prefix : "false",
+  url: "_admin/clusterStatistics",
+  prefix: false,
+
   callback : function (req, res) {
     if (req.requestType !== actions.GET) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
@@ -654,10 +653,14 @@ actions.defineHttp({
   }
 });
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief allows to query the historic statistics of a DBserver in the cluster
+////////////////////////////////////////////////////////////////////////////////
+
 actions.defineHttp({
-  url : "_admin/history",
-  context : "admin",
-  prefix : "false",
+  url: "_admin/history",
+  prefix: false,
+
   callback : function (req, res) {
     if (req.requestType !== actions.POST) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
@@ -714,7 +717,7 @@ actions.defineHttp({
         }
         res.responseCode = actions.HTTP_OK;
         res.body = JSON.stringify({result : cursor.docs});
-    } 
+    }
     else {
         // query a remote statistics collection
         var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
@@ -749,8 +752,126 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @}
+/// @brief bootstraps the all db servers
 ////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: "_admin/cluster/bootstrapDbServers",
+  prefix: false,
+
+  callback: function (req, res) {
+    var body = actions.getJsonBody(req, res);
+
+    try {
+      var result = cluster.bootstrapDbServers(body.isRelaunch);
+
+      if (result) {
+        actions.resultOk(req, res, actions.HTTP_OK);
+      }
+      else {
+        actions.resultBad(req, res);
+      }
+    }
+    catch(err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief bootstraps one db server
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: "_admin/cluster/bootstrapDbServer",
+  prefix: false,
+
+  callback: function (req, res) {
+    var body = actions.getJsonBody(req, res);
+
+    UPGRADE_ARGS = {
+      isCluster: true,
+      isDbServer: true,
+      isRelaunch: body.isRelaunch
+    };
+
+    try {
+      var func = internal.loadStartup("server/bootstrap/db-server.js");
+      var result = func && func();
+
+      if (result) {
+        actions.resultOk(req, res, actions.HTTP_OK);
+      }
+      else {
+        actions.resultBad(req, res);
+      }
+    }
+    catch(err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief upgrade cluster database
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: "_admin/cluster/upgradeClusterDatabase",
+  prefix: false,
+
+  callback: function (req, res) {
+    var body = actions.getJsonBody(req, res);
+
+    UPGRADE_ARGS = {
+      isCluster: true,
+      isCoordinator: true,
+      isRelaunch: body.isRelaunch || false,
+      upgrade: body.upgrade || false
+    };
+
+    try {
+      var result = internal.loadStartup("server/upgrade-database.js");
+
+      if (result) {
+        actions.resultOk(req, res, actions.HTTP_OK);
+      }
+      else {
+        actions.resultBad(req, res);
+      }
+    }
+    catch(err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief bootstraps the coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: "_admin/cluster/bootstrapCoordinator",
+  allowUseDatabase: true,
+  prefix: false,
+
+  callback: function (req, res) {
+    try {
+      var func = internal.loadStartup("server/bootstrap/coordinator.js");
+      var result = func && func();
+
+      if (result) {
+        actions.resultOk(req, res, actions.HTTP_OK);
+      }
+      else {
+        actions.resultBad(req, res);
+      }
+    }
+    catch(err) {
+      actions.resultException(req, res, err);
+    }
+  }
+});
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
@@ -758,5 +879,5 @@ actions.defineHttp({
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

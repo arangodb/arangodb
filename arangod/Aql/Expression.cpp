@@ -188,18 +188,33 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
       auto shaper = myCollection->getShaper();
 
       // look for the attribute name in the shape
-      if (strcmp(name, "_key") == 0) {
-        return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, TRI_EXTRACT_MARKER_KEY(result._marker)));
-      }
-      else if (strcmp(name, "_id") == 0) {
-        std::string id(myCollection->_info._name);
-        id.push_back('/');
-        id.append(TRI_EXTRACT_MARKER_KEY(result._marker));
-        return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, id));
-      }
-      else if (strcmp(name, "_rev") == 0) {
-        TRI_voc_rid_t rid = TRI_EXTRACT_MARKER_RID(result._marker);
-        return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, rid)));
+      if (*name == '_') {
+        if (strcmp(name, "_key") == 0) {
+          // _key value is copied into JSON
+          return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, TRI_EXTRACT_MARKER_KEY(result._marker)));
+        }
+        else if (strcmp(name, "_id") == 0) {
+          std::string id(trx->resolver()->getCollectionName(myCollection->_info._cid));
+          id.push_back('/');
+          id.append(TRI_EXTRACT_MARKER_KEY(result._marker));
+          return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, id));
+        }
+        else if (strcmp(name, "_rev") == 0) {
+          TRI_voc_rid_t rid = TRI_EXTRACT_MARKER_RID(result._marker);
+          return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, rid)));
+        }
+        else if (strcmp(name, "_from") == 0) {
+          std::string from(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_FROM_CID(result._marker)));
+          from.push_back('/');
+          from.append(TRI_EXTRACT_MARKER_FROM_KEY(result._marker));
+          return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, from));
+        }
+        else if (strcmp(name, "_to") == 0) {
+          std::string to(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_TO_CID(result._marker)));
+          to.push_back('/');
+          to.append(TRI_EXTRACT_MARKER_TO_KEY(result._marker));
+          return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, to));
+        }
       }
 
       TRI_shape_pid_t pid = shaper->lookupAttributePathByName(shaper, name);
@@ -247,7 +262,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         TRI_document_collection_t const* myCollection = nullptr;
 
         AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
-        list->add(result.toJson(myCollection));
+        list->add(result.toJson(trx, myCollection));
       }
       return AqlValue(list);
     }
@@ -256,7 +271,6 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
       throw;
     }
   }
-
 
   else if (node->type == NODE_TYPE_REFERENCE) {
     auto v = static_cast<Variable*>(node->getData());
