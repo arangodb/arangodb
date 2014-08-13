@@ -204,16 +204,16 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
           return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, rid)));
         }
         else if (strcmp(name, "_from") == 0) {
-          std::string id(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_FROM_CID(result._marker)));
-          id.push_back('/');
-          id.append(TRI_EXTRACT_MARKER_FROM_KEY(result._marker));
-          return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, id));
+          std::string from(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_FROM_CID(result._marker)));
+          from.push_back('/');
+          from.append(TRI_EXTRACT_MARKER_FROM_KEY(result._marker));
+          return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, from));
         }
         else if (strcmp(name, "_to") == 0) {
-          std::string id(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_TO_CID(result._marker)));
-          id.push_back('/');
-          id.append(TRI_EXTRACT_MARKER_TO_KEY(result._marker));
-          return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, id));
+          std::string to(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_TO_CID(result._marker)));
+          to.push_back('/');
+          to.append(TRI_EXTRACT_MARKER_TO_KEY(result._marker));
+          return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, to));
         }
       }
 
@@ -262,7 +262,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         TRI_document_collection_t const* myCollection = nullptr;
 
         AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
-        list->add(result.toJson(myCollection));
+        list->add(result.toJson(trx, myCollection));
       }
       return AqlValue(list);
     }

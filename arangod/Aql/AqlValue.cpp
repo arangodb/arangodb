@@ -215,7 +215,8 @@ v8::Handle<v8::Value> AqlValue::toV8 (AQL_TRANSACTION_V8* trx,
 /// @brief toString method
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string AqlValue::toString (TRI_document_collection_t const* document) const {
+std::string AqlValue::toString (AQL_TRANSACTION_V8* trx,
+                                TRI_document_collection_t const* document) const {
   switch (_type) {
     case JSON: {
       return _json->toString();
@@ -224,7 +225,7 @@ std::string AqlValue::toString (TRI_document_collection_t const* document) const
     case SHAPED: {
       // we're lazy and just stringify the json representation
       // this does not matter as this code is not performance-sensitive
-      return toJson(document).toString();
+      return toJson(trx, document).toString();
     }
 
     case DOCVEC: {
@@ -252,7 +253,8 @@ std::string AqlValue::toString (TRI_document_collection_t const* document) const
 /// @brief toJson method
 ////////////////////////////////////////////////////////////////////////////////
       
-Json AqlValue::toJson (TRI_document_collection_t const* document) const {
+Json AqlValue::toJson (AQL_TRANSACTION_V8* trx,
+                       TRI_document_collection_t const* document) const {
   switch (_type) {
     case JSON: {
       return _json->copy();
@@ -265,16 +267,32 @@ Json AqlValue::toJson (TRI_document_collection_t const* document) const {
       TRI_shaper_t* shaper = document->getShaper();
       TRI_shaped_json_t shaped;
       TRI_EXTRACT_SHAPED_JSON_MARKER(shaped, _marker);
-      triagens::basics::Json json(shaper->_memoryZone, TRI_JsonShapedJson(shaper, &shaped));
+      Json json(shaper->_memoryZone, TRI_JsonShapedJson(shaper, &shaped));
 
+      // append the internal attributes
+
+      // _id, _key, _rev
       char const* key = TRI_EXTRACT_MARKER_KEY(_marker);
-      // TODO: use CollectionNameResolver
-      std::string id(document->_info._name);
+      std::string id(trx->resolver()->getCollectionName(document->_info._cid));
       id.push_back('/');
-      id += std::string(key);
-      json("_id", triagens::basics::Json(id));
-      json("_rev", triagens::basics::Json(std::to_string(TRI_EXTRACT_MARKER_RID(_marker) )));
-      json("_key", triagens::basics::Json(key));
+      id.append(key);
+      json("_id", Json(id));
+      json("_rev", Json(std::to_string(TRI_EXTRACT_MARKER_RID(_marker))));
+      json("_key", Json(key));
+
+      if (TRI_IS_EDGE_MARKER(_marker)) {
+        // _from
+        std::string from(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_FROM_CID(_marker)));
+        from.push_back('/');
+        from.append(TRI_EXTRACT_MARKER_FROM_KEY(_marker));
+        json("_from", Json(from));
+        
+        // _to
+        std::string to(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_TO_CID(_marker)));
+        to.push_back('/');
+        to.append(TRI_EXTRACT_MARKER_TO_KEY(_marker));
+        json("_to", Json(to));
+      }
 
       // TODO: return _from and _to, and fix order of attributes!
       return json;
@@ -297,7 +315,7 @@ Json AqlValue::toJson (TRI_document_collection_t const* document) const {
         size_t const n = current->size();
         auto vecCollection = current->getDocumentCollection(0);
         for (size_t i = 0; i < n; ++i) {
-          json.add(current->getValue(i, 0).toJson(vecCollection));
+          json.add(current->getValue(i, 0).toJson(trx, vecCollection));
         }
       }
 
@@ -331,7 +349,8 @@ Json AqlValue::toJson (TRI_document_collection_t const* document) const {
 /// @brief create an AqlValue from a vector of AqlItemBlock*s
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue AqlValue::CreateFromBlocks (std::vector<AqlItemBlock*> const& src,
+AqlValue AqlValue::CreateFromBlocks (AQL_TRANSACTION_V8* trx,
+                                     std::vector<AqlItemBlock*> const& src,
                                      std::vector<std::string> const& variableNames) {
   size_t totalSize = 0;
 
@@ -352,7 +371,7 @@ AqlValue AqlValue::CreateFromBlocks (std::vector<AqlItemBlock*> const& src,
         for (RegisterId j = 0; j < n; ++j) {
           if (variableNames[j][0] != '\0') {
             // temporaries don't have a name and won't be included
-            values.set(variableNames[j].c_str(), current->getValue(i, j).toJson(current->getDocumentCollection(j)));
+            values.set(variableNames[j].c_str(), current->getValue(i, j).toJson(trx, current->getDocumentCollection(j)));
           }
         }
 
@@ -372,7 +391,8 @@ AqlValue AqlValue::CreateFromBlocks (std::vector<AqlItemBlock*> const& src,
 /// @brief 3-way comparison for AqlValue objects
 ////////////////////////////////////////////////////////////////////////////////
 
-int AqlValue::Compare (AqlValue const& left,  
+int AqlValue::Compare (AQL_TRANSACTION_V8* trx,
+                       AqlValue const& left,  
                        TRI_document_collection_t const* leftcoll,
                        AqlValue const& right, 
                        TRI_document_collection_t const* rightcoll) {
@@ -386,12 +406,12 @@ int AqlValue::Compare (AqlValue const& left,
     }
 
     if (left._type == AqlValue::JSON && right._type == AqlValue::SHAPED) {
-      triagens::basics::Json rjson = right.toJson(rightcoll);
+      triagens::basics::Json rjson = right.toJson(trx, rightcoll);
       return TRI_CompareValuesJson(left._json->json(), rjson.json(), true);
     }
 
     if (left._type == AqlValue::SHAPED && right._type == AqlValue::JSON) {
-      triagens::basics::Json ljson = left.toJson(leftcoll);
+      triagens::basics::Json ljson = left.toJson(trx, leftcoll);
       return TRI_CompareValuesJson(ljson.json(), right._json->json(), true);
     }
 
@@ -432,7 +452,8 @@ int AqlValue::Compare (AqlValue const& left,
              rblock < right._vector->size()) {
         AqlValue lval = left._vector->at(lblock)->getValue(litem, 0);
         AqlValue rval = right._vector->at(rblock)->getValue(ritem, 0);
-        int cmp = Compare(lval, 
+        int cmp = Compare(trx,
+                          lval, 
                           left._vector->at(lblock)->getDocumentCollection(0),
                           rval, 
                           right._vector->at(rblock)->getDocumentCollection(0));
