@@ -272,6 +272,30 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     }
   }
 
+  else if (node->type == NODE_TYPE_ARRAY) {
+    auto resultArray = new Json(Json::Array);
+
+    try {
+      size_t const n = node->numMembers();
+      for (size_t i = 0; i < n; ++i) {
+        auto member = node->getMember(i);
+        TRI_document_collection_t const* myCollection = nullptr;
+
+        TRI_ASSERT(member->type == NODE_TYPE_ARRAY_ELEMENT);
+        auto key = member->getStringValue();
+        member = member->getMember(0);
+
+        AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
+        resultArray->set(key, result.toJson(trx, myCollection));
+      }
+      return AqlValue(resultArray);
+    }
+    catch (...) {
+      delete resultArray;
+      throw;
+    }
+  }
+
   else if (node->type == NODE_TYPE_REFERENCE) {
     auto v = static_cast<Variable*>(node->getData());
 
