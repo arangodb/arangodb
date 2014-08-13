@@ -35,8 +35,8 @@
 #include "Admin/RestBaseHandler.h"
 
 #include "BasicsC/json.h"
-#include "BasicsC/json-utilities.h"
 #include "BasicsC/logging.h"
+#include "Basics/json-utilities.h"
 
 #include "Rest/HttpResponse.h"
 #include "Utils/transactions.h"
