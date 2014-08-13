@@ -50,6 +50,10 @@ size_t const ExecutionBlock::DefaultBatchSize = 1000;
 ////////////////////////////////////////////////////////////////////////////////
          
 ExecutionBlock::~ExecutionBlock () {        
+  for (auto it = _buffer.begin(); it != _buffer.end(); ++it) {
+    delete *it;
+  }
+  _buffer.clear();
 }
 
 // -----------------------------------------------------------------------------
@@ -85,9 +89,9 @@ void ExecutionBlock::walk (WalkerWorker* worker) {
   // Now handle a subquery:
   if (_exeNode->getType() == ExecutionNode::SUBQUERY) {
     auto p = static_cast<SubqueryBlock*>(this);
-    if (worker->enterSubquery(this, p->getSubquery())) { ;
-            p->getSubquery()->walk(worker);
-            worker->leaveSubquery(this, p->getSubquery());
+    if (worker->enterSubquery(this, p->getSubquery())) {
+      p->getSubquery()->walk(worker);
+      worker->leaveSubquery(this, p->getSubquery());
     }
   }
   worker->after(this);

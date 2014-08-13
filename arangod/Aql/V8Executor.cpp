@@ -186,6 +186,7 @@ std::unordered_map<std::string, Function const> const V8Executor::FunctionNames{
   { "GRAPH_BETWEENNESS",           Function("GENERAL_GRAPH_BETWEENNESS", "s|a", false )},
   { "GRAPH_CLOSENESS",             Function("GENERAL_GRAPH_CLOSENESS", "s|a", false )},
   { "GRAPH_ABSOLUTE_ECCENTRICITY", Function("GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY", "s,als|a", false )},
+  { "GRAPH_ABSOLUTE_BETWEENNESS",  Function("GENERAL_GRAPH_ABSOLUTE_BETWEENNESS", "s,als|a", false)},
   { "GRAPH_ABSOLUTE_CLOSENESS",    Function("GENERAL_GRAPH_ABSOLUTE_CLOSENESS", "s,als|a", false )},
   { "GRAPH_DIAMETER",              Function("GENERAL_GRAPH_DIAMETER", "s|a", false )},
   { "GRAPH_RADIUS",                Function("GENERAL_GRAPH_RADIUS", "s|a", false )},
@@ -251,7 +252,7 @@ V8Executor::~V8Executor () {
 V8Expression* V8Executor::generateExpression (AstNode const* node) {
   generateCodeExpression(node);
   
-  std::cout << "Executor::generateExpression: " << _buffer->c_str() << "\n";
+  // std::cout << "Executor::generateExpression: " << _buffer->c_str() << "\n";
 
   v8::TryCatch tryCatch;
   // compile the expression
@@ -271,7 +272,7 @@ V8Expression* V8Executor::generateExpression (AstNode const* node) {
 TRI_json_t* V8Executor::executeExpression (AstNode const* node) {
   generateCodeExpression(node);
 
-  std::cout << "Executor::ExecuteExpression: " << _buffer->c_str() << "\n";
+  // std::cout << "Executor::ExecuteExpression: " << _buffer->c_str() << "\n";
   
   // note: if this function is called without an already opened handle scope,
   // it will fail badly
@@ -622,11 +623,18 @@ void V8Executor::generateCodeFunctionCall (AstNode const* node) {
     auto member = args->getMember(i);
 
     if (member != nullptr) {
-      if (member->type == NODE_TYPE_COLLECTION &&
-          func->containsCollectionParameter) {
-        // do a parameter conversion from a collection parameter to a collection name parameter
-        char const* name = member->getStringValue();
-        generateCodeString(name);
+      if (func->containsCollectionParameter && 
+          func->mustConvertArgument(i)) {
+        // the parameter at this position must be a collection name that is converted to a string
+        if (member->type == NODE_TYPE_COLLECTION) {
+          // do a parameter conversion from a collection parameter to a collection name parameter
+          char const* name = member->getStringValue();
+          generateCodeString(name);
+        }
+        else {
+          // the parameter at the position is not a collection name... fail
+          THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func->name.c_str());
+        }
       }
       else {
         // generate regular code for the node
@@ -849,7 +857,8 @@ void V8Executor::generateCodeNode (AstNode const* node) {
       break;
 
     case NODE_TYPE_VARIABLE:
-      // we're not expecting a variable here
+    case NODE_TYPE_PARAMETER:
+      // we're not expecting these types here
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 
     default:

@@ -180,7 +180,7 @@ QueryResult Query::execute () {
     parser.ast()->injectBindParameters(_bindParameters);
     // optimize the ast
     parser.ast()->optimize();
-    std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
+    // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
 
     triagens::arango::AqlTransaction<triagens::arango::V8TransactionContext<true>> trx(_vocbase, _collections.collections());
 
@@ -238,8 +238,14 @@ QueryResult Query::execute () {
   catch (triagens::arango::Exception const& ex) {
     return QueryResult(ex.code(), ex.message());
   }
-  catch (...) {
+  catch (std::bad_alloc const& ex) {
     return QueryResult(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+  }
+  catch (std::exception const& ex) {
+    return QueryResult(TRI_ERROR_INTERNAL, ex.what());
+  }
+  catch (...) {
+    return QueryResult(TRI_ERROR_INTERNAL, TRI_errno_string(TRI_ERROR_INTERNAL));
   }
 }
 

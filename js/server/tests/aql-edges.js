@@ -397,7 +397,7 @@ function ahuacatlQueryEdgesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testToQueryLinkedMulti1 : function () {
-      var actual = getQueryResults("FOR u IN UnitTestsAhuacatlUsers FOR r IN UnitTestsAhuacatlUserRelations FILTER r._to == \"" + docs["Multi"]._id +"\" && r._to == u._id RETURN { \"from\" : r._from, \"to\" : r._to, \"link\" : u.name }");
+      var actual = getQueryResults("FOR u IN UnitTestsAhuacatlUsers FOR r IN UnitTestsAhuacatlUserRelations FILTER r._to == \"" + docs["Multi"]._id +"\" && r._to == u._id SORT u.id, r.what RETURN { \"from\" : r._from, \"to\" : r._to, \"link\" : u.name }");
       assertEqual(0, actual.length);
     },
 
@@ -406,7 +406,7 @@ function ahuacatlQueryEdgesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testToQueryLinkedMulti2 : function () {
-      var actual = getQueryResults("FOR u IN UnitTestsAhuacatlUsers FOR r IN UnitTestsAhuacatlUserRelations FILTER r._to == \"" + docs["Multi3"]._id +"\" && r._to == u._id RETURN { \"from\" : r._from, \"to\" : r._to, \"link\" : u.name }");
+      var actual = getQueryResults("FOR u IN UnitTestsAhuacatlUsers FOR r IN UnitTestsAhuacatlUserRelations FILTER r._to == \"" + docs["Multi3"]._id +"\" && r._to == u._id SORT u.id, r.what RETURN { \"from\" : r._from, \"to\" : r._to, \"link\" : u.name }");
       assertEqual(2, actual.length);
 
       assertEqual(docs["Multi"]._id, actual[0]["from"]);

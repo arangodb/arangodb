@@ -189,12 +189,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ExecutionBlock* operator[] (size_t pos) {
-          if (pos > _dependencies.size()) {
+          if (pos >= _dependencies.size()) {
             return nullptr;
           }
-          else {
-            return _dependencies.at(pos);
-          }
+
+          return _dependencies.at(pos);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -465,20 +464,15 @@ namespace triagens {
           for (auto it = _buffer.begin(); it != _buffer.end(); ++it) {
             delete *it;
           }
+          _buffer.clear();
           return TRI_ERROR_NO_ERROR;
         }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the following is internal to pull one more block and append it to
-/// our _buffer deque. Returns true if a new block was appended and false if
-/// the dependent node is exhausted.
-////////////////////////////////////////////////////////////////////////////////
 
       protected:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copy register data from one block (src) into another (dst)
-/// register values are either copied/cloned or stolen
+/// register values are cloned
 ////////////////////////////////////////////////////////////////////////////////
           
         void inheritRegisters (AqlItemBlock const* src,
@@ -488,7 +482,14 @@ namespace triagens {
 
           for (RegisterId i = 0; i < n; i++) {
             if (! src->getValue(row, i).isEmpty()) {
-              dst->setValue(0, i, src->getValue(row, i).clone());
+              AqlValue a = src->getValue(row, i).clone();
+              try {
+                dst->setValue(0, i, a);
+              }
+              catch (...) {
+                a.destroy();
+                throw;
+              }
             }
 
             // copy collection
@@ -496,18 +497,30 @@ namespace triagens {
           }
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the following is internal to pull one more block and append it to
+/// our _buffer deque. Returns true if a new block was appended and false if
+/// the dependent node is exhausted.
+////////////////////////////////////////////////////////////////////////////////
+
         bool getBlock (size_t atLeast, size_t atMost) {
 
           AqlItemBlock* docs = _dependencies[0]->getSome(atLeast, atMost);
           if (docs == nullptr) {
             return false;
           }
-          _buffer.push_back(docs);
+          try {
+            _buffer.push_back(docs);
+          }
+          catch (...) {
+            delete docs;
+            throw;
+          }
           return true;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getOne, gets one more document
+/// @brief getOne, gets one more item
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
@@ -515,6 +528,7 @@ namespace triagens {
         virtual AqlItemBlock* getOne () {
           return getSome(1, 1);
         }
+        
         //~J remove virtual  when all subclass skipSome methods are removed
         virtual AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
           size_t skipped = 0;
@@ -657,7 +671,7 @@ namespace triagens {
               result = collector[0];
             }
             else if (collector.size() > 0) {
-              result = AqlItemBlock::splice(collector);
+              result = AqlItemBlock::concatenate(collector);
               for (auto it = collector.begin(); it != collector.end(); ++it) {
                 delete (*it);
               }
@@ -750,6 +764,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~SingletonBlock () {
+          if (_inputRegisterValues != nullptr) {
+            delete _inputRegisterValues;
+            _inputRegisterValues = nullptr;
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -772,14 +790,6 @@ namespace triagens {
           }
           _inputRegisterValues = items->slice(pos, pos+1);
           return TRI_ERROR_NO_ERROR;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute, just call base class
-////////////////////////////////////////////////////////////////////////////////
-
-        int execute () {
-          return ExecutionBlock::execute();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -829,24 +839,45 @@ namespace triagens {
 /// @brief getOrSkipSome
 ////////////////////////////////////////////////////////////////////////////////
 
-        int getOrSkipSome (size_t atLeast, size_t atMost, bool skip, 
+        int getOrSkipSome (size_t atLeast, size_t atMost, bool skipping, 
                            AqlItemBlock*& result, size_t& skipped) {
+          
+          TRI_ASSERT(result == nullptr);
 
           if (_done) {
             return TRI_ERROR_NO_ERROR;
           }
           
-          if(!skip){
+          if(!skipping){
             result = new AqlItemBlock(1, _varOverview->nrRegs[_depth]);
-            if (_inputRegisterValues != nullptr) {
-              skipped++;
-              for (RegisterId reg = 0; reg < _inputRegisterValues->getNrRegs(); ++reg) {
-                result->setValue(0, reg, _inputRegisterValues->getValue(0, reg));
-                _inputRegisterValues->eraseValue(0, reg);
-                result->setDocumentCollection(reg,
-                         _inputRegisterValues->getDocumentCollection(reg));
+            try {
+              if (_inputRegisterValues != nullptr) {
+                skipped++;
+                for (RegisterId reg = 0; reg < _inputRegisterValues->getNrRegs(); ++reg) {
+                  
+                  AqlValue a = _inputRegisterValues->getValue(0, reg);
+                  _inputRegisterValues->steal(a);
+                  
+                  try {
+                    result->setValue(0, reg, a);
+                  }
+                  catch (...) {
+                    a.destroy();
+                    throw;
+                  }
+                  _inputRegisterValues->eraseValue(0, reg);
+                    // if the latter throws, it does not matter, since we have
+                    // already stolen the value
+                  result->setDocumentCollection(reg,
+                           _inputRegisterValues->getDocumentCollection(reg));
 
+                }
               }
+            }
+            catch (...) {
+              delete result;
+              result = nullptr;
+              throw;
             }
           } 
           else {
@@ -859,11 +890,13 @@ namespace triagens {
           return TRI_ERROR_NO_ERROR;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _inputRegisterValues
+////////////////////////////////////////////////////////////////////////////////
+
         AqlItemBlock* _inputRegisterValues;
 
     };
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          EnumerateCollectionBlock
@@ -1017,11 +1050,12 @@ namespace triagens {
           size_t available = _documents.size() - _posInAllDocs;
           size_t toSend = std::min(atMost, available);
             
-          auto res = new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]);
+          unique_ptr<AqlItemBlock> res(new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]));
+              // automatically freed if we throw
           TRI_ASSERT(curRegs <= res->getNrRegs());
 
           // only copy 1st row of registers inherited from previous frame(s)
-          inheritRegisters(cur, res, _pos);
+          inheritRegisters(cur, res.get(), _pos);
 
           // set our collection for our output register
           res->setDocumentCollection(curRegs, _trx->documentCollection());
@@ -1031,6 +1065,8 @@ namespace triagens {
               // re-use already copied aqlvalues
               for (RegisterId i = 0; i < curRegs; i++) {
                 res->setValue(j, i, res->getValue(0, i));
+                // Note: if this throws, then all values will be deleted
+                // properly since the first one is.
               }
             }
 
@@ -1040,6 +1076,7 @@ namespace triagens {
             res->setValue(j, curRegs, 
                 AqlValue(reinterpret_cast<TRI_df_marker_t 
                   const*>(_documents[_posInAllDocs++].getDataPtr())));
+            // No harm done, if the setValue throws!
           }
 
           // Advance read position:
@@ -1052,13 +1089,13 @@ namespace triagens {
               // nothing more to read, re-initialize fetching of documents
               initDocuments();
               if (++_pos >= cur->size()) {
-                _buffer.pop_front();
+                _buffer.pop_front();  // does not throw
                 delete cur;
                 _pos = 0;
               }
             }
           }
-          return res;
+          return res.release();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1098,7 +1135,7 @@ namespace triagens {
                 // nothing more to read, re-initialize fetching of documents
                 initDocuments();
                 if (++_pos >= cur->size()) {
-                  _buffer.pop_front();
+                  _buffer.pop_front();  // does not throw
                   delete cur;
                   _pos = 0;
                 } 
@@ -1109,8 +1146,8 @@ namespace triagens {
               skipped = atMost;
             }
           }
-        return skipped;
-      }
+          return skipped;
+        }
 
       private:
 
@@ -1186,8 +1223,8 @@ namespace triagens {
           
           // get the inVariable register id . . .
           // staticAnalysis has been run, so _varOverview is set up
-          
           auto it = _varOverview->varInfo.find(en->_inVariable->id);
+
           if (it == _varOverview->varInfo.end()){
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "variable not found");
           }
@@ -1209,10 +1246,10 @@ namespace triagens {
           }
 
           // handle local data (if any) 
-           _index = 0;     // index in _inVariable for next run
-           _thisblock = 0; // the current block in the _inVariable DOCVEC
-           _seen = 0;      // the sum of the sizes of the blocks in the _inVariable
-                           // DOCVEC that preceed _thisblock
+          _index = 0;     // index in _inVariable for next run
+          _thisblock = 0; // the current block in the _inVariable DOCVEC
+          _seen = 0;      // the sum of the sizes of the blocks in the _inVariable
+                          // DOCVEC that preceed _thisblock
 
           return TRI_ERROR_NO_ERROR;
         }
@@ -1226,8 +1263,8 @@ namespace triagens {
             return nullptr;
           }
 
-          AqlItemBlock* res;
-
+          unique_ptr<AqlItemBlock> res(nullptr);
+         
           do {
             // repeatedly try to get more stuff from upstream
             // note that the value of the variable we have to loop over
@@ -1260,25 +1297,36 @@ namespace triagens {
                 sizeInVar = inVarReg._json->size();
                 break;
               }
+
               case AqlValue::RANGE: {
-                sizeInVar = inVarReg._range->_high - inVarReg._range->_low + 1;
+                sizeInVar = inVarReg._range->size();
                 break;
               }
+
               case AqlValue::DOCVEC: {
                 if( _index == 0) { // this is a (maybe) new DOCVEC
                   _DOCVECsize = 0;
                   //we require the total number of items 
+
                   for (size_t i = 0; i < inVarReg._vector->size(); i++) {
                     _DOCVECsize += inVarReg._vector->at(i)->size();
                   }
-                  collection = inVarReg._vector->at(0)->getDocumentCollection(0);
                 }
                 sizeInVar = _DOCVECsize;
+                if (sizeInVar > 0) {
+                  collection = inVarReg._vector->at(0)->getDocumentCollection(0);
+                }
                 break;
               }
-              default: {
+
+              case AqlValue::SHAPED: {
                 THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                    "EnumerateListBlock: unexpected type in register");
+                    "EnumerateListBlock: cannot iterate over shaped value");
+              }
+              
+              case AqlValue::EMPTY: {
+                THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                    "EnumerateListBlock: cannot iterate over empty value");
               }
             }
 
@@ -1289,11 +1337,11 @@ namespace triagens {
               size_t toSend = std::min(atMost, sizeInVar - _index); 
 
               // create the result
-              res = new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]);
+              res.reset(new AqlItemBlock(toSend, _varOverview->nrRegs[_depth]));
               
-              inheritRegisters(cur, res, _pos);
+              inheritRegisters(cur, res.get(), _pos);
 
-              // we don't have a collection
+              // we might have a collection:
               res->setDocumentCollection(cur->getNrRegs(), collection);
 
               for (size_t j = 0; j < toSend; j++) {
@@ -1301,13 +1349,22 @@ namespace triagens {
                   // re-use already copied aqlvalues
                   for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
                     res->setValue(j, i, res->getValue(0, i));
+                    // Note that if this throws, all values will be
+                    // deleted properly, since the first row is.
                   }
                 }
                 // add the new register value . . .
-                res->setValue(j, cur->getNrRegs(), getAqlValue(inVarReg));
+                AqlValue a = getAqlValue(inVarReg);
                 // deep copy of the inVariable.at(_pos) with correct memory
                 // requirements
                 // Note that _index has been increased by 1 by getAqlValue!
+                try {
+                  res->setValue(j, cur->getNrRegs(), a);
+                }
+                catch (...) {
+                  a.destroy();
+                  throw;
+                }
               }
             }
             if (_index == sizeInVar) {
@@ -1317,14 +1374,14 @@ namespace triagens {
               // advance read position in the current block . . .
               if (++_pos == cur->size() ) {
                 delete cur;
-                _buffer.pop_front();
+                _buffer.pop_front();  // does not throw
                 _pos = 0;
               }
             }
           } 
-          while (res == nullptr);
+          while (res.get() == nullptr);
 
-          return res;
+          return res.release();
         } 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1416,6 +1473,9 @@ namespace triagens {
         AqlValue getAqlValue (AqlValue inVarReg) {
           switch (inVarReg._type) {
             case AqlValue::JSON: {
+              // FIXME: is this correct? What if the copy works, but the
+              // new throws? Is this then a leak? What if the new works
+              // but the AqlValue temporary cannot be made?
               return AqlValue(new basics::Json(inVarReg._json->at(_index++).copy()));
             }
             case AqlValue::RANGE: {
@@ -1431,10 +1491,15 @@ namespace triagens {
               }
               return out;
             }
-            default: {
-              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected value in variable to iterate over");
+            
+            case AqlValue::SHAPED: 
+            case AqlValue::EMPTY: {
+              // error
+              break;
             }
           }
+              
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected value in variable to iterate over");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1560,7 +1625,14 @@ namespace triagens {
 
             for (size_t i = 0; i < n; i++) {
               // must clone, otherwise all the results become invalid
-              result->setValue(i, _outReg, result->getValue(i, _inRegs[0]).clone());
+              AqlValue a = result->getValue(i, _inRegs[0]).clone();
+              try {
+                result->setValue(i, _outReg, a);
+              }
+              catch (...) {
+                a.destroy();
+                throw;
+              }
             }
           }
           else {
@@ -1571,7 +1643,14 @@ namespace triagens {
             result->setDocumentCollection(_outReg, nullptr);
             for (size_t i = 0; i < n; i++) {
               // need to execute the expression
-              result->setValue(i, _outReg, _expression->execute(_trx, docColls, data, nrRegs * i, _inVars, _inRegs));
+              AqlValue a = _expression->execute(_trx, docColls, data, nrRegs * i, _inVars, _inRegs);
+              try {
+                result->setValue(i, _outReg, a);
+              }
+              catch (...) {
+                a.destroy();
+                throw;
+              }
             }
           }
         }
@@ -1584,20 +1663,14 @@ namespace triagens {
 
         virtual AqlItemBlock* getSome (size_t atLeast, 
                                        size_t atMost) {
-          AqlItemBlock* res = ExecutionBlock::getSome(atLeast, atMost);
+          unique_ptr<AqlItemBlock> res(ExecutionBlock::getSome(atLeast, atMost));
           
-          if (res == nullptr) {
+          if (res.get() == nullptr) {
             return nullptr;
           }
 
-          try {
-            doEvaluation(res);
-            return res;
-          }
-          catch (...) {
-            delete res;
-            throw;
-          }
+          doEvaluation(res.get());
+          return res.release();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1686,57 +1759,63 @@ namespace triagens {
 
         virtual AqlItemBlock* getSome (size_t atLeast,
                                        size_t atMost) {
-          AqlItemBlock* res = ExecutionBlock::getSome(atLeast, atMost);
+          unique_ptr<AqlItemBlock> res(ExecutionBlock::getSome(atLeast, atMost));
 
-          if (res == nullptr) {
+          if (res.get() == nullptr) {
             return nullptr;
           }
+
           for (size_t i = 0; i < res->size(); i++) {
             int ret;
             ret = _subquery->initialize();
             if (ret == TRI_ERROR_NO_ERROR) {
-              ret = _subquery->bind(res, i);
+              ret = _subquery->bind(res.get(), i);
             }
             if (ret == TRI_ERROR_NO_ERROR) {
               ret = _subquery->execute();
             }
             if (ret != TRI_ERROR_NO_ERROR) {
-              delete res;
               THROW_ARANGO_EXCEPTION(ret);
             }
 
             auto results = new std::vector<AqlItemBlock*>;
             try {
               do {
-                auto tmp = _subquery->getSome(DefaultBatchSize, DefaultBatchSize);
-                if (tmp == nullptr) {
+                unique_ptr<AqlItemBlock> tmp(_subquery->getSome(DefaultBatchSize, DefaultBatchSize));
+                if (tmp.get() == nullptr) {
                   break;
                 }
-                results->push_back(tmp);
+                results->push_back(tmp.get());
+                tmp.release();
               }
               while(true);
+              res->setValue(i, _outReg, AqlValue(results));
             }
             catch (...) {
-              delete res;
+              for (auto x : *results) {
+                delete x;
+              }
               delete results;
               throw;
             }
 
-            res->setValue(i, _outReg, AqlValue(results));
-
             ret = _subquery->shutdown();
             if (ret != TRI_ERROR_NO_ERROR) {
-              delete res;
               THROW_ARANGO_EXCEPTION(ret);
             }
 
           }
-          return res;
+          return res.release();
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getter for the pointer to the subquery
+////////////////////////////////////////////////////////////////////////////////
+
         ExecutionBlock* getSubquery() {
-                return _subquery;
+          return _subquery;
         }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief we hold a pointer to the expression in the plan
 ////////////////////////////////////////////////////////////////////////////////
@@ -1858,7 +1937,6 @@ namespace triagens {
 
           // if _buffer.size() is > 0 then _pos is valid
           vector<AqlItemBlock*> collector;
-
           try {
             while (skipped < atLeast) {
               if (_buffer.empty()) {
@@ -1919,7 +1997,7 @@ namespace triagens {
               result = collector[0];
             }
             else if (collector.size() > 1 ) {
-              result = AqlItemBlock::splice(collector);
+              result = AqlItemBlock::concatenate(collector);
               for (auto it = collector.begin(); 
                    it != collector.end(); ++it) {
                 delete (*it);
@@ -1952,15 +2030,6 @@ namespace triagens {
           // in it.
 
           return true;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief skip
-////////////////////////////////////////////////////////////////////////////////
-
-        bool skip (size_t number) {
-          // FIXME: to be implemented
-          return false;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2078,6 +2147,8 @@ namespace triagens {
           
           return TRI_ERROR_NO_ERROR;
         }
+
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getSome
@@ -2219,7 +2290,6 @@ namespace triagens {
           return TRI_ERROR_NO_ERROR;
         }
 
-      private:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writes the current group data into the result
@@ -2231,6 +2301,7 @@ namespace triagens {
 
           size_t i = 0;
           for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
+            // FIXME: can throw:
             res->setValue(row, (*it).first, _currentGroup.groupValues[i]);
             ++i;
           }
@@ -2241,6 +2312,7 @@ namespace triagens {
 
             res->setValue(row, _groupRegister, 
                 AqlValue::CreateFromBlocks(_currentGroup.groupBlocks, _variableNames));
+            // FIXME: can throw:
           }
            
           // reset the group so a new one can start
@@ -2379,41 +2451,117 @@ namespace triagens {
             std::sort(coords.begin(), coords.end(), ourLessThan);
           }
 
-          //copy old blocks from _buffer into newbuf
-          std::vector<AqlItemBlock*> newbuf;
+          // here we collect the new blocks (later swapped into _buffer):
+          std::deque<AqlItemBlock*> newbuffer;
           
-          // reserve enough space in newbuf here because we know the target size
-          newbuf.reserve(_buffer.size());
+          try {  // If we throw from here, the catch will delete the new
+                 // blocks in newbuffer
+            _buffer.clear();
+            
+            count = 0;
+            RegisterId const nrregs = _buffer.front()->getNrRegs();
+            
+            // install the rearranged values from _buffer into newbuffer
 
-          for (auto x : _buffer) {
-            newbuf.push_back(x);
-          }
-          _buffer.clear();
-          
-          count = 0;
-          RegisterId const nrregs = newbuf.front()->getNrRegs();
-          
-          //install the rearranged values from <newbuf> into <_buffer>
-          while (count < sum) {
-            size_t sizeNext = (sum - count > DefaultBatchSize ?  DefaultBatchSize : sum - count);
-            AqlItemBlock* next = new AqlItemBlock(sizeNext, nrregs);
-            for (size_t i = 0; i < sizeNext; i++) {
-              for (RegisterId j = 0; j < nrregs; j++) {
-                next->setValue(i, j, newbuf[coords[count].first]->getValue(coords[count].second, j));
-                newbuf[coords[count].first]->eraseValue(coords[count].second, j);
+            while (count < sum) {
+              size_t sizeNext = std::min(sum - count, DefaultBatchSize);
+              AqlItemBlock* next = new AqlItemBlock(sizeNext, nrregs);
+              try {
+                newbuffer.push_back(next);
               }
-              count++;
+              catch (...) {
+                delete next;
+                throw;
+              }
+              std::unordered_map<AqlValue, AqlValue> cache;  
+                  // only copy as much as needed!
+              for (size_t i = 0; i < sizeNext; i++) {
+                for (RegisterId j = 0; j < nrregs; j++) {
+                  AqlValue a = _buffer[coords[count].first]->getValue(coords[count].second, j);
+                  // If we have already dealt with this value for the next
+                  // block, then we just put the same value again:
+                  if (! a.isEmpty()) {
+                    auto it = cache.find(a);
+                    if (it != cache.end()) {
+                      AqlValue b = it->second;
+                      // If one of the following throws, all is well, because
+                      // the new block already has either a copy or stolen
+                      // the AqlValue:
+                      _buffer[coords[count].first]->eraseValue(coords[count].second, j);
+                      next->setValue(i, j, b);
+                    }
+                    else {
+                      // We need to copy a, if it has already been stolen from
+                      // its original buffer, which we know by looking at the
+                      // valueCount there.
+                      auto vCount = _buffer[coords[count].first]->valueCount(a);
+                      if (vCount == 0) {
+                        // Was already stolen for another block
+                        AqlValue b = a.clone();
+                        try {
+                          cache.insert(make_pair(a,b));
+                        }
+                        catch (...) {
+                          b.destroy();
+                          throw;
+                        }
+                        try {
+                          next->setValue(i, j, b);
+                        }
+                        catch (...) {
+                          b.destroy();
+                          cache.erase(a);
+                          throw;
+                        }
+                        // It does not matter whether the following works or not,
+                        // since the original block keeps its responsibility 
+                        // for a:
+                        _buffer[coords[count].first]->eraseValue(coords[count].second, j);
+                      }
+                      else {
+                        // Here we are the first to want to inherit a, so we
+                        // steal it:
+                        _buffer[coords[count].first]->steal(a);
+                        // If this has worked, responsibility is now with the
+                        // new block or indeed with us!
+                        try {
+                          next->setValue(i, j, a);
+                        }
+                        catch (...) {
+                          a.destroy();
+                          throw;
+                        }
+                        _buffer[coords[count].first]->eraseValue(coords[count].second, j);
+                        // This might throw as well, however, the responsibility
+                        // is already with the new block.
+
+                        // If the following does not work, we will create a
+                        // few unnecessary copies, but this does not matter:
+                        cache.insert(make_pair(a,a));
+                      }
+                    }
+                  }
+                }
+                count++;
+              }
+              cache.clear();
+              for (RegisterId j = 0; j < nrregs; j++) {
+                next->setDocumentCollection(j, _buffer.front()->getDocumentCollection(j));
+              }
             }
-            for (RegisterId j = 0; j < nrregs; j++) {
-              next->setDocumentCollection(j, newbuf.front()->getDocumentCollection(j));
-            }
-            _buffer.push_back(next);
           }
-          
-          for (auto x : newbuf) {
+          catch (...) {
+            for (auto x : newbuffer) {
+              delete x;
+            }
+            throw;
+          }
+          _buffer.swap(newbuffer);  // does not throw since allocators
+                                    // are the same
+          for (auto x : newbuffer) {
             delete x;
           }
-
+          
           _done = false;
           _pos = 0;
 
@@ -2529,7 +2677,16 @@ namespace triagens {
 
           if (_state == 0) {
             if (_offset > 0) {
-              ExecutionBlock::_dependencies[0]->skip(_offset);
+              // TODO: here we're calling getSome to skip over elements
+              // this must be implemented properly using skip() when it works
+              // ATM skip() doesn't work here in the following case:
+              // FOR i IN 0..99 LIMIT 10,50 LIMIT 1,20 RETURN i (returns wrong rows ATM)
+              // ExecutionBlock::_dependencies[0]->skip(_offset);
+              auto tmp = ExecutionBlock::_dependencies[0]->getSome(_offset, _offset);
+              if (tmp != nullptr) {
+                delete tmp;
+              }
+
               _state = 1;
               _count = 0;
               if (_limit == 0) {
@@ -2630,13 +2787,33 @@ namespace triagens {
           RegisterId const registerId = it->second.registerId;
           AqlItemBlock* stripped = new AqlItemBlock(n, 1);
 
-          for (size_t i = 0; i < n; i++) {
-            stripped->setValue(i, 0, res->getValue(i, registerId));
-            res->eraseValue(i, registerId);
+          try {
+            for (size_t i = 0; i < n; i++) {
+              AqlValue a = res->getValue(i, registerId);
+              if (! a.isEmpty()) {
+                res->steal(a);
+                try {
+                  stripped->setValue(i, 0, a);
+                }
+                catch (...) {
+                  a.destroy();
+                  throw;
+                }
+                // If the following does not go well, we do not care, since
+                // the value is already stolen and installed in stripped
+                res->eraseValue(i, registerId);
+              }
+            }
+          }
+          catch (...) {
+            delete stripped;
+            delete res;
+            throw;
           }
           
           stripped->setDocumentCollection(0, res->getDocumentCollection(registerId));
           delete res;
+
           return stripped;
         }
 
