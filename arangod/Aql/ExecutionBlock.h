@@ -592,6 +592,7 @@ namespace triagens {
             return true;
           }
           if (getBlock(DefaultBatchSize, DefaultBatchSize)) {
+            _pos = 0;
             return true;
           }
           _done = true;
@@ -613,7 +614,6 @@ namespace triagens {
         ExecutionNode const* getPlanNode () {
           return _exeNode;
         }
-
 
       protected:
         
@@ -2719,9 +2719,42 @@ namespace triagens {
 /// @brief getSome
 ////////////////////////////////////////////////////////////////////////////////
         
-        virtual size_t skipSome (size_t atLeast, size_t atMost){
+        virtual size_t skipSome (size_t atLeast, size_t atMost) {
+          if (_state == 2) {
+            return 0;
+          }
+          
+          if (_state == 0) {
+            if (_offset > 0) {
+              ExecutionBlock::_dependencies[0]->skip(_offset);
+            }
+            _state = 1;
+            _count = 0;
+            if (_limit == 0) {
+              _state = 2;
+              return 0;
+            }
+          }
 
-          return ExecutionBlock::skipSome(atLeast, atMost);
+          // If we get to here, _state == 1 and _count < _limit
+
+          if (atMost > _limit - _count) {
+            atMost = _limit - _count;
+            if (atLeast > atMost) {
+              atLeast = atMost;
+            }
+          }
+
+          size_t skipped = ExecutionBlock::skipSome(atLeast, atMost);
+          if (skipped == 0) {
+            return 0;
+          }
+          _count += skipped;
+          if (_count >= _limit) {
+            _state = 2;
+          }
+
+          return skipped;
         }
 
         virtual AqlItemBlock* getSome (size_t atLeast, 
@@ -2732,15 +2765,7 @@ namespace triagens {
 
           if (_state == 0) {
             if (_offset > 0) {
-              // TODO: here we're calling getSome to skip over elements
-              // this must be implemented properly using skip() when it works
-              // ATM skip() doesn't work here in the following case:
-              // FOR i IN 0..99 LIMIT 10,50 LIMIT 1,20 RETURN i (returns wrong rows ATM)
-              // ExecutionBlock::_dependencies[0]->skip(_offset);
-              auto tmp = ExecutionBlock::_dependencies[0]->getSome(_offset, _offset);
-              if (tmp != nullptr) {
-                delete tmp;
-              }
+              ExecutionBlock::_dependencies[0]->skip(_offset);
             }
             _state = 1;
             _count = 0;
