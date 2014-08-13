@@ -210,7 +210,7 @@ QueryResult Query::execute () {
             AqlValue val = value->getValue(i, 0);
 
             if (! val.isEmpty()) {
-              json.add(val.toJson(doc)); 
+              json.add(val.toJson(&trx, doc)); 
             }
           }
           delete value;

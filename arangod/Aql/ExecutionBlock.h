@@ -2241,7 +2241,8 @@ namespace triagens {
               size_t i = 0;
 
               for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
-                int cmp = AqlValue::Compare(_currentGroup.groupValues[i], 
+                int cmp = AqlValue::Compare(_trx,
+                                            _currentGroup.groupValues[i], 
                                             _currentGroup.collections[i],
                                             cur->getValue(_pos, (*it).second), 
                                             cur->getDocumentCollection((*it).second));
@@ -2363,7 +2364,7 @@ namespace triagens {
             _currentGroup.addValues(cur, _groupRegister);
 
             res->setValue(row, _groupRegister, 
-                AqlValue::CreateFromBlocks(_currentGroup.groupBlocks, _variableNames));
+                AqlValue::CreateFromBlocks(_trx, _currentGroup.groupBlocks, _variableNames));
             // FIXME: can throw:
           }
            
@@ -2493,7 +2494,7 @@ namespace triagens {
           }
 
           // comparison function
-          OurLessThan ourLessThan(_buffer, _sortRegisters, colls);
+          OurLessThan ourLessThan(_trx, _buffer, _sortRegisters, colls);
           
           // sort coords
           if (_stable) {
@@ -2627,10 +2628,12 @@ namespace triagens {
         
         class OurLessThan {
           public:
-            OurLessThan (std::deque<AqlItemBlock*>& buffer,  
+            OurLessThan (AQL_TRANSACTION_V8* trx,
+                         std::deque<AqlItemBlock*>& buffer,  
                          std::vector<std::pair<RegisterId, bool>>& sortRegisters,
                          std::vector<TRI_document_collection_t const*>& colls) 
-              : _buffer(buffer), 
+              : _trx(trx), 
+                _buffer(buffer), 
                 _sortRegisters(sortRegisters), 
                 _colls(colls) {
             }
@@ -2640,7 +2643,8 @@ namespace triagens {
 
               size_t i = 0;
               for (auto reg : _sortRegisters) {
-                int cmp = AqlValue::Compare(_buffer[a.first]->getValue(a.second, reg.first),
+                int cmp = AqlValue::Compare(_trx,
+                                            _buffer[a.first]->getValue(a.second, reg.first),
                                             _colls[i],
                                             _buffer[b.first]->getValue(b.second, reg.first),
                                             _colls[i]);
@@ -2657,6 +2661,7 @@ namespace triagens {
             }
 
           private:
+            AQL_TRANSACTION_V8* _trx;
             std::deque<AqlItemBlock*>& _buffer;
             std::vector<std::pair<RegisterId, bool>>& _sortRegisters;
             std::vector<TRI_document_collection_t const*>& _colls;
