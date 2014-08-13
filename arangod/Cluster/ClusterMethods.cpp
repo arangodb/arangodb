@@ -32,9 +32,9 @@
 
 #include "BasicsC/conversions.h"
 #include "BasicsC/json.h"
-#include "BasicsC/json-utilities.h"
 #include "BasicsC/tri-strings.h"
 #include "BasicsC/vector.h"
+#include "Basics/json-utilities.h"
 #include "Basics/StringUtils.h"
 #include "VocBase/index.h"
 #include "VocBase/server.h"
