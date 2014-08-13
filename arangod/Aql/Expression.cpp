@@ -36,10 +36,13 @@
 #include "Aql/Variable.h"
 #include "Basics/JsonHelper.h"
 #include "BasicsC/json.h"
+#include "ShapedJson/shaped-json.h"
+#include "VocBase/document-collection.h"
 #include "Utils/Exception.h"
 
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
+using JsonHelper = triagens::basics::JsonHelper;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -96,34 +99,181 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
                               size_t startPos,
                               std::vector<Variable*> const& vars,
                               std::vector<RegisterId> const& regs) {
+
   if (_type == UNPROCESSED) {
-    if (_node->isConstant()) {
-      // generate a constant value
-      _data = _node->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
-
-      if (_data == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-      }
-
-      _type = JSON;
-    }
-    else {
-      // generate a V8 expression
-      _func = _executor->generateExpression(_node);
-      _type = V8;
-    }
+    analyzeExpression();
   }
 
   // and execute
-  if (_type == JSON) {
-    TRI_ASSERT(_data != nullptr);
-    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, _data, Json::NOFREE));
-  }
+  switch (_type) {
+    case JSON: {
+      TRI_ASSERT(_data != nullptr);
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, _data, Json::NOFREE));
+    }
 
-  if (_type == V8) {
-    return _func->execute(trx, docColls, argv, startPos, vars, regs);
+    case V8: {
+      TRI_ASSERT(_func != nullptr);
+      return _func->execute(trx, docColls, argv, startPos, vars, regs);
+    }
+
+    case SIMPLE: {
+      return executeSimpleExpression(_node, nullptr, trx, docColls, argv, startPos, vars, regs);
+    }
+ 
+    case UNPROCESSED: {
+      // fall-through to exception
+    }
+  }
+      
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief analyze the expression (and, if appropriate, compile it into 
+/// executable code)
+////////////////////////////////////////////////////////////////////////////////
+
+void Expression::analyzeExpression () {
+  TRI_ASSERT(_type == UNPROCESSED);
+
+  if (_node->isConstant()) {
+    // generate a constant value
+    _data = _node->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
+
+    if (_data == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
+
+    _type = JSON;
+  }
+  else if (_node->isSimple()) {
+    _type = SIMPLE;
+  }
+  else {
+    // generate a V8 expression
+    _func = _executor->generateExpression(_node);
+    _type = V8;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute an expression of type SIMPLE
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Expression::executeSimpleExpression (AstNode const* node,
+                                              TRI_document_collection_t const** collection, 
+                                              AQL_TRANSACTION_V8* trx,
+                                              std::vector<TRI_document_collection_t const*>& docColls,
+                                              std::vector<AqlValue>& argv,
+                                              size_t startPos,
+                                              std::vector<Variable*> const& vars,
+                                              std::vector<RegisterId> const& regs) {
+
+  if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    TRI_ASSERT(node->numMembers() == 1);
+
+    auto member = node->getMember(0);
+    auto name = static_cast<char const*>(node->getData());
+
+    TRI_document_collection_t const* myCollection = nullptr;
+    AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
+
+    if (result._type == AqlValue::SHAPED) {
+      TRI_ASSERT(myCollection != nullptr);
+
+      auto shaper = myCollection->getShaper();
+
+      // look for the attribute name in the shape
+      if (strcmp(name, "_key") == 0) {
+        return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, TRI_EXTRACT_MARKER_KEY(result._marker)));
+      }
+      else if (strcmp(name, "_id") == 0) {
+        std::string id(myCollection->_info._name);
+        id.push_back('/');
+        id.append(TRI_EXTRACT_MARKER_KEY(result._marker));
+        return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, id));
+      }
+      else if (strcmp(name, "_rev") == 0) {
+        TRI_voc_rid_t rid = TRI_EXTRACT_MARKER_RID(result._marker);
+        return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, rid)));
+      }
+
+      TRI_shape_pid_t pid = shaper->lookupAttributePathByName(shaper, name);
+      if (pid != 0) {
+        // attribute exists
+        TRI_shaped_json_t document;
+        TRI_EXTRACT_SHAPED_JSON_MARKER(document, result._marker);
+
+        TRI_shaped_json_t json;
+        TRI_shape_t const* shape;
+
+        bool ok = TRI_ExtractShapedJsonVocShaper(shaper, &document, 0, pid, &json, &shape);
+        if (ok && shape != nullptr) {
+          return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, TRI_JsonShapedJson(shaper, &json)));
+        }
+      }
+
+      // attribute does not exist or something went wrong - fall-through to returning null below
+    }
+
+    else if (result._type == AqlValue::JSON) {
+      TRI_json_t const* json = result._json->json();
+
+      if (TRI_IsArrayJson(json)) {
+        TRI_json_t const* found = TRI_LookupArrayJson(json, name);
+
+        if (found != nullptr) {
+          return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, found)));
+        }
+      }
+      
+      // attribute does not exist or something went wrong - fall-through to returning null below
+    }
+      
+    return AqlValue(new Json(Json::Null));
   }
   
+  else if (node->type == NODE_TYPE_LIST) {
+    auto list = new Json(Json::List);
+
+    try {
+      size_t const n = node->numMembers();
+      for (size_t i = 0; i < n; ++i) {
+        auto member = node->getMember(i);
+        TRI_document_collection_t const* myCollection = nullptr;
+
+        AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
+        list->add(result.toJson(myCollection));
+      }
+      return AqlValue(list);
+    }
+    catch (...) {
+      delete list;
+      throw;
+    }
+  }
+
+
+  else if (node->type == NODE_TYPE_REFERENCE) {
+    auto v = static_cast<Variable*>(node->getData());
+
+    size_t i = 0;
+    for (auto it = vars.begin(); it != vars.end(); ++it, ++i) {
+      if ((*it)->name == v->name) {
+        TRI_ASSERT(collection != nullptr);
+
+        // save the collection info
+        *collection = docColls[regs[i]]; 
+        return argv[startPos + regs[i]];
+      }
+    }
+    // fall-through to exception
+  }
+
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 

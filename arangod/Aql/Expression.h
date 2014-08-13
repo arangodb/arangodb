@@ -58,7 +58,8 @@ namespace triagens {
       enum ExpressionType {
         UNPROCESSED,
         JSON,
-        V8
+        V8,
+        SIMPLE
       };
 
 // -----------------------------------------------------------------------------
@@ -125,6 +126,31 @@ namespace triagens {
                           std::vector<AqlValue>&, size_t,
                           std::vector<Variable*> const&,
                           std::vector<RegisterId> const&);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief analyze the expression (and, if appropriate, compile it into 
+/// executable code)
+////////////////////////////////////////////////////////////////////////////////
+
+        void analyzeExpression ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute an expression of type SIMPLE
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlValue executeSimpleExpression (AstNode const*,
+                                          TRI_document_collection_t const**,
+                                          AQL_TRANSACTION_V8*,
+                                          std::vector<TRI_document_collection_t const*>&,
+                                          std::vector<AqlValue>&, size_t,
+                                          std::vector<Variable*> const&,
+                                          std::vector<RegisterId> const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
