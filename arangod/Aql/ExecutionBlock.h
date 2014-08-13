@@ -592,6 +592,7 @@ namespace triagens {
             return true;
           }
           if (getBlock(DefaultBatchSize, DefaultBatchSize)) {
+            _pos = 0;
             return true;
           }
           _done = true;
@@ -613,7 +614,6 @@ namespace triagens {
         ExecutionNode const* getPlanNode () {
           return _exeNode;
         }
-
 
       protected:
         
@@ -2716,37 +2716,26 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getSome
+/// @brief getOrSkipSome
 ////////////////////////////////////////////////////////////////////////////////
         
-        virtual size_t skipSome (size_t atLeast, size_t atMost){
+        virtual int getOrSkipSome (size_t atLeast, size_t atMost, bool skipping, 
+                                   AqlItemBlock*& result, size_t& skipped) {
+          TRI_ASSERT(result == nullptr && skipped == 0);
 
-          return ExecutionBlock::skipSome(atLeast, atMost);
-        }
-
-        virtual AqlItemBlock* getSome (size_t atLeast, 
-                                       size_t atMost) {
           if (_state == 2) {
-            return nullptr;
+            return TRI_ERROR_NO_ERROR;
           }
-
+          
           if (_state == 0) {
             if (_offset > 0) {
-              // TODO: here we're calling getSome to skip over elements
-              // this must be implemented properly using skip() when it works
-              // ATM skip() doesn't work here in the following case:
-              // FOR i IN 0..99 LIMIT 10,50 LIMIT 1,20 RETURN i (returns wrong rows ATM)
-              // ExecutionBlock::_dependencies[0]->skip(_offset);
-              auto tmp = ExecutionBlock::_dependencies[0]->getSome(_offset, _offset);
-              if (tmp != nullptr) {
-                delete tmp;
-              }
+              ExecutionBlock::_dependencies[0]->skip(_offset);
             }
             _state = 1;
             _count = 0;
             if (_limit == 0) {
               _state = 2;
-              return nullptr;
+              return TRI_ERROR_NO_ERROR;
             }
           }
 
@@ -2759,16 +2748,16 @@ namespace triagens {
             }
           }
 
-          auto res = ExecutionBlock::getSome(atLeast, atMost);
-          if (res == nullptr) {
-            return res;
+          ExecutionBlock::getOrSkipSome(atLeast, atMost, skipping, result, skipped);
+          if (skipped == 0) {
+            return TRI_ERROR_NO_ERROR;
           }
-          _count += res->size();
+          _count += skipped;
           if (_count >= _limit) {
             _state = 2;
           }
 
-          return res;
+          return TRI_ERROR_NO_ERROR;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
