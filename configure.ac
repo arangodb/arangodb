@@ -153,6 +153,19 @@ else
   BASIC_INFO="$BASIC_INFO|RELATIVE PATHS: disabled"
 fi
 
+dnl ----------------------------------------------------------------------------
+dnl execinfo - for backtraces in the Cpp parts
+dnl ----------------------------------------------------------------------------
+AC_ARG_WITH(backtrace, 
+                    [  --with-backtrace        enable backtrace dumps in the syslog],
+                        [ if test "x$withval" != "xno" ; then
+                             CFLAGS="$CFLAGS  -rdynamic "
+                             LDFLAGS="$LDFLAGS  -rdynamic "
+                             SERVER_LDFLAGS="$SERVER_LDFLAGS  -rdynamic "
+                             AC_CHECK_FUNCS(backtrace)
+                          fi
+                        ]
+)
 
 dnl ============================================================================
 dnl --SECTION--                                                    CONFIGURATION
@@ -171,6 +184,7 @@ m4_include([m4/configure.maintainer])
 dnl ============================================================================
 dnl --SECTION--                                               EXTERNAL LIBRARIES
 dnl ============================================================================
+
 
 dnl ----------------------------------------------------------------------------
 dnl MATH
