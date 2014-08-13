@@ -9339,7 +9339,7 @@ static v8::Handle<v8::Value> CreateDatabaseCoordinator (v8::Arguments const& arg
 
   TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
-  if (0 == json) {
+  if (nullptr == json) {
     TRI_V8_EXCEPTION_MEMORY(scope);
   }
 
@@ -9371,16 +9371,16 @@ static v8::Handle<v8::Value> CreateDatabaseCoordinator (v8::Arguments const& arg
 
   // database was created successfully in agency
 
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
   // now wait for heartbeat thread to create the database object
-  TRI_vocbase_t* database = 0;
+  TRI_vocbase_t* vocbase = nullptr;
   int tries = 0;
 
   while (++tries <= 6000) {
-    database = TRI_UseByIdCoordinatorDatabaseServer((TRI_server_t*) v8g->_server, id);
+    vocbase = TRI_UseByIdCoordinatorDatabaseServer(static_cast<TRI_server_t*>(v8g->_server), id);
 
-    if (database != 0) {
+    if (vocbase != nullptr) {
       break;
     }
 
@@ -9388,7 +9388,7 @@ static v8::Handle<v8::Value> CreateDatabaseCoordinator (v8::Arguments const& arg
     usleep(10000);
   }
 
-  if (database == 0) {
+  if (vocbase == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
   }
 
@@ -9407,7 +9407,7 @@ static v8::Handle<v8::Value> CreateDatabaseCoordinator (v8::Arguments const& arg
   TRI_vocbase_t* orig = v8g->_vocbase;
   TRI_ASSERT(orig != nullptr);
 
-  v8g->_vocbase = database;
+  v8g->_vocbase = vocbase;
 
   // initalise database
   bool allowUseDatabase = v8g->_allowUseDatabase;
@@ -9420,7 +9420,7 @@ static v8::Handle<v8::Value> CreateDatabaseCoordinator (v8::Arguments const& arg
   // and switch back
   v8g->_vocbase = orig;
 
-  TRI_ReleaseVocBase(database);
+  TRI_ReleaseVocBase(vocbase);
 
   return scope.Close(v8::True());
 }
