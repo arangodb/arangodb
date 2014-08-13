@@ -237,6 +237,37 @@ void AstNode::toJson (TRI_json_t* json,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a node is simple enough to be used in a simple
+/// expression
+////////////////////////////////////////////////////////////////////////////////
+
+bool AstNode::isSimple () const {
+  if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    TRI_ASSERT(numMembers() == 1);
+
+    auto member = getMember(0);
+    return member->isSimple();
+  }
+
+  if (type == NODE_TYPE_REFERENCE) {
+    return true;
+  }
+
+  if (type == NODE_TYPE_LIST) {
+    size_t const n = numMembers();
+    for (size_t i = 0; i < n; ++i) {
+      auto member = getMember(i);
+      if (! member->isSimple()) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node has a constant value
 ////////////////////////////////////////////////////////////////////////////////
 
