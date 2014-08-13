@@ -3747,11 +3747,10 @@ static v8::Handle<v8::Value> JS_CompletionsVocbase (v8::Arguments const& argv) {
   return scope.Close(result);
 }
 
-
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              javascript functions
 // -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a document
 /// @startDocuBlock documentsCollectionRemove

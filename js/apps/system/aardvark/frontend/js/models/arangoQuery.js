@@ -9,7 +9,7 @@
     defaults: {
       name: "",
       type: "custom",
-      content: ""
+      value: ""
     }
 
   });

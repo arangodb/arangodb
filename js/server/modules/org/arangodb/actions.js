@@ -887,6 +887,33 @@ function flattenRouting (routes, path, urlParameters, depth, prefix) {
   return result;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief loads all actions
+////////////////////////////////////////////////////////////////////////////////
+
+function startup () {
+  if (internal.defineAction === undefined) {
+    return;
+  }
+
+  var actionPath = fs.join(internal.startupPath, "actions");
+  var actions = fs.list(actionPath);
+  var i;
+
+  for (i = 0;  i < actions.length;  ++i) {
+    var file = actions[i];
+
+    if (file.match(/api-.*\.js$/)) {
+      var full = fs.join(actionPath, file);
+      var content = fs.read(full);
+      
+      content = "(function () {\n" + content + "\n}());";
+      
+      internal.executeScript(content, undefined, full);
+    }
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -986,15 +1013,10 @@ function routeRequest (req, res) {
 /// *options.url* is a prefix of the given url and no longer definition
 /// matches.
 ///
-/// *options.prefix}
+/// `options.prefix`
 ///
 /// If *false*, then only use the action for exact matches. The default is
 /// *true*.
-///
-/// `options.context`
-///
-/// The context to which this actions belongs. Possible values are "admin"
-/// and "user".
 ///
 /// `options.callback(request, response)`
 ///
@@ -1020,31 +1042,28 @@ function defineHttp (options) {
   'use strict';
 
   var url = options.url;
-  var context = options.context;
   var callback = options.callback;
-  var prefix = true;
-
-  if (typeof context === "undefined") {
-    context = "user";
-  }
 
   if (typeof callback !== "function") {
     console.error("callback for '%s' must be a function, got '%s'", url, (typeof callback));
     return;
   }
 
-  if (options.hasOwnProperty("prefix")) {
-    prefix = options.prefix;
-  }
-
   var parameter = {
-    prefix : prefix
+    prefix: true,
+    allowUseDatabase: false
   };
 
-  console.debug("defining action '%s' in context '%s'", url, context);
+  if (options.hasOwnProperty("prefix")) {
+    parameter.prefix = options.prefix;
+  }
+
+  if (options.hasOwnProperty("allowUseDatabase")) {
+    parameter.allowUseDatabase = options.allowUseDatabase;
+  }
 
   try {
-    internal.defineAction(url, callback, parameter, [context]);
+    internal.defineAction(url, callback, parameter);
   }
   catch (err) {
     console.error("action '%s' encountered error: %s", url, err);
@@ -1186,7 +1205,7 @@ function reloadRouting () {
   // .............................................................................
 
   // work with a local variable first
-  var routingCache = { };
+  var routingCache = {};
 
   routingCache.flat = {};
   routingCache.routes = {};
@@ -1813,6 +1832,7 @@ function resultException (req, res, err, headers, verbose) {
 
   if (verbose || verbose === undefined) {
     msg = String(err.stack || err);
+    verbose = true;
   }
   else {
     msg = String(err);
@@ -2098,6 +2118,9 @@ function stringifyRequestAddress (req) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
+
+// load all actions from the actions directory
+exports.startup                  = startup;
 
 // public functions
 exports.routeRequest             = routeRequest;

@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,9 +22,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -48,7 +49,6 @@ var easyPostCallback = actions.easyPostCallback;
 
 actions.defineHttp({
   url : "_admin/foxx/fetch",
-  context : "admin",
   prefix : false,
 
   callback : function (req, res) {
@@ -62,13 +62,13 @@ actions.defineHttp({
     }
 
     var json = actions.getJsonBody(req, res, actions.HTTP_BAD);
-  
+
     if (json === undefined) {
       return;
     }
 
     var serverFile = json.filename;
-    var realFile = fs.join(fs.getTempPath(), serverFile); 
+    var realFile = fs.join(fs.getTempPath(), serverFile);
 
     if (! fs.isFile(realFile)) {
       actions.resultNotFound(req, res, arangodb.errors.ERROR_FILE_NOT_FOUND.code);
@@ -116,7 +116,7 @@ actions.defineHttp({
       if (found !== null) {
         found = found.app;
       }
-   
+
       actions.resultOk(req, res, actions.HTTP_OK, { path: path, app: found });
     }
     catch (err) {
@@ -131,7 +131,6 @@ actions.defineHttp({
 
 actions.defineHttp({
   url : "_admin/foxx/mount",
-  context : "admin",
   prefix : false,
 
   callback: easyPostCallback({
@@ -145,14 +144,13 @@ actions.defineHttp({
     }
   })
 });
-      
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rescans the FOXX application directory
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
   url : "_admin/foxx/rescan",
-  context : "admin",
   prefix : false,
 
   callback: easyPostCallback({
@@ -170,7 +168,6 @@ actions.defineHttp({
 
 actions.defineHttp({
   url : "_admin/foxx/setup",
-  context : "admin",
   prefix : false,
 
   callback: easyPostCallback({
@@ -189,7 +186,6 @@ actions.defineHttp({
 
 actions.defineHttp({
   url : "_admin/foxx/teardown",
-  context : "admin",
   prefix : false,
 
   callback: easyPostCallback({
@@ -208,7 +204,6 @@ actions.defineHttp({
 
 actions.defineHttp({
   url : "_admin/foxx/unmount",
-  context : "admin",
   prefix : false,
 
   callback: easyPostCallback({
@@ -227,7 +222,6 @@ actions.defineHttp({
 
 actions.defineHttp({
   url : "_admin/foxx/dev-setup",
-  context : "admin",
   prefix : false,
 
   callback: easyPostCallback({
@@ -246,7 +240,6 @@ actions.defineHttp({
 
 actions.defineHttp({
   url : "_admin/foxx/dev-teardown",
-  context : "admin",
   prefix : false,
 
   callback: easyPostCallback({
@@ -265,7 +258,6 @@ actions.defineHttp({
 
 actions.defineHttp({
   url : "_admin/foxx/purge",
-  context : "admin",
   prefix : false,
 
   callback: easyPostCallback({
@@ -284,7 +276,6 @@ actions.defineHttp({
 
 actions.defineHttp({
   url : "_admin/foxx/config",
-  context : "admin",
   prefix : false,
 
   callback : function (req, res) {
@@ -305,5 +296,5 @@ actions.defineHttp({
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

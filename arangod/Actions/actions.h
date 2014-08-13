@@ -84,8 +84,12 @@ class TRI_action_result_t {
 
 class TRI_action_t {
   public:
-    TRI_action_t (std::set<std::string> const& context)
-      : _type(), _url(), _isPrefix(false), _urlParts(0), _contexts(context) {
+    TRI_action_t ()
+      : _type(),
+        _url(),
+        _urlParts(0),
+        _isPrefix(false),
+        _allowUseDatabase(false) {
     }
 
     virtual ~TRI_action_t () {}
@@ -100,10 +104,11 @@ class TRI_action_t {
 
     std::string _type;
     std::string _url;
-    bool _isPrefix;
 
     size_t _urlParts;
-    std::set<std::string> _contexts;
+
+    bool _isPrefix;
+    bool _allowUseDatabase;
 };
 
 // -----------------------------------------------------------------------------

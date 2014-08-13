@@ -73,19 +73,30 @@ using namespace std;
 /// @brief reload the routing cache
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string const GlobalContextMethods::CodeReloadRouting    = "require(\"org/arangodb/actions\").reloadRouting()";
+std::string const GlobalContextMethods::CodeReloadRouting 
+  = "require(\"org/arangodb/actions\").reloadRouting()";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush the modules cache
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string const GlobalContextMethods::CodeFlushModuleCache = "require(\"internal\").flushModuleCache()";
+std::string const GlobalContextMethods::CodeFlushModuleCache
+  = "require(\"internal\").flushModuleCache()";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reload AQL functions
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string const GlobalContextMethods::CodeReloadAql        = "try { require(\"org/arangodb/ahuacatl\").reload(); } catch (err) { }";
+std::string const GlobalContextMethods::CodeReloadAql
+  = "try { require(\"org/arangodb/ahuacatl\").reload(); } catch (err) { }";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief bootstrap coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+std::string const GlobalContextMethods::CodeBootstrapCoordinator
+  = "require('internal').loadStartup('server/bootstrap/autoload.js').startup();"
+    "require('internal').loadStartup('server/bootstrap/routing.js').startup();";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief we'll store deprecated config option values in here
@@ -194,6 +205,7 @@ void ApplicationV8::V8Context::handleGlobalContextMethods () {
     // lock while we execute them
     // this avoids potential deadlocks when one of the executed functions itself
     // registers a context method
+
     MUTEX_LOCKER(_globalMethodsLock);
     copy = _globalMethods;
     _globalMethods.clear();
@@ -205,10 +217,16 @@ void ApplicationV8::V8Context::handleGlobalContextMethods () {
 
     LOG_DEBUG("executing global context methods '%s' for context %d", func.c_str(), (int) _id);
 
+    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+    bool allowUseDatabase = v8g->_allowUseDatabase;
+    v8g->_allowUseDatabase = true;
+
     TRI_ExecuteJavaScriptString(_context,
                                 v8::String::New(func.c_str(), (int) func.size()),
                                 v8::String::New("global context method"),
                                 false);
+
+    v8g->_allowUseDatabase = allowUseDatabase;
   }
 }
 
@@ -245,8 +263,6 @@ ApplicationV8::ApplicationV8 (TRI_server_t* server,
   : ApplicationFeature("V8"),
     _server(server),
     _startupPath(),
-    _modulesPath(),
-    _actionPath(),
     _appPath(),
     _devAppPath(),
     _useActions(true),
@@ -256,7 +272,6 @@ ApplicationV8::ApplicationV8 (TRI_server_t* server,
     _gcFrequency(10.0),
     _v8Options(""),
     _startupLoader(),
-    _actionLoader(),
     _vocbase(0),
     _nrInstances(0),
     _contexts(0),
@@ -416,7 +431,6 @@ void ApplicationV8::exitContext (V8Context* context) {
   }
 
   delete context->_locker;
-
 
   // default is false
   bool performGarbageCollection = false;
@@ -635,11 +649,11 @@ void ApplicationV8::enableDevelopmentMode () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief runs the version check
+/// @brief upgrades the database
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationV8::runVersionCheck (bool skip, bool perform) {
-  LOG_TRACE("starting version check");
+void ApplicationV8::upgradeDatabase (bool skip, bool perform) {
+  LOG_TRACE("starting database init/upgrade");
 
   // enter context and isolate
   V8Context* context = _contexts[0];
@@ -650,7 +664,7 @@ void ApplicationV8::runVersionCheck (bool skip, bool perform) {
 
   // run upgrade script
   if (! skip) {
-    LOG_DEBUG("running database version check");
+    LOG_DEBUG("running database init/upgrade");
 
     // can do this without a lock as this is the startup
     for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
@@ -666,18 +680,18 @@ void ApplicationV8::runVersionCheck (bool skip, bool perform) {
 
         context->_context->Global()->Set(v8::String::New("UPGRADE_ARGS"), args);
 
-        bool ok = TRI_V8RunVersionCheck(vocbase, &_startupLoader, context->_context);
+        bool ok = TRI_UpgradeDatabase(vocbase, &_startupLoader, context->_context);
 
         if (! ok) {
           if (context->_context->Global()->Has(v8::String::New("UPGRADE_STARTED"))) {
             if (perform) {
               LOG_FATAL_AND_EXIT(
-                "Database upgrade failed for '%s'. Please inspect the logs from the upgrade procedure",
+                "Database '%s' upgrade failed. Please inspect the logs from the upgrade procedure",
                 vocbase->_name);
             }
             else {
               LOG_FATAL_AND_EXIT(
-                "Database version check failed for '%s'. Please start the server with the --upgrade option",
+                "Database '%s' needs upgrade. Please start the server with the --upgrade option",
                 vocbase->_name);
             }
           }
@@ -686,7 +700,7 @@ void ApplicationV8::runVersionCheck (bool skip, bool perform) {
           }
         }
 
-        LOG_DEBUG("database version check passed for '%s'", vocbase->_name);
+        LOG_DEBUG("database '%s' init/upgrade done", vocbase->_name);
       }
     }
   }
@@ -729,15 +743,15 @@ void ApplicationV8::runVersionCheck (bool skip, bool perform) {
   context->_isolate->Exit();
   delete context->_locker;
 
-  LOG_TRACE("finished version check");
+  LOG_TRACE("finished database init/upgrade");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief runs the upgrade check
+/// @brief runs the version check
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationV8::runUpgradeCheck () {
-  LOG_TRACE("starting upgrade check");
+void ApplicationV8::versionCheck () {
+  LOG_TRACE("starting version check");
 
   // enter context and isolate
   V8Context* context = _contexts[0];
@@ -747,7 +761,7 @@ void ApplicationV8::runUpgradeCheck () {
   context->_context->Enter();
 
   // run upgrade script
-  LOG_DEBUG("running database upgrade check");
+  LOG_DEBUG("running database version check");
 
   // can do this without a lock as this is the startup
   int result = 1;
@@ -760,11 +774,11 @@ void ApplicationV8::runUpgradeCheck () {
       // but for all databases
       v8::HandleScope scope;
 
-      int status = TRI_V8RunUpgradeCheck(vocbase, &_startupLoader, context->_context);
+      int status = TRI_CheckDatabaseVersion(vocbase, &_startupLoader, context->_context);
 
       if (status < 0) {
         LOG_FATAL_AND_EXIT(
-          "Database upgrade check failed for '%s'. Please inspect the logs from any errors",
+          "Database version check failed for '%s'. Please inspect the logs from any errors",
           vocbase->_name);
       }
       else if (status == 3) {
@@ -811,21 +825,13 @@ void ApplicationV8::runUpgradeCheck () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief prepares the actions
+/// @brief prepares the server
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationV8::prepareActions () {
+void ApplicationV8::prepareServer () {
   for (size_t i = 0;  i < _nrInstances;  ++i) {
-    prepareV8Actions(i);
+    prepareV8Server(i);
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets an alternate init file
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationV8::setStartupFile (const string& file) {
-  _startupFile = file;
 }
 
 // -----------------------------------------------------------------------------
@@ -844,15 +850,15 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
     ("javascript.dev-app-path", &_devAppPath, "directory for Foxx applications (development mode)")
     ("javascript.startup-directory", &_startupPath, "path to the directory containing JavaScript startup scripts")
     ("javascript.v8-options", &_v8Options, "options to pass to v8")
+  ;
+
+  options[ApplicationServer::OPTIONS_HIDDEN]
+    ("javascript.frontend-development", &_frontendDevelopmentMode, "allows rebuild frontend assets")
 
     // deprecated options
     ("javascript.action-directory", &DeprecatedPath, "path to the JavaScript action directory (deprecated)")
     ("javascript.modules-path", &DeprecatedPath, "one or more directories separated by semi-colons (deprecated)")
     ("javascript.package-path", &DeprecatedPath, "one or more directories separated by semi-colons (deprecated)")
-  ;
-
-  options[ApplicationServer::OPTIONS_HIDDEN]
-    ("javascript.frontend-development", &_frontendDevelopmentMode, "allows rebuild frontend assets")
   ;
 }
 
@@ -869,23 +875,11 @@ bool ApplicationV8::prepare () {
   // remove trailing / from path
   _startupPath = StringUtils::rTrim(_startupPath, TRI_DIR_SEPARATOR_STR);
 
-  // derive all other options from --javascript.startup-directory
-  _actionPath  = _startupPath + TRI_DIR_SEPARATOR_STR + "actions";
-
-  _modulesPath = _startupPath + TRI_DIR_SEPARATOR_STR + "server" + TRI_DIR_SEPARATOR_STR + "modules;" +
-                 _startupPath + TRI_DIR_SEPARATOR_STR + "common" + TRI_DIR_SEPARATOR_STR + "modules;" +
-                 _startupPath + TRI_DIR_SEPARATOR_STR + "node";
-
   // dump paths
   {
     vector<string> paths;
 
     paths.push_back(string("startup '" + _startupPath + "'"));
-    paths.push_back(string("modules '" + _modulesPath + "'"));
-
-    if (_useActions) {
-      paths.push_back(string("actions '" + _actionPath + "'"));
-    }
 
     if (! _appPath.empty()) {
       paths.push_back(string("application '" + _appPath + "'"));
@@ -909,11 +903,6 @@ bool ApplicationV8::prepare () {
   // check for development mode
   if (! _devAppPath.empty()) {
     _developmentMode = true;
-  }
-
-  // set up action loader
-  if (_useActions) {
-    _actionLoader.setDirectory(_actionPath);
   }
 
   // add v8 options
@@ -1047,18 +1036,7 @@ void ApplicationV8::stop () {
 bool ApplicationV8::prepareV8Instance (const size_t i) {
   vector<string> files;
 
-  files.push_back("common/bootstrap/modules.js");
-  files.push_back("common/bootstrap/module-internal.js");
-  files.push_back("common/bootstrap/module-fs.js");
-  files.push_back("common/bootstrap/module-console.js"); // needs internal
-  files.push_back("common/bootstrap/errors.js");
-  files.push_back("common/bootstrap/monkeypatches.js");
-
-  files.push_back("server/bootstrap/module-internal.js");
-
-  if (! _startupFile.empty()) {
-    files.push_back(_startupFile); // needs internal
-  }
+  files.push_back("server/initialise.js");
 
   LOG_TRACE("initialising V8 context #%d", (int) i);
 
@@ -1092,9 +1070,13 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
     TRI_InitV8Actions(context->_context, _vocbase, _scheduler, _dispatcher, this);
   }
 
+  string modulesPath = _startupPath + TRI_DIR_SEPARATOR_STR + "server" + TRI_DIR_SEPARATOR_STR + "modules;" +
+                       _startupPath + TRI_DIR_SEPARATOR_STR + "common" + TRI_DIR_SEPARATOR_STR + "modules;" +
+                       _startupPath + TRI_DIR_SEPARATOR_STR + "node";
+
   TRI_InitV8Buffer(context->_context);
   TRI_InitV8Conversions(context->_context);
-  TRI_InitV8Utils(context->_context, _startupPath, _modulesPath);
+  TRI_InitV8Utils(context->_context, _startupPath, modulesPath);
   TRI_InitV8Shell(context->_context);
 
   {
@@ -1139,11 +1121,11 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief prepares the V8 actions
+/// @brief prepares the V8 server
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationV8::prepareV8Actions (const size_t i) {
-  LOG_TRACE("initialising V8 actions #%d", (int) i);
+void ApplicationV8::prepareV8Server (const size_t i) {
+  LOG_TRACE("initialising V8 server #%d", (int) i);
 
   // enter context and isolate
   V8Context* context = _contexts[i];
@@ -1152,37 +1134,11 @@ void ApplicationV8::prepareV8Actions (const size_t i) {
   context->_isolate->Enter();
   context->_context->Enter();
 
-  // scan for foxx applications
-  if (i == 0) {
+  // load server startup file
+  bool ok = _startupLoader.loadScript(context->_context, _startupFile);
 
-    // once again, we don't need the lock as this is the startup
-    for (size_t j = 0; j < _server->_databases._nrAlloc; ++j) {
-      TRI_vocbase_t* vocbase = (TRI_vocbase_t*) _server->_databases._table[j];
-
-      if (vocbase != 0) {
-        TRI_V8InitialiseFoxx(vocbase, context->_context);
-      }
-    }
-  }
-
-  // load all actions
-  if (_useActions) {
-    v8::HandleScope scope;
-
-    bool ok = _actionLoader.executeAllScripts(context->_context);
-
-    if (! ok) {
-      LOG_FATAL_AND_EXIT("cannot load JavaScript actions from directory '%s'", _actionLoader.getDirectory().c_str());
-    }
-
-    {
-      v8::HandleScope scope;
-      TRI_ExecuteJavaScriptString(context->_context,
-                                  v8::String::New("require(\"internal\").actionLoaded()"),
-                                  v8::String::New("action loaded"),
-                                  false);
-    }
-
+  if (! ok) {
+    LOG_FATAL_AND_EXIT("cannot load JavaScript utilities from file '%s'", _startupFile.c_str());
   }
 
   // and return from the context
@@ -1191,7 +1147,7 @@ void ApplicationV8::prepareV8Actions (const size_t i) {
   delete context->_locker;
 
   // initialise garbage collection for context
-  LOG_TRACE("initialised V8 actions #%d", (int) i);
+  LOG_TRACE("initialised V8 server #%d", (int) i);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

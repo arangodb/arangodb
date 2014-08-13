@@ -67,6 +67,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
     PutConstant(),
 
     AddressKey(),
+    AllowUseDatabaseKey(),
     BodyFromFileKey(),
     BodyKey(),
     ClientKey(),
@@ -144,6 +145,7 @@ TRI_v8_global_s::TRI_v8_global_s (v8::Isolate* isolate)
   PutConstant = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("PUT"));
 
   AddressKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("address"));
+  AllowUseDatabaseKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("allowUseDatabase"));
   BodyFromFileKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("bodyFromFile"));
   BodyKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("body"));
   ClientKey = v8::Persistent<v8::String>::New(isolate, TRI_V8_SYMBOL("client"));
