@@ -27,15 +27,12 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_JSON__UTILITIES_H
-#define ARANGODB_BASICS_C_JSON__UTILITIES_H 1
+#ifndef ARANGODB_BASICS_JSON__UTILITIES_H
+#define ARANGODB_BASICS_JSON__UTILITIES_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
+
 #include "BasicsC/json.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -47,10 +44,15 @@ extern "C" {
 /// the values are first compared by their types, and only by their values if
 /// the types are the same
 /// returns -1 if lhs is smaller than rhs, 0 if lhs == rhs, and 1 if rhs is
-/// greater than lhs
+/// greater than lhs.
+///
+/// If useUTF8 is set to true, strings will be converted using proper UTF8,
+/// otherwise, strcmp is used, so it should only be used to test for equality
+/// in this case.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CompareValuesJson (const TRI_json_t* const, const TRI_json_t* const);
+int TRI_CompareValuesJson (const TRI_json_t* const, const TRI_json_t* const,
+                           bool useUTF8 = true);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if two json values are the same
@@ -150,10 +152,6 @@ uint64_t TRI_HashJsonByAttributes (TRI_json_t const* json,
                                    int nrAttributes,
                                    bool docComplete,
                                    int* error);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 
