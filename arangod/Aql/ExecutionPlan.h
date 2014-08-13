@@ -31,6 +31,7 @@
 #define ARANGODB_AQL_EXECUTION_PLAN_H 1
 
 #include "Basics/Common.h"
+#include "arangod/Aql/ExecutionNode.h"
 
 namespace triagens {
   namespace aql {
@@ -86,6 +87,15 @@ namespace triagens {
           TRI_ASSERT(_root != nullptr);
           return _root;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the estimated cost . . .
+////////////////////////////////////////////////////////////////////////////////
+
+        //double estimateCost () const {
+        //  TRI_ASSERT(_root != nullptr);
+        //  return _root->estimateCost();
+        //}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
