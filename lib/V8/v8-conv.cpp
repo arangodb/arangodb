@@ -838,14 +838,31 @@ static int FillShapeValueJson (TRI_shaper_t* shaper,
                                set<int>& seenHashes,
                                vector< v8::Handle<v8::Object> >& seenObjects,
                                bool create) {
-  if (json->IsRegExp() || json->IsFunction() || json->IsExternal() || json->IsDate()) {
+  if (json->IsRegExp() || json->IsFunction() || json->IsExternal()) {
     LOG_TRACE("shaper failed because regexp/function/external/date object cannot be converted");
     return TRI_ERROR_BAD_PARAMETER;
   }
   
-  // check for cycles
   if (json->IsObject()) {
     v8::Handle<v8::Object> o = json->ToObject();
+    v8::Handle<v8::String> toJsonString = v8::String::New("toJSON");
+    if (o->Has(toJsonString)) {
+      v8::Handle<v8::Value> func = o->Get(toJsonString);
+      if (func->IsFunction()) {
+        v8::Handle<v8::Function> toJson = v8::Handle<v8::Function>::Cast(func);
+
+        v8::Handle<v8::Value> args;
+        v8::Handle<v8::Value> result = toJson->Call(o, 0, &args);
+
+        if (! result.IsEmpty()) {
+          return FillShapeValueString(shaper, dst, result->ToString());
+        }
+      }
+    }
+
+    // fall-through intentional
+  
+    // check for cycles
     int hash = o->GetIdentityHash();
 
     if (seenHashes.find(hash) != seenHashes.end()) {
@@ -1556,7 +1573,7 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
         v8::Handle<v8::Value> item = arrayParameter->Get(j);
         TRI_json_t* result = ObjectToJson(item, seenHashes, seenObjects);
 
-        if (result != 0) {
+        if (result != nullptr) {
           TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, listJson, result);
         }
       }
@@ -1566,13 +1583,43 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
   
   if (parameter->IsRegExp() || 
       parameter->IsFunction() || 
-      parameter->IsExternal() || 
-      parameter->IsDate()) {
+      parameter->IsExternal()) { 
     return nullptr;
   }
 
   if (parameter->IsObject()) {
     v8::Handle<v8::Object> o = parameter->ToObject();
+
+    // first check if the object has a "toJSON" function
+    v8::Handle<v8::String> toJsonString = v8::String::New("toJSON");
+    if (o->Has(toJsonString)) {
+      // call it if yes
+      v8::Handle<v8::Value> func = o->Get(toJsonString);
+      if (func->IsFunction()) {
+        v8::Handle<v8::Function> toJson = v8::Handle<v8::Function>::Cast(func);
+
+        v8::Handle<v8::Value> args;
+        v8::Handle<v8::Value> result = toJson->Call(o, 0, &args);
+
+        if (! result.IsEmpty()) {
+          // return whatever toJSON returned
+
+          TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, result->ToString());
+          // move the string pointer into the JSON object
+          if (*str != 0) {
+            TRI_json_t* j = TRI_CreateString2Json(TRI_UNKNOWN_MEM_ZONE, *str, str.length());
+            // this passes ownership for the utf8 string to the JSON object
+            str.steal();
+
+            // the Utf8ValueNFC dtor won't free the string now
+            return j;
+          }
+        }
+      }
+
+      // fall-through intentional
+    }
+
     int hash = o->GetIdentityHash();
 
     if (seenHashes.find(hash) != seenHashes.end()) {
