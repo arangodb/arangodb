@@ -814,6 +814,7 @@ namespace triagens {
           if (items != nullptr) {
             _inputRegisterValues = items->slice(pos, pos+1);
           }
+          _done = false;
           return TRI_ERROR_NO_ERROR;
         }
 
