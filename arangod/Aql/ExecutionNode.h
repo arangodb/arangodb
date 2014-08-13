@@ -208,6 +208,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         virtual double estimateCost () const = 0;
+        //TODO nodes should try harder to estimate their own cost, i.e. the cost
+        //of performing the operation of the node . . .
 
         void walk (WalkerWorker* worker);
 
@@ -389,11 +391,12 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the cost of an enumerate collection node is . . . FIXME
+/// @brief the cost of an enumerate collection node is a multiple of the cost of
+/// its unique dependency
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () const {
-          return 1; //FIXME change this!
+          return 1000 * this[0].estimateCost(); //FIXME change this!
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -488,7 +491,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () const {
-          return 1;//FIXME change this!
+          return 1000 * this[0].estimateCost(); //FIXME change this, 1000 is arbitrary
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -574,11 +577,13 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the cost of a limit node is . . . FIXME
+/// @brief the cost of a limit node is the minimum of the _limit, and the cost
+/// the dependency . . .
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () const {
-          return 1;//FIXME change this!
+          return 1.005 * std::min(static_cast<double>(_limit), 
+              this[0].estimateCost());//FIXME change this?
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -656,11 +661,12 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the cost of a projection node is . . . FIXME
+/// @brief the cost of a projection node is the cost of the unique dependency,
+//  times a small constant . . .
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () const {
-          return 1;//FIXME change this!
+          return 1.005 * this[0].estimateCost();//FIXME change this?
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -779,11 +785,12 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the cost of a calculation node is . . . FIXME
+/// @brief the cost of a calculation node is the cost of the unique dependency
+//  times a constant
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () const {
-          return 1;//FIXME change this!
+          return 2*this[0].estimateCost(); //FIXME change this!
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -875,11 +882,12 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the cost of a subquery node is . . . FIXME
+/// @brief the cost of a subquery node is the cost of its unique dependency
+/// times a small constant
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () const {
-          return 1;//FIXME change this!
+          return 1.005*this[0].estimateCost();//FIXME change this!
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -966,7 +974,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () const {
-          return 1;//FIXME change this!
+          return this[0].estimateCost() * 0.005 + this[0].estimateCost() * 0.10;
+          //FIXME! 0.005 is the cost of doing the filter node under the
+          //assumption that it returns 10% of the results of its dependency
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1045,7 +1055,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () const {
-          return 1;//FIXME change this!
+          double depCost = this[0].estimateCost();
+          return log(depCost) * depCost;//FIXME change this!
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1132,7 +1143,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () const {
-          return 1;//FIXME change this!
+          return 2 * this[0].estimateCost();//FIXME change this!
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1226,7 +1237,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () const {
-          return 1;//FIXME change this!
+          return this[0].estimateCost();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
