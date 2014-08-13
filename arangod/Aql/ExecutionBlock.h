@@ -529,8 +529,16 @@ namespace triagens {
           return getSome(1, 1);
         }
         
-        //~J remove virtual  when all subclass skipSome methods are removed
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSome, gets some more items, semantic is as follows: not
+/// more than atMost items may be delivered. The method tries to
+/// return a block of at least atLeast items, however, it may return
+/// less (for example if there are not enough items to come). However,
+/// if it returns an actual block, it must contain at least one item.
+////////////////////////////////////////////////////////////////////////////////
+
         virtual AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
+          TRI_ASSERT(0 < atLeast && atLeast <= atMost);
           size_t skipped = 0;
           AqlItemBlock* result = nullptr;
           int out = getOrSkipSome(atLeast, atMost, false, result, skipped);
@@ -540,8 +548,16 @@ namespace triagens {
           return result;
         }
          
-        //~J remove virtual  when all subclass skipSome methods are removed
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSome, skips some more items, semantic is as follows: not
+/// more than atMost items may be skipped. The method tries to
+/// skip a block of at least atLeast items, however, it may skip
+/// less (for example if there are not enough items to come). The number of
+/// elements skipped is returned.
+////////////////////////////////////////////////////////////////////////////////
+
         virtual size_t skipSome (size_t atLeast, size_t atMost) {
+          TRI_ASSERT(0 < atLeast && atLeast <= atMost);
           size_t skipped = 0;
           AqlItemBlock* result = nullptr;
           int out = getOrSkipSome(atLeast, atMost, true, result, skipped);
@@ -607,73 +623,93 @@ namespace triagens {
         
         virtual int getOrSkipSome (size_t atLeast, size_t atMost, bool skipping, 
                                    AqlItemBlock*& result, size_t& skipped) {
+          TRI_ASSERT(result == nullptr && skipped == 0);
           if (_done) {
             return TRI_ERROR_NO_ERROR;
           }
 
           // if _buffer.size() is > 0 then _pos points to a valid place . . .
           vector<AqlItemBlock*> collector;
-
-          while (skipped < atLeast) {
-            if (_buffer.empty()) {
-              if (skipping) {
-                _dependencies[0]->skip(atLeast - skipped);
-                skipped = atLeast;
-                return TRI_ERROR_NO_ERROR;
+          try {
+            while (skipped < atLeast) {
+              if (_buffer.empty()) {
+                if (skipping) {
+                  _dependencies[0]->skip(atLeast - skipped);
+                  skipped = atLeast;
+                  return TRI_ERROR_NO_ERROR;
+                } 
+                else {
+                  if (! getBlock(atLeast - skipped, 
+                        std::max(atMost - skipped, DefaultBatchSize))) {
+                    _done = true;
+                    break; // must still put things in the result from the collector . . .
+                  }
+                  _pos = 0;
+                }
+              }
+              
+              AqlItemBlock* cur = _buffer.front();
+              
+              if (cur->size() - _pos > atMost - skipped) {
+                // The current block is too large for atMost:
+                if(!skipping){
+                  unique_ptr<AqlItemBlock> more(cur->slice(_pos, _pos + (atMost - skipped)));
+                  collector.push_back(more.get());
+                  more.release(); // do not delete it!
+                }
+                _pos += atMost - skipped;
+                skipped = atMost;
+              }
+              else if (_pos > 0) {
+                // The current block fits into our result, but it is already
+                // half-eaten:
+                if(!skipping){
+                  unique_ptr<AqlItemBlock> more(cur->slice(_pos, cur->size()));
+                  collector.push_back(more.get());
+                  more.release();
+                }
+                skipped += cur->size() - _pos;
+                delete cur;
+                _buffer.pop_front();
+                _pos = 0;
               } 
               else {
-                if (! getBlock(atLeast - skipped, 
-                      std::max(atMost - skipped, DefaultBatchSize))) {
-                  _done = true;
-                  break; // must still put things in the result from the collector . . .
+                // The current block fits into our result and is fresh:
+                skipped += cur->size();
+                if(!skipping){
+                  collector.push_back(cur);
+                } 
+                else {
+                  delete cur;
                 }
+                _buffer.pop_front();
                 _pos = 0;
               }
             }
-            
-            AqlItemBlock* cur = _buffer.front();
-            
-            if (cur->size() - _pos > atMost - skipped) {
-              // The current block is too large for atMost:
-              if(!skipping){
-                collector.push_back(cur->slice(_pos, _pos + (atMost - skipped)));
-              }
-              _pos += atMost - skipped;
-              skipped = atMost;
-            }
-            else if (_pos > 0) {
-              // The current block fits into our result, but it is already
-              // half-eaten:
-              if(!skipping){
-                collector.push_back(cur->slice(_pos, cur->size()));
-              }
-              skipped += cur->size() - _pos;
-              delete cur;
-              _buffer.pop_front();
-              _pos = 0;
-            } 
-            else {
-              // The current block fits into our result and is fresh:
-              if(!skipping){
-                collector.push_back(cur);
-              } 
-              else {
-                delete cur;
-              }
-              skipped += cur->size();
-              _buffer.pop_front();
-              _pos = 0;
-            }
           }
-          
+          catch (...) {
+            for (auto x: collector){
+              delete x;
+            }
+            throw;
+          }
+
           if (!skipping) {
             if (collector.size() == 1) {
               result = collector[0];
             }
             else if (collector.size() > 0) {
-              result = AqlItemBlock::concatenate(collector);
-              for (auto it = collector.begin(); it != collector.end(); ++it) {
-                delete (*it);
+              try {
+                result = AqlItemBlock::concatenate(collector);
+              }
+              catch (...) {
+                for (auto x : collector) {
+                  delete x;
+                }
+                throw;
+              }
+              for (auto x : collector) {
+                delete x;
               }
             }
           }
@@ -842,7 +878,7 @@ namespace triagens {
         int getOrSkipSome (size_t atLeast, size_t atMost, bool skipping, 
                            AqlItemBlock*& result, size_t& skipped) {
           
-          TRI_ASSERT(result == nullptr);
+          TRI_ASSERT(result == nullptr && skipped == 0);
 
           if (_done) {
             return TRI_ERROR_NO_ERROR;
@@ -1930,7 +1966,7 @@ namespace triagens {
 
         int getOrSkipSome (size_t atLeast, size_t atMost, bool skipping, 
                                    AqlItemBlock*& result, size_t& skipped) {
-
+          TRI_ASSERT(result == nullptr && skipped == 0);
           if (_done) {
             return TRI_ERROR_NO_ERROR;
           }
@@ -1952,8 +1988,10 @@ namespace triagens {
               if (_chosen.size() - _pos + skipped > atMost) {
                 // The current block of chosen ones is too large for atMost:
                 if(!skipping){
-                  collector.push_back(cur->slice(_chosen, 
+                  unique_ptr<AqlItemBlock> more(cur->slice(_chosen, 
                                     _pos, _pos + (atMost - skipped)));
+                  collector.push_back(more.get());
+                  more.release();
                 }
                 _pos += atMost - skipped;
                 skipped = atMost;
@@ -1962,7 +2000,9 @@ namespace triagens {
                 // The current block fits into our result, but it is already
                 // half-eaten or needs to be copied anyway:
                 if(!skipping){
-                  collector.push_back(cur->steal(_chosen, _pos, _chosen.size()));
+                  unique_ptr<AqlItemBlock> more(cur->steal(_chosen, _pos, _chosen.size()));
+                  collector.push_back(more.get());
+                  more.release();
                 }
                 skipped += _chosen.size() - _pos;
                 delete cur;
@@ -1997,10 +2037,17 @@ namespace triagens {
               result = collector[0];
             }
             else if (collector.size() > 1 ) {
-              result = AqlItemBlock::concatenate(collector);
-              for (auto it = collector.begin(); 
-                   it != collector.end(); ++it) {
-                delete (*it);
+              try {
+                result = AqlItemBlock::concatenate(collector);
+              }
+              catch (...){
+                for (auto x : collector){ 
+                  delete x;
+                }
+                throw;
+              }
+              for (auto x : collector){ 
+                delete x;
               }
             }
           }
@@ -2156,7 +2203,7 @@ namespace triagens {
         
         int getOrSkipSome (size_t atLeast, size_t atMost, bool skipping, 
                            AqlItemBlock*& result, size_t& skipped) {
-
+          TRI_ASSERT(result == nullptr && skipped == 0);
           if (_done) {
             return TRI_ERROR_NO_ERROR;
           }
@@ -2171,12 +2218,14 @@ namespace triagens {
 
           // If we get here, we do have _buffer.front()
           AqlItemBlock* cur = _buffer.front();
-          
+          unique_ptr<AqlItemBlock> res;
+
           if(!skipping){
             size_t const curRegs = cur->getNrRegs();
-            result = new AqlItemBlock(atMost, _varOverview->nrRegs[_depth]);
-            TRI_ASSERT(curRegs <= result->getNrRegs());
-            inheritRegisters(cur, result, _pos);
+            res.reset(new AqlItemBlock(atMost, _varOverview->nrRegs[_depth]));
+
+            TRI_ASSERT(curRegs <= res->getNrRegs());
+            inheritRegisters(cur, res.get(), _pos);
           }
 
           while (skipped < atMost) {
@@ -2209,7 +2258,7 @@ namespace triagens {
               if (! _currentGroup.groupValues[0].isEmpty()) {
                 if(!skipping){
                   // need to emit the current group first
-                  emitGroup(cur, result, skipped);
+                  emitGroup(cur, res.get(), skipped);
                 }
 
                 // increase output row count
@@ -2218,6 +2267,7 @@ namespace triagens {
                 if (skipped == atMost) {
                   // output is full
                   // do NOT advance input pointer
+                  result = res.release();
                   return TRI_ERROR_NO_ERROR;
                 }
               }
@@ -2253,10 +2303,10 @@ namespace triagens {
                 try {
                   // emit last buffered group
                   if(!skipping){
-                    emitGroup(cur, result, skipped);
+                    emitGroup(cur, res.get(), skipped);
                     ++skipped;
                     TRI_ASSERT(skipped > 0);
-                    result->shrink(skipped);
+                    res->shrink(skipped);
                   } 
                   else {
                     ++skipped;
@@ -2264,6 +2314,7 @@ namespace triagens {
                   delete cur;
                   cur = nullptr;
                   _done = true;
+                  result = res.release();
                   return TRI_ERROR_NO_ERROR;
                 }
                 catch (...) {
@@ -2284,9 +2335,10 @@ namespace triagens {
 
           if(!skipping){
             TRI_ASSERT(skipped > 0);
-            result->shrink(skipped);
+            res->shrink(skipped);
           }
 
+          result = res.release();
           return TRI_ERROR_NO_ERROR;
         }
 
@@ -2296,7 +2348,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void emitGroup (AqlItemBlock const* cur,
-                        AqlItemBlock*& res, 
+                        AqlItemBlock* res, 
                         size_t row) {
 
           size_t i = 0;
@@ -2456,7 +2508,6 @@ namespace triagens {
           
           try {  // If we throw from here, the catch will delete the new
                  // blocks in newbuffer
-            _buffer.clear();
             
             count = 0;
             RegisterId const nrregs = _buffer.front()->getNrRegs();
@@ -2667,10 +2718,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getSome
 ////////////////////////////////////////////////////////////////////////////////
+        
+        virtual size_t skipSome (size_t atLeast, size_t atMost){
+
+          return ExecutionBlock::skipSome(atLeast, atMost);
+        }
 
         virtual AqlItemBlock* getSome (size_t atLeast, 
                                        size_t atMost) {
-
           if (_state == 2) {
             return nullptr;
           }
@@ -2686,13 +2741,12 @@ namespace triagens {
               if (tmp != nullptr) {
                 delete tmp;
               }
-
-              _state = 1;
-              _count = 0;
-              if (_limit == 0) {
-                _state = 2;
-                return nullptr;
-              }
+            }
+            _state = 1;
+            _count = 0;
+            if (_limit == 0) {
+              _state = 2;
+              return nullptr;
             }
           }
 
