@@ -83,7 +83,8 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast const* ast) {
   try {
     plan->_root = plan->fromNode(ast, root);
     
-    // std::cout << plan->_root->toJson().toString() << "\n";
+    std::cout << plan->_root->toJson().toString() << "\n";
+    std::cout << "ESTIMATED COST = €" << plan->_root->estimateCost() << "\n";
 
     return plan;
   }
