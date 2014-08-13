@@ -27,7 +27,9 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BasicsC/json-utilities.h"
+#include "Basics/json-utilities.h"
+
+#include "BasicsC/utf8-helper.h"
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/hashes.h"
 
@@ -50,8 +52,8 @@ static TRI_json_t* MergeRecursive (TRI_memory_zone_t* zone,
   n = rhs->_value._objects._length;
   for (i = 0; i < n; i += 2) {
     // enumerate all the replacement values
-    TRI_json_t* key = TRI_AtVector(&rhs->_value._objects, i);
-    TRI_json_t* value = TRI_AtVector(&rhs->_value._objects, i + 1);
+    auto key = reinterpret_cast<TRI_json_t*>(TRI_AtVector(&rhs->_value._objects, i));
+    auto value = reinterpret_cast<TRI_json_t*>(TRI_AtVector(&rhs->_value._objects, i + 1));
 
     if (value->_type == TRI_JSON_NULL && nullMeansRemove) {
       // replacement value is a null and we don't want to store nulls => delete attribute from the result
@@ -153,7 +155,7 @@ static int TypeWeight (const TRI_json_t* const value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int CompareJson (TRI_json_t* lhs, TRI_json_t* rhs, size_t size) {
-  return TRI_CompareValuesJson((TRI_json_t*) lhs, (TRI_json_t*) rhs);
+  return TRI_CompareValuesJson((TRI_json_t*) lhs, (TRI_json_t*) rhs, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -179,7 +181,7 @@ static TRI_json_t* GetMergedKeyList (const TRI_json_t* const lhs,
   n = lhs->_value._objects._length;
 
   for (i = 0 ; i < n; i += 2) {
-    TRI_json_t* key = TRI_AtVector(&lhs->_value._objects, i);
+    auto key = reinterpret_cast<TRI_json_t*>(TRI_AtVector(&lhs->_value._objects, i));
 
     TRI_ASSERT(TRI_IsStringJson(key));
     TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, keys, key);
@@ -189,7 +191,7 @@ static TRI_json_t* GetMergedKeyList (const TRI_json_t* const lhs,
   n = rhs->_value._objects._length;
 
   for (i = 0 ; i < n; i += 2) {
-    TRI_json_t* key = TRI_AtVector(&rhs->_value._objects, i);
+    auto key = reinterpret_cast<TRI_json_t*>(TRI_AtVector(&rhs->_value._objects, i));
 
     TRI_ASSERT(TRI_IsStringJson(key));
     TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, keys, key);
@@ -215,7 +217,8 @@ static TRI_json_t* GetMergedKeyList (const TRI_json_t* const lhs,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_CompareValuesJson (const TRI_json_t* const lhs,
-                           const TRI_json_t* const rhs) {
+                           const TRI_json_t* const rhs,
+                           bool useUTF8) {
   // note: both lhs and rhs may be NULL!
   int lWeight = TypeWeight(lhs);
   int rWeight = TypeWeight(rhs);
@@ -264,7 +267,23 @@ int TRI_CompareValuesJson (const TRI_json_t* const lhs,
     case TRI_JSON_STRING:
     case TRI_JSON_STRING_REFERENCE:
       // same for STRING and STRING_REFERENCE
-      return strcmp(lhs->_value._string.data, rhs->_value._string.data);
+      int res;
+      if (useUTF8) {
+        res = TRI_compare_utf8(lhs->_value._string.data, 
+                               rhs->_value._string.data);
+      }
+      else {
+        res = strcmp(lhs->_value._string.data, rhs->_value._string.data);
+      }
+      if (res < 0) {
+        return -1;
+      }
+      else if (res > 0) {
+        return 1;
+      }
+      else {
+        return 0;
+      }
 
     case TRI_JSON_LIST: {
       size_t nl = lhs->_value._objects._length;
@@ -283,9 +302,9 @@ int TRI_CompareValuesJson (const TRI_json_t* const lhs,
         TRI_json_t* rhsValue;
         int result;
 
-        lhsValue = (i >= nl) ? NULL : TRI_AtVector(&lhs->_value._objects, i);
-        rhsValue = (i >= nr) ? NULL : TRI_AtVector(&rhs->_value._objects, i);
-        result = TRI_CompareValuesJson(lhsValue, rhsValue);
+        lhsValue = (i >= nl) ? NULL : reinterpret_cast<TRI_json_t*>(TRI_AtVector(&lhs->_value._objects, i));
+        rhsValue = (i >= nr) ? NULL : reinterpret_cast<TRI_json_t*>(TRI_AtVector(&rhs->_value._objects, i));
+        result = TRI_CompareValuesJson(lhsValue, rhsValue, useUTF8);
         if (result != 0) {
           return result;
         }
@@ -312,13 +331,13 @@ int TRI_CompareValuesJson (const TRI_json_t* const lhs,
           TRI_json_t* rhsValue;
           int result;
 
-          keyElement = TRI_AtVector(&keys->_value._objects, i);
+          keyElement = reinterpret_cast<TRI_json_t*>(TRI_AtVector(&keys->_value._objects, i));
           TRI_ASSERT(TRI_IsStringJson(keyElement));
 
           lhsValue = TRI_LookupArrayJson((TRI_json_t*) lhs, keyElement->_value._string.data); // may be NULL
           rhsValue = TRI_LookupArrayJson((TRI_json_t*) rhs, keyElement->_value._string.data); // may be NULL
 
-          result = TRI_CompareValuesJson(lhsValue, rhsValue);
+          result = TRI_CompareValuesJson(lhsValue, rhsValue, useUTF8);
 
           if (result != 0) {
             TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
@@ -343,7 +362,7 @@ int TRI_CompareValuesJson (const TRI_json_t* const lhs,
 
 bool TRI_CheckSameValueJson (const TRI_json_t* const lhs,
                              const TRI_json_t* const rhs) {
-  return (TRI_CompareValuesJson(lhs, rhs) == 0);
+  return (TRI_CompareValuesJson(lhs, rhs, false) == 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -400,11 +419,11 @@ TRI_json_t* TRI_BetweenListJson (const TRI_json_t* const list,
   n = list->_value._objects._length;
 
   for (i = 0; i < n; ++i) {
-    TRI_json_t* p = TRI_AtVector(&list->_value._objects, i);
+    auto p = reinterpret_cast<TRI_json_t*>(TRI_AtVector(&list->_value._objects, i));
 
     if (lower) {
       // lower bound is set
-      int compareResult = TRI_CompareValuesJson(lower, p);
+      int compareResult = TRI_CompareValuesJson(lower, p, true);
       if (compareResult > 0 || (compareResult == 0 && ! includeLower)) {
         // element is bigger than lower bound
         continue;
@@ -413,7 +432,7 @@ TRI_json_t* TRI_BetweenListJson (const TRI_json_t* const list,
 
     if (upper) {
       // upper bound is set
-      int compareResult = TRI_CompareValuesJson(p, upper);
+      int compareResult = TRI_CompareValuesJson(p, upper, true);
       if (compareResult > 0 || (compareResult == 0 && ! includeUpper)) {
         // element is smaller than upper bound
         continue;
@@ -450,10 +469,10 @@ TRI_json_t* TRI_UniquifyListJson (const TRI_json_t* const list) {
   n = list->_value._objects._length;
 
   for (i = 0; i < n; ++i) {
-    TRI_json_t* p = TRI_AtVector(&list->_value._objects, i);
+    auto p = reinterpret_cast<TRI_json_t*>(TRI_AtVector(&list->_value._objects, i));
 
     // don't push value if it is the same as the last value
-    if (last == NULL || TRI_CompareValuesJson(p, last) > 0) {
+    if (last == NULL || TRI_CompareValuesJson(p, last, true) > 0) {
       TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, result, p);
 
       // remember last element
@@ -514,13 +533,13 @@ TRI_json_t* TRI_UnionizeListsJson (const TRI_json_t* const list1,
       int compareResult;
 
       // both lists not yet exhausted
-      p1 = TRI_AtVector(&list1->_value._objects, i1);
-      p2 = TRI_AtVector(&list2->_value._objects, i2);
-      compareResult = TRI_CompareValuesJson(p1, p2);
+      p1 = reinterpret_cast<TRI_json_t*>(TRI_AtVector(&list1->_value._objects, i1));
+      p2 = reinterpret_cast<TRI_json_t*>(TRI_AtVector(&list2->_value._objects, i2));
+      compareResult = TRI_CompareValuesJson(p1, p2, true);
 
       if (compareResult < 0) {
         // left element is smaller
-        if (! unique || last == NULL || TRI_CompareValuesJson(p1, last) > 0) {
+        if (! unique || last == NULL || TRI_CompareValuesJson(p1, last, true) > 0) {
           TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, result, p1);
           last = p1;
         }
@@ -528,7 +547,7 @@ TRI_json_t* TRI_UnionizeListsJson (const TRI_json_t* const list1,
       }
       else if (compareResult > 0) {
         // right element is smaller
-        if (! unique || last == NULL || TRI_CompareValuesJson(p2, last) > 0) {
+        if (! unique || last == NULL || TRI_CompareValuesJson(p2, last, true) > 0) {
           TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, result, p2);
           last = p2;
         }
@@ -536,7 +555,7 @@ TRI_json_t* TRI_UnionizeListsJson (const TRI_json_t* const list1,
       }
       else {
         // both elements are equal
-        if (! unique || last == NULL || TRI_CompareValuesJson(p1, last) > 0) {
+        if (! unique || last == NULL || TRI_CompareValuesJson(p1, last, true) > 0) {
           TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, result, p1);
           last = p1;
 
@@ -550,9 +569,9 @@ TRI_json_t* TRI_UnionizeListsJson (const TRI_json_t* const list1,
     }
     else if (i1 < n1 && i2 >= n2) {
       // only right list is exhausted
-      p1 = TRI_AtVector(&list1->_value._objects, i1);
+      p1 = reinterpret_cast<TRI_json_t*>(TRI_AtVector(&list1->_value._objects, i1));
 
-      if (! unique || last == NULL || TRI_CompareValuesJson(p1, last) > 0) {
+      if (! unique || last == NULL || TRI_CompareValuesJson(p1, last, true) > 0) {
         TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, result, p1);
         last = p1;
       }
@@ -560,9 +579,9 @@ TRI_json_t* TRI_UnionizeListsJson (const TRI_json_t* const list1,
     }
     else if (i1 >= n1 && i2 < n2) {
       // only left list is exhausted
-      p2 = TRI_AtVector(&list2->_value._objects, i2);
+      p2 = reinterpret_cast<TRI_json_t*>(TRI_AtVector(&list2->_value._objects, i2));
 
-      if (! unique || last == NULL || TRI_CompareValuesJson(p2, last) > 0) {
+      if (! unique || last == NULL || TRI_CompareValuesJson(p2, last, true) > 0) {
         TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, result, p2);
         last = p2;
       }
@@ -616,10 +635,10 @@ TRI_json_t* TRI_IntersectListsJson (const TRI_json_t* const list1,
   // iterate over lists
   while (i1 < n1 && i2 < n2) {
     // pointers to elements in both lists
-    TRI_json_t* p1 = TRI_AtVector(&list1->_value._objects, i1);
-    TRI_json_t* p2 = TRI_AtVector(&list2->_value._objects, i2);
+    auto p1 = reinterpret_cast<TRI_json_t*>(TRI_AtVector(&list1->_value._objects, i1));
+    auto p2 = reinterpret_cast<TRI_json_t*>(TRI_AtVector(&list2->_value._objects, i2));
 
-    int compareResult = TRI_CompareValuesJson(p1, p2);
+    int compareResult = TRI_CompareValuesJson(p1, p2, true);
 
     if (compareResult < 0) {
       // left element is smaller
@@ -631,7 +650,7 @@ TRI_json_t* TRI_IntersectListsJson (const TRI_json_t* const list1,
     }
     else {
       // both elements are equal
-      if (! unique || last == NULL || TRI_CompareValuesJson(p1, last) > 0) {
+      if (! unique || last == NULL || TRI_CompareValuesJson(p1, last, true) > 0) {
         TRI_PushBackListJson(TRI_UNKNOWN_MEM_ZONE, result, p1);
         last = p1;
 
@@ -698,13 +717,13 @@ bool TRI_HasDuplicateKeyJson (TRI_json_t const* object) {
         TRI_json_t* key;
         TRI_json_t* value;
 
-        key = TRI_AtVector(&object->_value._objects, i);
+        key = reinterpret_cast<TRI_json_t*>(TRI_AtVector(&object->_value._objects, i));
 
         if (! TRI_IsStringJson(key)) {
           continue;
         }
 
-        value = TRI_AtVector(&object->_value._objects, i + 1);
+        value = reinterpret_cast<TRI_json_t*>(TRI_AtVector(&object->_value._objects, i + 1));
 
         // recursively check sub-array elements
         if (value->_type == TRI_JSON_ARRAY && TRI_HasDuplicateKeyJson(value)) {

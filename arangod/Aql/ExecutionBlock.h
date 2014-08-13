@@ -233,7 +233,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief static analysis, walker class and information collector
 ////////////////////////////////////////////////////////////////////////////////
-
+        
         struct VarInfo {
           unsigned int const depth;
           RegisterId const registerId;
@@ -504,6 +504,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool getBlock (size_t atLeast, size_t atMost) {
+
           AqlItemBlock* docs = _dependencies[0]->getSome(atLeast, atMost);
           if (docs == nullptr) {
             return false;
@@ -536,84 +537,51 @@ namespace triagens {
 /// if it returns an actual block, it must contain at least one item.
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual AqlItemBlock* getSome (size_t atLeast, 
-                                       size_t atMost) {
-          if (_done) {
-            return nullptr;
+        virtual AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
+          TRI_ASSERT(0 < atLeast && atLeast <= atMost);
+          size_t skipped = 0;
+          AqlItemBlock* result = nullptr;
+          int out = getOrSkipSome(atLeast, atMost, false, result, skipped);
+          if (out != TRI_ERROR_NO_ERROR) {
+            THROW_ARANGO_EXCEPTION(out);
           }
+          return result;
+        }
+         
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSome, skips some more items, semantic is as follows: not
+/// more than atMost items may be skipped. The method tries to
+/// skip a block of at least atLeast items, however, it may skip
+/// less (for example if there are not enough items to come). The number of
+/// elements skipped is returned.
+////////////////////////////////////////////////////////////////////////////////
 
-          // Here, if _buffer.size() is > 0 then _pos points to a valid place
-          // in it.
-          size_t total = 0;
-          vector<AqlItemBlock*> collector;
-          AqlItemBlock* res;
-          try {
-            while (total < atLeast) {
-              if (_buffer.empty()) {
-                if (! getBlock(atLeast - total, std::max(atMost - total, DefaultBatchSize))) {
-                  _done = true;
-                  break;
-                }
-                _pos = 0;
-              }
-              AqlItemBlock* cur = _buffer.front();
-              if (cur->size() - _pos + total > atMost) {
-                // The current block is too large for atMost:
-                unique_ptr<AqlItemBlock> more(cur->slice(_pos, _pos + (atMost - total)));
-                _pos += atMost - total;
-                total = atMost;
-                collector.push_back(more.get());  
-                    // if this throws, more is deleted
-                more.release();   // do not delete it!
-              }
-              else if (_pos > 0) {
-                // The current block fits into our result, but it is already
-                // half-eaten:
-                unique_ptr<AqlItemBlock> more(cur->slice(_pos, cur->size()));
-                total += cur->size() - _pos;
-                delete cur;
-                _buffer.pop_front();
-                _pos = 0;
-                collector.push_back(more.get());  
-                    // if this throws, more is deleted
-                more.release();  // do not delete it!
-              } 
-              else {
-                // The current block fits into our result and is fresh:
-                collector.push_back(cur);
-                total += cur->size();
-                _buffer.pop_front();  // does not throw
-                _pos = 0;
-              }
-            }
+        virtual size_t skipSome (size_t atLeast, size_t atMost) {
+          TRI_ASSERT(0 < atLeast && atLeast <= atMost);
+          size_t skipped = 0;
+          AqlItemBlock* result = nullptr;
+          int out = getOrSkipSome(atLeast, atMost, true, result, skipped);
+          TRI_ASSERT(result == nullptr);
+          if (out != TRI_ERROR_NO_ERROR) {
+            THROW_ARANGO_EXCEPTION(out);
           }
-          catch (...) {
-            for (auto x : collector) {
-              delete x;
-            }
-            throw;
+          return skipped;
+        } 
+        
+        // skip exactly <number> outputs, returns <true> if _done after
+        // skipping, and <false> otherwise . . .
+        bool skip (size_t number) {
+          
+          size_t skipped = skipSome(number, number);
+          size_t nr = skipped;
+          while ( nr != 0 && skipped < number ){
+            nr = skipSome(number - skipped, number - skipped);
+            skipped += nr;
           }
-          if (collector.empty()) {
-            return nullptr;
-          }
-          else if (collector.size() == 1) {
-            return collector[0];
-          }
-          else {
-            try {
-              res = AqlItemBlock::concatenate(collector);
-            }
-            catch (...) {
-              for (auto x : collector) {
-                delete x;
-              }
-              throw;
-            }
-            for (auto x : collector) {
-              delete x;
-            }
-            return res;
-          }
+          if (nr == 0) {
+            return true;
+          } 
+          return ! hasMore();
         }
 
         virtual bool hasMore () {
@@ -630,69 +598,14 @@ namespace triagens {
           return false;
         }
 
-        // skip between atLeast and atMost using the same setup as getSome,
-        // returns the number actually skipped . . . 
-        // will only return less than atLeast if there aren't atLeast many
-        // things to skip overall.
-        virtual size_t skipSome (size_t atLeast, size_t atMost) {
-          size_t skipped = 0;
-          
-          if (_done) {
-            return skipped;
-          }
-          
-          while (skipped < atLeast) {
-            if (_buffer.empty()) {
-              if (! getBlock(atLeast - skipped, 
-                    std::max(atMost - skipped, DefaultBatchSize))) {
-                _done = true;
-                break;
-              }
-              _pos = 0;
-            }
-            // get the current block 
-            AqlItemBlock* cur = _buffer.front();
-            
-            if (cur->size() - _pos + skipped > atMost) {
-              // eat just enough of the current block . . .
-              _pos += atMost - skipped;
-              skipped = atMost;
-            }
-            else { 
-              // eat the rest of the current block and then proceed to the next
-              // course if any . . .
-              skipped += cur->size() - _pos;
-              delete cur;
-              _buffer.pop_front();
-              _pos = 0;
-            } 
-          }
-          return skipped;
-        }
-        
-        // skip exactly <number> outputs, returns <true> if _done after
-        // skipping, and <false> otherwise . . .
-        bool skip (size_t number) {
-          size_t skipped = skipSome(number, number);
-          size_t nr = skipped;
-          while ( nr != 0 && skipped < number ){
-            nr = skipSome(number - skipped, number - skipped);
-            skipped += nr;
-          }
-          if (nr == 0) {
-            return true;
-          } 
-          return ! hasMore();
-        }
-
         virtual int64_t count () {
           return _dependencies[0]->count();
         }
 
         virtual int64_t remaining () {
           int64_t sum = 0;
-          for (auto x : _buffer) {
-            sum += x->size();
+          for (auto it = _buffer.begin(); it != _buffer.end(); ++it) {
+            sum += (*it)->size();
           }
           return sum + _dependencies[0]->remaining();
         }
@@ -701,11 +614,111 @@ namespace triagens {
           return _exeNode;
         }
 
+
+      protected:
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generic method to get or skip some
+////////////////////////////////////////////////////////////////////////////////
+        
+        virtual int getOrSkipSome (size_t atLeast, size_t atMost, bool skipping, 
+                                   AqlItemBlock*& result, size_t& skipped) {
+          TRI_ASSERT(result == nullptr && skipped == 0);
+          if (_done) {
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          // if _buffer.size() is > 0 then _pos points to a valid place . . .
+          vector<AqlItemBlock*> collector;
+          try {
+            while (skipped < atLeast) {
+              if (_buffer.empty()) {
+                if (skipping) {
+                  _dependencies[0]->skip(atLeast - skipped);
+                  skipped = atLeast;
+                  return TRI_ERROR_NO_ERROR;
+                } 
+                else {
+                  if (! getBlock(atLeast - skipped, 
+                        std::max(atMost - skipped, DefaultBatchSize))) {
+                    _done = true;
+                    break; // must still put things in the result from the collector . . .
+                  }
+                  _pos = 0;
+                }
+              }
+              
+              AqlItemBlock* cur = _buffer.front();
+              
+              if (cur->size() - _pos > atMost - skipped) {
+                // The current block is too large for atMost:
+                if(!skipping){
+                  unique_ptr<AqlItemBlock> more(cur->slice(_pos, _pos + (atMost - skipped)));
+                  collector.push_back(more.get());
+                  more.release(); // do not delete it!
+                }
+                _pos += atMost - skipped;
+                skipped = atMost;
+              }
+              else if (_pos > 0) {
+                // The current block fits into our result, but it is already
+                // half-eaten:
+                if(!skipping){
+                  unique_ptr<AqlItemBlock> more(cur->slice(_pos, cur->size()));
+                  collector.push_back(more.get());
+                  more.release();
+                }
+                skipped += cur->size() - _pos;
+                delete cur;
+                _buffer.pop_front();
+                _pos = 0;
+              } 
+              else {
+                // The current block fits into our result and is fresh:
+                skipped += cur->size();
+                if(!skipping){
+                  collector.push_back(cur);
+                } 
+                else {
+                  delete cur;
+                }
+                _buffer.pop_front();
+                _pos = 0;
+              }
+            }
+          }
+          catch (...) {
+            for (auto x: collector){
+              delete x;
+            }
+            throw;
+          }
+
+          if (!skipping) {
+            if (collector.size() == 1) {
+              result = collector[0];
+            }
+            else if (collector.size() > 0) {
+              try {
+                result = AqlItemBlock::concatenate(collector);
+              }
+              catch (...) {
+                for (auto x : collector) {
+                  delete x;
+                }
+                throw;
+              }
+              for (auto x : collector) {
+                delete x;
+              }
+            }
+          }
+          return TRI_ERROR_NO_ERROR;
+        }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the transaction for this query
 ////////////////////////////////////////////////////////////////////////////////
-
-      protected:
 
         AQL_TRANSACTION_V8* _trx;
 
@@ -829,65 +842,11 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getSome
-////////////////////////////////////////////////////////////////////////////////
-
-        AqlItemBlock* getSome (size_t, size_t) {
-          if (_done) {
-            return nullptr;
-          }
-
-          AqlItemBlock* res = new AqlItemBlock(1, _varOverview->nrRegs[_depth]);
-          try {
-            if (_inputRegisterValues != nullptr) {
-              for (RegisterId reg = 0; reg < _inputRegisterValues->getNrRegs(); ++reg) {
-                AqlValue a = _inputRegisterValues->getValue(0, reg);
-                _inputRegisterValues->steal(a);
-                try {
-                  res->setValue(0, reg, a);
-                }
-                catch (...) {
-                  a.destroy();
-                  throw;
-                }
-                _inputRegisterValues->eraseValue(0, reg);
-                  // if the latter throws, it does not matter, since we have
-                  // already stolen the value
-                res->setDocumentCollection(reg,
-                         _inputRegisterValues->getDocumentCollection(reg));
-
-              }
-            }
-          }
-          catch (...) {
-            delete res;
-            throw;
-          }
-          _done = true;
-          return res;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief hasMore
 ////////////////////////////////////////////////////////////////////////////////
 
         bool hasMore () {
           return ! _done;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief skip
-////////////////////////////////////////////////////////////////////////////////
-
-        size_t skipSome (size_t atLeast, size_t atMost) {
-          if (_done) {
-            return 0; //nothing to skip
-          }
-          if (atLeast > 0) {
-            _done = true;
-            return 1; // 1 thing to skip
-          }
-          return 0; // atLeast = 0, skip nothing . . . 
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -911,11 +870,69 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       private:
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getOrSkipSome
+////////////////////////////////////////////////////////////////////////////////
+
+        int getOrSkipSome (size_t atLeast, size_t atMost, bool skipping, 
+                           AqlItemBlock*& result, size_t& skipped) {
+          
+          TRI_ASSERT(result == nullptr && skipped == 0);
+
+          if (_done) {
+            return TRI_ERROR_NO_ERROR;
+          }
+          
+          if(!skipping){
+            result = new AqlItemBlock(1, _varOverview->nrRegs[_depth]);
+            try {
+              if (_inputRegisterValues != nullptr) {
+                skipped++;
+                for (RegisterId reg = 0; reg < _inputRegisterValues->getNrRegs(); ++reg) {
+                  
+                  AqlValue a = _inputRegisterValues->getValue(0, reg);
+                  _inputRegisterValues->steal(a);
+                  
+                  try {
+                    result->setValue(0, reg, a);
+                  }
+                  catch (...) {
+                    a.destroy();
+                    throw;
+                  }
+                  _inputRegisterValues->eraseValue(0, reg);
+                    // if the latter throws, it does not matter, since we have
+                    // already stolen the value
+                  result->setDocumentCollection(reg,
+                           _inputRegisterValues->getDocumentCollection(reg));
+
+                }
+              }
+            }
+            catch (...) {
+              delete result;
+              result = nullptr;
+              throw;
+            }
+          } 
+          else {
+            if (_inputRegisterValues != nullptr) {
+              skipped++;
+            }
+          }
+          
+          _done = true;
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _inputRegisterValues
+////////////////////////////////////////////////////////////////////////////////
 
         AqlItemBlock* _inputRegisterValues;
 
     };
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          EnumerateCollectionBlock
@@ -1092,7 +1109,9 @@ namespace triagens {
             // The result is in the first variable of this depth,
             // we do not need to do a lookup in _varOverview->varInfo,
             // but can just take cur->getNrRegs() as registerId:
-            res->setValue(j, curRegs, AqlValue(reinterpret_cast<TRI_df_marker_t const*>(_documents[_posInAllDocs++].getDataPtr())));
+            res->setValue(j, curRegs, 
+                AqlValue(reinterpret_cast<TRI_df_marker_t 
+                  const*>(_documents[_posInAllDocs++].getDataPtr())));
             // No harm done, if the setValue throws!
           }
 
@@ -1945,21 +1964,19 @@ namespace triagens {
 /// @brief getSome
 ////////////////////////////////////////////////////////////////////////////////
 
-      public:
-
-        AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
+        int getOrSkipSome (size_t atLeast, size_t atMost, bool skipping, 
+                                   AqlItemBlock*& result, size_t& skipped) {
+          TRI_ASSERT(result == nullptr && skipped == 0);
           if (_done) {
-            return nullptr;
+            return TRI_ERROR_NO_ERROR;
           }
 
-          // Here, if _buffer.size() is > 0 then _pos points to a valid place
-          // in it.
-          size_t total = 0;
+          // if _buffer.size() is > 0 then _pos is valid
           vector<AqlItemBlock*> collector;
           try {
-            while (total < atLeast) {
+            while (skipped < atLeast) {
               if (_buffer.empty()) {
-                if (! getBlock(atLeast - total, atMost - total)) {
+                if (! getBlock(atLeast - skipped, atMost - skipped)) {
                   _done = true;
                   break;
                 }
@@ -1968,33 +1985,41 @@ namespace triagens {
               // If we get here, then _buffer.size() > 0 and _pos points to a
               // valid place in it.
               AqlItemBlock* cur = _buffer.front();
-              if (_chosen.size() - _pos + total > atMost) {
+              if (_chosen.size() - _pos + skipped > atMost) {
                 // The current block of chosen ones is too large for atMost:
-                unique_ptr<AqlItemBlock> more(cur->slice(_chosen, 
-                                              _pos, _pos + (atMost - total)));
-                _pos += atMost - total;
-                total = atMost;
-                collector.push_back(more.get());
-                more.release();
+                if(!skipping){
+                  unique_ptr<AqlItemBlock> more(cur->slice(_chosen, 
+                                    _pos, _pos + (atMost - skipped)));
+                  collector.push_back(more.get());
+                  more.release();
+                }
+                _pos += atMost - skipped;
+                skipped = atMost;
               }
               else if (_pos > 0 || _chosen.size() < cur->size()) {
                 // The current block fits into our result, but it is already
                 // half-eaten or needs to be copied anyway:
-                unique_ptr<AqlItemBlock> more(cur->steal(_chosen, _pos, _chosen.size()));
-                total += _chosen.size() - _pos;
+                if(!skipping){
+                  unique_ptr<AqlItemBlock> more(cur->steal(_chosen, _pos, _chosen.size()));
+                  collector.push_back(more.get());
+                  more.release();
+                }
+                skipped += _chosen.size() - _pos;
                 delete cur;
                 _buffer.pop_front();
                 _chosen.clear();
                 _pos = 0;
-                collector.push_back(more.get());
-                more.release();
               } 
               else {
                 // The current block fits into our result and is fresh and
                 // takes them all, so we can just hand it on:
-                collector.push_back(cur);
-                    // if this throws, cur is still in _buffer
-                total += cur->size();
+                if(!skipping){
+                  collector.push_back(cur);
+                } 
+                else {
+                  delete cur;
+                }
+                skipped += cur->size();
                 _buffer.pop_front();
                 _chosen.clear();
                 _pos = 0;
@@ -2007,78 +2032,26 @@ namespace triagens {
             }
             throw;
           }
-          if (collector.empty()) {
-            return nullptr;
-          }
-          else if (collector.size() == 1) {
-            return collector[0];
-          }
-          else {
-            AqlItemBlock* res;
-            try {
-              res = AqlItemBlock::concatenate(collector);
+          if (!skipping) {
+            if (collector.size() == 1) {
+              result = collector[0];
             }
-            catch (...) {
-              for (auto x : collector) {
+            else if (collector.size() > 1 ) {
+              try {
+                result = AqlItemBlock::concatenate(collector);
+              }
+              catch (...){
+                for (auto x : collector){ 
+                  delete x;
+                }
+                throw;
+              }
+              for (auto x : collector){ 
                 delete x;
               }
-              throw;
-            }
-            for (auto x : collector) {
-              delete x;
-            }
-            return res;
-          }
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief skipSome
-////////////////////////////////////////////////////////////////////////////////
-
-        size_t skipSome (size_t atLeast, size_t atMost) {
-          if (_done) {
-            return 0;
-          }
-
-          // Here, if _buffer.size() is > 0 then _pos points to a valid place
-          // in it.
-          size_t skipped = 0;
-
-          while (skipped < atLeast) {
-            if (_buffer.empty()) {
-              if (! getBlock(atLeast - skipped, atMost - skipped)) {
-                _done = true;
-                break;
-              }
-              _pos = 0;
-            }
-            // If we get here, then _buffer.size() > 0 and _pos points to a
-            // valid place in it.
-            AqlItemBlock* cur = _buffer.front();
-            if (_chosen.size() - _pos + skipped > atMost) {
-              // The current block of chosen ones is too large for atMost:
-              _pos += atMost - skipped;
-              skipped = atMost;
-            }
-            else if (_pos > 0 || _chosen.size() < cur->size()) {
-              // The current block fits into our result, but it is already
-              // half-eaten or needs to be copied anyway:
-              skipped += _chosen.size() - _pos;
-              delete cur;
-              _buffer.pop_front();  // does not throw
-              _chosen.clear();
-              _pos = 0;
-            } 
-            else {
-              // The current block fits into our result and is fresh and
-              // takes them all, so we can just hand it on:
-              skipped += cur->size();
-              _buffer.pop_front();
-              _chosen.clear();  // does not throw
-              _pos = 0;
             }
           }
-          return skipped;
+          return TRI_ERROR_NO_ERROR;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2222,37 +2195,40 @@ namespace triagens {
           return TRI_ERROR_NO_ERROR;
         }
 
+      private:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getSome
 ////////////////////////////////////////////////////////////////////////////////
-
-        AqlItemBlock* getSome (size_t atLeast, size_t atMost) {
+        
+        int getOrSkipSome (size_t atLeast, size_t atMost, bool skipping, 
+                           AqlItemBlock*& result, size_t& skipped) {
+          TRI_ASSERT(result == nullptr && skipped == 0);
           if (_done) {
-            return nullptr;
+            return TRI_ERROR_NO_ERROR;
           }
                 
           if (_buffer.empty()) {
             if (! ExecutionBlock::getBlock(atLeast, atMost)) {
               _done = true;
-              return nullptr;
+              return TRI_ERROR_NO_ERROR;
             }
             _pos = 0;           // this is in the first block
           }
 
           // If we get here, we do have _buffer.front()
           AqlItemBlock* cur = _buffer.front();
+          unique_ptr<AqlItemBlock> res;
 
-          size_t const curRegs = cur->getNrRegs();
+          if(!skipping){
+            size_t const curRegs = cur->getNrRegs();
+            res.reset(new AqlItemBlock(atMost, _varOverview->nrRegs[_depth]));
 
-          unique_ptr<AqlItemBlock> res(new AqlItemBlock(atMost, _varOverview->nrRegs[_depth]));
+            TRI_ASSERT(curRegs <= res->getNrRegs());
+            inheritRegisters(cur, res.get(), _pos);
+          }
 
-          TRI_ASSERT(curRegs <= res->getNrRegs());
-
-          inheritRegisters(cur, res.get(), _pos);
-           
-          size_t j = 0;
-
-          while (j < atMost) {
+          while (skipped < atMost) {
             // read the next input tow
           
             bool newGroup = false;
@@ -2280,18 +2256,19 @@ namespace triagens {
 
             if (newGroup) {
               if (! _currentGroup.groupValues[0].isEmpty()) {
-                // need to emit the current group first
-
-                emitGroup(cur, res.get(), j);
+                if(!skipping){
+                  // need to emit the current group first
+                  emitGroup(cur, res.get(), skipped);
+                }
 
                 // increase output row count
-                ++j;
+                ++skipped;
                 
-                if (j == atMost) {
+                if (skipped == atMost) {
                   // output is full
-
                   // do NOT advance input pointer
-                  return res.release();
+                  result = res.release();
+                  return TRI_ERROR_NO_ERROR;
                 }
               }
 
@@ -2304,11 +2281,13 @@ namespace triagens {
                 _currentGroup.collections[i] = cur->getDocumentCollection((*it).second);
                 ++i;
               }
-              
-              _currentGroup.setFirstRow(_pos);
+              if(!skipping){
+                _currentGroup.setFirstRow(_pos);
+              }
             }
-              
-            _currentGroup.setLastRow(_pos);
+            if(!skipping){ 
+              _currentGroup.setLastRow(_pos);
+            }
 
             if (++_pos >= cur->size()) {
               _buffer.pop_front();
@@ -2323,16 +2302,20 @@ namespace triagens {
                 // no more input. we're done
                 try {
                   // emit last buffered group
-                  emitGroup(cur, res.get(), j);
-                  ++j;
+                  if(!skipping){
+                    emitGroup(cur, res.get(), skipped);
+                    ++skipped;
+                    TRI_ASSERT(skipped > 0);
+                    res->shrink(skipped);
+                  } 
+                  else {
+                    ++skipped;
+                  }
                   delete cur;
                   cur = nullptr;
-
-                  TRI_ASSERT(j > 0);
-                  res->shrink(j);
-                
                   _done = true;
-                  return res.release();
+                  result = res.release();
+                  return TRI_ERROR_NO_ERROR;
                 }
                 catch (...) {
                   delete cur;
@@ -2350,115 +2333,15 @@ namespace triagens {
             }
           }
 
+          if(!skipping){
+            TRI_ASSERT(skipped > 0);
+            res->shrink(skipped);
+          }
 
-          TRI_ASSERT(j > 0);
-          res->shrink(j);
-
-          return res.release();
+          result = res.release();
+          return TRI_ERROR_NO_ERROR;
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief skipSome
-////////////////////////////////////////////////////////////////////////////////
-
-        size_t skipSome (size_t atLeast, size_t atMost) {
-          if (_done) {
-            return 0;
-          }
-
-          if (_buffer.empty()) {
-            if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
-              _done = true;
-              return 0;
-            }
-            _pos = 0;           // this is in the first block
-          }
-
-          // If we get here, we do have _buffer.front()
-          AqlItemBlock* cur = _buffer.front();
-          size_t skipped = 0;
-
-          while (skipped < atLeast) {
-            // read the next input tow
-
-            bool newGroup = false;
-            if (_currentGroup.groupValues[0].isEmpty()) {
-              // we never had any previous group
-              newGroup = true;
-            }
-            else {
-              // we already had a group, check if the group has changed
-              size_t i = 0;
-
-              for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
-                int cmp = AqlValue::Compare(_currentGroup.groupValues[i], 
-                                            _currentGroup.collections[i],
-                                            cur->getValue(_pos, (*it).second), 
-                                            cur->getDocumentCollection((*it).second));
-                if (cmp != 0) {
-                  // group change
-                  newGroup = true;
-                  break;
-                }
-                ++i;
-              }
-            }
-
-            if (newGroup) {
-              if (! _currentGroup.groupValues[0].isEmpty()) {
-                // increase output row count
-                ++skipped;
-                if ( skipped == atMost) {
-                  return skipped;
-                }
-              }
-
-              // construct the new group
-              size_t i = 0;
-              for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
-                _currentGroup.groupValues[i] = cur->getValue(_pos, (*it).second).clone();
-                _currentGroup.collections[i] = cur->getDocumentCollection((*it).second);
-                ++i;
-              }
-              
-            }
-
-            if (++_pos >= cur->size()) {
-              _buffer.pop_front();
-              _pos = 0;
-           
-              bool hasMore = ! _buffer.empty();
-              if (!hasMore) {
-                hasMore = ExecutionBlock::getBlock(atLeast, atMost);
-              }
-              if (! hasMore) {
-                // FIXME: this cannot throw, and if delete cur throws,
-                // we should not try again!
-                try {
-                  ++skipped;
-                  delete cur;
-                  cur = nullptr;
-                  _done = true;
-                  return skipped;
-                }
-                catch (...) {
-                  delete cur;
-                  throw;
-                }
-              }
-
-              // hasMore
-
-              delete cur;
-              cur = _buffer.front();
-            }
-          }
-
-          return skipped;
-        }
-
-
-      private:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writes the current group data into the result
@@ -2479,8 +2362,9 @@ namespace triagens {
             // set the group values
             _currentGroup.addValues(cur, _groupRegister);
 
+            res->setValue(row, _groupRegister, 
+                AqlValue::CreateFromBlocks(_currentGroup.groupBlocks, _variableNames));
             // FIXME: can throw:
-            res->setValue(row, _groupRegister, AqlValue::CreateFromBlocks(_currentGroup.groupBlocks, _variableNames));
           }
            
           // reset the group so a new one can start
@@ -2624,7 +2508,6 @@ namespace triagens {
           
           try {  // If we throw from here, the catch will delete the new
                  // blocks in newbuffer
-            _buffer.clear();
             
             count = 0;
             RegisterId const nrregs = _buffer.front()->getNrRegs();
@@ -2835,6 +2718,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getSome
 ////////////////////////////////////////////////////////////////////////////////
+        
+        virtual size_t skipSome (size_t atLeast, size_t atMost){
+
+          return ExecutionBlock::skipSome(atLeast, atMost);
+        }
 
         virtual AqlItemBlock* getSome (size_t atLeast, 
                                        size_t atMost) {
@@ -2853,13 +2741,12 @@ namespace triagens {
               if (tmp != nullptr) {
                 delete tmp;
               }
-
-              _state = 1;
-              _count = 0;
-              if (_limit == 0) {
-                _state = 2;
-                return nullptr;
-              }
+            }
+            _state = 1;
+            _count = 0;
+            if (_limit == 0) {
+              _state = 2;
+              return nullptr;
             }
           }
 

@@ -36,7 +36,7 @@
 
 #include "Basics/Utf8Helper.h"
 #include "BasicsC/conversions.h"
-#include "BasicsC/json-utilities.h"
+#include "Basics/json-utilities.h"
 #include "V8/v8-conv.h"
 #include "Utils/transactions.h"
 #include "Utils/V8TransactionContext.h"
