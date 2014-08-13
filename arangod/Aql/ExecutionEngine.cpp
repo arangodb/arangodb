@@ -172,17 +172,18 @@ struct Instanciator : public WalkerWorker {
 ////////////////////////////////////////////////////////////////////////////////
 
 ExecutionEngine* ExecutionEngine::instanciateFromPlan (AQL_TRANSACTION_V8* trx,
-                                                       ExecutionNode* plan) {
+                                                       ExecutionPlan* plan) {
   auto engine = new ExecutionEngine(trx);
 
   try {
     auto inst = new Instanciator(engine);
-    plan->walk(inst);
+    plan->root()->walk(inst);
     auto root = inst->root;
     delete inst;
 
     root->staticAnalysis();
     root->initialize();
+    root->initCursor(nullptr, 0);
 
     engine->_root = root;
   
