@@ -27,7 +27,7 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/AqlItemBlock.h"
-#include "BasicsC/json-utilities.h"
+#include "Basics/json-utilities.h"
 #include "V8/v8-conv.h"
 #include "V8Server/v8-wrapshapedjson.h"
 #include "VocBase/voc-shaper.h"
@@ -387,12 +387,12 @@ int AqlValue::Compare (AqlValue const& left,
 
     if (left._type == AqlValue::JSON && right._type == AqlValue::SHAPED) {
       triagens::basics::Json rjson = right.toJson(rightcoll);
-      return TRI_CompareValuesJson(left._json->json(), rjson.json());
+      return TRI_CompareValuesJson(left._json->json(), rjson.json(), true);
     }
 
     if (left._type == AqlValue::SHAPED && right._type == AqlValue::JSON) {
       triagens::basics::Json ljson = left.toJson(leftcoll);
-      return TRI_CompareValuesJson(ljson.json(), right._json->json());
+      return TRI_CompareValuesJson(ljson.json(), right._json->json(), true);
     }
 
     // No other comparisons are defined
@@ -407,7 +407,7 @@ int AqlValue::Compare (AqlValue const& left,
     }
 
     case AqlValue::JSON: {
-      return TRI_CompareValuesJson(left._json->json(), right._json->json());
+      return TRI_CompareValuesJson(left._json->json(), right._json->json(), true);
     }
 
     case AqlValue::SHAPED: {

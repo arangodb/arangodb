@@ -50,6 +50,7 @@ add_library(
     Basics/Exceptions.cpp
     Basics/FileUtils.cpp
     Basics/InitialiseBasics.cpp
+    Basics/json-utilities.cpp
     Basics/JsonHelper.cpp
     Basics/Mutex.cpp
     Basics/MutexLocker.cpp
@@ -79,7 +80,6 @@ add_library(
     BasicsC/hashes.c
     Basics/init.cpp
     BasicsC/json.c
-    BasicsC/json-utilities.c
     BasicsC/linked-list.c
     BasicsC/logging.c
     BasicsC/memory.c
