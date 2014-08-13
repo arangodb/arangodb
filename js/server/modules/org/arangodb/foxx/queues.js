@@ -31,6 +31,7 @@
 var _ = require('underscore'),
   flatten = require('internal').flatten,
   arangodb = require('org/arangodb'),
+  console = require('console'),
   db = arangodb.db,
   failImmutable,
   queueMap,
@@ -104,6 +105,9 @@ queues = {
     }
     if (typeof opts.execute !== 'function') {
       throw new Error('Must provide a function to execute!');
+    }
+    if (opts.schema && typeof opts.schema.validate !== 'function') {
+      throw new Error('Schema must be a joi schema!');
     }
     var cfg = _.extend({maxFailures: 0}, opts);
     queues._jobTypes[type] = cfg;
@@ -200,19 +204,35 @@ Queue = function Queue(name) {
 };
 
 _.extend(Queue.prototype, {
-  push: function (type, data, opts) {
+  push: function (name, data, opts) {
     'use strict';
-    if (typeof type !== 'string') {
+    var type, result, now;
+    if (typeof name !== 'string') {
       throw new Error('Must pass a job type!');
     }
     if (!opts) {
       opts = {};
     }
-    var now = Date.now();
+
+    type = queues._jobTypes[name];
+    if (type !== undefined) {
+      if (type.schema) {
+        result = type.schema.validate(data);
+        if (result.error) {
+          throw result.error;
+        }
+        data = result.value;
+      }
+    } else if (opts.allowUnknown) {
+      console.warn('Unknown job type: ' + name);
+    } else {
+      throw new Error('Unknown job type: ' + name);
+    }
+    now = Date.now();
     return db._jobs.save({
       status: 'pending',
       queue: this.name,
-      type: type,
+      type: name,
       failures: [],
       data: data,
       created: now,

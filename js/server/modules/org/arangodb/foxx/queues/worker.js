@@ -72,17 +72,19 @@ exports.work = function (job) {
     success = true,
     callback = null,
     now = Date.now(),
-    maxFailures = (
-      typeof job.maxFailures === 'number'
-        ? (job.maxFailures < 0 ? Infinity : job.maxFailures)
-        : (cfg.maxFailures < 0 ? Infinity : cfg.maxFailures)
-    ) || 0;
+    maxFailures;
 
   if (!cfg) {
     console.warn('Unknown job type for job ' + job._key + ':', job.type);
     db._jobs.update(job._key, {status: 'pending'});
     return;
   }
+
+  maxFailures = (
+    typeof job.maxFailures === 'number'
+      ? (job.maxFailures < 0 ? Infinity : job.maxFailures)
+      : (cfg.maxFailures < 0 ? Infinity : cfg.maxFailures)
+  ) || 0;
 
   try {
     cfg.execute(job.data, job._id);
