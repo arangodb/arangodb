@@ -2082,7 +2082,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getSome
 ////////////////////////////////////////////////////////////////////////////////
-//~J not yet working!
+        
         int getOrSkipSome (size_t atLeast, size_t atMost, bool skipping, 
                            AqlItemBlock*& result, size_t& skipped) {
 
@@ -2218,105 +2218,6 @@ namespace triagens {
 
           return TRI_ERROR_NO_ERROR;
         }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief skipSome
-////////////////////////////////////////////////////////////////////////////////
-
-      /*  size_t skipSome (size_t atLeast, size_t atMost) {
-          if (_done) {
-            return 0;
-          }
-
-          if (_buffer.empty()) {
-            if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
-              _done = true;
-              return 0;
-            }
-            _pos = 0;           // this is in the first block
-          }
-
-          // If we get here, we do have _buffer.front()
-          AqlItemBlock* cur = _buffer.front();
-          size_t skipped = 0;
-
-          while (skipped < atLeast) {
-            // read the next input tow
-
-            bool newGroup = false;
-            if (_currentGroup.groupValues[0].isEmpty()) {
-              // we never had any previous group
-              newGroup = true;
-            }
-            else {
-              // we already had a group, check if the group has changed
-              size_t i = 0;
-
-              for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
-                int cmp = AqlValue::Compare(_currentGroup.groupValues[i], 
-                                            _currentGroup.collections[i],
-                                            cur->getValue(_pos, (*it).second), 
-                                            cur->getDocumentCollection((*it).second));
-                if (cmp != 0) {
-                  // group change
-                  newGroup = true;
-                  break;
-                }
-                ++i;
-              }
-            }
-
-            if (newGroup) {
-              if (! _currentGroup.groupValues[0].isEmpty()) {
-                // increase output row count
-                ++skipped;
-                if ( skipped == atMost) {
-                  return skipped;
-                }
-              }
-
-              // construct the new group
-              size_t i = 0;
-              for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
-                _currentGroup.groupValues[i] = cur->getValue(_pos, (*it).second).clone();
-                _currentGroup.collections[i] = cur->getDocumentCollection((*it).second);
-                ++i;
-              }
-              
-            }
-
-            if (++_pos >= cur->size()) {
-              _buffer.pop_front();
-              _pos = 0;
-           
-              bool hasMore = ! _buffer.empty();
-              if (!hasMore) {
-                hasMore = ExecutionBlock::getBlock(atLeast, atMost);
-              }
-              if (! hasMore) {
-                try {
-                  ++skipped;
-                  delete cur;
-                  cur = nullptr;
-                  _done = true;
-                  return skipped;
-                }
-                catch (...) {
-                  delete cur;
-                  throw;
-                }
-              }
-
-              // hasMore
-
-              delete cur;
-              cur = _buffer.front();
-            }
-          }
-
-          return skipped;
-        } */
-
 
       private:
 
