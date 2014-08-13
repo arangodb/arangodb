@@ -34,6 +34,7 @@
 
 #include "arangod/Aql/AqlItemBlock.h"
 #include "arangod/Aql/ExecutionBlock.h"
+#include "arangod/Aql/ExecutionPlan.h"
 #include "Utils/AqlTransaction.h"
 
 namespace triagens {
@@ -76,7 +77,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static ExecutionEngine* instanciateFromPlan (AQL_TRANSACTION_V8*,
-                                                     ExecutionNode*);
+                                                     ExecutionPlan*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the root block 
