@@ -1450,7 +1450,7 @@
       useToString: false
     };
 
-    if (options.hasOwnProperty("prettyPrint")) {
+    if (options && options.hasOwnProperty("prettyPrint")) {
       context.prettyPrint = options.prettyPrint;
     }
 
