@@ -1299,7 +1299,7 @@ namespace triagens {
             
             // get the thing we are looping over 
             AqlValue inVarReg = cur->getValue(_pos, _inVarRegId);
-            size_t sizeInVar;
+            size_t sizeInVar = 0; // to shut up compiler
 
             // get the size of the thing we are looping over
             collection = nullptr;
