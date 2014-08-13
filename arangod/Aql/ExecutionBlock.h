@@ -1930,56 +1930,6 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief skipSome
-////////////////////////////////////////////////////////////////////////////////
-
-       /* size_t skipSome (size_t atLeast, size_t atMost) {
-          if (_done) {
-            return 0;
-          }
-
-          // Here, if _buffer.size() is > 0 then _pos points to a valid place
-          // in it.
-          size_t skipped = 0;
-
-          while (skipped < atLeast) {
-            if (_buffer.empty()) {
-              if (! getBlock(atLeast - skipped, atMost - skipped)) {
-                _done = true;
-                break;
-              }
-              _pos = 0;
-            }
-            // If we get here, then _buffer.size() > 0 and _pos points to a
-            // valid place in it.
-            AqlItemBlock* cur = _buffer.front();
-            if (_chosen.size() - _pos + skipped > atMost) {
-              // The current block of chosen ones is too large for atMost:
-              _pos += atMost - skipped;
-              skipped = atMost;
-            }
-            else if (_pos > 0 || _chosen.size() < cur->size()) {
-              // The current block fits into our result, but it is already
-              // half-eaten or needs to be copied anyway:
-              skipped += _chosen.size() - _pos;
-              delete cur;
-              _buffer.pop_front();
-              _chosen.clear();
-              _pos = 0;
-            } 
-            else {
-              // The current block fits into our result and is fresh and
-              // takes them all, so we can just hand it on:
-              skipped += cur->size();
-              _buffer.pop_front();
-              _chosen.clear();
-              _pos = 0;
-            }
-          }
-          return skipped;
-        } */
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief hasMore
 ////////////////////////////////////////////////////////////////////////////////
 
