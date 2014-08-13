@@ -116,7 +116,8 @@ If *opts* is a function, it will be treated as the *execute* function.
 * *opts*: an object with the following properties:
   * *execute*: a function to pass the job data to when a job is executed.
   * *maxFailures* (optional): the number of times a job will be re-tried before it is marked as *"failed"*. A negative value or *Infinity* means that the job will be re-tried on failure indefinitely. Default: *0*.
- * *backOff* (optional): either a function that takes the number of times the job has failed before as input and returns the number of milliseconds to wait before trying the job again, or the delay to be used to calculate an [exponential back-off](https://en.wikipedia.org/wiki/Exponential_backoff), or *0* for no delay. Default: *1000*.
+  * *schema* (optional): a [Joi](https://github.com/hapijs/joi) schema to validate a job's data against before accepting it.
+  * *backOff* (optional): either a function that takes the number of times the job has failed before as input and returns the number of milliseconds to wait before trying the job again, or the delay to be used to calculate an [exponential back-off](https://en.wikipedia.org/wiki/Exponential_backoff), or *0* for no delay. Default: *1000*.
 
 *Examples*
 
@@ -144,6 +145,7 @@ Returns the job id.
  * *failure* (optional): a function to be called after the job has failed too many times.
  * *delayUntil* (optional): a timestamp in milliseconds until which the execution of the job should be delayed. Default: *Date.now()*.
  * *backOff* (optional): either a function that takes the number of times the job has failed before as input and returns the number of milliseconds to wait before trying the job again, or the delay to be used to calculate an [exponential back-off](https://en.wikipedia.org/wiki/Exponential_backoff), or *0* for no delay. See [Registering a job type](#registering-a-job-type).
+ * *allowUnknown* (optional): whether the job should be queued even if the job type name does not match a currently registered job type. Default: *false*.
  * *maxFailures* (optional): the number of times the job will be re-tried before it is marked as *"failed"*. A negative value or *Infinity* means that the job will be re-tried on failure indefinitely. See [Registering a job type](#registering-a-job-type).
  Note that if you pass a function for the *backOff* calculation, *success* callback or *failure* callback options the function must not rely on any external scope or external variables.
 
