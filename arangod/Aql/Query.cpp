@@ -195,15 +195,12 @@ QueryResult Query::execute () {
     triagens::basics::Json json(triagens::basics::Json::List);
 
     try { 
-      auto engine = ExecutionEngine::instanciateFromPlan(&trx, plan->root());
+      auto engine = ExecutionEngine::instanciateFromPlan(&trx, plan);
 
       try {
-        auto root = engine->root();
-        root->initCursor(nullptr, 0);
- 
         AqlItemBlock* value;
     
-        while (nullptr != (value = root->getSome(1, ExecutionBlock::DefaultBatchSize))) {
+        while (nullptr != (value = engine->getSome(1, ExecutionBlock::DefaultBatchSize))) {
           auto doc = value->getDocumentCollection(0);
           size_t const n = value->size();
           for (size_t i = 0; i < n; ++i) {
