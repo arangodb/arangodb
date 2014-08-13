@@ -2716,12 +2716,15 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getSome
+/// @brief getOrSkipSome
 ////////////////////////////////////////////////////////////////////////////////
         
-        virtual size_t skipSome (size_t atLeast, size_t atMost) {
+        virtual int getOrSkipSome (size_t atLeast, size_t atMost, bool skipping, 
+                                   AqlItemBlock*& result, size_t& skipped) {
+          TRI_ASSERT(result == nullptr && skipped == 0);
+
           if (_state == 2) {
-            return 0;
+            return TRI_ERROR_NO_ERROR;
           }
           
           if (_state == 0) {
@@ -2732,7 +2735,7 @@ namespace triagens {
             _count = 0;
             if (_limit == 0) {
               _state = 2;
-              return 0;
+              return TRI_ERROR_NO_ERROR;
             }
           }
 
@@ -2745,55 +2748,16 @@ namespace triagens {
             }
           }
 
-          size_t skipped = ExecutionBlock::skipSome(atLeast, atMost);
+          ExecutionBlock::getOrSkipSome(atLeast, atMost, skipping, result, skipped);
           if (skipped == 0) {
-            return 0;
+            return TRI_ERROR_NO_ERROR;
           }
           _count += skipped;
           if (_count >= _limit) {
             _state = 2;
           }
 
-          return skipped;
-        }
-
-        virtual AqlItemBlock* getSome (size_t atLeast, 
-                                       size_t atMost) {
-          if (_state == 2) {
-            return nullptr;
-          }
-
-          if (_state == 0) {
-            if (_offset > 0) {
-              ExecutionBlock::_dependencies[0]->skip(_offset);
-            }
-            _state = 1;
-            _count = 0;
-            if (_limit == 0) {
-              _state = 2;
-              return nullptr;
-            }
-          }
-
-          // If we get to here, _state == 1 and _count < _limit
-
-          if (atMost > _limit - _count) {
-            atMost = _limit - _count;
-            if (atLeast > atMost) {
-              atLeast = atMost;
-            }
-          }
-
-          auto res = ExecutionBlock::getSome(atLeast, atMost);
-          if (res == nullptr) {
-            return res;
-          }
-          _count += res->size();
-          if (_count >= _limit) {
-            _state = 2;
-          }
-
-          return res;
+          return TRI_ERROR_NO_ERROR;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
