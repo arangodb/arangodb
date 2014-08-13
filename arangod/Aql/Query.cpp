@@ -199,7 +199,7 @@ QueryResult Query::execute () {
 
       try {
         auto root = engine->root();
-        root->execute();
+        root->initCursor(nullptr, 0);
  
         AqlItemBlock* value;
     
