@@ -24,20 +24,18 @@
       var planVersion = window.versionHelper.fromString(
         window.App.clusterPlan.getVersion()
       );
-      var currentVersion = window.App.footerView.system.version;
-      if (!currentVersion) {
-        $.ajax({
-          type: "GET",
-          cache: false,
-          url: "/_api/version",
-          contentType: "application/json",
-          processData: false,
-          async: false,
-          success: function(data) {
-            currentVersion = data.version;
-          }
-        });
-      }
+      var currentVersion;
+      $.ajax({
+        type: "GET",
+        cache: false,
+        url: "/_admin/database/target-version",
+        contentType: "application/json",
+        processData: false,
+        async: false,
+        success: function(data) {
+          currentVersion = data.version;
+        }
+      });
       currentVersion = window.versionHelper.fromString(
         currentVersion
       );

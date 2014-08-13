@@ -29,7 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function() {
-
   "use strict";
 
   // Initialise a new FoxxController called controller under the urlPrefix: "cluster".
@@ -51,7 +50,7 @@
     res.json(!cluster.dispatcherDisabled());
   });
 
-  if (!cluster.dispatcherDisabled()) {
+  if (! cluster.dispatcherDisabled()) {
     var Plans = require("./repositories/plans.js"),
       plans = new Plans.Repository(
         require("internal").db._collection(
@@ -162,6 +161,7 @@
         p = body.passwd;
       plans.saveCredentials(u, p);
     });
+
     controller.get("/plan", function(req, res) {
       res.json(plans.loadConfig());
     });
@@ -229,7 +229,8 @@
 
     controller.get("/relaunch", function(req, res) {
       var k = getStarter();
-      var r = k.relaunch();
+      var u = plans.getCredentials();
+      var r = k.relaunch(u.name, u.passwd);
       if (r.error) {
         res.json("Unable to relaunch cluster");
         res.status(409);

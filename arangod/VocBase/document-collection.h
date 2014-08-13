@@ -509,6 +509,95 @@ size_t TRI_DocumentIteratorDocumentCollection (triagens::arango::TransactionBase
   TRI_UnlockCondition(&(a)->_journalsCondition)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the marker is an edge marker
+////////////////////////////////////////////////////////////////////////////////
+
+static inline bool TRI_IS_EDGE_MARKER (TRI_df_marker_t const* marker) {
+  return (marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
+          marker->_type == TRI_WAL_MARKER_EDGE);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the pointer to the _from key from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+static inline char const* TRI_EXTRACT_MARKER_FROM_KEY (TRI_df_marker_t const* marker) {
+  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+    return ((char const*) marker) + ((TRI_doc_edge_key_marker_t const*) marker)->_offsetFromKey;  
+  }
+  else if (marker->_type == TRI_WAL_MARKER_EDGE) {
+    return ((char const*) marker) + ((triagens::wal::edge_marker_t const*) marker)->_offsetFromKey; 
+  }
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  // invalid marker type
+  TRI_ASSERT(false);
+#endif
+
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the pointer to the _to key from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+static inline char const* TRI_EXTRACT_MARKER_TO_KEY (TRI_df_marker_t const* marker) {
+  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+    return ((char const*) marker) + ((TRI_doc_edge_key_marker_t const*) marker)->_offsetToKey;  
+  }
+  else if (marker->_type == TRI_WAL_MARKER_EDGE) {
+    return ((char const*) marker) + ((triagens::wal::edge_marker_t const*) marker)->_offsetToKey; 
+  }
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  // invalid marker type
+  TRI_ASSERT(false);
+#endif
+
+  return nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the _from cid from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_FROM_CID (TRI_df_marker_t const* marker) {
+  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+    return ((TRI_doc_edge_key_marker_t const*) marker)->_fromCid;
+  }
+  else if (marker->_type == TRI_WAL_MARKER_EDGE) {
+    return ((triagens::wal::edge_marker_t const*) marker)->_fromCid;
+  }
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  // invalid marker type
+  TRI_ASSERT(false);
+#endif
+
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the _to cid from a marker
+////////////////////////////////////////////////////////////////////////////////
+
+static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_TO_CID (TRI_df_marker_t const* marker) {
+  if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+    return ((TRI_doc_edge_key_marker_t const*) marker)->_toCid;  
+  }
+  else if (marker->_type == TRI_WAL_MARKER_EDGE) {
+    return ((triagens::wal::edge_marker_t const*) marker)->_toCid;
+  }
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  // invalid marker type
+  TRI_ASSERT(false);
+#endif
+
+  return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the revision id from a marker
 ////////////////////////////////////////////////////////////////////////////////
 

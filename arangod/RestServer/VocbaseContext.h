@@ -36,19 +36,19 @@
 #include "Rest/HttpResponse.h"
 #include "Rest/RequestContext.h"
 
-struct TRI_server_s;
-struct TRI_vocbase_s;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-namespace triagens {
-  namespace arango {
+struct TRI_server_s;
+struct TRI_vocbase_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class VocbaseContext
 // -----------------------------------------------------------------------------
+
+namespace triagens {
+  namespace arango {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB VocbaseContext
@@ -76,6 +76,7 @@ namespace triagens {
 
         ~VocbaseContext ();
 
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
