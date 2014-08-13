@@ -1446,10 +1446,12 @@ static v8::Handle<v8::Value> JS_Load (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_MESSAGE(scope, TRI_errno(), "cannot read file");
   }
 
-  TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(), v8::String::New(content, (int) length), argv[0], false);
+  v8::Handle<v8::Value> result =
+    TRI_ExecuteJavaScriptString(v8::Context::GetCurrent(), v8::String::New(content, (int) length), argv[0], false);
+
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
 
-  return scope.Close(v8::Undefined());
+  return scope.Close(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2198,30 +2200,31 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
         case 'f':
         case 'i': {
           if (len <= p) {
-            string msg = string("not enough arguments for ") + *ptr + " in format '" + *format + "'";
-            TRI_V8_EXCEPTION_PARAMETER(scope, msg.c_str());
-          }
-
-          bool e;
-          double f = TRI_ObjectToDouble(argv[(int) p], e);
-
-          if (e) {
-            string msg = StringUtils::itoa(p) + ".th argument must be a number in format '" + *format + "'";
-            TRI_V8_EXCEPTION_PARAMETER(scope, msg.c_str());
-          }
-
-          char b[1024];
-
-          if (*ptr == 'f') {
-            snprintf(b, sizeof(b), "%f", f);
+            result += "%";
+            result += *ptr;
           }
           else {
-            snprintf(b, sizeof(b), "%ld", (long) f);
+            bool e;
+            double f = TRI_ObjectToDouble(argv[(int) p], e);
+
+            if (e) {
+              result += "NaN";
+            }
+            else {
+              char b[1024];
+
+              if (*ptr == 'f') {
+                snprintf(b, sizeof(b), "%f", f);
+              }
+              else {
+                snprintf(b, sizeof(b), "%ld", (long) f);
+              }
+
+              result += b;
+            }
+
+            ++p;
           }
-
-          ++p;
-
-          result += b;
 
           break;
         }
@@ -2229,28 +2232,29 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
         case 'o':
         case 's': {
           if (len <= p) {
-            string msg = string("not enough arguments for ") + *ptr + " in format '" + *format + "'";
-            TRI_V8_EXCEPTION_PARAMETER(scope, msg.c_str());
+            result += "%";
+            result += *ptr;
           }
+          else {
+            TRI_Utf8ValueNFC text(TRI_UNKNOWN_MEM_ZONE, argv[(int) p]);
 
-          TRI_Utf8ValueNFC text(TRI_UNKNOWN_MEM_ZONE, argv[(int) p]);
+            if (*text == 0) {
+              string msg = StringUtils::itoa(p) + ".th argument must be a string in format '" + *format + "'";
+              TRI_V8_EXCEPTION_PARAMETER(scope, msg.c_str());
+            }
 
-          if (*text == 0) {
-            string msg = StringUtils::itoa(p) + ".th argument must be a string in format '" + *format + "'";
-            TRI_V8_EXCEPTION_PARAMETER(scope, msg.c_str());
+            ++p;
+
+            result += *text;
           }
-
-          ++p;
-
-          result += *text;
 
           break;
         }
 
-        default: {
-          string msg = "found illegal format directive '" + string(1, *ptr) + "' in format '" + *format + "'";
-          TRI_V8_EXCEPTION_PARAMETER(scope, msg.c_str());
-        }
+        default:
+          result += "%";
+          result += *ptr;
+          break;
       }
     }
     else {

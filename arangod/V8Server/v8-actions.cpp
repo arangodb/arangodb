@@ -111,8 +111,8 @@ class v8_action_t : public TRI_action_t {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-    v8_action_t (set<string> const& contexts)
-      : TRI_action_t(contexts),
+    v8_action_t ()
+      : TRI_action_t(),
         _callbacks(),
         _callbacksLock() {
       _type = "JAVASCRIPT";
@@ -146,14 +146,19 @@ class v8_action_t : public TRI_action_t {
       TRI_action_result_t result;
 
       // determine whether we should force a re-initialistion of the engine in development mode
-      bool allowEngineReset;
-      extern bool allowUseDatabaseInRESTActions;
+      bool allowEngineReset = false;
 
-      allowEngineReset = false;
+      // allow use datase execution in rest calls
+      extern bool ALLOW_USE_DATABASE_IN_REST_ACTIONS;
+      bool allowUseDatabaseInRestActions = ALLOW_USE_DATABASE_IN_REST_ACTIONS;
 
-      string const& fullUrl = request->fullUrl();
+      if (_allowUseDatabase) {
+        allowUseDatabaseInRestActions = true;
+      }
 
       // only URLs starting with /dev will trigger an engine reset
+      string const& fullUrl = request->fullUrl();
+
       if (fullUrl.find("/dev/") == 0) {
         allowEngineReset = true;
       }
@@ -162,7 +167,7 @@ class v8_action_t : public TRI_action_t {
         vocbase,
         request,
         ! allowEngineReset,
-        allowUseDatabaseInRESTActions);
+        allowUseDatabaseInRestActions);
 
       // note: the context might be 0 in case of shut-down
       if (context == 0) {
@@ -269,6 +274,14 @@ static void ParseActionOptions (TRI_v8_global_t* v8g,
   }
   else {
     action->_isPrefix = false;
+  }
+
+  // check the "allowUseDatabase" field
+  if (options->Has(v8g->AllowUseDatabaseKey)) {
+    action->_allowUseDatabase = TRI_ObjectToBoolean(options->Get(v8g->AllowUseDatabaseKey));
+  }
+  else {
+    action->_allowUseDatabase = false;
   }
 }
 
@@ -762,8 +775,8 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
   isolate = v8::Isolate::GetCurrent();
   v8g = (TRI_v8_global_t*) isolate->GetData();
 
-  if (argv.Length() != 4) {
-    TRI_V8_EXCEPTION_USAGE(scope, "defineAction(<name>, <callback>, <parameter>, <contexts>)");
+  if (argv.Length() != 3) {
+    TRI_V8_EXCEPTION_USAGE(scope, "defineAction(<name>, <callback>, <parameter>)");
   }
 
   // extract the action name
@@ -792,25 +805,8 @@ static v8::Handle<v8::Value> JS_DefineAction (v8::Arguments const& argv) {
     options = v8::Object::New();
   }
 
-  // extract the contexts
-  set<string> contexts;
-
-  if (! argv[3]->IsArray()) {
-    TRI_V8_TYPE_ERROR(scope, "<contexts> must be a list of contexts");
-  }
-
-  v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(argv[3]);
-
-  uint32_t n = array->Length();
-
-  for (uint32_t j = 0; j < n; ++j) {
-    v8::Handle<v8::Value> item = array->Get(j);
-
-    contexts.insert(TRI_ObjectToString(item));
-  }
-
   // create an action with the given options
-  v8_action_t* action = new v8_action_t(contexts);
+  v8_action_t* action = new v8_action_t();
   ParseActionOptions(v8g, action, options);
 
   // store an action with the given name

@@ -40,7 +40,13 @@
       'click #arangoQueryTable .table-cell1': 'editCustomQuery',
       'click #arangoQueryTable .table-cell2 a': 'deleteAQL',
       'click #confirmQueryImport': 'importCustomQueries',
-      'click #confirmQueryExport': 'renderExportCustomQueries'
+      'click #confirmQueryExport': 'exportCustomQueries',
+      'click #importQueriesToggle': 'showImportMenu'
+    },
+
+    showImportMenu: function(e) {
+      $('#importQueriesToggle').toggleClass('activated');
+      $('#importHeader').slideToggle(200);
     },
 
     createCustomQueryModal: function(){
@@ -177,7 +183,6 @@
       if (typeof Storage) {
         if (localStorage.getItem("querySize") > 0) {
           querySize = parseInt(localStorage.getItem("querySize"), 10);
-
         }
       }
 
@@ -266,7 +271,6 @@
       $("#queryDiv").show();
       $("#customsDiv").show();
 
-      this.renderExportCustomQueries();
       this.initQueryImport();
 
       this.switchTab('query-switch');
@@ -275,6 +279,7 @@
 
     initQueryImport: function () {
       var self = this;
+      self.allowUpload = false;
       $('#importQueries').change(function(e) {
         self.files = e.target.files || e.dataTransfer.files;
         self.file = self.files[0];
@@ -284,21 +289,34 @@
     },
 
     importCustomQueries: function () {
-      var result, fetched, self = this;
+      var result, self = this;
       if (this.allowUpload === true) {
-        result = self.collection.saveQueries(self.file);
+        result = self.collection.saveImportQueries(self.file);
+
+        if (result === true) {
+          this.updateLocalQueries();
+          this.renderSelectboxes();
+          this.updateTable();
+          $('#customs-switch').click();
+          self.allowUpload = false;
+        }
       }
     },
 
-    renderExportCustomQueries: function () {
-      var toExport = [];
+    exportCustomQueries: function () {
+      var toExport = {}, exportArray = [];
       _.each(this.customQueries, function(value, key) {
-        toExport.push({name: value.name, value: value.value});
+        exportArray.push({name: value.name, value: value.value});
       });
-      var data = "text/json;charset=utf-8,"+ encodeURIComponent(JSON.stringify(toExport));
+      toExport = {
+        "extra": {
+          "queries": exportArray
+        }
+      };
 
-      $('#confirmQueryExport').html('<a id="downloadQueryAsJson" href="data:'+
-        data+'"download="queries.json">Export</a>');
+      var exportData = 'data:plain/text;charset=utf-8,';
+      exportData += JSON.stringify(toExport);
+      window.open(encodeURI(exportData));
     },
 
     deselect: function (editor) {
@@ -331,26 +349,40 @@
     },
 
     getAQL: function () {
+      var self = this, result;
+
+      this.collection.fetch({
+        async: false
+      });
+
+      //old storage method
       if (localStorage.getItem("customQueries")) {
-        this.customQueries = JSON.parse(localStorage.getItem("customQueries"));
+
+        var queries = JSON.parse(localStorage.getItem("customQueries"));
+        //save queries in user collections extra attribute
+        _.each(queries, function(oldQuery) {
+          self.collection.add({
+            value: oldQuery.value,
+            name: oldQuery.name
+          });
+        });
+        result = self.collection.saveCollectionQueries();
+
+        if (result === true) {
+          //and delete them from localStorage
+          localStorage.removeItem("customQueries");
+        }
       }
+
+      this.updateLocalQueries();
     },
 
     deleteAQL: function (e) {
-
       var deleteName = $(e.target).parent().parent().parent().children().first().text();
-      var tempArray = [];
 
-      $.each(this.customQueries, function (k, v) {
-        if (deleteName !== v.name) {
-          tempArray.push({
-            name: v.name,
-            value: v.value
-          });
-        }
-      });
-
-      this.customQueries = tempArray;
+      var toDelete = this.collection.findWhere({name: deleteName});
+      this.collection.remove(toDelete);
+      this.collection.saveCollectionQueries();
 
       this.updateLocalQueries();
       this.renderSelectboxes();
@@ -358,8 +390,16 @@
     },
 
     updateLocalQueries: function () {
-      localStorage.setItem("customQueries", JSON.stringify(this.customQueries));
-      this.renderExportCustomQueries();
+      var self = this;
+      //localStorage.setItem("customQueries", JSON.stringify(this.customQueries));
+      this.customQueries = [];
+
+      this.collection.each(function(model) {
+        self.customQueries.push({
+          name: model.attributes.name,
+          value: model.attributes.value
+        });
+      });
     },
 
     saveAQL: function (e) {
@@ -378,7 +418,6 @@
       }
 
       var content = inputEditor.getValue();
-
       //check for already existing entry
       var quit = false;
       $.each(this.customQueries, function (k, v) {
@@ -396,11 +435,20 @@
       }
 
       if (!isUpdate) {
-        this.customQueries.push({
+        //this.customQueries.push({
+         // name: saveName,
+         // value: content
+        //});
+        this.collection.add({
           name: saveName,
           value: content
         });
       }
+      else {
+        var toModifiy = this.collection.findWhere({name: saveName});
+        toModifiy.set("value", content);
+      }
+      this.collection.saveCollectionQueries();
 
       window.modalView.hide();
 
@@ -502,9 +550,9 @@
       var self = this;
       var inputEditor = ace.edit("aqlEditor");
       var selectedText = inputEditor.session.getTextRange(inputEditor.getSelectionRange());
-      
+
       this.switchTab("result-switch");
-      
+
       var sizeBox = $('#querySize');
       var data = {
         query: selectedText || inputEditor.getValue(),

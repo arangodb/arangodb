@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,9 +22,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -38,11 +39,6 @@ var EXPLAIN = require("internal").AQL_EXPLAIN;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_post_api_explain
 /// @brief explain a query and return information about it
 ///
@@ -50,22 +46,22 @@ var EXPLAIN = require("internal").AQL_EXPLAIN;
 ///
 /// @RESTBODYPARAM{body,json,required}
 /// The query string needs to be passed in the attribute *query* of a JSON
-/// object as the body of the POST request. If the query references any bind 
+/// object as the body of the POST request. If the query references any bind
 /// variables, these must also be passed in the attribute *bindVars*.
 ///
 /// @RESTDESCRIPTION
 ///
-/// To explain how an AQL query would be executed on the server, the query string 
+/// To explain how an AQL query would be executed on the server, the query string
 /// can be sent to the server via an HTTP POST request. The server will then validate
 /// the query and create an execution plan for it, but will not execute it.
 ///
 /// The execution plan that is returned by the server can be used to estimate the
 /// probable performance of an AQL query. Though the actual performance will depend
 /// on many different factors, the execution plan normally can give some good hint
-/// on the amount of work the server needs to do in order to actually run the query. 
+/// on the amount of work the server needs to do in order to actually run the query.
 ///
 /// The top-level statements will appear in the result in the same order in which
-/// they have been used in the original query. Each result element has at most the 
+/// they have been used in the original query. Each result element has at most the
 /// following attributes:
 /// - *id*: the row number of the top-level statement, starting at 1
 /// - *type*: the type of the top-level statement (e.g. *for*, *return* ...)
@@ -75,13 +71,13 @@ var EXPLAIN = require("internal").AQL_EXPLAIN;
 /// used.
 /// Many top-level statements will provide an *expression* attribute that
 /// contains data about the expression they operate on. This is true for *FOR*,
-/// *FILTER*, *SORT*, *COLLECT*, and *RETURN* statements. The 
+/// *FILTER*, *SORT*, *COLLECT*, and *RETURN* statements. The
 /// *expression* attribute has the following sub-attributes:
 /// - *type*: the type of the expression. Some possible values are:
-///   - *collection*: an iteration over documents from a collection. The 
+///   - *collection*: an iteration over documents from a collection. The
 ///     *value* attribute will then contain the collection name. The *extra*
 ///     attribute will contain information about if and which index is used when
-///     accessing the documents from the collection. If no index is used, the 
+///     accessing the documents from the collection. If no index is used, the
 ///     *accessType* sub-attribute of the *extra* attribute will have the
 ///     value *all*, otherwise it will be *index*.
 ///   - *list*: a list of dynamic values. The *value* attribute will contain the
@@ -93,7 +89,7 @@ var EXPLAIN = require("internal").AQL_EXPLAIN;
 ///
 /// Please note that the structure of the explain result data might change in future
 /// versions of ArangoDB without further notice and without maintaining backwards
-/// compatibility. 
+/// compatibility.
 ///
 /// @RESTRETURNCODES
 ///
@@ -151,7 +147,7 @@ var EXPLAIN = require("internal").AQL_EXPLAIN;
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
 /// The data returned in the *plan* attribute of the result contains one
-/// element per AQL top-level statement (i.e. *FOR*, *RETURN*, 
+/// element per AQL top-level statement (i.e. *FOR*, *RETURN*,
 /// *FILTER* etc.). If the query optimiser removed some unnecessary statements,
 /// the result might also contain less elements than there were top-level
 /// statements in the AQL query.
@@ -176,9 +172,9 @@ var EXPLAIN = require("internal").AQL_EXPLAIN;
 
 function post_api_explain (req, res) {
   if (req.suffix.length !== 0) {
-    actions.resultNotFound(req, 
-                           res, 
-                           ERRORS.errors.ERROR_HTTP_NOT_FOUND.code, 
+    actions.resultNotFound(req,
+                           res,
+                           ERRORS.errors.ERROR_HTTP_NOT_FOUND.code,
                            ERRORS.errors.ERROR_HTTP_NOT_FOUND.message);
     return;
   }
@@ -205,18 +201,17 @@ function post_api_explain (req, res) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief explain gateway 
+/// @brief explain gateway
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
   url : "_api/explain",
-  context : "api",
 
   callback : function (req, res) {
     try {
       switch (req.requestType) {
-        case actions.POST: 
-          post_api_explain(req, res); 
+        case actions.POST:
+          post_api_explain(req, res);
           break;
 
         default:
@@ -229,11 +224,11 @@ actions.defineHttp({
   }
 });
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

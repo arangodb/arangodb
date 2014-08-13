@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,9 +22,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -37,11 +38,6 @@ var PARSE = require("internal").AQL_PARSE;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_post_api_query
@@ -100,9 +96,9 @@ var PARSE = require("internal").AQL_PARSE;
 
 function post_api_query (req, res) {
   if (req.suffix.length !== 0) {
-    actions.resultNotFound(req, 
-                           res, 
-                           arangodb.ERROR_HTTP_NOT_FOUND, 
+    actions.resultNotFound(req,
+                           res,
+                           arangodb.ERROR_HTTP_NOT_FOUND,
                            arangodb.errors.ERROR_HTTP_NOT_FOUND.message);
     return;
   }
@@ -130,18 +126,17 @@ function post_api_query (req, res) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief query actions gateway 
+/// @brief query actions gateway
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : "_api/query",
-  context : "api",
+  url: "_api/query",
 
   callback : function (req, res) {
     try {
       switch (req.requestType) {
-        case actions.POST: 
-          post_api_query(req, res); 
+        case actions.POST:
+          post_api_query(req, res);
           break;
 
         default:
@@ -154,11 +149,11 @@ actions.defineHttp({
   }
 });
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

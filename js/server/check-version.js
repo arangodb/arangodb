@@ -1,16 +1,18 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, evil: true */
-/*global require, exports, module, ArangoServerState */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, stupid: true, continue: true, regexp: true nonpropdel: true*/
+/*global require, exports, module, UPGRADE_ARGS */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief open actions
+/// @brief check if the version of database is a match
 ///
 /// @file
-/// Actions that are mapped under the "_open" path. Allowing to execute the
-/// actions without authorization.
+///
+/// Version check at the start of the server, will optionally perform necessary
+/// upgrades.
 ///
 /// DISCLAIMER
 ///
 /// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -30,34 +32,13 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var actions = require("org/arangodb/actions");
-var console = require("console");
-
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                            database version check
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ceberus password manager
-////////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url: "_open/cerberus",
-  prefix : true,
-
-  callback : function (req, res) {
-    req.user = null;
-    req.database = "_system";
-
-    var suffix = "system/cerberus";
-    suffix = suffix.split("/");
-    suffix = suffix.concat(req.suffix);
-
-    req.suffix = suffix;
-
-    actions.routeRequest(req, res);
-  }
-});
+(function() {
+  return require("org/arangodb/database-version").databaseVersion().result;
+}());
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

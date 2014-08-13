@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,9 +22,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -46,27 +47,27 @@ var users = require("org/arangodb/users");
 /// @startDocuBlock JSF_api_user_fetch
 ///
 /// @RESTHEADER{GET /_api/user/{user}, Fetch User}
-/// 
+///
 /// @RESTDESCRIPTION
 ///
 /// Fetches data about the specified user.
-/// 
+///
 /// The call will return a JSON document with at least the following attributes on success:
-/// 
+///
 /// * *user*: The name of the user as a string.
 /// * *active*: An optional flag that specifies whether the user is active.
 /// * *extra*: An optional JSON object with arbitrary extra data about the user.
-/// * *changePassword*: An optional flag that specifies whether the user must 
+/// * *changePassword*: An optional flag that specifies whether the user must
 ///   change the password or not.
-/// 
+///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{200}
 /// The user was found
-/// 
+///
 /// @RESTRETURNCODE{404}
 /// The user with user does not exist
-/// 
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -106,22 +107,22 @@ function get_api_user (req, res) {
 /// @startDocuBlock JSF_api_user_create
 ///
 /// @RESTHEADER{POST /_api/user, Create User}
-/// 
+///
 /// @RESTDESCRIPTION
 ///
-/// The following data need to be passed in a JSON representation in the body 
+/// The following data need to be passed in a JSON representation in the body
 /// of the POST request:
 ///
 /// * *user*: The name of the user as a string. This is mandatory
-/// * *passwd*: The user password as a string. If no password is specified, 
+/// * *passwd*: The user password as a string. If no password is specified,
 ///   the empty string will be used
 /// * *active*: An optional flag that specifies whether the user is active.
 ///   If not specified, this will default to true
 /// * *extra*: An optional JSON object with arbitrary extra data about the user
-/// * *changePassword*: An optional flag that specifies whethers the user must 
+/// * *changePassword*: An optional flag that specifies whethers the user must
 ///   change the password or not. If not specified, this will default to false
 ///
-/// If set to true, the only operations allowed are PUT /_api/user or PATCH /_api/user. 
+/// If set to true, the only operations allowed are PUT /_api/user or PATCH /_api/user.
 /// All other operations will result in a HTTP 403.
 /// If the user can be added by the server, the server will respond with HTTP 201.
 /// In case of success, the returned JSON object has the following properties:
@@ -129,10 +130,10 @@ function get_api_user (req, res) {
 /// * *error*: Boolean flag to indicate that an error occurred (false in this case)
 /// * *code*: The HTTP status code
 ///
-/// If the JSON representation is malformed or mandatory data is missing from the request, 
+/// If the JSON representation is malformed or mandatory data is missing from the request,
 /// the server will respond with HTTP 400.
 ///
-/// The body of the response will contain a JSON object with additional error details. 
+/// The body of the response will contain a JSON object with additional error details.
 /// The object has the following attributes:
 ///
 /// * *error*: Boolean flag to indicate that an error occurred (true in this case)
@@ -141,13 +142,13 @@ function get_api_user (req, res) {
 /// * *errorMessage*: A descriptive error message
 ///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{201}
 /// Returned if the user can be added by the server
-/// 
+///
 /// @RESTRETURNCODE{400}
 /// If the JSON representation is malformed or mandatory data is missing from the request.
-/// 
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -205,51 +206,51 @@ function post_api_user (req, res) {
 /// @startDocuBlock JSF_api_user_replace
 ///
 /// @RESTHEADER{PUT /_api/user/{user}, Replace User}
-/// 
+///
 /// @RESTDESCRIPTION
 ///
 /// Replaces the data of an existing user. The name of an existing user must be specified in user.
-/// 
+///
 /// The following data can to be passed in a JSON representation in the body of the POST request:
-/// 
-/// * *passwd*: The user password as a string. Specifying a password is mandatory, 
+///
+/// * *passwd*: The user password as a string. Specifying a password is mandatory,
 ///   but the empty string is allowed for passwords
-/// * *active*: An optional flag that specifies whether the user is active. 
+/// * *active*: An optional flag that specifies whether the user is active.
 ///   If not specified, this will default to true
 /// * *extra*: An optional JSON object with arbitrary extra data about the user
-/// * *changePassword*: An optional flag that specifies whether the user must change 
+/// * *changePassword*: An optional flag that specifies whether the user must change
 ///   the password or not. If not specified, this will default to false
-/// 
+///
 /// If the user can be replaced by the server, the server will respond with HTTP 200.
-/// 
+///
 /// In case of success, the returned JSON object has the following properties:
-/// 
+///
 /// * *error*: Boolean flag to indicate that an error occurred (false in this case)
 /// * *code*: The HTTP status code
-/// 
-/// If the JSON representation is malformed or mandatory data is missing from the request, 
-/// the server will respond with HTTP 400. If the specified user does not exist, 
+///
+/// If the JSON representation is malformed or mandatory data is missing from the request,
+/// the server will respond with HTTP 400. If the specified user does not exist,
 /// the server will respond with HTTP 404.
-/// 
-/// The body of the response will contain a JSON object with additional 
+///
+/// The body of the response will contain a JSON object with additional
 /// error details. The object has the following attributes:
-/// 
+///
 /// * *error*: Boolean flag to indicate that an error occurred (true in this case)
 /// * *code*: The HTTP status code
 /// * *errorNum*: The server error number
 /// * *errorMessage*: A descriptive error message
-/// 
+///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{200}
 /// Is returned if the user data can be replaced by the server
-/// 
+///
 /// @RESTRETURNCODE{400}
 /// The JSON representation is malformed or mandatory data is missing from the request
 ///
 /// @RESTRETURNCODE{404}
 /// The specified user does not exist
-/// 
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -293,54 +294,54 @@ function put_api_user (req, res) {
 /// @startDocuBlock JSF_api_user_update
 ///
 /// @RESTHEADER{PATCH /_api/user/{user}, Update User}
-/// 
+///
 /// @RESTDESCRIPTION
 ///
-/// Partially updates the data of an existing user. The name of an existing 
+/// Partially updates the data of an existing user. The name of an existing
 /// user must be specified in user.
-/// 
-/// The following data can be passed in a JSON representation in the body of the 
+///
+/// The following data can be passed in a JSON representation in the body of the
 /// POST request:
-/// 
-/// * *passwd*: The user password as a string. Specifying a password is optional. 
+///
+/// * *passwd*: The user password as a string. Specifying a password is optional.
 ///   If not specified, the previously existing value will not be modified.
-/// * *active*: An optional flag that specifies whether the user is active. 
+/// * *active*: An optional flag that specifies whether the user is active.
 ///   If not specified, the previously existing value will not be modified.
-/// * *extra*: An optional JSON object with arbitrary extra data about the user. 
+/// * *extra*: An optional JSON object with arbitrary extra data about the user.
 ///   If not specified, the previously existing value will not be modified.
-/// * *changePassword*: An optional flag that specifies whether the user must change 
+/// * *changePassword*: An optional flag that specifies whether the user must change
 ///   the password or not. If not specified, the previously existing value will not be modified.
-/// 
+///
 /// If the user can be updated by the server, the server will respond with HTTP 200.
-/// 
+///
 /// In case of success, the returned JSON object has the following properties:
-/// 
+///
 /// * *error*: Boolean flag to indicate that an error occurred (false in this case)
 /// * *code*: The HTTP status code
-/// 
-/// If the JSON representation is malformed or mandatory data is missing from the request, 
-/// the server will respond with HTTP 400. If the specified user does not exist, 
+///
+/// If the JSON representation is malformed or mandatory data is missing from the request,
+/// the server will respond with HTTP 400. If the specified user does not exist,
 /// the server will respond with HTTP 404.
-/// 
-/// The body of the response will contain a JSON object with additional error details. 
+///
+/// The body of the response will contain a JSON object with additional error details.
 /// The object has the following attributes:
-/// 
+///
 /// * *error*: Boolean flag to indicate that an error occurred (true in this case)
 /// * *code*: The HTTP status code
 /// * *errorNum*: The server error number
 /// * *errorMessage*: A descriptive error message
-/// 
+///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{200}
 /// Is returned if the user data can be replaced by the server
-/// 
+///
 /// @RESTRETURNCODE{400}
 /// The JSON representation is malformed or mandatory data is missing from the request
 ///
 /// @RESTRETURNCODE{404}
 /// The specified user does not exist
-/// 
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -381,35 +382,35 @@ function patch_api_user (req, res) {
 /// @startDocuBlock JSF_api_user_delete
 ///
 /// @RESTHEADER{DELETE /_api/user/{user}, Remove User}
-/// 
+///
 /// @RESTDESCRIPTION
 ///
 /// Removes an existing user, identified by user.
-/// 
+///
 /// If the user can be removed, the server will respond with HTTP 202.
 /// In case of success, the returned JSON object has the following properties:
-/// 
+///
 /// * *error*: Boolean flag to indicate that an error occurred (false in this case)
 /// * *code*: The HTTP status code
-/// 
+///
 /// If the specified user does not exist, the server will respond with HTTP 404.
-/// 
-/// The body of the response will contain a JSON object with additional error details. 
+///
+/// The body of the response will contain a JSON object with additional error details.
 /// The object has the following attributes:
-/// 
+///
 /// * *error*: Boolean flag to indicate that an error occurred (true in this case)
 /// * *code*: The HTTP status code
 /// * *errorNum*: The server error number
 /// * *errorMessage*: A descriptive error message
-/// 
+///
 /// @RESTRETURNCODES
-/// 
+///
 /// @RESTRETURNCODE{202}
 /// Is returned if the user was removed by the server
-/// 
+///
 /// @RESTRETURNCODE{404}
 /// The specified user does not exist
-/// 
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -446,7 +447,6 @@ function delete_api_user (req, res) {
 
 actions.defineHttp({
   url : "_api/user",
-  context : "api",
 
   callback : function (req, res) {
     try {
@@ -487,5 +487,5 @@ actions.defineHttp({
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:

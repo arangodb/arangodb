@@ -388,8 +388,8 @@
       this.alreadyClicked = true;
       $("#confirmDeleteBtn").attr("disabled", false);
       $('#docDeleteModal').modal('show');
-
     },
+
     confirmDelete: function () {
       $("#confirmDeleteBtn").attr("disabled", true);
       var hash = window.location.hash.split("/");
@@ -399,6 +399,7 @@
         this.reallyDelete();
       }
     },
+
     reallyDelete: function () {
       var self = this;
       var row = $(self.target).closest("tr").get(0);

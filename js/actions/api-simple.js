@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,9 +22,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Achim Brandt
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -34,18 +35,13 @@ var ERRORS = require("internal").errors;
 
 var API = "_api/simple/";
 
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup ArangoAPI
-/// @{
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_put_api_simple_by_example_hash
-/// @brief returns all documents of a collection matching a given example, 
+/// @brief returns all documents of a collection matching a given example,
 /// using a specific hash index
 ///
 /// @RESTHEADER{PUT /_api/simple/by-example-hash, Hash index}
@@ -92,7 +88,7 @@ var API = "_api/simple/";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_put_api_simple_by_example_skiplist
-/// @brief returns all documents of a collection matching a given example, 
+/// @brief returns all documents of a collection matching a given example,
 /// using a specific skiplist index
 ///
 /// @RESTHEADER{PUT /_api/simple/by-example-skiplist, Skiplist index}
@@ -109,7 +105,7 @@ var API = "_api/simple/";
 ///
 /// - *collection*: The name of the collection to query.
 ///
-/// - *index*: The id of the index to be used for the query. The index must 
+/// - *index*: The id of the index to be used for the query. The index must
 ///   exist and must be of type *skiplist*.
 ///
 /// - *example*: an example document. The example must contain a value for each
@@ -139,7 +135,7 @@ var API = "_api/simple/";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_put_api_simple_by_example_bitarray
-/// @brief returns all documents of a collection matching a given example, 
+/// @brief returns all documents of a collection matching a given example,
 /// using a specific bitarray index
 ///
 /// @RESTHEADER{PUT /_api/simple/by-example-bitarray, Bitarray index}
@@ -156,7 +152,7 @@ var API = "_api/simple/";
 ///
 /// - *collection*: The name of the collection to query.
 ///
-/// - *index*: The id of the index to be used for the query. The index must 
+/// - *index*: The id of the index to be used for the query. The index must
 ///   exist and must be of type *bitarray*.
 ///
 /// - *example*: an example document. The example must contain a value for each
@@ -186,7 +182,7 @@ var API = "_api/simple/";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_put_api_simple_by_condition_skiplist
-/// @brief returns all documents of a collection matching a given condition, 
+/// @brief returns all documents of a collection matching a given condition,
 /// using a specific skiplist index
 ///
 /// @RESTHEADER{PUT /_api/simple/by-condition-skiplist,Query by-condition using Skiplist index}
@@ -203,11 +199,11 @@ var API = "_api/simple/";
 ///
 /// - *collection*: The name of the collection to query.
 ///
-/// - *index*: The id of the index to be used for the query. The index must 
+/// - *index*: The id of the index to be used for the query. The index must
 ///   exist and must be of type *skiplist*.
 ///
-/// - *condition*: the condition which all returned documents shall satisfy. 
-///   Conditions must be specified for all indexed attributes. 
+/// - *condition*: the condition which all returned documents shall satisfy.
+///   Conditions must be specified for all indexed attributes.
 ///
 /// - *skip*: The number of documents to skip in the query. (optional)
 ///
@@ -233,7 +229,7 @@ var API = "_api/simple/";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_put_api_simple_by_condition_bitarray
-/// @brief returns all documents of a collection matching a given condition, 
+/// @brief returns all documents of a collection matching a given condition,
 /// using a specific bitarray index
 ///
 /// @RESTHEADER{PUT /_api/simple/by-condition-bitarray, Query by-condition using bitarray index}
@@ -250,11 +246,11 @@ var API = "_api/simple/";
 ///
 /// - *collection*: The name of the collection to query.
 ///
-/// - *index*: The id of the index to be used for the query. The index must 
+/// - *index*: The id of the index to be used for the query. The index must
 ///   exist and must be of type *bitarray*.
 ///
-/// - *condition*: the condition which all returned documents shall satisfy. 
-///   Conditions must be specified for all indexed attributes. 
+/// - *condition*: the condition which all returned documents shall satisfy.
+///   Conditions must be specified for all indexed attributes.
 ///
 /// - *skip*: The number of documents to skip in the query. (optional)
 ///
@@ -282,7 +278,7 @@ var API = "_api/simple/";
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a cursor response
 ////////////////////////////////////////////////////////////////////////////////
-          
+
 function createCursorResponse (req, res, cursor) {
   actions.resultCursor(req, res, cursor, undefined, { countRequested: true });
 }
@@ -293,10 +289,9 @@ function createCursorResponse (req, res, cursor) {
 
 function setupIndexQuery (name, func, isExampleQuery) {
   actions.defineHttp({
-    url : API + name,
-    context : "api",
+    url: API + name,
 
-    callback : function (req, res) {
+    callback: function (req, res) {
       try {
         var body = actions.getJsonBody(req, res);
 
@@ -326,7 +321,7 @@ function setupIndexQuery (name, func, isExampleQuery) {
               actions.badParameter(req, res, "example");
               return;
             }
-            
+
             result = collection[func](index, body.example);
           }
           else {
@@ -334,23 +329,23 @@ function setupIndexQuery (name, func, isExampleQuery) {
               actions.badParameter(req, res, "condition");
               return;
             }
-         
+
             result = collection[func](index, body.condition);
           }
-            
+
           if (skip > 0) {
             result.skip(skip);
           }
           if (limit !== undefined && limit !== null) {
             result.limit(limit);
           }
-          
+
           createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize, body.ttl));
         }
       }
       catch (err) {
         actions.resultException(req, res, err, undefined, false);
-      } 
+      }
     }
   });
 }
@@ -442,7 +437,7 @@ setupIndexQueries();
 ///     logJsonResponse(response);
 ///     db._drop(cn);
 /// @END_EXAMPLE_ARANGOSH_RUN
-/// 
+///
 /// Using a *batchSize* value
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestSimpleAllBatch}
@@ -469,8 +464,7 @@ setupIndexQueries();
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : API + "all",
-  context : "api",
+  url: API + "all",
 
   callback : function (req, res) {
     try {
@@ -572,10 +566,9 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : API + "any",
-  context : "api",
+  url: API + "any",
 
-  callback : function (req, res) {
+  callback: function (req, res) {
     try {
       var body = actions.getJsonBody(req, res);
 
@@ -620,7 +613,7 @@ actions.defineHttp({
 ///
 /// The default will find at most 100 documents near the given coordinate.  The
 /// returned list is sorted according to the distance, with the nearest document
-/// being first in the list. If there are near documents of equal distance, documents 
+/// being first in the list. If there are near documents of equal distance, documents
 /// are chosen randomly from this set until the limit is reached.
 ///
 /// In order to use the *near* operator, a geo index must be defined for the
@@ -675,7 +668,7 @@ actions.defineHttp({
 ///       products.save({ name : "Name/" + i + "/",loc: [ i, 0 ] });
 ///     }
 ///     var url = "/_api/simple/near";
-///     var body = '{ ' + 
+///     var body = '{ ' +
 ///       '"collection": "products", ' +
 ///       '"latitude" : 0, ' +
 ///       '"longitude" : 0, ' +
@@ -703,8 +696,8 @@ actions.defineHttp({
 ///       products.save({ name : "Name/" + i + "/",loc: [ i, 0 ] });
 ///     }
 ///     var url = "/_api/simple/near";
-///     var body = '{ ' + 
-///       '"collection": "products", ' + 
+///     var body = '{ ' +
+///       '"collection": "products", ' +
 ///       '"latitude" : 0, ' +
 ///       '"longitude" : 0, ' +
 ///       '"skip" : 1, ' +
@@ -723,8 +716,7 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : API + "near",
-  context : "api",
+  url: API + "near",
 
   callback : function (req, res) {
     try {
@@ -900,8 +892,7 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : API + "within",
-  context : "api",
+  url: API + "within",
 
   callback : function (req, res) {
     try {
@@ -943,19 +934,19 @@ actions.defineHttp({
           else {
             result = collection.geo({ id : geo }).within(latitude, longitude, radius);
           }
-          
+
           if (skip !== null && skip !== undefined) {
             result = result.skip(skip);
           }
-          
+
           if (limit !== null && limit !== undefined) {
             result = result.limit(limit);
           }
-          
+
           if (distance !== null && distance !== undefined) {
             result = result.distance(distance);
           }
-          
+
           createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize, body.ttl));
         }
       }
@@ -980,7 +971,7 @@ actions.defineHttp({
 /// This will find all documents from the collection that match the fulltext
 /// query specified in *query*.
 ///
-/// In order to use the *fulltext* operator, a fulltext index must be defined 
+/// In order to use the *fulltext* operator, a fulltext index must be defined
 /// for the collection and the specified attribute.
 ///
 /// The call expects a JSON object as body with the following attributes:
@@ -1037,8 +1028,7 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : API + "fulltext",
-  context : "api",
+  url: API + "fulltext",
 
   callback : function (req, res) {
     try {
@@ -1056,7 +1046,7 @@ actions.defineHttp({
         var skip = body.skip;
         var attribute = body.attribute;
         var query = body.query;
-        var iid = body.index || undefined; 
+        var iid = body.index || undefined;
         var name = body.collection;
         var collection = db._collection(name);
 
@@ -1071,15 +1061,15 @@ actions.defineHttp({
         }
         else {
           var result = collection.fulltext(attribute, query, iid);
-          
+
           if (skip !== null && skip !== undefined) {
             result = result.skip(skip);
           }
-          
+
           if (limit !== null && limit !== undefined) {
             result = result.limit(limit);
           }
-          
+
           createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize, body.ttl));
         }
       }
@@ -1197,8 +1187,7 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : API + "by-example",
-  context : "api",
+  url: API + "by-example",
 
   callback : function (req, res) {
     try {
@@ -1265,7 +1254,7 @@ actions.defineHttp({
 /// - *example*: The example document.
 ///
 /// Returns a result containing the document or *HTTP 404* if no
-/// document matched the example. 
+/// document matched the example.
 ///
 /// If more than one document in the collection matches the specified example, only
 /// one of these documents will be returned, and it is undefined which of the matching
@@ -1331,13 +1320,12 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : API + "first-example",
-  context : "api",
+  url: API + "first-example",
 
   callback : function (req, res) {
     try {
       var body = actions.getJsonBody(req, res);
-  
+
       if (body === undefined) {
         return;
       }
@@ -1358,7 +1346,7 @@ actions.defineHttp({
         }
         else {
           var result = collection.byExample(example).limit(1);
- 
+
           if (result.hasNext()) {
             actions.resultOk(req, res, actions.HTTP_OK, { document : result.next() });
           }
@@ -1394,13 +1382,13 @@ actions.defineHttp({
 ///
 /// The request body must be a JSON object with the following attributes:
 /// - *collection*: the name of the collection
-/// 
-/// - *count*: the number of documents to return at most. Specifiying count is 
+///
+/// - *count*: the number of documents to return at most. Specifiying count is
 ///   optional. If it is not specified, it defaults to 1.
 ///
-/// Note: this method is not supported for sharded collections with more than 
+/// Note: this method is not supported for sharded collections with more than
 /// one shard.
-/// 
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
@@ -1461,8 +1449,7 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : API + "first",
-  context : "api",
+  url: API + "first",
 
   callback : function (req, res) {
     try {
@@ -1511,8 +1498,8 @@ actions.defineHttp({
 ///
 /// The request body must be a JSON object with the following attributes:
 /// - *collection*: the name of the collection
-/// 
-/// - *count*: the number of documents to return at most. Specifiying count is 
+///
+/// - *count*: the number of documents to return at most. Specifiying count is
 ///   optional. If it is not specified, it defaults to 1.
 ///
 /// If the *count* argument is not supplied, the result is the "latest" document
@@ -1520,7 +1507,7 @@ actions.defineHttp({
 ///
 /// Note: this method is not supported for sharded collections with more than
 /// one shard.
-/// 
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
@@ -1581,8 +1568,7 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : API + "last",
-  context : "api",
+  url: API + "last",
 
   callback : function (req, res) {
     try {
@@ -1685,8 +1671,7 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : API + "range",
-  context : "api",
+  url: API + "range",
 
   callback : function (req, res) {
     try {
@@ -1751,8 +1736,8 @@ actions.defineHttp({
 ///
 /// @RESTDESCRIPTION
 ///
-/// This will find all documents in the collection that match the specified 
-/// example object. 
+/// This will find all documents in the collection that match the specified
+/// example object.
 ///
 /// The call expects a JSON object as body with the following attributes:
 ///
@@ -1763,20 +1748,20 @@ actions.defineHttp({
 ///
 /// - options: an json object which can contains following attributes:
 ///
-/// - *waitForSync*: if set to true, then all removal operations will 
+/// - *waitForSync*: if set to true, then all removal operations will
 ///   instantly be synchronised to disk. If this is not specified, then the
 ///   collection's default sync behavior will be applied.
 ///
-/// - *limit*: an optional value that determines how many documents to 
+/// - *limit*: an optional value that determines how many documents to
 ///   delete at most. If *limit* is specified but is less than the number
-///   of documents in the collection, it is undefined which of the documents 
+///   of documents in the collection, it is undefined which of the documents
 ///   will be deleted.
 ///
-/// Note: the *limit* attribute is not supported on sharded collections. 
+/// Note: the *limit* attribute is not supported on sharded collections.
 /// Using it will result in an error.
-/// The options attributes waitForSync and limit can given yet without 
-/// an ecapsulation into a json object. but this may be deprecated in future 
-/// versions of arango 
+/// The options attributes waitForSync and limit can given yet without
+/// an ecapsulation into a json object. but this may be deprecated in future
+/// versions of arango
 ///
 /// Returns the number of documents that were deleted.
 ///
@@ -1823,7 +1808,7 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/remove-by-example";
-///     var body = '{ "collection": "products", "example" : { "a" : { "j" : 1 } },' + 
+///     var body = '{ "collection": "products", "example" : { "a" : { "j" : 1 } },' +
 ///                 '"waitForSync": true, "limit": 2 }';
 ///
 ///     var response = logCurlRequest('PUT', url, body);
@@ -1860,13 +1845,12 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : API + "remove-by-example",
-  context : "api",
+  url: API + "remove-by-example",
 
   callback : function (req, res) {
     try {
       var body = actions.getJsonBody(req, res);
-  
+
       if (body === undefined) {
         return;
       }
@@ -1905,7 +1889,7 @@ actions.defineHttp({
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSA_put_api_simple_replace_by_example
-/// @brief replaces the body of all documents of a collection that match an 
+/// @brief replaces the body of all documents of a collection that match an
 /// example
 ///
 /// @RESTHEADER{PUT /_api/simple/replace-by-example, Replace documents by example}
@@ -1915,10 +1899,10 @@ actions.defineHttp({
 ///
 /// @RESTDESCRIPTION
 ///
-/// This will find all documents in the collection that match the specified 
+/// This will find all documents in the collection that match the specified
 /// example object, and replace the entire document body with the new value
 /// specified. Note that document meta-attributes such as *_id*, *_key*,
-/// *_from*, *_to* etc. cannot be replaced. 
+/// *_from*, *_to* etc. cannot be replaced.
 ///
 /// The call expects a JSON object as body with the following attributes:
 ///
@@ -1932,20 +1916,20 @@ actions.defineHttp({
 ///
 /// - *options*: an json object which can contain following attributes
 ///
-/// - *waitForSync*: if set to true, then all removal operations will 
+/// - *waitForSync*: if set to true, then all removal operations will
 ///   instantly be synchronised to disk. If this is not specified, then the
 ///   collection's default sync behavior will be applied.
 ///
-/// - *limit*: an optional value that determines how many documents to 
+/// - *limit*: an optional value that determines how many documents to
 ///   replace at most. If *limit* is specified but is less than the number
-///   of documents in the collection, it is undefined which of the documents 
+///   of documents in the collection, it is undefined which of the documents
 ///   will be replaced.
 ///
-/// Note: the *limit* attribute is not supported on sharded collections. 
+/// Note: the *limit* attribute is not supported on sharded collections.
 /// Using it will result in an error.
-/// The options attributes waitForSync and limit can given yet without 
-/// an ecapsulation into a json object. but this may be deprecated in future 
-/// versions of arango 
+/// The options attributes waitForSync and limit can given yet without
+/// an ecapsulation into a json object. but this may be deprecated in future
+/// versions of arango
 ///
 /// Returns the number of documents that were replaced.
 ///
@@ -2015,13 +1999,12 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : API + "replace-by-example",
-  context : "api",
+  url: API + "replace-by-example",
 
   callback : function (req, res) {
     try {
       var body = actions.getJsonBody(req, res);
-  
+
       if (body === undefined) {
         return;
       }
@@ -2074,10 +2057,10 @@ actions.defineHttp({
 ///
 /// @RESTDESCRIPTION
 ///
-/// This will find all documents in the collection that match the specified 
+/// This will find all documents in the collection that match the specified
 /// example object, and partially update the document body with the new value
 /// specified. Note that document meta-attributes such as *_id*, *_key*,
-/// *_from*, *_to* etc. cannot be replaced. 
+/// *_from*, *_to* etc. cannot be replaced.
 ///
 /// The call expects a JSON object as body with the following attributes:
 ///
@@ -2093,20 +2076,20 @@ actions.defineHttp({
 ///
 /// - *keepNull*: This parameter can be used to modify the behavior when
 ///   handling *null* values. Normally, *null* values are stored in the
-///   database. By setting the *keepNull* parameter to *false*, this 
-///   behavior can be changed so that all attributes in *data* with *null* 
+///   database. By setting the *keepNull* parameter to *false*, this
+///   behavior can be changed so that all attributes in *data* with *null*
 ///   values will be removed from the updated document.
 ///
-/// - *waitForSync*: if set to true, then all removal operations will 
+/// - *waitForSync*: if set to true, then all removal operations will
 ///   instantly be synchronised to disk. If this is not specified, then the
 ///   collection's default sync behavior will be applied.
 ///
-/// - *limit*: an optional value that determines how many documents to 
+/// - *limit*: an optional value that determines how many documents to
 ///   update at most. If *limit* is specified but is less than the number
-///   of documents in the collection, it is undefined which of the documents 
+///   of documents in the collection, it is undefined which of the documents
 ///   will be updated.
 ///
-/// Note: the *limit* attribute is not supported on sharded collections. 
+/// Note: the *limit* attribute is not supported on sharded collections.
 /// Using it will result in an error.
 ///
 /// Returns the number of documents that were updated.
@@ -2137,7 +2120,7 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/update-by-example";
-///     var body = '{ ' + 
+///     var body = '{ ' +
 ///       '"collection": "products", ' +
 ///       '"example" : { "a" : { "j" : 1 } }, ' +
 ///       '"newValue" : { "a" : { "j" : 22 } }, ' +
@@ -2161,11 +2144,11 @@ actions.defineHttp({
 ///     products.save({ "i": 1});
 ///     products.save({ "a": { "k": 2, "j": 2 }, "i": 1});
 ///     var url = "/_api/simple/update-by-example";
-///     var body = '{ ' + 
+///     var body = '{ ' +
 ///       '"collection": "products", ' +
 ///       '"example" : { "a" : { "j" : 1 } }, ' +
 ///       '"newValue" : { "a" : { "j" : 22 } }, ' +
-///       '"options" :  { "limit" : 3, "waitForSync": true }  ' + 
+///       '"options" :  { "limit" : 3, "waitForSync": true }  ' +
 ///     '}';
 ///
 ///     var response = logCurlRequest('PUT', url, body);
@@ -2179,13 +2162,12 @@ actions.defineHttp({
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : API + "update-by-example",
-  context : "api",
+  url: API + "update-by-example",
 
   callback : function (req, res) {
     try {
       var body = actions.getJsonBody(req, res);
-  
+
       if (body === undefined) {
         return;
       }
@@ -2217,8 +2199,8 @@ actions.defineHttp({
             limit = body.limit || undefined;
             options = {waitForSync: waitForSync, keepNull: keepNull, limit: limit};
           }
-          var result = collection.updateByExample(example, 
-                                                  newValue, 
+          var result = collection.updateByExample(example,
+                                                  newValue,
                                                   options);
           actions.resultOk(req, res, actions.HTTP_OK, { updated: result });
         }
@@ -2230,11 +2212,11 @@ actions.defineHttp({
   }
 });
 
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
 // End:
