@@ -60,14 +60,18 @@ ExecutionBlock::~ExecutionBlock () {
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-int ExecutionBlock::bind (AqlItemBlock* items, size_t pos) {
-  int res;
+int ExecutionBlock::initCursor (AqlItemBlock* items, size_t pos) {
   for (auto d : _dependencies) {
-    res = d->bind(items, pos);
+    int res = d->initCursor(items, pos);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
   }
+  for (auto x : _buffer) {
+    delete x;
+  }
+  _buffer.clear();
+  _done = false;
   return TRI_ERROR_NO_ERROR;
 }
 
