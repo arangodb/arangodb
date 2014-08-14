@@ -1900,7 +1900,8 @@ AqlItemBlock* RemoveBlock::getSome (size_t atLeast,
   
   if (ep->_outVariable == nullptr) {
     // don't return anything
-    // loop until input is exhausted
+
+    // loop over input until it is exhausted
     while (true) { 
       auto res = ExecutionBlock::getSome(atLeast, atMost);
 
@@ -1939,6 +1940,8 @@ AqlItemBlock* RemoveBlock::getSome (size_t atLeast,
         throw;
       }
     }
+
+    // will never get here
   }
 
   // NOT YET IMPLEMENTED

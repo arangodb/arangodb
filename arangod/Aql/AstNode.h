@@ -120,7 +120,6 @@ namespace triagens {
       NODE_TYPE_ARRAY_ELEMENT,
       NODE_TYPE_COLLECTION,
       NODE_TYPE_REFERENCE,
-      NODE_TYPE_ATTRIBUTE,
       NODE_TYPE_PARAMETER,
       NODE_TYPE_FCALL,
       NODE_TYPE_FCALL_USER,
@@ -211,6 +210,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool isConstant () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a node (and its subnodes) may throw a runtime 
+/// exception
+////////////////////////////////////////////////////////////////////////////////
+
+        bool canThrow () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the number of members

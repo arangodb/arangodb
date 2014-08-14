@@ -56,7 +56,8 @@ Expression::Expression (V8Executor* executor,
                         AstNode const* node)
   : _executor(executor),
     _node(node),
-    _type(UNPROCESSED) {
+    _type(UNPROCESSED),
+    _canThrow(true) {
 
   TRI_ASSERT(_executor != nullptr);
   TRI_ASSERT(_node != nullptr);
@@ -149,15 +150,20 @@ void Expression::analyzeExpression () {
     }
 
     _type = JSON;
+    _canThrow = false;
   }
   else if (_node->isSimple()) {
     _type = SIMPLE;
+    _canThrow = _node->canThrow();
   }
   else {
     // generate a V8 expression
     _func = _executor->generateExpression(_node);
     _type = V8;
+    _canThrow = _node->canThrow();
   }
+
+  std::cout << "CAN THROW: " << _canThrow << "\n";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
