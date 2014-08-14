@@ -32,11 +32,11 @@ Subqueries may also include other subqueries themselves.
 !SUBSECTION Variable expansion
 
 In order to access a named attribute from all elements in a list easily, AQL
-offers the shortcut operator *[\*]* for variable expansion.
+offers the shortcut operator [*] for variable expansion.
 
-Using the *[\*]* operator with a variable will iterate over all elements in the
+Using the [*] operator with a variable will iterate over all elements in the
 variable thus allowing to access a particular attribute of each element.  It is
-required that the expanded variable is a list.  The result of the *[\*]*
+required that the expanded variable is a list.  The result of the [*]
 operator is again a list.
 
     FOR u IN users
