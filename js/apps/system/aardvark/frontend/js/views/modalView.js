@@ -342,6 +342,7 @@
                 $('#' + r.id).addClass('invalid-input');
                 $('.modal-footer .button-success').prop('disabled', true);
                 $('.modal-footer .button-success').addClass('disabled');
+                $('#' + r.id).parent().prev().find("div").addClass("collectionThDiv");
 
                 if (errorElement) {
                   //error element available
@@ -358,6 +359,7 @@
                 $('#' + r.id).removeClass('invalid-input');
                 $('.modal-footer .button-success').prop('disabled', false);
                 $('.modal-footer .button-success').removeClass('disabled');
+                $('#' + r.id).parent().prev().find("div").removeClass("collectionThDiv");
                 if (errorElement) {
                   $(errorElement).remove();
                 }
