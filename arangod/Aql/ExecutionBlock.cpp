@@ -155,7 +155,7 @@ int ExecutionBlock::initCursor (AqlItemBlock* items, size_t pos) {
 /// @brief functionality to walk an execution block recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionBlock::walk (WalkerWorker* worker) {
+void ExecutionBlock::walk (WalkerWorker<ExecutionBlock>* worker) {
   // Only do every node exactly once:
   if (worker->done(this)) {
     return;

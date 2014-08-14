@@ -35,6 +35,7 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/WalkerWorker.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/transactions.h"
 #include "Utils/V8TransactionContext.h"
@@ -98,35 +99,7 @@ namespace triagens {
 /// @brief functionality to walk an execution block recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        class WalkerWorker {
-          public:
-            WalkerWorker () {};
-            virtual ~WalkerWorker () {};
-            virtual void before (ExecutionBlock* eb) {};
-            virtual void after (ExecutionBlock* eb) {};
-            virtual bool enterSubquery (ExecutionBlock* super,
-                                        ExecutionBlock* sub) {
-              return true;  // indicates that we enter the subquery
-            };
-            virtual void leaveSubquery (ExecutionBlock* super,
-                                        ExecutionBlock* sub) {};
-            bool done (ExecutionBlock* eb) {
-              if (_done.find(eb) == _done.end()) {
-                _done.insert(eb);
-                return false;
-              }
-              else {
-                return true;
-              }
-            }
-            void reset () {
-              _done.clear();
-            }
-          private:
-            std::unordered_set<ExecutionBlock*> _done;
-        };
-
-        void walk (WalkerWorker* worker);
+        void walk (WalkerWorker<ExecutionBlock>* worker);
 
       public:
 
@@ -195,7 +168,7 @@ namespace triagens {
           }
         };
 
-        struct VarOverview : public WalkerWorker {
+        struct VarOverview : public WalkerWorker<ExecutionBlock> {
           // The following are collected for global usage in the ExecutionBlock:
 
           // map VariableIds to their depth and registerId:

@@ -27,7 +27,6 @@
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/Collection.h"
-#include "Aql/WalkerWorker.h"
 
 using namespace triagens::basics;
 using namespace triagens::aql;
@@ -126,7 +125,7 @@ void ExecutionNode::appendAsString (std::string& st, int indent) {
 /// @brief functionality to walk an execution plan recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionNode::walk (WalkerWorker* worker) {
+void ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
   // Only do every node exactly once:
   if (worker->done(this)) {
     return;
