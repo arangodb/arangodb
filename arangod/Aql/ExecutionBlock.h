@@ -497,8 +497,7 @@ namespace triagens {
         EnumerateCollectionBlock (AQL_TRANSACTION_V8* trx,
                                   EnumerateCollectionNode const* ep);
 
-        ~EnumerateCollectionBlock () {
-        }
+        ~EnumerateCollectionBlock ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize fetching of documents
@@ -538,6 +537,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         size_t skipSome (size_t atLeast, size_t atMost);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
 
       private:
 
@@ -644,7 +647,7 @@ namespace triagens {
 /// @brief document collection from DOCVEC
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_document_collection_t const* collection;
+        TRI_document_collection_t const* _collection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the register index containing the inVariable of the EnumerateListNode
@@ -1067,17 +1070,13 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RemoveBlock (AQL_TRANSACTION_V8* trx, RemoveNode const* ep)
-          : ExecutionBlock(trx, ep) {
-
-        }
+        RemoveBlock (AQL_TRANSACTION_V8* trx, RemoveNode const* ep);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~RemoveBlock () {
-        }
+        ~RemoveBlock ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getSome
@@ -1085,6 +1084,18 @@ namespace triagens {
 
         virtual AqlItemBlock* getSome (size_t atLeast,
                                        size_t atMost);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection
+////////////////////////////////////////////////////////////////////////////////
+
+        Collection* _collection;
 
     };
 

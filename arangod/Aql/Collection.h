@@ -43,7 +43,14 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     struct Collection {
-      Collection& operator= (Collection const& other) = delete;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
+
+      Collection& operator= (Collection const&) = delete;
+      Collection (Collection const&) = delete;
+      Collection () = delete;
       
       Collection (std::string const& name,
                   struct TRI_vocbase_s* vocbase,
@@ -57,10 +64,22 @@ namespace triagens {
       ~Collection () {
       }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the collection id
+////////////////////////////////////////////////////////////////////////////////
+
       inline TRI_voc_cid_t cid () const {
         TRI_ASSERT(collection != nullptr);
         return collection->_cid;
       }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the pointer to the document collection
+////////////////////////////////////////////////////////////////////////////////
         
       inline TRI_document_collection_t* documentCollection () const {
         TRI_ASSERT(collection != nullptr);
@@ -69,14 +88,24 @@ namespace triagens {
         return collection->_collection;
       }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief count the LOCAL number of documents in the collection
+/// TODO: must be adjusted for clusters
+////////////////////////////////////////////////////////////////////////////////
+
       size_t count () {
         if (numDocuments == UNINITIALIZED) {
           auto document = documentCollection();
+          // cache the result
           numDocuments = static_cast<int64_t>(document->size(document));
         }
 
         return static_cast<size_t>(numDocuments);
       }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public variables
+// -----------------------------------------------------------------------------
 
       std::string const       name;
       TRI_vocbase_t*          vocbase;

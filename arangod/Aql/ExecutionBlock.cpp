@@ -31,6 +31,9 @@
 using namespace triagens::arango;
 using namespace triagens::aql;
 
+using Json = triagens::basics::Json;
+using JsonHelper = triagens::basics::JsonHelper;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                            struct AggregatorGroup
 // -----------------------------------------------------------------------------
@@ -511,6 +514,9 @@ EnumerateCollectionBlock::EnumerateCollectionBlock (AQL_TRANSACTION_V8* trx,
     _posInAllDocs(0) {
 }
 
+EnumerateCollectionBlock::~EnumerateCollectionBlock () {
+}
+
 bool EnumerateCollectionBlock::moreDocuments () {
   if (_documents.empty()) {
     _documents.reserve(DefaultBatchSize);
@@ -748,7 +754,7 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t atLeast, size_t atMost) {
     size_t sizeInVar = 0; // to shut up compiler
 
     // get the size of the thing we are looping over
-    collection = nullptr;
+    _collection = nullptr;
     switch (inVarReg._type) {
     case AqlValue::JSON: {
       if(! inVarReg._json->isList()) {
@@ -775,7 +781,7 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t atLeast, size_t atMost) {
       }
       sizeInVar = _DOCVECsize;
       if (sizeInVar > 0) {
-        collection = inVarReg._vector->at(0)->getDocumentCollection(0);
+        _collection = inVarReg._vector->at(0)->getDocumentCollection(0);
       }
       break;
     }
@@ -803,7 +809,7 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t atLeast, size_t atMost) {
       inheritRegisters(cur, res.get(), _pos);
 
       // we might have a collection:
-      res->setDocumentCollection(cur->getNrRegs(), collection);
+      res->setDocumentCollection(cur->getNrRegs(), _collection);
 
       for (size_t j = 0; j < toSend; j++) {
         if (j > 0) {
@@ -922,17 +928,17 @@ size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AqlValue from the inVariable using the current _index
 ////////////////////////////////////////////////////////////////////////////////
+
 AqlValue EnumerateListBlock::getAqlValue (AqlValue inVarReg) {
   switch (inVarReg._type) {
     case AqlValue::JSON: {
       // FIXME: is this correct? What if the copy works, but the
       // new throws? Is this then a leak? What if the new works
       // but the AqlValue temporary cannot be made?
-      return AqlValue(new basics::Json(inVarReg._json->at(_index++).copy()));
+      return AqlValue(new Json(inVarReg._json->at(_index++).copy()));
     }
     case AqlValue::RANGE: {
-      return AqlValue(new
-                      basics::Json(static_cast<double>(inVarReg._range->_low + _index++)));
+      return AqlValue(new Json(static_cast<double>(inVarReg._range->_low + _index++)));
     }
     case AqlValue::DOCVEC: { // incoming doc vec has a single column
       AqlValue out = inVarReg._vector->at(_thisblock)->getValue(_index -
@@ -1870,52 +1876,57 @@ AqlItemBlock* ReturnBlock::getSome (size_t atLeast,
 // --SECTION--                                                 class RemoveBlock
 // -----------------------------------------------------------------------------
 
+RemoveBlock::RemoveBlock (AQL_TRANSACTION_V8* trx,
+                          RemoveNode const* ep)
+  : ExecutionBlock(trx, ep),
+    _collection(ep->_collection) {
+}
+
+
+RemoveBlock::~RemoveBlock () {
+}
+
 AqlItemBlock* RemoveBlock::getSome (size_t atLeast,
                                     size_t atMost) {
 
-  auto res = ExecutionBlock::getSome(atLeast, atMost);
-
-  if (res == nullptr) {
-    return res;
-  }
-
-  size_t const n = res->size();
-
-  // Let's steal the actual result and throw away the vars:
   auto ep = static_cast<RemoveNode const*>(getPlanNode());
   auto it = _varOverview->varInfo.find(ep->_inVariable->id);
   TRI_ASSERT(it != _varOverview->varInfo.end());
   RegisterId const registerId = it->second.registerId;
-  AqlItemBlock* stripped = new AqlItemBlock(n, 1);
+  
+  if (ep->_outVariable == nullptr) {
+    // don't return anything
+    // loop until input is exhausted
+    while (true) { 
+      auto res = ExecutionBlock::getSome(atLeast, atMost);
 
-  try {
-    for (size_t i = 0; i < n; i++) {
-      AqlValue a = res->getValue(i, registerId);
-      if (! a.isEmpty()) {
-        res->steal(a);
-        try {
-          stripped->setValue(i, 0, a);
+      if (res == nullptr) {
+        return nullptr;
+      }
+      
+      auto document = res->getDocumentCollection(registerId);
+
+      try {
+        size_t const n = res->size();
+    
+        for (size_t i = 0; i < n; i++) {
+          AqlValue a = res->getValue(i, registerId);
+          if (! a.isEmpty()) {
+            std::cout << JsonHelper::toString(a.toJson(_trx, document)) << "\n";
+          }
         }
-        catch (...) {
-          a.destroy();
-          throw;
-        }
-        // If the following does not go well, we do not care, since
-        // the value is already stolen and installed in stripped
-        res->eraseValue(i, registerId);
+        delete res;
+      }
+      catch (...) {
+        delete res;
+        throw;
       }
     }
   }
-  catch (...) {
-    delete stripped;
-    delete res;
-    throw;
-  }
 
-  stripped->setDocumentCollection(0, res->getDocumentCollection(registerId));
-  delete res;
-
-  return stripped;
+  // NOT YET IMPLEMENTED
+  TRI_ASSERT(false);
+  return nullptr;
 }
 
 // -----------------------------------------------------------------------------

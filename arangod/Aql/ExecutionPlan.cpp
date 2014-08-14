@@ -488,24 +488,28 @@ ExecutionNode* ExecutionPlan::fromNodeRemove (Ast const* ast,
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REMOVE);
   TRI_ASSERT(node->numMembers() == 2);
   
-  auto collection = node->getMember(0);
-  auto expression = node->getMember(1);
+  char const* collectionName = node->getMember(0)->getStringValue();
+  auto collections = ast->query()->collections();
+  auto collection = collections->get(collectionName);
 
-  // collection, expression
-  char const* collectionName = collection->getStringValue();
+  if (collection == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+
+  auto expression = node->getMember(1);
   ExecutionNode* en = nullptr;
 
   if (expression->type == NODE_TYPE_REFERENCE) {
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = addNode(new RemoveNode(ast->query()->vocbase(), std::string(collectionName), v, nullptr));
+    en = addNode(new RemoveNode(ast->query()->vocbase(), collection, v, nullptr));
   }
   else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(ast, expression);
     calc->addDependency(previous);
-    en = addNode(new RemoveNode(ast->query()->vocbase(), std::string(collectionName), calc->outVariable(), nullptr));
+    en = addNode(new RemoveNode(ast->query()->vocbase(), collection, calc->outVariable(), nullptr));
     previous = calc;
   }
 

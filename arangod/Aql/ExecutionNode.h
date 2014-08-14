@@ -1107,16 +1107,17 @@ namespace triagens {
       public:
 
         RemoveNode (TRI_vocbase_t* vocbase, 
-                    std::string collname,
+                    Collection* collection,
                     Variable const* inVariable,
                     Variable const* outVariable)
           : ExecutionNode(), 
             _vocbase(vocbase), 
-            _collname(collname),
+            _collection(collection),
             _inVariable(inVariable),
             _outVariable(outVariable) {
 
           TRI_ASSERT(_vocbase != nullptr);
+          TRI_ASSERT(_collection != nullptr);
           TRI_ASSERT(_inVariable != nullptr);
           // _outVariable might be a nullptr
         }
@@ -1142,7 +1143,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new RemoveNode(_vocbase, _collname, _inVariable, _outVariable);
+          auto c = new RemoveNode(_vocbase, _collection, _inVariable, _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -1153,7 +1154,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () {
-          return 1000 * _dependencies.at(0)->getCost();
+          return _dependencies.at(0)->getCost();
+          // TODO: improve this estimate!
         }
 
 // -----------------------------------------------------------------------------
@@ -1169,10 +1171,10 @@ namespace triagens {
         TRI_vocbase_t* _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _collname, the collection name
+/// @brief collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string _collname;
+        Collection* _collection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief input variable
@@ -1181,7 +1183,7 @@ namespace triagens {
         Variable const* _inVariable;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief output variable
+/// @brief output variable (might be a nullptr)
 ////////////////////////////////////////////////////////////////////////////////
 
         Variable const* _outVariable;
