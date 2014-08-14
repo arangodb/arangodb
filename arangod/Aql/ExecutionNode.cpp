@@ -27,7 +27,6 @@
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/Collection.h"
-#include "Aql/WalkerWorker.h"
 
 using namespace triagens::basics;
 using namespace triagens::aql;
@@ -126,7 +125,7 @@ void ExecutionNode::appendAsString (std::string& st, int indent) {
 /// @brief functionality to walk an execution plan recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionNode::walk (WalkerWorker* worker) {
+void ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
   // Only do every node exactly once:
   if (worker->done(this)) {
     return;
@@ -232,7 +231,7 @@ void EnumerateCollectionNode::toJsonHelper (std::map<ExecutionNode*, int>& index
 
   // Now put info about vocbase and cid in there
   json("database", Json(_vocbase->_name))
-      ("collection", Json(_collname))
+      ("collection", Json(_collection->name))
       ("outVariable", _outVariable->toJson());
 
   // And add it:
@@ -473,8 +472,13 @@ void RemoveNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
 
   // Now put info about vocbase and cid in there
   json("database", Json(_vocbase->_name))
-      ("collection", Json(_collname))
-      ("outVariable", _outVariable->toJson());
+      ("collection", Json(_collection->name))
+      ("inVariable", _inVariable->toJson());
+  
+  // output variable might be empty
+  if (_outVariable != nullptr) {
+    json("outVariable", _outVariable->toJson());
+  }
 
   // And add it:
   int len = static_cast<int>(nodes.size());
