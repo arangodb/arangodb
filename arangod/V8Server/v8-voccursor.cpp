@@ -69,7 +69,7 @@ static int32_t const WRP_GENERAL_CURSOR_TYPE = 3;
 /// @brief function that encapsulates execution of an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* context,
-						  TRI_json_t const* parameters) {
+                                                  TRI_json_t const* parameters) {
   v8::HandleScope scope;
 
   // parse & validate
@@ -796,11 +796,11 @@ static v8::Handle<v8::Value> JS_DeleteCursor (v8::Arguments const& argv) {
   // generate the general cursor template
   // .............................................................................
 void TRI_InitV8cursor (v8::Handle<v8::Context> context,
-			    TRI_server_t* server,
-			    TRI_vocbase_t* vocbase,
-			    JSLoader* loader,
-			    const size_t threadNumber,
-			    TRI_v8_global_t* v8g){
+                       TRI_server_t* server,
+                       TRI_vocbase_t* vocbase,
+                       JSLoader* loader,
+                       const size_t threadNumber,
+                       TRI_v8_global_t* v8g){
   v8::Handle<v8::ObjectTemplate> rt;
   v8::Handle<v8::FunctionTemplate> ft;
   v8::Isolate* isolate = v8::Isolate::GetCurrent();

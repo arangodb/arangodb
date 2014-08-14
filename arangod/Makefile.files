@@ -50,6 +50,8 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/Expression.cpp \
 	arangod/Aql/Function.cpp \
 	arangod/Aql/grammar.cpp \
+	arangod/Aql/Optimizer.cpp \
+	arangod/Aql/OptimizerRules.cpp \
 	arangod/Aql/Parser.cpp \
 	arangod/Aql/Query.cpp \
 	arangod/Aql/Scopes.cpp \

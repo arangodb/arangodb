@@ -514,7 +514,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_vocbase_col_t const* UseCollection (v8::Handle<v8::Object> collection,
-					v8::Handle<v8::Object>* err) {
+                                        v8::Handle<v8::Object>* err) {
 
   int res = TRI_ERROR_INTERNAL;
   TRI_vocbase_col_t* col = TRI_UnwrapClass<TRI_vocbase_col_t>(collection, WRP_VOCBASE_COL_TYPE);
