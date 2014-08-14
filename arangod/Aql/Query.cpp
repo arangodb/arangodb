@@ -195,14 +195,9 @@ QueryResult Query::execute () {
 
     // Run the query optimiser:
     triagens::aql::Optimizer opt;
-    opt.initialize(plan);
-    opt.optimize();
-    vector<ExecutionPlan*>& optimisedPlans(opt.getPlans());
+    opt.createPlans(plan);
+    plan = opt.getBest();
 
-    // Just take the first one, which is the one which was estimated to be
-    // best:
-    plan = optimisedPlans[0];
-  
     triagens::basics::Json json(triagens::basics::Json::List);
 
     try { 
