@@ -32,8 +32,10 @@ var Controller = require("org/arangodb/foxx/controller").Controller,
   Model = require("org/arangodb/foxx/model").Model,
   Repository = require("org/arangodb/foxx/repository").Repository,
   manager = require("org/arangodb/foxx/manager"),
+  queues = require("org/arangodb/foxx/queues"),
   arangodb = require("org/arangodb");
 
+exports.queues = queues;
 exports.Controller = Controller;
 exports.Model = Model;
 exports.Repository = Repository;
