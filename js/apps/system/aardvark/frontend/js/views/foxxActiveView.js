@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global Backbone, $, window, EJS, arangoHelper, _, templateEngine*/
+/*global Backbone, $, window, EJS, arangoHelper, _, templateEngine, Joi*/
 
 (function() {
   "use strict";
@@ -89,7 +89,13 @@
         "change-mount-point", "Mount", this.model.get("mount"),
         "The path where the app can be reached.",
         "mount-path",
-        true
+        true,
+        [
+          {
+            rule: Joi.string().required(),
+            msg: "No mount-path given."
+          }
+        ]
       ));
       /*
        * For the future, update apps to available newer versions
