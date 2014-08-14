@@ -93,7 +93,7 @@ namespace triagens {
 /// @brief default constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode () {
+        ExecutionNode () : _estimatedCost(0) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -191,9 +191,21 @@ namespace triagens {
 /// @brief estimate the cost of the node . . .
 ////////////////////////////////////////////////////////////////////////////////
         
-        virtual double estimateCost () const = 0;
+        double getCost () {
+          if (_estimatedCost == 0){
+            _estimatedCost = estimateCost();
+          }
+          return _estimatedCost;
+        };
+
+        virtual double estimateCost () = 0;
+        
         //TODO nodes should try harder to estimate their own cost, i.e. the cost
         //of performing the operation of the node . . .
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief FIXME what?
+////////////////////////////////////////////////////////////////////////////////
 
         void walk (WalkerWorker* worker);
 
@@ -244,6 +256,12 @@ namespace triagens {
         
         static std::unordered_map<int, std::string const> const TypeNames;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _estimatedCost = 0 if uninitialised and otherwise stores the result
+/// of estimateCost()
+////////////////////////////////////////////////////////////////////////////////
+
+        double _estimatedCost;
     };
 
 // -----------------------------------------------------------------------------
@@ -265,8 +283,7 @@ namespace triagens {
 
       public:
 
-        SingletonNode () : ExecutionNode() {
-        }
+        SingletonNode () : ExecutionNode() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -298,7 +315,7 @@ namespace triagens {
 /// @brief the cost of a singleton is 1
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () const {
+        double estimateCost () {
           return 1;
         }
 
@@ -327,8 +344,7 @@ namespace triagens {
                                  std::string collname,
                                  Variable const* outVariable)
           : ExecutionNode(), _vocbase(vocbase), _collname(collname),
-            _outVariable(outVariable) {
-
+            _outVariable(outVariable){
           TRI_ASSERT(_vocbase != nullptr);
           TRI_ASSERT(_outVariable != nullptr);
         }
@@ -364,8 +380,9 @@ namespace triagens {
 /// its unique dependency
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () const {
-          return 1000 * _dependencies.at(0)->estimateCost(); //FIXME change this!
+        double estimateCost () { 
+          return 1000 * _dependencies.at(0)->getCost(); 
+          //FIXME improve this estimate . . .
         }
 
 // -----------------------------------------------------------------------------
@@ -451,8 +468,9 @@ namespace triagens {
 /// @brief the cost of an enumerate list node is . . . FIXME
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () const {
-          return 1000 * _dependencies.at(0)->estimateCost(); //FIXME change this, 1000 is arbitrary
+        double estimateCost () {
+          return 1000 * _dependencies.at(0)->getCost(); 
+          //FIXME improve this estimate . . .
         }
 
 // -----------------------------------------------------------------------------
@@ -534,23 +552,19 @@ namespace triagens {
 /// the dependency . . .
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () const {
+        double estimateCost () {
           return 1.005 * std::min(static_cast<double>(_limit), 
-              _dependencies.at(0)->estimateCost());//FIXME change this?
+            _dependencies.at(0)->getCost());
+          //FIXME improve this estimate . . .
         }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief we need to know the offset and limit
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t _offset;
+      private:
 
+        size_t _offset;
         size_t _limit;
 
     };
@@ -641,8 +655,9 @@ namespace triagens {
 //  times a constant
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () const {
-          return 2 * _dependencies.at(0)->estimateCost(); //FIXME change this!
+        double estimateCost () {
+          return 2 * _dependencies.at(0)->getCost(); 
+          //FIXME improve this estimate . . . 
         }
 
 // -----------------------------------------------------------------------------
@@ -730,8 +745,9 @@ namespace triagens {
 /// times a small constant
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () const {
-          return 1.005 * _dependencies.at(0)->estimateCost();//FIXME change this!
+        double estimateCost () {
+          return 1.005 * _dependencies.at(0)->getCost();
+          //FIXME improve this estimate . . .
         }
 
 // -----------------------------------------------------------------------------
@@ -809,8 +825,8 @@ namespace triagens {
 /// @brief the cost of a filter node is . . . FIXME
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () const {
-          return _dependencies.at(0)->estimateCost() * 1.005;
+        double estimateCost () {
+          return _dependencies.at(0)->getCost() * 0.105;
           //FIXME! 0.005 is the cost of doing the filter node under the
           //assumption that it returns 10% of the results of its dependency
         }
@@ -882,9 +898,9 @@ namespace triagens {
 /// @brief the cost of a sort node is . . . FIXME
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () const {
-          double depCost = _dependencies.at(0)->estimateCost();
-          return log(depCost) * depCost;//FIXME change this!
+        double estimateCost () {
+          double depCost = _dependencies.at(0)->getCost();
+          return log(depCost) * depCost;
         }
 
 // -----------------------------------------------------------------------------
@@ -962,8 +978,9 @@ namespace triagens {
 /// @brief the cost of an aggregate node is . . . FIXME
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () const {
-          return 2 * _dependencies.at(0)->estimateCost();//FIXME change this!
+        double estimateCost () {
+          return 2 * _dependencies.at(0)->getCost();
+          //FIXME improve this estimate . . .
         }
 
 // -----------------------------------------------------------------------------
@@ -1048,8 +1065,8 @@ namespace triagens {
 /// @brief the cost of a return node is the cost of its only dependency . . .
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () const {
-          return _dependencies.at(0)->estimateCost();
+        double estimateCost () {
+          return _dependencies.at(0)->getCost();
         }
 
 // -----------------------------------------------------------------------------
@@ -1126,8 +1143,8 @@ namespace triagens {
 /// dependency
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () const {
-          return 1000 * _dependencies.at(0)->estimateCost(); //FIXME change this!
+        double estimateCost () {
+          return 1000 * _dependencies.at(0)->getCost();
         }
 
 // -----------------------------------------------------------------------------
@@ -1216,8 +1233,8 @@ namespace triagens {
 /// dependency
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () const {
-          return 1000 * _dependencies.at(0)->estimateCost(); //FIXME change this!
+        double estimateCost () {
+          return 1000 * _dependencies.at(0)->getCost(); //FIXME change this!
         }
 
 // -----------------------------------------------------------------------------
@@ -1306,8 +1323,8 @@ namespace triagens {
 /// dependency
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () const {
-          return 1000 * _dependencies.at(0)->estimateCost(); //FIXME change this!
+        double estimateCost () {
+          return 1000 * _dependencies.at(0)->getCost(); //FIXME change this!
         }
 
 // -----------------------------------------------------------------------------
@@ -1396,8 +1413,8 @@ namespace triagens {
 /// dependency
 ////////////////////////////////////////////////////////////////////////////////
         
-        double estimateCost () const {
-          return 1000 * _dependencies.at(0)->estimateCost(); //FIXME change this!
+        double estimateCost () {
+          return 1000 * _dependencies.at(0)->getCost(); //FIXME change this!
         }
 
 // -----------------------------------------------------------------------------
