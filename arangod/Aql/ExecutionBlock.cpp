@@ -1903,7 +1903,7 @@ AqlItemBlock* RemoveBlock::getSome (size_t atLeast,
   TRI_ASSERT(it != _varOverview->varInfo.end());
   RegisterId const registerId = it->second.registerId;
 
-  auto trxCollection = _trx->trxCollection(ep->_collection->cid());
+  auto trxCollection = _trx->trxCollection(_collection->cid());
   
   if (ep->_outVariable == nullptr) {
     // don't return anything
