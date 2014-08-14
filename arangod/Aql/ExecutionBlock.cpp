@@ -55,18 +55,11 @@ void AggregatorGroup::initialize (size_t capacity) {
 }
 
 void AggregatorGroup::reset () {
-  if (groupValues.empty()) {
-    // yet uninitialized
-    return;
-  }
-  
   for (auto it = groupBlocks.begin(); it != groupBlocks.end(); ++it) {
     delete (*it);
   }
   groupBlocks.clear();
-  if (! groupValues[0].isEmpty()) {
-    groupValues[0].erase();
-  }
+  groupValues[0].erase();
 }
 
 void AggregatorGroup::addValues (AqlItemBlock const* src,
