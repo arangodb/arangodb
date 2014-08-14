@@ -50,16 +50,16 @@ void ReleaseCollection (TRI_vocbase_col_t const* collection);
 /// @brief convert a collection info into a TRI_vocbase_col_t
 ////////////////////////////////////////////////////////////////////////////////
 TRI_vocbase_col_t* CoordinatorCollection (TRI_vocbase_t* vocbase,
-					  triagens::arango::CollectionInfo const& ci);
+                                          triagens::arango::CollectionInfo const& ci);
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief check if a name belongs to a collection
 ////////////////////////////////////////////////////////////////////////////////
 bool EqualCollection (triagens::arango::CollectionNameResolver const* resolver,
-			      std::string const& collectionName,
-			      TRI_vocbase_col_t const* collection);
+                      std::string const& collectionName,
+                      TRI_vocbase_col_t const* collection);
 
-/////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a TRI_vocbase_col_t
 ////////////////////////////////////////////////////////////////////////////////
 v8::Handle<v8::Object> WrapCollection (TRI_vocbase_col_t const* collection);

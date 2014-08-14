@@ -62,7 +62,7 @@ void FreeCoordinatorCollection (TRI_vocbase_col_t* collection) {
 /// @brief convert a collection info into a TRI_vocbase_col_t
 ////////////////////////////////////////////////////////////////////////////////
 TRI_vocbase_col_t* CoordinatorCollection (TRI_vocbase_t* vocbase,
-					  CollectionInfo const& ci) {
+                                          CollectionInfo const& ci) {
   TRI_vocbase_col_t* c = static_cast<TRI_vocbase_col_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_col_t), false));
 
   if (c == nullptr) {
@@ -109,8 +109,8 @@ TRI_vocbase_col_t* CoordinatorCollection (TRI_vocbase_t* vocbase,
 /// @brief check if a name belongs to a collection
 ////////////////////////////////////////////////////////////////////////////////
 bool EqualCollection (CollectionNameResolver const* resolver,
-		      string const& collectionName,
-		      TRI_vocbase_col_t const* collection) {
+                      string const& collectionName,
+                      TRI_vocbase_col_t const* collection) {
   if (collectionName == StringUtils::itoa(collection->_cid)) {
     return true;
   }
@@ -210,4 +210,3 @@ v8::Handle<v8::Object> WrapCollection (TRI_vocbase_col_t const* collection) {
 
   return scope.Close(result);
 }
-
