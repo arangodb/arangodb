@@ -548,7 +548,7 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate (Ast const* ast,
                                               ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPDATE);
-  TRI_ASSERT(node->numMembers() == 2);
+  TRI_ASSERT(node->numMembers() >= 2);
   
   auto collection = node->getMember(0);
   auto expression = node->getMember(1);
@@ -582,7 +582,7 @@ ExecutionNode* ExecutionPlan::fromNodeReplace (Ast const* ast,
                                                ExecutionNode* previous,
                                                AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REPLACE);
-  TRI_ASSERT(node->numMembers() == 2);
+  TRI_ASSERT(node->numMembers() >= 2);
   
   auto collection = node->getMember(0);
   auto expression = node->getMember(1);
