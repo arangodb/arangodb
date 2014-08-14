@@ -330,16 +330,6 @@ namespace triagens {
                 totalNrRegs++;
                 break;
               }
-              case ExecutionNode::PROJECTION: {
-                nrRegsHere[depth]++;
-                nrRegs[depth]++;
-                auto ep = static_cast<ProjectionNode const*>(eb->getPlanNode());
-                TRI_ASSERT(ep != nullptr);
-                varInfo.insert(make_pair(ep->_outVariable->id,
-                                         VarInfo(depth, totalNrRegs)));
-                totalNrRegs++;
-                break;
-              }
               case ExecutionNode::SUBQUERY: {
                 nrRegsHere[depth]++;
                 nrRegs[depth]++;

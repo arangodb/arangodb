@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_EXECUTION_Plan_H
-#define ARANGODB_AQL_EXECUTION_Plan_H 1
+#ifndef ARANGODB_AQL_EXECUTION_NODE_H
+#define ARANGODB_AQL_EXECUTION_NODE_H 1
 
 #include <Basics/Common.h>
 
@@ -78,10 +78,10 @@ namespace triagens {
           CONCATENATION,
           MERGE,
           REMOTE,
-          INSERT,
+          INSERT,                   // done
           REMOVE,                   // done
-          REPLACE,
-          UPDATE,
+          REPLACE,                  // done
+          UPDATE,                   // done
           RETURN                    // done
         };
 
@@ -121,17 +121,13 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual NodeType getType () const {
-          return ILLEGAL;
-        }
+        virtual NodeType getType () const = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
+/// @brief return the type name of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::string getTypeString () const {
-          return std::string("ExecutionNode (abstract)");
-        }
+        std::string getTypeString () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a dependency
@@ -207,11 +203,6 @@ namespace triagens {
 
         triagens::basics::Json toJson (TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helpers for export to JSON, appends an entry to nodes, indexMap is the
-/// map from nodes to indices in list
-////////////////////////////////////////////////////////////////////////////////
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
@@ -247,6 +238,12 @@ namespace triagens {
 
         std::vector<ExecutionNode*> _dependencies;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief NodeType to string mapping
+////////////////////////////////////////////////////////////////////////////////
+        
+        static std::unordered_map<int, std::string const> const TypeNames;
+
     };
 
 // -----------------------------------------------------------------------------
@@ -254,7 +251,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class SingletonNode, derived from ExecutionNode
+/// @brief class SingletonNode
 ////////////////////////////////////////////////////////////////////////////////
 
     class SingletonNode : public ExecutionNode {
@@ -277,14 +274,6 @@ namespace triagens {
 
         virtual NodeType getType () const {
           return SINGLETON;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::string getTypeString () const {
-          return std::string("SingletonNode");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -320,7 +309,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class EnumerateCollectionNode, derived from ExecutionNode
+/// @brief class EnumerateCollectionNode
 ////////////////////////////////////////////////////////////////////////////////
 
     class EnumerateCollectionNode : public ExecutionNode {
@@ -350,14 +339,6 @@ namespace triagens {
 
         virtual NodeType getType () const {
           return ENUMERATE_COLLECTION;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::string getTypeString () const {
-          return std::string("EnumerateCollectionNode");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -418,7 +399,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class EnumerateListNode, derived from ExecutionNode
+/// @brief class EnumerateListNode
 ////////////////////////////////////////////////////////////////////////////////
 
     class EnumerateListNode : public ExecutionNode {
@@ -446,14 +427,6 @@ namespace triagens {
 
         virtual NodeType getType () const {
           return ENUMERATE_LIST;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::string getTypeString () const {
-          return std::string("EnumerateListNode");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -508,7 +481,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class LimitNode, derived from ExecutionNode
+/// @brief class LimitNode
 ////////////////////////////////////////////////////////////////////////////////
 
     class LimitNode : public ExecutionNode {
@@ -536,14 +509,6 @@ namespace triagens {
 
         virtual NodeType getType () const {
           return LIMIT;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::string getTypeString () const {
-          return std::string("LimitNode");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -591,109 +556,11 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              class ProjectionNode
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief class ProjectionNode, derived from ExecutionNode
-////////////////////////////////////////////////////////////////////////////////
-
-    class ProjectionNode : public ExecutionNode {
-      
-      friend class ExecutionBlock;
-      friend class ProjectionBlock;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
-      public:
-
-        ProjectionNode (Variable const* inVariable,
-                        Variable const* outVariable,
-                        std::vector<std::string> keepAttributes)
-          : ExecutionNode(), _inVariable(inVariable), _outVariable(outVariable),
-            _keepAttributes(keepAttributes) {
-
-          TRI_ASSERT(inVariable != nullptr);
-          TRI_ASSERT(outVariable != nullptr);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual NodeType getType () const {
-          return PROJECTION;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::string getTypeString () const {
-          return std::string("ProjectionNode");
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief export to JSON
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
-                                   triagens::basics::Json& nodes,
-                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clone ExecutionNode recursively
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual ExecutionNode* clone () const {
-          auto c = new ProjectionNode(_inVariable, _outVariable, _keepAttributes);
-          cloneDependencies(c);
-          return static_cast<ExecutionNode*>(c);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the cost of a projection node is the cost of the unique dependency,
-//  times a small constant . . .
-////////////////////////////////////////////////////////////////////////////////
-        
-        double estimateCost () const {
-          return 1.005 * _dependencies.at(0)->estimateCost();//FIXME change this?
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief input variable to read from
-////////////////////////////////////////////////////////////////////////////////
-
-        Variable const* _inVariable;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief output variable to write to
-////////////////////////////////////////////////////////////////////////////////
-
-        Variable const* _outVariable;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief vector of attributes to leave in the object
-////////////////////////////////////////////////////////////////////////////////
-
-        std::vector<std::string> _keepAttributes;
-
-    };
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                             class CalculationNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class CalculationNode, derived from ExecutionNode
+/// @brief class CalculationNode
 ////////////////////////////////////////////////////////////////////////////////
 
     class CalculationNode : public ExecutionNode {
@@ -733,14 +600,6 @@ namespace triagens {
 
         virtual NodeType getType () const {
           return CALCULATION;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::string getTypeString () const {
-          return std::string("CalculationNode");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -811,7 +670,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class SubqueryNode, derived from ExecutionNode
+/// @brief class SubqueryNode
 ////////////////////////////////////////////////////////////////////////////////
 
     class SubqueryNode : public ExecutionNode {
@@ -838,14 +697,6 @@ namespace triagens {
 
         virtual NodeType getType () const {
           return SUBQUERY;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::string getTypeString () const {
-          return std::string("SubqueryNode");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -908,7 +759,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class FilterNode, derived from ExecutionNode
+/// @brief class FilterNode
 ////////////////////////////////////////////////////////////////////////////////
 
     class FilterNode : public ExecutionNode {
@@ -934,14 +785,6 @@ namespace triagens {
 
         virtual NodeType getType () const {
           return FILTER;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::string getTypeString () const {
-          return std::string("FilterNode");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -991,7 +834,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class SortNode, derived from ExecutionNode
+/// @brief class SortNode
 ////////////////////////////////////////////////////////////////////////////////
 
     class SortNode : public ExecutionNode {
@@ -1015,14 +858,6 @@ namespace triagens {
 
         virtual NodeType getType () const {
           return SORT;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::string getTypeString () const {
-          return std::string("SortNode");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1073,7 +908,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class AggregateNode, derived from ExecutionNode
+/// @brief class AggregateNode
 ////////////////////////////////////////////////////////////////////////////////
 
     class AggregateNode : public ExecutionNode {
@@ -1103,14 +938,6 @@ namespace triagens {
 
         virtual NodeType getType () const {
           return AGGREGATE;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::string getTypeString () const {
-          return std::string("AggregateNode");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1171,7 +998,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class ReturnNode, derived from ExecutionNode
+/// @brief class ReturnNode
 ////////////////////////////////////////////////////////////////////////////////
 
     class ReturnNode : public ExecutionNode {
@@ -1197,14 +1024,6 @@ namespace triagens {
 
         virtual NodeType getType () const {
           return RETURN;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::string getTypeString () const {
-          return std::string("ReturnNode");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1248,11 +1067,11 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                        class RemoveCollectionNode
+// --SECTION--                                                  class RemoveNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class RemoveNode, derived from ExecutionNode
+/// @brief class RemoveNode
 ////////////////////////////////////////////////////////////////////////////////
 
     class RemoveNode : public ExecutionNode {
@@ -1285,11 +1104,93 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
+/// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::string getTypeString () const {
-          return std::string("RemoveNode");
+        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
+                                   triagens::basics::Json& nodes,
+                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ExecutionNode* clone () const {
+          auto c = new RemoveNode(_vocbase, _collname, _outVariable);
+          cloneDependencies(c);
+          return static_cast<ExecutionNode*>(c);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the cost of a remove node is a multiple of the cost of its unique 
+/// dependency
+////////////////////////////////////////////////////////////////////////////////
+        
+        double estimateCost () const {
+          return 1000 * _dependencies.at(0)->estimateCost(); //FIXME change this!
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _vocbase, the database
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_vocbase_t* _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _collname, the collection name
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _collname;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief output variable
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* _outVariable;
+
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  class InsertNode
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class InsertNode
+////////////////////////////////////////////////////////////////////////////////
+
+    class InsertNode : public ExecutionNode {
+      
+      friend class ExecutionBlock;
+      friend class InsertBlock;
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor with a vocbase and a collection name
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+        InsertNode (TRI_vocbase_t* vocbase, 
+                    std::string collname,
+                    Variable const* outVariable)
+          : ExecutionNode(), _vocbase(vocbase), _collname(collname),
+            _outVariable(outVariable) {
+
+          TRI_ASSERT(_vocbase != nullptr);
+          TRI_ASSERT(_outVariable != nullptr);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual NodeType getType () const {
+          return INSERT;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1305,7 +1206,187 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new RemoveNode(_vocbase, _collname, _outVariable);
+          auto c = new InsertNode(_vocbase, _collname, _outVariable);
+          cloneDependencies(c);
+          return static_cast<ExecutionNode*>(c);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the cost of a remove node is a multiple of the cost of its unique 
+/// dependency
+////////////////////////////////////////////////////////////////////////////////
+        
+        double estimateCost () const {
+          return 1000 * _dependencies.at(0)->estimateCost(); //FIXME change this!
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _vocbase, the database
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_vocbase_t* _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _collname, the collection name
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _collname;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief output variable
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* _outVariable;
+
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  class UpdateNode
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class UpdateNode
+////////////////////////////////////////////////////////////////////////////////
+
+    class UpdateNode : public ExecutionNode {
+      
+      friend class ExecutionBlock;
+      friend class UpdateBlock;
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor with a vocbase and a collection name
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+        UpdateNode (TRI_vocbase_t* vocbase, 
+                    std::string collname,
+                    Variable const* outVariable)
+          : ExecutionNode(), _vocbase(vocbase), _collname(collname),
+            _outVariable(outVariable) {
+
+          TRI_ASSERT(_vocbase != nullptr);
+          TRI_ASSERT(_outVariable != nullptr);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual NodeType getType () const {
+          return UPDATE;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
+                                   triagens::basics::Json& nodes,
+                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ExecutionNode* clone () const {
+          auto c = new UpdateNode(_vocbase, _collname, _outVariable);
+          cloneDependencies(c);
+          return static_cast<ExecutionNode*>(c);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the cost of a remove node is a multiple of the cost of its unique 
+/// dependency
+////////////////////////////////////////////////////////////////////////////////
+        
+        double estimateCost () const {
+          return 1000 * _dependencies.at(0)->estimateCost(); //FIXME change this!
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _vocbase, the database
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_vocbase_t* _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _collname, the collection name
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _collname;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief output variable
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* _outVariable;
+
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 class ReplaceNode
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class ReplaceNode
+////////////////////////////////////////////////////////////////////////////////
+
+    class ReplaceNode : public ExecutionNode {
+      
+      friend class ExecutionBlock;
+      friend class ReplaceBlock;
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor with a vocbase and a collection name
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+        ReplaceNode (TRI_vocbase_t* vocbase, 
+                     std::string collname,
+                     Variable const* outVariable)
+          : ExecutionNode(), _vocbase(vocbase), _collname(collname),
+            _outVariable(outVariable) {
+
+          TRI_ASSERT(_vocbase != nullptr);
+          TRI_ASSERT(_outVariable != nullptr);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual NodeType getType () const {
+          return REPLACE;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
+                                   triagens::basics::Json& nodes,
+                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ExecutionNode* clone () const {
+          auto c = new UpdateNode(_vocbase, _collname, _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
