@@ -272,7 +272,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual NodeType getType () const {
+        NodeType getType () const override {
           return SINGLETON;
         }
 
@@ -337,7 +337,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual NodeType getType () const {
+        NodeType getType () const override {
           return ENUMERATE_COLLECTION;
         }
 
@@ -425,7 +425,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual NodeType getType () const {
+        NodeType getType () const override {
           return ENUMERATE_LIST;
         }
 
@@ -507,7 +507,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual NodeType getType () const {
+        NodeType getType () const override {
           return LIMIT;
         }
 
@@ -598,7 +598,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual NodeType getType () const {
+        NodeType getType () const override {
           return CALCULATION;
         }
 
@@ -695,7 +695,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual NodeType getType () const {
+        NodeType getType () const override {
           return SUBQUERY;
         }
 
@@ -783,7 +783,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual NodeType getType () const {
+        NodeType getType () const override {
           return FILTER;
         }
 
@@ -856,7 +856,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual NodeType getType () const {
+        NodeType getType () const override {
           return SORT;
         }
 
@@ -936,7 +936,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual NodeType getType () const {
+        NodeType getType () const override {
           return AGGREGATE;
         }
 
@@ -1022,7 +1022,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual NodeType getType () const {
+        NodeType getType () const override {
           return RETURN;
         }
 
@@ -1099,7 +1099,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual NodeType getType () const {
+        NodeType getType () const override {
           return REMOVE;
         }
 
@@ -1189,7 +1189,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual NodeType getType () const {
+        NodeType getType () const override {
           return INSERT;
         }
 
@@ -1279,7 +1279,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual NodeType getType () const {
+        NodeType getType () const override {
           return UPDATE;
         }
 
@@ -1369,7 +1369,7 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual NodeType getType () const {
+        NodeType getType () const override {
           return REPLACE;
         }
 
