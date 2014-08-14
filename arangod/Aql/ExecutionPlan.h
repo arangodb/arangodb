@@ -92,10 +92,10 @@ namespace triagens {
 /// @brief get the estimated cost . . .
 ////////////////////////////////////////////////////////////////////////////////
 
-        //double estimateCost () const {
-        //  TRI_ASSERT(_root != nullptr);
-        //  return _root->estimateCost();
-        //}
+        double estimateCost () const {
+          TRI_ASSERT(_root != nullptr);
+          return _root->estimateCost();
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
