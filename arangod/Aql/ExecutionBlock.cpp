@@ -43,6 +43,8 @@ using JsonHelper = triagens::basics::JsonHelper;
 // -----------------------------------------------------------------------------
 
 void AggregatorGroup::initialize (size_t capacity) {
+  TRI_ASSERT(capacity > 0);
+
   groupValues.reserve(capacity);
   collections.reserve(capacity);
 
@@ -53,11 +55,18 @@ void AggregatorGroup::initialize (size_t capacity) {
 }
 
 void AggregatorGroup::reset () {
+  if (groupValues.empty()) {
+    // yet uninitialized
+    return;
+  }
+  
   for (auto it = groupBlocks.begin(); it != groupBlocks.end(); ++it) {
     delete (*it);
   }
   groupBlocks.clear();
-  groupValues[0].erase();
+  if (! groupValues[0].isEmpty()) {
+    groupValues[0].erase();
+  }
 }
 
 void AggregatorGroup::addValues (AqlItemBlock const* src,
@@ -1437,11 +1446,11 @@ int AggregateBlock::getOrSkipSome (size_t atLeast,
         _currentGroup.collections[i] = cur->getDocumentCollection((*it).second);
         ++i;
       }
-      if(!skipping){
+      if(! skipping){
         _currentGroup.setFirstRow(_pos);
       }
     }
-    if(!skipping){
+    if(! skipping){
       _currentGroup.setLastRow(_pos);
     }
 
@@ -1458,7 +1467,7 @@ int AggregateBlock::getOrSkipSome (size_t atLeast,
         // no more input. we're done
         try {
           // emit last buffered group
-          if(!skipping){
+          if(! skipping){
             emitGroup(cur, res.get(), skipped);
             ++skipped;
             TRI_ASSERT(skipped > 0);
@@ -1893,6 +1902,8 @@ AqlItemBlock* RemoveBlock::getSome (size_t atLeast,
   auto it = _varOverview->varInfo.find(ep->_inVariable->id);
   TRI_ASSERT(it != _varOverview->varInfo.end());
   RegisterId const registerId = it->second.registerId;
+
+  auto trxCollection = _trx->trxCollection(ep->_collection->cid());
   
   if (ep->_outVariable == nullptr) {
     // don't return anything
@@ -1911,9 +1922,22 @@ AqlItemBlock* RemoveBlock::getSome (size_t atLeast,
     
         for (size_t i = 0; i < n; i++) {
           AqlValue a = res->getValue(i, registerId);
-          if (! a.isEmpty()) {
-            std::cout << JsonHelper::toString(a.toJson(_trx, document)) << "\n";
+
+          if (a.isEmpty()) {
+            // no value for _key. TODO: should we fail with an error in this case?
+            continue;
           }
+
+          if (a.isString()) {
+            std::cout << "VALUE IS A STRING\n";
+          }
+          
+          std::cout << JsonHelper::toString(a.toJson(_trx, document)) << "\n";
+          std::string key = "gig";
+
+          int removed = TRI_RemoveShapedJsonDocumentCollection(trxCollection, (TRI_voc_key_t) key.c_str(), 0, nullptr, nullptr, false, false);
+
+          std::cout << "REMOVE RESULT: " << removed << "\n";
         }
         delete res;
       }
@@ -2029,7 +2053,7 @@ void ExecutionBlock::VarOverview::after (ExecutionBlock *eb) {
       // TODO: decide whether remove needs to produce new registers
       break;
     }
-
+    
       // TODO: potentially more cases
     default:
       break;

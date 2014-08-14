@@ -128,12 +128,32 @@ AqlValue AqlValue::clone () const {
     case EMPTY: {
       return AqlValue();
     }
+  }
 
-    default: {
-      TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the AqlValue contains a string value
+////////////////////////////////////////////////////////////////////////////////
+
+bool AqlValue::isString () const {
+  switch (_type) {
+    case JSON: {
+      TRI_json_t const* json = _json->json();
+      return TRI_IsStringJson(json);
+    }
+
+    case SHAPED: 
+    case DOCVEC: 
+    case RANGE: 
+    case EMPTY: {
+      return false;
     }
   }
 
+  TRI_ASSERT(false);
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

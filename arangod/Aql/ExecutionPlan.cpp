@@ -191,7 +191,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor (Ast const* ast,
     auto collection = collections->get(collectionName);
 
     if (collection == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no collection for EnumerateCollection");
     }
     en = addNode(new EnumerateCollectionNode(ast->query()->vocbase(), collection, v));
   }
@@ -675,21 +675,25 @@ ExecutionNode* ExecutionPlan::fromNode (Ast const* ast,
       }
     
       case NODE_TYPE_REMOVE: {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
         en = fromNodeRemove(ast, en, member);
         break;
       }
     
       case NODE_TYPE_INSERT: {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
         en = fromNodeInsert(ast, en, member);
         break;
       }
     
       case NODE_TYPE_UPDATE: {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
         en = fromNodeUpdate(ast, en, member);
         break;
       }
     
       case NODE_TYPE_REPLACE: {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
         en = fromNodeReplace(ast, en, member);
         break;
       }
@@ -702,7 +706,7 @@ ExecutionNode* ExecutionPlan::fromNode (Ast const* ast,
     }
 
     if (en == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "type not handled");
     }
   }
 

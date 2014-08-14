@@ -251,7 +251,7 @@ namespace triagens {
         void changeMember (size_t i,
                            AstNode* node) {
           if (i >= members._length) {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "member out of range");
           }
 
           members._buffer[i] = node;
@@ -263,7 +263,7 @@ namespace triagens {
 
         inline AstNode* getMember (size_t i) const {
           if (i >= members._length) {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "member out of range");
           }
           return static_cast<AstNode*>(members._buffer[i]);
         }
