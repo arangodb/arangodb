@@ -229,7 +229,7 @@ void EnumerateCollectionNode::toJsonHelper (std::map<ExecutionNode*, int>& index
 
   // Now put info about vocbase and cid in there
   json("database", Json(_vocbase->_name))
-      ("collection", Json(_collname))
+      ("collection", Json(_collection->name))
       ("outVariable", _outVariable->toJson());
 
   // And add it:
