@@ -25,8 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_EXECUTION_Plan_H
-#define ARANGODB_AQL_EXECUTION_Plan_H 1
+#ifndef ARANGODB_AQL_EXECUTION_NODE_H
+#define ARANGODB_AQL_EXECUTION_NODE_H 1
 
 #include <Basics/Common.h>
 
@@ -78,10 +78,10 @@ namespace triagens {
           CONCATENATION,
           MERGE,
           REMOTE,
-          INSERT,
-          REMOVE,
-          REPLACE,
-          UPDATE,
+          INSERT,                   // done
+          REMOVE,                   // done
+          REPLACE,                  // done
+          UPDATE,                   // done
           RETURN                    // done
         };
 
@@ -121,17 +121,13 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual NodeType getType () const {
-          return ILLEGAL;
-        }
+        virtual NodeType getType () const = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
+/// @brief return the type name of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::string getTypeString () const {
-          return std::string("ExecutionNode (abstract)");
-        }
+        std::string getTypeString () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a dependency
@@ -195,12 +191,20 @@ namespace triagens {
 /// @brief estimate the cost of the node . . .
 ////////////////////////////////////////////////////////////////////////////////
         
+        double getCost () {
+          if (_estimatedCost == 0){
+            _estimatedCost = estimateCost();
+          }
+          return _estimatedCost;
+        };
+
         virtual double estimateCost () = 0;
+        
         //TODO nodes should try harder to estimate their own cost, i.e. the cost
         //of performing the operation of the node . . .
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief TODO what?
+/// @brief FIXME what?
 ////////////////////////////////////////////////////////////////////////////////
 
         void walk (WalkerWorker* worker);
@@ -210,22 +214,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         triagens::basics::Json toJson (TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helpers for export to JSON, appends an entry to nodes, indexMap is the
-/// map from nodes to indices in list
-////////////////////////////////////////////////////////////////////////////////
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       public data
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _estimatedCost = 0 if uninitialised and otherwise stores the result
-/// of estimateCost()
-////////////////////////////////////////////////////////////////////////////////
-
-        double _estimatedCost;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
@@ -253,15 +241,27 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
+      
+      protected:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief our dependent nodes
 ////////////////////////////////////////////////////////////////////////////////
 
-      protected:
-
         std::vector<ExecutionNode*> _dependencies;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief NodeType to string mapping
+////////////////////////////////////////////////////////////////////////////////
         
+        static std::unordered_map<int, std::string const> const TypeNames;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _estimatedCost = 0 if uninitialised and otherwise stores the result
+/// of estimateCost()
+////////////////////////////////////////////////////////////////////////////////
+
+        double _estimatedCost;
     };
 
 // -----------------------------------------------------------------------------
@@ -269,7 +269,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class SingletonNode, derived from ExecutionNode
+/// @brief class SingletonNode
 ////////////////////////////////////////////////////////////////////////////////
 
     class SingletonNode : public ExecutionNode {
@@ -283,9 +283,7 @@ namespace triagens {
 
       public:
 
-        SingletonNode () : ExecutionNode() {
-          _estimatedCost = 1;
-        }
+        SingletonNode () : ExecutionNode() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -293,14 +291,6 @@ namespace triagens {
 
         virtual NodeType getType () const {
           return SINGLETON;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::string getTypeString () const {
-          return std::string("SingletonNode");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -326,7 +316,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () {
-          return _estimatedCost;
+          return 1;
         }
 
     };
@@ -336,7 +326,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class EnumerateCollectionNode, derived from ExecutionNode
+/// @brief class EnumerateCollectionNode
 ////////////////////////////////////////////////////////////////////////////////
 
     class EnumerateCollectionNode : public ExecutionNode {
@@ -368,14 +358,6 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::string getTypeString () const {
-          return std::string("EnumerateCollectionNode");
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -399,16 +381,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () { 
-          if (_estimatedCost == 0){
-            _estimatedCost = 1000 * _dependencies.at(0)->estimateCost(); 
-            //FIXME improve this estimate . . .
-          }
-          return _estimatedCost;
+          return 1000 * _dependencies.at(0)->getCost(); 
+          //FIXME improve this estimate . . .
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief private data
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
 
       private:
 
@@ -437,7 +416,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class EnumerateListNode, derived from ExecutionNode
+/// @brief class EnumerateListNode
 ////////////////////////////////////////////////////////////////////////////////
 
     class EnumerateListNode : public ExecutionNode {
@@ -468,14 +447,6 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::string getTypeString () const {
-          return std::string("EnumerateListNode");
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -498,16 +469,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () {
-          if (_estimatedCost == 0){
-            _estimatedCost = 1000 * _dependencies.at(0)->estimateCost(); 
-            //FIXME improve this estimate . . .
-          }
-          return _estimatedCost;
+          return 1000 * _dependencies.at(0)->getCost(); 
+          //FIXME improve this estimate . . .
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief private data
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
 
       private:
 
@@ -531,7 +499,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class LimitNode, derived from ExecutionNode
+/// @brief class LimitNode
 ////////////////////////////////////////////////////////////////////////////////
 
     class LimitNode : public ExecutionNode {
@@ -562,14 +530,6 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::string getTypeString () const {
-          return std::string("LimitNode");
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -593,12 +553,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () {
-          if (_estimatedCost == 0){
-            _estimatedCost = 1.005 * std::min(static_cast<double>(_limit), 
-              _dependencies.at(0)->estimateCost());
-            //FIXME improve this estimate . . .
-          }
-          return _estimatedCost;
+          return 1.005 * std::min(static_cast<double>(_limit), 
+            _dependencies.at(0)->getCost());
+          //FIXME improve this estimate . . .
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -613,113 +570,11 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              class ProjectionNode
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief class ProjectionNode, derived from ExecutionNode
-////////////////////////////////////////////////////////////////////////////////
-
-    class ProjectionNode : public ExecutionNode {
-      
-      friend class ExecutionBlock;
-      friend class ProjectionBlock;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
-////////////////////////////////////////////////////////////////////////////////
-
-      public:
-
-        ProjectionNode (Variable const* inVariable,
-                        Variable const* outVariable,
-                        std::vector<std::string> keepAttributes)
-          : ExecutionNode(), _inVariable(inVariable), _outVariable(outVariable),
-            _keepAttributes(keepAttributes) {
-
-          TRI_ASSERT(inVariable != nullptr);
-          TRI_ASSERT(outVariable != nullptr);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual NodeType getType () const {
-          return PROJECTION;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::string getTypeString () const {
-          return std::string("ProjectionNode");
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief export to JSON
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
-                                   triagens::basics::Json& nodes,
-                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clone ExecutionNode recursively
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual ExecutionNode* clone () const {
-          auto c = new ProjectionNode(_inVariable, _outVariable, _keepAttributes);
-          cloneDependencies(c);
-          return static_cast<ExecutionNode*>(c);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the cost of a projection node is the cost of the unique dependency,
-//  times a small constant . . .
-////////////////////////////////////////////////////////////////////////////////
-        
-        double estimateCost () {
-          if (_estimatedCost == 0){
-            _estimatedCost = 1.005 * _dependencies.at(0)->estimateCost();
-            //FIXME improve this estimate . . .
-          }
-          return _estimatedCost;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief private data
-////////////////////////////////////////////////////////////////////////////////
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief input variable to read from
-////////////////////////////////////////////////////////////////////////////////
-
-        Variable const* _inVariable;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief output variable to write to
-////////////////////////////////////////////////////////////////////////////////
-
-        Variable const* _outVariable;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief vector of attributes to leave in the object
-////////////////////////////////////////////////////////////////////////////////
-
-        std::vector<std::string> _keepAttributes;
-
-    };
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                             class CalculationNode
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class CalculationNode, derived from ExecutionNode
+/// @brief class CalculationNode
 ////////////////////////////////////////////////////////////////////////////////
 
     class CalculationNode : public ExecutionNode {
@@ -762,14 +617,6 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::string getTypeString () const {
-          return std::string("CalculationNode");
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -809,16 +656,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () {
-          if (_estimatedCost == 0){
-            _estimatedCost = 2 * _dependencies.at(0)->estimateCost(); 
-            //FIXME improve this estimate . . . 
-          }
-          return _estimatedCost;
+          return 2 * _dependencies.at(0)->getCost(); 
+          //FIXME improve this estimate . . . 
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief private data
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
 
       private:
 
@@ -841,7 +685,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class SubqueryNode, derived from ExecutionNode
+/// @brief class SubqueryNode
 ////////////////////////////////////////////////////////////////////////////////
 
     class SubqueryNode : public ExecutionNode {
@@ -868,14 +712,6 @@ namespace triagens {
 
         virtual NodeType getType () const {
           return SUBQUERY;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::string getTypeString () const {
-          return std::string("SubqueryNode");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -910,16 +746,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () {
-          if (_estimatedCost == 0){
-            _estimatedCost = 1.005 * _dependencies.at(0)->estimateCost();
-            //FIXME improve this estimate . . .
-          }
-          return _estimatedCost;
+          return 1.005 * _dependencies.at(0)->getCost();
+          //FIXME improve this estimate . . .
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief private data
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
 
       private:
 
@@ -942,7 +775,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class FilterNode, derived from ExecutionNode
+/// @brief class FilterNode
 ////////////////////////////////////////////////////////////////////////////////
 
     class FilterNode : public ExecutionNode {
@@ -971,14 +804,6 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::string getTypeString () const {
-          return std::string("FilterNode");
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1001,12 +826,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () {
-          if (_estimatedCost == 0){
-            _estimatedCost = _dependencies.at(0)->estimateCost() * 0.105;
-            //FIXME! 0.005 is the cost of doing the filter node under the
-            //assumption that it returns 10% of the results of its dependency
-          }
-          return _estimatedCost;
+          return _dependencies.at(0)->getCost() * 0.105;
+          //FIXME! 0.005 is the cost of doing the filter node under the
+          //assumption that it returns 10% of the results of its dependency
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1028,7 +850,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class SortNode, derived from ExecutionNode
+/// @brief class SortNode
 ////////////////////////////////////////////////////////////////////////////////
 
     class SortNode : public ExecutionNode {
@@ -1055,14 +877,6 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::string getTypeString () const {
-          return std::string("SortNode");
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1085,16 +899,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () {
-          if (_estimatedCost == 0){
-            double depCost = _dependencies.at(0)->estimateCost();
-            _estimatedCost = log(depCost) * depCost;
-          }
-          return _estimatedCost;
+          double depCost = _dependencies.at(0)->getCost();
+          return log(depCost) * depCost;
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief private data
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
 
       private:
 
@@ -1113,7 +924,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class AggregateNode, derived from ExecutionNode
+/// @brief class AggregateNode
 ////////////////////////////////////////////////////////////////////////////////
 
     class AggregateNode : public ExecutionNode {
@@ -1146,14 +957,6 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::string getTypeString () const {
-          return std::string("AggregateNode");
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1176,16 +979,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () {
-          if (_estimatedCost == 0){
-            _estimatedCost = 2 * _dependencies.at(0)->estimateCost();
-            //FIXME improve this estimate . . .
-          }
-          return _estimatedCost;
+          return 2 * _dependencies.at(0)->getCost();
+          //FIXME improve this estimate . . .
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief private data
-////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
 
       private:
 
@@ -1215,7 +1015,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief class ReturnNode, derived from ExecutionNode
+/// @brief class ReturnNode
 ////////////////////////////////////////////////////////////////////////////////
 
     class ReturnNode : public ExecutionNode {
@@ -1244,14 +1044,6 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type of the node as a string
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::string getTypeString () const {
-          return std::string("ReturnNode");
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1274,21 +1066,384 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () {
-          if (_estimatedCost == 0){
-            _estimatedCost = _dependencies.at(0)->estimateCost();
-          }
-          return _estimatedCost;
+          return _dependencies.at(0)->getCost();
         }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief we need to know the offset and limit
 ////////////////////////////////////////////////////////////////////////////////
 
-      private:
-
         Variable const* _inVariable;
 
     };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  class RemoveNode
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class RemoveNode
+////////////////////////////////////////////////////////////////////////////////
+
+    class RemoveNode : public ExecutionNode {
+      
+      friend class ExecutionBlock;
+      friend class RemoveBlock;
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor with a vocbase and a collection name
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+        RemoveNode (TRI_vocbase_t* vocbase, 
+                    std::string collname,
+                    Variable const* outVariable)
+          : ExecutionNode(), _vocbase(vocbase), _collname(collname),
+            _outVariable(outVariable) {
+
+          TRI_ASSERT(_vocbase != nullptr);
+          TRI_ASSERT(_outVariable != nullptr);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual NodeType getType () const {
+          return REMOVE;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
+                                   triagens::basics::Json& nodes,
+                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ExecutionNode* clone () const {
+          auto c = new RemoveNode(_vocbase, _collname, _outVariable);
+          cloneDependencies(c);
+          return static_cast<ExecutionNode*>(c);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the cost of a remove node is a multiple of the cost of its unique 
+/// dependency
+////////////////////////////////////////////////////////////////////////////////
+        
+        double estimateCost () {
+          return 1000 * _dependencies.at(0)->getCost();
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _vocbase, the database
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_vocbase_t* _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _collname, the collection name
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _collname;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief output variable
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* _outVariable;
+
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  class InsertNode
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class InsertNode
+////////////////////////////////////////////////////////////////////////////////
+
+    class InsertNode : public ExecutionNode {
+      
+      friend class ExecutionBlock;
+      friend class InsertBlock;
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor with a vocbase and a collection name
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+        InsertNode (TRI_vocbase_t* vocbase, 
+                    std::string collname,
+                    Variable const* outVariable)
+          : ExecutionNode(), _vocbase(vocbase), _collname(collname),
+            _outVariable(outVariable) {
+
+          TRI_ASSERT(_vocbase != nullptr);
+          TRI_ASSERT(_outVariable != nullptr);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual NodeType getType () const {
+          return INSERT;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
+                                   triagens::basics::Json& nodes,
+                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ExecutionNode* clone () const {
+          auto c = new InsertNode(_vocbase, _collname, _outVariable);
+          cloneDependencies(c);
+          return static_cast<ExecutionNode*>(c);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the cost of a remove node is a multiple of the cost of its unique 
+/// dependency
+////////////////////////////////////////////////////////////////////////////////
+        
+        double estimateCost () {
+          return 1000 * _dependencies.at(0)->getCost(); //FIXME change this!
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _vocbase, the database
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_vocbase_t* _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _collname, the collection name
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _collname;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief output variable
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* _outVariable;
+
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  class UpdateNode
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class UpdateNode
+////////////////////////////////////////////////////////////////////////////////
+
+    class UpdateNode : public ExecutionNode {
+      
+      friend class ExecutionBlock;
+      friend class UpdateBlock;
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor with a vocbase and a collection name
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+        UpdateNode (TRI_vocbase_t* vocbase, 
+                    std::string collname,
+                    Variable const* outVariable)
+          : ExecutionNode(), _vocbase(vocbase), _collname(collname),
+            _outVariable(outVariable) {
+
+          TRI_ASSERT(_vocbase != nullptr);
+          TRI_ASSERT(_outVariable != nullptr);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual NodeType getType () const {
+          return UPDATE;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
+                                   triagens::basics::Json& nodes,
+                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ExecutionNode* clone () const {
+          auto c = new UpdateNode(_vocbase, _collname, _outVariable);
+          cloneDependencies(c);
+          return static_cast<ExecutionNode*>(c);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the cost of a remove node is a multiple of the cost of its unique 
+/// dependency
+////////////////////////////////////////////////////////////////////////////////
+        
+        double estimateCost () {
+          return 1000 * _dependencies.at(0)->getCost(); //FIXME change this!
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _vocbase, the database
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_vocbase_t* _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _collname, the collection name
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _collname;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief output variable
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* _outVariable;
+
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 class ReplaceNode
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class ReplaceNode
+////////////////////////////////////////////////////////////////////////////////
+
+    class ReplaceNode : public ExecutionNode {
+      
+      friend class ExecutionBlock;
+      friend class ReplaceBlock;
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor with a vocbase and a collection name
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+        ReplaceNode (TRI_vocbase_t* vocbase, 
+                     std::string collname,
+                     Variable const* outVariable)
+          : ExecutionNode(), _vocbase(vocbase), _collname(collname),
+            _outVariable(outVariable) {
+
+          TRI_ASSERT(_vocbase != nullptr);
+          TRI_ASSERT(_outVariable != nullptr);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual NodeType getType () const {
+          return REPLACE;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
+                                   triagens::basics::Json& nodes,
+                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ExecutionNode* clone () const {
+          auto c = new UpdateNode(_vocbase, _collname, _outVariable);
+          cloneDependencies(c);
+          return static_cast<ExecutionNode*>(c);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the cost of a remove node is a multiple of the cost of its unique 
+/// dependency
+////////////////////////////////////////////////////////////////////////////////
+        
+        double estimateCost () {
+          return 1000 * _dependencies.at(0)->getCost(); //FIXME change this!
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _vocbase, the database
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_vocbase_t* _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _collname, the collection name
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _collname;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief output variable
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* _outVariable;
+
+    };
+
+
   }   // namespace triagens::aql
 }  // namespace triagens
 

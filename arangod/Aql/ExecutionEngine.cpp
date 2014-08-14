@@ -30,6 +30,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/WalkerWorker.h"
 #include "Utils/Exception.h"
 

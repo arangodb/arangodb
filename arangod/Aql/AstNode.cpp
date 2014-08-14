@@ -276,8 +276,8 @@ bool AstNode::isSimple () const {
   }
 
   if (type == NODE_TYPE_ARRAY_ELEMENT) {
-      auto member = getMember(0);
-      return member->isSimple();
+    auto member = getMember(0);
+    return member->isSimple();
   }
 
   return false;

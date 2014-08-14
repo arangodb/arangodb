@@ -92,9 +92,9 @@ namespace triagens {
 /// @brief get the estimated cost . . .
 ////////////////////////////////////////////////////////////////////////////////
 
-        double estimateCost () const {
+        double getCost () const {
           TRI_ASSERT(_root != nullptr);
-          return _root->estimateCost();
+          return _root->getCost();
         }
 
 // -----------------------------------------------------------------------------
