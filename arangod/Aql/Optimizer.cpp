@@ -40,7 +40,7 @@ using namespace triagens::aql;
 
 Optimizer::Optimizer () {
   // List all the rules in the system here:
-  registerRule (relaxRule, 0);
+  registerRule (relaxRule, 1000);
 
   // Now sort them by pass:
   std::stable_sort(_rules.begin(), _rules.end());
@@ -50,8 +50,77 @@ Optimizer::Optimizer () {
 // @brief the actual optimization
 ////////////////////////////////////////////////////////////////////////////////
 
-int Optimizer::optimize () {
-  // ...
+int Optimizer::createPlans (ExecutionPlan* plan) {
+  // This vector holds the plans we have created in this pass:
+  PlanList newPlans;
+  // This vector holds the plans we have created in the previous pass:
+  PlanList oldPlans(plan);
+
+  bool keep;  // used as a return value for rules
+  int res;
+
+  // _plans contains the final result
+  for (auto p : _plans) {
+    delete p;
+  }
+  _plans.clear();
+
+  for (int pass = 1; pass <= numberOfPasses; pass++) {
+    for (auto r : _rules) {
+      PlanList nextNewPlans;
+      PlanList nextOldPlans;
+      while (oldPlans.size() > 0) {
+        auto p = oldPlans.pop_front();
+        try {
+          res = r.func(this, p, nextNewPlans, keep);
+          if (keep) {
+            nextOldPlans.push_back(p);
+          }
+        }
+        catch (...) {
+          delete p;
+          throw;
+        }
+        if (res != TRI_ERROR_NO_ERROR) {
+          return res;
+        }
+      }
+      while (newPlans.size() > 0) {
+        auto p = newPlans.pop_front();
+        try {
+          res = r.func(this, p, nextNewPlans, keep);
+          if (keep) {
+            nextNewPlans.push_back(p);
+          }
+        }
+        catch (...) {
+          delete p;
+          throw;
+        }
+        if (res != TRI_ERROR_NO_ERROR) {
+          return res;
+        }
+      }
+      oldPlans.steal(nextOldPlans);
+      newPlans.steal(nextNewPlans);
+    }
+    // Now move the surviving old plans to the result:
+    oldPlans.appendTo(_plans);
+    // Now move all the new plans to old:
+    oldPlans.steal(newPlans);
+
+    // A shortcut if nothing new was produced:
+    if (oldPlans.size() == 0) {
+      break;
+    }
+
+    // Stop if the result gets out of hand:
+    if (_plans.size() + oldPlans.size() >= maxNumberOfPlans) {
+      break;
+    }
+  }
+  // Append the surviving plans to the result:
+  oldPlans.appendTo(_plans);
 
   estimatePlans();
   sortPlans();

@@ -43,7 +43,7 @@ namespace triagens {
 /// @brief relaxRule, do not do anything
 ////////////////////////////////////////////////////////////////////////////////
 
-    int relaxRule (Optimizer*, ExecutionPlan*, ExecutionNode*);
+    int relaxRule (Optimizer*, ExecutionPlan*, Optimizer::PlanList&, bool&);
 
   }  // namespace aql
 }  // namespace triagens
