@@ -204,7 +204,7 @@ describe ArangoDB do
         doc.headers["x-arango-replication-lastincluded"].should_not eq("0")
         doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
          
-        body = doc.response.body
+        body = doc.response.body.split("\n")[0]
         document = JSON.parse(body)
       
         document.should have_key("tick") 
