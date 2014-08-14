@@ -33,13 +33,11 @@
 namespace triagens {
   namespace aql {
 
-    class ExecutionNode;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief functionality to walk an execution plan recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-    class WalkerWorker {
+    template<class T> class WalkerWorker {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -57,22 +55,22 @@ namespace triagens {
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
-        virtual void before (ExecutionNode* en) {
+        virtual void before (T* en) {
         }
 
-        virtual void after (ExecutionNode* en) {
+        virtual void after (T* en) {
         }
 
-        virtual bool enterSubquery (ExecutionNode* super, 
-                                    ExecutionNode* sub) {
+        virtual bool enterSubquery (T* super, 
+                                    T* sub) {
           return true;
         }
 
-        virtual void leaveSubquery (ExecutionNode* super,
-                                    ExecutionNode* sub) {
+        virtual void leaveSubquery (T* super,
+                                    T* sub) {
         }
 
-        bool done (ExecutionNode* en) {
+        bool done (T* en) {
           if (_done.find(en) == _done.end()) {
             _done.insert(en);
             return false;
@@ -91,7 +89,7 @@ namespace triagens {
 
       private:
 
-        std::unordered_set<ExecutionNode*> _done;
+        std::unordered_set<T*> _done;
     };
 
   }

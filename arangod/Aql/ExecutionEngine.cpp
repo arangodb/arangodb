@@ -70,7 +70,7 @@ ExecutionEngine::~ExecutionEngine () {
 // --SECTION--                     walker class for ExecutionNode to instanciate
 // -----------------------------------------------------------------------------
 
-struct Instanciator : public WalkerWorker {
+struct Instanciator : public WalkerWorker<ExecutionNode> {
   ExecutionBlock* root;
   ExecutionEngine* engine;
   std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
