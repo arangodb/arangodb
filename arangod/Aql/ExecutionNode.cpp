@@ -45,9 +45,9 @@ Json ExecutionNode::toJson (TRI_memory_zone_t* zone) {
   Json json;
   Json nodes;
   try {
-    nodes = Json(Json::List,10);
+    nodes = Json(Json::List, 10);
     toJsonHelper(indexTab, nodes, zone);
-    json = Json(Json::Array,1)
+    json = Json(Json::Array, 1)
              ("nodes", nodes);
   }
   catch (std::exception& e) {
@@ -71,8 +71,8 @@ void ExecutionNode::appendAsString (std::string& st, int indent) {
   if (_dependencies.size() != 0) {
     st.push_back('\n');
     for (size_t i = 0; i < _dependencies.size(); i++) {
-      _dependencies[i]->appendAsString(st, indent+2);
-      if (i != _dependencies.size()-1) {
+      _dependencies[i]->appendAsString(st, indent + 2);
+      if (i != _dependencies.size() - 1) {
         st.push_back(',');
       }
       else {
@@ -131,7 +131,7 @@ Json ExecutionNode::toJsonHelperGeneric (std::map<ExecutionNode*, int>& indexTab
     _dependencies[i]->toJsonHelper(indexTab, nodes, zone);
   }
   Json json;
-  json = Json(Json::Array,2)
+  json = Json(Json::Array, 2)
            ("type", Json(getTypeString()));
   Json deps(Json::List, _dependencies.size());
   for (size_t i = 0; i < _dependencies.size(); i++) {
@@ -435,6 +435,34 @@ void ReturnNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
   }
       
   json("inVariable", _inVariable->toJson());
+
+  // And add it:
+  int len = static_cast<int>(nodes.size());
+  nodes(json);
+  indexTab.insert(make_pair(this, len));
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             methods of RemoveNode
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson
+////////////////////////////////////////////////////////////////////////////////
+
+void RemoveNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
+                               triagens::basics::Json& nodes,
+                               TRI_memory_zone_t* zone) {
+  Json json(ExecutionNode::toJsonHelperGeneric(indexTab, nodes, zone));  // call base class method
+
+  if (json.isEmpty()) {
+    return;
+  }
+
+  // Now put info about vocbase and cid in there
+  json("database", Json(_vocbase->_name))
+      ("collection", Json(_collname))
+      ("outVariable", _outVariable->toJson());
 
   // And add it:
   int len = static_cast<int>(nodes.size());
