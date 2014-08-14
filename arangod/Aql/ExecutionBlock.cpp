@@ -34,9 +34,11 @@ using namespace triagens::aql;
 // -----------------------------------------------------------------------------
 // --SECTION--                                            struct AggregatorGroup
 // -----------------------------------------------------------------------------
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
 void AggregatorGroup::initialize (size_t capacity) {
   groupValues.reserve(capacity);
   collections.reserve(capacity);
@@ -217,6 +219,7 @@ int ExecutionBlock::shutdown () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         protected
 // -----------------------------------------------------------------------------
+
 void ExecutionBlock::inheritRegisters (AqlItemBlock const* src,
                                        AqlItemBlock* dst,
                                        size_t row) {
@@ -240,7 +243,6 @@ void ExecutionBlock::inheritRegisters (AqlItemBlock const* src,
 }
 
 bool ExecutionBlock::getBlock (size_t atLeast, size_t atMost) {
-
   AqlItemBlock* docs = _dependencies[0]->getSome(atLeast, atMost);
   if (docs == nullptr) {
     return false;
@@ -281,7 +283,6 @@ size_t ExecutionBlock::skipSome (size_t atLeast, size_t atMost) {
 // skip exactly <number> outputs, returns <true> if _done after
 // skipping, and <false> otherwise . . .
 bool ExecutionBlock::skip (size_t number) {
-
   size_t skipped = skipSome(number, number);
   size_t nr = skipped;
   while ( nr != 0 && skipped < number ){
@@ -445,7 +446,6 @@ int SingletonBlock::shutdown () {
   return res;
 }
 
-
 int SingletonBlock::getOrSkipSome (size_t atLeast,
                                    size_t atMost,
                                    bool skipping,
@@ -458,7 +458,7 @@ int SingletonBlock::getOrSkipSome (size_t atLeast,
     return TRI_ERROR_NO_ERROR;
   }
 
-  if(!skipping){
+  if(! skipping){
     result = new AqlItemBlock(1, _varOverview->nrRegs[_depth]);
     try {
       if (_inputRegisterValues != nullptr) {
@@ -505,26 +505,11 @@ int SingletonBlock::getOrSkipSome (size_t atLeast,
 // -----------------------------------------------------------------------------
 
 EnumerateCollectionBlock::EnumerateCollectionBlock (AQL_TRANSACTION_V8* trx,
-                                                    EnumerateCollectionNode const* ep) 
+                                                    EnumerateCollectionNode const* ep)
   : ExecutionBlock(trx, ep),
-    _trx(nullptr),
+    _collection(ep->_collection),
     _posInAllDocs(0) {
-
-  auto p = reinterpret_cast<EnumerateCollectionNode const*>(_exeNode);
-
-  // create an embedded transaction for the collection access
-  _trx = new SingleCollectionReadOnlyTransaction<V8TransactionContext<true>>
-    (p->_vocbase, p->_collname);
-
-  int res = _trx->begin();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    // transaction failure
-    delete _trx;
-    THROW_ARANGO_EXCEPTION(res);
-  }
 }
-
 
 bool EnumerateCollectionBlock::moreDocuments () {
   if (_documents.empty()) {
@@ -533,12 +518,13 @@ bool EnumerateCollectionBlock::moreDocuments () {
 
   _documents.clear();
 
-  int res = _trx->readOffset(_documents,
-                             _internalSkip,
-                             static_cast<TRI_voc_size_t>(DefaultBatchSize),
-                             0,
-                             TRI_QRY_NO_LIMIT,
-                             &_totalCount);
+  int res = _trx->readIncremental(_trx->trxCollection(_collection->cid()),
+                                  _documents,
+                                  _internalSkip,
+                                  static_cast<TRI_voc_size_t>(DefaultBatchSize),
+                                  0,
+                                  TRI_QRY_NO_LIMIT,
+                                  &_totalCount);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -548,18 +534,7 @@ bool EnumerateCollectionBlock::moreDocuments () {
 }
 
 int EnumerateCollectionBlock::initialize () {
-  int res = ExecutionBlock::initialize();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  auto p = reinterpret_cast<EnumerateCollectionNode const*>(_exeNode);
-
-  std::string collectionName(p->_collname);
-  collectionName.push_back('/');
-
-  return TRI_ERROR_NO_ERROR;
+  return ExecutionBlock::initialize();
 }
 
 int EnumerateCollectionBlock::initCursor (AqlItemBlock* items, size_t pos) {
@@ -612,7 +587,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t atLeast,
   inheritRegisters(cur, res.get(), _pos);
 
   // set our collection for our output register
-  res->setDocumentCollection(curRegs, _trx->documentCollection());
+  res->setDocumentCollection(curRegs, _trx->documentCollection(_collection->cid()));
 
   for (size_t j = 0; j < toSend; j++) {
     if (j > 0) {
@@ -745,7 +720,6 @@ int EnumerateListBlock::initCursor (AqlItemBlock* items, size_t pos) {
 }
 
 AqlItemBlock* EnumerateListBlock::getSome (size_t atLeast, size_t atMost) {
-
   if (_done) {
     return nullptr;
   }
@@ -897,33 +871,33 @@ size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
 
     // get the size of the thing we are looping over
     switch (inVarReg._type) {
-    case AqlValue::JSON: {
-      if(! inVarReg._json->isList()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "EnumerateListBlock: JSON is not a list");
-      }
-      sizeInVar = inVarReg._json->size();
-      break;
-    }
-    case AqlValue::RANGE: {
-      sizeInVar = inVarReg._range->_high - inVarReg._range->_low + 1;
-      break;
-    }
-    case AqlValue::DOCVEC: {
-      if( _index == 0) { // this is a (maybe) new DOCVEC
-        _DOCVECsize = 0;
-        //we require the total number of items 
-        for (size_t i = 0; i < inVarReg._vector->size(); i++) {
-          _DOCVECsize += inVarReg._vector->at(i)->size();
+      case AqlValue::JSON: {
+        if(! inVarReg._json->isList()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "EnumerateListBlock: JSON is not a list");
         }
+        sizeInVar = inVarReg._json->size();
+        break;
       }
-      sizeInVar = _DOCVECsize;
-      break;
-    }
-    default: {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "EnumerateListBlock: unexpected type in register");
-    }
+      case AqlValue::RANGE: {
+        sizeInVar = inVarReg._range->_high - inVarReg._range->_low + 1;
+        break;
+      }
+      case AqlValue::DOCVEC: {
+        if( _index == 0) { // this is a (maybe) new DOCVEC
+          _DOCVECsize = 0;
+          //we require the total number of items 
+          for (size_t i = 0; i < inVarReg._vector->size(); i++) {
+            _DOCVECsize += inVarReg._vector->at(i)->size();
+          }
+        }
+        sizeInVar = _DOCVECsize;
+        break;
+      }
+      default: {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "EnumerateListBlock: unexpected type in register");
+      }
     }
 
     if (atMost < sizeInVar - _index) {
@@ -950,31 +924,31 @@ size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
 ////////////////////////////////////////////////////////////////////////////////
 AqlValue EnumerateListBlock::getAqlValue (AqlValue inVarReg) {
   switch (inVarReg._type) {
-  case AqlValue::JSON: {
-    // FIXME: is this correct? What if the copy works, but the
-    // new throws? Is this then a leak? What if the new works
-    // but the AqlValue temporary cannot be made?
-    return AqlValue(new basics::Json(inVarReg._json->at(_index++).copy()));
-  }
-  case AqlValue::RANGE: {
-    return AqlValue(new
-                    basics::Json(static_cast<double>(inVarReg._range->_low + _index++)));
-  }
-  case AqlValue::DOCVEC: { // incoming doc vec has a single column
-    AqlValue out = inVarReg._vector->at(_thisblock)->getValue(_index -
-                                                              _seen, 0).clone();
-    if(++_index == (inVarReg._vector->at(_thisblock)->size() + _seen)){
-      _seen += inVarReg._vector->at(_thisblock)->size();
-      _thisblock++;
+    case AqlValue::JSON: {
+      // FIXME: is this correct? What if the copy works, but the
+      // new throws? Is this then a leak? What if the new works
+      // but the AqlValue temporary cannot be made?
+      return AqlValue(new basics::Json(inVarReg._json->at(_index++).copy()));
     }
-    return out;
-  }
+    case AqlValue::RANGE: {
+      return AqlValue(new
+                      basics::Json(static_cast<double>(inVarReg._range->_low + _index++)));
+    }
+    case AqlValue::DOCVEC: { // incoming doc vec has a single column
+      AqlValue out = inVarReg._vector->at(_thisblock)->getValue(_index -
+                                                                _seen, 0).clone();
+      if(++_index == (inVarReg._vector->at(_thisblock)->size() + _seen)){
+        _seen += inVarReg._vector->at(_thisblock)->size();
+        _thisblock++;
+      }
+      return out;
+    }
 
-  case AqlValue::SHAPED:
-  case AqlValue::EMPTY: {
-    // error
-    break;
-  }
+    case AqlValue::SHAPED:
+    case AqlValue::EMPTY: {
+      // error
+      break;
+    }
   }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected value in variable to iterate over");
@@ -1432,7 +1406,7 @@ int AggregateBlock::getOrSkipSome (size_t atLeast,
 
     if (newGroup) {
       if (! _currentGroup.groupValues[0].isEmpty()) {
-        if(!skipping){
+        if(! skipping){
           // need to emit the current group first
           emitGroup(cur, res.get(), skipped);
         }
@@ -1509,7 +1483,7 @@ int AggregateBlock::getOrSkipSome (size_t atLeast,
     }
   }
 
-  if(!skipping){
+  if(! skipping){
     TRI_ASSERT(skipped > 0);
     res->shrink(skipped);
   }
@@ -1553,8 +1527,6 @@ void AggregateBlock::emitGroup (AqlItemBlock const* cur,
 // --SECTION--                                                   class SortBlock
 // -----------------------------------------------------------------------------
 
-
-
 int SortBlock::initialize () {
   int res = ExecutionBlock::initialize();
 
@@ -1575,7 +1547,6 @@ int SortBlock::initialize () {
 
   return TRI_ERROR_NO_ERROR;
 }
-
 
 int SortBlock::initCursor (AqlItemBlock* items, size_t pos) {
 
@@ -1747,12 +1718,12 @@ void SortBlock::doSorting () {
   for (auto x : newbuffer) {
     delete x;
   }
-
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      class SortBlock::OurLessThan
 // -----------------------------------------------------------------------------
+
 bool SortBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
                                          std::pair<size_t, size_t> const& b) {
 
@@ -1779,8 +1750,8 @@ bool SortBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class LimitBlock
 // -----------------------------------------------------------------------------
-int LimitBlock::initialize () {
 
+int LimitBlock::initialize () {
   int res = ExecutionBlock::initialize();
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -1789,7 +1760,6 @@ int LimitBlock::initialize () {
 }
 
 int LimitBlock::initCursor (AqlItemBlock* items, size_t pos) {
-
   int res = ExecutionBlock::initCursor(items, pos);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -1844,8 +1814,6 @@ int LimitBlock::getOrSkipSome (size_t atLeast,
   return TRI_ERROR_NO_ERROR;
 }
 
-
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class ReturnBlock
 // -----------------------------------------------------------------------------
@@ -1899,12 +1867,61 @@ AqlItemBlock* ReturnBlock::getSome (size_t atLeast,
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               class SubqueryBlock
+// --SECTION--                                                 class RemoveBlock
 // -----------------------------------------------------------------------------
+
+AqlItemBlock* RemoveBlock::getSome (size_t atLeast,
+                                    size_t atMost) {
+
+  auto res = ExecutionBlock::getSome(atLeast, atMost);
+
+  if (res == nullptr) {
+    return res;
+  }
+
+  size_t const n = res->size();
+
+  // Let's steal the actual result and throw away the vars:
+  auto ep = static_cast<RemoveNode const*>(getPlanNode());
+  auto it = _varOverview->varInfo.find(ep->_inVariable->id);
+  TRI_ASSERT(it != _varOverview->varInfo.end());
+  RegisterId const registerId = it->second.registerId;
+  AqlItemBlock* stripped = new AqlItemBlock(n, 1);
+
+  try {
+    for (size_t i = 0; i < n; i++) {
+      AqlValue a = res->getValue(i, registerId);
+      if (! a.isEmpty()) {
+        res->steal(a);
+        try {
+          stripped->setValue(i, 0, a);
+        }
+        catch (...) {
+          a.destroy();
+          throw;
+        }
+        // If the following does not go well, we do not care, since
+        // the value is already stolen and installed in stripped
+        res->eraseValue(i, registerId);
+      }
+    }
+  }
+  catch (...) {
+    delete stripped;
+    delete res;
+    throw;
+  }
+
+  stripped->setDocumentCollection(0, res->getDocumentCollection(registerId));
+  delete res;
+
+  return stripped;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                struct ExecutionBlock::VarOverview
 // -----------------------------------------------------------------------------
+
 // Copy constructor used for a subquery:
 ExecutionBlock::VarOverview::VarOverview (VarOverview const& v,
                                           unsigned int newdepth)
@@ -1923,89 +1940,92 @@ ExecutionBlock::VarOverview::VarOverview (VarOverview const& v,
 
 void ExecutionBlock::VarOverview::after (ExecutionBlock *eb) {
   switch (eb->getPlanNode()->getType()) {
-  case ExecutionNode::ENUMERATE_COLLECTION: {
-    depth++;
-    nrRegsHere.push_back(1);
-    nrRegs.push_back(1 + nrRegs.back());
-    auto ep = static_cast<EnumerateCollectionNode const*>(eb->getPlanNode());
-    TRI_ASSERT(ep != nullptr);
-    varInfo.insert(make_pair(ep->_outVariable->id,
-                             VarInfo(depth, totalNrRegs)));
-    totalNrRegs++;
-    break;
-  }
-  case ExecutionNode::ENUMERATE_LIST: {
-    depth++;
-    nrRegsHere.push_back(1);
-    nrRegs.push_back(1 + nrRegs.back());
-    auto ep = static_cast<EnumerateListNode const*>(eb->getPlanNode());
-    TRI_ASSERT(ep != nullptr);
-    varInfo.insert(make_pair(ep->_outVariable->id,
-                             VarInfo(depth, totalNrRegs)));
-    totalNrRegs++;
-    break;
-  }
-  case ExecutionNode::CALCULATION: {
-    nrRegsHere[depth]++;
-    nrRegs[depth]++;
-    auto ep = static_cast<CalculationNode const*>(eb->getPlanNode());
-    TRI_ASSERT(ep != nullptr);
-    varInfo.insert(make_pair(ep->_outVariable->id,
-                             VarInfo(depth, totalNrRegs)));
-    totalNrRegs++;
-    break;
-  }
-  case ExecutionNode::SUBQUERY: {
-    nrRegsHere[depth]++;
-    nrRegs[depth]++;
-    auto ep = static_cast<SubqueryNode const*>(eb->getPlanNode());
-    TRI_ASSERT(ep != nullptr);
-    varInfo.insert(make_pair(ep->_outVariable->id,
-                             VarInfo(depth, totalNrRegs)));
-    totalNrRegs++;
-    subQueryBlocks.push_back(eb);
-    break;
-  }
-  case ExecutionNode::AGGREGATE: {
-    depth++;
-    nrRegsHere.push_back(0);
-    nrRegs.push_back(nrRegs.back());
-
-    auto ep = static_cast<AggregateNode const*>(eb->getPlanNode());
-    for (auto p : ep->_aggregateVariables) {
-      // p is std::pair<Variable const*,Variable const*>
-      // and the first is the to be assigned output variable
-      // for which we need to create a register in the current
-      // frame:
-      nrRegsHere[depth]++;
-      nrRegs[depth]++;
-      varInfo.insert(make_pair(p.first->id,
-                               VarInfo(depth, totalNrRegs)));
-      totalNrRegs++;
-    }
-    if (ep->_outVariable != nullptr) {
-      nrRegsHere[depth]++;
-      nrRegs[depth]++;
+    case ExecutionNode::ENUMERATE_COLLECTION: {
+      depth++;
+      nrRegsHere.push_back(1);
+      nrRegs.push_back(1 + nrRegs.back());
+      auto ep = static_cast<EnumerateCollectionNode const*>(eb->getPlanNode());
+      TRI_ASSERT(ep != nullptr);
       varInfo.insert(make_pair(ep->_outVariable->id,
                                VarInfo(depth, totalNrRegs)));
       totalNrRegs++;
+      break;
     }
-    break;
-  }
-  case ExecutionNode::SORT: {
-    // sort sorts in place and does not produce new registers
-    break;
-  }
+    case ExecutionNode::ENUMERATE_LIST: {
+      depth++;
+      nrRegsHere.push_back(1);
+      nrRegs.push_back(1 + nrRegs.back());
+      auto ep = static_cast<EnumerateListNode const*>(eb->getPlanNode());
+      TRI_ASSERT(ep != nullptr);
+      varInfo.insert(make_pair(ep->_outVariable->id,
+                               VarInfo(depth, totalNrRegs)));
+      totalNrRegs++;
+      break;
+    }
+    case ExecutionNode::CALCULATION: {
+      nrRegsHere[depth]++;
+      nrRegs[depth]++;
+      auto ep = static_cast<CalculationNode const*>(eb->getPlanNode());
+      TRI_ASSERT(ep != nullptr);
+      varInfo.insert(make_pair(ep->_outVariable->id,
+                               VarInfo(depth, totalNrRegs)));
+      totalNrRegs++;
+      break;
+    }
+    case ExecutionNode::SUBQUERY: {
+      nrRegsHere[depth]++;
+      nrRegs[depth]++;
+      auto ep = static_cast<SubqueryNode const*>(eb->getPlanNode());
+      TRI_ASSERT(ep != nullptr);
+      varInfo.insert(make_pair(ep->_outVariable->id,
+                               VarInfo(depth, totalNrRegs)));
+      totalNrRegs++;
+      subQueryBlocks.push_back(eb);
+      break;
+    }
+    case ExecutionNode::AGGREGATE: {
+      depth++;
+      nrRegsHere.push_back(0);
+      nrRegs.push_back(nrRegs.back());
 
-    // TODO: potentially more cases
-  default:
-    break;
+      auto ep = static_cast<AggregateNode const*>(eb->getPlanNode());
+      for (auto p : ep->_aggregateVariables) {
+        // p is std::pair<Variable const*,Variable const*>
+        // and the first is the to be assigned output variable
+        // for which we need to create a register in the current
+        // frame:
+        nrRegsHere[depth]++;
+        nrRegs[depth]++;
+        varInfo.insert(make_pair(p.first->id,
+                                 VarInfo(depth, totalNrRegs)));
+        totalNrRegs++;
+      }
+      if (ep->_outVariable != nullptr) {
+        nrRegsHere[depth]++;
+        nrRegs[depth]++;
+        varInfo.insert(make_pair(ep->_outVariable->id,
+                                 VarInfo(depth, totalNrRegs)));
+        totalNrRegs++;
+      }
+      break;
+    }
+    case ExecutionNode::SORT: {
+      // sort sorts in place and does not produce new registers
+      break;
+    }
+
+    case ExecutionNode::REMOVE: {
+      // TODO: decide whether remove needs to produce new registers
+      break;
+    }
+
+      // TODO: potentially more cases
+    default:
+      break;
   }
   eb->_depth = depth;
   eb->_varOverview = *me;
 }
-
-
 
 // Local Variables:
 // mode: outline-minor

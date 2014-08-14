@@ -356,6 +356,75 @@ namespace triagens {
            return trxCollection->_barrier;
          }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read all master pointers, using skip and limit and an internal
+/// offset into the primary index. this can be used for incremental access to
+/// the documents without restarting the index scan at the begin
+////////////////////////////////////////////////////////////////////////////////
+
+        int readIncremental (TRI_transaction_collection_t* trxCollection,
+                             std::vector<TRI_doc_mptr_copy_t>& docs,
+                             TRI_voc_size_t& internalSkip,
+                             TRI_voc_size_t batchSize,
+                             TRI_voc_ssize_t skip,
+                             TRI_voc_size_t limit,
+                             uint32_t* total) {
+
+          TRI_document_collection_t* document = documentCollection(trxCollection);
+
+          // READ-LOCK START
+          int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
+
+          if (document->_primaryIndex._nrUsed == 0) {
+            // nothing to do
+            this->unlock(trxCollection, TRI_TRANSACTION_READ);
+
+            // READ-LOCK END
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          if (orderBarrier(trxCollection) == nullptr) {
+            return TRI_ERROR_OUT_OF_MEMORY;
+          }
+
+          void** beg = document->_primaryIndex._table;
+          void** end = beg + document->_primaryIndex._nrAlloc;
+
+          if (internalSkip > 0) {
+            beg += internalSkip;
+          }
+
+          void** ptr = beg;
+          uint32_t count = 0;
+          *total = (uint32_t) document->_primaryIndex._nrUsed;
+
+          // fetch documents, taking limit into account
+          for (; ptr < end && count < batchSize; ++ptr, ++internalSkip) {
+            if (*ptr) {
+              TRI_doc_mptr_t* d = (TRI_doc_mptr_t*) *ptr;
+
+              if (skip > 0) {
+                --skip;
+              }
+              else {
+                docs.emplace_back(*d);
+                if (++count >= limit) {
+                  break;
+                }
+              }
+            }
+          }
+
+          this->unlock(trxCollection, TRI_TRANSACTION_READ);
+          // READ-LOCK END
+
+          return TRI_ERROR_NO_ERROR;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
@@ -815,75 +884,6 @@ namespace triagens {
             if (*ptr) {
               TRI_doc_mptr_t* d = (TRI_doc_mptr_t*) *ptr;
               docs.push_back(d);
-            }
-          }
-
-          this->unlock(trxCollection, TRI_TRANSACTION_READ);
-          // READ-LOCK END
-
-          return TRI_ERROR_NO_ERROR;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read all master pointers, using skip and limit and an internal
-/// offset into the primary index. this can be used for incremental access to
-/// the documents without restarting the index scan at the begin
-////////////////////////////////////////////////////////////////////////////////
-
-        int readIncremental (TRI_transaction_collection_t* trxCollection,
-                             std::vector<TRI_doc_mptr_copy_t>& docs,
-                             TRI_voc_size_t& internalSkip,
-                             TRI_voc_size_t batchSize,
-                             TRI_voc_ssize_t skip,
-                             TRI_voc_size_t limit,
-                             uint32_t* total) {
-
-          TRI_document_collection_t* document = documentCollection(trxCollection);
-
-          // READ-LOCK START
-          int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            return res;
-          }
-
-          if (document->_primaryIndex._nrUsed == 0) {
-            // nothing to do
-            this->unlock(trxCollection, TRI_TRANSACTION_READ);
-
-            // READ-LOCK END
-            return TRI_ERROR_NO_ERROR;
-          }
-
-          if (orderBarrier(trxCollection) == nullptr) {
-            return TRI_ERROR_OUT_OF_MEMORY;
-          }
-
-          void** beg = document->_primaryIndex._table;
-          void** end = beg + document->_primaryIndex._nrAlloc;
-
-          if (internalSkip > 0) {
-            beg += internalSkip;
-          }
-
-          void** ptr = beg;
-          uint32_t count = 0;
-          *total = (uint32_t) document->_primaryIndex._nrUsed;
-
-          // fetch documents, taking limit into account
-          for (; ptr < end && count < batchSize; ++ptr, ++internalSkip) {
-            if (*ptr) {
-              TRI_doc_mptr_t* d = (TRI_doc_mptr_t*) *ptr;
-
-              if (skip > 0) {
-                --skip;
-              }
-              else {
-                docs.emplace_back(*d);
-                if (++count >= limit) {
-                  break;
-                }
-              }
             }
           }
 

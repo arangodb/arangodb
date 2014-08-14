@@ -186,7 +186,13 @@ ExecutionNode* ExecutionPlan::fromNodeFor (Ast const* ast,
   if (expression->type == NODE_TYPE_COLLECTION) {
     // second operand is a collection
     char const* collectionName = expression->getStringValue();
-    en = addNode(new EnumerateCollectionNode(ast->query()->vocbase(), std::string(collectionName), v));
+    auto collections = ast->query()->collections();
+    auto collection = collections->get(collectionName);
+
+    if (collection == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
+    en = addNode(new EnumerateCollectionNode(ast->query()->vocbase(), collection, v));
   }
   else if (expression->type == NODE_TYPE_REFERENCE) {
     // second operand is already a variable
@@ -493,13 +499,13 @@ ExecutionNode* ExecutionPlan::fromNodeRemove (Ast const* ast,
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = addNode(new RemoveNode(ast->query()->vocbase(), std::string(collectionName), v));
+    en = addNode(new RemoveNode(ast->query()->vocbase(), std::string(collectionName), v, nullptr));
   }
   else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(ast, expression);
     calc->addDependency(previous);
-    en = addNode(new RemoveNode(ast->query()->vocbase(), std::string(collectionName), calc->outVariable()));
+    en = addNode(new RemoveNode(ast->query()->vocbase(), std::string(collectionName), calc->outVariable(), nullptr));
     previous = calc;
   }
 

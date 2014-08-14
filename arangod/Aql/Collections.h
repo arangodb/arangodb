@@ -60,6 +60,16 @@ namespace triagens {
 
       public:
 
+        Collection* get (std::string const& name) {
+          auto it = _collections.find(name);
+
+          if (it != _collections.end()) {
+            return (*it).second;
+          }
+
+          return nullptr;
+        }
+
         void add (std::string const& name,
                   TRI_transaction_type_e accessType) {
           // check if collection already is in our map
