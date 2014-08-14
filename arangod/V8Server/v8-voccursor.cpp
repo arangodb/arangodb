@@ -50,7 +50,6 @@ using namespace triagens::rest;
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor);
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -151,11 +150,11 @@ v8::Handle<v8::Value> ExecuteQueryNativeAhuacatl (TRI_aql_context_t* context,
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vocbase,
-                                                         TRI_aql_context_t* const context,
-                                                         TRI_json_t const* parameters,
-                                                         bool doCount,
-                                                         uint32_t batchSize,
-                                                         double cursorTtl) {
+                                                  TRI_aql_context_t* const context,
+                                                  TRI_json_t const* parameters,
+                                                  bool doCount,
+                                                  uint32_t batchSize,
+                                                  double cursorTtl) {
   v8::HandleScope scope;
   v8::TryCatch tryCatch;
 
@@ -233,7 +232,7 @@ v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vocbase,
 
   TRI_ASSERT(cursor != nullptr);
 
-  v8::Handle<v8::Value> cursorObject = WrapGeneralCursor(cursor);
+  v8::Handle<v8::Value> cursorObject = TRI_WrapGeneralCursor(cursor);
 
   if (cursorObject.IsEmpty()) {
     TRI_V8_EXCEPTION_MEMORY(scope);
@@ -277,7 +276,8 @@ static void WeakGeneralCursorCallback (v8::Isolate* isolate,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stores a general cursor in a V8 object
 ////////////////////////////////////////////////////////////////////////////////
-static v8::Handle<v8::Value> WrapGeneralCursor (void* cursor) {
+
+v8::Handle<v8::Value> TRI_WrapGeneralCursor (void* cursor) {
   v8::HandleScope scope;
   v8::TryCatch tryCatch;
 
@@ -392,7 +392,7 @@ static v8::Handle<v8::Value> JS_CreateCursor (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot create cursor");
   }
 
-  v8::Handle<v8::Value> cursorObject = WrapGeneralCursor(cursor);
+  v8::Handle<v8::Value> cursorObject = TRI_WrapGeneralCursor(cursor);
 
   if (cursorObject.IsEmpty()) {
     TRI_V8_EXCEPTION_MEMORY(scope);
@@ -750,7 +750,7 @@ static v8::Handle<v8::Value> JS_Cursor (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_CURSOR_NOT_FOUND);
   }
 
-  v8::Handle<v8::Value> cursorObject = WrapGeneralCursor(cursor);
+  v8::Handle<v8::Value> cursorObject = TRI_WrapGeneralCursor(cursor);
 
   if (cursorObject.IsEmpty()) {
     TRI_V8_EXCEPTION_MEMORY(scope);

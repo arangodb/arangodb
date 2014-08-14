@@ -33,7 +33,10 @@
 #include "v8-voccursor.h"
 #include "v8-collection.h"
 
+#include "VocBase/general-cursor.h"
+
 #include "Ahuacatl/ahuacatl-collections.h"
+#include "Ahuacatl/ahuacatl-result.h"
 #include "Ahuacatl/ahuacatl-explain.h"
 #include "Aql/Query.h"
 #include "Basics/Utf8Helper.h"
@@ -880,12 +883,31 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
 
   // bind parameters
   TRI_json_t* parameters = nullptr;
+  int64_t batchSize = INT32_MAX;
 
   if (argv.Length() > 1) {
     if (! argv[1]->IsObject()) {
       TRI_V8_TYPE_ERROR(scope, "expecting object for <bindvalues>");
     }
     parameters = TRI_ObjectToJson(argv[1]);
+  }
+
+  // TODO more options . . .
+  if (argv.Length() > 2) {
+    // we have options! yikes!
+    if (! argv[2]->IsObject()) {
+      TRI_V8_TYPE_ERROR(scope, "expecting object for <options>");
+    }
+
+    v8::Handle<v8::Object> objValue = v8::Handle<v8::Object>::Cast(argv[2]);
+    v8::Handle<v8::String> batchSizeName = v8::String::New("batchSize");
+    if (objValue->Has(batchSizeName)) {
+      batchSize = TRI_ObjectToInt64(objValue->Get(batchSizeName));
+      if (batchSize <= 0) {
+        TRI_V8_TYPE_ERROR(scope, "expecting non-negative integer for <batchSize>");
+        // well, this makes no sense
+      }
+    }
   }
 
   // bind parameters will be freed by the query later
@@ -896,13 +918,40 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_FULL(scope, queryResult.code, queryResult.details);
   }
-
-  v8::Handle<v8::Object> result = v8::Object::New();
-  if (queryResult.json != nullptr) {
-    result->Set(TRI_V8_STRING("json"), TRI_ObjectJson(queryResult.json));
+  
+  if (TRI_LengthListJson(queryResult.json) <= batchSize) {
+    // return the array value as it is. this is a performance optimisation
+    v8::Handle<v8::Object> result = v8::Object::New();
+    if (queryResult.json != nullptr) {
+      result->Set(TRI_V8_STRING("json"), TRI_ObjectJson(queryResult.json));
+    }
+    return scope.Close(result);
   }
 
-  return scope.Close(result);
+  TRI_general_cursor_result_t* cursorResult = TRI_CreateResultAql(queryResult.json);
+  
+  if (cursorResult == nullptr){
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+  
+  queryResult.json = nullptr;
+  
+  TRI_general_cursor_t* cursor = TRI_CreateGeneralCursor(vocbase, cursorResult, false, //doCount
+      batchSize, 30.0, nullptr);
+
+  if (cursor == nullptr) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+  TRI_ASSERT(cursor != nullptr);
+  
+  v8::Handle<v8::Value> cursorObject = TRI_WrapGeneralCursor(cursor);
+
+  if (cursorObject.IsEmpty()) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  return scope.Close(cursorObject);
 }
 
 // -----------------------------------------------------------------------------
