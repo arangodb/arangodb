@@ -83,13 +83,6 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
   ~Instanciator () {
   }
 
-  void setRoot (ExecutionBlock* node) {
-    if (root != nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
-    root = node;
-  }
-
   virtual void after (ExecutionNode* en) {
     ExecutionBlock* eb = nullptr;
 
@@ -149,13 +142,14 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
         eb = new ReturnBlock(engine->getTransaction(),
                              static_cast<ReturnNode const*>(en));
 
-        setRoot(eb);
+        root = eb;
         break;
       }
       case ExecutionNode::REMOVE: {
         eb = new RemoveBlock(engine->getTransaction(),
                              static_cast<RemoveNode const*>(en));
-        setRoot(eb);
+
+        root = eb;
         break;
       }
 
