@@ -883,29 +883,48 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
 
   // bind parameters
   TRI_json_t* parameters = nullptr;
-  int64_t batchSize = INT32_MAX;
+  
+  // return number of total records in cursor?
+  bool doCount = false;
+
+  // maximum number of results to return at once
+  uint32_t batchSize = UINT32_MAX;
+  
+  // ttl for cursor  
+  double ttl = 0.0;
 
   if (argv.Length() > 1) {
     if (! argv[1]->IsObject()) {
       TRI_V8_TYPE_ERROR(scope, "expecting object for <bindvalues>");
     }
     parameters = TRI_ObjectToJson(argv[1]);
-  }
+    
+    if (argv.Length() > 2) {
+      // we have options! yikes!
+      if (! argv[2]->IsObject()) {
+        TRI_V8_TYPE_ERROR(scope, "expecting object for <options>");
+      }
 
-  // TODO more options . . .
-  if (argv.Length() > 2) {
-    // we have options! yikes!
-    if (! argv[2]->IsObject()) {
-      TRI_V8_TYPE_ERROR(scope, "expecting object for <options>");
-    }
+      v8::Handle<v8::Object> argValue = v8::Handle<v8::Object>::Cast(argv[2]);
+      v8::Handle<v8::String> optionName = v8::String::New("batchSize");
 
-    v8::Handle<v8::Object> objValue = v8::Handle<v8::Object>::Cast(argv[2]);
-    v8::Handle<v8::String> batchSizeName = v8::String::New("batchSize");
-    if (objValue->Has(batchSizeName)) {
-      batchSize = TRI_ObjectToInt64(objValue->Get(batchSizeName));
-      if (batchSize <= 0) {
-        TRI_V8_TYPE_ERROR(scope, "expecting non-negative integer for <batchSize>");
-        // well, this makes no sense
+      if (argValue->Has(optionName)) {
+        batchSize = TRI_ObjectToInt64(argValue->Get(optionName));
+        if (batchSize <= 0) {
+          TRI_V8_TYPE_ERROR(scope, "expecting non-negative integer for <batchSize>");
+          // well, this makes no sense
+        }
+      }
+      
+      optionName = v8::String::New("count");
+      if (argValue->Has(optionName)) {
+        doCount = TRI_ObjectToBoolean(argValue->Get(optionName));
+      }
+      
+      optionName = v8::String::New("ttl");
+      if (argValue->Has(optionName)) {
+        ttl = TRI_ObjectToBoolean(argValue->Get(optionName));
+        ttl = (ttl <= 0.0 ? 30.0 : ttl);
       }
     }
   }
