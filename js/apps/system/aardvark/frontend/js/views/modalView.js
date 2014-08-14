@@ -312,7 +312,7 @@
 
           if(r.validateInput) {
             //catch result of validation and act
-            $('#' + r.id).on('keyup', function(){
+            $('#' + r.id).on('focusout', function(){
 
               var validation = r.validateInput($('#' + r.id));
               var error = false, msg;
