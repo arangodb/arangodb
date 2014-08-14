@@ -888,10 +888,13 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
   bool doCount = false;
 
   // maximum number of results to return at once
-  uint32_t batchSize = UINT32_MAX;
+  int32_t batchSize = INT32_MAX;
   
   // ttl for cursor  
   double ttl = 0.0;
+  
+  // extra return values
+  TRI_json_t* extra = nullptr;
 
   if (argv.Length() > 1) {
     if (! argv[1]->IsObject()) {
@@ -906,8 +909,8 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
       }
 
       v8::Handle<v8::Object> argValue = v8::Handle<v8::Object>::Cast(argv[2]);
+      
       v8::Handle<v8::String> optionName = v8::String::New("batchSize");
-
       if (argValue->Has(optionName)) {
         batchSize = TRI_ObjectToInt64(argValue->Get(optionName));
         if (batchSize <= 0) {
@@ -925,6 +928,11 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
       if (argValue->Has(optionName)) {
         ttl = TRI_ObjectToBoolean(argValue->Get(optionName));
         ttl = (ttl <= 0.0 ? 30.0 : ttl);
+      }
+      
+      optionName = v8::String::New("extra");
+      if (argValue->Has(optionName)) {
+        extra = TRI_ObjectToJson(argValue->Get(optionName));
       }
     }
   }
@@ -955,8 +963,8 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
   
   queryResult.json = nullptr;
   
-  TRI_general_cursor_t* cursor = TRI_CreateGeneralCursor(vocbase, cursorResult, false, //doCount
-      batchSize, 30.0, nullptr);
+  TRI_general_cursor_t* cursor = TRI_CreateGeneralCursor(vocbase, cursorResult, doCount,
+      batchSize, ttl, extra);
 
   if (cursor == nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
