@@ -34,6 +34,7 @@
 #include "Aql/Parser.h"
 #include "Aql/V8Executor.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/Optimizer.h"
 #include "Basics/JsonHelper.h"
 #include "BasicsC/json.h"
 #include "BasicsC/tri-strings.h"
@@ -191,6 +192,16 @@ QueryResult Query::execute () {
     }
 
     auto plan = ExecutionPlan::instanciateFromAst(parser.ast());
+
+    // Run the query optimiser:
+    triagens::aql::Optimizer opt;
+    opt.initialize(plan);
+    opt.optimize();
+    vector<ExecutionPlan*>& optimisedPlans(opt.getPlans());
+
+    // Just take the first one, which is the one which was estimated to be
+    // best:
+    plan = optimisedPlans[0];
   
     triagens::basics::Json json(triagens::basics::Json::List);
 

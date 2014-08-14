@@ -89,7 +89,7 @@ extern int32_t const WRP_VOCBASE_COL_TYPE;
 /// @brief create a v8 document id value from the parameters
 ////////////////////////////////////////////////////////////////////////////////
 v8::Handle<v8::Value> V8DocumentId (std::string const& collectionName,
-					   std::string const& key) ;
+                                    std::string const& key) ;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,8 +117,8 @@ v8::Handle<v8::Object> CreateErrorObjectAhuacatl (TRI_aql_error_t* error);
 /// @brief parse document or document handle from a v8 value (string | object)
 ////////////////////////////////////////////////////////////////////////////////
 bool ExtractDocumentHandle (v8::Handle<v8::Value> const val,
-				    std::string& collectionName,
-				    TRI_voc_key_t& key,
-				    TRI_voc_rid_t& rid);
+                            std::string& collectionName,
+                            TRI_voc_key_t& key,
+                            TRI_voc_rid_t& rid);
 
 #endif

@@ -184,6 +184,9 @@ Json ExecutionNode::toJsonHelperGeneric (std::map<ExecutionNode*, int>& indexTab
   }
   json("dependencies", deps);
   json("index", Json(static_cast<double>(nodes.size())));
+  if(this->_estimatedCost != 0){
+    json("estimated cost", Json(this->_estimatedCost));
+  }
 
   return json;
 }

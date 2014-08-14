@@ -65,11 +65,11 @@ static int const SLOT_BARRIER = 2;
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Object> AddBasicDocumentAttributes (
-	CollectionNameResolver const* resolver,
-	TRI_v8_global_t* v8g,
-	TRI_voc_cid_t cid,
-	TRI_df_marker_t const* marker,
-	v8::Handle<v8::Object> result) {
+                                                          CollectionNameResolver const* resolver,
+                                                          TRI_v8_global_t* v8g,
+                                                          TRI_voc_cid_t cid,
+                                                          TRI_df_marker_t const* marker,
+                                                          v8::Handle<v8::Object> result) {
   TRI_ASSERT(marker != nullptr);
 
   TRI_voc_rid_t rid = TRI_EXTRACT_MARKER_RID(marker);
@@ -446,11 +446,11 @@ static v8::Handle<v8::Value> MapGetIndexedShapedJson (uint32_t idx,
   // generate the TRI_shaped_json_t template
   // .............................................................................
 void TRI_InitV8shaped_json (v8::Handle<v8::Context> context,
-			    TRI_server_t* server,
-			    TRI_vocbase_t* vocbase,
-			    triagens::arango::JSLoader* loader,
-			    const size_t threadNumber,
-			    TRI_v8_global_t* v8g){
+                            TRI_server_t* server,
+                            TRI_vocbase_t* vocbase,
+                            triagens::arango::JSLoader* loader,
+                            const size_t threadNumber,
+                            TRI_v8_global_t* v8g){
   v8::Handle<v8::ObjectTemplate> rt;
   v8::Handle<v8::FunctionTemplate> ft;
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
