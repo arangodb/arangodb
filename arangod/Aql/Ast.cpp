@@ -186,6 +186,7 @@ AstNode* Ast::createNodeRemove (AstNode const* expression,
   node->addMember(collection);
   node->addMember(expression);
 
+  // TODO: handle options
   return node;
 }
 
@@ -200,6 +201,7 @@ AstNode* Ast::createNodeInsert (AstNode const* expression,
   node->addMember(collection);
   node->addMember(expression);
   
+  // TODO: handle options
   return node;
 }
 
@@ -218,6 +220,7 @@ AstNode* Ast::createNodeUpdate (AstNode const* keyExpression,
   if (keyExpression != nullptr) {
     node->addMember(keyExpression);
   }
+  // TODO: handle options
 
   return node;
 }
@@ -237,6 +240,7 @@ AstNode* Ast::createNodeReplace (AstNode const* keyExpression,
   if (keyExpression != nullptr) {
     node->addMember(keyExpression);
   }
+  // TODO: handle options
 
   return node;
 }
