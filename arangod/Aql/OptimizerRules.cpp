@@ -37,7 +37,11 @@ using namespace triagens::aql;
 /// @brief relaxRule, do not do anything
 ////////////////////////////////////////////////////////////////////////////////
 
-int triagens::aql::relaxRule (Optimizer*, ExecutionPlan*, ExecutionNode*) {
+int triagens::aql::relaxRule (Optimizer* opt, 
+                              ExecutionPlan* plan, 
+                              Optimizer::PlanList& out,
+                              bool& keep) {
+  keep = true;
   return TRI_ERROR_NO_ERROR;
 }
 
