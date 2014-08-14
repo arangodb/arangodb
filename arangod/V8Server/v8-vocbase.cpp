@@ -888,7 +888,7 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
   bool doCount = false;
 
   // maximum number of results to return at once
-  int32_t batchSize = INT32_MAX;
+  size_t batchSize = SIZE_MAX;
   
   // ttl for cursor  
   double ttl = 0.0;
@@ -912,9 +912,9 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
       
       v8::Handle<v8::String> optionName = v8::String::New("batchSize");
       if (argValue->Has(optionName)) {
-        batchSize = TRI_ObjectToInt64(argValue->Get(optionName));
-        if (batchSize <= 0) {
-          TRI_V8_TYPE_ERROR(scope, "expecting non-negative integer for <batchSize>");
+        batchSize = static_cast<decltype(batchSize)>(TRI_ObjectToInt64(argValue->Get(optionName)));
+        if (batchSize == 0) {
+          TRI_V8_TYPE_ERROR(scope, "expecting non-zero value for <batchSize>");
           // well, this makes no sense
         }
       }
