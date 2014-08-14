@@ -4421,6 +4421,8 @@ div.breadcrumb a.disabledBread {
   .modal-body th div.select2-container {
     margin-bottom: 10px;
     margin-top: 10px; }
+  .modal-body th .collectionThDiv {
+    margin-bottom: 20px; }
   .modal-body .icon-info-sign {
     margin-bottom: 10px;
     margin-left: 10px;
