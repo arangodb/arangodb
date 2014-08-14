@@ -71,16 +71,28 @@ ExecutionEngine::~ExecutionEngine () {
 // -----------------------------------------------------------------------------
 
 struct Instanciator : public WalkerWorker<ExecutionNode> {
-  ExecutionBlock* root;
   ExecutionEngine* engine;
+  ExecutionBlock* root;
   std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
 
-  Instanciator (ExecutionEngine* engine) : engine(engine) {};
+  Instanciator (ExecutionEngine* engine) 
+    : engine(engine),
+      root(nullptr) {
+  }
   
-  ~Instanciator () {};
+  ~Instanciator () {
+  }
+
+  void setRoot (ExecutionBlock* node) {
+    if (root != nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
+    root = node;
+  }
 
   virtual void after (ExecutionNode* en) {
-    ExecutionBlock* eb;
+    ExecutionBlock* eb = nullptr;
+
     switch (en->getType()) {
       case ExecutionNode::SINGLETON: {
         eb = new SingletonBlock(engine->getTransaction(),
@@ -94,7 +106,7 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
       }
       case ExecutionNode::ENUMERATE_LIST: {
         eb = new EnumerateListBlock(engine->getTransaction(),
-                                          static_cast<EnumerateListNode const*>(en));
+                                    static_cast<EnumerateListNode const*>(en));
         break;
       }
       case ExecutionNode::CALCULATION: {
@@ -114,12 +126,12 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
       }
       case ExecutionNode::SORT: {
         eb = new SortBlock(engine->getTransaction(),
-                             static_cast<SortNode const*>(en));
+                           static_cast<SortNode const*>(en));
         break;
       }
       case ExecutionNode::AGGREGATE: {
         eb = new AggregateBlock(engine->getTransaction(),
-                             static_cast<AggregateNode const*>(en));
+                                static_cast<AggregateNode const*>(en));
         break;
       }
       case ExecutionNode::SUBQUERY: {
@@ -136,13 +148,22 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
       case ExecutionNode::RETURN: {
         eb = new ReturnBlock(engine->getTransaction(),
                              static_cast<ReturnNode const*>(en));
-        root = eb;
+
+        setRoot(eb);
         break;
       }
+      case ExecutionNode::REMOVE: {
+        eb = new RemoveBlock(engine->getTransaction(),
+                             static_cast<RemoveNode const*>(en));
+        setRoot(eb);
+        break;
+      }
+
       default: {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
       }
     }
+
     try {
       engine->addBlock(eb);
     }
