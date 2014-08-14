@@ -590,11 +590,11 @@ static v8::Handle<v8::Value> JS_ForgetApplierReplication (v8::Arguments const& a
 
 
 void TRI_InitV8replication (v8::Handle<v8::Context> context,
-			    TRI_server_t* server,
-			    TRI_vocbase_t* vocbase,
-			    JSLoader* loader,
-			    const size_t threadNumber,
-			    TRI_v8_global_t* v8g){
+                            TRI_server_t* server,
+                            TRI_vocbase_t* vocbase,
+                            JSLoader* loader,
+                            const size_t threadNumber,
+                            TRI_v8_global_t* v8g){
 
   // replication functions. not intended to be used by end users
   TRI_AddGlobalFunctionVocbase(context, "REPLICATION_LOGGER_STATE", JS_StateLoggerReplication, true);

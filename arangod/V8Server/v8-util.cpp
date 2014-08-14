@@ -139,9 +139,9 @@ static bool ParseDocumentHandle (v8::Handle<v8::Value> const arg,
 /// @brief parse document or document handle from a v8 value (string | object)
 ////////////////////////////////////////////////////////////////////////////////
 bool ExtractDocumentHandle (v8::Handle<v8::Value> const val,
-			    string& collectionName,
-			    TRI_voc_key_t& key,
-			    TRI_voc_rid_t& rid) {
+                            string& collectionName,
+                            TRI_voc_key_t& key,
+                            TRI_voc_rid_t& rid) {
   // reset the collection identifier and the revision
   collectionName = "";
   rid = 0;
@@ -156,7 +156,7 @@ bool ExtractDocumentHandle (v8::Handle<v8::Value> const val,
     TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
     v8::Handle<v8::Object> obj = val->ToObject();
-    
+
     if (obj->Has(v8g->_IdKey)) {
       v8::Handle<v8::Value> didVal = obj->Get(v8g->_IdKey);
 
@@ -191,5 +191,3 @@ bool ExtractDocumentHandle (v8::Handle<v8::Value> const val,
   // unknown value type. give up
   return false;
 }
-
-
