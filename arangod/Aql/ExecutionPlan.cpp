@@ -34,6 +34,7 @@
 #include "Aql/Expression.h"
 #include "Aql/Query.h"
 #include "Aql/Variable.h"
+#include "Aql/WalkerWorker.h"
 #include "Utils/Exception.h"
 
 using namespace triagens::aql;
@@ -696,6 +697,39 @@ ExecutionNode* ExecutionPlan::fromNode (Ast const* ast,
   }
 
   return en;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find nodes of a certain type
+////////////////////////////////////////////////////////////////////////////////
+
+class NodeFinder : public WalkerWorker<ExecutionNode> {
+
+    ExecutionNode::NodeType _lookingFor;
+
+    std::vector<ExecutionNode*>& _out;
+
+  public:
+    NodeFinder (ExecutionNode::NodeType lookingFor,
+                std::vector<ExecutionNode*>& out) 
+      : _lookingFor(lookingFor), _out(out) {
+    };
+
+    void before (ExecutionNode* en) {
+      if (en->getType() == _lookingFor) {
+        _out.push_back(en);
+      }
+    }
+
+};
+
+std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType (
+                                  ExecutionNode::NodeType type) {
+
+  std::vector<ExecutionNode*> result;
+  NodeFinder finder(type, result);
+  root()->walk(&finder);
+  return result;
 }
 
 // -----------------------------------------------------------------------------

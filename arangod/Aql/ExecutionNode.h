@@ -37,12 +37,12 @@
 #include "Aql/Expression.h"
 #include "Aql/Variable.h"
 #include "Aql/Types.h"
+#include "Aql/WalkerWorker.h"
 
 namespace triagens {
   namespace aql {
 
     class ExecutionBlock;
-    class WalkerWorker;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class ExecutionNode, abstract base class of all execution Nodes
@@ -204,10 +204,10 @@ namespace triagens {
         //of performing the operation of the node . . .
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief FIXME what?
+/// @brief walk a complete execution plan recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        void walk (WalkerWorker* worker);
+        void walk (WalkerWorker<ExecutionNode>* worker);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON, returns an AUTOFREE Json object
