@@ -38,6 +38,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function that encapsulates execution of an AQL query
 ////////////////////////////////////////////////////////////////////////////////
+
 v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vocbase,
                                                   TRI_aql_context_t* const context,
                                                   TRI_json_t const* parameters,
@@ -59,5 +60,7 @@ extern void TRI_InitV8cursor (v8::Handle<v8::Context> context,
                               triagens::arango::JSLoader* loader,
                               const size_t threadNumber,
                               TRI_v8_global_t* v8g);
+
+v8::Handle<v8::Value> TRI_WrapGeneralCursor (void* cursor);
 
 #endif
