@@ -40,11 +40,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> ExecuteQueryCursorAhuacatl (TRI_vocbase_t* const vocbase,
-							 TRI_aql_context_t* const context,
-							 TRI_json_t const* parameters,
-							 bool doCount,
-							 uint32_t batchSize,
-							 double cursorTtl);
+                                                  TRI_aql_context_t* const context,
+                                                  TRI_json_t const* parameters,
+                                                  bool doCount,
+                                                  uint32_t batchSize,
+                                                  double cursorTtl);
 
 void TRI_InitV8indexArangoDB (v8::Handle<v8::Context> context,
                               TRI_server_t* server,
@@ -55,11 +55,11 @@ void TRI_InitV8indexArangoDB (v8::Handle<v8::Context> context,
                               v8::Handle<v8::ObjectTemplate>  ArangoDBNS);
 
 extern void TRI_InitV8cursor (v8::Handle<v8::Context> context,
-			      TRI_server_t* server,
-			      TRI_vocbase_t* vocbase,
-			      triagens::arango::JSLoader* loader,
-			      const size_t threadNumber,
-			      TRI_v8_global_t* v8g);
+                              TRI_server_t* server,
+                              TRI_vocbase_t* vocbase,
+                              triagens::arango::JSLoader* loader,
+                              const size_t threadNumber,
+                              TRI_v8_global_t* v8g);
 
 v8::Handle<v8::Value> TRI_WrapGeneralCursor (void* cursor);
 

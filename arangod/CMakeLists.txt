@@ -69,6 +69,8 @@ add_executable(
     Aql/Expression.cpp
     Aql/Function.cpp
     Aql/grammar.cpp
+    Aql/Optimizer.cpp
+    Aql/OptimizerRules.cpp
     Aql/Parser.cpp
     Aql/Query.cpp
     Aql/Scopes.cpp
