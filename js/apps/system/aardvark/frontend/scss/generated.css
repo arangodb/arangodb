@@ -1420,9 +1420,9 @@ nav.navbar, footer.footer {
   .button-warning:hover, .button-warning:focus {
     background-color: #f89406; }
 
-.button-neutral, .button-close {
+.button-neutral, .button-success:disabled, .button-close {
   background-color: #8f8d8c; }
-  .button-neutral:hover, .button-close:hover, .button-neutral:focus, .button-close:focus {
+  .button-neutral:hover, .button-success:hover:disabled, .button-close:hover, .button-neutral:focus, .button-success:focus:disabled, .button-close:focus {
     background-color: #736b68; }
 
 .dashboard-sub-bar-menu {
