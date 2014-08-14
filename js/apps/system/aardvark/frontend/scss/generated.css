@@ -4421,8 +4421,6 @@ div.breadcrumb a.disabledBread {
   .modal-body th div.select2-container {
     margin-bottom: 10px;
     margin-top: 10px; }
-  .modal-body th .collectionThDiv {
-    margin-bottom: 20px; }
   .modal-body .icon-info-sign {
     margin-bottom: 10px;
     margin-left: 10px;
@@ -4458,13 +4456,16 @@ div.breadcrumb a.disabledBread {
     width: 384px; }
   .modal-body select {
     width: 398px; }
+  .modal-body .collectionTh {
+    height: 55px; }
   .modal-body .tab-content {
     min-height: 200px; }
   .modal-body .errorMessage {
     color: red;
     font-size: 9pt;
     margin-bottom: 5px;
-    margin-top: -5px; }
+    margin-top: -9px;
+    position: absolute; }
 
 .modal-text {
   font-weight: 300;

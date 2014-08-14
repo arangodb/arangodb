@@ -312,7 +312,7 @@
 
           if(r.validateInput) {
             //catch result of validation and act
-            $('#' + r.id).on('focusout', function(){
+            $('#' + r.id).on('keyup focusout', function(e){
 
               var validation = r.validateInput($('#' + r.id));
               var error = false, msg;
@@ -323,8 +323,14 @@
                   toCheck: validator.rule
                 });
 
+                var valueToCheck = $('#' + r.id).val();
+
+                if (valueToCheck === '' && e.type === "keyup") {
+                  return;
+                }
+
                 Joi.validate({
-                  toCheck: $('#' + r.id).val()
+                  toCheck: valueToCheck
                 },
                 schema,
                 function (err, value) {
@@ -342,7 +348,6 @@
                 $('#' + r.id).addClass('invalid-input');
                 $('.modal-footer .button-success').prop('disabled', true);
                 $('.modal-footer .button-success').addClass('disabled');
-                $('#' + r.id).parent().prev().find("div").addClass("collectionThDiv");
 
                 if (errorElement) {
                   //error element available
@@ -359,7 +364,6 @@
                 $('#' + r.id).removeClass('invalid-input');
                 $('.modal-footer .button-success').prop('disabled', false);
                 $('.modal-footer .button-success').removeClass('disabled');
-                $('#' + r.id).parent().prev().find("div").removeClass("collectionThDiv");
                 if (errorElement) {
                   $(errorElement).remove();
                 }
