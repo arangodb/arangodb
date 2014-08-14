@@ -34,6 +34,7 @@
 #include <VocBase/voc-types.h>
 #include <VocBase/vocbase.h>
 
+#include "Aql/Collection.h"
 #include "Aql/Expression.h"
 #include "Aql/Variable.h"
 #include "Aql/Types.h"
@@ -341,11 +342,14 @@ namespace triagens {
       public:
 
         EnumerateCollectionNode (TRI_vocbase_t* vocbase, 
-                                 std::string collname,
+                                 Collection* collection,
                                  Variable const* outVariable)
-          : ExecutionNode(), _vocbase(vocbase), _collname(collname),
+          : ExecutionNode(), 
+            _vocbase(vocbase), 
+            _collection(collection),
             _outVariable(outVariable){
           TRI_ASSERT(_vocbase != nullptr);
+          TRI_ASSERT(_collection != nullptr);
           TRI_ASSERT(_outVariable != nullptr);
         }
 
@@ -370,7 +374,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new EnumerateCollectionNode(_vocbase, _collname, _outVariable);
+          auto c = new EnumerateCollectionNode(_vocbase, _collection, _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -381,7 +385,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () { 
-          return 1000 * _dependencies.at(0)->getCost(); 
+          return static_cast<double>(_collection->count()) * _dependencies.at(0)->getCost(); 
           //FIXME improve this estimate . . .
         }
 
@@ -392,16 +396,16 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _vocbase, the database
+/// @brief the database
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_vocbase_t* _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _collname, the collection name
+/// @brief collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string _collname;
+        Collection* _collection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief output variable
@@ -1103,13 +1107,19 @@ namespace triagens {
       public:
 
         RemoveNode (TRI_vocbase_t* vocbase, 
-                    std::string collname,
+                    Collection* collection,
+                    Variable const* inVariable,
                     Variable const* outVariable)
-          : ExecutionNode(), _vocbase(vocbase), _collname(collname),
+          : ExecutionNode(), 
+            _vocbase(vocbase), 
+            _collection(collection),
+            _inVariable(inVariable),
             _outVariable(outVariable) {
 
           TRI_ASSERT(_vocbase != nullptr);
-          TRI_ASSERT(_outVariable != nullptr);
+          TRI_ASSERT(_collection != nullptr);
+          TRI_ASSERT(_inVariable != nullptr);
+          // _outVariable might be a nullptr
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1133,7 +1143,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new RemoveNode(_vocbase, _collname, _outVariable);
+          auto c = new RemoveNode(_vocbase, _collection, _inVariable, _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -1144,7 +1154,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () {
-          return 1000 * _dependencies.at(0)->getCost();
+          return _dependencies.at(0)->getCost();
+          // TODO: improve this estimate!
         }
 
 // -----------------------------------------------------------------------------
@@ -1160,13 +1171,19 @@ namespace triagens {
         TRI_vocbase_t* _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _collname, the collection name
+/// @brief collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string _collname;
+        Collection* _collection;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief output variable
+/// @brief input variable
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* _inVariable;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief output variable (might be a nullptr)
 ////////////////////////////////////////////////////////////////////////////////
 
         Variable const* _outVariable;

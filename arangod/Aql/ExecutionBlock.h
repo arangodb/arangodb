@@ -94,6 +94,7 @@ namespace triagens {
     class ExecutionBlock {
 
     public:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief functionality to walk an execution block recursively
 ////////////////////////////////////////////////////////////////////////////////
@@ -242,6 +243,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual int initialize ();
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initCursor, could be called multiple times
 ////////////////////////////////////////////////////////////////////////////////
@@ -420,6 +422,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initCursor, store a copy of the register values coming from above
 ////////////////////////////////////////////////////////////////////////////////
+
         int initCursor (AqlItemBlock* items, size_t pos);
 
         int shutdown ();
@@ -467,12 +470,7 @@ namespace triagens {
         EnumerateCollectionBlock (AQL_TRANSACTION_V8* trx,
                                   EnumerateCollectionNode const* ep);
 
-        ~EnumerateCollectionBlock () {
-          if (_trx != nullptr) {
-            // finalize our own transaction
-            delete _trx;
-          }
-        }
+        ~EnumerateCollectionBlock ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize fetching of documents
@@ -512,15 +510,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         size_t skipSome (size_t atLeast, size_t atMost);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief currently ongoing transaction
+/// @brief collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::arango::SingleCollectionReadOnlyTransaction
-          <triagens::arango::V8TransactionContext<true>>*
-          _trx;
+        Collection* _collection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief total number of documents in the collection
@@ -619,7 +620,7 @@ namespace triagens {
 /// @brief document collection from DOCVEC
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_document_collection_t const* collection;
+        TRI_document_collection_t const* _collection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the register index containing the inVariable of the EnumerateListNode
@@ -711,7 +712,7 @@ namespace triagens {
         SubqueryBlock (AQL_TRANSACTION_V8* trx,
                        SubqueryNode const* en,
                        ExecutionBlock* subquery)
-                : ExecutionBlock(trx, en), _outReg(0),
+          : ExecutionBlock(trx, en), _outReg(0),
            _subquery(subquery) {
         }
 
@@ -1027,6 +1028,47 @@ namespace triagens {
 
         virtual AqlItemBlock* getSome (size_t atLeast,
                                        size_t atMost);
+
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       RemoveBlock
+// -----------------------------------------------------------------------------
+
+    class RemoveBlock : public ExecutionBlock {
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+        RemoveBlock (AQL_TRANSACTION_V8* trx, RemoveNode const* ep);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+        ~RemoveBlock ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSome
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual AqlItemBlock* getSome (size_t atLeast,
+                                       size_t atMost);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection
+////////////////////////////////////////////////////////////////////////////////
+
+        Collection* _collection;
 
     };
 
