@@ -57,6 +57,9 @@
       require("org/arangodb/statistics").startup();
     }
 
+    // start the queue manager once
+    require('org/arangodb/foxx/queues/manager').run();
+
     console.info("bootstraped DB server %s", ArangoServerState.id());
     return true;
   };
