@@ -334,6 +334,79 @@ bool AstNode::isConstant () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a node (and its subnodes) can throw a runtime
+/// exception
+////////////////////////////////////////////////////////////////////////////////
+
+bool AstNode::canThrow () const {
+  // check sub-nodes first
+  size_t const n = numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    auto member = getMember(i);
+    if (member->canThrow()) {
+      // if any sub-node may throw, the whole branch may throw
+      return true;
+    }
+  }
+
+  // no sub-node throws, now check ourselves
+
+  if (type == NODE_TYPE_OPERATOR_UNARY_PLUS ||
+      type == NODE_TYPE_OPERATOR_UNARY_MINUS ||
+      type == NODE_TYPE_OPERATOR_UNARY_NOT) {
+    // all unary operators may throw
+    return true;
+  }
+
+  if (type == NODE_TYPE_OPERATOR_BINARY_AND ||
+      type == NODE_TYPE_OPERATOR_BINARY_OR) {
+    // the logical operators can throw
+    return true;
+  }
+
+  if (type == NODE_TYPE_OPERATOR_BINARY_PLUS ||
+      type == NODE_TYPE_OPERATOR_BINARY_MINUS ||
+      type == NODE_TYPE_OPERATOR_BINARY_TIMES ||
+      type == NODE_TYPE_OPERATOR_BINARY_DIV ||
+      type == NODE_TYPE_OPERATOR_BINARY_MOD) {
+    // the arithmetic operators can throw
+    return true;
+  }
+
+  if (type == NODE_TYPE_OPERATOR_BINARY_IN) {
+    // the IN operator can throw (if rhs is not a list)
+    return true;
+  }
+  
+  if (type == NODE_TYPE_OPERATOR_TERNARY) {
+    return true;
+  }
+
+  if (type == NODE_TYPE_INDEXED_ACCESS) {
+    // TODO: validate whether this can actually throw
+    return true;
+  }
+
+  if (type == NODE_TYPE_EXPAND) {
+    // TODO: validate whether this can actually throw
+    return true;
+  }
+  
+  if (type == NODE_TYPE_FCALL) {
+    // built-in functions may or may not throw
+    auto func = static_cast<Function*>(getData());
+    return func->canThrow;
+  }
+  
+  if (type == NODE_TYPE_FCALL_USER) {
+    // user functions can always throw
+    return true;
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type name of a node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -429,8 +502,6 @@ std::string AstNode::typeString () const {
       return "collection";
     case NODE_TYPE_REFERENCE:
       return "reference";
-    case NODE_TYPE_ATTRIBUTE:
-      return "attribute";
     case NODE_TYPE_PARAMETER:
       return "parameter";
     case NODE_TYPE_FCALL:

@@ -675,7 +675,6 @@ ExecutionNode* ExecutionPlan::fromNode (Ast const* ast,
       }
     
       case NODE_TYPE_REMOVE: {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
         en = fromNodeRemove(ast, en, member);
         break;
       }

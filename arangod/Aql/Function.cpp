@@ -42,10 +42,12 @@ using namespace triagens::aql;
       
 Function::Function (std::string const& name,
                     std::string const& arguments,
-                    bool isDeterministic)
+                    bool isDeterministic,
+                    bool canThrow)
   : name(name),
     arguments(arguments),
     isDeterministic(isDeterministic),
+    canThrow(canThrow),
     containsCollectionParameter(false) {
 
   initArguments();

@@ -232,44 +232,6 @@ v8::Handle<v8::Value> AqlValue::toV8 (AQL_TRANSACTION_V8* trx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toString method
-////////////////////////////////////////////////////////////////////////////////
-
-std::string AqlValue::toString (AQL_TRANSACTION_V8* trx,
-                                TRI_document_collection_t const* document) const {
-  switch (_type) {
-    case JSON: {
-      return _json->toString();
-    }
-
-    case SHAPED: {
-      // we're lazy and just stringify the json representation
-      // this does not matter as this code is not performance-sensitive
-      return toJson(trx, document).toString();
-    }
-
-    case DOCVEC: {
-      std::stringstream s;
-      s << "I am a DOCVEC with " << _vector->size() << " blocks.";
-      return s.str();
-    }
-
-    case RANGE: {
-      std::stringstream s;
-      s << "I am a range: " << _range->_low << " .. " << _range->_high;
-      return s.str();
-    }
-
-    case EMPTY: {
-      return std::string("empty");
-    }
-  }
-      
-  // should never get here
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson method
 ////////////////////////////////////////////////////////////////////////////////
       
