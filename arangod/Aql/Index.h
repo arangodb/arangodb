@@ -54,11 +54,13 @@ namespace triagens {
       
       Index (std::string const& name,
                   struct TRI_vocbase_s* vocbase,
-                  TRI_transaction_type_e accessType) 
+                  TRI_transaction_type_e accessType, 
+                  TRI_index_t* index) 
         : name(name),
           vocbase(vocbase),
           collection(nullptr),
-          accessType(accessType) {
+          accessType(accessType),
+          _index(index){
       }
       
       ~Index() {
@@ -69,23 +71,21 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the collection id
+/// @brief get the index id
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline TRI_voc_cid_t cid () const {
-        TRI_ASSERT(collection != nullptr);
-        return collection->_cid;
+      inline TRI_idx_iid_t id () const {
+        TRI_ASSERT(_index != nullptr);
+        return _index->_iid;
       }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the pointer to the document collection
+/// @brief get the index id
 ////////////////////////////////////////////////////////////////////////////////
-        
-      inline TRI_document_collection_t* documentCollection () const {
-        TRI_ASSERT(collection != nullptr);
-        TRI_ASSERT(collection->_collection != nullptr);
 
-        return collection->_collection;
+      inline TRI_idx_type_e type () const {
+        TRI_ASSERT(_index != nullptr);
+        return _index->_type;
       }
 
 // -----------------------------------------------------------------------------
@@ -95,9 +95,13 @@ namespace triagens {
       std::string const       name;
       TRI_vocbase_t*          vocbase;
       TRI_vocbase_col_t*      collection;
-      TRI_idx_iid_t           id;
-      TRI_idx_type_e          type;
       TRI_transaction_type_e  accessType;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  private variables
+// -----------------------------------------------------------------------------
+
+      TRI_index_t*         _index;
     };
 
   }
