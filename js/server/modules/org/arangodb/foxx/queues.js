@@ -91,7 +91,7 @@ queues = {
       },
       action: function () {
         if (db._queues.exists(key)) {
-          db._queues.delete(key);
+          db._queues.remove(key);
           result = true;
         }
       }
@@ -264,7 +264,7 @@ _.extend(Queue.prototype, {
       },
       action: function () {
         if (db._jobs.exists(id)) {
-          db._jobs.delete(id);
+          db._jobs.remove(id);
           result = true;
         }
       }
