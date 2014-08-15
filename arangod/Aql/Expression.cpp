@@ -162,8 +162,6 @@ void Expression::analyzeExpression () {
     _type = V8;
     _canThrow = _node->canThrow();
   }
-
-  std::cout << "CAN THROW: " << _canThrow << "\n";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -191,70 +189,10 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     if (result._type == AqlValue::SHAPED) {
       TRI_ASSERT(myCollection != nullptr);
 
-      auto shaper = myCollection->getShaper();
-
-      // look for the attribute name in the shape
-      if (*name == '_') {
-        if (strcmp(name, "_key") == 0) {
-          // _key value is copied into JSON
-          return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, TRI_EXTRACT_MARKER_KEY(result._marker)));
-        }
-        else if (strcmp(name, "_id") == 0) {
-          std::string id(trx->resolver()->getCollectionName(myCollection->_info._cid));
-          id.push_back('/');
-          id.append(TRI_EXTRACT_MARKER_KEY(result._marker));
-          return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, id));
-        }
-        else if (strcmp(name, "_rev") == 0) {
-          TRI_voc_rid_t rid = TRI_EXTRACT_MARKER_RID(result._marker);
-          return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, rid)));
-        }
-        else if (strcmp(name, "_from") == 0) {
-          std::string from(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_FROM_CID(result._marker)));
-          from.push_back('/');
-          from.append(TRI_EXTRACT_MARKER_FROM_KEY(result._marker));
-          return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, from));
-        }
-        else if (strcmp(name, "_to") == 0) {
-          std::string to(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_TO_CID(result._marker)));
-          to.push_back('/');
-          to.append(TRI_EXTRACT_MARKER_TO_KEY(result._marker));
-          return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, to));
-        }
-      }
-
-      TRI_shape_pid_t pid = shaper->lookupAttributePathByName(shaper, name);
-      if (pid != 0) {
-        // attribute exists
-        TRI_shaped_json_t document;
-        TRI_EXTRACT_SHAPED_JSON_MARKER(document, result._marker);
-
-        TRI_shaped_json_t json;
-        TRI_shape_t const* shape;
-
-        bool ok = TRI_ExtractShapedJsonVocShaper(shaper, &document, 0, pid, &json, &shape);
-        if (ok && shape != nullptr) {
-          return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, TRI_JsonShapedJson(shaper, &json)));
-        }
-      }
-
-      // attribute does not exist or something went wrong - fall-through to returning null below
+      auto j = result.extractArrayMember(trx, myCollection, name);
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
     }
 
-    else if (result._type == AqlValue::JSON) {
-      TRI_json_t const* json = result._json->json();
-
-      if (TRI_IsArrayJson(json)) {
-        TRI_json_t const* found = TRI_LookupArrayJson(json, name);
-
-        if (found != nullptr) {
-          return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, found)));
-        }
-      }
-      
-      // attribute does not exist or something went wrong - fall-through to returning null below
-    }
-      
     return AqlValue(new Json(Json::Null));
   }
   

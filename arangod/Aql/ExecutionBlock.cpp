@@ -1888,65 +1888,114 @@ RemoveBlock::RemoveBlock (AQL_TRANSACTION_V8* trx,
 RemoveBlock::~RemoveBlock () {
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get some - this accumulates all input and calls the remove() method
+////////////////////////////////////////////////////////////////////////////////
+
 AqlItemBlock* RemoveBlock::getSome (size_t atLeast,
                                     size_t atMost) {
+  
+  std::vector<AqlItemBlock*> blocks;
 
+  // loop over input until it is exhausted
+  try {
+    while (true) { 
+      auto res = ExecutionBlock::getSome(atLeast, atMost);
+
+      if (res == nullptr) {
+        break;
+      }
+      
+      blocks.push_back(res);
+    }
+
+    remove(blocks);
+    for (auto it = blocks.begin(); it != blocks.end(); ++it) {
+      delete (*it);
+    }
+    return nullptr;
+  }
+  catch (...) {
+    for (auto it = blocks.begin(); it != blocks.end(); ++it) {
+      delete (*it);
+    }
+    throw;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the actual work horse for removing data
+////////////////////////////////////////////////////////////////////////////////
+
+void RemoveBlock::remove (std::vector<AqlItemBlock*>& blocks) {
   auto ep = static_cast<RemoveNode const*>(getPlanNode());
   auto it = _varOverview->varInfo.find(ep->_inVariable->id);
   TRI_ASSERT(it != _varOverview->varInfo.end());
   RegisterId const registerId = it->second.registerId;
 
   auto trxCollection = _trx->trxCollection(_collection->cid());
-  
+      
   if (ep->_outVariable == nullptr) {
     // don't return anything
 
-    // loop over input until it is exhausted
-    while (true) { 
-      auto res = ExecutionBlock::getSome(atLeast, atMost);
-
-      if (res == nullptr) {
-        return nullptr;
-      }
-      
+    // loop over all blocks
+    for (auto it = blocks.begin(); it != blocks.end(); ++it) {
+      auto res = (*it);
       auto document = res->getDocumentCollection(registerId);
 
-      try {
-        size_t const n = res->size();
+      size_t const n = res->size();
     
-        for (size_t i = 0; i < n; i++) {
-          AqlValue a = res->getValue(i, registerId);
+      // loop over the complete block
+      for (size_t i = 0; i < n; i++) {
+        AqlValue a = res->getValue(i, registerId);
 
-          if (a.isEmpty()) {
-            // no value for _key. TODO: should we fail with an error in this case?
+        char const* key = nullptr;
+        int errorCode = TRI_ERROR_NO_ERROR;
+
+        if (a.isArray()) {
+          // value is an array. now extract the _key attribute
+          Json member(a.extractArrayMember(_trx, document, "_key"));
+          
+          TRI_json_t* json = member.json();
+          if (TRI_IsStringJson(json)) {
+            key = json->_value._string.data;
+          }
+          else {
+            errorCode = TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING;
+          }
+        }
+        else if (a.isString()) {
+          // value is a string
+          key = a.toChar();
+        }
+        else {
+          errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+        }
+
+        if (errorCode != TRI_ERROR_NO_ERROR) {
+          if (ep->_options.ignoreErrors) {
             continue;
           }
-
-          if (a.isString()) {
-            std::cout << "VALUE IS A STRING\n";
-          }
-          
-          std::cout << JsonHelper::toString(a.toJson(_trx, document)) << "\n";
-          std::string key = "gig";
-
-          int removed = TRI_RemoveShapedJsonDocumentCollection(trxCollection, (TRI_voc_key_t) key.c_str(), 0, nullptr, nullptr, false, false);
-
-          std::cout << "REMOVE RESULT: " << removed << "\n";
+          THROW_ARANGO_EXCEPTION(errorCode);
         }
-        delete res;
+        else {
+          // no error. we expect to have a key
+          TRI_ASSERT(key != nullptr);
+          
+          errorCode = TRI_RemoveShapedJsonDocumentCollection(trxCollection, 
+                                                             (TRI_voc_key_t) key, 
+                                                             0, 
+                                                             nullptr, 
+                                                             nullptr, 
+                                                             false, 
+                                                             ep->_options.waitForSync);
+        }
       }
-      catch (...) {
-        delete res;
-        throw;
-      }
+
+      (*it) = nullptr;  
+      delete res;
     }
-
-    // will never get here
   }
-
-  // NOT YET IMPLEMENTED
-  TRI_ASSERT(false);
-  return nullptr;
 }
 
 // -----------------------------------------------------------------------------

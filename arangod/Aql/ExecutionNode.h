@@ -36,6 +36,7 @@
 
 #include "Aql/Collection.h"
 #include "Aql/Expression.h"
+#include "Aql/ModificationOptions.h"
 #include "Aql/Variable.h"
 #include "Aql/Types.h"
 #include "Aql/WalkerWorker.h"
@@ -1088,6 +1089,63 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                            class ModificationNode
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief abstract base class for modification operations
+////////////////////////////////////////////////////////////////////////////////
+
+    class ModificationNode : public ExecutionNode {
+      
+      friend class ExecutionBlock;
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor with a vocbase and a collection and options
+////////////////////////////////////////////////////////////////////////////////
+
+      protected:
+
+        ModificationNode (TRI_vocbase_t* vocbase, 
+                          Collection* collection,
+                          ModificationOptions const& options)
+          : ExecutionNode(), 
+            _vocbase(vocbase), 
+            _collection(collection),
+            _options(options) {
+
+          TRI_ASSERT(_vocbase != nullptr);
+          TRI_ASSERT(_collection != nullptr);
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               protected variables
+// -----------------------------------------------------------------------------
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _vocbase, the database
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_vocbase_t* _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection
+////////////////////////////////////////////////////////////////////////////////
+
+        Collection* _collection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief modification operation options
+////////////////////////////////////////////////////////////////////////////////
+
+        ModificationOptions _options;
+
+    };
+
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  class RemoveNode
 // -----------------------------------------------------------------------------
 
@@ -1095,7 +1153,7 @@ namespace triagens {
 /// @brief class RemoveNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RemoveNode : public ExecutionNode {
+    class RemoveNode : public ModificationNode {
       
       friend class ExecutionBlock;
       friend class RemoveBlock;
@@ -1108,16 +1166,13 @@ namespace triagens {
 
         RemoveNode (TRI_vocbase_t* vocbase, 
                     Collection* collection,
+                    ModificationOptions const& options,
                     Variable const* inVariable,
                     Variable const* outVariable)
-          : ExecutionNode(), 
-            _vocbase(vocbase), 
-            _collection(collection),
+          : ModificationNode(vocbase, collection, options),
             _inVariable(inVariable),
             _outVariable(outVariable) {
 
-          TRI_ASSERT(_vocbase != nullptr);
-          TRI_ASSERT(_collection != nullptr);
           TRI_ASSERT(_inVariable != nullptr);
           // _outVariable might be a nullptr
         }
@@ -1143,7 +1198,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new RemoveNode(_vocbase, _collection, _inVariable, _outVariable);
+          auto c = new RemoveNode(_vocbase, _collection, _options, _inVariable, _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -1163,18 +1218,6 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _vocbase, the database
-////////////////////////////////////////////////////////////////////////////////
-
-        TRI_vocbase_t* _vocbase;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collection
-////////////////////////////////////////////////////////////////////////////////
-
-        Collection* _collection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief input variable
