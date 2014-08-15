@@ -44,6 +44,7 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
   { static_cast<int>(SINGLETON),                    "SingletonNode" },
   { static_cast<int>(ENUMERATE_COLLECTION),         "EnumerateCollectionNode" },
   { static_cast<int>(ENUMERATE_LIST),               "EnumerateListNode" },
+  { static_cast<int>(INDEX_RANGE),                  "IndexRangeNode" },
   { static_cast<int>(LIMIT),                        "LimitNode" },
   { static_cast<int>(CALCULATION),                  "CalculationNode" },
   { static_cast<int>(SUBQUERY),                     "SubqueryNode" },
@@ -270,6 +271,33 @@ void EnumerateListNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
   json("inVariable",  _inVariable->toJson())
       ("outVariable", _outVariable->toJson());
 
+  // And add it:
+  int len = static_cast<int>(nodes.size());
+  nodes(json);
+  indexTab.insert(make_pair(this, len));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, for IndexRangeNode
+////////////////////////////////////////////////////////////////////////////////
+
+void IndexRangeNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
+                                   triagens::basics::Json& nodes,
+                                   TRI_memory_zone_t* zone) {
+
+  Json json(ExecutionNode::toJsonHelperGeneric(indexTab, nodes, zone));  
+  // call base class method
+
+  if (json.isEmpty()) {
+    return;
+  }
+
+  // Now put info about vocbase and cid in there
+  json("database", Json(_vocbase->_name))
+      ("collection", Json(_collection->name))
+      ("outVariable", _outVariable->toJson())
+      ("index", _index->_index->json(_index->_index));
+  
   // And add it:
   int len = static_cast<int>(nodes.size());
   nodes(json);
