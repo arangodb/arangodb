@@ -425,6 +425,76 @@ namespace triagens {
           return TRI_ERROR_NO_ERROR;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete a single document
+////////////////////////////////////////////////////////////////////////////////
+
+        int remove (TRI_transaction_collection_t* trxCollection,
+                    std::string const& key,
+                    TRI_voc_rid_t rid,
+                    TRI_doc_update_policy_e policy,
+                    TRI_voc_rid_t expectedRevision,
+                    TRI_voc_rid_t* actualRevision,
+                    bool forceSync) {
+
+          TRI_doc_update_policy_t updatePolicy(policy, expectedRevision, actualRevision);
+
+          try {
+            return TRI_RemoveShapedJsonDocumentCollection(trxCollection,
+                                                          (TRI_voc_key_t) key.c_str(),
+                                                          rid,
+                                                          nullptr,
+                                                          &updatePolicy,
+                                                          ! isLocked(trxCollection, TRI_TRANSACTION_WRITE),
+                                                          forceSync);
+          }
+          catch (triagens::arango::Exception const& ex) {
+            return ex.code();
+          }
+          catch (...) {
+            return TRI_ERROR_INTERNAL;
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a single document, using JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        int create (TRI_transaction_collection_t* trxCollection,
+                    TRI_df_marker_type_e markerType,
+                    TRI_doc_mptr_copy_t* mptr,
+                    TRI_json_t const* json,
+                    void const* data,
+                    bool forceSync) {
+
+          TRI_voc_key_t key = 0;
+          int res = DocumentHelper::getKey(json, &key);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
+
+          TRI_shaper_t* shaper = this->shaper(trxCollection);
+          TRI_memory_zone_t* zone = shaper->_memoryZone;
+          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json, true, isLocked(trxCollection, TRI_TRANSACTION_WRITE));
+
+          if (shaped == nullptr) {
+            return TRI_ERROR_ARANGO_SHAPER_FAILED;
+          }
+
+          res = create(trxCollection,
+                       key,
+                       0,
+                       mptr,
+                       shaped,
+                       data,
+                       forceSync);
+
+          TRI_FreeShapedJson(zone, shaped);
+
+          return res;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
@@ -894,45 +964,6 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a single document, using JSON
-////////////////////////////////////////////////////////////////////////////////
-
-        int create (TRI_transaction_collection_t* trxCollection,
-                    TRI_df_marker_type_e markerType,
-                    TRI_doc_mptr_copy_t* mptr,
-                    TRI_json_t const* json,
-                    void const* data,
-                    bool forceSync) {
-
-          TRI_voc_key_t key = 0;
-          int res = DocumentHelper::getKey(json, &key);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            return res;
-          }
-
-          TRI_shaper_t* shaper = this->shaper(trxCollection);
-          TRI_memory_zone_t* zone = shaper->_memoryZone;
-          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json, true, isLocked(trxCollection, TRI_TRANSACTION_WRITE));
-
-          if (shaped == nullptr) {
-            return TRI_ERROR_ARANGO_SHAPER_FAILED;
-          }
-
-          res = create(trxCollection,
-                       key,
-                       0,
-                       mptr,
-                       shaped,
-                       data,
-                       forceSync);
-
-          TRI_FreeShapedJson(zone, shaped);
-
-          return res;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a single document, using shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1045,36 +1076,6 @@ namespace triagens {
           }
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief delete a single document
-////////////////////////////////////////////////////////////////////////////////
-
-        int remove (TRI_transaction_collection_t* trxCollection,
-                    std::string const& key,
-                    TRI_voc_rid_t rid,
-                    TRI_doc_update_policy_e policy,
-                    TRI_voc_rid_t expectedRevision,
-                    TRI_voc_rid_t* actualRevision,
-                    bool forceSync) {
-
-          TRI_doc_update_policy_t updatePolicy(policy, expectedRevision, actualRevision);
-
-          try {
-            return TRI_RemoveShapedJsonDocumentCollection(trxCollection,
-                                                          (TRI_voc_key_t) key.c_str(),
-                                                          rid,
-                                                          nullptr,
-                                                          &updatePolicy,
-                                                          ! isLocked(trxCollection, TRI_TRANSACTION_WRITE),
-                                                          forceSync);
-          }
-          catch (triagens::arango::Exception const& ex) {
-            return ex.code();
-          }
-          catch (...) {
-            return TRI_ERROR_INTERNAL;
-          }
-        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief truncate a collection

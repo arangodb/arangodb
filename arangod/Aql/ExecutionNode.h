@@ -1159,7 +1159,7 @@ namespace triagens {
       friend class RemoveBlock;
       
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor with a vocbase and a collection name
+/// @brief constructor 
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
@@ -1241,25 +1241,28 @@ namespace triagens {
 /// @brief class InsertNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class InsertNode : public ExecutionNode {
+    class InsertNode : public ModificationNode {
       
       friend class ExecutionBlock;
       friend class InsertBlock;
       
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor with a vocbase and a collection name
+/// @brief constructor 
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
 
         InsertNode (TRI_vocbase_t* vocbase, 
-                    std::string collname,
+                    Collection* collection,
+                    ModificationOptions const& options,
+                    Variable const* inVariable,
                     Variable const* outVariable)
-          : ExecutionNode(), _vocbase(vocbase), _collname(collname),
+          : ModificationNode(vocbase, collection, options),
+            _inVariable(inVariable),
             _outVariable(outVariable) {
 
-          TRI_ASSERT(_vocbase != nullptr);
-          TRI_ASSERT(_outVariable != nullptr);
+          TRI_ASSERT(_inVariable != nullptr);
+          // _outVariable might be a nullptr
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1283,7 +1286,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new InsertNode(_vocbase, _collname, _outVariable);
+          auto c = new InsertNode(_vocbase, _collection, _options, _inVariable, _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -1304,16 +1307,10 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _vocbase, the database
+/// @brief input variable
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_vocbase_t* _vocbase;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _collname, the collection name
-////////////////////////////////////////////////////////////////////////////////
-
-        std::string _collname;
+        Variable const* _inVariable;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief output variable

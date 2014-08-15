@@ -253,7 +253,7 @@ namespace triagens {
 
         AstNode* createNodeInsert (AstNode const*,
                                    AstNode const*,
-                                   AstNode*);
+                                   AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST update node
