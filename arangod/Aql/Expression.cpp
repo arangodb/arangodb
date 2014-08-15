@@ -61,6 +61,8 @@ Expression::Expression (V8Executor* executor,
 
   TRI_ASSERT(_executor != nullptr);
   TRI_ASSERT(_node != nullptr);
+  
+  analyzeExpression();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,9 +103,7 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
                               std::vector<Variable*> const& vars,
                               std::vector<RegisterId> const& regs) {
 
-  if (_type == UNPROCESSED) {
-    analyzeExpression();
-  }
+  TRI_ASSERT(_type != UNPROCESSED);
 
   // and execute
   switch (_type) {
