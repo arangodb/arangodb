@@ -1272,7 +1272,9 @@ namespace triagens {
           for (auto p : _aggregateVariables) {
             v.push_back(p.first);
           }
-          v.push_back(_outVariable);
+          if (_outVariable != nullptr) {
+            v.push_back(_outVariable);
+          }
           return v;
         }
 
