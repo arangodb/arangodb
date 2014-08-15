@@ -44,6 +44,7 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
   { static_cast<int>(SINGLETON),                    "SingletonNode" },
   { static_cast<int>(ENUMERATE_COLLECTION),         "EnumerateCollectionNode" },
   { static_cast<int>(ENUMERATE_LIST),               "EnumerateListNode" },
+  { static_cast<int>(INDEX_RANGE),                  "IndexRangeNode" },
   { static_cast<int>(LIMIT),                        "LimitNode" },
   { static_cast<int>(CALCULATION),                  "CalculationNode" },
   { static_cast<int>(SUBQUERY),                     "SubqueryNode" },
@@ -186,6 +187,18 @@ Json ExecutionNode::toJsonHelperGeneric (std::map<ExecutionNode*, int>& indexTab
   if(this->_estimatedCost != 0){
     json("estimated cost", Json(this->_estimatedCost));
   }
+  if (_varUsageValid) {
+    Json varsValid(Json::List, _varsValid.size());
+    for (auto v : _varsValid) {
+      varsValid(Json(v->name));
+    }
+    json("varsValid", varsValid);
+    Json varsUsedLater(Json::List, _varsUsedLater.size());
+    for (auto v : _varsUsedLater) {
+      varsUsedLater(Json(v->name));
+    }
+    json("varsUsedLater", varsUsedLater);
+  }
 
   return json;
 }
@@ -264,6 +277,33 @@ void EnumerateListNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
   indexTab.insert(make_pair(this, len));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, for IndexRangeNode
+////////////////////////////////////////////////////////////////////////////////
+
+void IndexRangeNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
+                                   triagens::basics::Json& nodes,
+                                   TRI_memory_zone_t* zone) {
+
+  Json json(ExecutionNode::toJsonHelperGeneric(indexTab, nodes, zone));  
+  // call base class method
+
+  if (json.isEmpty()) {
+    return;
+  }
+
+  // Now put info about vocbase and cid in there
+  json("database", Json(_vocbase->_name))
+      ("collection", Json(_collection->name))
+      ("outVariable", _outVariable->toJson())
+      ("index", _index->_index->json(_index->_index));
+  
+  // And add it:
+  int len = static_cast<int>(nodes.size());
+  nodes(json);
+  indexTab.insert(make_pair(this, len));
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              methods of LimitNode
 // -----------------------------------------------------------------------------
@@ -306,7 +346,9 @@ void CalculationNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
   }
   
   json("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE))
-      ("outVariable", _outVariable->toJson());
+      ("outVariable", _outVariable->toJson())
+      ("canThrow", Json(_expression->canThrow()));
+
 
   // And add it:
   int len = static_cast<int>(nodes.size());

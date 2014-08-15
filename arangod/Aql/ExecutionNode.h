@@ -36,6 +36,7 @@
 
 #include "Aql/Collection.h"
 #include "Aql/Expression.h"
+#include "Aql/Index.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/Variable.h"
 #include "Aql/Types.h"
@@ -95,7 +96,7 @@ namespace triagens {
 /// @brief default constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode () : _estimatedCost(0) {
+        ExecutionNode () : _estimatedCost(0), _varUsageValid(false) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -217,12 +218,6 @@ namespace triagens {
 
         triagens::basics::Json toJson (TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
-
-      protected:
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJsonHelper, for a generic node
 ////////////////////////////////////////////////////////////////////////////////
@@ -239,6 +234,74 @@ namespace triagens {
         virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
                                    triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) = 0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::vector<Variable const*> getVariablesUsedHere () {
+          return std::vector<Variable const*>();
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesSetHere
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::vector<Variable const*> getVariablesSetHere () {
+          return std::vector<Variable const*>();
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief setVarsUsedLater
+////////////////////////////////////////////////////////////////////////////////
+
+        void setVarsUsedLater (std::unordered_set<Variable const*>& v) {
+          _varsUsedLater = v;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVarsUsedLater
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_set<Variable const*>& getVarsUsedLater () {
+          TRI_ASSERT(_varUsageValid);
+          return _varsUsedLater;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief setVarsValid
+////////////////////////////////////////////////////////////////////////////////
+
+        void setVarsValid (std::unordered_set<Variable const*>& v) {
+          _varsValid = v;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVarsValid
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_set<Variable const*>& getVarsValid () {
+          TRI_ASSERT(_varUsageValid);
+          return _varsValid;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief setVarUsageValid
+////////////////////////////////////////////////////////////////////////////////
+
+        void setVarUsageValid () {
+          _varUsageValid = true;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalidateVarUsage
+////////////////////////////////////////////////////////////////////////////////
+
+        void invalidateVarUsage () {
+          _varsUsedLater.clear();
+          _varsValid.clear();
+          _varUsageValid = false;
+        }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
@@ -264,6 +327,21 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         double _estimatedCost;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _varsUsedLater and _varsValid, the former contains those
+/// variables that are still needed further down in the chain. The
+/// latter contains the variables that are set from the dependent nodes
+/// when an item comes into the current node. Both are only valid if
+/// _varUsageValid is true. Use ExecutionPlan::findVarUsage to set
+/// this.
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_set<Variable const*> _varsUsedLater;
+        std::unordered_set<Variable const*> _varsValid;
+
+        bool _varUsageValid;
+
     };
 
 // -----------------------------------------------------------------------------
@@ -390,6 +468,16 @@ namespace triagens {
           //FIXME improve this estimate . . .
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesSetHere
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::vector<Variable const*> getVariablesSetHere () {
+          std::vector<Variable const*> v;
+          v.push_back(_outVariable);
+          return v;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -416,6 +504,7 @@ namespace triagens {
 
     };
 
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                           class EnumerateListNode
 // -----------------------------------------------------------------------------
@@ -428,6 +517,7 @@ namespace triagens {
       
       friend class ExecutionBlock;
       friend class EnumerateListBlock;
+      friend struct VarUsageFinder;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -478,6 +568,26 @@ namespace triagens {
           //FIXME improve this estimate . . .
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::vector<Variable const*> getVariablesUsedHere () {
+          std::vector<Variable const*> v;
+          v.push_back(_inVariable);
+          return v;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesSetHere
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::vector<Variable const*> getVariablesSetHere () {
+          std::vector<Variable const*> v;
+          v.push_back(_outVariable);
+          return v;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -498,6 +608,143 @@ namespace triagens {
 
     };
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                              class IndexRangeNode
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class IndexRangeNode
+////////////////////////////////////////////////////////////////////////////////
+
+    class IndexRangeNode: public ExecutionNode {
+      
+      friend class ExecutionBlock;
+      friend class IndexRangeBlock;
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief struct to keep range info
+////////////////////////////////////////////////////////////////////////////////
+        
+      struct RangeInfo{
+          
+          RangeInfo ( std::string name, 
+                      basics::Json low, 
+                      bool lowOpen, 
+                      basics::Json high, 
+                      bool highOpen ) 
+            : _name(name), 
+              _low(low), 
+              _lowOpen(lowOpen), 
+              _high(high), 
+              _highOpen(highOpen){}
+
+          ~RangeInfo(){}
+          
+          std::string _name;
+          basics::Json _low;
+          bool _lowOpen;
+          basics::Json _high;
+          bool _highOpen;
+
+      };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor with a vocbase and a collection name
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+        IndexRangeNode (TRI_vocbase_t* vocbase, 
+                        Collection* collection,
+                        Variable const* outVariable,
+                        Index* index, 
+                        vector<RangeInfo>* ranges)
+          : ExecutionNode(), 
+            _vocbase(vocbase), 
+            _collection(collection),
+            _outVariable(outVariable),
+            _index(index),
+            _ranges(ranges)
+        {
+          TRI_ASSERT(_vocbase != nullptr);
+          TRI_ASSERT(_collection != nullptr);
+          TRI_ASSERT(_outVariable != nullptr);
+          TRI_ASSERT(_index != nullptr);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        NodeType getType () const override {
+          return INDEX_RANGE;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
+                                   triagens::basics::Json& nodes,
+                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ExecutionNode* clone () const {
+          auto c = new IndexRangeNode(_vocbase, _collection, _outVariable, _index, 
+              _ranges);
+          cloneDependencies(c);
+          return static_cast<ExecutionNode*>(c);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the cost of an enumerate collection node is a multiple of the cost of
+/// its unique dependency
+////////////////////////////////////////////////////////////////////////////////
+        
+        double estimateCost () { 
+          return 1;
+          //FIXME improve this estimate . . .
+        }
+            
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the database
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_vocbase_t* _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection
+////////////////////////////////////////////////////////////////////////////////
+
+        Collection* _collection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief output variable
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* _outVariable;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the index
+////////////////////////////////////////////////////////////////////////////////
+
+        Index* _index;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the range info
+////////////////////////////////////////////////////////////////////////////////
+        
+        vector<RangeInfo>* _ranges;
+    };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   class LimitNode
@@ -665,6 +912,29 @@ namespace triagens {
           //FIXME improve this estimate . . . 
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::vector<Variable const*> getVariablesUsedHere () {
+          std::unordered_set<Variable*> vars = _expression->variables();
+          std::vector<Variable const*> v;
+          for (auto vv : vars) {
+            v.push_back(vv);
+          }
+          return v;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesSetHere
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::vector<Variable const*> getVariablesSetHere () {
+          std::vector<Variable const*> v;
+          v.push_back(_outVariable);
+          return v;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -755,6 +1025,16 @@ namespace triagens {
           //FIXME improve this estimate . . .
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesSetHere
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::vector<Variable const*> getVariablesSetHere () {
+          std::vector<Variable const*> v;
+          v.push_back(_outVariable);
+          return v;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -837,8 +1117,14 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief we need to know the offset and limit
+/// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::vector<Variable const*> getVariablesUsedHere () {
+          std::vector<Variable const*> v;
+          v.push_back(_inVariable);
+          return v;
+        }
 
       private:
 
@@ -906,6 +1192,18 @@ namespace triagens {
         double estimateCost () {
           double depCost = _dependencies.at(0)->getCost();
           return log(depCost) * depCost;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::vector<Variable const*> getVariablesUsedHere () {
+          std::vector<Variable const*> v;
+          for (auto p : _elements) {
+            v.push_back(p.first);
+          }
+          return v;
         }
 
 // -----------------------------------------------------------------------------
@@ -986,6 +1284,33 @@ namespace triagens {
         double estimateCost () {
           return 2 * _dependencies.at(0)->getCost();
           //FIXME improve this estimate . . .
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::vector<Variable const*> getVariablesUsedHere () {
+          std::vector<Variable const*> v;
+          for (auto p : _aggregateVariables) {
+            v.push_back(p.second);
+          }
+          return v;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesSetHere
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::vector<Variable const*> getVariablesSetHere () {
+          std::vector<Variable const*> v;
+          for (auto p : _aggregateVariables) {
+            v.push_back(p.first);
+          }
+          if (_outVariable != nullptr) {
+            v.push_back(_outVariable);
+          }
+          return v;
         }
 
 // -----------------------------------------------------------------------------
@@ -1072,6 +1397,16 @@ namespace triagens {
         
         double estimateCost () {
           return _dependencies.at(0)->getCost();
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::vector<Variable const*> getVariablesUsedHere () {
+          std::vector<Variable const*> v;
+          v.push_back(_inVariable);
+          return v;
         }
 
 // -----------------------------------------------------------------------------

@@ -83,6 +83,7 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast const* ast) {
 
   try {
     plan->_root = plan->fromNode(ast, root);
+    plan->findVarUsage();
     
     std::cout << "ESTIMATED COST = €" << plan->getCost() << "\n";
     std::cout << plan->_root->toJson().toString() << "\n";
@@ -780,6 +781,55 @@ std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType (
   root()->walk(&finder);
   return result;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine and set _varsUsedLater in all nodes
+////////////////////////////////////////////////////////////////////////////////
+
+struct triagens::aql::VarUsageFinder : public WalkerWorker<ExecutionNode> {
+
+    std::unordered_set<Variable const*> _usedLater;
+    std::unordered_set<Variable const*> _valid;
+
+    VarUsageFinder () {
+    };
+
+    ~VarUsageFinder () {
+    };
+
+    void before (ExecutionNode* en) {
+      en->invalidateVarUsage();
+      en->setVarsUsedLater(_usedLater);
+      // Add variables used here to _usedLater:
+      std::vector<Variable const*> usedHere = en->getVariablesUsedHere();
+      for (auto v : usedHere) {
+        _usedLater.insert(v);
+      }
+    }
+
+    void after (ExecutionNode* en) {
+      // Add variables set here to _valid:
+      std::vector<Variable const*> setHere = en->getVariablesSetHere();
+      for (auto v : setHere) {
+        _valid.insert(v);
+      }
+      en->setVarsValid(_valid);
+      en->setVarUsageValid();
+    }
+
+    bool enterSubquery (ExecutionNode* super, ExecutionNode* sub) {
+      VarUsageFinder subfinder;
+      subfinder._valid = _valid;  // need a copy for the subquery!
+      sub->walk(&subfinder);
+      return false;
+    }
+};
+
+void ExecutionPlan::findVarUsage () {
+  VarUsageFinder finder;
+  root()->walk(&finder);
+}
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
