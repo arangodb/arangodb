@@ -55,10 +55,11 @@ queues = {
   _jobTypes: Object.create(null),
   get: function (key) {
     'use strict';
-    if (!db._queues.exists(key)) {
-      throw new Error('Queue does not exist: ' + key);
-    }
+
     if (!queueMap[key]) {
+      if (!db._queues.exists(key)) {
+        throw new Error('Queue does not exist: ' + key);
+      }
       queueMap[key] = new Queue(key);
     }
     return queueMap[key];
@@ -256,20 +257,20 @@ _.extend(Queue.prototype, {
   },
   delete: function (id) {
     'use strict';
-    var result = false;
-    db._executeTransaction({
+    return db._executeTransaction({
       collections: {
         read: ['_jobs'],
         write: ['_jobs']
       },
       action: function () {
-        if (db._jobs.exists(id)) {
+        try {
           db._jobs.remove(id);
-          result = true;
+          return true;
+        } catch (err) {
+          return false;
         }
       }
     });
-    return result;
   },
   pending: function (jobType) {
     'use strict';
