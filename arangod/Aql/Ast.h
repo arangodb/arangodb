@@ -253,7 +253,7 @@ namespace triagens {
 
         AstNode* createNodeRemove (AstNode const*,
                                    AstNode const*,
-                                   AstNode*);
+                                   AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST insert node
@@ -678,6 +678,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AstNode const*                     _writeOptions;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a singleton NOP node instance
+////////////////////////////////////////////////////////////////////////////////
+
+        static AstNode const NopNode;
 
     };
 
