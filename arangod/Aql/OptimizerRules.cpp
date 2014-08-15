@@ -45,6 +45,20 @@ int triagens::aql::relaxRule (Optimizer* opt,
   return TRI_ERROR_NO_ERROR;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a CalculationNode that is never needed
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::removeUnnecessaryCalc (Optimizer* opt, 
+                                          ExecutionPlan* plan, 
+                                          Optimizer::PlanList& out, 
+                                          bool& keep) {
+  std::vector<ExecutionNode*> nodes
+    = plan->findNodesOfType(triagens::aql::ExecutionNode::CALCULATION);
+  keep = true;
+  return TRI_ERROR_NO_ERROR;
+}
+
 
 // Local Variables:
 // mode: outline-minor
