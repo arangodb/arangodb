@@ -512,7 +512,34 @@ namespace triagens {
       
       friend class ExecutionBlock;
       friend class IndexRangeBlock;
-      
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief struct to keep range info
+////////////////////////////////////////////////////////////////////////////////
+        
+      struct RangeInfo{
+          
+          RangeInfo ( std::string name, 
+                      basics::Json low, 
+                      bool lowOpen, 
+                      basics::Json high, 
+                      bool highOpen ) 
+            : _name(name), 
+              _low(low), 
+              _lowOpen(lowOpen), 
+              _high(high), 
+              _highOpen(highOpen){}
+
+          ~RangeInfo(){}
+          
+          std::string _name;
+          basics::Json _low;
+          bool _lowOpen;
+          basics::Json _high;
+          bool _highOpen;
+
+      };
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor with a vocbase and a collection name
 ////////////////////////////////////////////////////////////////////////////////
@@ -522,13 +549,15 @@ namespace triagens {
         IndexRangeNode (TRI_vocbase_t* vocbase, 
                         Collection* collection,
                         Variable const* outVariable,
-                        Index* index)
+                        Index* index, 
+                        vector<RangeInfo> ranges)
           : ExecutionNode(), 
             _vocbase(vocbase), 
             _collection(collection),
             _outVariable(outVariable),
-            _index(index)   
-      {
+            _index(index),
+            _ranges(ranges)
+        {
           TRI_ASSERT(_vocbase != nullptr);
           TRI_ASSERT(_collection != nullptr);
           TRI_ASSERT(_outVariable != nullptr);
@@ -556,7 +585,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new IndexRangeNode(_vocbase, _collection, _outVariable, _index);
+          auto c = new IndexRangeNode(_vocbase, _collection, _outVariable, _index, 
+              _ranges);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -570,7 +600,7 @@ namespace triagens {
           return 1;
           //FIXME improve this estimate . . .
         }
-
+            
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -601,6 +631,11 @@ namespace triagens {
 
         Index* _index;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the range info
+////////////////////////////////////////////////////////////////////////////////
+        
+        vector<RangeInfo> _ranges;
     };
 
 // -----------------------------------------------------------------------------
