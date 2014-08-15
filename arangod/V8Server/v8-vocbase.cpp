@@ -5833,7 +5833,7 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
 ///    ],
 ///   "isNewlyCreated" : true
 /// }
-/// ```js
+/// ```
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
