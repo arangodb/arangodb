@@ -51,8 +51,6 @@ Optimizer::Optimizer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Optimizer::createPlans (ExecutionPlan* plan) {
-  // This vector holds the plans we have created in this pass:
-  PlanList newPlans;
   // This vector holds the plans we have created in the previous pass:
   PlanList oldPlans(plan);
 
@@ -66,13 +64,14 @@ int Optimizer::createPlans (ExecutionPlan* plan) {
   _plans.clear();
 
   for (int pass = 1; pass <= numberOfPasses; pass++) {
+    // This vector holds the plans we have created in this pass:
+    PlanList newPlans;
     for (auto r : _rules) {
-      PlanList nextNewPlans;
       PlanList nextOldPlans;
       while (oldPlans.size() > 0) {
         auto p = oldPlans.pop_front();
         try {
-          res = r.func(this, p, nextNewPlans, keep);
+          res = r.func(this, p, newPlans, keep);
           if (keep) {
             nextOldPlans.push_back(p);
           }
@@ -85,24 +84,7 @@ int Optimizer::createPlans (ExecutionPlan* plan) {
           return res;
         }
       }
-      while (newPlans.size() > 0) {
-        auto p = newPlans.pop_front();
-        try {
-          res = r.func(this, p, nextNewPlans, keep);
-          if (keep) {
-            nextNewPlans.push_back(p);
-          }
-        }
-        catch (...) {
-          delete p;
-          throw;
-        }
-        if (res != TRI_ERROR_NO_ERROR) {
-          return res;
-        }
-      }
       oldPlans.steal(nextOldPlans);
-      newPlans.steal(nextNewPlans);
     }
     // Now move the surviving old plans to the result:
     oldPlans.appendTo(_plans);

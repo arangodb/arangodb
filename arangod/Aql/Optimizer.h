@@ -192,18 +192,27 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~Optimizer () {
+          for (auto p : _plans) {
+            delete p;
+          }
+          _plans.clear();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief do the optimization, this does the optimization, the resulting
 /// plans are all estimated, sorted by that estimate and can then be got
-/// by getPlans, until the next initialize is called
+/// by getPlans, until the next initialize is called. Note that the optimizer
+/// object takes ownership of the execution plan and will delete it 
+/// automatically on destruction. It will also have ownership of all the
+/// newly created plans it recalls and will automatically delete them.
+/// If you need to extract the plans from the optimizer use stealBest or
+/// stealPlans.
 ////////////////////////////////////////////////////////////////////////////////
 
         int createPlans (ExecutionPlan* p);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getBest
+/// @brief getBest, ownership of the plan remains with the optimizer
 ////////////////////////////////////////////////////////////////////////////////
 
         ExecutionPlan* getBest () {
@@ -214,11 +223,39 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getPlans
+/// @brief getPlans, ownership of the plans remains with the optimizer
 ////////////////////////////////////////////////////////////////////////////////
 
         vector<ExecutionPlan*>& getPlans () {
           return _plans;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stealBest, ownership of the plan is handed over to the caller,
+/// all other plans are deleted
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionPlan* stealBest () {
+          if (_plans.size() == 0) {
+            return nullptr;
+          }
+          auto res = _plans[0];
+          for (size_t i = 1; i < _plans.size(); i++) {
+            delete _plans[i];
+          }
+          _plans.clear();
+          return res;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stealPlans, ownership of the plans is handed over to the caller,
+/// the optimizer will forget about them!
+////////////////////////////////////////////////////////////////////////////////
+
+        vector<ExecutionPlan*> stealPlans () {
+          vector<ExecutionPlan*> res;
+          res.swap(_plans);
+          return res;
         }
 
 // -----------------------------------------------------------------------------
