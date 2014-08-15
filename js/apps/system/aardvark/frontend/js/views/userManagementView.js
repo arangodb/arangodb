@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
 /*global window, document, Backbone, EJS, SwaggerUi, hljs, $, arangoHelper, templateEngine,
-  CryptoJS */
+  CryptoJS, Joi */
 (function() {
 
   "use strict";
@@ -406,7 +406,20 @@
         tableContent = [];
 
       tableContent.push(
-        window.modalView.createTextEntry("newUsername", "Username", "", false, "Username", true)
+        window.modalView.createTextEntry(
+          "newUsername",
+          "Username",
+          "",
+          false,
+          "Username",
+          true,
+          [
+            {
+              rule: Joi.string().required(),
+              msg: "No username given."
+            }
+          ]
+        )
       );
       tableContent.push(
         window.modalView.createTextEntry("newName", "Name", "", false, "Name", false)

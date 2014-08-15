@@ -173,15 +173,19 @@
             true,
             [
               {
-                rule: Joi.string().required(),
-                msg: "No collection name given."
-              },
-              {
                 rule: Joi.string().regex(/^[a-zA-Z]/),
                 msg: "Collection name must always start with a letter."
+              },
+              {
+                rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
+                msg: 'Only Symbols "_" and "-" are allowed.'
+              },
+              {
+                rule: Joi.string().required(),
+                msg: "No collection name given."
               }
             ]
-        )
+          )
         );
       }
 
