@@ -2166,11 +2166,11 @@ void InsertBlock::insert (std::vector<AqlItemBlock*>& blocks) {
             // edge
             edge._fromKey = (TRI_voc_key_t) from.c_str();
             edge._toKey = (TRI_voc_key_t) to.c_str();
-            errorCode = _trx->create(trxCollection, TRI_DOC_MARKER_KEY_EDGE, &mptr, json, &edge, ep->_options.waitForSync);
+            errorCode = _trx->create(trxCollection, TRI_DOC_MARKER_KEY_EDGE, &mptr, json.json(), &edge, ep->_options.waitForSync);
           }
           else {
             // document
-            errorCode = _trx->create(trxCollection, TRI_DOC_MARKER_KEY_DOCUMENT, &mptr, json, nullptr, ep->_options.waitForSync);
+            errorCode = _trx->create(trxCollection, TRI_DOC_MARKER_KEY_DOCUMENT, &mptr, json.json(), nullptr, ep->_options.waitForSync);
           }
         }
 
