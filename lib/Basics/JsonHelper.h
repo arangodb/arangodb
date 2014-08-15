@@ -531,16 +531,6 @@ namespace triagens {
         }
    
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief type cast operator to TRI_json_t*, this steals the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-        operator TRI_json_t* () throw() {
-          return steal();
-        }
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief assignment operator, note that, as the copy constructor, this 
 /// has steal semantics, which avoids deep copies in situations that 
 /// people will use. If you need an actual copy, use the copy method.
@@ -609,11 +599,29 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Json& operator() (char const* name, Json sub) {
+          return set(name, sub);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set an attribute value in an array, an exception is thrown if
+/// *this is not a Json array. The pointer sub is integrated into the
+/// list and will be freed if and only if the main thing is freed.
+////////////////////////////////////////////////////////////////////////////////
+
+        Json& set (char const* name, TRI_json_t* sub) {
           if (! TRI_IsArrayJson(_json)) {
             throw JsonException("Json is no array");
           }
-          TRI_Insert3ArrayJson(_zone, _json, name, sub.steal());
+          TRI_Insert3ArrayJson(_zone, _json, name, sub);
           return *this;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief this is a syntactic shortcut for the set method using operator()
+////////////////////////////////////////////////////////////////////////////////
+
+        Json& operator() (char const* name, TRI_json_t* sub) {
+          return set(name, sub);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -637,11 +645,30 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Json& operator() (Json sub) {
+          return add(sub);
+        }
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append a TRI_json_t value to the end of a Json list, an exception
+/// is thrown if *this is not a Json list. The pointer sub is integrated
+/// into the list and will be freed if and only if the main thing is
+/// freed.
+////////////////////////////////////////////////////////////////////////////////
+
+        Json& add (TRI_json_t* sub) {
           if (! TRI_IsListJson(_json)) {
             throw JsonException("Json is no list");
           }
-          TRI_PushBack3ListJson(_zone, _json, sub.steal());
+          TRI_PushBack3ListJson(_zone, _json, sub);
           return *this;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief this is a syntactic shortcut for the add method using operator()
+////////////////////////////////////////////////////////////////////////////////
+
+        Json& operator() (TRI_json_t* sub) {
+          return add(sub);
         }
  
 ////////////////////////////////////////////////////////////////////////////////
