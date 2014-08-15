@@ -152,6 +152,13 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
         root = eb;
         break;
       }
+      case ExecutionNode::INSERT: {
+        eb = new InsertBlock(engine->getTransaction(),
+                             static_cast<InsertNode const*>(en));
+
+        root = eb;
+        break;
+      }
 
       default: {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

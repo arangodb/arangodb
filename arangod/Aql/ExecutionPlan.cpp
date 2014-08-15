@@ -562,26 +562,26 @@ ExecutionNode* ExecutionPlan::fromNodeInsert (Ast const* ast,
                                               ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_INSERT);
-  TRI_ASSERT(node->numMembers() == 2);
+  TRI_ASSERT(node->numMembers() == 3);
   
-  auto collection = node->getMember(0);
-  auto expression = node->getMember(1);
-
-  // collection, expression
-  char const* collectionName = collection->getStringValue();
+  auto options = createOptions(node->getMember(0));
+  char const* collectionName = node->getMember(1)->getStringValue();
+  auto collections = ast->query()->collections();
+  auto collection = collections->get(collectionName);
+  auto expression = node->getMember(2);
   ExecutionNode* en = nullptr;
 
   if (expression->type == NODE_TYPE_REFERENCE) {
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = addNode(new InsertNode(ast->query()->vocbase(), std::string(collectionName), v));
+    en = addNode(new InsertNode(ast->query()->vocbase(), collection, options, v, nullptr));
   }
   else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(ast, expression);
     calc->addDependency(previous);
-    en = addNode(new InsertNode(ast->query()->vocbase(), std::string(collectionName), calc->outVariable()));
+    en = addNode(new InsertNode(ast->query()->vocbase(), collection, options, calc->outVariable(), nullptr));
     previous = calc;
   }
 
@@ -717,7 +717,6 @@ ExecutionNode* ExecutionPlan::fromNode (Ast const* ast,
       }
     
       case NODE_TYPE_INSERT: {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
         en = fromNodeInsert(ast, en, member);
         break;
       }

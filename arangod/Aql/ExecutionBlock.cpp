@@ -26,7 +26,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/ExecutionBlock.h"
+#include "Basics/StringUtils.h"
 #include "Utils/Exception.h"
+#include "VocBase/vocbase.h"
 
 using namespace triagens::arango;
 using namespace triagens::aql;
@@ -1897,6 +1899,14 @@ AqlItemBlock* RemoveBlock::getSome (size_t atLeast,
   
   std::vector<AqlItemBlock*> blocks;
 
+  auto freeBlocks = [](std::vector<AqlItemBlock*>& blocks) {
+    for (auto it = blocks.begin(); it != blocks.end(); ++it) {
+      if ((*it) != nullptr) {
+        delete (*it);
+      }
+    }
+  };
+
   // loop over input until it is exhausted
   try {
     while (true) { 
@@ -1905,20 +1915,17 @@ AqlItemBlock* RemoveBlock::getSome (size_t atLeast,
       if (res == nullptr) {
         break;
       }
-      
+       
       blocks.push_back(res);
     }
 
     remove(blocks);
-    for (auto it = blocks.begin(); it != blocks.end(); ++it) {
-      delete (*it);
-    }
+    freeBlocks(blocks);
+
     return nullptr;
   }
   catch (...) {
-    for (auto it = blocks.begin(); it != blocks.end(); ++it) {
-      delete (*it);
-    }
+    freeBlocks(blocks);
     throw;
   }
 }
@@ -1946,7 +1953,7 @@ void RemoveBlock::remove (std::vector<AqlItemBlock*>& blocks) {
       size_t const n = res->size();
     
       // loop over the complete block
-      for (size_t i = 0; i < n; i++) {
+      for (size_t i = 0; i < n; ++i) {
         AqlValue a = res->getValue(i, registerId);
 
         char const* key = nullptr;
@@ -1956,7 +1963,7 @@ void RemoveBlock::remove (std::vector<AqlItemBlock*>& blocks) {
           // value is an array. now extract the _key attribute
           Json member(a.extractArrayMember(_trx, document, "_key"));
           
-          TRI_json_t* json = member.json();
+          TRI_json_t const* json = member.json();
           if (TRI_IsStringJson(json)) {
             key = json->_value._string.data;
           }
@@ -1972,26 +1979,209 @@ void RemoveBlock::remove (std::vector<AqlItemBlock*>& blocks) {
           errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
         }
 
-        if (errorCode != TRI_ERROR_NO_ERROR) {
-          if (ep->_options.ignoreErrors) {
-            continue;
-          }
-          THROW_ARANGO_EXCEPTION(errorCode);
-        }
-        else {
+        if (errorCode == TRI_ERROR_NO_ERROR) {
           // no error. we expect to have a key
           TRI_ASSERT(key != nullptr);
           
-          errorCode = TRI_RemoveShapedJsonDocumentCollection(trxCollection, 
-                                                             (TRI_voc_key_t) key, 
-                                                             0, 
-                                                             nullptr, 
-                                                             nullptr, 
-                                                             false, 
-                                                             ep->_options.waitForSync);
+          errorCode = _trx->remove(trxCollection, 
+                                   std::string(key),
+                                   0,
+                                   TRI_DOC_UPDATE_LAST_WRITE,
+                                   0, 
+                                   nullptr,
+                                   ep->_options.waitForSync);
+        }
+          
+        if (errorCode != TRI_ERROR_NO_ERROR && 
+            ! ep->_options.ignoreErrors) {
+          // bubble up the error
+          THROW_ARANGO_EXCEPTION(errorCode);
         }
       }
+      // done with a block
 
+      // now free it already
+      (*it) = nullptr;  
+      delete res;
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 class InsertBlock
+// -----------------------------------------------------------------------------
+
+InsertBlock::InsertBlock (AQL_TRANSACTION_V8* trx,
+                          InsertNode const* ep)
+  : ExecutionBlock(trx, ep),
+    _collection(ep->_collection) {
+}
+
+
+InsertBlock::~InsertBlock () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get some - this accumulates all input and calls the insert() method
+////////////////////////////////////////////////////////////////////////////////
+
+AqlItemBlock* InsertBlock::getSome (size_t atLeast,
+                                    size_t atMost) {
+  
+  std::vector<AqlItemBlock*> blocks;
+  
+  auto freeBlocks = [](std::vector<AqlItemBlock*>& blocks) {
+    for (auto it = blocks.begin(); it != blocks.end(); ++it) {
+      if ((*it) != nullptr) {
+        delete (*it);
+      }
+    }
+  };
+
+  // loop over input until it is exhausted
+  try {
+    while (true) { 
+      auto res = ExecutionBlock::getSome(atLeast, atMost);
+
+      if (res == nullptr) {
+        break;
+      }
+      
+      blocks.push_back(res);
+    }
+
+    insert(blocks);
+    freeBlocks(blocks);
+
+    return nullptr;
+  }
+  catch (...) {
+    freeBlocks(blocks);
+    throw;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the actual work horse for inserting data
+////////////////////////////////////////////////////////////////////////////////
+
+void InsertBlock::insert (std::vector<AqlItemBlock*>& blocks) {
+  auto ep = static_cast<InsertNode const*>(getPlanNode());
+  auto it = _varOverview->varInfo.find(ep->_inVariable->id);
+  TRI_ASSERT(it != _varOverview->varInfo.end());
+  RegisterId const registerId = it->second.registerId;
+
+  auto trxCollection = _trx->trxCollection(_collection->cid());
+
+  bool const isEdgeCollection = _collection->isEdgeCollection();
+
+  auto resolve = [&](char const* handle, TRI_voc_cid_t& cid, std::string& key) -> int {
+    char const* p = strchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR);
+    if (p == nullptr || *p == '\0') {
+      return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+    }
+  
+    if (*handle >= '0' && *handle <= '9') {
+      cid = triagens::basics::StringUtils::uint64(handle, p - handle);
+    }
+    else {
+      std::string const name(handle, p - handle);
+      cid = _trx->resolver()->getCollectionIdCluster(name);
+    }
+  
+    if (cid == 0) {
+      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    }
+
+    key = std::string(p + 1);
+
+    return TRI_ERROR_NO_ERROR;
+  };
+
+
+  if (ep->_outVariable == nullptr) {
+    // don't return anything
+         
+    // initialize an empty edge container
+    TRI_document_edge_t edge;
+    edge._fromCid = 0;
+    edge._toCid   = 0;
+    edge._fromKey = nullptr;
+    edge._toKey   = nullptr;
+
+    std::string from;
+    std::string to;
+
+    // loop over all blocks
+    for (auto it = blocks.begin(); it != blocks.end(); ++it) {
+      auto res = (*it);
+      auto document = res->getDocumentCollection(registerId);
+
+      size_t const n = res->size();
+    
+      // loop over the complete block
+      for (size_t i = 0; i < n; ++i) {
+        AqlValue a = res->getValue(i, registerId);
+
+        int errorCode = TRI_ERROR_NO_ERROR;
+
+        if (a.isArray()) {
+          // value is an array
+        
+          if (isEdgeCollection) {
+            // array must have "_from" and "_to"
+            TRI_json_t const* json;
+
+            Json member(a.extractArrayMember(_trx, document, "_from"));
+            json = member.json();
+
+            if (TRI_IsStringJson(json)) {
+              errorCode = resolve(json->_value._string.data, edge._fromCid, from);
+            }
+            else {
+              errorCode = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+            }
+         
+            if (errorCode == TRI_ERROR_NO_ERROR) { 
+              Json member(a.extractArrayMember(_trx, document, "_to"));
+              json = member.json();
+              if (TRI_IsStringJson(json)) {
+                errorCode = resolve(json->_value._string.data, edge._toCid, to);
+              }
+              else {
+                errorCode = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+              }
+            }
+          }
+        }
+        else {
+          errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+        }
+
+        if (errorCode == TRI_ERROR_NO_ERROR) {
+          TRI_doc_mptr_copy_t mptr;
+          auto json = a.toJson(_trx, document);
+
+          if (isEdgeCollection) {
+            // edge
+            edge._fromKey = (TRI_voc_key_t) from.c_str();
+            edge._toKey = (TRI_voc_key_t) to.c_str();
+            errorCode = _trx->create(trxCollection, TRI_DOC_MARKER_KEY_EDGE, &mptr, json, &edge, ep->_options.waitForSync);
+          }
+          else {
+            // document
+            errorCode = _trx->create(trxCollection, TRI_DOC_MARKER_KEY_DOCUMENT, &mptr, json, nullptr, ep->_options.waitForSync);
+          }
+        }
+
+        if (errorCode != TRI_ERROR_NO_ERROR && 
+            ! ep->_options.ignoreErrors) {
+          THROW_ARANGO_EXCEPTION(errorCode);
+        }
+      }
+      // done with a block
+
+      // now free it already
       (*it) = nullptr;  
       delete res;
     }

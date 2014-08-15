@@ -211,12 +211,19 @@ AstNode* Ast::createNodeRemove (AstNode const* expression,
 
 AstNode* Ast::createNodeInsert (AstNode const* expression,
                                 AstNode const* collection,
-                                AstNode* options) {
+                                AstNode const* options) {
+  
   AstNode* node = createNode(NODE_TYPE_INSERT);
+  
+  if (options == nullptr) {
+    // no options given. now use default options
+    options = &NopNode;
+  }
+
+  node->addMember(options);
   node->addMember(collection);
   node->addMember(expression);
   
-  // TODO: handle options
   return node;
 }
 
