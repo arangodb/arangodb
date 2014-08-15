@@ -52,6 +52,9 @@
     // autoload all modules and reload routing information in all threads
     internal.executeGlobalContextFunction("bootstrapCoordinator");
 
+    // start the queue manager once
+    require('org/arangodb/foxx/queues/manager').run();
+
     console.info("bootstraped coordinator %s", ArangoServerState.id());
     return true;
   };

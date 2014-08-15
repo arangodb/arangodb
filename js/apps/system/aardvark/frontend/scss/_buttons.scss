@@ -38,7 +38,10 @@
 .button-success {
   @extend %btn;
   @extend %positive;
+}
 
+.button-success:disabled {
+  @extend %neutral;
 }
 
 .button-danger {
