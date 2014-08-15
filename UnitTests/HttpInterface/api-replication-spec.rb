@@ -230,7 +230,7 @@ describe ArangoDB do
         c["waitForSync"].should eq(true)
       end
 
-      it "fetches some collection operations the follow log" do
+      it "fetches some collection operations from the follow log" do
         ArangoDB.drop_collection("UnitTestsReplication")
         
         sleep 1
@@ -282,28 +282,30 @@ describe ArangoDB do
           document = JSON.parse(part)
           
           if i == 0
-            # create collection
-            document.should have_key("tick") 
-            document.should have_key("type") 
-            document.should have_key("cid") 
-            document.should have_key("collection") 
+            if document["type"] == 2000 and document["cid"] == cid
+              # create collection
+              document.should have_key("tick") 
+              document.should have_key("type") 
+              document.should have_key("cid") 
+              document.should have_key("collection") 
 
-            document["tick"].should match(/^\d+$/)
-            document["tick"].to_i.should >= fromTick.to_i
-            document["type"].should eq(2000) 
-            document["cid"].should eq(cid) 
+              document["tick"].should match(/^\d+$/)
+              document["tick"].to_i.should >= fromTick.to_i
+              document["type"].should eq(2000) 
+              document["cid"].should eq(cid) 
 
-            c = document["collection"]
-            c.should have_key("version")
-            c["type"].should eq(2)
-            c["cid"].should eq(cid)
-            c["deleted"].should eq(false)
-            c["doCompact"].should eq(true)
-            c.should have_key("maximalSize")
-            c["maximalSize"].should be_kind_of(Integer)
-            c["name"].should eq("UnitTestsReplication")
-            c["isVolatile"].should eq(false)
-            c["waitForSync"].should eq(true)
+              c = document["collection"]
+              c.should have_key("version")
+              c["type"].should eq(2)
+              c["cid"].should eq(cid)
+              c["deleted"].should eq(false)
+              c["doCompact"].should eq(true)
+              c.should have_key("maximalSize")
+              c["maximalSize"].should be_kind_of(Integer)
+              c["name"].should eq("UnitTestsReplication")
+              c["isVolatile"].should eq(false)
+              c["waitForSync"].should eq(true)
+            end
 
           elsif i == 1
             # create document
