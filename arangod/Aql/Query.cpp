@@ -195,8 +195,9 @@ QueryResult Query::execute () {
 
     // Run the query optimiser:
     triagens::aql::Optimizer opt;
-    opt.createPlans(plan);
-    plan = opt.getBest();
+    opt.createPlans(plan);  // Now plan and all derived plans belong to the
+                            // optimizer
+    plan = opt.stealBest(); // Now we own the best one again
 
     triagens::basics::Json json(triagens::basics::Json::List);
 
