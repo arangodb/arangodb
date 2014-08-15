@@ -187,6 +187,18 @@ Json ExecutionNode::toJsonHelperGeneric (std::map<ExecutionNode*, int>& indexTab
   if(this->_estimatedCost != 0){
     json("estimated cost", Json(this->_estimatedCost));
   }
+  if (_varUsageValid) {
+    Json varsValid(Json::List, _varsValid.size());
+    for (auto v : _varsValid) {
+      varsValid(Json(v->name));
+    }
+    json("varsValid", varsValid);
+    Json varsUsedLater(Json::List, _varsUsedLater.size());
+    for (auto v : _varsUsedLater) {
+      varsUsedLater(Json(v->name));
+    }
+    json("varsUsedLater", varsUsedLater);
+  }
 
   return json;
 }
@@ -333,8 +345,12 @@ void CalculationNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
     return;
   }
   
+  std::cout << "CANTHROW2" << _expression->canThrow() << std::endl;
+
   json("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE))
-      ("outVariable", _outVariable->toJson());
+      ("outVariable", _outVariable->toJson())
+      ("canThrow", Json(_expression->canThrow()));
+
 
   // And add it:
   int len = static_cast<int>(nodes.size());
