@@ -345,8 +345,6 @@ void CalculationNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
     return;
   }
   
-  std::cout << "CANTHROW2" << _expression->canThrow() << std::endl;
-
   json("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE))
       ("outVariable", _outVariable->toJson())
       ("canThrow", Json(_expression->canThrow()));
