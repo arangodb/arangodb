@@ -2489,8 +2489,6 @@ void TRI_V8ReloadRouting (v8::Handle<v8::Context> context) {
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
 
-
-
 void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
                           TRI_server_t* server,
                           TRI_vocbase_t* vocbase,
