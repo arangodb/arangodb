@@ -832,6 +832,56 @@ void ExecutionPlan::findVarUsage () {
   root()->walk(&finder);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removeNodes
+////////////////////////////////////////////////////////////////////////////////
+
+struct NodeRemover : public WalkerWorker<ExecutionNode> {
+
+    ExecutionPlan* _plan;
+    std::unordered_set<ExecutionNode*>& _toRemove;
+    std::vector<ExecutionNode*> parents;
+
+    NodeRemover (ExecutionPlan* plan,
+                 std::unordered_set<ExecutionNode*>& toRemove) 
+      : _plan(plan), _toRemove(toRemove) {
+    }
+
+    ~NodeRemover () {
+    };
+
+    void before (ExecutionNode* en) {
+      if (_toRemove.find(en) != _toRemove.end()) {
+        // Remove this node:
+        if (parents.size() == 0) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+              "Cannot remove root node of plan.");
+        }
+        else {
+          auto dep = en->getDependencies();
+          parents.back()->removeDependency(en);
+          if (dep.size() == 1) {
+            parents.back()->addDependency(dep[0]);
+          }
+          else if (dep.size() > 1) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                "Cannot remove node with more than one dependency.");
+          }
+        }
+      }
+      parents.push_back(en);
+    }
+
+    void after (ExecutionNode* en) {
+      parents.pop_back();
+    }
+};
+
+void ExecutionPlan::removeNodes (std::unordered_set<ExecutionNode*>& toRemove) {
+  NodeRemover remover(this, toRemove);
+  root()->walk(&remover);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
