@@ -100,6 +100,42 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast const* ast) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create modification options from an AST node
+////////////////////////////////////////////////////////////////////////////////
+
+ModificationOptions ExecutionPlan::createOptions (AstNode const* node) {
+  ModificationOptions options;
+
+  // parse the modification options we got
+  if (node != nullptr && 
+      node->type == NODE_TYPE_ARRAY) {
+    size_t n = node->numMembers();
+
+    for (size_t i = 0; i < n; ++i) {
+      auto member = node->getMember(i);
+
+      if (member != nullptr && 
+          member->type == NODE_TYPE_ARRAY_ELEMENT) {
+        auto name = member->getStringValue();
+        auto value = member->getMember(0);
+
+std::cout << "VALUE: " << value->typeString() << "\n";
+        TRI_ASSERT(value->isConstant());
+
+        if (strcmp(name, "waitForSync") == 0) {
+          options.waitForSync = value->toBoolean();
+        }
+        else if (strcmp(name, "ignoreErrors") == 0) {
+          options.ignoreErrors = value->toBoolean();
+        }
+      }
+    }
+  }
+
+  return options;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief add a node to the plan, will delete node if addition fails
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -487,9 +523,10 @@ ExecutionNode* ExecutionPlan::fromNodeRemove (Ast const* ast,
                                               ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REMOVE);
-  TRI_ASSERT(node->numMembers() == 2);
+  TRI_ASSERT(node->numMembers() == 3);
   
-  char const* collectionName = node->getMember(0)->getStringValue();
+  auto options = createOptions(node->getMember(0));
+  char const* collectionName = node->getMember(1)->getStringValue();
   auto collections = ast->query()->collections();
   auto collection = collections->get(collectionName);
 
@@ -497,20 +534,20 @@ ExecutionNode* ExecutionPlan::fromNodeRemove (Ast const* ast,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  auto expression = node->getMember(1);
+  auto expression = node->getMember(2);
   ExecutionNode* en = nullptr;
 
   if (expression->type == NODE_TYPE_REFERENCE) {
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = addNode(new RemoveNode(ast->query()->vocbase(), collection, v, nullptr));
+    en = addNode(new RemoveNode(ast->query()->vocbase(), collection, options, v, nullptr));
   }
   else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(ast, expression);
     calc->addDependency(previous);
-    en = addNode(new RemoveNode(ast->query()->vocbase(), collection, calc->outVariable(), nullptr));
+    en = addNode(new RemoveNode(ast->query()->vocbase(), collection, options, calc->outVariable(), nullptr));
     previous = calc;
   }
 
