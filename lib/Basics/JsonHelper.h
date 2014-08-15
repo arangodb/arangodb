@@ -484,6 +484,15 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief delete the normal copy constructor, because we do not want
+/// invisible recursive copies to be taken of TRI_json_t* managed by this
+/// Json class. Also, we do not want a const copy constructor stealing
+/// the reference.
+////////////////////////////////////////////////////////////////////////////////
+
+        Json (Json const&) = delete;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief move constructor, note that in the AUTOFREE case this steals
 /// the structure from j to allow returning Json objects by value without
 /// copying the whole structure.
@@ -492,6 +501,15 @@ namespace triagens {
         Json (Json&& j)
           : _zone(j._zone), _json(j.steal()), _autofree(j._autofree) {
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete the normal move constructor, because we do not want
+/// invisible recursive copies to be taken of TRI_json_t* managed by this
+/// Json class. Also, we do not want a const copy constructor stealing
+/// the reference.
+////////////////////////////////////////////////////////////////////////////////
+
+        Json (Json const&&) = delete;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
