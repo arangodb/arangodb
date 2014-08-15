@@ -36,6 +36,7 @@
 
 #include "Aql/Collection.h"
 #include "Aql/Expression.h"
+#include "Aql/Index.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/Variable.h"
 #include "Aql/Types.h"
@@ -503,6 +504,7 @@ namespace triagens {
 
     };
 
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                           class EnumerateListNode
 // -----------------------------------------------------------------------------
@@ -606,6 +608,108 @@ namespace triagens {
 
     };
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                              class IndexRangeNode
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class IndexRangeNode
+////////////////////////////////////////////////////////////////////////////////
+
+    class IndexRangeNode: public ExecutionNode {
+      
+      friend class ExecutionBlock;
+      friend class IndexRangeBlock;
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor with a vocbase and a collection name
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+        IndexRangeNode (TRI_vocbase_t* vocbase, 
+                        Collection* collection,
+                        Variable const* outVariable,
+                        Index* index)
+          : ExecutionNode(), 
+            _vocbase(vocbase), 
+            _collection(collection),
+            _outVariable(outVariable),
+            _index(index)   
+      {
+          TRI_ASSERT(_vocbase != nullptr);
+          TRI_ASSERT(_collection != nullptr);
+          TRI_ASSERT(_outVariable != nullptr);
+          TRI_ASSERT(_index != nullptr);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        NodeType getType () const override {
+          return INDEX_RANGE;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
+                                   triagens::basics::Json& nodes,
+                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual ExecutionNode* clone () const {
+          auto c = new IndexRangeNode(_vocbase, _collection, _outVariable, _index);
+          cloneDependencies(c);
+          return static_cast<ExecutionNode*>(c);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the cost of an enumerate collection node is a multiple of the cost of
+/// its unique dependency
+////////////////////////////////////////////////////////////////////////////////
+        
+        double estimateCost () { 
+          return 1;
+          //FIXME improve this estimate . . .
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the database
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_vocbase_t* _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection
+////////////////////////////////////////////////////////////////////////////////
+
+        Collection* _collection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief output variable
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* _outVariable;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the index
+////////////////////////////////////////////////////////////////////////////////
+
+        Index* _index;
+
+    };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   class LimitNode
