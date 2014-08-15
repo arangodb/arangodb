@@ -235,7 +235,7 @@ QueryResult Query::execute () {
     trx.commit();
     
     QueryResult result(TRI_ERROR_NO_ERROR);
-    result.json = json; 
+    result.json = json.steal(); 
     return result;
   }
   catch (triagens::arango::Exception const& ex) {
