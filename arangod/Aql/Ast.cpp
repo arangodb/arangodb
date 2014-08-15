@@ -36,7 +36,17 @@
 #include "VocBase/collection.h"
 
 using namespace triagens::aql;
-  
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             static initialization
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize a singleton NOP node instance
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode const Ast::NopNode = { NODE_TYPE_NOP }; 
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
@@ -55,8 +65,7 @@ Ast::Ast (Query* query,
     _bindParameters(),
     _root(nullptr),
     _queries(),
-    _writeCollection(nullptr),
-    _writeOptions(nullptr) {
+    _writeCollection(nullptr) {
 
   TRI_ASSERT(_query != nullptr);
   TRI_ASSERT(_parser != nullptr);
@@ -181,12 +190,18 @@ AstNode* Ast::createNodeReturn (AstNode const* expression) {
 
 AstNode* Ast::createNodeRemove (AstNode const* expression,
                                 AstNode const* collection,
-                                AstNode* options) {
+                                AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_REMOVE);
+
+  if (options == nullptr) {
+    // no options given. now use default options
+    options = &NopNode;
+  }
+
+  node->addMember(options);
   node->addMember(collection);
   node->addMember(expression);
 
-  // TODO: handle options
   return node;
 }
 
@@ -714,9 +729,7 @@ AstNode* Ast::createNodeRange (AstNode const* start,
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeNop () {
-  AstNode* node = createNode(NODE_TYPE_NOP);
-
-  return node;
+  return const_cast<AstNode*>(&NopNode);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

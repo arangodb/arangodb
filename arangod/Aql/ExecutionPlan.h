@@ -32,6 +32,7 @@
 
 #include "Basics/Common.h"
 #include "arangod/Aql/ExecutionNode.h"
+#include "arangod/Aql/ModificationOptions.h"
 
 namespace triagens {
   namespace aql {
@@ -108,6 +109,12 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create modification options from an AST node
+////////////////////////////////////////////////////////////////////////////////
+
+        ModificationOptions createOptions (AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a node to the plan, will delete node if addition fails

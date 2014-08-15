@@ -34,6 +34,7 @@
 
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
+using JsonHelper = triagens::basics::JsonHelper;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a quick method to decide whether a value is true
@@ -154,6 +155,106 @@ bool AqlValue::isString () const {
 
   TRI_ASSERT(false);
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the AqlValue contains a list value
+////////////////////////////////////////////////////////////////////////////////
+
+bool AqlValue::isList () const {
+  switch (_type) {
+    case JSON: {
+      TRI_json_t const* json = _json->json();
+      return TRI_IsListJson(json);
+    }
+
+    case SHAPED: {
+      return false;
+    }
+
+    case DOCVEC: 
+    case RANGE: {
+      return true;
+    }
+
+    case EMPTY: {
+      return false;
+    }
+  }
+
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the AqlValue contains an array value
+////////////////////////////////////////////////////////////////////////////////
+
+bool AqlValue::isArray () const {
+  switch (_type) {
+    case JSON: {
+      TRI_json_t const* json = _json->json();
+      return TRI_IsArrayJson(json);
+    }
+
+    case SHAPED: {
+      return true;
+    }
+
+    case DOCVEC: 
+    case RANGE: 
+    case EMPTY: {
+      return false;
+    }
+  }
+
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a string representation of the AqlValue
+////////////////////////////////////////////////////////////////////////////////
+
+std::string AqlValue::toString () const {
+  switch (_type) {
+    case JSON: {
+      TRI_json_t const* json = _json->json();
+      TRI_ASSERT(TRI_IsStringJson(json));
+      return std::string(json->_value._string.data, json->_value._string.length - 1);
+    }
+
+    case SHAPED: 
+    case DOCVEC: 
+    case RANGE: 
+    case EMPTY: {
+      // cannot convert these types
+    }
+  }
+
+  return std::string("");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a string representation of the AqlValue
+////////////////////////////////////////////////////////////////////////////////
+
+char const* AqlValue::toChar () const {
+  switch (_type) {
+    case JSON: {
+      TRI_json_t const* json = _json->json();
+      TRI_ASSERT(TRI_IsStringJson(json));
+      return json->_value._string.data;
+    }
+
+    case SHAPED: 
+    case DOCVEC: 
+    case RANGE: 
+    case EMPTY: {
+      // cannot convert these types 
+    }
+  }
+
+  return "";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -325,6 +426,96 @@ Json AqlValue::toJson (AQL_TRANSACTION_V8* trx,
   }
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract an attribute value from the AqlValue 
+/// this will fail if the value is not an array
+////////////////////////////////////////////////////////////////////////////////
+
+Json AqlValue::extractArrayMember (AQL_TRANSACTION_V8* trx,
+                                   TRI_document_collection_t const* document,
+                                   char const* name) const {
+  switch (_type) {
+    case JSON: {
+      TRI_ASSERT(_json != nullptr);
+      TRI_json_t const* json = _json->json();
+
+      if (TRI_IsArrayJson(json)) {
+        TRI_json_t const* found = TRI_LookupArrayJson(json, name);
+
+        if (found != nullptr) {
+          return Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, found));
+        }
+      }
+      
+      // attribute does not exist or something went wrong - fall-through to returning null below
+      return Json(Json::Null);
+    }
+
+    case SHAPED: {
+      TRI_ASSERT(document != nullptr);
+      TRI_ASSERT(_marker != nullptr);
+
+      auto shaper = document->getShaper();
+
+      // look for the attribute name in the shape
+      if (*name == '_') {
+        if (strcmp(name, "_key") == 0) {
+          // _key value is copied into JSON
+          return Json(TRI_UNKNOWN_MEM_ZONE, TRI_EXTRACT_MARKER_KEY(_marker));
+        }
+        else if (strcmp(name, "_id") == 0) {
+          std::string id(trx->resolver()->getCollectionName(document->_info._cid));
+          id.push_back('/');
+          id.append(TRI_EXTRACT_MARKER_KEY(_marker));
+          return Json(TRI_UNKNOWN_MEM_ZONE, id);
+        }
+        else if (strcmp(name, "_rev") == 0) {
+          TRI_voc_rid_t rid = TRI_EXTRACT_MARKER_RID(_marker);
+          return Json(TRI_UNKNOWN_MEM_ZONE, JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, rid));
+        }
+        else if (strcmp(name, "_from") == 0) {
+          std::string from(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_FROM_CID(_marker)));
+          from.push_back('/');
+          from.append(TRI_EXTRACT_MARKER_FROM_KEY(_marker));
+          return Json(TRI_UNKNOWN_MEM_ZONE, from);
+        }
+        else if (strcmp(name, "_to") == 0) {
+          std::string to(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_TO_CID(_marker)));
+          to.push_back('/');
+          to.append(TRI_EXTRACT_MARKER_TO_KEY(_marker));
+          return Json(TRI_UNKNOWN_MEM_ZONE, to);
+        }
+      }
+
+      TRI_shape_pid_t pid = shaper->lookupAttributePathByName(shaper, name);
+      if (pid != 0) {
+        // attribute exists
+        TRI_shaped_json_t document;
+        TRI_EXTRACT_SHAPED_JSON_MARKER(document, _marker);
+
+        TRI_shaped_json_t json;
+        TRI_shape_t const* shape;
+
+        bool ok = TRI_ExtractShapedJsonVocShaper(shaper, &document, 0, pid, &json, &shape);
+        if (ok && shape != nullptr) {
+          return Json(TRI_UNKNOWN_MEM_ZONE, TRI_JsonShapedJson(shaper, &json));
+        }
+      }
+
+      // attribute does not exist or something went wrong - fall-through to returning null
+      break;
+    }
+
+    case DOCVEC:
+    case RANGE:
+    case EMPTY: {
+      break;
+    }
+  }
+
+  return Json(Json::Null);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
