@@ -534,9 +534,11 @@ namespace triagens {
 /// @brief type cast operator to TRI_json_t*, this steals the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
         operator TRI_json_t* () throw() {
           return steal();
         }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief assignment operator, note that, as the copy constructor, this 
@@ -588,18 +590,17 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set an attribute value in an array, an exception is thrown
-/// if *this is not a Json array. Note that you can call this with
-/// a Json as second argument because of the automatic type conversion
-/// to TRI_json_t* with steal semantics. Therefore
+/// if *this is not a Json array. The pointer managed by sub is
+/// stolen. The purpose of this method is that you can do
 ///   Json(Json::Array).set("a",Json(12)).set("b",Json(true))
-/// is both legal and efficient.
+/// and that this is both legal and efficient.
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json& set (char const* name, TRI_json_t* sub) {
+        Json& set (char const* name, Json sub) {
           if (! TRI_IsArrayJson(_json)) {
             throw JsonException("Json is no array");
           }
-          TRI_Insert3ArrayJson(_zone, _json, name, sub);
+          TRI_Insert3ArrayJson(_zone, _json, name, sub.steal());
           return *this;
         }
 
@@ -607,29 +608,27 @@ namespace triagens {
 /// @brief this is a syntactic shortcut for the set method using operator()
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json& operator() (char const* name, TRI_json_t* sub) {
+        Json& operator() (char const* name, Json sub) {
           if (! TRI_IsArrayJson(_json)) {
             throw JsonException("Json is no array");
           }
-          TRI_Insert3ArrayJson(_zone, _json, name, sub);
+          TRI_Insert3ArrayJson(_zone, _json, name, sub.steal());
           return *this;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append a Json value to the end of a Json list, an exception
-/// is thrown if *this is not a Json list. Note that you can call this with
-/// a Json as argument because of the automatic type conversion
-/// to TRI_json_t* with steal semantics. Therefore
+/// is thrown if *this is not a Json list. The pointer managed by sub is
+/// stolen. The purpose of this method is that you can do
 ///   Json(Json::List).add(Json(12)).add(Json(13))
-/// is both legal and efficient.
-
+/// and that this is both legal and efficient.
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json& add (TRI_json_t* sub) {
+        Json& add (Json sub) {
           if (! TRI_IsListJson(_json)) {
             throw JsonException("Json is no list");
           }
-          TRI_PushBack3ListJson(_zone, _json, sub);
+          TRI_PushBack3ListJson(_zone, _json, sub.steal());
           return *this;
         }
 
@@ -637,11 +636,11 @@ namespace triagens {
 /// @brief this is a syntactic shortcut for the add method using operator()
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json& operator() (TRI_json_t* sub) {
+        Json& operator() (Json sub) {
           if (! TRI_IsListJson(_json)) {
             throw JsonException("Json is no list");
           }
-          TRI_PushBack3ListJson(_zone, _json, sub);
+          TRI_PushBack3ListJson(_zone, _json, sub.steal());
           return *this;
         }
  
