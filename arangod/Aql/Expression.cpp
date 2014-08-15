@@ -186,14 +186,8 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     TRI_document_collection_t const* myCollection = nullptr;
     AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
 
-    if (result._type == AqlValue::SHAPED) {
-      TRI_ASSERT(myCollection != nullptr);
-
-      auto j = result.extractArrayMember(trx, myCollection, name);
-      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
-    }
-
-    return AqlValue(new Json(Json::Null));
+    auto j = result.extractArrayMember(trx, myCollection, name);
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
   }
   
   else if (node->type == NODE_TYPE_LIST) {

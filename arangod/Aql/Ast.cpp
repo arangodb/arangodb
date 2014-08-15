@@ -65,8 +65,7 @@ Ast::Ast (Query* query,
     _bindParameters(),
     _root(nullptr),
     _queries(),
-    _writeCollection(nullptr),
-    _writeOptions(nullptr) {
+    _writeCollection(nullptr) {
 
   TRI_ASSERT(_query != nullptr);
   TRI_ASSERT(_parser != nullptr);
