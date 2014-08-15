@@ -786,7 +786,9 @@ std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType (
 /// @brief determine and set _varsUsedLater in all nodes
 ////////////////////////////////////////////////////////////////////////////////
 
-struct triagens::aql::VarUsageFinder : public WalkerWorker<ExecutionNode> {
+// do not fully qualify classname here as this won't compile with g++
+// struct triagens::aql::VarUsageFinder : public WalkerWorker<ExecutionNode> {
+struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
 
     std::unordered_set<Variable const*> _usedLater;
     std::unordered_set<Variable const*> _valid;
@@ -829,7 +831,6 @@ void ExecutionPlan::findVarUsage () {
   VarUsageFinder finder;
   root()->walk(&finder);
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
