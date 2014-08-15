@@ -110,6 +110,13 @@ namespace triagens {
 
         void findVarUsage ();
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removeNodes, note that this does not delete the removed
+/// nodes and that one cannot remove the root node of the plan.
+////////////////////////////////////////////////////////////////////////////////
+
+        void removeNodes (std::unordered_set<ExecutionNode*>& toRemove);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -251,7 +258,7 @@ namespace triagens {
         std::vector<ExecutionNode*>  _nodes;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief root node of the engine
+/// @brief root node of the plan
 ////////////////////////////////////////////////////////////////////////////////
 
         ExecutionNode*               _root;

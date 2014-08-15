@@ -709,6 +709,16 @@ namespace triagens {
           //FIXME improve this estimate . . .
         }
             
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesSetHere
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::vector<Variable const*> getVariablesSetHere () {
+          std::vector<Variable const*> v;
+          v.push_back(_outVariable);
+          return v;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -1548,6 +1558,28 @@ namespace triagens {
           // TODO: improve this estimate!
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::vector<Variable const*> getVariablesUsedHere () {
+          std::vector<Variable const*> v;
+          v.push_back(_inVariable);
+          return v;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesSetHere
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::vector<Variable const*> getVariablesSetHere () {
+          std::vector<Variable const*> v;
+          if (_outVariable != nullptr) {
+            v.push_back(_outVariable);
+          }
+          return v;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -1633,6 +1665,28 @@ namespace triagens {
         
         double estimateCost () {
           return 1000 * _dependencies.at(0)->getCost(); //FIXME change this!
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::vector<Variable const*> getVariablesUsedHere () {
+          std::vector<Variable const*> v;
+          v.push_back(_inVariable);
+          return v;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesSetHere
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::vector<Variable const*> getVariablesSetHere () {
+          std::vector<Variable const*> v;
+          if (_outVariable != nullptr) {
+            v.push_back(_outVariable);
+          }
+          return v;
         }
 
 // -----------------------------------------------------------------------------
