@@ -107,14 +107,19 @@ ModificationOptions ExecutionPlan::createOptions (AstNode const* node) {
   ModificationOptions options;
 
   // parse the modification options we got
-  if (node != nullptr && node->type == NODE_TYPE_ARRAY) {
+  if (node != nullptr && 
+      node->type == NODE_TYPE_ARRAY) {
     size_t n = node->numMembers();
+
     for (size_t i = 0; i < n; ++i) {
       auto member = node->getMember(i);
-      if (member != nullptr && member->type == NODE_TYPE_ARRAY_ELEMENT) {
+
+      if (member != nullptr && 
+          member->type == NODE_TYPE_ARRAY_ELEMENT) {
         auto name = member->getStringValue();
         auto value = member->getMember(0);
 
+std::cout << "VALUE: " << value->typeString() << "\n";
         TRI_ASSERT(value->isConstant());
 
         if (strcmp(name, "waitForSync") == 0) {
