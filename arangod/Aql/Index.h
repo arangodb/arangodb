@@ -53,9 +53,9 @@ namespace triagens {
       Index () = delete;
       
       Index (std::string const& name,
-                  struct TRI_vocbase_s* vocbase,
-                  TRI_transaction_type_e accessType, 
-                  TRI_index_t* index) 
+             struct TRI_vocbase_s* vocbase,
+             TRI_transaction_type_e accessType, 
+             TRI_index_t* index) 
         : name(name),
           vocbase(vocbase),
           collection(nullptr),
