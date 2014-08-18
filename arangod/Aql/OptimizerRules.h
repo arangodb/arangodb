@@ -40,6 +40,12 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a CalculationNode that is never needed
+////////////////////////////////////////////////////////////////////////////////
+
+    int removeUnnecessaryFiltersRule (Optimizer*, ExecutionPlan*, Optimizer::PlanList&, bool&);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief relaxRule, do not do anything
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -54,14 +60,10 @@ namespace triagens {
   }  // namespace aql
 }  // namespace triagens
 
-
-
-
 #endif
 
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-
 

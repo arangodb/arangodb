@@ -40,8 +40,12 @@ using namespace triagens::aql;
 
 Optimizer::Optimizer () {
   // List all the rules in the system here:
-  registerRule (relaxRule, 1000);
-  // registerRule (removeUnnecessaryCalc, 999);
+
+  // rule should be executed relatively early 
+  registerRule(removeUnnecessaryFiltersRule, 10000);
+
+  // registerRule(relaxRule, 1000);
+  // registerRule(removeUnnecessaryCalc, 999);
   // deactivated because a test crashes
 
   // Now sort them by pass:
