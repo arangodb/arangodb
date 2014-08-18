@@ -495,6 +495,46 @@ namespace triagens {
           return res;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update a single document, using JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        int update (TRI_transaction_collection_t* trxCollection,
+                    std::string const& key,
+                    TRI_voc_rid_t rid,
+                    TRI_doc_mptr_copy_t* mptr,
+                    TRI_json_t* const json,
+                    TRI_doc_update_policy_e policy,
+                    TRI_voc_rid_t expectedRevision,
+                    TRI_voc_rid_t* actualRevision,
+                    bool forceSync) {
+
+          TRI_shaper_t* shaper = this->shaper(trxCollection);
+          TRI_memory_zone_t* zone = shaper->_memoryZone;
+          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json, true, isLocked(trxCollection, TRI_TRANSACTION_WRITE));
+
+          if (shaped == nullptr) {
+            return TRI_ERROR_ARANGO_SHAPER_FAILED;
+          }
+
+          if (orderBarrier(trxCollection) == nullptr) {
+            return TRI_ERROR_OUT_OF_MEMORY;
+          }
+
+          int res = update(trxCollection,
+                           key,
+                           rid,
+                           mptr,
+                           shaped,
+                           policy,
+                           expectedRevision,
+                           actualRevision,
+                           forceSync);
+
+          TRI_FreeShapedJson(zone, shaped);
+          return res;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
@@ -995,46 +1035,6 @@ namespace triagens {
           catch (...) {
             return TRI_ERROR_INTERNAL;
           }
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update a single document, using JSON
-////////////////////////////////////////////////////////////////////////////////
-
-        int update (TRI_transaction_collection_t* trxCollection,
-                    std::string const& key,
-                    TRI_voc_rid_t rid,
-                    TRI_doc_mptr_copy_t* mptr,
-                    TRI_json_t* const json,
-                    TRI_doc_update_policy_e policy,
-                    TRI_voc_rid_t expectedRevision,
-                    TRI_voc_rid_t* actualRevision,
-                    bool forceSync) {
-
-          TRI_shaper_t* shaper = this->shaper(trxCollection);
-          TRI_memory_zone_t* zone = shaper->_memoryZone;
-          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json, true, isLocked(trxCollection, TRI_TRANSACTION_WRITE));
-
-          if (shaped == nullptr) {
-            return TRI_ERROR_ARANGO_SHAPER_FAILED;
-          }
-
-          if (orderBarrier(trxCollection) == nullptr) {
-            return TRI_ERROR_OUT_OF_MEMORY;
-          }
-
-          int res = update(trxCollection,
-                           key,
-                           rid,
-                           mptr,
-                           shaped,
-                           policy,
-                           expectedRevision,
-                           actualRevision,
-                           forceSync);
-
-          TRI_FreeShapedJson(zone, shaped);
-          return res;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

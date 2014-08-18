@@ -1444,6 +1444,7 @@ namespace triagens {
     class ModificationNode : public ExecutionNode {
       
       friend class ExecutionBlock;
+      friend class ModificationBlock;
       
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor with a vocbase and a collection and options
@@ -1717,7 +1718,7 @@ namespace triagens {
 /// @brief class UpdateNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class UpdateNode : public ExecutionNode {
+    class UpdateNode : public ModificationNode {
       
       friend class ExecutionBlock;
       friend class UpdateBlock;
@@ -1729,13 +1730,16 @@ namespace triagens {
       public:
 
         UpdateNode (TRI_vocbase_t* vocbase, 
-                    std::string collname,
+                    Collection* collection,
+                    ModificationOptions const& options,
+                    Variable const* inVariable,
                     Variable const* outVariable)
-          : ExecutionNode(), _vocbase(vocbase), _collname(collname),
+          : ModificationNode(vocbase, collection, options),
+            _inVariable(inVariable),
             _outVariable(outVariable) {
 
-          TRI_ASSERT(_vocbase != nullptr);
-          TRI_ASSERT(_outVariable != nullptr);
+          TRI_ASSERT(_inVariable != nullptr);
+          // _outVariable might be a nullptr
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1759,7 +1763,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new UpdateNode(_vocbase, _collname, _outVariable);
+          auto c = new UpdateNode(_vocbase, _collection, _options, _inVariable, _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -1773,6 +1777,28 @@ namespace triagens {
           return 1000 * _dependencies.at(0)->getCost(); //FIXME change this!
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::vector<Variable const*> getVariablesUsedHere () {
+          std::vector<Variable const*> v;
+          v.push_back(_inVariable);
+          return v;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesSetHere
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::vector<Variable const*> getVariablesSetHere () {
+          std::vector<Variable const*> v;
+          if (_outVariable != nullptr) {
+            v.push_back(_outVariable);
+          }
+          return v;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -1780,16 +1806,10 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _vocbase, the database
+/// @brief input variable
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_vocbase_t* _vocbase;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _collname, the collection name
-////////////////////////////////////////////////////////////////////////////////
-
-        std::string _collname;
+        Variable const* _inVariable;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief output variable
@@ -1807,7 +1827,7 @@ namespace triagens {
 /// @brief class ReplaceNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class ReplaceNode : public ExecutionNode {
+    class ReplaceNode : public ModificationNode {
       
       friend class ExecutionBlock;
       friend class ReplaceBlock;
@@ -1819,13 +1839,16 @@ namespace triagens {
       public:
 
         ReplaceNode (TRI_vocbase_t* vocbase, 
-                     std::string collname,
+                     Collection* collection,
+                     ModificationOptions const& options,
+                     Variable const* inVariable,
                      Variable const* outVariable)
-          : ExecutionNode(), _vocbase(vocbase), _collname(collname),
+          : ModificationNode(vocbase, collection, options),
+            _inVariable(inVariable),
             _outVariable(outVariable) {
 
-          TRI_ASSERT(_vocbase != nullptr);
-          TRI_ASSERT(_outVariable != nullptr);
+          TRI_ASSERT(_inVariable != nullptr);
+          // _outVariable might be a nullptr
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1849,7 +1872,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new UpdateNode(_vocbase, _collname, _outVariable);
+          auto c = new UpdateNode(_vocbase, _collection, _options, _inVariable, _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -1863,6 +1886,28 @@ namespace triagens {
           return 1000 * _dependencies.at(0)->getCost(); //FIXME change this!
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::vector<Variable const*> getVariablesUsedHere () {
+          std::vector<Variable const*> v;
+          v.push_back(_inVariable);
+          return v;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesSetHere
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::vector<Variable const*> getVariablesSetHere () {
+          std::vector<Variable const*> v;
+          if (_outVariable != nullptr) {
+            v.push_back(_outVariable);
+          }
+          return v;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -1870,16 +1915,10 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _vocbase, the database
+/// @brief input variable
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_vocbase_t* _vocbase;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _collname, the collection name
-////////////////////////////////////////////////////////////////////////////////
-
-        std::string _collname;
+        Variable const* _inVariable;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief output variable
