@@ -1,0 +1,33 @@
+#progressPlaceholder {
+  top: 0;
+  bottom:0;
+  left: 0;
+  right: 0;
+  background-color: rgba(0,0,0,0.6);
+  position: fixed;
+  z-index: 9999;
+}
+
+.progress-view {
+  color: white;
+  width:300px;
+  height:200px;
+  position:absolute;
+  left:50%;
+  top:50%;
+  margin:-100px 0 0 -150px;
+
+  .progress-content {
+    margin-left: 90px;
+    margin-top: 30px;
+
+    .fa-spinner {
+      font-size: 100pt;
+    }
+
+  }
+
+  .progress-message {
+    text-align: center;
+  }
+}
