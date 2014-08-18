@@ -44,6 +44,7 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
                                                  bool& keep) {
   
   keep = true;
+  std::unordered_set<ExecutionNode*> toRemove;
   std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::FILTER);
   
   for (auto n : nodes) {
@@ -65,7 +66,7 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
         // the expression is a constant value
         if (root->toBoolean()) {
           // TODO: remove filter node and merge with following node
-          std::cout << "FOUND A CONSTANT FILTER WHICH IS ALWAYS TRUE. TODO: optimize it away!\n";
+          toRemove.insert(n);
         }
         else {
           // TODO: remove filter node plus all dependencies
@@ -73,6 +74,12 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
         }
       }
     }
+  }
+  
+  if (! toRemove.empty()) {
+    std::cout << "Removing " << toRemove.size() << " unnecessary "
+                 "FilterNodes..." << std::endl;
+    plan->removeNodes(toRemove);
   }
   
   return TRI_ERROR_NO_ERROR;
