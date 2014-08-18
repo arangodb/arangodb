@@ -1070,6 +1070,22 @@ namespace triagens {
 
         virtual void work (std::vector<AqlItemBlock*>&) = 0;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief resolve a collection name and return cid and document key
+////////////////////////////////////////////////////////////////////////////////
+  
+        int resolve (char const*, 
+                     TRI_voc_cid_t&, 
+                     std::string&) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract a key from the AqlValue passed
+////////////////////////////////////////////////////////////////////////////////
+          
+        int extractKey (AqlValue const&,
+                        TRI_document_collection_t const*,
+                        std::string&) const;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
