@@ -108,7 +108,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor, free dependencies
+/// @brief destructor, free dependencies;
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ~ExecutionNode () { 
@@ -613,6 +613,69 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief struct to keep range info, ranges cannot be unbounded above or below
+////////////////////////////////////////////////////////////////////////////////
+        
+    struct RangeInfo{
+        
+        RangeInfo ( std::string name, 
+                    basics::Json const& low, 
+                    bool lowInclude, 
+                    basics::Json const& high, 
+                    bool highInclude ) 
+          : _name(name), 
+            _low(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, low.json())), 
+            _lowInclude(lowInclude), 
+            _high(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, high.json())), 
+            _highInclude(highInclude){}
+        
+        
+        RangeInfo ( std::string name, basics::Json const& bound, 
+            bool includeBound, bool isHigh) : _name(name) {
+
+            if(isHigh){
+              _high = basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, 
+                    bound.json()));
+              _highInclude = includeBound;
+              _unboundedBelow = true;
+            }
+            else {
+              _low = basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, 
+                    bound.json()));
+              _lowInclude = includeBound;
+              _unboundedAbove = true;
+            }
+          };
+        
+        RangeInfo ( const RangeInfo& copy ) :
+           _name(copy._name) {
+           _unboundedAbove = copy._unboundedAbove; 
+           if (_unboundedAbove) {
+             _high = basics::Json(TRI_UNKNOWN_MEM_ZONE, 
+                 TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, copy._high.json()));
+             _highInclude = copy._highInclude;
+           }
+           _unboundedBelow = copy._unboundedBelow; 
+           if (!_unboundedBelow) {
+             _low = basics::Json(TRI_UNKNOWN_MEM_ZONE, 
+                 TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, copy._low.json()));
+             _lowInclude = copy._lowInclude;
+           }
+         }
+        
+        ~RangeInfo(){}
+        
+        std::string _name;
+        basics::Json _low;
+        bool _lowInclude;
+        basics::Json _high;
+        bool _highInclude;
+        bool _unboundedAbove = false;
+        bool _unboundedBelow = false;
+
+    };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief class IndexRangeNode
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -621,39 +684,6 @@ namespace triagens {
       friend class ExecutionBlock;
       friend class IndexRangeBlock;
   
-////////////////////////////////////////////////////////////////////////////////
-/// @brief struct to keep range info
-////////////////////////////////////////////////////////////////////////////////
-        
-      struct RangeInfo{
-          
-          RangeInfo ( std::string name, 
-                      basics::Json const& low, 
-                      bool lowOpen, 
-                      basics::Json const& high, 
-                      bool highOpen ) 
-            : _name(name), 
-              _low(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, low.json())), 
-              _lowOpen(lowOpen), 
-              _high(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, high.json())), 
-              _highOpen(highOpen){}
-          
-          RangeInfo ( const RangeInfo& copy ) :
-             _name(copy._name), 
-            _low(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, copy._low.json())), 
-            _lowOpen(copy._lowOpen), 
-            _high(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, copy._high.json())), 
-            _highOpen(copy._highOpen){};
-          
-          ~RangeInfo(){}
-          
-          std::string _name;
-          basics::Json _low;
-          bool _lowOpen;
-          basics::Json _high;
-          bool _highOpen;
-
-      };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor with a vocbase and a collection name
