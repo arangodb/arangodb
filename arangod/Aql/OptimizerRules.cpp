@@ -35,6 +35,7 @@ using namespace triagens::aql;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove all unnecessary filters
+/// this modifies the plan in place
 ////////////////////////////////////////////////////////////////////////////////
 
 int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt, 
@@ -54,7 +55,8 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
     auto variable = varsUsedHere[0];
     auto setter = plan->getVarSetBy(variable->id);
 
-    if (setter != nullptr && setter->getType() == triagens::aql::ExecutionNode::CALCULATION) {
+    if (setter != nullptr && 
+        setter->getType() == triagens::aql::ExecutionNode::CALCULATION) {
       // if it was a CalculationNode, check its expression
       auto s = static_cast<CalculationNode*>(setter);
       auto root = s->expression()->node();
@@ -63,28 +65,16 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
         // the expression is a constant value
         if (root->toBoolean()) {
           // TODO: remove filter node and merge with following node
-          std::cout << "FOUND A CONSTANT FILTER WHICH IS ALWAYS TRUE\n";
+          std::cout << "FOUND A CONSTANT FILTER WHICH IS ALWAYS TRUE. TODO: optimize it away!\n";
         }
         else {
           // TODO: remove filter node plus all dependencies
-          std::cout << "FOUND A CONSTANT FILTER WHICH IS ALWAYS FALSE\n";
+          std::cout << "FOUND A CONSTANT FILTER WHICH IS ALWAYS FALSE. TODO: optimize all the stuff above!\n";
         }
       }
     }
   }
   
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief relaxRule, do not do anything
-////////////////////////////////////////////////////////////////////////////////
-
-int triagens::aql::relaxRule (Optimizer* opt, 
-                              ExecutionPlan* plan, 
-                              Optimizer::PlanList& out,
-                              bool& keep) {
-  keep = true;
   return TRI_ERROR_NO_ERROR;
 }
 

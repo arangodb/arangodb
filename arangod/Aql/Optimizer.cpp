@@ -44,7 +44,6 @@ Optimizer::Optimizer () {
   // rule should be executed relatively early 
   registerRule(removeUnnecessaryFiltersRule, 10000);
 
-  // registerRule(relaxRule, 1000);
   // registerRule(removeUnnecessaryCalc, 999);
   // deactivated because a test crashes
 
