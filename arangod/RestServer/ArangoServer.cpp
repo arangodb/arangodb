@@ -798,6 +798,7 @@ int ArangoServer::startupServer () {
 
   _applicationV8->setVocbase(vocbase);
   _applicationV8->setConcurrency(concurrency);
+  _applicationV8->defineGlobalConstant("DISPATCHER_THREADS", _dispatcherThreads);
 
   // .............................................................................
   // prepare everything

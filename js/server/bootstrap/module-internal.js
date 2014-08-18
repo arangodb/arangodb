@@ -5,7 +5,7 @@
          REPLICATION_LOGGER_STATE, REPLICATION_LOGGER_CONFIGURE, REPLICATION_SERVER_ID,
          REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_SHUTDOWN, 
          REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE, REPLICATION_SYNCHRONISE,
-         ENABLE_STATISTICS */ 
+         ENABLE_STATISTICS, DISPATCHER_THREADS */ 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -88,6 +88,13 @@
 
   internal.enableStatistics = ENABLE_STATISTICS;
   delete ENABLE_STATISTICS;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dispatcherThreads
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.dispatcherThreads = DISPATCHER_THREADS;
+  delete DISPATCHER_THREADS;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
