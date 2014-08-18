@@ -34,6 +34,49 @@ using namespace triagens::aql;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief remove all unnecessary filters
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt, 
+                                                 ExecutionPlan* plan, 
+                                                 Optimizer::PlanList& out,
+                                                 bool& keep) {
+  
+  keep = true;
+  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::FILTER);
+  
+  for (auto n : nodes) {
+    // filter has one input variable
+    auto varsUsedHere = n->getVariablesUsedHere();
+    TRI_ASSERT(varsUsedHere.size() == 1);
+
+    // now check who introduced our variable
+    auto variable = varsUsedHere[0];
+    auto setter = plan->getVarSetBy(variable->id);
+
+    if (setter != nullptr && setter->getType() == triagens::aql::ExecutionNode::CALCULATION) {
+      // if it was a CalculationNode, check its expression
+      auto s = static_cast<CalculationNode*>(setter);
+      auto root = s->expression()->node();
+
+      if (root->isConstant()) {
+        // the expression is a constant value
+        if (root->toBoolean()) {
+          // TODO: remove filter node and merge with following node
+          std::cout << "FOUND A CONSTANT FILTER WHICH IS ALWAYS TRUE\n";
+        }
+        else {
+          // TODO: remove filter node plus all dependencies
+          std::cout << "FOUND A CONSTANT FILTER WHICH IS ALWAYS FALSE\n";
+        }
+      }
+    }
+  }
+  
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief relaxRule, do not do anything
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -46,7 +89,7 @@ int triagens::aql::relaxRule (Optimizer* opt,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a CalculationNode that is never needed
+/// @brief remove CalculationNode(s) that are never needed
 ////////////////////////////////////////////////////////////////////////////////
 
 int triagens::aql::removeUnnecessaryCalc (Optimizer* opt, 
@@ -71,7 +114,7 @@ int triagens::aql::removeUnnecessaryCalc (Optimizer* opt,
       }
     }
   }
-  if (toRemove.size() > 0) {
+  if (! toRemove.empty()) {
     std::cout << "Removing " << toRemove.size() << " unnecessary "
                  "CalculationNodes..." << std::endl;
     plan->removeNodes(toRemove);
@@ -89,5 +132,4 @@ int triagens::aql::removeUnnecessaryCalc (Optimizer* opt,
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-
 
