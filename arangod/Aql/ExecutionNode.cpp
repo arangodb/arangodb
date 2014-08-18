@@ -298,9 +298,9 @@ void IndexRangeNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
   for (auto x : *_ranges) {
     Json item(Json::Array);
     item("name", Json(x._name))
-        ("low", x._low.copy())
+        ("low", x._low)
         ("lowOpen", Json(x._lowOpen))
-        ("high", x._high.copy())
+        ("high", x._high)
         ("highOpen", Json(x._highOpen));
     ranges(item);
   }

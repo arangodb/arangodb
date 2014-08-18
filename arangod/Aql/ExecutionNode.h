@@ -628,16 +628,23 @@ namespace triagens {
       struct RangeInfo{
           
           RangeInfo ( std::string name, 
-                      basics::Json low, 
+                      basics::Json const& low, 
                       bool lowOpen, 
-                      basics::Json high, 
+                      basics::Json const& high, 
                       bool highOpen ) 
             : _name(name), 
-              _low(low), 
+              _low(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, low.json())), 
               _lowOpen(lowOpen), 
-              _high(high), 
+              _high(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, high.json())), 
               _highOpen(highOpen){}
-
+          
+          RangeInfo ( const RangeInfo& copy ) :
+             _name(copy._name), 
+            _low(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, copy._low.json())), 
+            _lowOpen(copy._lowOpen), 
+            _high(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, copy._high.json())), 
+            _highOpen(copy._highOpen){};
+          
           ~RangeInfo(){}
           
           std::string _name;

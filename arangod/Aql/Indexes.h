@@ -47,68 +47,69 @@ namespace triagens {
 
         Indexes& operator= (Indexes const& other) = delete;
       
-        Indexes (struct TRI_vocbase_s* vocbase) 
-          : _vocbase(vocbase),
-            _indexes() {
+        Indexes () 
+          : _indexes(){
         }
       
         ~Indexes () {
-          for (auto it = _indexes.begin(); it != _indexes.end(); ++it) {
-            delete (*it).second;
+          for (auto x: _indexes) {
+            for (auto y: x.second){
+              delete y.second;
+            }
           }
         }
 
       public:
 
         Index* get (TRI_idx_iid_t id, Collection const* collection) {
-          auto cid = collection->cid();
           // there may be multiple indexes in the same collection . . .
-          auto it1 = _cids.begin();
-
-          do{
-            auto it2 = _cids.find(it1, _cids.end(), cid);
-            if (it2 == _cids.end()) { // couldn't find <cid>
-              return nullptr;
-            }
-          }((it2*).second.first == id || it1 == _cids.end());
+          auto it1 = _indexes.find(collection->cid());
           
-          if((it2*).second.first == id){
-            return return (it2*).second.second;
+          if(it1 == _indexes.end()){
+            return nullptr;
           }
           
-          return nullptr;
+          auto it2 = it1->second.find(id);
+
+          if(it2 == it1->second.end()){
+            return nullptr;
+          }
+          
+          return (*it2).second;
         }
 
         void add (TRI_idx_iid_t id, Collection const* collection) {
-          // check if index already is in our map
-          if(this.get(id, collection)!=nullptr){
-            auto index = new Index(id, collection);
-            try {
-              auto x = std::make_pair(id, index);
-              _ids.insert(x);
-              _cids.insert(std::make_pair(collection->cid(), x));
-            }
-            catch (...) {
-              delete index;
-              throw;
-            }
+          auto it = _indexes.find(collection->cid());
+
+          if (it == _indexes.end()){
+            _indexes.insert(std::make_pair(collection->cid(), 
+                  std::unordered_map<TRI_idx_iid_t, Index*>()));
+          }
+          
+          auto index = new Index(id, collection);
+          try {
+            it->second.insert(std::make_pair(id, index));
+          }
+          catch (...) {
+            delete index;
+            throw;
           }
         }
 
-        std::vector<std::string> indexIds () const {
-          std::vector<std::string> result;
+        std::vector<TRI_idx_iid_t> indexIds () const {
+          std::vector<TRI_idx_iid_t> result;
 
           for (auto x : _indexes) {
-            result.push_back(x.first);
+            for (auto y : x.second) {
+              result.push_back(y.first);
+            }
           }
           return result;
         }
 
       private:
 
-        struct TRI_vocbase_s*               _vocbase;
-        std::map<TRI_idx_iid_t, Index*>     _ids;
-        std::map<TRI_voc_cid_t, _indexes>   _cids;
+        std::unordered_map<TRI_voc_cid_t, std::unordered_map<TRI_idx_iid_t, Index*>> _indexes;
     };
 
   }
