@@ -97,13 +97,6 @@
       });
       window.checkVersion();
 
-      $(document).ajaxStart(function () {
-        window.progressView.show("Loading...");
-      });
-
-      $(document).ajaxComplete(function () {
-        window.progressView.hide();
-      });
     },
 
     checkUser: function () {
