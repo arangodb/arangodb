@@ -334,6 +334,24 @@ controller.put('/foxx/move/:key', function(req, res) {
   .notes ("This function moves one installed foxx"
     + " to a given mount point.");
 
+/** Download stored queries
+ *
+ * Download and export all queries from the given username.
+ *
+ */
+
+controller.get("/query/download/:user", function(req, res) {
+  var user = req.params("user");
+
+  var result = db._users.byExample({"user": user}).toArray()[0];
+
+  res.set("Content-Type", "application/json");
+  res.set("Content-Disposition", "attachment; filename=queries.json");
+  res.json({"extra": result.extra});
+
+}).summary("Download all user queries")
+  .notes("This function downloads all user queries from the given user");
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
