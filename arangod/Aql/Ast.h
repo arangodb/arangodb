@@ -262,7 +262,7 @@ namespace triagens {
         AstNode* createNodeUpdate (AstNode const*,
                                    AstNode const*,
                                    AstNode const*,
-                                   AstNode*);
+                                   AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST replace node
@@ -271,7 +271,7 @@ namespace triagens {
         AstNode* createNodeReplace (AstNode const*,
                                     AstNode const*,
                                     AstNode const*,
-                                    AstNode*);
+                                    AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST collect node
