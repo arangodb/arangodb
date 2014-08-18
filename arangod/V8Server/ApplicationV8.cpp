@@ -834,6 +834,14 @@ void ApplicationV8::prepareServer () {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief defines a double in all global contexts
+////////////////////////////////////////////////////////////////////////////////
+
+void ApplicationV8::defineGlobalConstant (const string& name, double value) {
+  _doubleGlobals[name] = value;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                        ApplicationFeature methods
 // -----------------------------------------------------------------------------
@@ -1091,6 +1099,10 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
 
     for (map<string, bool>::iterator i = _definedBooleans.begin();  i != _definedBooleans.end(); ++i) {
       TRI_AddGlobalVariableVocbase(context->_context, i->first.c_str(), v8::Boolean::New(i->second));
+    }
+
+    for (auto i : _doubleGlobals) {
+      context->_context->Global()->Set(TRI_V8_SYMBOL(i.first.c_str()), v8::Number::New(i.second), v8::ReadOnly);
     }
   }
 
