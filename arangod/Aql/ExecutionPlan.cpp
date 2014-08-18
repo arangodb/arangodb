@@ -120,7 +120,6 @@ ModificationOptions ExecutionPlan::createOptions (AstNode const* node) {
         auto name = member->getStringValue();
         auto value = member->getMember(0);
 
-std::cout << "VALUE: " << value->typeString() << "\n";
         TRI_ASSERT(value->isConstant());
 
         if (strcmp(name, "waitForSync") == 0) {
@@ -128,6 +127,10 @@ std::cout << "VALUE: " << value->typeString() << "\n";
         }
         else if (strcmp(name, "ignoreErrors") == 0) {
           options.ignoreErrors = value->toBoolean();
+        }
+        else if (strcmp(name, "keepNull") == 0) {
+          // nullMeansRemove is the opposite of keepNull
+          options.nullMeansRemove = (! value->toBoolean());
         }
       }
     }
@@ -597,26 +600,27 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate (Ast const* ast,
                                               ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPDATE);
-  TRI_ASSERT(node->numMembers() >= 2);
+  TRI_ASSERT(node->numMembers() >= 3);
   
-  auto collection = node->getMember(0);
-  auto expression = node->getMember(1);
-
-  // collection, expression
-  char const* collectionName = collection->getStringValue();
+  auto options = createOptions(node->getMember(0));
+  char const* collectionName = node->getMember(1)->getStringValue();
+  auto collections = ast->query()->collections();
+  auto collection = collections->get(collectionName);
+  auto expression = node->getMember(2);
+//  auto keyExpression = node->getMember(3);
   ExecutionNode* en = nullptr;
 
   if (expression->type == NODE_TYPE_REFERENCE) {
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = addNode(new UpdateNode(ast->query()->vocbase(), std::string(collectionName), v));
+    en = addNode(new UpdateNode(ast->query()->vocbase(), collection, options, v, nullptr));
   }
   else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(ast, expression);
     calc->addDependency(previous);
-    en = addNode(new UpdateNode(ast->query()->vocbase(), std::string(collectionName), calc->outVariable()));
+    en = addNode(new UpdateNode(ast->query()->vocbase(), collection, options, calc->outVariable(), nullptr));
     previous = calc;
   }
 
@@ -631,26 +635,27 @@ ExecutionNode* ExecutionPlan::fromNodeReplace (Ast const* ast,
                                                ExecutionNode* previous,
                                                AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REPLACE);
-  TRI_ASSERT(node->numMembers() >= 2);
+  TRI_ASSERT(node->numMembers() >= 3);
   
-  auto collection = node->getMember(0);
-  auto expression = node->getMember(1);
-
-  // collection, expression
-  char const* collectionName = collection->getStringValue();
+  auto options = createOptions(node->getMember(0));
+  char const* collectionName = node->getMember(1)->getStringValue();
+  auto collections = ast->query()->collections();
+  auto collection = collections->get(collectionName);
+  auto expression = node->getMember(2);
+//  auto keyExpression = node->getMember(3);
   ExecutionNode* en = nullptr;
-
+  
   if (expression->type == NODE_TYPE_REFERENCE) {
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = addNode(new ReplaceNode(ast->query()->vocbase(), std::string(collectionName), v));
+    en = addNode(new ReplaceNode(ast->query()->vocbase(), collection, options, v, nullptr));
   }
   else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(ast, expression);
     calc->addDependency(previous);
-    en = addNode(new ReplaceNode(ast->query()->vocbase(), std::string(collectionName), calc->outVariable()));
+    en = addNode(new ReplaceNode(ast->query()->vocbase(), collection, options, calc->outVariable(), nullptr));
     previous = calc;
   }
 
@@ -723,13 +728,11 @@ ExecutionNode* ExecutionPlan::fromNode (Ast const* ast,
       }
     
       case NODE_TYPE_UPDATE: {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
         en = fromNodeUpdate(ast, en, member);
         break;
       }
     
       case NODE_TYPE_REPLACE: {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
         en = fromNodeReplace(ast, en, member);
         break;
       }

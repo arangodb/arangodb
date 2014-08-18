@@ -159,6 +159,20 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
         root = eb;
         break;
       }
+      case ExecutionNode::UPDATE: {
+        eb = new UpdateBlock(engine->getTransaction(),
+                             static_cast<UpdateNode const*>(en));
+
+        root = eb;
+        break;
+      }
+      case ExecutionNode::REPLACE: {
+        eb = new ReplaceBlock(engine->getTransaction(),
+                              static_cast<ReplaceNode const*>(en));
+
+        root = eb;
+        break;
+      }
 
       default: {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

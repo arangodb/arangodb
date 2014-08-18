@@ -294,7 +294,7 @@ void IndexRangeNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
 
   // put together the range info . . .
   Json ranges(Json::List);
-
+/*
   for (auto x : *_ranges) {
     Json item(Json::Array);
     item("name", Json(x._name))
@@ -304,7 +304,7 @@ void IndexRangeNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
         ("highOpen", Json(x._highOpen));
     ranges(item);
   }
-
+*/
   // Now put info about vocbase and cid in there
   json("database", Json(_vocbase->_name))
       ("collection", Json(_collection->name))
@@ -594,8 +594,13 @@ void UpdateNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
 
   // Now put info about vocbase and cid in there
   json("database", Json(_vocbase->_name))
-      ("collection", Json(_collname))
-      ("outVariable", _outVariable->toJson());
+      ("collection", Json(_collection->name))
+      ("inVariable", _inVariable->toJson());
+  
+  // output variable might be empty
+  if (_outVariable != nullptr) {
+    json("outVariable", _outVariable->toJson());
+  }
 
   // And add it:
   int len = static_cast<int>(nodes.size());
@@ -622,8 +627,13 @@ void ReplaceNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
 
   // Now put info about vocbase and cid in there
   json("database", Json(_vocbase->_name))
-      ("collection", Json(_collname))
-      ("outVariable", _outVariable->toJson());
+      ("collection", Json(_collection->name))
+      ("inVariable", _inVariable->toJson());
+  
+  // output variable might be empty
+  if (_outVariable != nullptr) {
+    json("outVariable", _outVariable->toJson());
+  }
 
   // And add it:
   int len = static_cast<int>(nodes.size());

@@ -234,15 +234,21 @@ AstNode* Ast::createNodeInsert (AstNode const* expression,
 AstNode* Ast::createNodeUpdate (AstNode const* keyExpression,
                                 AstNode const* docExpression,
                                 AstNode const* collection,
-                                AstNode* options) {
+                                AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_UPDATE);
+  
+  if (options == nullptr) {
+    // no options given. now use default options
+    options = &NopNode;
+  }
+
+  node->addMember(options);
   node->addMember(collection);
   node->addMember(docExpression);
 
   if (keyExpression != nullptr) {
     node->addMember(keyExpression);
   }
-  // TODO: handle options
 
   return node;
 }
@@ -254,15 +260,21 @@ AstNode* Ast::createNodeUpdate (AstNode const* keyExpression,
 AstNode* Ast::createNodeReplace (AstNode const* keyExpression,
                                  AstNode const* docExpression,
                                  AstNode const* collection,
-                                 AstNode* options) {
+                                 AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_REPLACE);
+  
+  if (options == nullptr) {
+    // no options given. now use default options
+    options = &NopNode;
+  }
+
+  node->addMember(options);
   node->addMember(collection);
   node->addMember(docExpression);
 
   if (keyExpression != nullptr) {
     node->addMember(keyExpression);
   }
-  // TODO: handle options
 
   return node;
 }

@@ -38,8 +38,8 @@ namespace triagens {
 
 #define YY_INPUT(resultBuffer, resultState, maxBytesToRead) {            \
   size_t length = yyextra->remainingLength();                            \
-  if (length > maxBytesToRead) {                                         \
-    length = maxBytesToRead;                                             \
+  if (length > static_cast<size_t>(maxBytesToRead)) {                    \
+    length = static_cast<size_t>(maxBytesToRead);                        \
   }                                                                      \
   if (length > 0) {                                                      \
     yyextra->fillBuffer(resultBuffer, length);                           \
