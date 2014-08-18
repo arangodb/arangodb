@@ -292,11 +292,25 @@ void IndexRangeNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
     return;
   }
 
+  // put together the range info . . .
+  Json ranges(Json::List);
+
+  for (auto x : *_ranges) {
+    Json item(Json::Array);
+    item("name", Json(x._name))
+        ("low", x._low.copy())
+        ("lowOpen", Json(x._lowOpen))
+        ("high", x._high.copy())
+        ("highOpen", Json(x._highOpen));
+    ranges(item);
+  }
+
   // Now put info about vocbase and cid in there
   json("database", Json(_vocbase->_name))
       ("collection", Json(_collection->name))
       ("outVariable", _outVariable->toJson())
-      ("index", _index->index()->json(_index->index()));
+      ("index", _index->index()->json(_index->index()))
+      ("ranges", ranges);
   
   // And add it:
   int len = static_cast<int>(nodes.size());
