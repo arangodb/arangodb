@@ -309,7 +309,7 @@
     },
 
     exportCustomQueries: function () {
-      var toExport = {}, exportArray = [];
+      var name, toExport = {}, exportArray = [];
       _.each(this.customQueries, function(value, key) {
         exportArray.push({name: value.name, value: value.value});
       });
@@ -319,9 +319,12 @@
         }
       };
 
-      var exportData = 'data:plain/text;charset=utf-8,';
-      exportData += JSON.stringify(toExport);
-      window.open(encodeURI(exportData));
+      $.ajax("whoAmI", {async:false}).done(
+        function(data) {
+        name = data.name;
+      });
+
+      window.open(encodeURI("query/download/" + name));
     },
 
     deselect: function (editor) {
