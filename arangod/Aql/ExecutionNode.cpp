@@ -595,7 +595,12 @@ void UpdateNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
   // Now put info about vocbase and cid in there
   json("database", Json(_vocbase->_name))
       ("collection", Json(_collection->name))
-      ("inVariable", _inVariable->toJson());
+      ("inDocVariable", _inDocVariable->toJson());
+  
+  // inKeyVariable might be empty
+  if (_inKeyVariable != nullptr) {
+    json("inKeyVariable", _inKeyVariable->toJson());
+  }
   
   // output variable might be empty
   if (_outVariable != nullptr) {
@@ -628,7 +633,12 @@ void ReplaceNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
   // Now put info about vocbase and cid in there
   json("database", Json(_vocbase->_name))
       ("collection", Json(_collection->name))
-      ("inVariable", _inVariable->toJson());
+      ("inDocVariable", _inDocVariable->toJson());
+  
+  // inKeyVariable might be empty
+  if (_inKeyVariable != nullptr) {
+    json("inKeyVariable", _inKeyVariable->toJson());
+  }
   
   // output variable might be empty
   if (_outVariable != nullptr) {

@@ -606,21 +606,38 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate (Ast const* ast,
   char const* collectionName = node->getMember(1)->getStringValue();
   auto collections = ast->query()->collections();
   auto collection = collections->get(collectionName);
-  auto expression = node->getMember(2);
-//  auto keyExpression = node->getMember(3);
+  auto docExpression = node->getMember(2);
+  auto keyExpression = node->getOptionalMember(3);
+  Variable const* keyVariable = nullptr;
   ExecutionNode* en = nullptr;
 
-  if (expression->type == NODE_TYPE_REFERENCE) {
-    // operand is already a variable
-    auto v = static_cast<Variable*>(expression->getData());
+  if (keyExpression != nullptr) {
+    if (keyExpression->type == NODE_TYPE_REFERENCE) {
+      // key operand is already a variable
+      auto v = static_cast<Variable*>(keyExpression->getData());
+      TRI_ASSERT(v != nullptr);
+      keyVariable = v;
+    }
+    else {
+      // key operand is some misc expression
+      auto calc = createTemporaryCalculation(ast, keyExpression);
+      calc->addDependency(previous);
+      previous = calc;
+      keyVariable = calc->outVariable();
+    }
+  }
+
+  if (docExpression->type == NODE_TYPE_REFERENCE) {
+    // document operand is already a variable
+    auto v = static_cast<Variable*>(docExpression->getData());
     TRI_ASSERT(v != nullptr);
-    en = addNode(new UpdateNode(ast->query()->vocbase(), collection, options, v, nullptr));
+    en = addNode(new UpdateNode(ast->query()->vocbase(), collection, options, v, keyVariable, nullptr));
   }
   else {
-    // operand is some misc expression
-    auto calc = createTemporaryCalculation(ast, expression);
+    // document operand is some misc expression
+    auto calc = createTemporaryCalculation(ast, docExpression);
     calc->addDependency(previous);
-    en = addNode(new UpdateNode(ast->query()->vocbase(), collection, options, calc->outVariable(), nullptr));
+    en = addNode(new UpdateNode(ast->query()->vocbase(), collection, options, calc->outVariable(), keyVariable, nullptr));
     previous = calc;
   }
 
@@ -641,21 +658,38 @@ ExecutionNode* ExecutionPlan::fromNodeReplace (Ast const* ast,
   char const* collectionName = node->getMember(1)->getStringValue();
   auto collections = ast->query()->collections();
   auto collection = collections->get(collectionName);
-  auto expression = node->getMember(2);
-//  auto keyExpression = node->getMember(3);
+  auto docExpression = node->getMember(2);
+  auto keyExpression = node->getOptionalMember(3);
+  Variable const* keyVariable = nullptr;
   ExecutionNode* en = nullptr;
   
-  if (expression->type == NODE_TYPE_REFERENCE) {
+  if (keyExpression != nullptr) {
+    if (keyExpression->type == NODE_TYPE_REFERENCE) {
+      // key operand is already a variable
+      auto v = static_cast<Variable*>(keyExpression->getData());
+      TRI_ASSERT(v != nullptr);
+      keyVariable = v;
+    }
+    else {
+      // key operand is some misc expression
+      auto calc = createTemporaryCalculation(ast, keyExpression);
+      calc->addDependency(previous);
+      previous = calc;
+      keyVariable = calc->outVariable();
+    }
+  }
+  
+  if (docExpression->type == NODE_TYPE_REFERENCE) {
     // operand is already a variable
-    auto v = static_cast<Variable*>(expression->getData());
+    auto v = static_cast<Variable*>(docExpression->getData());
     TRI_ASSERT(v != nullptr);
-    en = addNode(new ReplaceNode(ast->query()->vocbase(), collection, options, v, nullptr));
+    en = addNode(new ReplaceNode(ast->query()->vocbase(), collection, options, v, keyVariable, nullptr));
   }
   else {
     // operand is some misc expression
-    auto calc = createTemporaryCalculation(ast, expression);
+    auto calc = createTemporaryCalculation(ast, docExpression);
     calc->addDependency(previous);
-    en = addNode(new ReplaceNode(ast->query()->vocbase(), collection, options, calc->outVariable(), nullptr));
+    en = addNode(new ReplaceNode(ast->query()->vocbase(), collection, options, calc->outVariable(), keyVariable, nullptr));
     previous = calc;
   }
 
