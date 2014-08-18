@@ -535,6 +535,34 @@ namespace triagens {
           return res;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read a single document, identified by key
+////////////////////////////////////////////////////////////////////////////////
+
+        int readSingle (TRI_transaction_collection_t* trxCollection,
+                        TRI_doc_mptr_copy_t* mptr,
+                        std::string const& key) {
+
+          TRI_ASSERT(mptr != nullptr);
+
+          if (orderBarrier(trxCollection) == nullptr) {
+            return TRI_ERROR_OUT_OF_MEMORY;
+          }
+
+          try {
+            return TRI_ReadShapedJsonDocumentCollection(trxCollection,
+                                                        (TRI_voc_key_t) key.c_str(),
+                                                        mptr,
+                                                        ! isLocked(trxCollection, TRI_TRANSACTION_READ));
+          }
+          catch (triagens::arango::Exception const& ex) {
+            return ex.code();
+          }
+          catch (...) {
+            return TRI_ERROR_INTERNAL;
+          }
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
@@ -734,34 +762,6 @@ namespace triagens {
           // READ-LOCK END
 
           return TRI_ERROR_NO_ERROR;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read a single document, identified by key
-////////////////////////////////////////////////////////////////////////////////
-
-        int readSingle (TRI_transaction_collection_t* trxCollection,
-                        TRI_doc_mptr_copy_t* mptr,
-                        std::string const& key) {
-
-          TRI_ASSERT(mptr != nullptr);
-
-          if (orderBarrier(trxCollection) == nullptr) {
-            return TRI_ERROR_OUT_OF_MEMORY;
-          }
-
-          try {
-            return TRI_ReadShapedJsonDocumentCollection(trxCollection,
-                                                        (TRI_voc_key_t) key.c_str(),
-                                                        mptr,
-                                                        ! isLocked(trxCollection, TRI_TRANSACTION_READ));
-          }
-          catch (triagens::arango::Exception const& ex) {
-            return ex.code();
-          }
-          catch (...) {
-            return TRI_ERROR_INTERNAL;
-          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////

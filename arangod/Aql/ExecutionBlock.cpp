@@ -27,6 +27,7 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Basics/StringUtils.h"
+#include "Basics/json-utilities.h"
 #include "Utils/Exception.h"
 #include "VocBase/vocbase.h"
 
@@ -2011,7 +2012,7 @@ void RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
     for (auto it = blocks.begin(); it != blocks.end(); ++it) {
       auto res = (*it);
       auto document = res->getDocumentCollection(registerId);
-
+      
       size_t const n = res->size();
     
       // loop over the complete block
@@ -2035,6 +2036,8 @@ void RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
 
         if (errorCode == TRI_ERROR_NO_ERROR) {
           // no error. we expect to have a key
+                  
+          // all exceptions are caught in _trx->remove()
           errorCode = _trx->remove(trxCollection, 
                                    key,
                                    0,
@@ -2102,7 +2105,7 @@ void InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
     for (auto it = blocks.begin(); it != blocks.end(); ++it) {
       auto res = (*it);
       auto document = res->getDocumentCollection(registerId);
-
+      
       size_t const n = res->size();
     
       // loop over the complete block
@@ -2227,8 +2230,37 @@ void UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
           TRI_doc_mptr_copy_t mptr;
           auto json = a.toJson(_trx, document);
 
-          // TODO: merge in existing attributes...
-          errorCode = _trx->update(trxCollection, key, 0, &mptr, json.json(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
+          // read old document
+          TRI_doc_mptr_copy_t oldDocument;
+          errorCode = _trx->readSingle(trxCollection, &oldDocument, key);
+
+          if (errorCode == TRI_ERROR_NO_ERROR) {
+            if (oldDocument.getDataPtr() != nullptr) {
+              TRI_shaped_json_t shapedJson;
+              TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldDocument.getDataPtr()); // PROTECTED by trx here
+              TRI_json_t* old = TRI_JsonShapedJson(_collection->documentCollection()->getShaper(), &shapedJson);
+
+              if (old != nullptr) {
+                TRI_json_t* patchedJson = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old, json.json(), ep->_options.nullMeansRemove);
+                TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, old); 
+
+                if (patchedJson != nullptr) {
+                  // all exceptions are caught in _trx->update()
+                  errorCode = _trx->update(trxCollection, key, 0, &mptr, patchedJson, TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
+                  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, patchedJson);
+                }
+                else {
+                  errorCode = TRI_ERROR_OUT_OF_MEMORY;
+                }
+              }
+              else {
+                errorCode = TRI_ERROR_OUT_OF_MEMORY;
+              }
+            }
+            else {
+              errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+            }
+          }
         }
 
         if (errorCode != TRI_ERROR_NO_ERROR && 
@@ -2254,7 +2286,6 @@ ReplaceBlock::ReplaceBlock (AQL_TRANSACTION_V8* trx,
   : ModificationBlock(trx, ep) {
 }
 
-
 ReplaceBlock::~ReplaceBlock () {
 }
 
@@ -2277,7 +2308,7 @@ void ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
     for (auto it = blocks.begin(); it != blocks.end(); ++it) {
       auto res = (*it);
       auto document = res->getDocumentCollection(registerId);
-
+      
       size_t const n = res->size();
     
       // loop over the complete block
@@ -2299,6 +2330,7 @@ void ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
           TRI_doc_mptr_copy_t mptr;
           auto json = a.toJson(_trx, document);
           
+          // all exceptions are caught in _trx->update()
           errorCode = _trx->update(trxCollection, key, 0, &mptr, json.json(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
         }
 

@@ -1876,7 +1876,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new UpdateNode(_vocbase, _collection, _options, _inVariable, _outVariable);
+          auto c = new ReplaceNode(_vocbase, _collection, _options, _inVariable, _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
