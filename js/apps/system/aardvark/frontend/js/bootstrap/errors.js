@@ -251,7 +251,11 @@
     "RESULT_ELEMENT_EXISTS"        : { "code" : 10001, "message" : "element not inserted into structure, because it already exists" }, 
     "RESULT_KEY_NOT_FOUND"         : { "code" : 10002, "message" : "key not found in structure" }, 
     "RESULT_ELEMENT_NOT_FOUND"     : { "code" : 10003, "message" : "element not found in structure" }, 
-    "ERROR_APP_ALREADY_EXISTS"     : { "code" : 20000, "message" : "newest version of app already installed" }
+    "ERROR_APP_ALREADY_EXISTS"     : { "code" : 20000, "message" : "newest version of app already installed" }, 
+    "ERROR_QUEUE_ALREADY_EXISTS"   : { "code" : 21000, "message" : "named queue already exists" }, 
+    "ERROR_DISPATCHER_IS_STOPPING" : { "code" : 21001, "message" : "dispatcher stopped" }, 
+    "ERROR_QUEUE_UNKNOWN"          : { "code" : 21002, "message" : "named queue does not exist" }, 
+    "ERROR_QUEUE_FULL"             : { "code" : 21003, "message" : "named queue is full" }
   };
 }());
 

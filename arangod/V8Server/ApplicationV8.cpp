@@ -49,6 +49,7 @@
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
 #include "V8Server/v8-actions.h"
+#include "V8Server/v8-dispatcher.h"
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/server.h"
@@ -273,8 +274,8 @@ ApplicationV8::ApplicationV8 (TRI_server_t* server,
     _v8Options(""),
     _startupLoader(),
     _vocbase(0),
-    _nrInstances(0),
-    _contexts(0),
+    _nrInstances(),
+    _contexts(),
     _contextCondition(),
     _freeContexts(),
     _dirtyContexts(),
@@ -284,10 +285,13 @@ ApplicationV8::ApplicationV8 (TRI_server_t* server,
     _scheduler(scheduler),
     _dispatcher(dispatcher),
     _definedBooleans(),
+    _definedDoubles(),
     _startupFile("server/server.js"),
     _gcFinished(false) {
 
   TRI_ASSERT(_server != nullptr);
+
+  _nrInstances["STANDARD"] = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -306,7 +310,7 @@ ApplicationV8::~ApplicationV8 () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::setConcurrency (size_t n) {
-  _nrInstances = n;
+  _nrInstances["STANDARD"] = n;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -321,13 +325,14 @@ void ApplicationV8::setVocbase (TRI_vocbase_t* vocbase) {
 /// @brief enters a context
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase,
+ApplicationV8::V8Context* ApplicationV8::enterContext (const string& name,
+                                                       TRI_vocbase_s* vocbase,
                                                        triagens::rest::HttpRequest* request,
                                                        bool initialise,
                                                        bool allowUseDatabase) {
   CONDITION_LOCKER(guard, _contextCondition);
 
-  while (_freeContexts.empty() && ! _stopping) {
+  while (_freeContexts[name].empty() && ! _stopping) {
     LOG_DEBUG("waiting for unused V8 context");
     guard.wait();
   }
@@ -340,13 +345,13 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase,
 
   LOG_TRACE("found unused V8 context");
 
-  V8Context* context = _freeContexts.back();
+  V8Context* context = _freeContexts[name].back();
 
   TRI_ASSERT(context != nullptr);
   TRI_ASSERT(context->_isolate != nullptr);
 
-  _freeContexts.pop_back();
-  _busyContexts.insert(context);
+  _freeContexts[name].pop_back();
+  _busyContexts[name].insert(context);
 
   context->_locker = new v8::Locker(context->_isolate);
   context->_isolate->Enter();
@@ -378,6 +383,9 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (TRI_vocbase_s* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::exitContext (V8Context* context) {
+  const string& name = context->_name;
+  bool isStandard = (name == "STANDARD");
+
   V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
   TRI_ASSERT(gc != nullptr);
 
@@ -414,63 +422,103 @@ void ApplicationV8::exitContext (V8Context* context) {
   }
 
   // try to execute new global context methods
-  bool runGlobal = false;
-  {
-    MUTEX_LOCKER(context->_globalMethodsLock);
-    runGlobal = ! context->_globalMethods.empty();
+  if (isStandard) {
+    bool runGlobal = false;
+    {
+      MUTEX_LOCKER(context->_globalMethodsLock);
+      runGlobal = ! context->_globalMethods.empty();
+    }
+
+    if (runGlobal) {
+      context->_isolate->Enter();
+      context->_context->Enter();
+
+      context->handleGlobalContextMethods();
+
+      context->_context->Exit();
+      context->_isolate->Exit();
+    }
   }
-
-  if (runGlobal) {
-    context->_isolate->Enter();
-    context->_context->Enter();
-
-    context->handleGlobalContextMethods();
-
-    context->_context->Exit();
-    context->_isolate->Exit();
-  }
-
-  delete context->_locker;
 
   // default is false
   bool performGarbageCollection = false;
 
-  if (context->_lastGcStamp + _gcFrequency < lastGc) {
-    LOG_TRACE("V8 context has reached GC timeout threshold and will be scheduled for GC");
-    performGarbageCollection = true;
-  }
-  else if (context->_numExecutions >= _gcInterval) {
-    LOG_TRACE("V8 context has reached maximum number of requests and will be scheduled for GC");
-    performGarbageCollection = true;
-  }
-  else if (hasOutOfMemoryException) {
-    LOG_INFO("V8 context has encountered out of memory and will be scheduled for GC");
-    performGarbageCollection = true;
+  // postpone garbage collection for standard contexts
+  if (isStandard) {
+    if (context->_lastGcStamp + _gcFrequency < lastGc) {
+      LOG_TRACE("V8 context has reached GC timeout threshold and will be scheduled for GC");
+      performGarbageCollection = true;
+    }
+    else if (context->_numExecutions >= _gcInterval) {
+      LOG_TRACE("V8 context has reached maximum number of requests and will be scheduled for GC");
+      performGarbageCollection = true;
+    }
+    else if (hasOutOfMemoryException) {
+      LOG_INFO("V8 context has encountered out of memory and will be scheduled for GC");
+      performGarbageCollection = true;
+    }
+
+    if (performGarbageCollection) {
+      _dirtyContexts[name].push_back(context);
+    }
+    else {
+      _freeContexts[name].push_back(context);
+    }
+
+    _busyContexts[name].erase(context);
+
+    delete context->_locker;
+
+    guard.broadcast();
   }
 
-  if (performGarbageCollection) {
-    _dirtyContexts.push_back(context);
-  }
+  // non-standard case: directly collect the garbage
   else {
-    _freeContexts.push_back(context);
+    if (context->_numExecutions >= _gcInterval) {
+      LOG_TRACE("V8 context has reached maximum number of requests and will be scheduled for GC");
+      performGarbageCollection = true;
+    }
+    else if (hasOutOfMemoryException) {
+      LOG_INFO("V8 context has encountered out of memory and will be scheduled for GC");
+      performGarbageCollection = true;
+    }
+
+    _busyContexts[name].erase(context);
+
+    if (performGarbageCollection) {
+      guard.unlock();
+
+      context->_isolate->Enter();
+      context->_context->Enter();
+
+      v8::V8::LowMemoryNotification();
+      while (! v8::V8::IdleNotification()) {
+      }
+
+      context->_context->Exit();
+      context->_isolate->Exit();
+
+      guard.lock();
+    }
+
+    delete context->_locker;
+    _freeContexts[name].push_back(context);
   }
-
-  _busyContexts.erase(context);
-
-  guard.broadcast();
 
   LOG_TRACE("returned dirty V8 context");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a global context functions to be executed asap
+/// @brief adds a global context functions for STANDARD to be executed asap
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationV8::addGlobalContextMethod (string const& method) {
+  static const string name = "STANDARD";
   bool result = true;
+  size_t nrInstances = _nrInstances[name];
 
-  for (size_t i = 0; i < _nrInstances; ++i) {
-    if (! _contexts[i]->addGlobalContextMethod(method)) {
+  for (size_t i = 0; i < nrInstances; ++i) {
+    if (! _contexts[name][i]->addGlobalContextMethod(method)) {
       result = false;
     }
   }
@@ -479,71 +527,11 @@ bool ApplicationV8::addGlobalContextMethod (string const& method) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief determine which of the free contexts should be picked for the GC
-////////////////////////////////////////////////////////////////////////////////
-
-ApplicationV8::V8Context* ApplicationV8::pickFreeContextForGc () {
-  int const n = (int) _freeContexts.size();
-
-  if (n == 0) {
-    // this is easy...
-    return 0;
-  }
-
-  V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
-  TRI_ASSERT(gc != nullptr);
-
-  V8Context* context = nullptr;
-
-  // we got more than 1 context to clean up, pick the one with the "oldest" GC stamp
-  int pickedContextNr = -1; // index of context with lowest GC stamp, -1 means "none"
-
-  for (int i = 0; i < n; ++i) {
-    // check if there's actually anything to clean up in the context
-    if (_freeContexts[i]->_numExecutions == 0 && ! _freeContexts[i]->_hasDeadObjects) {
-      continue;
-    }
-
-    // compare last GC stamp
-    if (pickedContextNr == -1 ||
-        _freeContexts[i]->_lastGcStamp <= _freeContexts[pickedContextNr]->_lastGcStamp) {
-      pickedContextNr = i;
-    }
-  }
-  // we now have the context to clean up in pickedContextNr
-
-  if (pickedContextNr == -1) {
-    // no context found
-    return 0;
-  }
-
-  // this is the context to clean up
-  context = _freeContexts[pickedContextNr];
-  TRI_ASSERT(context != 0);
-
-  // now compare its last GC timestamp with the last global GC stamp
-  if (context->_lastGcStamp + _gcFrequency >= gc->getLastGcStamp()) {
-    // no need yet to clean up the context
-    return 0;
-  }
-
-  // we'll pop the context from the vector. the context might be at any position in the vector
-  // so we need to move the other elements around
-  if (n > 1) {
-    for (int i = pickedContextNr; i < n - 1; ++i) {
-      _freeContexts[i] = _freeContexts[i + 1];
-    }
-  }
-  _freeContexts.pop_back();
-
-  return context;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief runs the garbage collection
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::collectGarbage () {
+  static const string name = "STANDARD";
   V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
   TRI_ASSERT(gc != nullptr);
 
@@ -567,7 +555,7 @@ void ApplicationV8::collectGarbage () {
       bool gotSignal = false;
       CONDITION_LOCKER(guard, _contextCondition);
 
-      if (_dirtyContexts.empty()) {
+      if (_dirtyContexts[name].empty()) {
         uint64_t waitTime = useReducedWait ? reducedWaitTime : regularWaitTime;
 
         // we'll wait for a signal or a timeout
@@ -578,12 +566,12 @@ void ApplicationV8::collectGarbage () {
         useReducedWait = ! gotSignal;
       }
 
-      if (! _dirtyContexts.empty()) {
-        context = _dirtyContexts.back();
-        _dirtyContexts.pop_back();
+      if (! _dirtyContexts[name].empty()) {
+        context = _dirtyContexts[name].back();
+        _dirtyContexts[name].pop_back();
         useReducedWait = false;
       }
-      else if (! gotSignal && ! _freeContexts.empty()) {
+      else if (! gotSignal && ! _freeContexts[name].empty()) {
         // we timed out waiting for a signal, so we have idle time that we can
         // spend on running the GC pro-actively
         // We'll pick one of the free contexts and clean it up
@@ -623,7 +611,7 @@ void ApplicationV8::collectGarbage () {
       {
         CONDITION_LOCKER(guard, _contextCondition);
 
-        _freeContexts.push_back(context);
+        _freeContexts[name].push_back(context);
         guard.broadcast();
       }
     }
@@ -653,10 +641,11 @@ void ApplicationV8::enableDevelopmentMode () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::upgradeDatabase (bool skip, bool perform) {
+  static const string name = "STANDARD";
   LOG_TRACE("starting database init/upgrade");
 
   // enter context and isolate
-  V8Context* context = _contexts[0];
+  V8Context* context = _contexts[name][0];
 
   context->_locker = new v8::Locker(context->_isolate);
   context->_isolate->Enter();
@@ -751,10 +740,11 @@ void ApplicationV8::upgradeDatabase (bool skip, bool perform) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::versionCheck () {
+  static const string name = "STANDARD";
   LOG_TRACE("starting version check");
 
   // enter context and isolate
-  V8Context* context = _contexts[0];
+  V8Context* context = _contexts[name][0];
 
   context->_locker = new v8::Locker(context->_isolate);
   context->_isolate->Enter();
@@ -829,17 +819,66 @@ void ApplicationV8::versionCheck () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::prepareServer () {
-  for (size_t i = 0;  i < _nrInstances;  ++i) {
-    prepareV8Server(i);
+  static const string name = "STANDARD";
+  size_t nrInstances = _nrInstances[name];
+
+  for (size_t i = 0;  i < nrInstances;  ++i) {
+    prepareV8Server(i, _startupFile);
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief defines a double in all global contexts
+/// @brief prepares named contexts
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationV8::defineGlobalConstant (const string& name, double value) {
-  _doubleGlobals[name] = value;
+bool ApplicationV8::prepareNamedContexts (const string& name,
+                                          size_t concurrency,
+                                          const string& worker) {
+  {
+    CONDITION_LOCKER(guard, _contextCondition);
+    _contexts[name] = new V8Context*[concurrency];
+    _nrInstances[name] = concurrency;
+  }
+  
+  for (size_t i = 0;  i < concurrency;  ++i) {
+    bool ok = prepareV8Instance(name, i, false);
+
+    if (! ok) {
+      return false;
+    }
+
+    prepareV8Server(i, "server/worker.js");
+
+    // and generate MAIN
+    V8Context* context = _contexts[name][i];
+
+    context->_locker = new v8::Locker(context->_isolate);
+    context->_isolate->Enter();
+    context->_context->Enter();
+
+    {
+      v8::HandleScope scope;
+      v8::TryCatch tryCatch;
+
+     // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
+     v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
+     v8::Local<v8::Function> ctor = v8::Local<v8::Function>::Cast(current->Get(v8::String::New("Function")));
+
+     // Invoke Function constructor to create function with the given body and no arguments
+     v8::Handle<v8::Value> args[2] = { v8::String::New("params"), v8::String::New(worker.c_str(), (int) worker.size()) };
+     v8::Local<v8::Object> function = ctor->NewInstance(2, args);
+
+     v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
+
+     TRI_AddGlobalVariableVocbase(context->_context, "MAIN", action);
+    }
+
+    context->_context->Exit();
+    context->_isolate->Exit();
+    delete context->_locker;
+  }
+
+  return true;
 }
 
 // -----------------------------------------------------------------------------
@@ -875,6 +914,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationV8::prepare () {
+
   // check the startup path
   if (_startupPath.empty()) {
     LOG_FATAL_AND_EXIT("no 'javascript.startup-directory' has been supplied, giving up");
@@ -932,11 +972,17 @@ bool ApplicationV8::prepare () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationV8::prepare2 () {
-  // setup instances
-  _contexts = new V8Context*[_nrInstances];
+  static const string name = "STANDARD";
+  size_t nrInstances = _nrInstances[name];
 
-  for (size_t i = 0;  i < _nrInstances;  ++i) {
-    bool ok = prepareV8Instance(i);
+  // setup instances
+  {
+    CONDITION_LOCKER(guard, _contextCondition);
+    _contexts[name] = new V8Context*[nrInstances];
+  }
+
+  for (size_t i = 0;  i < nrInstances;  ++i) {
+    bool ok = prepareV8Instance(name, i, _useActions);
 
     if (! ok) {
       return false;
@@ -972,17 +1018,21 @@ void ApplicationV8::close () {
   }
 
   // wait for all contexts to finish
-  for (size_t n = 0;  n < 10 * 5;  ++n) {
-    CONDITION_LOCKER(guard, _contextCondition);
+  CONDITION_LOCKER(guard, _contextCondition);
 
-    if (_busyContexts.empty()) {
-      LOG_DEBUG("no busy V8 contexts");
-      break;
+  for (auto all : _contexts) {
+    const string& name = all.first;
+
+    for (size_t n = 0;  n < 10 * 5;  ++n) {
+      if (_busyContexts[name].empty()) {
+        LOG_DEBUG("no busy V8 contexts");
+        break;
+      }
+
+      LOG_DEBUG("waiting for %d busy V8 contexts to finish", (int) _busyContexts[name].size());
+
+      guard.wait(100000);
     }
-
-    LOG_DEBUG("waiting for %d busy V8 contexts to finish", (int) _busyContexts.size());
-
-    guard.wait(100000);
   }
 }
 
@@ -992,27 +1042,36 @@ void ApplicationV8::close () {
 
 void ApplicationV8::stop () {
 
-  //send all busy contexts a termate signal
+  // send all busy contexts a termate signal
   {
     CONDITION_LOCKER(guard, _contextCondition);
 
-    for (auto it = _busyContexts.begin(); it != _busyContexts.end(); ++it) {
-      LOG_WARNING("sending termination signal to V8 context");
-      v8::V8::TerminateExecution((*it)->_isolate);
+    for (auto all : _contexts) {
+      const string& name = all.first;
+
+      for (auto it : _busyContexts[name]) {
+        LOG_WARNING("sending termination signal to V8 context");
+        v8::V8::TerminateExecution((*it)._isolate);
+      }
     }
   }
 
   // wait for one minute
-  for (size_t n = 0;  n < 10 * 60;  ++n) {
+  {
     CONDITION_LOCKER(guard, _contextCondition);
 
-    if (_busyContexts.empty()) {
-      break;
+    for (auto all : _contexts) {
+      const string& name = all.first;
+
+      for (size_t n = 0;  n < 10 * 60;  ++n) {
+        if (_busyContexts[name].empty()) {
+          break;
+        }
+
+        guard.wait(100000);
+      }
     }
-
-    guard.wait(100000);
   }
-
 
   // wait until garbage collector thread is done
   while (! _gcFinished) {
@@ -1022,12 +1081,21 @@ void ApplicationV8::stop () {
   // stop GC thread
   _gcThread->shutdown();
 
-  // shutdown all action threads
-  for (size_t i = 0;  i < _nrInstances;  ++i) {
-    shutdownV8Instance(i);
-  }
+  // shutdown all instances
+  {
+    CONDITION_LOCKER(guard, _contextCondition);
 
-  delete[] _contexts;
+    for (auto all : _contexts) {
+      const string& name = all.first;
+      size_t nrInstances = _nrInstances[name];
+
+      for (size_t i = 0;  i < nrInstances;  ++i) {
+        shutdownV8Instance(name, i);
+      }
+
+      delete[] _contexts[name];
+    }
+  }
 
   // delete GC thread after all action threads have been stopped
   delete _gcThread;
@@ -1038,23 +1106,86 @@ void ApplicationV8::stop () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief determine which of the free contexts should be picked for the GC
+////////////////////////////////////////////////////////////////////////////////
+
+ApplicationV8::V8Context* ApplicationV8::pickFreeContextForGc () {
+  static const string name = "STANDARD";
+  int const n = (int) _freeContexts[name].size();
+
+  if (n == 0) {
+    // this is easy...
+    return 0;
+  }
+
+  V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
+  TRI_ASSERT(gc != nullptr);
+
+  V8Context* context = nullptr;
+
+  // we got more than 1 context to clean up, pick the one with the "oldest" GC stamp
+  int pickedContextNr = -1; // index of context with lowest GC stamp, -1 means "none"
+
+  for (int i = 0; i < n; ++i) {
+    // check if there's actually anything to clean up in the context
+    if (_freeContexts[name][i]->_numExecutions == 0 && ! _freeContexts[name][i]->_hasDeadObjects) {
+      continue;
+    }
+
+    // compare last GC stamp
+    if (pickedContextNr == -1 ||
+        _freeContexts[name][i]->_lastGcStamp <= _freeContexts[name][pickedContextNr]->_lastGcStamp) {
+      pickedContextNr = i;
+    }
+  }
+  // we now have the context to clean up in pickedContextNr
+
+  if (pickedContextNr == -1) {
+    // no context found
+    return 0;
+  }
+
+  // this is the context to clean up
+  context = _freeContexts[name][pickedContextNr];
+  TRI_ASSERT(context != 0);
+
+  // now compare its last GC timestamp with the last global GC stamp
+  if (context->_lastGcStamp + _gcFrequency >= gc->getLastGcStamp()) {
+    // no need yet to clean up the context
+    return 0;
+  }
+
+  // we'll pop the context from the vector. the context might be at any position in the vector
+  // so we need to move the other elements around
+  if (n > 1) {
+    for (int i = pickedContextNr; i < n - 1; ++i) {
+      _freeContexts[name][i] = _freeContexts[name][i + 1];
+    }
+  }
+  _freeContexts[name].pop_back();
+
+  return context;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief prepares a V8 instance
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ApplicationV8::prepareV8Instance (const size_t i) {
+bool ApplicationV8::prepareV8Instance (const string& name, size_t i, bool useActions) {
+  CONDITION_LOCKER(guard, _contextCondition);
+
   vector<string> files;
 
   files.push_back("server/initialise.js");
 
-  LOG_TRACE("initialising V8 context #%d", (int) i);
-
-  V8Context* context = _contexts[i] = new V8Context();
+  V8Context* context = _contexts[name][i] = new V8Context();
 
   if (context == 0) {
-    LOG_FATAL_AND_EXIT("cannot initialize V8 engine");
+    LOG_FATAL_AND_EXIT("cannot initialize V8 context #%d", (int) i);
   }
 
   // enter a new isolate
+  context->_name = name;
   context->_id = i;
   context->_isolate = v8::Isolate::New();
   context->_locker = new v8::Locker(context->_isolate);
@@ -1073,9 +1204,10 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
   TRI_InitV8Queries(context->_context);
 
   TRI_InitV8Cluster(context->_context);
+  TRI_InitV8Dispatcher(context->_context, _vocbase, _scheduler, _dispatcher, this);
 
-  if (_useActions) {
-    TRI_InitV8Actions(context->_context, _vocbase, _scheduler, _dispatcher, this);
+  if (useActions) {
+    TRI_InitV8Actions(context->_context, _vocbase, this);
   }
 
   string modulesPath = _startupPath + TRI_DIR_SEPARATOR_STR + "server" + TRI_DIR_SEPARATOR_STR + "modules;" +
@@ -1097,12 +1229,12 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
     TRI_AddGlobalVariableVocbase(context->_context, "DEVELOPMENT_MODE", v8::Boolean::New(_developmentMode));
     TRI_AddGlobalVariableVocbase(context->_context, "FE_DEVELOPMENT_MODE", v8::Boolean::New(_frontendDevelopmentMode));
 
-    for (map<string, bool>::iterator i = _definedBooleans.begin();  i != _definedBooleans.end(); ++i) {
-      TRI_AddGlobalVariableVocbase(context->_context, i->first.c_str(), v8::Boolean::New(i->second));
+    for (auto j : _definedBooleans) {
+      context->_context->Global()->Set(TRI_V8_SYMBOL(j.first.c_str()), v8::Boolean::New(j.second), v8::ReadOnly);
     }
 
-    for (auto i : _doubleGlobals) {
-      context->_context->Global()->Set(TRI_V8_SYMBOL(i.first.c_str()), v8::Number::New(i.second), v8::ReadOnly);
+    for (auto j : _definedDoubles) {
+      context->_context->Global()->Set(TRI_V8_SYMBOL(j.first.c_str()), v8::Number::New(j.second), v8::ReadOnly);
     }
   }
 
@@ -1127,7 +1259,7 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
 
   LOG_TRACE("initialised V8 context #%d", (int) i);
 
-  _freeContexts.push_back(context);
+  _freeContexts[name].push_back(context);
 
   return true;
 }
@@ -1136,21 +1268,21 @@ bool ApplicationV8::prepareV8Instance (const size_t i) {
 /// @brief prepares the V8 server
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationV8::prepareV8Server (const size_t i) {
-  LOG_TRACE("initialising V8 server #%d", (int) i);
+void ApplicationV8::prepareV8Server (const size_t i, const string& startupFile) {
+  static const string name = "STANDARD";
 
   // enter context and isolate
-  V8Context* context = _contexts[i];
+  V8Context* context = _contexts[name][i];
 
   context->_locker = new v8::Locker(context->_isolate);
   context->_isolate->Enter();
   context->_context->Enter();
 
   // load server startup file
-  bool ok = _startupLoader.loadScript(context->_context, _startupFile);
+  bool ok = _startupLoader.loadScript(context->_context, startupFile);
 
   if (! ok) {
-    LOG_FATAL_AND_EXIT("cannot load JavaScript utilities from file '%s'", _startupFile.c_str());
+    LOG_FATAL_AND_EXIT("cannot load JavaScript utilities from file '%s'", startupFile.c_str());
   }
 
   // and return from the context
@@ -1166,10 +1298,10 @@ void ApplicationV8::prepareV8Server (const size_t i) {
 /// @brief shut downs a V8 instances
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationV8::shutdownV8Instance (size_t i) {
+void ApplicationV8::shutdownV8Instance (const string& name, size_t i) {
   LOG_TRACE("shutting down V8 context #%d", (int) i);
 
-  V8Context* context = _contexts[i];
+  V8Context* context = _contexts[name][i];
 
   context->_locker = new v8::Locker(context->_isolate);
   context->_isolate->Enter();

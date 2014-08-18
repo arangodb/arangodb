@@ -88,7 +88,7 @@ void ConsoleThread::run () {
   usleep(100000);
 
   // enter V8 context
-  _context = _applicationV8->enterContext(_vocbase, 0, true, true);
+  _context = _applicationV8->enterContext("STANDARD", _vocbase, 0, true, true);
 
   try {
     inner();

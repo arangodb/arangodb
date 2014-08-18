@@ -69,19 +69,7 @@ namespace triagens {
 /// @brief queue thread creator
 ////////////////////////////////////////////////////////////////////////////////
 
-        typedef DispatcherThread* (*newDispatcherThread_fptr)(DispatcherQueue*);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                             public static methods
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief default queue thread creator
-////////////////////////////////////////////////////////////////////////////////
-
-        static DispatcherThread* defaultDispatcherThread (DispatcherQueue*);
+        typedef DispatcherThread* (*newDispatcherThread_fptr)(DispatcherQueue*, void*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -117,18 +105,18 @@ namespace triagens {
 /// @brief adds a new queue
 ////////////////////////////////////////////////////////////////////////////////
 
-        void addQueue (std::string const&,
-                       size_t,
-                       size_t);
+        int addStandardQueue (size_t nrThreads,
+                               size_t maxSize);
 
 /////////////////////////////////////////////////////////////////////////
-/// @brief adds a queue which given dispatcher thread type
+/// @brief starts a new named queue
 /////////////////////////////////////////////////////////////////////////
 
-        void addQueue (std::string const&,
-                       newDispatcherThread_fptr,
-                       size_t,
-                       size_t);
+        int startNamedQueue (const std::string& name,
+                             newDispatcherThread_fptr,
+                             void* threadData,
+                             size_t nrThreads,
+                             size_t maxSize);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new job
@@ -139,7 +127,7 @@ namespace triagens {
 /// the response over the network to the caller.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool addJob (Job*);
+        int addJob (Job*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to cancel a job

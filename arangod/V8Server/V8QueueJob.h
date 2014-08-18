@@ -1,12 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dispatcher thread
+/// @brief V8 queue job
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
 /// Copyright 2014 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,42 +22,29 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Martin Schoenert
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_DISPATCHER_DISPATCHER_THREAD_H
-#define ARANGODB_DISPATCHER_DISPATCHER_THREAD_H 1
-
-#include "Basics/Thread.h"
+#ifndef ARANGODB_V8SERVER_V8_QUEUE_JOB_H
+#define ARANGODB_V8SERVER_V8_QUEUE_JOB_H 1
 
 #include "Dispatcher/Job.h"
+#include "BasicsC/json.h"
+
+struct TRI_vocbase_s;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
+// --SECTION--                                                       class V8Job
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace rest {
-    class DispatcherQueue;
-    class Scheduler;
+  namespace arango {
+    class ApplicationV8;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  class Dispatcher
-// -----------------------------------------------------------------------------
-
-/////////////////////////////////////////////////////////////////////////////
-/// @brief job dispatcher thread
-/////////////////////////////////////////////////////////////////////////////
-
-    class DispatcherThread : public basics::Thread {
-      friend class Dispatcher;
-      friend class DispatcherQueue;
-
+    class V8QueueJob : public rest::Job {
       private:
-        DispatcherThread (DispatcherThread const&);
-        DispatcherThread& operator= (DispatcherThread const&);
+        V8QueueJob (V8QueueJob const&) = delete;
+        V8QueueJob& operator= (V8QueueJob const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -67,40 +53,67 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a dispatcher thread
+/// @brief constructs a new V8 queue job
 ////////////////////////////////////////////////////////////////////////////////
 
-        DispatcherThread (DispatcherQueue*);
+        V8QueueJob (const string& queue,
+                    struct TRI_vocbase_s*,
+                    ApplicationV8*,
+                    const TRI_json_t*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroys a V8 job
+////////////////////////////////////////////////////////////////////////////////
+        
+        ~V8QueueJob ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    Thread methods
+// --SECTION--                                                       Job methods
 // -----------------------------------------------------------------------------
 
-      protected:
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void run ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
-
-      protected:
+        JobType type ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief report status
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void reportStatus ();
+        std::string const& queue ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief called after job finished
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void tick (bool idle);
+        status_t work ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+        bool cancel (bool running);
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+        void cleanup ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+        bool beginShutdown ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+        void handleError (basics::TriagensError const& ex);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -109,16 +122,34 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the dispatcher
+/// @brief queue name
 ////////////////////////////////////////////////////////////////////////////////
 
-        DispatcherQueue* _queue;
+        string _queue;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief current job type
+/// @brief vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
-        Job::JobType _jobType;
+        struct TRI_vocbase_s* _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief V8 dealer
+////////////////////////////////////////////////////////////////////////////////
+
+        ApplicationV8* _v8Dealer;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief paramaters
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_json_t* _parameters;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cancel flag
+////////////////////////////////////////////////////////////////////////////////
+
+        volatile sig_atomic_t _canceled;
     };
   }
 }

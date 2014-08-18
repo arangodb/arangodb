@@ -99,16 +99,8 @@ namespace triagens {
 /// @brief builds the dispatcher queue
 ////////////////////////////////////////////////////////////////////////////////
 
-        void buildStandardQueue (size_t,
-                                 size_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief builds the named dispatcher queue
-////////////////////////////////////////////////////////////////////////////////
-
-        void buildNamedQueue (string const&,
-                              size_t,
-                              size_t);
+        void buildStandardQueue (size_t nrThreads,
+                                 size_t maxSize);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        ApplicationFeature methods

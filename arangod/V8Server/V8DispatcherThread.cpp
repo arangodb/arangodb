@@ -1,12 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 action functions
+/// @brief dispatcher thread
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
 /// Copyright 2014 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,41 +23,35 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8SERVER_V8__ACTIONS_H
-#define ARANGODB_V8SERVER_V8__ACTIONS_H 1
+#include "V8DispatcherThread.h"
 
-#include "Basics/Common.h"
-
-#include "V8/v8-globals.h"
-
-#include "VocBase/vocbase.h"
+using namespace triagens::rest;
+using namespace triagens::arango;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-namespace triagens {
-  namespace arango {
-    class ApplicationV8;
-  }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a dispatcher thread
+////////////////////////////////////////////////////////////////////////////////
+
+V8DispatcherThread::V8DispatcherThread (rest::DispatcherQueue* queue, const char* data)
+  : DispatcherThread(queue) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  module functions
+// --SECTION--                                          DispatcherThread methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stores the V8 actions function inside the global variable
+/// @brief called after job finished
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Actions (v8::Handle<v8::Context> context,
-                        TRI_vocbase_t* vocbase,
-                        triagens::arango::ApplicationV8*);
-
-#endif
+void V8DispatcherThread::tick (bool idle) {
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

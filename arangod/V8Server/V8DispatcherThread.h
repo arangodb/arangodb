@@ -1,12 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 action functions
+/// @brief dispatcher thread
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
 /// Copyright 2014 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,39 +23,48 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8SERVER_V8__ACTIONS_H
-#define ARANGODB_V8SERVER_V8__ACTIONS_H 1
+#ifndef ARANGODB_DISPATCHER_V8_DISPATCHER_THREAD_H
+#define ARANGODB_DISPATCHER_V8_DISPATCHER_THREAD_H 1
 
-#include "Basics/Common.h"
-
-#include "V8/v8-globals.h"
-
-#include "VocBase/vocbase.h"
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
+#include "Dispatcher/DispatcherThread.h"
 
 namespace triagens {
   namespace arango {
-    class ApplicationV8;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          class V8DispatcherThread
+// -----------------------------------------------------------------------------
+
+    class V8DispatcherThread : public rest::DispatcherThread {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a dispatcher thread
+////////////////////////////////////////////////////////////////////////////////
+
+        V8DispatcherThread (rest::DispatcherQueue*, const char* data);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          DispatcherThread methods
+// -----------------------------------------------------------------------------
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief called after job finished
+////////////////////////////////////////////////////////////////////////////////
+
+        void tick (bool idle);
+    };
   }
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  module functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stores the V8 actions function inside the global variable
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitV8Actions (v8::Handle<v8::Context> context,
-                        TRI_vocbase_t* vocbase,
-                        triagens::arango::ApplicationV8*);
 
 #endif
 
