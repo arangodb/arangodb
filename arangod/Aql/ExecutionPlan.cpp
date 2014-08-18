@@ -829,6 +829,7 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
 
     std::unordered_set<Variable const*> _usedLater;
     std::unordered_set<Variable const*> _valid;
+    std::unordered_map<VariableId, ExecutionNode*> _varSetBy;
 
     VarUsageFinder () {
     };
@@ -851,6 +852,7 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
       std::vector<Variable const*> setHere = en->getVariablesSetHere();
       for (auto v : setHere) {
         _valid.insert(v);
+        _varSetBy.insert(std::make_pair(v->id, en));
       }
       en->setVarsValid(_valid);
       en->setVarUsageValid();
@@ -867,6 +869,7 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
 void ExecutionPlan::findVarUsage () {
   VarUsageFinder finder;
   root()->walk(&finder);
+  _varSetBy = finder._varSetBy;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

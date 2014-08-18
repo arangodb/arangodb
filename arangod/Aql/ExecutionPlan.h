@@ -97,6 +97,18 @@ namespace triagens {
           TRI_ASSERT(_root != nullptr);
           return _root->getCost();
         }
+       
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the node where variable with id <id> is introduced . . .
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionNode* getVarSetBy (VariableId id) const {
+          auto it = _varSetBy.find(id);
+          if( it == _varSetBy.end()){
+            return nullptr;
+          }
+          return (*it).second;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find nodes of a certain type
@@ -263,6 +275,12 @@ namespace triagens {
 
         ExecutionNode*               _root;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the node where a variable is introducted.
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_map<VariableId, ExecutionNode*> _varSetBy;
+        
     };
 
   }
