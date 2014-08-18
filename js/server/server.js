@@ -45,7 +45,7 @@
   var internal = require("internal");
   var db = internal.db;
 
-  // one the cluster the kickstarter will call boostrap-role.js
+  // in the cluster the kickstarter will call boostrap-role.js
   if (ArangoAgency.prefix() !== "") {
     return true;
   }
@@ -65,6 +65,11 @@
 
   // reload routing information
   internal.loadStartup("server/bootstrap/routing.js").startup();
+
+  // start the queue manager once
+  if (internal.enableStatistics && internal.threadNumber === 0) {
+    require('org/arangodb/foxx/queues/manager').run();
+  }
 
   return true;
 }());

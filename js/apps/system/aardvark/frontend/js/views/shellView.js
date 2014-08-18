@@ -27,6 +27,8 @@
         self.resize();
       });
 
+      this.executeJs("start_pretty_print()");
+
       return this;
     },
 

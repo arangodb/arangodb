@@ -1285,7 +1285,7 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
 ///    ],
 ///   "isNewlyCreated" : true
 /// }
-/// ```js
+/// ```
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////

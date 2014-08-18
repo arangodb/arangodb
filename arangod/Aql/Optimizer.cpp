@@ -41,6 +41,8 @@ using namespace triagens::aql;
 Optimizer::Optimizer () {
   // List all the rules in the system here:
   registerRule (relaxRule, 1000);
+  // registerRule (removeUnnecessaryCalc, 999);
+  // deactivated because a test crashes
 
   // Now sort them by pass:
   std::stable_sort(_rules.begin(), _rules.end());
@@ -64,10 +66,21 @@ int Optimizer::createPlans (ExecutionPlan* plan) {
   _plans.clear();
 
   for (int pass = 1; pass <= numberOfPasses; pass++) {
+    std::cout << "Entering pass " << pass << " of query optimization..." 
+              << std::endl;
+
     // This vector holds the plans we have created in this pass:
     PlanList newPlans;
+
+    // Find variable usage for all old plans now:
+    for (auto p : oldPlans.list) {
+      p->findVarUsage();
+    }
+
+    // For all rules:
     for (auto r : _rules) {
       PlanList nextOldPlans;
+      // For all old plans:
       while (oldPlans.size() > 0) {
         auto p = oldPlans.pop_front();
         try {

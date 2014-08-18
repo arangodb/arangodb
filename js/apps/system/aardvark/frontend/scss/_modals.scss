@@ -159,6 +159,10 @@
     width: 398px;
   }
 
+  .collectionTh {
+    height: 55px;
+  }
+
   .tab-content {
     min-height: 200px;
   }
@@ -167,7 +171,8 @@
     color: red;
     font-size: 9pt;
     margin-bottom: 5px;
-    margin-top: -5px;
+    margin-top: -9px;
+    position: absolute;
   }
 
 }

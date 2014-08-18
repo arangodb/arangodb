@@ -95,6 +95,7 @@
   * [Developing Applications](Foxx/DevelopingAnApplication.md)
   * [Dependency Injection](Foxx/FoxxInjection.md)
   * [Foxx Exports](Foxx/FoxxExports.md)
+  * [Foxx Job Queues](Foxx/FoxxQueues.md)
   * [Optional Functionality](Foxx/FoxxOptional.md)
 <!-- 16 -->
 * [Foxx Manager](FoxxManager/README.md)

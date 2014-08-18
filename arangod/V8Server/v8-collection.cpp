@@ -4238,9 +4238,10 @@ static v8::Handle<v8::Value> JS_DatafileScanVocbaseCol (v8::Arguments const& arg
   return scope.Close(result);
 }
 
-  // .............................................................................
-  // generate the TRI_vocbase_col_t template
-  // .............................................................................
+// .............................................................................
+// generate the TRI_vocbase_col_t template
+// .............................................................................
+
 void TRI_InitV8collection (v8::Handle<v8::Context> context,
                            TRI_server_t* server,
                            TRI_vocbase_t* vocbase,

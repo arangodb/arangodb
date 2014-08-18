@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global require, arangoHelper, _, $, window, arangoHelper, templateEngine */
+/*global require, arangoHelper, _, $, window, arangoHelper, templateEngine, Joi*/
 
 (function() {
   "use strict";
@@ -50,7 +50,6 @@
       "click #filterSend"          : "sendFilter",
       "click #addFilterItem"       : "addFilterItem",
       "click .removeFilterItem"    : "removeFilterItem",
-      "click #confirmCreateEdge"   : "addEdge",
       "click #documentsTableID tr" : "clicked",
       "click #deleteDoc"           : "remove",
       "click #addDocumentButton"   : "addDocument",
@@ -108,9 +107,6 @@
     },
 
     listenKey: function (e) {
-      if(e.keyCode === 13){
-        this.addEdge();
-      }
     },
 
     resetView: function () {
@@ -342,8 +338,56 @@
         // second parameter is "true" to disable caching of collection type
         doctype = arangoHelper.collectionApiType(collid, true);
       if (doctype === 'edge') {
-        $('#edgeCreateModal').modal('show');
-        arangoHelper.fixTooltips(".modalTooltips", "left");
+        //$('#edgeCreateModal').modal('show');
+        //arangoHelper.fixTooltips(".modalTooltips", "left");
+
+        var buttons = [], tableContent = [];
+
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'new-edge-from-attr',
+            '_from',
+            '',
+            "document _id: document handle of the linked vertex (incoming relation)",
+            undefined,
+            false,
+            [
+              {
+                rule: Joi.string().required(),
+                msg: "No _from attribute given."
+              }
+            ]
+          )
+        );
+
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'new-edge-to',
+            '_to',
+            '',
+            "document _id: document handle of the linked vertex (outgoing relation)",
+            undefined,
+            false,
+            [
+              {
+                rule: Joi.string().required(),
+                msg: "No _to attribute given."
+              }
+            ]
+          )
+        );
+
+        buttons.push(
+          window.modalView.createSuccessButton('Create', this.addEdge.bind(this))
+        );
+
+        window.modalView.show(
+          'modalTable.ejs',
+          'Create edge',
+          buttons,
+          tableContent
+        );
+
         return;
       }
 
@@ -359,20 +403,13 @@
 
     addEdge: function () {
       var collid  = window.location.hash.split("/")[1];
-      var from = $('#new-document-from').val();
-      var to = $('#new-document-to').val();
-      if (from === '') {
-        //Heiko: Form-Validator - from is missing
-        return;
-      }
-      if (to === '') {
-        //Heiko: Form-Validator - to is missing
-        return;
-      }
+      var from = $('.modal-body #new-edge-from-attr').last().val();
+      var to = $('.modal-body #new-edge-to').last().val();
       var result = this.documentStore.createTypeEdge(collid, from, to);
 
       if (result !== false) {
-        $('#edgeCreateModal').modal('hide');
+        //$('#edgeCreateModal').modal('hide');
+        window.modalView.hide();
         window.location.hash = "collection/"+result;
       }
       //Error

@@ -1487,7 +1487,8 @@ exports.appRoutes = function () {
 
   return arangodb.db._executeTransaction({
     collections: {
-      read: [ aal.name() ]
+      read: [ '_queues', '_jobs', aal.name() ],
+      write: [ '_queues', '_jobs' ]
     },
     params: {
       aal : aal

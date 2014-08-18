@@ -285,8 +285,17 @@
       var ind = buttons.indexOf(this.closeButton);
       buttons.splice(ind, 1);
 
+      var completeTableContent = tableContent;
+      try {
+        _.each(advancedContent.content, function(x) {
+          completeTableContent.push(x);
+        });
+      }
+      catch(ignore) {
+      }
+
       //handle select2
-      _.each(tableContent, function(r) {
+      _.each(completeTableContent, function(r) {
         if (r.type === self.tables.SELECT2) {
           $('#'+r.id).select2({
             tags: r.tags || [],
@@ -299,11 +308,11 @@
       });//handle select2
 
       self.testInput = (function(){
-        _.each(tableContent,function(r){
+        _.each(completeTableContent,function(r){
 
           if(r.validateInput) {
             //catch result of validation and act
-            $('#' + r.id).on('keyup', function(){
+            $('#' + r.id).on('keyup focusout', function(e){
 
               var validation = r.validateInput($('#' + r.id));
               var error = false, msg;
@@ -314,8 +323,14 @@
                   toCheck: validator.rule
                 });
 
+                var valueToCheck = $('#' + r.id).val();
+
+                if (valueToCheck === '' && e.type === "keyup") {
+                  return;
+                }
+
                 Joi.validate({
-                  toCheck: $('#' + r.id).val()
+                  toCheck: valueToCheck
                 },
                 schema,
                 function (err, value) {
@@ -331,13 +346,15 @@
               if(error === true){
                 // if validation throws an error
                 $('#' + r.id).addClass('invalid-input');
+                $('.modal-footer .button-success').prop('disabled', true);
+                $('.modal-footer .button-success').addClass('disabled');
 
                 if (errorElement) {
                   //error element available
                   $(errorElement).text(msg);
                 }
                 else {
-                  //render error element
+                  //error element not available
                   $('#' + r.id).after('<p class="errorMessage">' + msg+ '</p>');
                 }
 
@@ -345,6 +362,8 @@
               else {
                 //validation throws success
                 $('#' + r.id).removeClass('invalid-input');
+                $('.modal-footer .button-success').prop('disabled', false);
+                $('.modal-footer .button-success').removeClass('disabled');
                 if (errorElement) {
                   $(errorElement).remove();
                 }
