@@ -296,7 +296,7 @@ void IndexRangeNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
   json("database", Json(_vocbase->_name))
       ("collection", Json(_collection->name))
       ("outVariable", _outVariable->toJson())
-      ("index", _index->_index->json(_index->_index));
+      ("index", _index->index()->json(_index->index()));
   
   // And add it:
   int len = static_cast<int>(nodes.size());

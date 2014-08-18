@@ -658,7 +658,7 @@ namespace triagens {
                         Collection* collection,
                         Variable const* outVariable,
                         Index* index, 
-                        vector<RangeInfo> ranges)
+                        vector<RangeInfo>* ranges)
           : ExecutionNode(), 
             _vocbase(vocbase), 
             _collection(collection),
@@ -670,6 +670,10 @@ namespace triagens {
           TRI_ASSERT(_collection != nullptr);
           TRI_ASSERT(_outVariable != nullptr);
           TRI_ASSERT(_index != nullptr);
+        }
+
+        ~IndexRangeNode () {
+          delete _ranges;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -743,7 +747,7 @@ namespace triagens {
 /// @brief the range info
 ////////////////////////////////////////////////////////////////////////////////
         
-        vector<RangeInfo> _ranges;
+        vector<RangeInfo>* _ranges;
     };
 
 // -----------------------------------------------------------------------------
