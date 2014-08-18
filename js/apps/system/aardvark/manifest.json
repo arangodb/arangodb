@@ -57,6 +57,7 @@
         "frontend/js/templates/notificationView.ejs",
         "frontend/js/templates/queryView.ejs",
         "frontend/js/templates/shellView.ejs",
+        "frontend/js/templates/progressBase.ejs",
         "frontend/js/templates/statisticBarView.ejs",
         "frontend/js/templates/testView.ejs",
         "frontend/js/templates/userBarView.ejs",
@@ -162,6 +163,7 @@
         "frontend/js/views/testView.js",
         "frontend/js/views/userBarView.js",
         "frontend/js/views/userManagementView.js",
+        "frontend/js/views/progressView.js",
         "frontend/js/routers/router.js",
         "frontend/js/routers/versionCheck.js",
         "frontend/js/routers/startApp.js"

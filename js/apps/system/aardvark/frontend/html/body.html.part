@@ -23,6 +23,9 @@
   <div id="modalPlaceholder">
   </div>
 
+  <div id="progressPlaceholder" style="display:none">
+  </div>
+
   </div>
 
   <footer class="footer">
