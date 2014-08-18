@@ -49,7 +49,8 @@ namespace triagens {
 
       ModificationOptions ()
         : ignoreErrors(false),
-          waitForSync(false) {
+          waitForSync(false),
+          nullMeansRemove(false) {
       }
 
 // -----------------------------------------------------------------------------
@@ -58,6 +59,7 @@ namespace triagens {
 
       bool ignoreErrors;
       bool waitForSync;
+      bool nullMeansRemove;
 
     };
 

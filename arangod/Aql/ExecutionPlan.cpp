@@ -120,7 +120,6 @@ ModificationOptions ExecutionPlan::createOptions (AstNode const* node) {
         auto name = member->getStringValue();
         auto value = member->getMember(0);
 
-std::cout << "VALUE: " << value->typeString() << "\n";
         TRI_ASSERT(value->isConstant());
 
         if (strcmp(name, "waitForSync") == 0) {
@@ -128,6 +127,10 @@ std::cout << "VALUE: " << value->typeString() << "\n";
         }
         else if (strcmp(name, "ignoreErrors") == 0) {
           options.ignoreErrors = value->toBoolean();
+        }
+        else if (strcmp(name, "keepNull") == 0) {
+          // nullMeansRemove is the opposite of keepNull
+          options.nullMeansRemove = (! value->toBoolean());
         }
       }
     }
