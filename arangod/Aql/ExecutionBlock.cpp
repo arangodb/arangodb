@@ -1930,6 +1930,55 @@ AqlItemBlock* ModificationBlock::getSome (size_t atLeast,
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief resolve a collection name and return cid and document key
+////////////////////////////////////////////////////////////////////////////////
+  
+int ModificationBlock::resolve (char const* handle, 
+                                TRI_voc_cid_t& cid, 
+                                std::string& key) const {
+  char const* p = strchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR);
+  if (p == nullptr || *p == '\0') {
+    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+  }
+  
+  if (*handle >= '0' && *handle <= '9') {
+    cid = triagens::basics::StringUtils::uint64(handle, p - handle);
+  }
+  else {
+    std::string const name(handle, p - handle);
+    cid = _trx->resolver()->getCollectionIdCluster(name);
+  }
+  
+  if (cid == 0) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  key = std::string(p + 1);
+
+  return TRI_ERROR_NO_ERROR;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract a key from the AqlValue passed
+////////////////////////////////////////////////////////////////////////////////
+          
+int ModificationBlock::extractKey (AqlValue const& value,
+                                   TRI_document_collection_t const* document,
+                                   std::string& key) const {
+  Json member(value.extractArrayMember(_trx, document, TRI_VOC_ATTRIBUTE_KEY));
+
+  // TODO: allow _id, too
+          
+  TRI_json_t const* json = member.json();
+  if (TRI_IsStringJson(json)) {
+    key = std::string(json->_value._string.data, json->_value._string.length - 1);
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  return TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class RemoveBlock
 // -----------------------------------------------------------------------------
@@ -1974,17 +2023,7 @@ void RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
 
         if (a.isArray()) {
           // value is an array. now extract the _key attribute
-          Json member(a.extractArrayMember(_trx, document, "_key"));
-
-          // TODO: allow _id, too
-          
-          TRI_json_t const* json = member.json();
-          if (TRI_IsStringJson(json)) {
-            key = std::string(json->_value._string.data, json->_value._string.length - 1);
-          }
-          else {
-            errorCode = TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING;
-          }
+          errorCode = extractKey(a, document, key);
         }
         else if (a.isString()) {
           // value is a string
@@ -2046,30 +2085,6 @@ void InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
 
   bool const isEdgeCollection = _collection->isEdgeCollection();
 
-  auto resolve = [&](char const* handle, TRI_voc_cid_t& cid, std::string& key) -> int {
-    char const* p = strchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR);
-    if (p == nullptr || *p == '\0') {
-      return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
-    }
-  
-    if (*handle >= '0' && *handle <= '9') {
-      cid = triagens::basics::StringUtils::uint64(handle, p - handle);
-    }
-    else {
-      std::string const name(handle, p - handle);
-      cid = _trx->resolver()->getCollectionIdCluster(name);
-    }
-  
-    if (cid == 0) {
-      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-    }
-
-    key = std::string(p + 1);
-
-    return TRI_ERROR_NO_ERROR;
-  };
-
-
   if (ep->_outVariable == nullptr) {
     // don't return anything
          
@@ -2100,10 +2115,10 @@ void InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
           // value is an array
         
           if (isEdgeCollection) {
-            // array must have "_from" and "_to"
+            // array must have _from and _to attributes
             TRI_json_t const* json;
 
-            Json member(a.extractArrayMember(_trx, document, "_from"));
+            Json member(a.extractArrayMember(_trx, document, TRI_VOC_ATTRIBUTE_FROM));
             json = member.json();
 
             if (TRI_IsStringJson(json)) {
@@ -2114,7 +2129,7 @@ void InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
             }
          
             if (errorCode == TRI_ERROR_NO_ERROR) { 
-              Json member(a.extractArrayMember(_trx, document, "_to"));
+              Json member(a.extractArrayMember(_trx, document, TRI_VOC_ATTRIBUTE_TO));
               json = member.json();
               if (TRI_IsStringJson(json)) {
                 errorCode = resolve(json->_value._string.data, edge._toCid, to);
@@ -2202,17 +2217,7 @@ void UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
 
         if (a.isArray()) {
           // value is an array. now extract the _key attribute
-          Json member(a.extractArrayMember(_trx, document, "_key"));
-          
-          // TODO: allow _id, too
-          
-          TRI_json_t const* json = member.json();
-          if (TRI_IsStringJson(json)) {
-            key = std::string(json->_value._string.data, json->_value._string.length - 1);
-          }
-          else {
-            errorCode = TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING;
-          }
+          errorCode = extractKey(a, document, key);
         }
         else {
           errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
@@ -2280,20 +2285,11 @@ void ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
         AqlValue a = res->getValue(i, registerId);
 
         int errorCode = TRI_ERROR_NO_ERROR;
+        std::string key;
 
         if (a.isArray()) {
           // value is an array. now extract the _key attribute
-          Json member(a.extractArrayMember(_trx, document, "_key"));
-          
-          // TODO: allow _id, too
-          
-          TRI_json_t const* json = member.json();
-          if (TRI_IsStringJson(json)) {
-            key = std::string(json->_value._string.data, json->_value._string.length - 1);
-          }
-          else {
-            errorCode = TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING;
-          }
+          errorCode = extractKey(a, document, key);
         }
         else {
           errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
