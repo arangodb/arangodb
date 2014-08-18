@@ -1298,6 +1298,44 @@
       }
     });
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief setupQueues
+///
+/// set up the collection _queues
+////////////////////////////////////////////////////////////////////////////////
+
+    addTask({
+      name:        "setupQueues",
+      description: "setup _queues collection",
+
+      mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
+      database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
+
+      task: function () {
+        return createSystemCollection("_queues");
+      }
+    });
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief setupJobs
+///
+/// set up the collection _jobs
+////////////////////////////////////////////////////////////////////////////////
+
+    addTask({
+      name:        "setupJobs",
+      description: "setup _jobs collection",
+
+      mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
+      database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
+
+      task: function () {
+        return createSystemCollection("_jobs");
+      }
+    });
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------

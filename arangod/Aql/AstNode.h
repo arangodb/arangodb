@@ -238,7 +238,7 @@ namespace triagens {
 
         void addMember (AstNode* node) {
           if (node == nullptr) {
-            return;
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
           }
 
           int res = TRI_PushBackVectorPointer(&members, static_cast<void*>(node));

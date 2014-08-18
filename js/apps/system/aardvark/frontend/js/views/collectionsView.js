@@ -37,7 +37,7 @@
       }, this);
 
       //if type in collectionsDropdown2 is changed,
-      // the page will be rerendered, so check the toggel button
+      //the page will be rerendered, so check the toggel button
       if($('#collectionsDropdown2').css('display') === 'none') {
         $('#collectionsToggle').removeClass('activated');
 
@@ -303,6 +303,10 @@
             {
               rule: Joi.string().regex(/^[a-zA-Z]/),
               msg: "Collection name must always start with a letter."
+            },
+            {
+              rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
+              msg: 'Only Symbols "_" and "-" are allowed.'
             },
             {
               rule: Joi.string().required(),

@@ -359,8 +359,6 @@ void CalculationNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
     return;
   }
   
-  std::cout << "CANTHROW2" << _expression->canThrow() << std::endl;
-
   json("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE))
       ("outVariable", _outVariable->toJson())
       ("canThrow", Json(_expression->canThrow()));
@@ -563,8 +561,13 @@ void InsertNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
 
   // Now put info about vocbase and cid in there
   json("database", Json(_vocbase->_name))
-      ("collection", Json(_collname))
-      ("outVariable", _outVariable->toJson());
+      ("collection", Json(_collection->name))
+      ("inVariable", _inVariable->toJson());
+  
+  // output variable might be empty
+  if (_outVariable != nullptr) {
+    json("outVariable", _outVariable->toJson());
+  }
 
   // And add it:
   int len = static_cast<int>(nodes.size());

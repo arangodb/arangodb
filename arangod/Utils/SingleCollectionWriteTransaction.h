@@ -140,7 +140,7 @@ namespace triagens {
                               TRI_DOC_MARKER_KEY_DOCUMENT,
                               mptr,
                               json,
-                              0,
+                              nullptr,
                               forceSync);
         }
 

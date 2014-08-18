@@ -1,6 +1,6 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
 /*global require, exports, Backbone, EJS, $, setTimeout, localStorage, ace, Storage, window, _ */
-/*global arangoHelper, templateEngine, jQuery*/
+/*global arangoHelper, templateEngine, jQuery, Joi*/
 
 (function () {
   "use strict";
@@ -59,7 +59,12 @@
           undefined,
           undefined,
           false,
-          /[<>&'"]/
+          [
+            {
+              rule: Joi.string().required(),
+              msg: "No query name given."
+            }
+          ]
         )
       );
       buttons.push(
