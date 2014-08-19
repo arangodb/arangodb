@@ -83,7 +83,7 @@
           {shouldFetchUser: true}
         ),
         currentDB: this.currentDB,
-        notificationCollection: new window.NotificationCollection(),
+        notificationCollection: self.notificationList,
         userCollection: this.userCollection
       });
 
