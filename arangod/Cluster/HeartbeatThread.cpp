@@ -552,7 +552,7 @@ bool HeartbeatThread::handlePlanChangeDBServer (uint64_t currentPlanVersion,
 
   TRI_ASSERT(job != 0);
 
-  if (_dispatcher->dispatcher()->addJob(job)) {
+  if (_dispatcher->dispatcher()->addJob(job) == TRI_ERROR_NO_ERROR) {
     remotePlanVersion = currentPlanVersion;
 
     LOG_TRACE("scheduled plan update handler");

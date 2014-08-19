@@ -107,6 +107,22 @@ void ConditionLocker::signal () {
   _conditionVariable->signal();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unlocks the variable (handle with care, no exception allowed)
+////////////////////////////////////////////////////////////////////////////////
+
+void ConditionLocker::unlock () {
+  _conditionVariable->unlock();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief relock the variable after unlock
+////////////////////////////////////////////////////////////////////////////////
+
+void ConditionLocker::lock () {
+  _conditionVariable->lock();
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

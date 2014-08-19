@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 job
+/// @brief V8 queue job
 ///
 /// @file
 ///
@@ -26,7 +26,7 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "V8Job.h"
+#include "V8QueueJob.h"
 
 #include "BasicsC/json.h"
 #include "BasicsC/logging.h"
@@ -48,14 +48,14 @@ using namespace triagens::arango;
 /// @brief constructs a new V8 job
 ////////////////////////////////////////////////////////////////////////////////
 
-V8Job::V8Job (TRI_vocbase_t* vocbase,
-              ApplicationV8* v8Dealer,
-              std::string const& command,
-              TRI_json_t const* parameters)
-  : Job("V8 Job"),
+V8QueueJob::V8QueueJob (const string& queue,
+                        TRI_vocbase_t* vocbase,
+                        ApplicationV8* v8Dealer,
+                        TRI_json_t const* parameters)
+  : Job("V8 Queue Job"),
+    _queue(queue),
     _vocbase(vocbase),
     _v8Dealer(v8Dealer),
-    _command(command),
     _parameters(nullptr),
     _canceled(0) {
 
@@ -69,7 +69,7 @@ V8Job::V8Job (TRI_vocbase_t* vocbase,
 /// @brief destroys a V8 job
 ////////////////////////////////////////////////////////////////////////////////
 
-V8Job::~V8Job () {
+V8QueueJob::~V8QueueJob () {
   if (_parameters != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _parameters);
     _parameters = nullptr;
@@ -84,7 +84,7 @@ V8Job::~V8Job () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-Job::JobType V8Job::type () {
+Job::JobType V8QueueJob::type () {
   return READ_JOB;
 }
 
@@ -92,21 +92,20 @@ Job::JobType V8Job::type () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& V8Job::queue () {
-  static const string queue = "STANDARD";
-  return queue;
+string const& V8QueueJob::queue () {
+  return _queue;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-Job::status_t V8Job::work () {
+Job::status_t V8QueueJob::work () {
   if (_canceled) {
     return status_t(JOB_DONE);
   }
 
-  ApplicationV8::V8Context* context = _v8Dealer->enterContext("STANDARD", _vocbase, nullptr, true, false);
+  ApplicationV8::V8Context* context = _v8Dealer->enterContext(_queue, _vocbase, nullptr, true, false);
 
   // note: the context might be 0 in case of shut-down
   if (context == nullptr) {
@@ -119,21 +118,15 @@ Job::status_t V8Job::work () {
 
     // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
     v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
-    v8::Local<v8::Function> ctor = v8::Local<v8::Function>::Cast(current->Get(v8::String::New("Function")));
+    v8::Local<v8::Function> main = v8::Local<v8::Function>::Cast(current->Get(v8::String::New("MAIN")));
 
-    // Invoke Function constructor to create function with the given body and no arguments
-    v8::Handle<v8::Value> args[2] = { v8::String::New("params"), v8::String::New(_command.c_str(), (int) _command.size()) };
-    v8::Local<v8::Object> function = ctor->NewInstance(2, args);
-
-    v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
-
-    if (action.IsEmpty()) {
+    if (main.IsEmpty()) {
       _v8Dealer->exitContext(context);
-      // TODO: adjust exit code??
       return status_t(JOB_DONE);
     }
 
     v8::Handle<v8::Value> fArgs;
+
     if (_parameters != nullptr) {
       fArgs = TRI_ObjectJson(_parameters);
     }
@@ -143,7 +136,7 @@ Job::status_t V8Job::work () {
 
     // call the function
     v8::TryCatch tryCatch;
-    action->Call(current, 1, &fArgs);
+    main->Call(current, 1, &fArgs);
 
     if (tryCatch.HasCaught()) {
       if (tryCatch.CanContinue()) {
@@ -153,7 +146,7 @@ Job::status_t V8Job::work () {
         TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
 
         v8g->_canceled = true;
-        LOG_WARNING("caught non-catchable exception (aka termination) in periodic job");
+        LOG_WARNING("caught non-catchable exception (aka termination) in V8 queue job");
       }
     }
   }
@@ -167,7 +160,7 @@ Job::status_t V8Job::work () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool V8Job::cancel (bool running) {
+bool V8QueueJob::cancel (bool running) {
   if (running) {
     _canceled = 1;
   }
@@ -179,7 +172,7 @@ bool V8Job::cancel (bool running) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Job::cleanup () {
+void V8QueueJob::cleanup () {
   delete this;
 }
 
@@ -187,7 +180,7 @@ void V8Job::cleanup () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool V8Job::beginShutdown () {
+bool V8QueueJob::beginShutdown () {
   return true;
 }
 
@@ -195,7 +188,7 @@ bool V8Job::beginShutdown () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Job::handleError (TriagensError const& ex) {
+void V8QueueJob::handleError (TriagensError const& ex) {
 }
 
 // -----------------------------------------------------------------------------
