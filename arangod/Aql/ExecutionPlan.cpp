@@ -636,21 +636,38 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate (Ast const* ast,
   char const* collectionName = node->getMember(1)->getStringValue();
   auto collections = ast->query()->collections();
   auto collection = collections->get(collectionName);
-  auto expression = node->getMember(2);
-//  auto keyExpression = node->getMember(3);
+  auto docExpression = node->getMember(2);
+  auto keyExpression = node->getOptionalMember(3);
+  Variable const* keyVariable = nullptr;
   ExecutionNode* en = nullptr;
 
-  if (expression->type == NODE_TYPE_REFERENCE) {
-    // operand is already a variable
-    auto v = static_cast<Variable*>(expression->getData());
+  if (keyExpression != nullptr) {
+    if (keyExpression->type == NODE_TYPE_REFERENCE) {
+      // key operand is already a variable
+      auto v = static_cast<Variable*>(keyExpression->getData());
+      TRI_ASSERT(v != nullptr);
+      keyVariable = v;
+    }
+    else {
+      // key operand is some misc expression
+      auto calc = createTemporaryCalculation(ast, keyExpression);
+      calc->addDependency(previous);
+      previous = calc;
+      keyVariable = calc->outVariable();
+    }
+  }
+
+  if (docExpression->type == NODE_TYPE_REFERENCE) {
+    // document operand is already a variable
+    auto v = static_cast<Variable*>(docExpression->getData());
     TRI_ASSERT(v != nullptr);
-    en = addNode(new UpdateNode(ast->query()->vocbase(), collection, options, v, nullptr));
+    en = addNode(new UpdateNode(ast->query()->vocbase(), collection, options, v, keyVariable, nullptr));
   }
   else {
-    // operand is some misc expression
-    auto calc = createTemporaryCalculation(ast, expression);
+    // document operand is some misc expression
+    auto calc = createTemporaryCalculation(ast, docExpression);
     calc->addDependency(previous);
-    en = addNode(new UpdateNode(ast->query()->vocbase(), collection, options, calc->outVariable(), nullptr));
+    en = addNode(new UpdateNode(ast->query()->vocbase(), collection, options, calc->outVariable(), keyVariable, nullptr));
     previous = calc;
   }
 
@@ -671,21 +688,38 @@ ExecutionNode* ExecutionPlan::fromNodeReplace (Ast const* ast,
   char const* collectionName = node->getMember(1)->getStringValue();
   auto collections = ast->query()->collections();
   auto collection = collections->get(collectionName);
-  auto expression = node->getMember(2);
-//  auto keyExpression = node->getMember(3);
+  auto docExpression = node->getMember(2);
+  auto keyExpression = node->getOptionalMember(3);
+  Variable const* keyVariable = nullptr;
   ExecutionNode* en = nullptr;
   
-  if (expression->type == NODE_TYPE_REFERENCE) {
+  if (keyExpression != nullptr) {
+    if (keyExpression->type == NODE_TYPE_REFERENCE) {
+      // key operand is already a variable
+      auto v = static_cast<Variable*>(keyExpression->getData());
+      TRI_ASSERT(v != nullptr);
+      keyVariable = v;
+    }
+    else {
+      // key operand is some misc expression
+      auto calc = createTemporaryCalculation(ast, keyExpression);
+      calc->addDependency(previous);
+      previous = calc;
+      keyVariable = calc->outVariable();
+    }
+  }
+  
+  if (docExpression->type == NODE_TYPE_REFERENCE) {
     // operand is already a variable
-    auto v = static_cast<Variable*>(expression->getData());
+    auto v = static_cast<Variable*>(docExpression->getData());
     TRI_ASSERT(v != nullptr);
-    en = addNode(new ReplaceNode(ast->query()->vocbase(), collection, options, v, nullptr));
+    en = addNode(new ReplaceNode(ast->query()->vocbase(), collection, options, v, keyVariable, nullptr));
   }
   else {
     // operand is some misc expression
-    auto calc = createTemporaryCalculation(ast, expression);
+    auto calc = createTemporaryCalculation(ast, docExpression);
     calc->addDependency(previous);
-    en = addNode(new ReplaceNode(ast->query()->vocbase(), collection, options, calc->outVariable(), nullptr));
+    en = addNode(new ReplaceNode(ast->query()->vocbase(), collection, options, calc->outVariable(), keyVariable, nullptr));
     previous = calc;
   }
 
@@ -816,11 +850,9 @@ std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType (
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief determine and set _varsUsedLater in all nodes
+/// @brief helper struct for findVarUsage
 ////////////////////////////////////////////////////////////////////////////////
 
-// do not fully qualify classname here as this won't compile with g++
-// struct triagens::aql::VarUsageFinder : public WalkerWorker<ExecutionNode> {
 struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
 
     std::unordered_set<Variable const*> _usedLater;
@@ -828,16 +860,16 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
     std::unordered_map<VariableId, ExecutionNode*> _varSetBy;
 
     VarUsageFinder () {
-    };
+    }
 
     ~VarUsageFinder () {
-    };
+    }
 
     void before (ExecutionNode* en) {
       en->invalidateVarUsage();
       en->setVarsUsedLater(_usedLater);
       // Add variables used here to _usedLater:
-      std::vector<Variable const*> usedHere = en->getVariablesUsedHere();
+      auto&& usedHere = en->getVariablesUsedHere();
       for (auto v : usedHere) {
         _usedLater.insert(v);
       }
@@ -845,7 +877,7 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
 
     void after (ExecutionNode* en) {
       // Add variables set here to _valid:
-      std::vector<Variable const*> setHere = en->getVariablesSetHere();
+      auto&& setHere = en->getVariablesSetHere();
       for (auto v : setHere) {
         _valid.insert(v);
         _varSetBy.insert(std::make_pair(v->id, en));
@@ -858,9 +890,15 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
       VarUsageFinder subfinder;
       subfinder._valid = _valid;  // need a copy for the subquery!
       sub->walk(&subfinder);
+      
+      // we've fully processed the subquery
       return false;
     }
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine and set _varsUsedLater in all nodes
+////////////////////////////////////////////////////////////////////////////////
 
 void ExecutionPlan::findVarUsage () {
   VarUsageFinder finder;
@@ -869,7 +907,7 @@ void ExecutionPlan::findVarUsage () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removeNodes
+/// @brief helper struct for removeNodes
 ////////////////////////////////////////////////////////////////////////////////
 
 struct NodeRemover : public WalkerWorker<ExecutionNode> {
@@ -880,16 +918,17 @@ struct NodeRemover : public WalkerWorker<ExecutionNode> {
 
     NodeRemover (ExecutionPlan* plan,
                  std::unordered_set<ExecutionNode*>& toRemove) 
-      : _plan(plan), _toRemove(toRemove) {
+      : _plan(plan), 
+        _toRemove(toRemove) {
     }
 
     ~NodeRemover () {
-    };
+    }
 
     void before (ExecutionNode* en) {
       if (_toRemove.find(en) != _toRemove.end()) {
         // Remove this node:
-        if (parents.size() == 0) {
+        if (parents.empty()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
               "Cannot remove root node of plan.");
         }
@@ -913,9 +952,25 @@ struct NodeRemover : public WalkerWorker<ExecutionNode> {
     }
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removeNodes, note that this does not delete the removed
+/// nodes and that one cannot remove the root node of the plan.
+////////////////////////////////////////////////////////////////////////////////
+
 void ExecutionPlan::removeNodes (std::unordered_set<ExecutionNode*>& toRemove) {
   NodeRemover remover(this, toRemove);
   root()->walk(&remover);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removeNode, note that this does not delete the removed
+/// node and that one cannot remove the root node of the plan.
+////////////////////////////////////////////////////////////////////////////////
+
+void ExecutionPlan::removeNode (ExecutionNode* node) {
+  std::unordered_set<ExecutionNode*> toRemove;
+  toRemove.insert(node);
+  return removeNodes(toRemove);
 }
 
 ExecutionNode* ExecutionPlan::fromJson (Ast const* ast,
