@@ -42,7 +42,11 @@
 #include "Aql/Types.h"
 #include "Aql/WalkerWorker.h"
 
+#include "lib/Basics/json-utilities.h"
+
 using Json = triagens::basics::Json;
+
+
 
 namespace triagens {
   namespace aql {
@@ -643,16 +647,17 @@ namespace triagens {
       bool _include;
 
     };
+  
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief struct to keep range info 
 ////////////////////////////////////////////////////////////////////////////////
-        
+    
     struct RangeInfo{
         
-        RangeInfo ( std::string name, RangeInfoBound const* low, 
+        RangeInfo ( RangeInfoBound const* low, 
                     RangeInfoBound const* high )
-          : _name(name), _low(low), _high(high) {}
+          : _low(low), _high(high) {}
         
         RangeInfo( const RangeInfo& copy ) = delete;
         RangeInfo& operator= ( RangeInfo const& copy ) = delete;
@@ -669,21 +674,15 @@ namespace triagens {
         Json toJson () {
           Json item(basics::Json::Array);
           if(_low != nullptr && _high != nullptr){
-            item("name", Json(_name))
-                ("low", _low->toJson())
+            item("low", _low->toJson())
                 ("high", _high->toJson());
           }
           else if(_low != nullptr){
-            item("name", Json(_name))
-                ("low", _low->toJson());
+            item("low", _low->toJson());
           }
           else if(_high != nullptr){
-            item("name", Json(_name))
-                ("high", _high->toJson());
+            item("high", _high->toJson());
           }
-          else {
-            item("name", Json(_name));
-          } 
           return item;
         }
         
@@ -691,10 +690,105 @@ namespace triagens {
           return this->toJson().toString();
         }
 
-        std::string _name;
         RangeInfoBound const* _low;
         RangeInfoBound const* _high;
 
+    };
+
+// 3-way comparison: a return of -1 indicates that left is
+// tighter than right, 0 that they are equal, 1 that right is tighter than
+// left. For example, (x<1) is tighter than (x<=1) and (x>1) is tighter
+// than (x>=1) . . .
+static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound const* right) {
+  int cmp = TRI_CompareValuesJson(left->_bound.json(), right->_bound.json());
+  if (cmp == 0 && (left->_include != right->_include)) {
+    cmp = (left->_include?-1:1);
+  }
+  return cmp;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class to keep a vector of RangeInfos . . .
+////////////////////////////////////////////////////////////////////////////////
+    
+    class RangesInfo{
+        
+      public:
+        
+        RangesInfo( const RangesInfo& copy ) = delete;
+        RangesInfo& operator= ( RangesInfo const& copy ) = delete;
+        
+        RangesInfo () : _ranges(){}
+
+        ~RangesInfo(){}
+
+        
+        RangeInfo* find(std::string name) {
+          auto it = _ranges.find(name);
+          if (it == _ranges.end()) {
+            return nullptr;
+          }
+          return (*it).second;
+        }
+
+        /*void insert (std::string name, RangeInfo* range) {
+          if( find(name) == nullptr ){
+            _ranges.insert(make_pair(name, range));
+          }
+        }*/
+
+        void insert (std::string name, RangeInfoBound* low, RangeInfoBound* high){ 
+          auto oldRange = find(name);
+          auto newRange = new RangeInfo(low, high);
+          int cmp;
+
+          if( oldRange == nullptr ){
+          // TODO add exception . . .
+            _ranges.insert(make_pair(name, newRange));
+            return;
+          }
+          
+          if(CompareRangeInfoBound(newRange->_low, oldRange->_low) == 1){
+            oldRange->_low = newRange->_low;
+          }
+
+          if(CompareRangeInfoBound(newRange->_high, oldRange->_high) == -1){
+            oldRange->_high = newRange->_high;
+          }
+          
+          // check the new range bounds are valid
+          cmp = TRI_CompareValuesJson(oldRange->_low->_bound.json(), 
+                  oldRange->_high->_bound.json());
+          if (cmp == 1 || (cmp == 0 && 
+                !(oldRange->_low->_include == true && oldRange->_high->_include == true ))){
+            // range invalid
+            cout << "INVALID RANGE\n";
+            // TODO fill this in . . .
+          }
+          
+        }
+        
+        size_t size () {
+          return _ranges.size();
+        }
+
+        Json toJson () {
+          Json list(Json::List);
+          for (auto x : _ranges) {
+            Json item(Json::Array);
+            item("name", Json(x.first))
+            ("range info", x.second->toJson());
+            list(item);
+          }
+          return list;
+        }
+        
+        std::string toString() {
+          return this->toJson().toString();
+        }
+
+      private: 
+        std::unordered_map<std::string, RangeInfo*> _ranges; 
     };
 
 ////////////////////////////////////////////////////////////////////////////////

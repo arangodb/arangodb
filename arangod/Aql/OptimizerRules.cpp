@@ -92,7 +92,7 @@ int triagens::aql::removeUnnecessaryCalc (Optimizer* opt,
 ////////////////////////////////////////////////////////////////////////////////
 
 class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
-  std::vector<RangeInfo*> _ranges;
+  RangesInfo _ranges; 
   ExecutionPlan* _plan;
   Variable const* _var;
 
@@ -153,12 +153,12 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
         if(val != nullptr){
           buildRangeInfo(nextNode, name);
           if(!name.empty()){
-            _ranges.push_back(new RangeInfo(name, new RangeInfoBound(val, true), 
-            new RangeInfoBound(val, true)));
+            _ranges.insert(name, new RangeInfoBound(val, true), 
+              new RangeInfoBound(val, true));
           }
         }
 
-        std::cout << _ranges[0]->toString() << "\n";
+        std::cout << _ranges.toString() << "\n";
       }
 
       if(node->type == NODE_TYPE_OPERATOR_BINARY_LT || 
@@ -175,9 +175,9 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
         RangeInfoBound* high = nullptr;
         AstNode *nextNode;
 
-        if(rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && lhs->type == NODE_TYPE_VALUE){
+        if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && lhs->type == NODE_TYPE_VALUE) {
           if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
-           node->type == NODE_TYPE_OPERATOR_BINARY_GT){
+           node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
             high = new RangeInfoBound(lhs, include);
             low = nullptr;
           } else {
@@ -186,9 +186,9 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
           }
           nextNode = rhs;
         }
-        else if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->type == NODE_TYPE_VALUE){
+        else if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->type == NODE_TYPE_VALUE) {
           if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
-           node->type == NODE_TYPE_OPERATOR_BINARY_GT){
+           node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
             low = new RangeInfoBound(rhs, include);
             high = nullptr;
           } else {
@@ -202,16 +202,24 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
           high = nullptr;
         }
 
-        if(low != nullptr || high !=nullptr){
+        if(low != nullptr || high != nullptr){
           buildRangeInfo(nextNode, name);
           if(!name.empty()){
-            _ranges.push_back(new RangeInfo(name, low, high));
+            _ranges.insert(name, low, high);
           }
         }
-        std::cout << _ranges[0]->toString() << "\n";
+        std::cout << _ranges.toString() << "\n";
+      }
+
+      if(node->type == NODE_TYPE_OPERATOR_BINARY_AND){
+        buildRangeInfo(node->getMember(0), name);
+        std::cout << _ranges.toString() << "\n";
+        buildRangeInfo(node->getMember(1), name);
+        std::cout << _ranges.toString() << "\n";
       }
     }
-  };
+
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief relaxRule, do not do anything
