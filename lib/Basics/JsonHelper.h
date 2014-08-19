@@ -698,7 +698,7 @@ namespace triagens {
 /// *this.
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json get (char const* name) {
+        Json get (char const* name) const {
           if (! TRI_IsArrayJson(_json)) {
             throw JsonException("Json is no array");
           }
