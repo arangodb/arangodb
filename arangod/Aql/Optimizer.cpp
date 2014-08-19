@@ -41,6 +41,9 @@ using namespace triagens::aql;
 Optimizer::Optimizer () {
   // List all the rules in the system here:
 
+  // try to find a filter after an enumerate collection and find an index . . . 
+  registerRule (useIndexRange, 999);
+
   // remove filters from the query that are not necessary at all
   // rule should be executed relatively early because it enables removal
   // of then-unused filter variables

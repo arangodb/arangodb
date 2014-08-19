@@ -43,6 +43,12 @@
 #include "Aql/WalkerWorker.h"
 #include "Aql/Query.h"
 
+#include "lib/Basics/json-utilities.h"
+
+using Json = triagens::basics::Json;
+
+
+
 namespace triagens {
   namespace aql {
 
@@ -121,7 +127,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destructor, free dependencies
+/// @brief destructor, free dependencies;
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ~ExecutionNode () { 
@@ -662,48 +668,203 @@ namespace triagens {
 // --SECTION--                                              class IndexRangeNode
 // -----------------------------------------------------------------------------
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief struct to keep an upper or lower bound for the range info. Use
+/// nullptr instead if you want to have no bound.
+////////////////////////////////////////////////////////////////////////////////
+
+    struct RangeInfoBound{
+
+      RangeInfoBound(AstNode const* bound, bool include) : _include(include) {
+        _bound = Json(TRI_UNKNOWN_MEM_ZONE, bound->toJson(TRI_UNKNOWN_MEM_ZONE));
+      }
+      
+      ~RangeInfoBound(){}
+      
+      RangeInfoBound ( RangeInfoBound const& copy ) = delete;
+      RangeInfoBound& operator= ( RangeInfoBound const& copy ) = delete;
+
+      Json toJson () const {
+        Json item(basics::Json::Array);
+          item("bound", Json(TRI_UNKNOWN_MEM_ZONE, 
+                TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, _bound.json())))
+              ("include", Json(_include));
+        return item;
+      }
+
+      Json _bound;
+      bool _include;
+
+    };
+  
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief struct to keep range info 
+////////////////////////////////////////////////////////////////////////////////
+    
+    struct RangeInfo{
+        
+        RangeInfo ( RangeInfoBound const* low, 
+                    RangeInfoBound const* high )
+          : _low(low), _high(high), _valid(true) {}
+        
+        RangeInfo( const RangeInfo& copy ) = delete;
+        RangeInfo& operator= ( RangeInfo const& copy ) = delete;
+
+        ~RangeInfo(){
+          if(_low != nullptr){
+            delete _low;
+          }
+          if(_high != nullptr){
+            delete _high;
+          }
+        }
+
+        Json toJson () {
+          Json item(basics::Json::Array);
+          if(_low != nullptr && _high != nullptr){
+            item("low", _low->toJson())
+                ("high", _high->toJson())
+                ("valid", Json(_valid));
+          }
+          else if(_low != nullptr){
+            item("low", _low->toJson())
+                ("valid", Json(_valid));
+          }
+          else if(_high != nullptr){
+            item("high", _high->toJson())
+                ("valid", Json(_valid));
+          }
+          return item;
+        }
+        
+        std::string toString() {
+          return this->toJson().toString();
+        }
+
+        RangeInfoBound const* _low;
+        RangeInfoBound const* _high;
+        bool _valid;
+
+    };
+
+// 3-way comparison: a return of -1 indicates that left is
+// tighter than right, 0 that they are equal, 1 that right is tighter than
+// left. For example, (x<1) is tighter than (x<=1) and (x>1) is tighter
+// than (x>=1) . . .
+static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound const* right) {
+  if (left == nullptr) {
+    return (right == nullptr ? 0 : 1);
+  } 
+  if (right == nullptr) {
+    return -1;
+  }
+
+  int cmp = TRI_CompareValuesJson(left->_bound.json(), right->_bound.json());
+  if (cmp == 0 && (left->_include != right->_include)) {
+    cmp = (left->_include?-1:1);
+  }
+  return cmp;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class to keep a vector of RangeInfos . . .
+////////////////////////////////////////////////////////////////////////////////
+    
+    class RangesInfo{
+        
+      public:
+        
+        RangesInfo( const RangesInfo& copy ) = delete;
+        RangesInfo& operator= ( RangesInfo const& copy ) = delete;
+        
+        RangesInfo () : _ranges(){}
+
+        ~RangesInfo(){}
+        
+        RangeInfo* find(std::string name) const {
+          auto it = _ranges.find(name);
+          if (it == _ranges.end()) {
+            return nullptr;
+          }
+          return (*it).second;
+        }
+
+        /*void insert (std::string name, RangeInfo* range) {
+          if( find(name) == nullptr ){
+            _ranges.insert(make_pair(name, range));
+          }
+        }*/
+
+        void insert (std::string name, RangeInfoBound* low, RangeInfoBound* high){ 
+          auto oldRange = find(name);
+          auto newRange = new RangeInfo(low, high);
+          int cmp;
+        
+          if( oldRange == nullptr ){
+            // TODO add exception . . .
+            _ranges.insert(make_pair(name, newRange));
+            return;
+          }
+
+          if (!oldRange->_valid) { // intersection of the empty set with any set is empty!
+            return;
+          }
+          
+          if(CompareRangeInfoBound(newRange->_low, oldRange->_high) == -1){
+            oldRange->_low = newRange->_low;
+          }
+          
+          if(CompareRangeInfoBound(newRange->_high, oldRange->_high) == -1){
+            oldRange->_high = newRange->_high;
+          }
+          
+          // check the new range bounds are valid
+          if( oldRange->_low != nullptr && oldRange->_high != nullptr){
+            cmp = TRI_CompareValuesJson(oldRange->_low->_bound.json(), 
+                    oldRange->_high->_bound.json());
+            if (cmp == 1 || (cmp == 0 && 
+                  !(oldRange->_low->_include == true && oldRange->_high->_include == true ))){
+              // range invalid
+              oldRange->_valid = false;
+            }
+          }
+          
+        }
+        
+        size_t size () const {
+          return _ranges.size();
+        }
+
+        Json toJson () const {
+          Json list(Json::List);
+          for (auto x : _ranges) {
+            Json item(Json::Array);
+            item("name", Json(x.first))
+            ("range info", x.second->toJson());
+            list(item);
+          }
+          return list;
+        }
+        
+        std::string toString() const {
+          return this->toJson().toString();
+        }
+
+      private: 
+        std::unordered_map<std::string, RangeInfo*> _ranges; 
+    };
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class IndexRangeNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class IndexRangeNode : public ExecutionNode {
+    class IndexRangeNode: public ExecutionNode {
       
       friend class ExecutionBlock;
       friend class IndexRangeBlock;
   
-////////////////////////////////////////////////////////////////////////////////
-/// @brief struct to keep range info
-////////////////////////////////////////////////////////////////////////////////
-        
-      struct RangeInfo{
-          
-          RangeInfo ( std::string name, 
-                      basics::Json const& low, 
-                      bool lowOpen, 
-                      basics::Json const& high, 
-                      bool highOpen ) 
-            : _name(name), 
-              _low(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, low.json())), 
-              _lowOpen(lowOpen), 
-              _high(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, high.json())), 
-              _highOpen(highOpen){}
-          
-          RangeInfo ( const RangeInfo& copy ) :
-             _name(copy._name), 
-            _low(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, copy._low.json())), 
-            _lowOpen(copy._lowOpen), 
-            _high(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, copy._high.json())), 
-            _highOpen(copy._highOpen){};
-          
-          ~RangeInfo(){}
-          
-          std::string _name;
-          basics::Json _low;
-          bool _lowOpen;
-          basics::Json _high;
-          bool _highOpen;
-
-      };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor with a vocbase and a collection name
@@ -716,14 +877,13 @@ namespace triagens {
                         Collection* collection,
                         Variable const* outVariable,
                         Index* index, 
-                        vector<RangeInfo>* ranges)
+                        vector<RangeInfo*>* ranges)
           : ExecutionNode(id), 
             _vocbase(vocbase), 
             _collection(collection),
             _outVariable(outVariable),
             _index(index),
-            _ranges(ranges)
-        {
+            _ranges(ranges) {
           TRI_ASSERT(_vocbase != nullptr);
           TRI_ASSERT(_collection != nullptr);
           TRI_ASSERT(_outVariable != nullptr);
@@ -814,7 +974,7 @@ namespace triagens {
 /// @brief the range info
 ////////////////////////////////////////////////////////////////////////////////
         
-        vector<RangeInfo>* _ranges;
+        std::vector<RangeInfo*>* _ranges;
     };
 
 // -----------------------------------------------------------------------------

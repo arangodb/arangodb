@@ -43,7 +43,7 @@ namespace triagens {
 
     class V8Executor;
     class Expression;
-    class Variable;
+    struct Variable;
     struct AstNode;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types

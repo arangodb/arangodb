@@ -26,9 +26,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/OptimizerRules.h"
+#include "Aql/ExecutionNode.h"
+#include "Aql/Indexes.h"
 #include "Aql/Variable.h"
 
 using namespace triagens::aql;
+using Json = triagens::basics::Json;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           rules for the optimizer
@@ -263,6 +266,162 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
   return TRI_ERROR_NO_ERROR;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find nodes of a certain type
+////////////////////////////////////////////////////////////////////////////////
+
+class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
+  RangesInfo* _ranges; 
+  ExecutionPlan* _plan;
+  Variable const* _var;
+
+  public:
+    CalculationNodeFinder (ExecutionPlan* plan, Variable const * var) 
+      : _plan(plan), _var(var){
+        _ranges = new RangesInfo();
+    };
+
+    void before (ExecutionNode* en) {
+      if (en->getType() == triagens::aql::ExecutionNode::CALCULATION) {
+        auto outvar = en->getVariablesSetHere();
+        TRI_ASSERT(outvar.size() == 1);
+        if(outvar[0]->id == _var->id){
+          auto node = static_cast<CalculationNode*>(en);
+          std::string name;
+          buildRangeInfo(node->expression()->node(), name);
+        }
+      }
+    }
+
+    void buildRangeInfo (AstNode const* node, std::string& name){
+      if(node->type == NODE_TYPE_REFERENCE){
+        auto var = static_cast<Variable*>(node->getData());
+        auto setter = _plan->getVarSetBy(var->id);
+        if( setter != nullptr && 
+            setter->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION){
+          name = var->name;
+        }
+        return;
+      }
+      
+      if(node->type == NODE_TYPE_ATTRIBUTE_ACCESS){
+        char const* attributeName = node->getStringValue();
+        buildRangeInfo(node->getMember(0), name);
+        if(!name.empty()){
+          name.push_back('.');
+          name.append(attributeName);
+        }
+      }
+      
+      if(node->type == NODE_TYPE_OPERATOR_BINARY_EQ){
+        auto lhs = node->getMember(0);
+        auto rhs = node->getMember(1);
+        AstNode const* val;
+        AstNode const* nextNode;
+        if(rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && lhs->type == NODE_TYPE_VALUE){
+          val = lhs;
+          nextNode = rhs;
+        }
+        else if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->type == NODE_TYPE_VALUE){
+          val = rhs;
+          nextNode = lhs;
+        }
+        else {
+          val = nullptr;
+        }
+        
+        if(val != nullptr){
+          buildRangeInfo(nextNode, name);
+          if(!name.empty()){
+            _ranges->insert(name, new RangeInfoBound(val, true), 
+              new RangeInfoBound(val, true));
+          }
+        }
+
+        std::cout << _ranges->toString() << "\n";
+      }
+
+      if(node->type == NODE_TYPE_OPERATOR_BINARY_LT || 
+         node->type == NODE_TYPE_OPERATOR_BINARY_GT ||
+         node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
+         node->type == NODE_TYPE_OPERATOR_BINARY_GE){
+        
+        bool include = (node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
+         node->type == NODE_TYPE_OPERATOR_BINARY_GE);
+        
+        auto lhs = node->getMember(0);
+        auto rhs = node->getMember(1);
+        RangeInfoBound* low = nullptr;
+        RangeInfoBound* high = nullptr;
+        AstNode *nextNode;
+
+        if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && lhs->type == NODE_TYPE_VALUE) {
+          if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
+           node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
+            high = new RangeInfoBound(lhs, include);
+            low = nullptr;
+          } else {
+            low = new RangeInfoBound(lhs, include);
+            high =nullptr;
+          }
+          nextNode = rhs;
+        }
+        else if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->type == NODE_TYPE_VALUE) {
+          if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
+           node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
+            low = new RangeInfoBound(rhs, include);
+            high = nullptr;
+          } else {
+            high = new RangeInfoBound(rhs, include);
+            low = nullptr;
+          }
+          nextNode = lhs;
+        }
+        else {
+          low = nullptr;
+          high = nullptr;
+        }
+
+        if(low != nullptr || high != nullptr){
+          buildRangeInfo(nextNode, name);
+          if(!name.empty()){
+            _ranges->insert(name, low, high);
+          }
+        }
+        std::cout << _ranges->toString() << "\n";
+      }
+      
+      if(node->type == NODE_TYPE_OPERATOR_BINARY_AND){
+        buildRangeInfo(node->getMember(0), name);
+        buildRangeInfo(node->getMember(1), name);
+        std::cout << _ranges->toString() << "\n";
+      }
+    }
+
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief relaxRule, do not do anything
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::useIndexRange (Optimizer* opt, 
+                                  ExecutionPlan* plan, 
+                                  Optimizer::PlanList& out,
+                                  bool& keep) {
+  
+  std::vector<ExecutionNode*> nodes
+    = plan->findNodesOfType(triagens::aql::ExecutionNode::FILTER);
+ 
+  for (auto n : nodes) {
+    auto nn = static_cast<FilterNode*>(n);
+    auto invars = nn->getVariablesUsedHere();
+    TRI_ASSERT(invars.size() == 1);
+    CalculationNodeFinder finder(plan, invars[0]);
+    nn->walk(&finder);
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
 
 // Local Variables:
 // mode: outline-minor
