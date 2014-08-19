@@ -10,6 +10,9 @@
     idPrefix : "documents",
 
     addDocumentSwitch: true,
+    activeFilter: false,
+    lastCollectionName: undefined,
+    restoredFilters: [],
 
     allowUpload: false,
 
@@ -19,18 +22,20 @@
     },
 
     initialize : function () {
-        this.documentStore = this.options.documentStore;
-        this.collectionsStore = this.options.collectionsStore;
+      this.documentStore = this.options.documentStore;
+      this.collectionsStore = this.options.collectionsStore;
     },
 
-
     setCollectionId : function (colid, pageid) {
-        this.collection.setCollection(colid);
-        var type = arangoHelper.collectionApiType(colid);
-        this.pageid = pageid;
-        this.type = type;
-        this.collection.getDocuments(this.getDocsCallback.bind(this));
-        this.collectionModel = this.collectionsStore.get(colid);
+      this.collection.setCollection(colid);
+      var type = arangoHelper.collectionApiType(colid);
+      this.pageid = pageid;
+      this.type = type;
+
+      this.checkCollectionState();
+
+      this.collection.getDocuments(this.getDocsCallback.bind(this));
+      this.collectionModel = this.collectionsStore.get(colid);
     },
 
     alreadyClicked: false,
@@ -205,6 +210,7 @@
       $('#indexCollection').removeClass('activated');
       $('#importCollection').removeClass('activated');
       $('#filterCollection').toggleClass('activated');
+      this.activeFilter = true;
       $('#filterHeader').slideToggle(200);
       $('#importHeader').hide();
       $('#indexHeader').hide();
@@ -267,17 +273,44 @@
     },
 
     sendFilter : function () {
-      var filters = this.getFilterContent();
+      this.restoredFilters = this.getFilterContent();
       var self = this;
       this.collection.resetFilter();
       this.addDocumentSwitch = false;
-      _.each(filters, function (f) {
+      _.each(this.restoredFilters, function (f) {
+        if (f.operator !== undefined) {
           self.collection.addFilter(f.attribute, f.operator, f.value);
+        }
       });
       this.clearTable();
       this.collection.setToFirst();
 
       this.collection.getDocuments(this.getDocsCallback.bind(this));
+    },
+
+    restoreFilter: function () {
+      var self = this, counter = 0;
+
+      _.each(this.restoredFilters, function (f) {
+        //change html here and restore filters
+        if (counter !== 0) {
+          self.addFilterItem();
+        }
+
+        if (counter === 1) {
+          counter = 2;
+        }
+
+        if (f.operator !== undefined) {
+          $('#attribute_name' + counter).val(f.attribute);
+          $('#operator' + counter).val(f.operator);
+          $('#attribute_value' + counter).val(f.value);
+        }
+        counter++;
+
+        //add those filters also to the collection
+        self.collection.addFilter(f.attribute, f.operator, f.value);
+      });
     },
 
     addFilterItem : function () {
@@ -318,6 +351,7 @@
       var filterId = button.id.replace(/^removeFilter/, '');
       // remove the filter from the list
       delete this.filters[filterId];
+      delete this.restoredFilters[filterId];
 
       // remove the line from the DOM
       $(button.parentElement).remove();
@@ -575,16 +609,38 @@
       }
     },
 
+    checkCollectionState: function() {
+      if (this.lastCollectionName === this.collectionName) {
+        if (this.activeFilter) {
+          this.filterCollection();
+          this.restoreFilter();
+        }
+      }
+      else {
+        if (this.lastCollectionName !== undefined) {
+          this.collection.resetFilter();
+          this.restoredFilters = [];
+          this.activeFilter = false;
+        }
+      }
+    },
 
     render: function() {
       this.collectionContext = this.collectionsStore.getPosition(
-          this.collection.collectionID
+        this.collection.collectionID
       );
 
       $(this.el).html(this.template.render({}));
+
       this.getIndex();
       this.initTable();
       this.breadcrumb();
+
+      this.checkCollectionState();
+
+      //set last active collection name
+      this.lastCollectionName = this.collectionName;
+
       if (this.collectionContext.prev === null) {
         $('#collectionPrev').parent().addClass('disabledPag');
       }
