@@ -446,13 +446,7 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
   Json ranges(Json::List);
 
   for (auto x : *_ranges) {
-    Json item(Json::Array);
-    item("name", Json(x._name))
-        ("low", x._low)
-        ("lowOpen", Json(x._lowOpen))
-        ("high", x._high)
-        ("highOpen", Json(x._highOpen));
-    ranges(item);
+    ranges(x->toJson());
   }
 
   // Now put info about vocbase and cid in there
