@@ -175,7 +175,7 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
       }
 
       default: {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "node type not handled");
       }
     }
 

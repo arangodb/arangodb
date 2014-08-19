@@ -181,6 +181,14 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief remove all dependencies for the given node
+////////////////////////////////////////////////////////////////////////////////
+
+        void removeDependencies () {
+          _dependencies.clear();
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief clone execution Node recursively, this makes the class abstract
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1076,6 +1084,12 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual std::vector<Variable const*> getVariablesUsedHere ();
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesSetHere
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1795,13 +1809,16 @@ namespace triagens {
         UpdateNode (TRI_vocbase_t* vocbase, 
                     Collection* collection,
                     ModificationOptions const& options,
-                    Variable const* inVariable,
+                    Variable const* inDocVariable,
+                    Variable const* inKeyVariable,
                     Variable const* outVariable)
           : ModificationNode(vocbase, collection, options),
-            _inVariable(inVariable),
+            _inDocVariable(inDocVariable),
+            _inKeyVariable(inKeyVariable),
             _outVariable(outVariable) {
 
-          TRI_ASSERT(_inVariable != nullptr);
+          TRI_ASSERT(_inDocVariable != nullptr);
+          // _inKeyVariable might be a nullptr
           // _outVariable might be a nullptr
         }
 
@@ -1826,7 +1843,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new UpdateNode(_vocbase, _collection, _options, _inVariable, _outVariable);
+          auto c = new UpdateNode(_vocbase, _collection, _options, _inDocVariable, _inKeyVariable, _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -1846,7 +1863,11 @@ namespace triagens {
 
         virtual std::vector<Variable const*> getVariablesUsedHere () {
           std::vector<Variable const*> v;
-          v.push_back(_inVariable);
+          v.push_back(_inDocVariable);
+
+          if (_inKeyVariable != nullptr) {
+            v.push_back(_inKeyVariable);
+          }
           return v;
         }
 
@@ -1869,10 +1890,16 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief input variable
+/// @brief input variable for documents
 ////////////////////////////////////////////////////////////////////////////////
 
-        Variable const* _inVariable;
+        Variable const* _inDocVariable;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief input variable for keys
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* _inKeyVariable;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief output variable
@@ -1906,13 +1933,16 @@ namespace triagens {
         ReplaceNode (TRI_vocbase_t* vocbase, 
                      Collection* collection,
                      ModificationOptions const& options,
-                     Variable const* inVariable,
+                     Variable const* inDocVariable,
+                     Variable const* inKeyVariable,
                      Variable const* outVariable)
           : ModificationNode(vocbase, collection, options),
-            _inVariable(inVariable),
+            _inDocVariable(inDocVariable),
+            _inKeyVariable(inKeyVariable),
             _outVariable(outVariable) {
 
-          TRI_ASSERT(_inVariable != nullptr);
+          TRI_ASSERT(_inDocVariable != nullptr);
+          // _inKeyVariable might be a nullptr
           // _outVariable might be a nullptr
         }
 
@@ -1937,7 +1967,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new ReplaceNode(_vocbase, _collection, _options, _inVariable, _outVariable);
+          auto c = new ReplaceNode(_vocbase, _collection, _options, _inDocVariable, _inKeyVariable, _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -1957,7 +1987,11 @@ namespace triagens {
 
         virtual std::vector<Variable const*> getVariablesUsedHere () {
           std::vector<Variable const*> v;
-          v.push_back(_inVariable);
+          v.push_back(_inDocVariable);
+
+          if (_inKeyVariable != nullptr) {
+            v.push_back(_inKeyVariable);
+          }
           return v;
         }
 
@@ -1980,10 +2014,16 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief input variable
+/// @brief input variable for documents
 ////////////////////////////////////////////////////////////////////////////////
 
-        Variable const* _inVariable;
+        Variable const* _inDocVariable;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief input variable for keys
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* _inKeyVariable;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief output variable

@@ -158,6 +158,7 @@ void ExecutionBlock::walk (WalkerWorker<ExecutionBlock>* worker) {
   }
 
   worker->before(this);
+
   // Now the children in their natural order:
   for (auto c : _dependencies) {
     c->walk(worker);
@@ -1967,13 +1968,19 @@ int ModificationBlock::resolve (char const* handle,
 int ModificationBlock::extractKey (AqlValue const& value,
                                    TRI_document_collection_t const* document,
                                    std::string& key) const {
-  Json member(value.extractArrayMember(_trx, document, TRI_VOC_ATTRIBUTE_KEY));
+  if (value.isArray()) {
+    Json member(value.extractArrayMember(_trx, document, TRI_VOC_ATTRIBUTE_KEY));
 
-  // TODO: allow _id, too
+    // TODO: allow _id, too
           
-  TRI_json_t const* json = member.json();
-  if (TRI_IsStringJson(json)) {
-    key = std::string(json->_value._string.data, json->_value._string.length - 1);
+    TRI_json_t const* json = member.json();
+    if (TRI_IsStringJson(json)) {
+      key = std::string(json->_value._string.data, json->_value._string.length - 1);
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+  else if (value.isString()) {
+    key = value.toString();
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -2195,10 +2202,19 @@ UpdateBlock::~UpdateBlock () {
 
 void UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
   auto ep = static_cast<UpdateNode const*>(getPlanNode());
-  auto it = _varOverview->varInfo.find(ep->_inVariable->id);
+  auto it = _varOverview->varInfo.find(ep->_inDocVariable->id);
   TRI_ASSERT(it != _varOverview->varInfo.end());
-  RegisterId const registerId = it->second.registerId;
+  RegisterId const docRegisterId = it->second.registerId;
+  RegisterId keyRegisterId = 0; // default initialization
 
+  bool const hasKeyVariable = (ep->_inKeyVariable != nullptr);
+  
+  if (hasKeyVariable) {
+    it = _varOverview->varInfo.find(ep->_inKeyVariable->id);
+    TRI_ASSERT(it != _varOverview->varInfo.end());
+    keyRegisterId = it->second.registerId;
+  }
+  
   auto trxCollection = _trx->trxCollection(_collection->cid());
 
   if (ep->_outVariable == nullptr) {
@@ -2207,20 +2223,32 @@ void UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
     // loop over all blocks
     for (auto it = blocks.begin(); it != blocks.end(); ++it) {
       auto res = (*it);
-      auto document = res->getDocumentCollection(registerId);
+      auto document = res->getDocumentCollection(docRegisterId);
+      decltype(document) keyDocument = nullptr;
+
+      if (hasKeyVariable) {
+        keyDocument = res->getDocumentCollection(keyRegisterId);
+      }
 
       size_t const n = res->size();
     
       // loop over the complete block
       for (size_t i = 0; i < n; ++i) {
-        AqlValue a = res->getValue(i, registerId);
+        AqlValue a = res->getValue(i, docRegisterId);
 
         int errorCode = TRI_ERROR_NO_ERROR;
         std::string key;
 
         if (a.isArray()) {
-          // value is an array. now extract the _key attribute
-          errorCode = extractKey(a, document, key);
+          // value is an array
+          if (hasKeyVariable) {
+            // seperate key specification
+            AqlValue k = res->getValue(i, keyRegisterId);
+            errorCode = extractKey(k, keyDocument, key);
+          }
+          else {
+            errorCode = extractKey(a, document, key);
+          }
         }
         else {
           errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
@@ -2295,9 +2323,18 @@ ReplaceBlock::~ReplaceBlock () {
 
 void ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
   auto ep = static_cast<ReplaceNode const*>(getPlanNode());
-  auto it = _varOverview->varInfo.find(ep->_inVariable->id);
+  auto it = _varOverview->varInfo.find(ep->_inDocVariable->id);
   TRI_ASSERT(it != _varOverview->varInfo.end());
   RegisterId const registerId = it->second.registerId;
+  RegisterId keyRegisterId = 0; // default initialization
+
+  bool const hasKeyVariable = (ep->_inKeyVariable != nullptr);
+  
+  if (hasKeyVariable) {
+    it = _varOverview->varInfo.find(ep->_inKeyVariable->id);
+    TRI_ASSERT(it != _varOverview->varInfo.end());
+    keyRegisterId = it->second.registerId;
+  }
 
   auto trxCollection = _trx->trxCollection(_collection->cid());
 
@@ -2308,6 +2345,11 @@ void ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
     for (auto it = blocks.begin(); it != blocks.end(); ++it) {
       auto res = (*it);
       auto document = res->getDocumentCollection(registerId);
+      decltype(document) keyDocument = nullptr;
+
+      if (hasKeyVariable) {
+        keyDocument = res->getDocumentCollection(keyRegisterId);
+      }
       
       size_t const n = res->size();
     
@@ -2319,8 +2361,15 @@ void ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
         std::string key;
 
         if (a.isArray()) {
-          // value is an array. now extract the _key attribute
-          errorCode = extractKey(a, document, key);
+          // value is an array
+          if (hasKeyVariable) {
+            // seperate key specification
+            AqlValue k = res->getValue(i, keyRegisterId);
+            errorCode = extractKey(k, keyDocument, key);
+          }
+          else {
+            errorCode = extractKey(a, document, key);
+          }
         }
         else {
           errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;

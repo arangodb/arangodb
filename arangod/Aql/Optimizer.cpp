@@ -40,9 +40,17 @@ using namespace triagens::aql;
 
 Optimizer::Optimizer () {
   // List all the rules in the system here:
-  registerRule (relaxRule, 1000);
-  // registerRule (removeUnnecessaryCalc, 999);
-  // deactivated because a test crashes
+
+  // remove filters from the query that are not necessary at all
+  // rule should be executed relatively early because it enables removal
+  // of then-unused filter variables
+  registerRule(removeUnnecessaryFiltersRule, 10000);
+
+  // move calculations up the dependency chain (to pull them out of inner loops etc.)
+  // TODO: validate if this is really an optimization
+  // registerRule(moveCalculationsUpRule, 1000);
+
+  registerRule(removeUnnecessaryCalculationsRule, 999);
 
   // Now sort them by pass:
   std::stable_sort(_rules.begin(), _rules.end());
