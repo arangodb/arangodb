@@ -4463,7 +4463,7 @@ div.breadcrumb a.disabledBread {
   .modal-body .tab-content {
     min-height: 200px; }
   .modal-body .errorMessage {
-    color: red;
+    color: #f00;
     font-size: 9pt;
     margin-bottom: 5px;
     margin-top: -9px;
@@ -4599,7 +4599,7 @@ pre.gv-object-view {
   .fixedDropdown .notificationItem {
     color: black; }
     .fixedDropdown .notificationItem .notificationItemTitle:hover {
-      color: black;
+      color: #000;
       cursor: default; }
     .fixedDropdown .notificationItem i {
       color: rgba(0, 0, 0, 0.2);
@@ -4977,7 +4977,7 @@ pre.gv-object-view {
     margin-top: 1px; }
 
 .queryMethods button a {
-  color: white; }
+  color: #fff; }
 
 .aql-editor {
   border-color: #a0a0a0;
@@ -5803,7 +5803,7 @@ input.gv-radio-button {
   .arango-collection-ul a {
     font-size: 13px; } }
 .document-info {
-  background-color: #ffffff;
+  background-color: #fff;
   border: 1px solid rgba(0, 0, 0, 0.2);
   margin-bottom: 8px;
   margin-top: -10px;
@@ -5814,8 +5814,8 @@ input.gv-radio-button {
     width: 100%; }
     .document-info .document-info-container .document-inner-info-container {
       float: left;
-      margin-top: 5px;
-      margin-left: 10px; }
+      margin-left: 10px;
+      margin-top: 5px; }
       .document-info .document-info-container .document-inner-info-container .document-attribute {
         margin-right: 20px; }
         .document-info .document-info-container .document-inner-info-container .document-attribute div {
@@ -5825,7 +5825,7 @@ input.gv-radio-button {
     font-size: 11pt;
     min-width: 55px; }
   .document-info .document-thin-font {
-    color: green;
+    color: #008000;
     font-family: droid sans mono, monospace, courier new, courier, sans-serif;
     font-size: 11pt; }
   .document-info .document-type-container div {
@@ -5847,22 +5847,22 @@ input.gv-radio-button {
   visibility: hidden; }
 
 #progressPlaceholder {
-  top: 0;
+  background-color: rgba(0, 0, 0, 0.6);
   bottom: 0;
   left: 0;
-  right: 0;
-  background-color: rgba(0, 0, 0, 0.6);
   position: fixed;
+  right: 0;
+  top: 0;
   z-index: 9999; }
 
 .progress-view {
-  color: white;
-  width: 300px;
+  color: #fff;
   height: 200px;
-  position: absolute;
   left: 50%;
+  margin: -100px 0 0 -150px;
+  position: absolute;
   top: 50%;
-  margin: -100px 0 0 -150px; }
+  width: 300px; }
   .progress-view .progress-content {
     margin-left: 90px;
     margin-top: 30px; }
@@ -5954,7 +5954,7 @@ input.gv-radio-button {
   .arangoDataTable .selected-row {
     background-color: #8aa051 !important; }
     .arangoDataTable .selected-row span {
-      color: white !important; }
+      color: #fff !important; }
 
 .api-container #resources > li.resource:nth-child(even),
 table.arangoDataTable tr.even {
@@ -6062,8 +6062,8 @@ table .sorting {
   width: 70%; }
 
 .docsSecCol {
-  min-width: 400px !important;
   height: 26px;
+  min-width: 400px !important;
   width: 20%; }
 
 .docsThirdCol {
