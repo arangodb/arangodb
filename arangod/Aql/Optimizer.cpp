@@ -44,13 +44,13 @@ Optimizer::Optimizer () {
   // remove filters from the query that are not necessary at all
   // rule should be executed relatively early because it enables removal
   // of then-unused filter variables
-  registerRule(removeUnnecessaryFiltersRule, 10000);
+  //registerRule(removeUnnecessaryFiltersRule, 10000);
 
   // move calculations up the dependency chain (to pull them out of inner loops etc.)
   // TODO: validate if this is really an optimization
   // registerRule(moveCalculationsUpRule, 1000);
 
-  registerRule(removeUnnecessaryCalculationsRule, 999);
+  //registerRule(removeUnnecessaryCalculationsRule, 999);
 
   // Now sort them by pass:
   std::stable_sort(_rules.begin(), _rules.end());

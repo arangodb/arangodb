@@ -137,7 +137,7 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
     }
   }
       
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid simple expression");
 }
 
 // -----------------------------------------------------------------------------
@@ -157,7 +157,7 @@ void Expression::analyzeExpression () {
     _data = _node->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
 
     if (_data == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid json in simple expression");
     }
 
     _type = JSON;
@@ -200,7 +200,20 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     auto j = result.extractArrayMember(trx, myCollection, name);
     return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
   }
-  
+/*  
+  else if (node->type == NODE_TYPE_INDEXED_ACCESS) {
+    TRI_ASSERT(node->numMembers() == 2);
+
+    auto member = node->getMember(0);
+    auto index = node->getMember(1);
+
+    TRI_document_collection_t const* myCollection = nullptr;
+    AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
+
+    auto j = result.extractListMember(trx, myCollection, name);
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
+  }
+  */
   else if (node->type == NODE_TYPE_LIST) {
     auto list = new Json(Json::List);
 
@@ -261,7 +274,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     // fall-through to exception
   }
 
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unhandled type in simple expression");
 }
 
 // -----------------------------------------------------------------------------

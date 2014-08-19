@@ -416,7 +416,7 @@ AstNode* Ast::createNodeReference (char const* variableName) {
   auto variable = _scopes.getVariable(variableName);
 
   if (variable == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "variable not found in reference AstNode");
   }
 
   node->setData(variable);
@@ -1268,7 +1268,7 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic (AstNode* node) {
     value = fmod(l, r);
   }
   else {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid operator");
   }
       
   if (value != value || 
@@ -1516,7 +1516,7 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
       TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i + 1));
 
       if (! TRI_IsStringJson(key) || value == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected type found in array node");
       }
 
       char const* attributeName = _query->registerString(key->_value._string.data, key->_value._string.length - 1, false);

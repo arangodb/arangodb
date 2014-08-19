@@ -75,7 +75,7 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
         }
         else {
           // filter is always false
-          /*
+         /* TODO 
           // get all dependent nodes of the filter node
           std::vector<ExecutionNode*> stack;
           stack.push_back(n);
@@ -114,7 +114,7 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
             }
 
             if (removeNode) {
-              std::cout << "INSERTING NODE OF TYPE: " << current->getTypeString() << "\n";
+              std::cout << "REMOVING NODE " << current << " OF TYPE: " << current->getTypeString() << "\n";
               toRemove.insert(current);
             }
           }

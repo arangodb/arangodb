@@ -47,6 +47,7 @@ namespace triagens {
   namespace aql {
 
     class ExecutionBlock;
+    class ExecutionPlan;
     class Ast;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,24 +98,27 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief factory from json.
 ////////////////////////////////////////////////////////////////////////////////
+
         static ExecutionNode* fromJsonFactory (Ast const* ast,
                                                basics::Json const& json);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief default constructor
+/// @brief constructor using an id
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode () : _estimatedCost(0), _varUsageValid(false) {
+        ExecutionNode (size_t id) 
+          : _id(id), 
+            _estimatedCost(0), 
+            _varUsageValid(false) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor with one dependency
+/// @brief constructor using a JSON struct
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode (ExecutionNode* ep) {
-          _dependencies.push_back(ep);
+        ExecutionNode (triagens::basics::Json const& json) 
+          : ExecutionNode(triagens::basics::JsonHelper::getNumericValue<size_t>(json.json(), "id", 0)) { 
         }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor, free dependencies
@@ -128,6 +132,14 @@ namespace triagens {
 // -----------------------------------------------------------------------------
       
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the node's id
+////////////////////////////////////////////////////////////////////////////////
+
+        inline size_t id () const {
+          return _id;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -144,6 +156,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether we know a type of this kind; throws exception if not.
 ////////////////////////////////////////////////////////////////////////////////
+
         static void validateType (int type);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,7 +261,6 @@ namespace triagens {
                              basics::Json const& base);
 
         triagens::basics::Json toJsonHelperGeneric (
-                  std::map<ExecutionNode*, int>& indexTab,
                   triagens::basics::Json& nodes,
                   TRI_memory_zone_t* zone);
 
@@ -256,8 +268,7 @@ namespace triagens {
 /// @brief toJson
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
-                                   triagens::basics::Json& nodes,
+        virtual void toJsonHelper (triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -335,6 +346,12 @@ namespace triagens {
       protected:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief node id
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t const _id;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief our dependent nodes
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -388,7 +405,9 @@ namespace triagens {
 
     public:
 
-      SingletonNode () : ExecutionNode() {}
+      SingletonNode (size_t id) 
+        : ExecutionNode(id) {
+      }
 
       SingletonNode (triagens::aql::Query* query, basics::Json const& base);
 
@@ -404,8 +423,7 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
-                                 triagens::basics::Json& nodes,
+      virtual void toJsonHelper (triagens::basics::Json& nodes,
                                  TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -413,7 +431,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       virtual ExecutionNode* clone () const {
-        auto c = new SingletonNode();
+        auto c = new SingletonNode(_id);
         cloneDependencies(c);
         return static_cast<ExecutionNode*>(c);
       }
@@ -445,13 +463,13 @@ namespace triagens {
 /// @brief constructor with a vocbase and a collection name
 ////////////////////////////////////////////////////////////////////////////////
 
-    public:
-      EnumerateCollectionNode (triagens::aql::Query* Q, basics::Json const& base);
+      public:
 
-        EnumerateCollectionNode (TRI_vocbase_t* vocbase, 
+        EnumerateCollectionNode (size_t id,
+                                 TRI_vocbase_t* vocbase, 
                                  Collection* collection,
                                  Variable const* outVariable)
-          : ExecutionNode(), 
+          : ExecutionNode(id), 
             _vocbase(vocbase), 
             _collection(collection),
             _outVariable(outVariable){
@@ -459,6 +477,8 @@ namespace triagens {
           TRI_ASSERT(_collection != nullptr);
           TRI_ASSERT(_outVariable != nullptr);
         }
+
+        EnumerateCollectionNode (triagens::aql::Query* Q, basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -472,8 +492,7 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
-                                 triagens::basics::Json& nodes,
+      virtual void toJsonHelper (triagens::basics::Json& nodes,
                                  TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -481,7 +500,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new EnumerateCollectionNode(_vocbase, _collection, _outVariable);
+          auto c = new EnumerateCollectionNode(_id, _vocbase, _collection, _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -532,7 +551,6 @@ namespace triagens {
 
     };
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                           class EnumerateListNode
 // -----------------------------------------------------------------------------
@@ -552,15 +570,19 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       public:
-        EnumerateListNode (triagens::aql::Query* Q, basics::Json const& base);
 
-        EnumerateListNode (Variable const* inVariable,
+        EnumerateListNode (size_t id,
+                           Variable const* inVariable,
                            Variable const* outVariable) 
-          : ExecutionNode(), _inVariable(inVariable), _outVariable(outVariable) {
+          : ExecutionNode(id), 
+            _inVariable(inVariable), 
+            _outVariable(outVariable) {
 
           TRI_ASSERT(_inVariable != nullptr);
           TRI_ASSERT(_outVariable != nullptr);
         }
+        
+        EnumerateListNode (triagens::aql::Query* Q, basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -574,8 +596,7 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
-                                   triagens::basics::Json& nodes,
+        virtual void toJsonHelper (triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -583,7 +604,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new EnumerateListNode(_inVariable, _outVariable);
+          auto c = new EnumerateListNode(_id, _inVariable, _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -645,7 +666,7 @@ namespace triagens {
 /// @brief class IndexRangeNode
 ////////////////////////////////////////////////////////////////////////////////
 
-    class IndexRangeNode: public ExecutionNode {
+    class IndexRangeNode : public ExecutionNode {
       
       friend class ExecutionBlock;
       friend class IndexRangeBlock;
@@ -690,12 +711,13 @@ namespace triagens {
 
       public:
 
-        IndexRangeNode (TRI_vocbase_t* vocbase, 
+        IndexRangeNode (size_t id,
+                        TRI_vocbase_t* vocbase, 
                         Collection* collection,
                         Variable const* outVariable,
                         Index* index, 
                         vector<RangeInfo>* ranges)
-          : ExecutionNode(), 
+          : ExecutionNode(id), 
             _vocbase(vocbase), 
             _collection(collection),
             _outVariable(outVariable),
@@ -724,8 +746,7 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
-                                   triagens::basics::Json& nodes,
+        virtual void toJsonHelper (triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -733,7 +754,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new IndexRangeNode(_vocbase, _collection, _outVariable, _index, 
+          auto c = new IndexRangeNode(_id, _vocbase, _collection, _outVariable, _index, 
               _ranges);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
@@ -815,15 +836,22 @@ namespace triagens {
 
       public:
 
+        LimitNode (size_t id,
+                   size_t offset, 
+                   size_t limit) 
+          : ExecutionNode(id), 
+            _offset(offset), 
+            _limit(limit) {
+        }
+
+        LimitNode (size_t id,
+                   size_t limit) 
+          : ExecutionNode(id), 
+            _offset(0), 
+            _limit(limit) {
+        }
+        
         LimitNode (triagens::aql::Query* query, basics::Json const& base);
-
-        LimitNode (size_t o, size_t l) 
-          : ExecutionNode(), _offset(o), _limit(l) {
-        }
-
-        LimitNode (size_t l) 
-          : ExecutionNode(), _offset(0), _limit(l) {
-        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -837,8 +865,7 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
-                                   triagens::basics::Json& nodes,
+        virtual void toJsonHelper (triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -846,7 +873,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new LimitNode(_offset, _limit);
+          auto c = new LimitNode(_id, _offset, _limit);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -892,17 +919,18 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        CalculationNode (triagens::aql::Query* Q, basics::Json const& base);
-
-        CalculationNode (Expression* expr, 
+        CalculationNode (size_t id,
+                         Expression* expr, 
                          Variable const* outVariable)
-          : ExecutionNode(), 
+          : ExecutionNode(id), 
             _expression(expr), 
             _outVariable(outVariable) {
 
           TRI_ASSERT(_expression != nullptr);
           TRI_ASSERT(_outVariable != nullptr);
         }
+
+        CalculationNode (triagens::aql::Query* Q, basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -926,8 +954,7 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
-                                   triagens::basics::Json& nodes,
+        virtual void toJsonHelper (triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -935,7 +962,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new CalculationNode(_expression->clone(), _outVariable);
+          auto c = new CalculationNode(_id, _expression->clone(), _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -1032,8 +1059,11 @@ namespace triagens {
                       triagens::aql::Query* Q,
                       basics::Json const& base);
 
-        SubqueryNode (ExecutionNode* subquery, Variable const* outVariable)
-          : ExecutionNode(), _subquery(subquery), _outVariable(outVariable) {
+        SubqueryNode (size_t id,
+                      ExecutionNode* subquery, Variable const* outVariable)
+          : ExecutionNode(id), 
+            _subquery(subquery), 
+            _outVariable(outVariable) {
 
           TRI_ASSERT(_subquery != nullptr);
           TRI_ASSERT(_outVariable != nullptr);
@@ -1051,8 +1081,7 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
-                                   triagens::basics::Json& nodes,
+        virtual void toJsonHelper (triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1060,7 +1089,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new SubqueryNode(_subquery->clone(), _outVariable);
+          auto c = new SubqueryNode(_id, _subquery->clone(), _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -1071,6 +1100,16 @@ namespace triagens {
 
         ExecutionNode* getSubquery () {
           return _subquery;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief setter for subquery
+////////////////////////////////////////////////////////////////////////////////
+
+        void setSubquery (ExecutionNode* subquery) {
+          TRI_ASSERT(subquery != nullptr);
+          TRI_ASSERT(_subquery == nullptr); // do not allow overwriting an existing subquery
+          _subquery = subquery;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1138,13 +1177,15 @@ namespace triagens {
 
       public:
 
-        FilterNode (triagens::aql::Query* Q, basics::Json const& base);
-
-        FilterNode (Variable const* inVariable)
-          : ExecutionNode(), _inVariable(inVariable) {
+        FilterNode (size_t id,
+                    Variable const* inVariable)
+          : ExecutionNode(id), 
+            _inVariable(inVariable) {
 
           TRI_ASSERT(_inVariable != nullptr);
         }
+        
+        FilterNode (triagens::aql::Query* Q, basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -1158,8 +1199,7 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
-                                   triagens::basics::Json& nodes,
+        virtual void toJsonHelper (triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1167,7 +1207,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new FilterNode(_inVariable);
+          auto c = new FilterNode(_id, _inVariable);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -1221,13 +1261,15 @@ namespace triagens {
 
       public:
 
+        SortNode (size_t id,
+                  std::vector<std::pair<Variable const*, bool>> elements)
+          : ExecutionNode(id), 
+            _elements(elements) {
+        }
+        
         SortNode (triagens::aql::Query* query,
                   basics::Json const& base,
                   std::vector<std::pair<Variable const*, bool>> elements);
-
-        SortNode (std::vector<std::pair<Variable const*, bool>> elements)
-          : ExecutionNode(), _elements(elements) {
-        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -1241,8 +1283,7 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
-                                   triagens::basics::Json& nodes,
+        virtual void toJsonHelper (triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1250,7 +1291,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new SortNode(_elements);
+          auto c = new SortNode(_id, _elements);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -1311,21 +1352,22 @@ namespace triagens {
 
       public:
 
-        AggregateNode (triagens::aql::Query* query,
-                       basics::Json const& base,
-                       Variable const* outVariable,
-                       std::unordered_map<VariableId, std::string const> const& variableMap,
-                       std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables);
-
-        AggregateNode (std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables,
+        AggregateNode (size_t id,
+                       std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables,
                        Variable const* outVariable,
                        std::unordered_map<VariableId, std::string const> const& variableMap)
-          : ExecutionNode(), 
+          : ExecutionNode(id), 
             _aggregateVariables(aggregateVariables), 
             _outVariable(outVariable),
             _variableMap(variableMap) {
           // outVariable can be a nullptr
         }
+        
+        AggregateNode (triagens::aql::Query* query,
+                       basics::Json const& base,
+                       Variable const* outVariable,
+                       std::unordered_map<VariableId, std::string const> const& variableMap,
+                       std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -1339,8 +1381,7 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
-                                   triagens::basics::Json& nodes,
+        virtual void toJsonHelper (triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1348,7 +1389,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new AggregateNode(_aggregateVariables, _outVariable, _variableMap);
+          auto c = new AggregateNode(_id, _aggregateVariables, _outVariable, _variableMap);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -1435,13 +1476,15 @@ namespace triagens {
 
       public:
 
-        ReturnNode (triagens::aql::Query* Q, basics::Json const& base);
-
-        ReturnNode (Variable const* inVariable)
-          : ExecutionNode(), _inVariable(inVariable) {
+        ReturnNode (size_t id,
+                    Variable const* inVariable)
+          : ExecutionNode(id), 
+            _inVariable(inVariable) {
 
           TRI_ASSERT(_inVariable != nullptr);
         }
+
+        ReturnNode (triagens::aql::Query* Q, basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -1455,8 +1498,7 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
-                                   triagens::basics::Json& nodes,
+        virtual void toJsonHelper (triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1464,7 +1506,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new ReturnNode(_inVariable);
+          auto c = new ReturnNode(_id, _inVariable);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -1520,10 +1562,11 @@ namespace triagens {
 
       protected:
 
-        ModificationNode (TRI_vocbase_t* vocbase, 
+        ModificationNode (size_t id,
+                          TRI_vocbase_t* vocbase, 
                           Collection* collection,
                           ModificationOptions const& options)
-          : ExecutionNode(), 
+          : ExecutionNode(id), 
             _vocbase(vocbase), 
             _collection(collection),
             _options(options) {
@@ -1581,20 +1624,21 @@ namespace triagens {
 
       public:
 
-        RemoveNode (triagens::aql::Query* Q, basics::Json const& base);
-
-        RemoveNode (TRI_vocbase_t* vocbase, 
+        RemoveNode (size_t id,
+                    TRI_vocbase_t* vocbase, 
                     Collection* collection,
                     ModificationOptions const& options,
                     Variable const* inVariable,
                     Variable const* outVariable)
-          : ModificationNode(vocbase, collection, options),
+          : ModificationNode(id, vocbase, collection, options),
             _inVariable(inVariable),
             _outVariable(outVariable) {
 
           TRI_ASSERT(_inVariable != nullptr);
           // _outVariable might be a nullptr
         }
+        
+        RemoveNode (triagens::aql::Query* Q, basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -1608,8 +1652,7 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
-                                   triagens::basics::Json& nodes,
+        virtual void toJsonHelper (triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1617,7 +1660,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new RemoveNode(_vocbase, _collection, _options, _inVariable, _outVariable);
+          auto c = new RemoveNode(_id, _vocbase, _collection, _options, _inVariable, _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -1693,20 +1736,21 @@ namespace triagens {
 
       public:
 
-        InsertNode (triagens::aql::Query* Q, basics::Json const& base);
-
-        InsertNode (TRI_vocbase_t* vocbase, 
+        InsertNode (size_t id,
+                    TRI_vocbase_t* vocbase, 
                     Collection* collection,
                     ModificationOptions const& options,
                     Variable const* inVariable,
                     Variable const* outVariable)
-          : ModificationNode(vocbase, collection, options),
+          : ModificationNode(id, vocbase, collection, options),
             _inVariable(inVariable),
             _outVariable(outVariable) {
 
           TRI_ASSERT(_inVariable != nullptr);
           // _outVariable might be a nullptr
         }
+        
+        InsertNode (triagens::aql::Query* Q, basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -1720,8 +1764,7 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
-                                   triagens::basics::Json& nodes,
+        virtual void toJsonHelper (triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1729,7 +1772,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new InsertNode(_vocbase, _collection, _options, _inVariable, _outVariable);
+          auto c = new InsertNode(_id, _vocbase, _collection, _options, _inVariable, _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -1804,15 +1847,14 @@ namespace triagens {
 
       public:
 
-        UpdateNode (triagens::aql::Query* Q, basics::Json const& base);
-
-        UpdateNode (TRI_vocbase_t* vocbase, 
+        UpdateNode (size_t id, 
+                    TRI_vocbase_t* vocbase, 
                     Collection* collection,
                     ModificationOptions const& options,
                     Variable const* inDocVariable,
                     Variable const* inKeyVariable,
                     Variable const* outVariable)
-          : ModificationNode(vocbase, collection, options),
+          : ModificationNode(id, vocbase, collection, options),
             _inDocVariable(inDocVariable),
             _inKeyVariable(inKeyVariable),
             _outVariable(outVariable) {
@@ -1821,6 +1863,8 @@ namespace triagens {
           // _inKeyVariable might be a nullptr
           // _outVariable might be a nullptr
         }
+        
+        UpdateNode (triagens::aql::Query* Q, basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -1834,8 +1878,7 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
-                                   triagens::basics::Json& nodes,
+        virtual void toJsonHelper (triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1843,7 +1886,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new UpdateNode(_vocbase, _collection, _options, _inDocVariable, _inKeyVariable, _outVariable);
+          auto c = new UpdateNode(_id, _vocbase, _collection, _options, _inDocVariable, _inKeyVariable, _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -1928,15 +1971,14 @@ namespace triagens {
 
       public:
 
-        ReplaceNode (triagens::aql::Query* Q, basics::Json const& base);
-
-        ReplaceNode (TRI_vocbase_t* vocbase, 
+        ReplaceNode (size_t id,
+                     TRI_vocbase_t* vocbase, 
                      Collection* collection,
                      ModificationOptions const& options,
                      Variable const* inDocVariable,
                      Variable const* inKeyVariable,
                      Variable const* outVariable)
-          : ModificationNode(vocbase, collection, options),
+          : ModificationNode(id, vocbase, collection, options),
             _inDocVariable(inDocVariable),
             _inKeyVariable(inKeyVariable),
             _outVariable(outVariable) {
@@ -1945,6 +1987,8 @@ namespace triagens {
           // _inKeyVariable might be a nullptr
           // _outVariable might be a nullptr
         }
+
+        ReplaceNode (triagens::aql::Query* Q, basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -1958,8 +2002,7 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
-                                   triagens::basics::Json& nodes,
+        virtual void toJsonHelper (triagens::basics::Json& nodes,
                                    TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1967,7 +2010,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new ReplaceNode(_vocbase, _collection, _options, _inDocVariable, _inKeyVariable, _outVariable);
+          auto c = new ReplaceNode(_id, _vocbase, _collection, _options, _inDocVariable, _inKeyVariable, _outVariable);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
