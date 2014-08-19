@@ -51,7 +51,7 @@ Optimizer::Optimizer () {
   // registerRule(moveCalculationsUpRule, 1000);
 
   // deactivated because a test crashes
-  // registerRule(removeUnnecessaryCalc, 999);
+  registerRule(removeUnnecessaryCalc, 999);
 
   // Now sort them by pass:
   std::stable_sort(_rules.begin(), _rules.end());
