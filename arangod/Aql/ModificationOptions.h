@@ -29,6 +29,7 @@
 #define ARANGODB_AQL_MODIFICATION_OPTIONS_H 1
 
 #include "Basics/Common.h"
+#include "Basics/JsonHelper.h"
 
 namespace triagens {
   namespace aql {
@@ -47,11 +48,15 @@ namespace triagens {
 /// @brief constructor, using default values
 ////////////////////////////////////////////////////////////////////////////////
 
+      ModificationOptions (triagens::basics::Json const& json);
+
       ModificationOptions ()
         : ignoreErrors(false),
           waitForSync(false),
           nullMeansRemove(false) {
       }
+
+      triagens::basics::Json toJson (TRI_memory_zone_t* zone);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables

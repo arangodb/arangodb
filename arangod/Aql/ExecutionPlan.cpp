@@ -38,7 +38,7 @@
 #include "Utils/Exception.h"
 
 using namespace triagens::aql;
-
+using namespace triagens::basics;
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
@@ -84,10 +84,40 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast const* ast) {
   try {
     plan->_root = plan->fromNode(ast, root);
     plan->findVarUsage();
-    
+    /*    
     std::cout << "ESTIMATED COST = €" << plan->getCost() << "\n";
-    std::cout << plan->_root->toJson().toString() << "\n";
 
+    auto JsonPlan = plan->_root->toJson();
+    auto JsonString = JsonPlan.toString();
+
+    std::cout << JsonString << "\n";
+
+    auto otherPlan = ExecutionPlan::instanciateFromJson (ast,
+                                                         JsonPlan);
+    auto otherJsonString = otherPlan->_root->toJson().toString();
+    std::cout << otherJsonString << "\n";
+    ///    TRI_ASSERT(otherJsonString == JsonString);
+    ///    JsonHelper
+    return otherPlan;
+
+    /*/    return plan;
+  }
+  catch (...) {
+    delete plan;
+    throw;
+  }
+}
+
+ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast const* ast,
+                                                   triagens::basics::Json const& Json)
+{
+
+  auto plan = new ExecutionPlan();
+
+  try {
+    plan->_root = plan->fromJson(ast, Json);
+    std::cout << "running findvarusage\n";
+    plan->findVarUsage();
     return plan;
   }
   catch (...) {
@@ -886,6 +916,54 @@ struct NodeRemover : public WalkerWorker<ExecutionNode> {
 void ExecutionPlan::removeNodes (std::unordered_set<ExecutionNode*>& toRemove) {
   NodeRemover remover(this, toRemove);
   root()->walk(&remover);
+}
+
+ExecutionNode* ExecutionPlan::fromJson (Ast const* ast,
+                                        Json const& json) {
+    ///  return = addNode(new SingletonNode());
+  ExecutionNode* ret = nullptr;
+  Json nodes = json.get("nodes");
+
+  ExecutionNode* oneNode;
+
+  if (!nodes.isList()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+  uint size = nodes.size();
+
+  _nodes.reserve(size);
+
+  for (uint i = 0; i < size; i++) {
+    Json oneJsonNode = nodes.at(i);
+    if (!oneJsonNode.isArray()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
+    uint index = JsonHelper::getNumericValue<uint>(oneJsonNode.json(), "index", 0);
+    ret = oneNode = ExecutionNode::fromJsonFactory(ast,
+                                                   oneJsonNode);
+    _nodes[index] = oneNode; // TODO: get it from the "index"
+  }
+
+  for (uint i = 0; i < size; i++) {
+    Json oneJsonNode = nodes.at(i);
+    if (!oneJsonNode.isArray()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
+    Json dependencies = oneJsonNode.get("dependencies");
+    if (JsonHelper::isList(dependencies.json())) {
+        uint nDependencies = dependencies.size();
+        for (uint j = 0; j < nDependencies; j ++) {
+          if (JsonHelper::isNumber(dependencies.at(j).json())) {
+            uint which = round(dependencies.at(j).json()->_value._number);
+            /// todo: assert dependency index
+            _nodes[i]->addDependency(_nodes[which]);
+            
+          }
+        }
+      }
+  }
+
+  return ret;
 }
 
 // -----------------------------------------------------------------------------

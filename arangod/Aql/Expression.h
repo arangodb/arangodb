@@ -31,6 +31,7 @@
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
 #include "Aql/Types.h"
+#include "Aql/Query.h"
 #include "Basics/JsonHelper.h"
 #include "Utils/AqlTransaction.h"
 
@@ -74,6 +75,9 @@ namespace triagens {
 
         Expression (V8Executor*,
                     AstNode const*);
+
+        Expression (triagens::aql::Query* Q,
+                    triagens::basics::Json const &json);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor

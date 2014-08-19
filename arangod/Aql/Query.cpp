@@ -333,6 +333,12 @@ char* Query::registerString (char const* p,
   return copy;
 }
 
+char* Query::registerString (std::string const& p,
+                             bool mustUnescape) {
+
+  return registerString (p.c_str(),p.length(), mustUnescape);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

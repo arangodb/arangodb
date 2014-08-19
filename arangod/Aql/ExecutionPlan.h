@@ -33,6 +33,7 @@
 #include "Basics/Common.h"
 #include "arangod/Aql/ExecutionNode.h"
 #include "arangod/Aql/ModificationOptions.h"
+#include "arangod/Aql/Query.h"
 
 namespace triagens {
   namespace aql {
@@ -79,6 +80,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static ExecutionPlan* instanciateFromAst (Ast const*);
+
+        static ExecutionPlan* instanciateFromJson (Ast const* ast,
+                                                   triagens::basics::Json const& Json);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the root node
@@ -256,7 +260,8 @@ namespace triagens {
         ExecutionNode* fromNode (Ast const*,
                                  AstNode const*);
 
-
+        ExecutionNode* fromJson (Ast const* ast,
+                                 triagens::basics::Json const& Json);
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------

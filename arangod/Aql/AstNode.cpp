@@ -30,9 +30,74 @@
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/Scopes.h"
+#include "Aql/V8Executor.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/JsonHelper.h"
 
 using namespace triagens::aql;
+using JsonHelper = triagens::basics::JsonHelper;
+using Json = triagens::basics::Json;
+
+std::unordered_map<int, std::string const> const AstNode::TypeNames{ 
+    { static_cast<int>(NODE_TYPE_ROOT),                     "root" },
+    { static_cast<int>(NODE_TYPE_FOR),                      "for" },
+    { static_cast<int>(NODE_TYPE_LET),                      "let" },
+    { static_cast<int>(NODE_TYPE_FILTER),                   "filter" },
+    { static_cast<int>(NODE_TYPE_RETURN),                   "return" },
+    { static_cast<int>(NODE_TYPE_REMOVE),                   "remove" },
+    { static_cast<int>(NODE_TYPE_INSERT),                   "insert" },
+    { static_cast<int>(NODE_TYPE_UPDATE),                   "update" },
+    { static_cast<int>(NODE_TYPE_REPLACE),                  "replace" },
+    { static_cast<int>(NODE_TYPE_COLLECT),                  "collect" },
+    { static_cast<int>(NODE_TYPE_SORT),                     "sort" },
+    { static_cast<int>(NODE_TYPE_SORT_ELEMENT),             "sort element" },
+    { static_cast<int>(NODE_TYPE_LIMIT),                    "limit" },
+    { static_cast<int>(NODE_TYPE_VARIABLE),                 "variable" },
+    { static_cast<int>(NODE_TYPE_ASSIGN),                   "assign" },
+    { static_cast<int>(NODE_TYPE_OPERATOR_UNARY_PLUS),      "unary plus" },
+    { static_cast<int>(NODE_TYPE_OPERATOR_UNARY_MINUS),     "unary minus" },
+    { static_cast<int>(NODE_TYPE_OPERATOR_UNARY_NOT),       "unary not" },
+    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_AND),      "logical and" },
+    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_OR),       "logical or" },
+    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_PLUS),     "plus" },
+    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_MINUS),    "minus" },
+    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_TIMES),    "times" },
+    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_DIV),      "division" },
+    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_MOD),      "modulus" },
+    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_EQ),       "compare ==" },
+    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NE),       "compare !=" },
+    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LT),       "compare <" },
+    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE),       "compare <=" },
+    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT),       "compare >" },
+    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE),       "compare >=" },
+    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_IN),       "compare in" },
+    { static_cast<int>(NODE_TYPE_OPERATOR_TERNARY),         "ternary" },
+    { static_cast<int>(NODE_TYPE_SUBQUERY),                 "subquery" },
+    { static_cast<int>(NODE_TYPE_ATTRIBUTE_ACCESS),         "attribute access" },
+    { static_cast<int>(NODE_TYPE_BOUND_ATTRIBUTE_ACCESS),   "bound attribute access" },
+    { static_cast<int>(NODE_TYPE_INDEXED_ACCESS),           "indexed access" },
+    { static_cast<int>(NODE_TYPE_EXPAND),                   "expand" },
+    { static_cast<int>(NODE_TYPE_ITERATOR),                 "iterator" },
+    { static_cast<int>(NODE_TYPE_VALUE),                    "value" },
+    { static_cast<int>(NODE_TYPE_LIST),                     "list" },
+    { static_cast<int>(NODE_TYPE_ARRAY),                    "array" },
+    { static_cast<int>(NODE_TYPE_ARRAY_ELEMENT),            "array element" },
+    { static_cast<int>(NODE_TYPE_COLLECTION),               "collection" },
+    { static_cast<int>(NODE_TYPE_REFERENCE),                "reference" },
+    { static_cast<int>(NODE_TYPE_PARAMETER),                "parameter" },
+    { static_cast<int>(NODE_TYPE_FCALL),                    "function call" },
+    { static_cast<int>(NODE_TYPE_FCALL_USER),               "user function call" },
+    { static_cast<int>(NODE_TYPE_RANGE),                    "range" },
+    { static_cast<int>(NODE_TYPE_NOP),                      "no-op" }
+};
+
+std::unordered_map<int, std::string const> const AstNode::valueTypeNames{
+    { static_cast<int>(VALUE_TYPE_NULL),                    "null" },
+    { static_cast<int>(VALUE_TYPE_BOOL),                    "bool" },
+    { static_cast<int>(VALUE_TYPE_INT),                     "int" },
+    { static_cast<int>(VALUE_TYPE_DOUBLE),                  "double" },
+    { static_cast<int>(VALUE_TYPE_STRING),                  "string" }
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -48,6 +113,136 @@ AstNode::AstNode (AstNodeType type)
   TRI_InitVectorPointer(&members, TRI_UNKNOWN_MEM_ZONE);
 }
 
+
+AstNode::AstNode (triagens::aql::Query* Q,
+                  triagens::basics::Json const& json)
+  : type(getNodeTypeFromJson(json))
+{
+
+  TRI_InitVectorPointer(&members, TRI_UNKNOWN_MEM_ZONE);
+
+  switch(type) {
+
+  case NODE_TYPE_COLLECTION:
+  case NODE_TYPE_PARAMETER:
+  case NODE_TYPE_ATTRIBUTE_ACCESS:
+  case NODE_TYPE_FCALL_USER:
+    value.type = VALUE_TYPE_STRING;
+    setStringValue(Q->registerString(JsonHelper::getStringValue(json.json(),
+                                                                "name", ""),
+                                     false));
+    break;
+  case NODE_TYPE_VALUE: {
+    int vType = JsonHelper::getNumericValue<int>(json.json(), "vTypeID", 0);
+    validateValueType(vType);
+    value.type = (AstNodeValueType) vType;
+
+    switch (value.type) {
+      case VALUE_TYPE_NULL:
+        /// todo? do we need to do anything?
+        break;
+      case VALUE_TYPE_BOOL:
+        value.value._bool = JsonHelper::getBooleanValue(json.json(), "value", false);
+        break;
+      case VALUE_TYPE_INT:
+        setIntValue(JsonHelper::getNumericValue<int>(json.json(), "value", 0));
+        break;
+      case VALUE_TYPE_DOUBLE:
+        setDoubleValue(JsonHelper::getNumericValue<double>(json.json(), "value", 0.0));
+        break;
+      case VALUE_TYPE_STRING:
+        setStringValue(Q->registerString(JsonHelper::getStringValue(json.json(),
+                                                                    "value", ""),
+                                         false));
+        break;
+      default: {
+      }
+    }
+    break;
+  }
+  case NODE_TYPE_VARIABLE:
+  case NODE_TYPE_REFERENCE:
+    /// auto varName=JsonHelper::getStringValue(json.json(), "name");
+    //    auto varId=JsonHelper::getStringValue(json.json(), "id");
+    setData(Q->registerVar(new Variable(json)));
+    break;
+  case NODE_TYPE_FCALL: {
+    setData(Q->executor()->getFunctionByName(JsonHelper::getStringValue(json.json(), "name", "")));
+    break;
+  }
+  case NODE_TYPE_ARRAY_ELEMENT:
+  case NODE_TYPE_ARRAY: {
+    setStringValue(Q->registerString(JsonHelper::getStringValue(json.json(),
+                                                                "name", ""),
+                                     false));
+    /*
+    Json subNodes = json.get("subNodes");
+    if (subNodes.isList()) {
+      int len = subNodes.size();
+      for (int i = 0; i < len; i++) {
+        Json subNode = subNodes.at(i);
+        addMember (new AstNode(subNode));
+      }
+    }
+    */
+    break;
+  }
+  case NODE_TYPE_ROOT:
+  case NODE_TYPE_FOR:
+  case NODE_TYPE_LET:
+  case NODE_TYPE_FILTER:
+  case NODE_TYPE_RETURN:
+  case NODE_TYPE_REMOVE:
+  case NODE_TYPE_INSERT:
+  case NODE_TYPE_UPDATE:
+  case NODE_TYPE_REPLACE:
+  case NODE_TYPE_COLLECT:
+  case NODE_TYPE_SORT:
+  case NODE_TYPE_SORT_ELEMENT:
+  case NODE_TYPE_LIMIT:
+  case NODE_TYPE_ASSIGN:
+  case NODE_TYPE_OPERATOR_UNARY_PLUS:
+  case NODE_TYPE_OPERATOR_UNARY_MINUS:
+  case NODE_TYPE_OPERATOR_UNARY_NOT:
+  case NODE_TYPE_OPERATOR_BINARY_AND:
+  case NODE_TYPE_OPERATOR_BINARY_OR:
+  case NODE_TYPE_OPERATOR_BINARY_PLUS:
+  case NODE_TYPE_OPERATOR_BINARY_MINUS:
+  case NODE_TYPE_OPERATOR_BINARY_TIMES:
+  case NODE_TYPE_OPERATOR_BINARY_DIV:
+  case NODE_TYPE_OPERATOR_BINARY_MOD:
+  case NODE_TYPE_OPERATOR_BINARY_EQ:
+  case NODE_TYPE_OPERATOR_BINARY_NE:
+  case NODE_TYPE_OPERATOR_BINARY_LT:
+  case NODE_TYPE_OPERATOR_BINARY_LE:
+  case NODE_TYPE_OPERATOR_BINARY_GT:
+  case NODE_TYPE_OPERATOR_BINARY_GE:
+  case NODE_TYPE_OPERATOR_BINARY_IN:
+  case NODE_TYPE_OPERATOR_TERNARY:
+  case NODE_TYPE_SUBQUERY:
+  case NODE_TYPE_BOUND_ATTRIBUTE_ACCESS:
+  case NODE_TYPE_INDEXED_ACCESS:
+  case NODE_TYPE_EXPAND:
+  case NODE_TYPE_ITERATOR:
+  case NODE_TYPE_LIST:
+  case NODE_TYPE_RANGE:
+  case NODE_TYPE_NOP:
+    //TRI_ASSERT(false);
+    //THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "json dserializer: node type not implemented.");
+    break;
+  }
+
+  Json subNodes = json.get("subNodes");
+  if (subNodes.isList()) {
+    int len = subNodes.size();
+    for (int i = 0; i < len; i++) {
+      Json subNode = subNodes.at(i);
+      addMember (Q->registerNode(new AstNode(Q, subNode)));
+    }
+  }
+    
+
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the node
 ////////////////////////////////////////////////////////////////////////////////
@@ -55,6 +250,51 @@ AstNode::AstNode (AstNodeType type)
 AstNode::~AstNode () {
   TRI_DestroyVectorPointer(&members);
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type name of a node
+////////////////////////////////////////////////////////////////////////////////
+
+const std::string& AstNode::getTypeString () const {
+  auto it = TypeNames.find(static_cast<int>(type));
+  if (it != TypeNames.end()) {
+    return (*it).second;
+  }
+
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "missing node type in TypeNames");
+}
+
+void AstNode::validateType (int type) {
+  auto it = TypeNames.find(static_cast<int>(type));
+  if (it == TypeNames.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "unknown AST-Node TypeID");
+  }
+}
+
+AstNodeType AstNode::getNodeTypeFromJson (triagens::basics::Json const& json) {
+  int type = JsonHelper::getNumericValue<int>(json.json(), "typeID", 0);
+  validateType (type);
+  return (AstNodeType) type;
+}
+
+
+
+const std::string& AstNode::getValueTypeString () const {
+  auto it = valueTypeNames.find(static_cast<int>(value.type));
+  if (it != valueTypeNames.end()) {
+    return (*it).second;
+  }
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "missing node type in valueTypeNames");
+}
+
+void AstNode::validateValueType (int type) {
+  auto it = valueTypeNames.find(static_cast<int>(type));
+  if (it == valueTypeNames.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "invalid AST-Node valueTypeName");
+  }
+}
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -141,11 +381,13 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone) const {
   }
 
   // dump node type
-  TRI_Insert3ArrayJson(zone, node, "type", TRI_CreateStringCopyJson(zone, typeString().c_str()));
+  TRI_Insert3ArrayJson(zone, node, "type", TRI_CreateStringCopyJson(zone, getTypeString().c_str()));
+  TRI_Insert3ArrayJson(zone, node, "typeID", TRI_CreateNumberJson(zone, static_cast<int>(type)));
 
   if (type == NODE_TYPE_COLLECTION ||
       type == NODE_TYPE_PARAMETER ||
       type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+      type == NODE_TYPE_ARRAY_ELEMENT ||
       type == NODE_TYPE_FCALL_USER) {
     // dump "name" of node
     TRI_Insert3ArrayJson(zone, node, "name", TRI_CreateStringCopyJson(zone, getStringValue()));
@@ -153,11 +395,15 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone) const {
 
   if (type == NODE_TYPE_FCALL) {
     auto func = static_cast<Function*>(getData());
-    TRI_Insert3ArrayJson(zone, node, "name", TRI_CreateStringCopyJson(zone, func->name.c_str()));
+    TRI_Insert3ArrayJson(zone, node, "name", TRI_CreateStringCopyJson(zone, func->externalName.c_str()));
+    //// TODO: do we need the aruments?
   }
 
   if (type == NODE_TYPE_VALUE) {
     // dump value of "value" node
+    
+    TRI_Insert3ArrayJson(zone, node, "vType", TRI_CreateStringCopyJson(zone, getValueTypeString().c_str()));
+    TRI_Insert3ArrayJson(zone, node, "vTypeID", TRI_CreateNumberJson(zone, static_cast<int>(value.type)));
     switch (value.type) {
       case VALUE_TYPE_NULL:
         TRI_Insert3ArrayJson(zone, node, "value", TRI_CreateStringCopyJson(zone, "null"));
@@ -183,6 +429,7 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone) const {
       type == NODE_TYPE_REFERENCE) {
     auto variable = static_cast<Variable*>(getData());
 
+    /// TODO: use variable.toJson()!!!
     TRI_Insert3ArrayJson(zone, node, "name", TRI_CreateStringCopyJson(zone, variable->name.c_str()));
     TRI_Insert3ArrayJson(zone, node, "id", TRI_CreateNumberJson(zone, static_cast<double>(variable->id)));
   }
@@ -433,120 +680,6 @@ bool AstNode::canThrow () const {
   }
 
   return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type name of a node
-////////////////////////////////////////////////////////////////////////////////
-
-std::string AstNode::typeString () const {
-  switch (type) {
-    case NODE_TYPE_ROOT:
-      return "root";
-    case NODE_TYPE_FOR:
-      return "for";
-    case NODE_TYPE_LET:
-      return "let";
-    case NODE_TYPE_FILTER:
-      return "filter";
-    case NODE_TYPE_RETURN:
-      return "return";
-    case NODE_TYPE_REMOVE:
-      return "remove";
-    case NODE_TYPE_INSERT:
-      return "insert";
-    case NODE_TYPE_UPDATE:
-      return "update";
-    case NODE_TYPE_REPLACE:
-      return "replace";
-    case NODE_TYPE_COLLECT:
-      return "collect";
-    case NODE_TYPE_SORT:
-      return "sort";
-    case NODE_TYPE_SORT_ELEMENT:
-      return "sort element";
-    case NODE_TYPE_LIMIT:
-      return "limit";
-    case NODE_TYPE_VARIABLE:
-      return "variable";
-    case NODE_TYPE_ASSIGN:
-      return "assign";
-    case NODE_TYPE_OPERATOR_UNARY_PLUS:
-      return "unary plus";
-    case NODE_TYPE_OPERATOR_UNARY_MINUS:
-      return "unary minus";
-    case NODE_TYPE_OPERATOR_UNARY_NOT:
-      return "unary not";
-    case NODE_TYPE_OPERATOR_BINARY_AND:
-      return "logical and";
-    case NODE_TYPE_OPERATOR_BINARY_OR:
-      return "logical or";
-    case NODE_TYPE_OPERATOR_BINARY_PLUS:
-      return "plus";
-    case NODE_TYPE_OPERATOR_BINARY_MINUS:
-      return "minus";
-    case NODE_TYPE_OPERATOR_BINARY_TIMES:
-      return "times";
-    case NODE_TYPE_OPERATOR_BINARY_DIV:
-      return "division";
-    case NODE_TYPE_OPERATOR_BINARY_MOD:
-      return "modulus";
-    case NODE_TYPE_OPERATOR_BINARY_EQ:
-      return "compare ==";
-    case NODE_TYPE_OPERATOR_BINARY_NE:
-      return "compare !=";
-    case NODE_TYPE_OPERATOR_BINARY_LT:
-      return "compare <";
-    case NODE_TYPE_OPERATOR_BINARY_LE:
-      return "compare <=";
-    case NODE_TYPE_OPERATOR_BINARY_GT:
-      return "compare >";
-    case NODE_TYPE_OPERATOR_BINARY_GE:
-      return "compare >=";
-    case NODE_TYPE_OPERATOR_BINARY_IN:
-      return "compare in";
-    case NODE_TYPE_OPERATOR_TERNARY:
-      return "ternary";
-    case NODE_TYPE_SUBQUERY:
-      return "subquery";
-    case NODE_TYPE_ATTRIBUTE_ACCESS:
-      return "attribute access";
-    case NODE_TYPE_BOUND_ATTRIBUTE_ACCESS:
-      return "bound attribute access";
-    case NODE_TYPE_INDEXED_ACCESS:
-      return "indexed access";
-    case NODE_TYPE_EXPAND:
-      return "expand";
-    case NODE_TYPE_ITERATOR:
-      return "iterator";
-    case NODE_TYPE_VALUE:
-      return "value";
-    case NODE_TYPE_LIST:
-      return "list";
-    case NODE_TYPE_ARRAY:
-      return "array";
-    case NODE_TYPE_ARRAY_ELEMENT:
-      return "array element";
-    case NODE_TYPE_COLLECTION:
-      return "collection";
-    case NODE_TYPE_REFERENCE:
-      return "reference";
-    case NODE_TYPE_PARAMETER:
-      return "parameter";
-    case NODE_TYPE_FCALL:
-      return "function call";
-    case NODE_TYPE_FCALL_USER:
-      return "user function call";
-    case NODE_TYPE_RANGE:
-      return "range";
-    case NODE_TYPE_NOP:
-      return "no-op";
-    default: {
-    }
-  }
-
-  TRI_ASSERT(false);
-  return "";
 }
 
 ////////////////////////////////////////////////////////////////////////////////

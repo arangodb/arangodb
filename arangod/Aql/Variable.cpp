@@ -28,8 +28,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Variable.h"
-
+#include "Basics/JsonHelper.h"
 using namespace triagens::aql;
+using namespace triagens::basics;
 using Json = triagens::basics::Json;
 
 // -----------------------------------------------------------------------------
@@ -45,6 +46,14 @@ Variable::Variable (std::string const& name,
   : name(name),
     value(nullptr),
     id(id),
+    refCount(0) {
+}
+
+
+Variable::Variable (Json const& json)
+  : name(JsonHelper::getStringValue(json.json(), "name", "")),
+    value(nullptr),
+    id(JsonHelper::getNumericValue<double>(json.json(), "id", 0.0)),
     refCount(0) {
 }
 
