@@ -224,10 +224,10 @@ int triagens::aql::moveCalculationsUpRule (Optimizer* opt,
 /// @brief remove CalculationNode(s) that are never needed
 ////////////////////////////////////////////////////////////////////////////////
 
-int triagens::aql::removeUnnecessaryCalc (Optimizer* opt, 
-                                          ExecutionPlan* plan, 
-                                          Optimizer::PlanList& out, 
-                                          bool& keep) {
+int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt, 
+                                                      ExecutionPlan* plan, 
+                                                      Optimizer::PlanList& out, 
+                                                      bool& keep) {
   std::vector<ExecutionNode*> nodes
     = plan->findNodesOfType(triagens::aql::ExecutionNode::CALCULATION);
   std::unordered_set<ExecutionNode*> toRemove;
