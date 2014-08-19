@@ -40,11 +40,13 @@ using namespace triagens::aql;
 /// @brief create the function
 ////////////////////////////////////////////////////////////////////////////////
       
-Function::Function (std::string const& name,
+Function::Function (std::string const& externalName,
+                    std::string const& internalName,
                     std::string const& arguments,
                     bool isDeterministic,
                     bool canThrow)
-  : name(name),
+  : internalName(internalName),
+    externalName(externalName),
     arguments(arguments),
     isDeterministic(isDeterministic),
     canThrow(canThrow),

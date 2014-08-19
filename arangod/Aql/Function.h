@@ -49,6 +49,7 @@ namespace triagens {
 
       Function (std::string const&,
                 std::string const&,
+                std::string const&,
                 bool,
                 bool);
 
@@ -101,7 +102,8 @@ namespace triagens {
 /// @brief function name
 ////////////////////////////////////////////////////////////////////////////////
 
-      std::string const    name;
+      std::string const    internalName;
+      std::string const    externalName;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function arguments

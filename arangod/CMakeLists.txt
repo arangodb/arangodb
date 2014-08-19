@@ -80,6 +80,7 @@ add_executable(
     Aql/V8Expression.cpp
     Aql/Variable.cpp
     Aql/VariableGenerator.cpp
+    Aql/ModificationOptions.cpp
     BitIndexes/bitarray.cpp
     BitIndexes/bitarrayIndex.cpp
     CapConstraint/cap-constraint.cpp

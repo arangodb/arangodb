@@ -42,7 +42,9 @@ namespace triagens {
   namespace aql {
 
     class V8Executor;
-
+    class Expression;
+    class Variable;
+    struct AstNode;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
@@ -191,6 +193,39 @@ namespace triagens {
                               size_t,
                               bool);
 
+        char* registerString (std::string const&,
+                              bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register an Expression
+/// the Expression is freed when the query is destroyed
+////////////////////////////////////////////////////////////////////////////////
+
+        Expression* registerExp (Expression* x) {
+          _expressions.push_back(x);
+          return x;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register an AstNode
+/// the AstNode is freed when the query is destroyed
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNode* registerNode (AstNode* a) {
+          _nodes.push_back(a);
+          return a;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a Variable
+/// the Variable is freed when the query is destroyed
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable* registerVar (Variable* v) {
+          _variables.push_back(v);
+          return v;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -251,6 +286,11 @@ namespace triagens {
 
         std::vector<char const*>   _strings;
 
+        std::vector<Expression*>   _expressions;
+
+        std::vector<AstNode*>      _nodes;
+
+        std::vector<Variable*>     _variables;
     };
 
   }
