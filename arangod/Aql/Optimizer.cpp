@@ -41,6 +41,7 @@ using namespace triagens::aql;
 Optimizer::Optimizer () {
   // List all the rules in the system here:
   registerRule (relaxRule, 1000);
+  registerRule (useIndexRange, 999);
   // registerRule (removeUnnecessaryCalc, 999);
   // deactivated because a test crashes
 
