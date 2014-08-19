@@ -134,24 +134,7 @@ void ApplicationDispatcher::buildStandardQueue (size_t nrThreads,
   LOG_TRACE("setting up a standard queue with %d threads", (int) nrThreads);
 
   TRI_ASSERT(_dispatcher != 0);
-  _dispatcher->addQueue("STANDARD", nrThreads, maxSize);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief builds the named dispatcher queue
-////////////////////////////////////////////////////////////////////////////////
-
-void ApplicationDispatcher::buildNamedQueue (string const& name,
-                                             size_t nrThreads,
-                                             size_t maxSize) {
-  if (_dispatcher == 0) {
-    LOG_FATAL_AND_EXIT("no dispatcher is known, cannot create dispatcher queue");
-  }
-
-  LOG_TRACE("setting up a named queue '%s' with %d threads", name.c_str(), (int) nrThreads);
-
-  TRI_ASSERT(_dispatcher != 0);
-  _dispatcher->addQueue(name, nrThreads, maxSize);
+  _dispatcher->addStandardQueue(nrThreads, maxSize);
 }
 
 // -----------------------------------------------------------------------------

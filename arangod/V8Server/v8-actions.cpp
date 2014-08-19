@@ -39,16 +39,11 @@
 #include "BasicsC/json.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/tri-strings.h"
-#include "Dispatcher/ApplicationDispatcher.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-#include "Scheduler/ApplicationScheduler.h"
-#include "Scheduler/Scheduler.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8Server/ApplicationV8.h"
-#include "V8Server/V8PeriodicTask.h"
-#include "V8Server/V8TimerTask.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
@@ -78,19 +73,7 @@ static TRI_action_result_t ExecuteActionVocbase (TRI_vocbase_t* vocbase,
 /// @brief global V8 dealer
 ////////////////////////////////////////////////////////////////////////////////
 
-ApplicationV8* GlobalV8Dealer = nullptr;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief global scheduler
-////////////////////////////////////////////////////////////////////////////////
-
-Scheduler* GlobalScheduler = nullptr;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief global dispatcher
-////////////////////////////////////////////////////////////////////////////////
-
-Dispatcher* GlobalDispatcher = nullptr;
+static ApplicationV8* GlobalV8Dealer = nullptr;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
@@ -164,6 +147,7 @@ class v8_action_t : public TRI_action_t {
       }
 
       ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext(
+        "STANDARD",
         vocbase,
         request,
         ! allowEngineReset,
@@ -1138,240 +1122,6 @@ static v8::Handle<v8::Value> JS_ClusterTest (v8::Arguments const& argv) {
   return scope.Close(r);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract a task id from an argument
-////////////////////////////////////////////////////////////////////////////////
-
-static string GetTaskId (v8::Handle<v8::Value> arg) {
-  if (arg->IsObject()) {
-    // extract "id" from object
-    v8::Handle<v8::Object> obj = arg.As<v8::Object>();
-    if (obj->Has(TRI_V8_SYMBOL("id"))) {
-      return TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("id")));
-    }
-  }
-
-  return TRI_ObjectToString(arg);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief registers a task
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_RegisterTask (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  if (GlobalScheduler == 0 || GlobalDispatcher == 0) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no scheduler found");
-  }
-
-  if (argv.Length() != 1 || ! argv[0]->IsObject()) {
-    TRI_V8_EXCEPTION_USAGE(scope, "register(<task>)");
-  }
-
-  v8::Handle<v8::Object> obj = argv[0].As<v8::Object>();
-
-  // job id
-  string id;
-
-  if (obj->HasOwnProperty(TRI_V8_SYMBOL("id"))) {
-    // user-specified id
-    id = TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("id")));
-  }
-  else {
-    // auto-generated id
-    uint64_t tick = TRI_NewTickServer();
-    id = StringUtils::itoa(tick);
-  }
-
-  // job name
-  string name;
-
-  if (obj->HasOwnProperty(TRI_V8_SYMBOL("name"))) {
-    name = TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("name")));
-  }
-  else {
-    name = "user-defined task";
-  }
-
-  // offset in seconds into period or from now on if no period
-  double offset = 0.0;
-
-  if (obj->HasOwnProperty(TRI_V8_SYMBOL("offset"))) {
-    offset = TRI_ObjectToDouble(obj->Get(TRI_V8_SYMBOL("offset")));
-  }
-
-  // period in seconds & count
-  double period = 0.0;
-
-  if (obj->HasOwnProperty(TRI_V8_SYMBOL("period"))) {
-    period = TRI_ObjectToDouble(obj->Get(TRI_V8_SYMBOL("period")));
-
-    if (period <= 0.0) {
-      TRI_V8_EXCEPTION_PARAMETER(scope, "task period must be specified and positive");
-    }
-  }
-
-  // extract the command
-  if (! obj->HasOwnProperty(TRI_V8_SYMBOL("command"))) {
-    TRI_V8_EXCEPTION_PARAMETER(scope, "command must be specified");
-  }
-
-  string command;
-  if (obj->Get(TRI_V8_SYMBOL("command"))->IsFunction()) {
-    // need to add ( and ) around function because call would otherwise break
-    command = "(" + TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("command"))) + ")(params)";
-  }
-  else {
-    command = TRI_ObjectToString(obj->Get(TRI_V8_SYMBOL("command")));
-  }
-
-  // extract the parameters
-  TRI_json_t* parameters = 0;
-
-  if (obj->HasOwnProperty(TRI_V8_SYMBOL("params"))) {
-    parameters = TRI_ObjectToJson(obj->Get(TRI_V8_SYMBOL("params")));
-  }
-
-  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
-
-  Task* task;
-
-  if (period > 0.0) {
-    // create a new periodic task
-    task = new V8PeriodicTask(
-        id,
-        name,
-        static_cast<TRI_vocbase_t*>(v8g->_vocbase),
-        GlobalV8Dealer,
-        GlobalScheduler,
-        GlobalDispatcher,
-        offset,
-        period,
-        command,
-        parameters);
-  }
-  else {
-    // create a run-once timer task
-    task = new V8TimerTask(
-        id,
-        name,
-        static_cast<TRI_vocbase_t*>(v8g->_vocbase),
-        GlobalV8Dealer,
-        GlobalScheduler,
-        GlobalDispatcher,
-        offset,
-        command,
-        parameters);
-  }
-  
-  // get the JSON representation of the task
-  TRI_json_t* json = task->toJson();
-
-  if (json == nullptr) {
-    if (period > 0.0) {
-      V8PeriodicTask* t = dynamic_cast<V8PeriodicTask*>(task);
-      delete t;
-    }
-    else {
-      V8TimerTask* t = dynamic_cast<V8TimerTask*>(task);
-      delete t;
-    }
-
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-
-  TRI_ASSERT(json != nullptr);
-
-  int res = GlobalScheduler->registerTask(task);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    if (period > 0.0) {
-      V8PeriodicTask* t = dynamic_cast<V8PeriodicTask*>(task);
-      delete t;
-    }
-    else {
-      V8TimerTask* t = dynamic_cast<V8TimerTask*>(task);
-      delete t;
-    }
-
-    TRI_V8_EXCEPTION(scope, res);
-  }
-
-  v8::Handle<v8::Value> result = TRI_ObjectJson(json);
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-
-  return scope.Close(result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unregisters a task
-///
-/// @FUN{internal.unregisterTask(@FA{id})}
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_UnregisterTask (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "unregister(<id>)");
-  }
-
-  string const id = GetTaskId(argv[0]);
-
-  if (GlobalScheduler == nullptr || GlobalDispatcher == nullptr) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no scheduler found");
-  }
-
-  int res = GlobalScheduler->unregisterUserTask(id);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_EXCEPTION(scope, res);
-  }
-
-  return scope.Close(v8::True());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets one or all registered tasks
-///
-/// @FUN{internal.getTask(@FA{id})}
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_GetTask (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-
-  if (argv.Length() > 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "get(<id>)");
-  }
-
-  if (GlobalScheduler == nullptr || GlobalDispatcher == nullptr) {
-    TRI_V8_EXCEPTION_MESSAGE(scope, TRI_ERROR_INTERNAL, "no scheduler found");
-  }
-
-  TRI_json_t* json;
-
-  if (argv.Length() == 1) {
-    // get a single task
-    string const id = GetTaskId(argv[0]);
-    json = GlobalScheduler->getUserTask(id);
-  }
-  else {
-    // get all tasks
-    json = GlobalScheduler->getUserTasks();
-  }
-
-  if (json == nullptr) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_TASK_NOT_FOUND);
-  }
-
-  v8::Handle<v8::Value> result = TRI_ObjectJson(json);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, json);
-
-  return scope.Close(result);
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -1382,8 +1132,6 @@ static v8::Handle<v8::Value> JS_GetTask (v8::Arguments const& argv) {
 
 void TRI_InitV8Actions (v8::Handle<v8::Context> context,
                         TRI_vocbase_t* vocbase,
-                        ApplicationScheduler* scheduler,
-                        ApplicationDispatcher* dispatcher,
                         ApplicationV8* applicationV8) {
   v8::HandleScope scope;
 
@@ -1402,19 +1150,6 @@ void TRI_InitV8Actions (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_GET_CURRENT_REQUEST", JS_GetCurrentRequest);
   TRI_AddGlobalFunctionVocbase(context, "SYS_GET_CURRENT_RESPONSE", JS_GetCurrentResponse);
   TRI_AddGlobalFunctionVocbase(context, "SYS_CLUSTER_TEST", JS_ClusterTest, true);
-
-  // we need a scheduler and a dispatcher to define periodic tasks
-  GlobalScheduler = scheduler->scheduler();
-  GlobalDispatcher = dispatcher->dispatcher();
-
-  if (GlobalScheduler != nullptr && GlobalDispatcher != nullptr) {
-    TRI_AddGlobalFunctionVocbase(context, "SYS_REGISTER_TASK", JS_RegisterTask);
-    TRI_AddGlobalFunctionVocbase(context, "SYS_UNREGISTER_TASK", JS_UnregisterTask);
-    TRI_AddGlobalFunctionVocbase(context, "SYS_GET_TASK", JS_GetTask);
-  }
-  else {
-    LOG_ERROR("cannot initialise tasks, scheduler or dispatcher unknown");
-  }
 }
 
 // -----------------------------------------------------------------------------

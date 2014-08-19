@@ -1,12 +1,14 @@
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, ArangoAgency */
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief V8 action functions
+/// @brief worker initialisation
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
 /// Copyright 2014 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,41 +26,26 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_V8SERVER_V8__ACTIONS_H
-#define ARANGODB_V8SERVER_V8__ACTIONS_H 1
-
-#include "Basics/Common.h"
-
-#include "V8/v8-globals.h"
-
-#include "VocBase/vocbase.h"
-
 // -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
-
-namespace triagens {
-  namespace arango {
-    class ApplicationV8;
-  }
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  module functions
+// --SECTION--                                             server initialisation
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stores the V8 actions function inside the global variable
+/// @brief worker start
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8Actions (v8::Handle<v8::Context> context,
-                        TRI_vocbase_t* vocbase,
-                        triagens::arango::ApplicationV8*);
+(function () {
+  var internal = require("internal");
+  var db = internal.db;
 
-#endif
+  // autoload all modules
+  internal.loadStartup("server/bootstrap/autoload.js").startup();
+
+  return true;
+}());
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

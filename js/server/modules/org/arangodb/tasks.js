@@ -2,7 +2,7 @@
 /*global require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ShapedJson
+/// @brief Tasks
 ///
 /// @file
 ///
@@ -33,6 +33,9 @@ var internal = require("internal");
 exports.register    = internal.registerTask;
 exports.unregister  = internal.unregisterTask;
 exports.get         = internal.getTask;
+
+exports.createNamedQueue = internal.createNamedQueue;
+exports.addJob           = internal.addJob;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

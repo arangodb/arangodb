@@ -73,10 +73,11 @@ namespace triagens {
 
         DispatcherQueue (Scheduler*,
                          Dispatcher*,
-                         std::string const&,
+                         std::string const& name,
                          Dispatcher::newDispatcherThread_fptr,
-                         size_t,
-                         size_t);
+                         void* threadData,
+                         size_t nrThreads,
+                         size_t maxSize);
 
 /////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -155,6 +156,12 @@ namespace triagens {
 /////////////////////////////////////////////////////////////////////////////
 
         string const _name;
+
+/////////////////////////////////////////////////////////////////////////////
+/// @brief thread data
+/////////////////////////////////////////////////////////////////////////////
+
+        void* _threadData;
 
 /////////////////////////////////////////////////////////////////////////////
 /// @brief monopolistic jobs
