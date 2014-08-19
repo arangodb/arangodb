@@ -256,7 +256,6 @@ int triagens::aql::removeUnnecessaryCalc (Optimizer* opt,
     plan->removeNodes(toRemove);
     out.push_back(plan);
     keep = false;
-//  plan->findVarUsage();
   }
   else {
     keep = true;
