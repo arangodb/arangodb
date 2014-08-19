@@ -29,7 +29,7 @@
         var type = arangoHelper.collectionApiType(colid);
         this.pageid = pageid;
         this.type = type;
-        this.collection.getDocuments(colid, pageid);
+        this.collection.getDocuments(this.getDocsCallback.bind(this));
         this.collectionModel = this.collectionsStore.get(colid);
     },
 
@@ -37,7 +37,15 @@
 
     el: '#content',
     table: '#documentsTableID',
-
+    getDocsCallback: function() {
+      //Hide first/last pagination
+      $('#documents_last').css("visibility", "hidden");
+      $('#documents_first').css("visibility", "hidden");
+      this.drawTable();
+      this.renderPaginationElements();
+      //window.App.documentsView.drawTable();
+      //indow.App.documentsView.renderPaginationElements();
+    },
 
     template: templateEngine.createTemplate("documentsView.ejs"),
 
@@ -121,9 +129,7 @@
       this.addDocumentSwitch = true;
       this.collection.resetFilter();
       this.collection.loadTotal();
-      this.collection.getDocuments();
-      this.drawTable();
-      this.renderPaginationElements();
+      this.collection.getDocuments(this.getDocsCallback.bind(this));
     },
 
     startUpload: function () {
@@ -270,14 +276,8 @@
       });
       this.clearTable();
       this.collection.setToFirst();
-      this.collection.getDocuments();
 
-      //Hide first/last pagination
-      $('#documents_last').css("visibility", "hidden");
-      $('#documents_first').css("visibility", "hidden");
-
-      this.drawTable();
-      this.renderPaginationElements();
+      this.collection.getDocuments(this.getDocsCallback.bind(this));
     },
 
     addFilterItem : function () {
@@ -475,10 +475,8 @@
           $('#documentsTableID').dataTable().fnGetPosition(row)
         );
         $('#documentsTableID').dataTable().fnClearTable();
-          this.collection.getDocuments(this.collection.collectionID, page);
+          this.collection.getDocuments(this.getDocsCallback.bind(this));
         $('#docDeleteModal').modal('hide');
-        this.drawTable();
-        this.renderPaginationElements();
       }
 
     },
@@ -536,7 +534,7 @@
         $('.dataTables_empty').text('No documents');
       }
       else {
-            this.collection.each(function(value, key) {
+          this.collection.each(function(value, key) {
           var tempObj = {};
           $.each(value.attributes.content, function(k, v) {
             if (! (k === '_id' || k === '_rev' || k === '_key')) {
@@ -606,11 +604,7 @@
 
     rerender : function () {
         this.clearTable();
-        this.collection.getDocuments();
-        this.drawTable();
-        $('#documents_last').css("visibility", "hidden");
-        $('#documents_first').css("visibility", "hidden");
-        this.renderPaginationElements();
+        this.collection.getDocuments(this.getDocsCallback.bind(this));
     },
 
     renderPaginationElements: function () {
