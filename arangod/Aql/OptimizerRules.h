@@ -31,6 +31,7 @@
 #include <Basics/Common.h>
 
 #include "Aql/Optimizer.h"
+#include "Aql/Indexes.h"
 
 namespace triagens {
   namespace aql {
@@ -50,6 +51,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     int removeUnnecessaryCalc (Optimizer*, ExecutionPlan*, Optimizer::PlanList&, bool&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove a CalculationNode that is never needed
+////////////////////////////////////////////////////////////////////////////////
+
+    int useIndexRange (Optimizer*, ExecutionPlan*, Optimizer::PlanList&, bool&);
 
   }  // namespace aql
 }  // namespace triagens

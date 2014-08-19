@@ -626,16 +626,10 @@ namespace triagens {
         _bound = Json(TRI_UNKNOWN_MEM_ZONE, bound->toJson(TRI_UNKNOWN_MEM_ZONE));
       }
       
-      RangeInfoBound(Json bound, bool include) : _bound(bound), _include(include) {
-      }
-      
       ~RangeInfoBound(){}
-
-      RangeInfoBound ( const RangeInfoBound& copy ) {
-        _bound = Json(TRI_UNKNOWN_MEM_ZONE, 
-            TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, copy._bound.json()));
-        _include = copy._include;
-      }
+      
+      RangeInfoBound ( RangeInfoBound const& copy ) = delete;
+      RangeInfoBound& operator= ( RangeInfoBound const& copy ) = delete;
 
       Json toJson () const {
         Json item(basics::Json::Array);
@@ -660,6 +654,9 @@ namespace triagens {
                     RangeInfoBound const* high )
           : _name(name), _low(low), _high(high) {}
         
+        RangeInfo( const RangeInfo& copy ) = delete;
+        RangeInfo& operator= ( RangeInfo const& copy ) = delete;
+
         ~RangeInfo(){
           if(_low != nullptr){
             delete _low;
@@ -671,9 +668,22 @@ namespace triagens {
 
         Json toJson () {
           Json item(basics::Json::Array);
+          if(_low != nullptr && _high != nullptr){
             item("name", Json(_name))
                 ("low", _low->toJson())
                 ("high", _high->toJson());
+          }
+          else if(_low != nullptr){
+            item("name", Json(_name))
+                ("low", _low->toJson());
+          }
+          else if(_high != nullptr){
+            item("name", Json(_name))
+                ("high", _high->toJson());
+          }
+          else {
+            item("name", Json(_name));
+          } 
           return item;
         }
         
@@ -707,7 +717,7 @@ namespace triagens {
                         Collection* collection,
                         Variable const* outVariable,
                         Index* index, 
-                        vector<RangeInfo>* ranges)
+                        vector<RangeInfo*>* ranges)
           : ExecutionNode(), 
             _vocbase(vocbase), 
             _collection(collection),
@@ -806,7 +816,7 @@ namespace triagens {
 /// @brief the range info
 ////////////////////////////////////////////////////////////////////////////////
         
-        vector<RangeInfo>* _ranges;
+        std::vector<RangeInfo*>* _ranges;
     };
 
 // -----------------------------------------------------------------------------
