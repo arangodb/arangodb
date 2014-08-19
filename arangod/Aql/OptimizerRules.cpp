@@ -35,6 +35,8 @@ using namespace triagens::aql;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove all unnecessary filters
+/// filters that are always true are removed
+/// filters that are always false will be removed plus their dependent nodes
 /// this modifies the plan in place
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -65,12 +67,56 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
       if (root->isConstant()) {
         // the expression is a constant value
         if (root->toBoolean()) {
-          // TODO: remove filter node and merge with following node
+          // filter is always true
+          // remove filter node and merge with following node
           toRemove.insert(n);
         }
         else {
-          // TODO: remove filter node plus all dependencies
-          std::cout << "FOUND A CONSTANT FILTER WHICH IS ALWAYS FALSE. TODO: optimize all the stuff above!\n";
+          // filter is always false
+          /*
+          // get all dependent nodes of the filter node
+          std::vector<ExecutionNode*> stack;
+          stack.push_back(n);
+
+          while (! stack.empty()) {
+            // pop a node from the stack
+            auto current = stack.back();
+            stack.pop_back();
+
+            bool removeNode = true;
+
+            if (toRemove.find(current) != toRemove.end()) {
+              // detected a cycle. TODO: decide whether a cycle is an error here or 
+              // if it is valid
+              break;
+            }
+
+            if (current->getType() == triagens::aql::ExecutionNode::SINGLETON) {
+              // stop at a singleton node
+              break;
+            }
+
+            if (current->getType() == triagens::aql::ExecutionNode::CALCULATION) {
+              auto c = static_cast<CalculationNode*>(current);
+              if (c->expression()->node()->canThrow()) {
+                // the calculation may throw an exception. we must not remove it
+                // because its removal might change the query result
+                removeNode = false;
+                std::cout << "FOUND A CALCULATION THAT CAN THROW\n";
+              }
+            }
+
+            auto deps = current->getDependencies();
+            for (auto it = deps.begin(); it != deps.end(); ++it) {
+              stack.push_back((*it));
+            }
+
+            if (removeNode) {
+              std::cout << "INSERTING NODE OF TYPE: " << current->getTypeString() << "\n";
+              toRemove.insert(current);
+            }
+          }
+          */
         }
       }
     }
@@ -78,7 +124,7 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
   
   if (! toRemove.empty()) {
     std::cout << "Removing " << toRemove.size() << " unnecessary "
-                 "FilterNodes..." << std::endl;
+                 "nodes..." << std::endl;
     plan->removeNodes(toRemove);
   }
   

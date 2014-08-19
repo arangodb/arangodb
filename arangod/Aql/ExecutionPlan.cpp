@@ -873,7 +873,7 @@ void ExecutionPlan::findVarUsage () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removeNodes
+/// @brief helper struct for removeNodes
 ////////////////////////////////////////////////////////////////////////////////
 
 struct NodeRemover : public WalkerWorker<ExecutionNode> {
@@ -888,12 +888,12 @@ struct NodeRemover : public WalkerWorker<ExecutionNode> {
     }
 
     ~NodeRemover () {
-    };
+    }
 
     void before (ExecutionNode* en) {
       if (_toRemove.find(en) != _toRemove.end()) {
         // Remove this node:
-        if (parents.size() == 0) {
+        if (parents.empty()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
               "Cannot remove root node of plan.");
         }
@@ -916,6 +916,11 @@ struct NodeRemover : public WalkerWorker<ExecutionNode> {
       parents.pop_back();
     }
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removeNodes, note that this does not delete the removed
+/// nodes and that one cannot remove the root node of the plan.
+////////////////////////////////////////////////////////////////////////////////
 
 void ExecutionPlan::removeNodes (std::unordered_set<ExecutionNode*>& toRemove) {
   NodeRemover remover(this, toRemove);
