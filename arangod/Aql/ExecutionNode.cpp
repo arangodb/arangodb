@@ -140,6 +140,7 @@ void ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
             ++it) {
     (*it)->walk(worker);
   }
+  
   // Now handle a subquery:
   if (getType() == SUBQUERY) {
     auto p = static_cast<SubqueryNode*>(this);
@@ -148,6 +149,7 @@ void ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
       worker->leaveSubquery(this, p->getSubquery());
     }
   }
+
   worker->after(this);
 }
 
@@ -393,6 +395,70 @@ void SubqueryNode::toJsonHelper (std::map<ExecutionNode*, int>& indexTab,
   int len = static_cast<int>(nodes.size());
   nodes(json);
   indexTab.insert(make_pair(this, len));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helper struct to find all (outer) variables used in a SubqueryNode
+////////////////////////////////////////////////////////////////////////////////
+
+struct SubqueryVarUsageFinder : public WalkerWorker<ExecutionNode> {
+  std::unordered_set<Variable const*> _usedLater;
+  std::unordered_set<Variable const*> _valid;
+
+  SubqueryVarUsageFinder () {
+  }
+
+  ~SubqueryVarUsageFinder () {
+  }
+
+  void before (ExecutionNode* en) {
+    // Add variables used here to _usedLater:
+    auto&& usedHere = en->getVariablesUsedHere();
+    for (auto v : usedHere) {
+      _usedLater.insert(v);
+    }
+  }
+
+  void after (ExecutionNode* en) {
+    // Add variables set here to _valid:
+    auto&& setHere = en->getVariablesSetHere();
+    for (auto v : setHere) {
+      _valid.insert(v);
+    }
+  }
+
+  bool enterSubquery (ExecutionNode* super, ExecutionNode* sub) {
+    SubqueryVarUsageFinder subfinder;
+    sub->walk(&subfinder);
+
+    // keep track of all variables used by a (dependent) subquery
+    // this is, all variables in the subqueries _usedLater that are not in _valid
+     
+    // create the set difference. note: cannot use std::set_difference as our sets are NOT sorted
+    for (auto it = subfinder._usedLater.begin(); it != subfinder._usedLater.end(); ++it) {
+      if (_valid.find(*it) != _valid.end()) {
+        _usedLater.insert((*it));
+      }
+    }
+    return false;
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<Variable const*> SubqueryNode::getVariablesUsedHere () {
+  SubqueryVarUsageFinder finder;
+  _subquery->walk(&finder);
+      
+  std::vector<Variable const*> v;
+  for (auto it = finder._usedLater.begin(); it != finder._usedLater.end(); ++it) {
+    if (finder._valid.find(*it) == finder._valid.end()) {
+      v.push_back((*it));
+    }
+  }
+  return v;
 }
 
 // -----------------------------------------------------------------------------

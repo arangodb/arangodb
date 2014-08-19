@@ -233,25 +233,30 @@ int triagens::aql::removeUnnecessaryCalc (Optimizer* opt,
   std::unordered_set<ExecutionNode*> toRemove;
   for (auto n : nodes) {
     auto nn = static_cast<CalculationNode*>(n);
-    if (! nn->expression()->canThrow()) {
+    if (nn->expression()->canThrow()) {
       // If this node can throw, we must not optimize it away!
-      auto outvar = n->getVariablesSetHere();
-      TRI_ASSERT(outvar.size() == 1);
-      auto varsUsedLater = n->getVarsUsedLater();
-      if (varsUsedLater.find(outvar[0]) == varsUsedLater.end()) {
-        // The variable whose value is calculated here is not used at
-        // all further down the pipeline! We remove the whole
-        // calculation node, 
-        toRemove.insert(n);
-      }
+      continue;
+    }
+
+    auto outvar = n->getVariablesSetHere();
+    TRI_ASSERT(outvar.size() == 1);
+    auto varsUsedLater = n->getVarsUsedLater();
+
+    if (varsUsedLater.find(outvar[0]) == varsUsedLater.end()) {
+      // The variable whose value is calculated here is not used at
+      // all further down the pipeline! We remove the whole
+      // calculation node, 
+      toRemove.insert(n);
     }
   }
+
   if (! toRemove.empty()) {
     std::cout << "Removing " << toRemove.size() << " unnecessary "
                  "CalculationNodes..." << std::endl;
     plan->removeNodes(toRemove);
     out.push_back(plan);
     keep = false;
+//  plan->findVarUsage();
   }
   else {
     keep = true;

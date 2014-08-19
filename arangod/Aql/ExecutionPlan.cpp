@@ -820,7 +820,7 @@ std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType (
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief determine and set _varsUsedLater in all nodes
+/// @brief helper struct for findVarUsage
 ////////////////////////////////////////////////////////////////////////////////
 
 struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
@@ -839,7 +839,7 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
       en->invalidateVarUsage();
       en->setVarsUsedLater(_usedLater);
       // Add variables used here to _usedLater:
-      std::vector<Variable const*> usedHere = en->getVariablesUsedHere();
+      auto&& usedHere = en->getVariablesUsedHere();
       for (auto v : usedHere) {
         _usedLater.insert(v);
       }
@@ -847,7 +847,7 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
 
     void after (ExecutionNode* en) {
       // Add variables set here to _valid:
-      std::vector<Variable const*> setHere = en->getVariablesSetHere();
+      auto&& setHere = en->getVariablesSetHere();
       for (auto v : setHere) {
         _valid.insert(v);
         _varSetBy.insert(std::make_pair(v->id, en));
@@ -860,9 +860,15 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
       VarUsageFinder subfinder;
       subfinder._valid = _valid;  // need a copy for the subquery!
       sub->walk(&subfinder);
+      
+      // we've fully processed the subquery
       return false;
     }
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine and set _varsUsedLater in all nodes
+////////////////////////////////////////////////////////////////////////////////
 
 void ExecutionPlan::findVarUsage () {
   VarUsageFinder finder;
