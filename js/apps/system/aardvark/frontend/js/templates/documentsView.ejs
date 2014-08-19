@@ -16,6 +16,11 @@
       </a>
     </li>
     <li class="enabled">
+      <a id="markDocuments" class="headerButton">
+        <span class="icon_arangodb_edit" title="Edit documents"></span>
+      </a>
+    </li>
+    <li class="enabled">
       <a id="importCollection" class="headerButton">
         <span class="icon_arangodb_import" title="Upload documents from JSON file"></span>
       </a>
@@ -58,6 +63,12 @@
       <button id="confirmDocImport" class="button-success btn-old-padding" style="float:right">
         <img id="uploadIndicator" class="upload-indicator" src="img/ajax-loader.gif"/>Import JSON
       </button>
+    </div>
+  </div>
+
+  <div id="editHeader" class="dropdownImport">
+    <div class="queryline">
+      <button id="deleteSelected" class="button-neutral btn-old-padding" style="float:right">Delete</button>
     </div>
   </div>
 

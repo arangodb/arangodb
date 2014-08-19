@@ -14,6 +14,8 @@
     lastCollectionName: undefined,
     restoredFilters: [],
 
+    editMode: false,
+
     allowUpload: false,
 
     collectionContext : {
@@ -48,8 +50,6 @@
       $('#documents_first').css("visibility", "hidden");
       this.drawTable();
       this.renderPaginationElements();
-      //window.App.documentsView.drawTable();
-      //indow.App.documentsView.renderPaginationElements();
     },
 
     template: templateEngine.createTemplate("documentsView.ejs"),
@@ -58,6 +58,7 @@
       "click #collectionPrev"      : "prevCollection",
       "click #collectionNext"      : "nextCollection",
       "click #filterCollection"    : "filterCollection",
+      "click #markDocuments"       : "editDocuments",
       "click #indexCollection"     : "indexCollection",
       "click #importCollection"    : "importCollection",
       "click #filterSend"          : "sendFilter",
@@ -65,6 +66,7 @@
       "click .removeFilterItem"    : "removeFilterItem",
       "click #documentsTableID tr" : "clicked",
       "click #deleteDoc"           : "remove",
+      "click #deleteSelected"      : "deleteSelectedDocs",
       "click #addDocumentButton"   : "addDocument",
       "click #documents_first"     : "firstDocuments",
       "click #documents_last"      : "lastDocuments",
@@ -206,14 +208,27 @@
       }
     },
 
+    editDocuments: function () {
+      $('#indexCollection').removeClass('activated');
+      $('#importCollection').removeClass('activated');
+      $('#filterCollection').removeClass('activated');
+      $('#markDocuments').toggleClass('activated'); this.changeEditMode();
+      $('#filterHeader').hide();
+      $('#importHeader').hide();
+      $('#indexHeader').hide();
+      $('#editHeader').slideToggle(200);
+    },
+
     filterCollection : function () {
       $('#indexCollection').removeClass('activated');
       $('#importCollection').removeClass('activated');
+      $('#markDocuments').removeClass('activated'); this.changeEditMode();
       $('#filterCollection').toggleClass('activated');
       this.activeFilter = true;
       $('#filterHeader').slideToggle(200);
       $('#importHeader').hide();
       $('#indexHeader').hide();
+      $('#editHeader').hide();
 
       var i;
       for (i in this.filters) {
@@ -227,22 +242,40 @@
     importCollection: function () {
       $('#filterCollection').removeClass('activated');
       $('#indexCollection').removeClass('activated');
+      $('#markDocuments').removeClass('activated'); this.changeEditMode();
       $('#importCollection').toggleClass('activated');
       $('#importHeader').slideToggle(200);
       $('#filterHeader').hide();
       $('#indexHeader').hide();
+      $('#editHeader').hide();
     },
 
     indexCollection: function () {
       $('#filterCollection').removeClass('activated');
       $('#importCollection').removeClass('activated');
+      $('#markDocuments').removeClass('activated'); this.changeEditMode();
       $('#indexCollection').toggleClass('activated');
       $('#newIndexView').hide();
       $('#indexEditView').show();
       $('#indexHeader').slideToggle(200);
       $('#importHeader').hide();
+      $('#editHeader').hide();
       $('#filterHeader').hide();
+    },
 
+    changeEditMode: function () {
+      if (this.editMode === true) {
+        $('#documentsTableID tr').css('cursor', 'default');
+        $('.deleteButton').fadeIn();
+        $('.addButton').fadeIn();
+        this.editMode = false;
+      }
+      else {
+        $('#documentsTableID tr').css('cursor', 'copy');
+        $('.deleteButton').fadeOut();
+        $('.addButton').fadeOut();
+        this.editMode = true;
+      }
     },
 
     getFilterContent: function () {
@@ -452,6 +485,86 @@
       }
     },
 
+    deleteSelectedDocs: function() {
+      var buttons = [], tableContent = [];
+      var toDelete = this.getSelectedDocs();
+
+      if (toDelete.length === 0) {
+        return;
+      }
+
+      tableContent.push(
+        window.modalView.createReadOnlyEntry(
+          undefined,
+          toDelete.length + ' Documents selected',
+          'Do you want to delete all selected documents?',
+          undefined,
+          undefined,
+          false,
+          undefined
+        )
+      );
+
+      buttons.push(
+        window.modalView.createDeleteButton('Delete', this.confirmDeleteSelectedDocs.bind(this))
+      );
+
+      window.modalView.show(
+        'modalTable.ejs',
+        'Delete documents',
+        buttons,
+        tableContent
+      );
+    },
+
+    confirmDeleteSelectedDocs: function() {
+      var toDelete = this.getSelectedDocs();
+      var deleted = [], self = this;
+
+      _.each(toDelete, function(key) {
+        var result = false;
+        if (self.type === 'document') {
+          result = self.documentStore.deleteDocument(
+            self.collection.collectionID, key
+          );
+          if (result) {
+            //on success
+            deleted.push(true);
+            self.collection.setTotalMinusOne();
+          }
+          else {
+            deleted.push(false);
+            arangoHelper.arangoError('Document error', 'Could not delete document.');
+          }
+        }
+        else if (self.type === 'edge') {
+          result = self.documentStore.deleteEdge(self.collection.collectionID, key);
+          if (result === true) {
+            //on success
+            self.collection.setTotalMinusOne();
+            deleted.push(true);
+          }
+          else {
+            deleted.push(false);
+            arangoHelper.arangoError('Edge error', 'Could not delete edge');
+          }
+        }
+      });
+      this.collection.getDocuments(this.getDocsCallback.bind(this));
+      $('#markDocuments').click();
+      window.modalView.hide();
+    },
+
+    getSelectedDocs: function() {
+      var toDelete = [];
+      _.each($('#documentsTableID tr'), function(element) {
+        if ($(element).hasClass('selected-row')) {
+          toDelete.push($($(element).children()[1]).find('.key').text());
+        }
+      });
+      return toDelete;
+    },
+
     remove: function (a) {
       this.target = a.currentTarget;
       var thiselement = a.currentTarget.parentElement;
@@ -487,6 +600,7 @@
         );
         if (result) {
           //on success
+          this.collection.setTotalMinusOne();
           deleted = true;
         }
         else {
@@ -497,6 +611,7 @@
         result = this.documentStore.deleteEdge(this.collection.collectionID, this.docid);
         if (result === true) {
           //on success
+          this.collection.setTotalMinusOne();
           deleted = true;
         }
         else {
@@ -515,11 +630,38 @@
 
     },
     clicked: function (event) {
+      var self = event.currentTarget;
+
       if (this.alreadyClicked === true) {
         this.alreadyClicked = false;
         return 0;
       }
-      var self = event.currentTarget;
+
+      if(this.editMode === true) {
+        if($(self).hasClass('selected-row')) {
+          $(event.currentTarget).removeClass('selected-row');
+        }
+        else {
+          $(event.currentTarget).addClass('selected-row');
+        }
+
+        var selected = this.getSelectedDocs();
+
+        if (selected.length > 0) {
+          $('#deleteSelected').prop('disabled', false);
+          $('#deleteSelected').removeClass('button-neutral');
+          $('#deleteSelected').addClass('button-danger');
+          $('#deleteSelected').removeClass('disabled');
+        }
+        else {
+          $('#deleteSelected').prop('disabled', true);
+          $('#deleteSelected').addClass('disabled');
+          $('#deleteSelected').addClass('button-neutral');
+          $('#deleteSelected').removeClass('button-danger');
+        }
+        return;
+      }
+
       var aPos = $(this.table).dataTable().fnGetPosition(self);
       if (aPos === null) {
         // headline
