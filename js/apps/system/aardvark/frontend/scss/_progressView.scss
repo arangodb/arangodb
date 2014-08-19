@@ -1,21 +1,21 @@
 #progressPlaceholder {
-  top: 0;
-  bottom:0;
+  background-color: rgba(0, 0, 0, .6);
+  bottom: 0;
   left: 0;
-  right: 0;
-  background-color: rgba(0,0,0,0.6);
   position: fixed;
+  right: 0;
+  top: 0;
   z-index: 9999;
 }
 
 .progress-view {
-  color: white;
-  width:300px;
-  height:200px;
-  position:absolute;
-  left:50%;
-  top:50%;
-  margin:-100px 0 0 -150px;
+  color: #fff;
+  height: 200px;
+  left: 50%;
+  margin: -100px 0 0 -150px;
+  position: absolute;
+  top: 50%;
+  width: 300px;
 
   .progress-content {
     margin-left: 90px;
