@@ -41,16 +41,22 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief relaxRule, do not do anything
+/// @brief remove a CalculationNode that is never needed
 ////////////////////////////////////////////////////////////////////////////////
 
-    int relaxRule (Optimizer*, ExecutionPlan*, Optimizer::PlanList&, bool&);
+    int removeUnnecessaryFiltersRule (Optimizer*, ExecutionPlan*, Optimizer::PlanList&, bool&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief move calculations up in the plan
+////////////////////////////////////////////////////////////////////////////////
+
+    int moveCalculationsUpRule (Optimizer*, ExecutionPlan*, Optimizer::PlanList&, bool&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove a CalculationNode that is never needed
 ////////////////////////////////////////////////////////////////////////////////
 
-    int removeUnnecessaryCalc (Optimizer*, ExecutionPlan*, Optimizer::PlanList&, bool&);
+    int removeUnnecessaryCalculationsRule (Optimizer*, ExecutionPlan*, Optimizer::PlanList&, bool&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove a CalculationNode that is never needed
@@ -61,14 +67,10 @@ namespace triagens {
   }  // namespace aql
 }  // namespace triagens
 
-
-
-
 #endif
 
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-
 

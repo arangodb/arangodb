@@ -33,7 +33,9 @@
 #include "Basics/Common.h"
 #include "BasicsC/json.h"
 #include "BasicsC/vector.h"
+#include "Basics/JsonHelper.h"
 #include "Utils/Exception.h"
+#include "Aql/Query.h"
 
 namespace triagens {
   namespace basics {
@@ -47,12 +49,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     enum AstNodeValueType {
-      VALUE_TYPE_FAIL = 0,
-      VALUE_TYPE_NULL,
-      VALUE_TYPE_BOOL,
-      VALUE_TYPE_INT,
-      VALUE_TYPE_DOUBLE,
-      VALUE_TYPE_STRING
+      VALUE_TYPE_FAIL   = 0,
+      VALUE_TYPE_NULL   = 1,
+      VALUE_TYPE_BOOL   = 2,
+      VALUE_TYPE_INT    = 3,
+      VALUE_TYPE_DOUBLE = 4,
+      VALUE_TYPE_STRING = 5
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -75,56 +77,56 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     enum AstNodeType {
-      NODE_TYPE_ROOT,
-      NODE_TYPE_FOR,
-      NODE_TYPE_LET,
-      NODE_TYPE_FILTER,
-      NODE_TYPE_RETURN,
-      NODE_TYPE_REMOVE,
-      NODE_TYPE_INSERT,
-      NODE_TYPE_UPDATE,
-      NODE_TYPE_REPLACE,
-      NODE_TYPE_COLLECT,
-      NODE_TYPE_SORT,
-      NODE_TYPE_SORT_ELEMENT,
-      NODE_TYPE_LIMIT,
-      NODE_TYPE_VARIABLE,
-      NODE_TYPE_ASSIGN,
-      NODE_TYPE_OPERATOR_UNARY_PLUS,
-      NODE_TYPE_OPERATOR_UNARY_MINUS,
-      NODE_TYPE_OPERATOR_UNARY_NOT,
-      NODE_TYPE_OPERATOR_BINARY_AND,
-      NODE_TYPE_OPERATOR_BINARY_OR,
-      NODE_TYPE_OPERATOR_BINARY_PLUS,
-      NODE_TYPE_OPERATOR_BINARY_MINUS,
-      NODE_TYPE_OPERATOR_BINARY_TIMES,
-      NODE_TYPE_OPERATOR_BINARY_DIV,
-      NODE_TYPE_OPERATOR_BINARY_MOD,
-      NODE_TYPE_OPERATOR_BINARY_EQ,
-      NODE_TYPE_OPERATOR_BINARY_NE,
-      NODE_TYPE_OPERATOR_BINARY_LT,
-      NODE_TYPE_OPERATOR_BINARY_LE,
-      NODE_TYPE_OPERATOR_BINARY_GT,
-      NODE_TYPE_OPERATOR_BINARY_GE,
-      NODE_TYPE_OPERATOR_BINARY_IN,
-      NODE_TYPE_OPERATOR_TERNARY,
-      NODE_TYPE_SUBQUERY,
-      NODE_TYPE_ATTRIBUTE_ACCESS,
-      NODE_TYPE_BOUND_ATTRIBUTE_ACCESS,
-      NODE_TYPE_INDEXED_ACCESS,
-      NODE_TYPE_EXPAND,
-      NODE_TYPE_ITERATOR,
-      NODE_TYPE_VALUE,
-      NODE_TYPE_LIST,
-      NODE_TYPE_ARRAY,
-      NODE_TYPE_ARRAY_ELEMENT,
-      NODE_TYPE_COLLECTION,
-      NODE_TYPE_REFERENCE,
-      NODE_TYPE_PARAMETER,
-      NODE_TYPE_FCALL,
-      NODE_TYPE_FCALL_USER,
-      NODE_TYPE_RANGE,
-      NODE_TYPE_NOP
+      NODE_TYPE_ROOT                          =  0,
+      NODE_TYPE_FOR                           =  1,
+      NODE_TYPE_LET                           =  2,
+      NODE_TYPE_FILTER                        =  3,
+      NODE_TYPE_RETURN                        =  4,
+      NODE_TYPE_REMOVE                        =  5,
+      NODE_TYPE_INSERT                        =  6,
+      NODE_TYPE_UPDATE                        =  7,
+      NODE_TYPE_REPLACE                       =  8,
+      NODE_TYPE_COLLECT                       =  9,
+      NODE_TYPE_SORT                          = 10,
+      NODE_TYPE_SORT_ELEMENT                  = 11,
+      NODE_TYPE_LIMIT                         = 12,
+      NODE_TYPE_VARIABLE                      = 13,
+      NODE_TYPE_ASSIGN                        = 14,
+      NODE_TYPE_OPERATOR_UNARY_PLUS           = 15,
+      NODE_TYPE_OPERATOR_UNARY_MINUS          = 16,
+      NODE_TYPE_OPERATOR_UNARY_NOT            = 17,
+      NODE_TYPE_OPERATOR_BINARY_AND           = 18,
+      NODE_TYPE_OPERATOR_BINARY_OR            = 19,
+      NODE_TYPE_OPERATOR_BINARY_PLUS          = 20,
+      NODE_TYPE_OPERATOR_BINARY_MINUS         = 21,
+      NODE_TYPE_OPERATOR_BINARY_TIMES         = 22,
+      NODE_TYPE_OPERATOR_BINARY_DIV           = 23,
+      NODE_TYPE_OPERATOR_BINARY_MOD           = 24,
+      NODE_TYPE_OPERATOR_BINARY_EQ            = 25,
+      NODE_TYPE_OPERATOR_BINARY_NE            = 26,
+      NODE_TYPE_OPERATOR_BINARY_LT            = 27,
+      NODE_TYPE_OPERATOR_BINARY_LE            = 28,
+      NODE_TYPE_OPERATOR_BINARY_GT            = 29,
+      NODE_TYPE_OPERATOR_BINARY_GE            = 30,
+      NODE_TYPE_OPERATOR_BINARY_IN            = 31,
+      NODE_TYPE_OPERATOR_TERNARY              = 32,
+      NODE_TYPE_SUBQUERY                      = 33,
+      NODE_TYPE_ATTRIBUTE_ACCESS              = 34,
+      NODE_TYPE_BOUND_ATTRIBUTE_ACCESS        = 35,
+      NODE_TYPE_INDEXED_ACCESS                = 36,
+      NODE_TYPE_EXPAND                        = 37,
+      NODE_TYPE_ITERATOR                      = 38,
+      NODE_TYPE_VALUE                         = 39,
+      NODE_TYPE_LIST                          = 40,
+      NODE_TYPE_ARRAY                         = 41,
+      NODE_TYPE_ARRAY_ELEMENT                 = 42,
+      NODE_TYPE_COLLECTION                    = 43,
+      NODE_TYPE_REFERENCE                     = 44,
+      NODE_TYPE_PARAMETER                     = 45,
+      NODE_TYPE_FCALL                         = 46,
+      NODE_TYPE_FCALL_USER                    = 47,
+      NODE_TYPE_RANGE                         = 48,
+      NODE_TYPE_NOP                           = 49
     };
 
 // -----------------------------------------------------------------------------
@@ -137,6 +139,9 @@ namespace triagens {
 
     struct AstNode {
 
+      static std::unordered_map<int, std::string const> const TypeNames;
+      static std::unordered_map<int, std::string const> const valueTypeNames;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
@@ -146,6 +151,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       AstNode (AstNodeType); 
+
+      AstNode (triagens::aql::Query* Q, triagens::basics::Json const& json); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the node
@@ -158,6 +165,22 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type name of a node
+////////////////////////////////////////////////////////////////////////////////
+
+        const std::string& getTypeString () const;
+
+      const std::string& getValueTypeString () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether we know a type of this kind; throws exception if not.
+////////////////////////////////////////////////////////////////////////////////
+      static void validateType (int type);
+      static void validateValueType (int type);
+
+        static AstNodeType getNodeTypeFromJson (triagens::basics::Json const& json);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a JSON representation of the node value
@@ -276,6 +299,17 @@ namespace triagens {
         inline AstNode* getMember (size_t i) const {
           if (i >= members._length) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "member out of range");
+          }
+          return static_cast<AstNode*>(members._buffer[i]);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return an optional member of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        inline AstNode* getOptionalMember (size_t i) const {
+          if (i >= members._length) {
+            return nullptr;
           }
           return static_cast<AstNode*>(members._buffer[i]);
         }
@@ -400,11 +434,6 @@ namespace triagens {
           value.value._data = const_cast<void*>(v);
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the type name of a node
-////////////////////////////////////////////////////////////////////////////////
-
-        std::string typeString () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append a JavaScript representation of the node into a string buffer
