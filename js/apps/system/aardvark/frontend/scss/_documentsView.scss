@@ -78,15 +78,16 @@
 
 .docsSecCol {
   @extend %docs-col-no-border;
-  min-width: 400px !important;
   height: 26px;
+  min-width: 400px !important;
   width: 20%;
 }
 
 .docsThirdCol {
-  height: 26px;
   @extend %docs-col-no-border;
   @extend %pull-right;
+
+  height: 26px;
 }
 
 .add-filter-item {
