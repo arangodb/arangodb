@@ -340,14 +340,53 @@ controller.put('/foxx/move/:key', function(req, res) {
  *
  */
 
+controller.post("/query/upload/:user", function(req, res) {
+  var user = req.params("user");
+  var response, queries, userColl, storedQueries, queriesToSave;
+
+  queries = req.body();
+  userColl = db._users.byExample({"user": user}).toArray()[0];
+  storedQueries = userColl.extra.queries;
+  queriesToSave = [];
+
+  underscore.each(queries, function(newq) {
+    var toBeStored = true;
+    underscore.each(storedQueries, function(stored) {
+      if (stored.name === newq.name) {
+        toBeStored = false;
+      }
+    });
+    if (toBeStored === true) {
+      queriesToSave.push(newq);
+    }
+  });
+
+  queriesToSave = queriesToSave.concat(storedQueries);
+
+  var toUpdate = {
+    extra: {
+      queries: queriesToSave
+    }
+  }
+
+  var result = db._users.update(userColl, toUpdate, true);
+  res.json(result);
+}).summary("Upload user queries")
+  .notes("This function uploads all given user queries");
+
+/** Download stored queries
+ *
+ * Download and export all queries from the given username.
+ *
+ */
+
 controller.get("/query/download/:user", function(req, res) {
   var user = req.params("user");
-
   var result = db._users.byExample({"user": user}).toArray()[0];
 
   res.set("Content-Type", "application/json");
   res.set("Content-Disposition", "attachment; filename=queries.json");
-  res.json({"extra": result.extra});
+  res.json(result.extra.queries);
 
 }).summary("Download all user queries")
   .notes("This function downloads all user queries from the given user");

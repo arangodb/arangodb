@@ -293,15 +293,17 @@
     importCustomQueries: function () {
       var result, self = this;
       if (this.allowUpload === true) {
-        result = self.collection.saveImportQueries(self.file);
 
-        if (result === true) {
+        var callback = function() {
+          this.collection.fetch({async: false});
           this.updateLocalQueries();
           this.renderSelectboxes();
           this.updateTable();
-          $('#customs-switch').click();
           self.allowUpload = false;
-        }
+          $('#customs-switch').click();
+        };
+
+        self.collection.saveImportQueries(self.file, callback.bind(this));
       }
     },
 
@@ -319,6 +321,11 @@
       $.ajax("whoAmI", {async:false}).done(
         function(data) {
         name = data.name;
+
+        if (name === null) {
+          name = "root";
+        }
+
       });
 
       window.open(encodeURI("query/download/" + name));

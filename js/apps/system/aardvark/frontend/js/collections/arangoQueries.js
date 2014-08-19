@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true, stupid: true*/
-/*global require, exports, Backbone, activeUser, window, ArangoQuery, $, data, _ */
+/*global require, exports, Backbone, activeUser, window, ArangoQuery, $, data, _, arangoHelper*/
 (function() {
   "use strict";
 
@@ -116,97 +116,30 @@
       return returnValue3;
     },
 
-    saveImportQueries: function(file) {
+    saveImportQueries: function(file, callback) {
 
       if (this.activeUser === 0) {
         return false;
       }
 
-      var queries = [];
-      this.each(function(query) {
-        queries.push({
-          value: query.attributes.value,
-          name: query.attributes.name
-        });
-      });
-
-      var self = this,
-      returnValue1 = false,
-      returnValue2 = false,
-      returnValue3 = false;
-
-      var oldQueries = this.currentExtra;
-
+      window.progressView.show("Fetching documents...");
       $.ajax({
         cache: false,
-        type: "PATCH",
+        type: "POST",
         async: false,
-        url: "/_api/user/" + this.activeUser,
+        url: "query/upload/" + this.activeUser,
         data: file,
         contentType: "application/json",
         processData: false,
         success: function() {
-          returnValue1 = true;
+          window.progressView.hide();
+          callback();
         },
         error: function() {
-          returnValue1 = false;
+          window.progressView.hide();
+          arangoHelper.arangoError("Query error", "queries could not be imported");
         }
       });
-
-      this.fetch({
-        async: false,
-        success: function() {
-      }});
-
-      var newQueries = self.currentExtra;
-
-      var nameTaken = false;
-
-      _.each(oldQueries.queries, function(query) {
-
-        _.each(newQueries.queries, function(newQuery) {
-          if (newQuery.name === query.name) {
-            nameTaken = true;
-          }
-        });
-
-        if (nameTaken === false) {
-          newQueries.queries.push({
-            name: query.name,
-            value: query.value
-          });
-        }
-      });
-
-      $.ajax({
-        cache: false,
-        type: "PATCH",
-        async: false,
-        url: "/_api/user/" + this.activeUser,
-        data: JSON.stringify({
-          extra: newQueries
-        }),
-        contentType: "application/json",
-        processData: false,
-        success: function() {
-          returnValue2 = true;
-        },
-        error: function() {
-          returnValue2 = false;
-        }
-      });
-
-      this.fetch({
-        async: false
-      });
-
-      if (returnValue1 === true && returnValue2 === true) {
-        returnValue3 = true;
-      }
-      else {
-        returnValue3 = false;
-      }
-      return returnValue3;
     }
 
   });
