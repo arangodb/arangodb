@@ -41,8 +41,14 @@ using namespace triagens::aql;
 Optimizer::Optimizer () {
   // List all the rules in the system here:
 
-  // rule should be executed relatively early 
+  // remove filters from the query that are not necessary at all
+  // rule should be executed relatively early because it enables removal
+  // of then-unused filter variables
   registerRule(removeUnnecessaryFiltersRule, 10000);
+
+  // move calculations up the dependency chain (to pull them out of inner loops etc.)
+  // TODO: validate if this is really an optimization
+  // registerRule(moveCalculationsUpRule, 1000);
 
   // deactivated because a test crashes
   // registerRule(removeUnnecessaryCalc, 999);

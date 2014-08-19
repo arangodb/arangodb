@@ -133,6 +133,7 @@ void ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
   }
 
   worker->before(this);
+  
   // Now the children in their natural order:
   for (auto it = _dependencies.begin();
             it != _dependencies.end(); 

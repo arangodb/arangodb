@@ -158,6 +158,7 @@ void ExecutionBlock::walk (WalkerWorker<ExecutionBlock>* worker) {
   }
 
   worker->before(this);
+
   // Now the children in their natural order:
   for (auto c : _dependencies) {
     c->walk(worker);

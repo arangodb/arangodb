@@ -823,8 +823,6 @@ std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType (
 /// @brief determine and set _varsUsedLater in all nodes
 ////////////////////////////////////////////////////////////////////////////////
 
-// do not fully qualify classname here as this won't compile with g++
-// struct triagens::aql::VarUsageFinder : public WalkerWorker<ExecutionNode> {
 struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
 
     std::unordered_set<Variable const*> _usedLater;
@@ -832,10 +830,10 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
     std::unordered_map<VariableId, ExecutionNode*> _varSetBy;
 
     VarUsageFinder () {
-    };
+    }
 
     ~VarUsageFinder () {
-    };
+    }
 
     void before (ExecutionNode* en) {
       en->invalidateVarUsage();
@@ -884,7 +882,8 @@ struct NodeRemover : public WalkerWorker<ExecutionNode> {
 
     NodeRemover (ExecutionPlan* plan,
                  std::unordered_set<ExecutionNode*>& toRemove) 
-      : _plan(plan), _toRemove(toRemove) {
+      : _plan(plan), 
+        _toRemove(toRemove) {
     }
 
     ~NodeRemover () {
@@ -925,6 +924,17 @@ struct NodeRemover : public WalkerWorker<ExecutionNode> {
 void ExecutionPlan::removeNodes (std::unordered_set<ExecutionNode*>& toRemove) {
   NodeRemover remover(this, toRemove);
   root()->walk(&remover);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removeNode, note that this does not delete the removed
+/// node and that one cannot remove the root node of the plan.
+////////////////////////////////////////////////////////////////////////////////
+
+void ExecutionPlan::removeNode (ExecutionNode* node) {
+  std::unordered_set<ExecutionNode*> toRemove;
+  toRemove.insert(node);
+  return removeNodes(toRemove);
 }
 
 // -----------------------------------------------------------------------------

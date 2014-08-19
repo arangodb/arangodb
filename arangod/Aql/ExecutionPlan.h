@@ -129,6 +129,13 @@ namespace triagens {
 
         void removeNodes (std::unordered_set<ExecutionNode*>& toRemove);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removeNode, note that this does not delete the removed
+/// node and that one cannot remove the root node of the plan.
+////////////////////////////////////////////////////////////////////////////////
+
+        void removeNode (ExecutionNode*);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
