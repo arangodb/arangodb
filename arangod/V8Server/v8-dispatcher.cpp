@@ -413,7 +413,7 @@ static v8::Handle<v8::Value> JS_CreateNamedQueue (v8::Arguments const& argv) {
 /// @FUN{internal.addJob(@FA{queue}, @FA{parameter})}
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Value> JS_AddJob(v8::Arguments const &argv) {
+static v8::Handle<v8::Value> JS_AddJob (v8::Arguments const &argv) {
   v8::HandleScope scope;
   
   if (argv.Length() != 2 || ! argv[1]->IsObject()) {

@@ -474,7 +474,7 @@ void ApplicationV8::exitContext (V8Context* context) {
 
   // non-standard case: directly collect the garbage
   else {
-    if (context->_numExecutions >= _gcInterval) {
+    if (context->_numExecutions >= 1000) {
       LOG_TRACE("V8 context has reached maximum number of requests and will be scheduled for GC");
       performGarbageCollection = true;
     }
@@ -486,6 +486,7 @@ void ApplicationV8::exitContext (V8Context* context) {
     _busyContexts[name].erase(context);
 
     if (performGarbageCollection) {
+      cout << "STARTING GC\n";
       guard.unlock();
 
       context->_isolate->Enter();
@@ -499,6 +500,8 @@ void ApplicationV8::exitContext (V8Context* context) {
       context->_isolate->Exit();
 
       guard.lock();
+
+      context->_numExecutions = 0;
     }
 
     delete context->_locker;
@@ -823,7 +826,7 @@ void ApplicationV8::prepareServer () {
   size_t nrInstances = _nrInstances[name];
 
   for (size_t i = 0;  i < nrInstances;  ++i) {
-    prepareV8Server(i, _startupFile);
+    prepareV8Server("STANDARD", i, _startupFile);
   }
 }
 
@@ -847,7 +850,7 @@ bool ApplicationV8::prepareNamedContexts (const string& name,
       return false;
     }
 
-    prepareV8Server(i, "server/worker.js");
+    prepareV8Server(name, i, "server/worker.js");
 
     // and generate MAIN
     V8Context* context = _contexts[name][i];
@@ -1268,8 +1271,7 @@ bool ApplicationV8::prepareV8Instance (const string& name, size_t i, bool useAct
 /// @brief prepares the V8 server
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationV8::prepareV8Server (const size_t i, const string& startupFile) {
-  static const string name = "STANDARD";
+void ApplicationV8::prepareV8Server (const string& name, const size_t i, const string& startupFile) {
 
   // enter context and isolate
   V8Context* context = _contexts[name][i];
