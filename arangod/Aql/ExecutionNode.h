@@ -42,6 +42,8 @@
 #include "Aql/Types.h"
 #include "Aql/WalkerWorker.h"
 
+using Json = triagens::basics::Json;
+
 namespace triagens {
   namespace aql {
 
@@ -612,66 +614,76 @@ namespace triagens {
 // --SECTION--                                              class IndexRangeNode
 // -----------------------------------------------------------------------------
 
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief struct to keep range info, ranges cannot be unbounded above or below
+/// @brief struct to keep an upper or lower bound for the range info. Use
+/// nullptr instead if you want to have no bound.
+////////////////////////////////////////////////////////////////////////////////
+
+    struct RangeInfoBound{
+
+      RangeInfoBound(AstNode const* bound, bool include) : _include(include) {
+        _bound = Json(TRI_UNKNOWN_MEM_ZONE, bound->toJson(TRI_UNKNOWN_MEM_ZONE));
+      }
+      
+      RangeInfoBound(Json bound, bool include) : _bound(bound), _include(include) {
+      }
+      
+      ~RangeInfoBound(){}
+
+      RangeInfoBound ( const RangeInfoBound& copy ) {
+        _bound = Json(TRI_UNKNOWN_MEM_ZONE, 
+            TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, copy._bound.json()));
+        _include = copy._include;
+      }
+
+      Json toJson () const {
+        Json item(basics::Json::Array);
+          item("bound", Json(TRI_UNKNOWN_MEM_ZONE, 
+                TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, _bound.json())))
+              ("include", Json(_include));
+        return item;
+      }
+
+      Json _bound;
+      bool _include;
+
+    };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief struct to keep range info 
 ////////////////////////////////////////////////////////////////////////////////
         
     struct RangeInfo{
         
-        RangeInfo ( std::string name, 
-                    basics::Json const& low, 
-                    bool lowInclude, 
-                    basics::Json const& high, 
-                    bool highInclude ) 
-          : _name(name), 
-            _low(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, low.json())), 
-            _lowInclude(lowInclude), 
-            _high(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, high.json())), 
-            _highInclude(highInclude){}
+        RangeInfo ( std::string name, RangeInfoBound const* low, 
+                    RangeInfoBound const* high )
+          : _name(name), _low(low), _high(high) {}
         
-        
-        RangeInfo ( std::string name, basics::Json const& bound, 
-            bool includeBound, bool isHigh) : _name(name) {
+        ~RangeInfo(){
+          if(_low != nullptr){
+            delete _low;
+          }
+          if(_high != nullptr){
+            delete _high;
+          }
+        }
 
-            if(isHigh){
-              _high = basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, 
-                    bound.json()));
-              _highInclude = includeBound;
-              _unboundedBelow = true;
-            }
-            else {
-              _low = basics::Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, 
-                    bound.json()));
-              _lowInclude = includeBound;
-              _unboundedAbove = true;
-            }
-          };
+        Json toJson () {
+          Json item(basics::Json::Array);
+            item("name", Json(_name))
+                ("low", _low->toJson())
+                ("high", _high->toJson());
+          return item;
+        }
         
-        RangeInfo ( const RangeInfo& copy ) :
-           _name(copy._name) {
-           _unboundedAbove = copy._unboundedAbove; 
-           if (_unboundedAbove) {
-             _high = basics::Json(TRI_UNKNOWN_MEM_ZONE, 
-                 TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, copy._high.json()));
-             _highInclude = copy._highInclude;
-           }
-           _unboundedBelow = copy._unboundedBelow; 
-           if (!_unboundedBelow) {
-             _low = basics::Json(TRI_UNKNOWN_MEM_ZONE, 
-                 TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, copy._low.json()));
-             _lowInclude = copy._lowInclude;
-           }
-         }
-        
-        ~RangeInfo(){}
-        
+        std::string toString() {
+          return this->toJson().toString();
+        }
+
         std::string _name;
-        basics::Json _low;
-        bool _lowInclude;
-        basics::Json _high;
-        bool _highInclude;
-        bool _unboundedAbove = false;
-        bool _unboundedBelow = false;
+        RangeInfoBound const* _low;
+        RangeInfoBound const* _high;
 
     };
 
