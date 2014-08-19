@@ -44,8 +44,8 @@ Optimizer::Optimizer () {
   // rule should be executed relatively early 
   registerRule(removeUnnecessaryFiltersRule, 10000);
 
-  // registerRule(removeUnnecessaryCalc, 999);
   // deactivated because a test crashes
+  // registerRule(removeUnnecessaryCalc, 999);
 
   // Now sort them by pass:
   std::stable_sort(_rules.begin(), _rules.end());
