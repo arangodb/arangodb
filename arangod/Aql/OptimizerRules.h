@@ -55,7 +55,7 @@ namespace triagens {
 /// @brief remove a CalculationNode that is never needed
 ////////////////////////////////////////////////////////////////////////////////
 
-    int removeUnnecessaryCalc (Optimizer*, ExecutionPlan*, Optimizer::PlanList&, bool&);
+    int removeUnnecessaryCalculationsRule (Optimizer*, ExecutionPlan*, Optimizer::PlanList&, bool&);
 
   }  // namespace aql
 }  // namespace triagens
