@@ -114,7 +114,6 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
     }
 
     void buildRangeInfo (AstNode const* node, std::string& name){
-      std::cout << "here!\n";
       if(node->type == NODE_TYPE_REFERENCE){
         auto var = static_cast<Variable*>(node->getData());
         auto setter = _plan->getVarSetBy(var->id);
