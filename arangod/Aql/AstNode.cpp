@@ -521,10 +521,15 @@ bool AstNode::isSimple () const {
   if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     TRI_ASSERT(numMembers() == 1);
 
-    auto member = getMember(0);
-    return member->isSimple();
+    return getMember(0)->isSimple();
   }
+/*
+  if (type == NODE_TYPE_INDEXED_ACCESS) {
+    TRI_ASSERT(numMembers() == 2);
 
+    return (getMember(0)->isSimple() && getMember(1)->isSimple());
+  }
+*/
   if (type == NODE_TYPE_REFERENCE) {
     return true;
   }

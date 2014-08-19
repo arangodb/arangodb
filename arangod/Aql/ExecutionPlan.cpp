@@ -35,10 +35,13 @@
 #include "Aql/Query.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
+#include "Basics/JsonHelper.h"
 #include "Utils/Exception.h"
 
 using namespace triagens::aql;
 using namespace triagens::basics;
+using JsonHelper = triagens::basics::JsonHelper;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
@@ -49,7 +52,9 @@ using namespace triagens::basics;
 
 ExecutionPlan::ExecutionPlan () 
   : _nodes(),
-    _root(nullptr) {
+    _ids(),
+    _root(nullptr),
+    _nextId(0) {
 
   _nodes.reserve(8);
 }
@@ -84,23 +89,18 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast const* ast) {
   try {
     plan->_root = plan->fromNode(ast, root);
     plan->findVarUsage();
-    /*    
-    std::cout << "ESTIMATED COST = €" << plan->getCost() << "\n";
-
+/*        
     auto JsonPlan = plan->_root->toJson();
     auto JsonString = JsonPlan.toString();
-
-    std::cout << JsonString << "\n";
 
     auto otherPlan = ExecutionPlan::instanciateFromJson (ast,
                                                          JsonPlan);
     auto otherJsonString = otherPlan->_root->toJson().toString();
-    std::cout << otherJsonString << "\n";
     ///    TRI_ASSERT(otherJsonString == JsonString);
     ///    JsonHelper
     return otherPlan;
-
-    /*/    return plan;
+*/
+    return plan;
   }
   catch (...) {
     delete plan;
@@ -109,14 +109,11 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast const* ast) {
 }
 
 ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast const* ast,
-                                                   triagens::basics::Json const& Json)
-{
-
+                                                   triagens::basics::Json const& Json) {
   auto plan = new ExecutionPlan();
 
   try {
     plan->_root = plan->fromJson(ast, Json);
-    std::cout << "running findvarusage\n";
     plan->findVarUsage();
     return plan;
   }
@@ -124,6 +121,22 @@ ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast const* ast,
     delete plan;
     throw;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a node by its id
+////////////////////////////////////////////////////////////////////////////////
+
+ExecutionNode* ExecutionPlan::getNodeById (size_t id) const {
+  auto it = _ids.find(id);
+  
+  if (it != _ids.end()) {
+    // node found
+    return (*it).second;
+  }
+
+  // node unknown
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "node not found");
 }
 
 // -----------------------------------------------------------------------------
@@ -175,9 +188,12 @@ ModificationOptions ExecutionPlan::createOptions (AstNode const* node) {
 
 ExecutionNode* ExecutionPlan::addNode (ExecutionNode* node) {
   TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->id() > 0);
 
   try {
     _nodes.push_back(node);
+    _ids.insert(std::make_pair(node->id(), node));
+
     return node;
   }
   catch (...) {
@@ -200,7 +216,7 @@ CalculationNode* ExecutionPlan::createTemporaryCalculation (Ast const* ast,
   auto expr = new Expression(ast->query()->executor(), const_cast<AstNode*>(expression));
 
   try {
-    auto en = new CalculationNode(expr, out);
+    auto en = new CalculationNode(nextId(), expr, out);
 
     addNode(reinterpret_cast<ExecutionNode*>(en));
     return en;
@@ -263,20 +279,20 @@ ExecutionNode* ExecutionPlan::fromNodeFor (Ast const* ast,
     if (collection == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no collection for EnumerateCollection");
     }
-    en = addNode(new EnumerateCollectionNode(ast->query()->vocbase(), collection, v));
+    en = addNode(new EnumerateCollectionNode(nextId(), ast->query()->vocbase(), collection, v));
   }
   else if (expression->type == NODE_TYPE_REFERENCE) {
     // second operand is already a variable
     auto inVariable = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(inVariable != nullptr);
-    en = addNode(new EnumerateListNode(inVariable, v));
+    en = addNode(new EnumerateListNode(nextId(), inVariable, v));
   }
   else {
     // second operand is some misc. expression
     auto calc = createTemporaryCalculation(ast, expression);
 
     calc->addDependency(previous);
-    en = addNode(new EnumerateListNode(calc->outVariable(), v));
+    en = addNode(new EnumerateListNode(nextId(), calc->outVariable(), v));
     previous = calc;
   }
 
@@ -303,14 +319,14 @@ ExecutionNode* ExecutionPlan::fromNodeFilter (Ast const* ast,
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = addNode(new FilterNode(v));
+    en = addNode(new FilterNode(nextId(), v));
   }
   else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(ast, expression);
 
     calc->addDependency(previous);
-    en = addNode(new FilterNode(calc->outVariable()));
+    en = addNode(new FilterNode(nextId(), calc->outVariable()));
     previous = calc;
   }
 
@@ -344,14 +360,14 @@ ExecutionNode* ExecutionPlan::fromNodeLet (Ast const* ast,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
-    en = addNode(new SubqueryNode(subquery, v));
+    en = addNode(new SubqueryNode(nextId(), subquery, v));
   }
   else {
     // operand is some misc expression, including references to other variables
     auto expr = new Expression(ast->query()->executor(), const_cast<AstNode*>(expression));
 
     try {
-      en = addNode(new CalculationNode(expr, v));
+      en = addNode(new CalculationNode(nextId(), expr, v));
     }
     catch (...) {
       // prevent memleak
@@ -419,7 +435,7 @@ ExecutionNode* ExecutionPlan::fromNodeSort (Ast const* ast,
     previous = (*it);
   }
 
-  auto en = addNode(new SortNode(elements));
+  auto en = addNode(new SortNode(nextId(), elements));
 
   return addDependency(previous, en);
 }
@@ -479,7 +495,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollect (Ast const* ast,
   }
 
   // inject a sort node for all expressions / variables that we just picked up...
-  auto sort = addNode(new SortNode(sortElements));
+  auto sort = addNode(new SortNode(nextId(), sortElements));
   sort->addDependency(previous);
   previous = sort;
 
@@ -492,7 +508,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollect (Ast const* ast,
     outVariable = static_cast<Variable*>(v->getData());
   }
 
-  auto en = addNode(new AggregateNode(aggregateVariables, outVariable, ast->variables()->variables(false)));
+  auto en = addNode(new AggregateNode(nextId(), aggregateVariables, outVariable, ast->variables()->variables(false)));
 
   return addDependency(previous, en);
 }
@@ -513,7 +529,7 @@ ExecutionNode* ExecutionPlan::fromNodeLimit (Ast const* ast,
   TRI_ASSERT(offset->type == NODE_TYPE_VALUE);
   TRI_ASSERT(count->type == NODE_TYPE_VALUE);
 
-  auto en = addNode(new LimitNode(static_cast<size_t>(offset->getIntValue()), static_cast<size_t>(count->getIntValue())));
+  auto en = addNode(new LimitNode(nextId(), static_cast<size_t>(offset->getIntValue()), static_cast<size_t>(count->getIntValue())));
 
   return addDependency(previous, en);
 }
@@ -536,13 +552,13 @@ ExecutionNode* ExecutionPlan::fromNodeReturn (Ast const* ast,
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = addNode(new ReturnNode(v));
+    en = addNode(new ReturnNode(nextId(), v));
   }
   else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(ast, expression);
     calc->addDependency(previous);
-    en = addNode(new ReturnNode(calc->outVariable()));
+    en = addNode(new ReturnNode(nextId(), calc->outVariable()));
     previous = calc;
   }
 
@@ -565,7 +581,7 @@ ExecutionNode* ExecutionPlan::fromNodeRemove (Ast const* ast,
   auto collection = collections->get(collectionName);
 
   if (collection == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no collection for RemoveNode");
   }
 
   auto expression = node->getMember(2);
@@ -575,13 +591,13 @@ ExecutionNode* ExecutionPlan::fromNodeRemove (Ast const* ast,
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = addNode(new RemoveNode(ast->query()->vocbase(), collection, options, v, nullptr));
+    en = addNode(new RemoveNode(nextId(), ast->query()->vocbase(), collection, options, v, nullptr));
   }
   else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(ast, expression);
     calc->addDependency(previous);
-    en = addNode(new RemoveNode(ast->query()->vocbase(), collection, options, calc->outVariable(), nullptr));
+    en = addNode(new RemoveNode(nextId(), ast->query()->vocbase(), collection, options, calc->outVariable(), nullptr));
     previous = calc;
   }
 
@@ -609,13 +625,13 @@ ExecutionNode* ExecutionPlan::fromNodeInsert (Ast const* ast,
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = addNode(new InsertNode(ast->query()->vocbase(), collection, options, v, nullptr));
+    en = addNode(new InsertNode(nextId(), ast->query()->vocbase(), collection, options, v, nullptr));
   }
   else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(ast, expression);
     calc->addDependency(previous);
-    en = addNode(new InsertNode(ast->query()->vocbase(), collection, options, calc->outVariable(), nullptr));
+    en = addNode(new InsertNode(nextId(), ast->query()->vocbase(), collection, options, calc->outVariable(), nullptr));
     previous = calc;
   }
 
@@ -661,13 +677,13 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate (Ast const* ast,
     // document operand is already a variable
     auto v = static_cast<Variable*>(docExpression->getData());
     TRI_ASSERT(v != nullptr);
-    en = addNode(new UpdateNode(ast->query()->vocbase(), collection, options, v, keyVariable, nullptr));
+    en = addNode(new UpdateNode(nextId(), ast->query()->vocbase(), collection, options, v, keyVariable, nullptr));
   }
   else {
     // document operand is some misc expression
     auto calc = createTemporaryCalculation(ast, docExpression);
     calc->addDependency(previous);
-    en = addNode(new UpdateNode(ast->query()->vocbase(), collection, options, calc->outVariable(), keyVariable, nullptr));
+    en = addNode(new UpdateNode(nextId(), ast->query()->vocbase(), collection, options, calc->outVariable(), keyVariable, nullptr));
     previous = calc;
   }
 
@@ -713,13 +729,13 @@ ExecutionNode* ExecutionPlan::fromNodeReplace (Ast const* ast,
     // operand is already a variable
     auto v = static_cast<Variable*>(docExpression->getData());
     TRI_ASSERT(v != nullptr);
-    en = addNode(new ReplaceNode(ast->query()->vocbase(), collection, options, v, keyVariable, nullptr));
+    en = addNode(new ReplaceNode(nextId(), ast->query()->vocbase(), collection, options, v, keyVariable, nullptr));
   }
   else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(ast, docExpression);
     calc->addDependency(previous);
-    en = addNode(new ReplaceNode(ast->query()->vocbase(), collection, options, calc->outVariable(), keyVariable, nullptr));
+    en = addNode(new ReplaceNode(nextId(), ast->query()->vocbase(), collection, options, calc->outVariable(), keyVariable, nullptr));
     previous = calc;
   }
 
@@ -734,7 +750,7 @@ ExecutionNode* ExecutionPlan::fromNode (Ast const* ast,
                                         AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
-  ExecutionNode* en = addNode(new SingletonNode());
+  ExecutionNode* en = addNode(new SingletonNode(nextId()));
 
   size_t const n = node->numMembers();
 
@@ -973,49 +989,73 @@ void ExecutionPlan::removeNode (ExecutionNode* node) {
   return removeNodes(toRemove);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a plan from the JSON provided
+////////////////////////////////////////////////////////////////////////////////
+
 ExecutionNode* ExecutionPlan::fromJson (Ast const* ast,
                                         Json const& json) {
-    ///  return = addNode(new SingletonNode());
   ExecutionNode* ret = nullptr;
   Json nodes = json.get("nodes");
 
-  ExecutionNode* oneNode;
-
-  if (!nodes.isList()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-  }
-  uint size = nodes.size();
-
-  _nodes.reserve(size);
-
-  for (uint i = 0; i < size; i++) {
-    Json oneJsonNode = nodes.at(i);
-    if (!oneJsonNode.isArray()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
-    uint index = JsonHelper::getNumericValue<uint>(oneJsonNode.json(), "index", 0);
-    ret = oneNode = ExecutionNode::fromJsonFactory(ast,
-                                                   oneJsonNode);
-    _nodes[index] = oneNode; // TODO: get it from the "index"
+  if (! nodes.isList()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nodes is not a list");
   }
 
-  for (uint i = 0; i < size; i++) {
+  // first, re-create all nodes from the JSON, using the node ids
+  // no dependency links will be set up in this step
+  auto const size = nodes.size();
+
+  for (size_t i = 0; i < size; i++) {
     Json oneJsonNode = nodes.at(i);
-    if (!oneJsonNode.isArray()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+
+    if (! oneJsonNode.isArray()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json node is not an array");
     }
+    
+    ret = ExecutionNode::fromJsonFactory(ast,
+                                         oneJsonNode);
+
+    addNode(ret);
+
+    TRI_ASSERT(ret != nullptr);
+
+    if (ret->getType() == triagens::aql::ExecutionNode::SUBQUERY) {
+      // found a subquery node. now do magick here
+      Json subquery = oneJsonNode.get("subquery");
+      // create the subquery nodes from the "subquery" sub-node
+      auto subqueryNode = fromJson(ast, subquery);
+    
+      // register the just created subquery 
+      static_cast<SubqueryNode*>(ret)->setSubquery(subqueryNode); 
+    }
+  }
+
+  // all nodes have been created. now add the dependencies
+
+  for (size_t i = 0; i < size; i++) {
+    Json oneJsonNode = nodes.at(i);
+
+    if (! oneJsonNode.isArray()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json node is not an array");
+    }
+   
+    // read the node's own id 
+    auto thisId = JsonHelper::getNumericValue<size_t>(oneJsonNode.json(), "id", 0);
+    auto thisNode = getNodeById(thisId);
+
+    // now re-link the dependencies
     Json dependencies = oneJsonNode.get("dependencies");
     if (JsonHelper::isList(dependencies.json())) {
-        uint nDependencies = dependencies.size();
-        for (uint j = 0; j < nDependencies; j ++) {
-          if (JsonHelper::isNumber(dependencies.at(j).json())) {
-            uint which = round(dependencies.at(j).json()->_value._number);
-            /// todo: assert dependency index
-            _nodes[i]->addDependency(_nodes[which]);
-            
-          }
+      size_t const nDependencies = dependencies.size();
+
+      for (size_t j = 0; j < nDependencies; j ++) {
+        if (JsonHelper::isNumber(dependencies.at(j).json())) {
+          auto depId = JsonHelper::getNumericValue<size_t>(dependencies.at(j).json(), 0);
+          thisNode->addDependency(getNodeById(depId));
         }
       }
+    }
   }
 
   return ret;

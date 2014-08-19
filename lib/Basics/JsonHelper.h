@@ -191,6 +191,19 @@ namespace triagens {
                                            const std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a numeric value
+////////////////////////////////////////////////////////////////////////////////
+
+        template<typename T> static T getNumericValue (TRI_json_t const* json,
+                                                       T defaultValue) {
+          if (isNumber(json)) {
+            return (T) json->_value._number;
+          }
+
+          return defaultValue;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a numeric sub-element, or a default it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
 

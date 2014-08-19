@@ -381,7 +381,7 @@ v8::Handle<v8::Value> V8Executor::compileExpression () {
                                                         v8::String::New("--script--"));
   
   if (compiled.IsEmpty()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to compile v8 expression");
   }
   
   return compiled->Run();
@@ -475,7 +475,7 @@ void V8Executor::generateCodeUnaryOperator (AstNode const* node) {
 
   if (it == InternalFunctionNames.end()) {
     // no function found for the type of node
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "function not found");
   }
 
   _buffer->appendText("aql.");
@@ -498,7 +498,7 @@ void V8Executor::generateCodeBinaryOperator (AstNode const* node) {
 
   if (it == InternalFunctionNames.end()) {
     // no function found for the type of node
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "function not found");
   }
   
   bool wrap = (node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
@@ -536,7 +536,7 @@ void V8Executor::generateCodeTernaryOperator (AstNode const* node) {
 
   if (it == InternalFunctionNames.end()) {
     // no function found for the type of node
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "function not found");
   }
 
   _buffer->appendText("aql.");
@@ -859,12 +859,10 @@ void V8Executor::generateCodeNode (AstNode const* node) {
     case NODE_TYPE_VARIABLE:
     case NODE_TYPE_PARAMETER:
       // we're not expecting these types here
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected node type in code generator");
 
     default:
-      // TODO: remove debug output
-      std::cout << "NODE TYPE NOT IMPLEMENTED (" << node->getTypeString() << ")\n";
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "node type not implemented");
   }
 }
 
