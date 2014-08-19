@@ -40,10 +40,9 @@ using namespace triagens::aql;
 
 Optimizer::Optimizer () {
   // List all the rules in the system here:
-  registerRule (relaxRule, 1000);
+
+  // try to find a filter after an enumerate collection and find an index . . . 
   registerRule (useIndexRange, 999);
-  // registerRule (removeUnnecessaryCalc, 999);
-  // deactivated because a test crashes
 
   // remove filters from the query that are not necessary at all
   // rule should be executed relatively early because it enables removal
