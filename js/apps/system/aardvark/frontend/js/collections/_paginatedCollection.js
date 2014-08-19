@@ -61,6 +61,10 @@
 
     getTotal: function() {
       return this.totalAmount;
+    },
+
+    setTotalMinusOne: function() {
+      this.totalAmount--;
     }
 
   });

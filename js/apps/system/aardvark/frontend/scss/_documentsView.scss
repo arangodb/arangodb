@@ -72,16 +72,19 @@
 
 .docsFirstCol {
   @extend %docs-col-no-border;
+  height: 26px;
   width: 70%;
 }
 
 .docsSecCol {
   @extend %docs-col-no-border;
   min-width: 400px !important;
+  height: 26px;
   width: 20%;
 }
 
 .docsThirdCol {
+  height: 26px;
   @extend %docs-col-no-border;
   @extend %pull-right;
 }

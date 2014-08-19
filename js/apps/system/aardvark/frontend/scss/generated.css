@@ -5951,6 +5951,10 @@ input.gv-radio-button {
     margin-top: 4px; }
   .arangoDataTable .dataTable .noPointer tr {
     cursor: default; }
+  .arangoDataTable .selected-row {
+    background-color: #8aa051 !important; }
+    .arangoDataTable .selected-row span {
+      color: white !important; }
 
 .api-container #resources > li.resource:nth-child(even),
 table.arangoDataTable tr.even {
@@ -6054,11 +6058,16 @@ table .sorting {
   border: 0 !important; }
 
 .docsFirstCol {
+  height: 26px;
   width: 70%; }
 
 .docsSecCol {
   min-width: 400px !important;
+  height: 26px;
   width: 20%; }
+
+.docsThirdCol {
+  height: 26px; }
 
 .add-filter-item {
   margin-left: 5px; }
