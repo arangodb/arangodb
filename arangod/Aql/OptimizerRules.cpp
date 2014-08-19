@@ -92,13 +92,14 @@ int triagens::aql::removeUnnecessaryCalc (Optimizer* opt,
 ////////////////////////////////////////////////////////////////////////////////
 
 class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
-  RangesInfo _ranges; 
+  RangesInfo* _ranges; 
   ExecutionPlan* _plan;
   Variable const* _var;
 
   public:
     CalculationNodeFinder (ExecutionPlan* plan, Variable const * var) 
-      : _plan(plan), _var(var) {
+      : _plan(plan), _var(var){
+        _ranges = new RangesInfo();
     };
 
     void before (ExecutionNode* en) {
@@ -153,12 +154,12 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
         if(val != nullptr){
           buildRangeInfo(nextNode, name);
           if(!name.empty()){
-            _ranges.insert(name, new RangeInfoBound(val, true), 
+            _ranges->insert(name, new RangeInfoBound(val, true), 
               new RangeInfoBound(val, true));
           }
         }
 
-        std::cout << _ranges.toString() << "\n";
+        std::cout << _ranges->toString() << "\n";
       }
 
       if(node->type == NODE_TYPE_OPERATOR_BINARY_LT || 
@@ -205,17 +206,16 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
         if(low != nullptr || high != nullptr){
           buildRangeInfo(nextNode, name);
           if(!name.empty()){
-            _ranges.insert(name, low, high);
+            _ranges->insert(name, low, high);
           }
         }
-        std::cout << _ranges.toString() << "\n";
+        std::cout << _ranges->toString() << "\n";
       }
-
+      
       if(node->type == NODE_TYPE_OPERATOR_BINARY_AND){
         buildRangeInfo(node->getMember(0), name);
-        std::cout << _ranges.toString() << "\n";
         buildRangeInfo(node->getMember(1), name);
-        std::cout << _ranges.toString() << "\n";
+        std::cout << _ranges->toString() << "\n";
       }
     }
 

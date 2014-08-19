@@ -657,7 +657,7 @@ namespace triagens {
         
         RangeInfo ( RangeInfoBound const* low, 
                     RangeInfoBound const* high )
-          : _low(low), _high(high) {}
+          : _low(low), _high(high), _valid(true) {}
         
         RangeInfo( const RangeInfo& copy ) = delete;
         RangeInfo& operator= ( RangeInfo const& copy ) = delete;
@@ -675,13 +675,16 @@ namespace triagens {
           Json item(basics::Json::Array);
           if(_low != nullptr && _high != nullptr){
             item("low", _low->toJson())
-                ("high", _high->toJson());
+                ("high", _high->toJson())
+                ("valid", Json(_valid));
           }
           else if(_low != nullptr){
-            item("low", _low->toJson());
+            item("low", _low->toJson())
+                ("valid", Json(_valid));
           }
           else if(_high != nullptr){
-            item("high", _high->toJson());
+            item("high", _high->toJson())
+                ("valid", Json(_valid));
           }
           return item;
         }
@@ -692,6 +695,7 @@ namespace triagens {
 
         RangeInfoBound const* _low;
         RangeInfoBound const* _high;
+        bool _valid;
 
     };
 
@@ -700,6 +704,13 @@ namespace triagens {
 // left. For example, (x<1) is tighter than (x<=1) and (x>1) is tighter
 // than (x>=1) . . .
 static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound const* right) {
+  if (left == nullptr) {
+    return (right == nullptr ? 0 : 1);
+  } 
+  if (right == nullptr) {
+    return -1;
+  }
+
   int cmp = TRI_CompareValuesJson(left->_bound.json(), right->_bound.json());
   if (cmp == 0 && (left->_include != right->_include)) {
     cmp = (left->_include?-1:1);
@@ -721,9 +732,8 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
         RangesInfo () : _ranges(){}
 
         ~RangesInfo(){}
-
         
-        RangeInfo* find(std::string name) {
+        RangeInfo* find(std::string name) const {
           auto it = _ranges.find(name);
           if (it == _ranges.end()) {
             return nullptr;
@@ -741,38 +751,43 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
           auto oldRange = find(name);
           auto newRange = new RangeInfo(low, high);
           int cmp;
-
+        
           if( oldRange == nullptr ){
-          // TODO add exception . . .
+            // TODO add exception . . .
             _ranges.insert(make_pair(name, newRange));
             return;
           }
+
+          if (!oldRange->_valid) { // intersection of the empty set with any set is empty!
+            return;
+          }
           
-          if(CompareRangeInfoBound(newRange->_low, oldRange->_low) == 1){
+          if(CompareRangeInfoBound(newRange->_low, oldRange->_high) == -1){
             oldRange->_low = newRange->_low;
           }
-
+          
           if(CompareRangeInfoBound(newRange->_high, oldRange->_high) == -1){
             oldRange->_high = newRange->_high;
           }
           
           // check the new range bounds are valid
-          cmp = TRI_CompareValuesJson(oldRange->_low->_bound.json(), 
-                  oldRange->_high->_bound.json());
-          if (cmp == 1 || (cmp == 0 && 
-                !(oldRange->_low->_include == true && oldRange->_high->_include == true ))){
-            // range invalid
-            cout << "INVALID RANGE\n";
-            // TODO fill this in . . .
+          if( oldRange->_low != nullptr && oldRange->_high != nullptr){
+            cmp = TRI_CompareValuesJson(oldRange->_low->_bound.json(), 
+                    oldRange->_high->_bound.json());
+            if (cmp == 1 || (cmp == 0 && 
+                  !(oldRange->_low->_include == true && oldRange->_high->_include == true ))){
+              // range invalid
+              oldRange->_valid = false;
+            }
           }
           
         }
         
-        size_t size () {
+        size_t size () const {
           return _ranges.size();
         }
 
-        Json toJson () {
+        Json toJson () const {
           Json list(Json::List);
           for (auto x : _ranges) {
             Json item(Json::Array);
@@ -783,7 +798,7 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
           return list;
         }
         
-        std::string toString() {
+        std::string toString() const {
           return this->toJson().toString();
         }
 
