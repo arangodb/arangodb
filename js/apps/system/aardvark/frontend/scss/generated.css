@@ -4598,6 +4598,9 @@ pre.gv-object-view {
     margin-right: 5px; }
   .fixedDropdown .notificationItem {
     color: black; }
+    .fixedDropdown .notificationItem .notificationItemTitle:hover {
+      color: black;
+      cursor: default; }
     .fixedDropdown .notificationItem i {
       color: rgba(0, 0, 0, 0.2);
       font-size: 20px;
