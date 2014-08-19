@@ -436,7 +436,7 @@ namespace triagens {
 /// @brief prepares the V8 server
 ////////////////////////////////////////////////////////////////////////////////
 
-        void prepareV8Server (size_t i, const string& startupFile);
+        void prepareV8Server (const string& name, size_t i, const string& startupFile);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shut downs a V8 instances
