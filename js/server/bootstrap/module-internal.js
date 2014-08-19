@@ -336,7 +336,7 @@
   if (typeof SYS_CREATE_NAMED_QUEUE !== "undefined") {
     internal.createNamedQueue = SYS_CREATE_NAMED_QUEUE;
     delete SYS_CREATE_NAMED_QUEUE;
-  };
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief addJob
@@ -345,7 +345,7 @@
   if (typeof SYS_ADD_JOB !== "undefined") {
     internal.addJob = SYS_ADD_JOB;
     delete SYS_ADD_JOB;
-  };
+  }
 
 }());
 
