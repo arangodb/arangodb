@@ -16,7 +16,7 @@
     show: function(msg) {
       $(this.el).html(this.template.render({}));
       $(".progress-message").text(msg);
-      $(this.el).fadeIn();
+      $(this.el).show();
     },
 
     hide: function() {

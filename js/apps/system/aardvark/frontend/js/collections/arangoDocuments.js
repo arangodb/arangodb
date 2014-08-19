@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true */
-/*global require, exports, window, Backbone, arangoDocumentModel, _, $*/
+/*global require, exports, window, Backbone, arangoDocumentModel, _, arangoHelper, $*/
 (function() {
   "use strict";
 
@@ -63,7 +63,8 @@
       this.filters = [];
     },
 
-    getDocuments: function () {
+    getDocuments: function (callback) {
+      window.progressView.show("Fetching documents...");
       var self = this,
           query,
           bindVars,
@@ -95,7 +96,7 @@
       $.ajax({
         cache: false,
         type: 'POST',
-        async: false,
+        async: true,
         url: '/_api/cursor',
         data: JSON.stringify(queryObj),
         contentType: "application/json",
@@ -114,6 +115,12 @@
               });
             });
           }
+          callback();
+          window.progressView.hide();
+        },
+        error: function(data) {
+          window.progressView.hide();
+          arangoHelper.arangoNotification("Document error", "Could not fetch requested documents.");
         }
       });
     },

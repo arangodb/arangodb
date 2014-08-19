@@ -12,8 +12,6 @@
     initialize: function () {
       this.getAQL();
       this.getSystemQueries();
-      localStorage.setItem("queryContent", "");
-      localStorage.setItem("queryOutput", "");
       this.tableDescription.rows = this.customQueries;
     },
 
@@ -34,7 +32,6 @@
       'click #clearQueryButton': 'clearInput',
       'click #addAQL': 'addAQL',
       'change #querySelect': 'importSelected',
-      'change #querySize': 'changeSize',
       'keypress #aqlEditor': 'aqlShortcuts',
       'click #arangoQueryTable .table-cell0': 'editCustomQuery',
       'click #arangoQueryTable .table-cell1': 'editCustomQuery',
@@ -399,7 +396,6 @@
 
     updateLocalQueries: function () {
       var self = this;
-      //localStorage.setItem("customQueries", JSON.stringify(this.customQueries));
       this.customQueries = [];
 
       this.collection.each(function(model) {
@@ -509,11 +505,6 @@
 
       this.deselect(ace.edit("aqlEditor"));
     },
-    changeSize: function (e) {
-      if (Storage) {
-        localStorage.setItem("querySize", parseInt($('#' + e.currentTarget.id).val(), 10));
-      }
-    },
     renderSelectboxes: function () {
       this.sortQueries();
       var selector = '';
@@ -559,7 +550,6 @@
       var inputEditor = ace.edit("aqlEditor");
       var selectedText = inputEditor.session.getTextRange(inputEditor.getSelectionRange());
 
-      this.switchTab("result-switch");
 
       var sizeBox = $('#querySize');
       var data = {
@@ -568,6 +558,7 @@
       };
       var outputEditor = ace.edit("queryOutput");
 
+      window.progressView.show("Query is operating...");
       $.ajax({
         type: "POST",
         url: "/_api/cursor",
@@ -576,25 +567,22 @@
         processData: false,
         success: function (data) {
           outputEditor.setValue(JSON.stringify(data.result, undefined, 2));
-          if (typeof Storage) {
-            localStorage.setItem("queryContent", inputEditor.getValue());
-            localStorage.setItem("queryOutput", outputEditor.getValue());
-          }
+          self.switchTab("result-switch");
+          window.progressView.hide();
           self.deselect(outputEditor);
         },
         error: function (data) {
+          self.switchTab("result-switch");
           try {
             var temp = JSON.parse(data.responseText);
             outputEditor.setValue('[' + temp.errorNum + '] ' + temp.errorMessage);
-
-            if (typeof Storage) {
-              localStorage.setItem("queryContent", inputEditor.getValue());
-              localStorage.setItem("queryOutput", outputEditor.getValue());
-            }
+            arangoHelper.arangoError("Query error",temp.errorNum);
           }
           catch (e) {
             outputEditor.setValue('ERROR');
+            arangoHelper.arangoError("Query error", "ERROR");
           }
+          window.progressView.hide();
         }
       });
       outputEditor.resize();
