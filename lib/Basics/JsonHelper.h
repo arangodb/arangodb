@@ -486,6 +486,8 @@ namespace triagens {
           : _zone(z), _json(j), _autofree(autofree) {
         }
 
+        explicit Json (TRI_json_t* j) = delete;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief "copy" constructor, note that in the AUTOFREE case this steals
 /// the structure from j to allow returning Json objects by value without
