@@ -50,7 +50,6 @@
     render: function(){
       this.currentDatabase();
 
-
       //sorting
       this.collection.sort();
 
