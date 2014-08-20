@@ -89,17 +89,18 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast const* ast) {
   try {
     plan->_root = plan->fromNode(ast, root);
     plan->findVarUsage();
-/*        
+
     auto JsonPlan = plan->_root->toJson();
     auto JsonString = JsonPlan.toString();
-
+    std::cout << JsonString << "\n";
     auto otherPlan = ExecutionPlan::instanciateFromJson (ast,
                                                          JsonPlan);
     auto otherJsonString = otherPlan->_root->toJson().toString();
-    ///    TRI_ASSERT(otherJsonString == JsonString);
+    std::cout << otherJsonString << "\n";
+    TRI_ASSERT(otherJsonString == JsonString);
     ///    JsonHelper
     return otherPlan;
-*/
+
     return plan;
   }
   catch (...) {
