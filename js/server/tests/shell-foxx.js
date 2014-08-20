@@ -324,6 +324,36 @@ function SetRoutesFoxxControllerSpec () {
 
       assertEqual(error, new Error("Setup authentication first"));
     },
+
+    testAddADestroySessionRoute: function () {
+      var myFunc = function () {},
+        routes = app.routingInfo.routes;
+
+      app.activateSessions({
+        sessionStorageApp: 'sessions',
+        cookieName: 'sid',
+        cookieSecret: 'secret',
+        type: 'cookie'
+      });
+      app.destroySession('/simple/route', myFunc);
+      assertEqual(routes[0].docs.httpMethod, 'POST');
+      assertEqual(routes[0].url.methods, ["post"]);
+    },
+
+    testRefuseDestroySessionWhenSessionsAreNotSetUp: function () {
+      var myFunc = function () {},
+        error;
+
+      try {
+        app.destroySession('/simple/route', myFunc);
+      } catch(e) {
+        error = e;
+      }
+
+      assertEqual(error, new Error("Setup sessions first"));
+    }
+
+
   };
 }
 
@@ -1370,6 +1400,50 @@ function SetupAuthorization () {
   };
 }
 
+function SetupSessions () {
+  var app;
+
+  return {
+    testWorksWithAllParameters: function () {
+      var err;
+
+      app = new FoxxController(fakeContext);
+
+      try {
+        app.activateSessions({
+          sessionStorageApp: 'sessions',
+          cookieName: 'sid',
+          cookieSecret: 'secret',
+          type: 'cookie'
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertUndefined(err);
+    },
+
+    testRefusesUnknownSessionsTypes: function () {
+      var err;
+
+      app = new FoxxController(fakeContext);
+
+      try {
+        app.activateSessions({
+          sessionStorageApp: 'sessions',
+          cookieName: 'sid',
+          cookieSecret: 'secret',
+          type: 'magic'
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertEqual(err.message, 'Only "cookie" type sessions are supported at this time.');
+    }
+  };
+}
+
 function FoxxControllerWithRootElement () {
   var app;
 
@@ -1444,6 +1518,7 @@ jsunity.run(DocumentationAndConstraintsSpec);
 jsunity.run(AddMiddlewareFoxxControllerSpec);
 jsunity.run(CommentDrivenDocumentationSpec);
 jsunity.run(SetupAuthorization);
+jsunity.run(SetupSessions);
 jsunity.run(FoxxControllerWithRootElement);
 
 return jsunity.done();

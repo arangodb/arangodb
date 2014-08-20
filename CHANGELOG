@@ -1,8 +1,59 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
 
+* front-end: added infobox which shows more information about a document (_id, _rev, _key) or
+  an edge (_id, _rev, _key, _from, _to). The from and to attributes are clickable and redirect
+  to their document location.
+
+* front-end: added edit-mode for deleting multiple documents at the same time.
+
+* front-end: added delete button to the detailed document/edge view.
+
+* front-end: added visual feedback for saving documents/edges inside the editor (error/success).
+
+* front-end: added auto-focusing for the first input field in a modal.
+
+* front-end: added validation for user input in a modal.
+
+* front-end: user defined queries are now stored inside the database and are bound to the current
+  user, instead of using the local storage functionality of the browsers. The outcome of this is
+  that user defined queries are now independently usable from any device. Also queries can now be
+  edited through the standard document editor of the front-end through the _users collection.
+
+* front-end: added import and export functionality for user defined queries.
+
+* front-end: added new keywords and functions to the aql-editor theme
+
+* front-end: applied tile-style to the graph view
+
+* front-end: now using the new graph api including multi-collection support
+
+* front-end: foxx apps are now deleteable
+
+* front-end: foxx apps are now installable and updateable through github, if github is their
+  origin.
+
+* front-end: added foxx app version control. Multiple versions of a single foxx app are now
+  installable and easy to manage and are also arranged in groups.
+
+* front-end: the user-set filter of a collection is now stored until the user navigates to
+  another collection.
+
+* front-end: fetching and filtering of documents and query operations are now handled with
+  asynchronous ajax calls.
+
+* front-end: added process indicator if the front-end is waiting for a server operation.
+
+* front-end: fixed wrong count of documents in the documents view of a collection.
+
+* front-end: fixed unexpected styling of the manage db view and navigation.
+
+* front-end: fixed wrong handling of select fields in a modal view.
+
+* front-end: fixed wrong positioning of some tooltips.
+
 * automatically call `toJSON` function of JavaScript objects (if present)
-  when serializing them into database documents. This change allows 
+  when serializing them into database documents. This change allows
   storing JavaScript date objects in the database in a sensible manner.
 
 

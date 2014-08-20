@@ -52,7 +52,7 @@ var db = require("org/arangodb").db,
   CookieAuthentication,
   Authentication,
   UserAlreadyExistsError,
-  UnauthorizedError;
+  UnauthorizedError = require("./sessions").UnauthorizedError;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
@@ -711,7 +711,7 @@ Users.prototype.exists = function (identifier) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether a user is valid 
+/// @brief check whether a user is valid
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.isValid = function (identifier, password) {
