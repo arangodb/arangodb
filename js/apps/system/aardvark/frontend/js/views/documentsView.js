@@ -803,12 +803,17 @@
       arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "top");
       this.drawTable();
       this.renderPaginationElements();
+      this.selectActivePagesize();
       return this;
     },
 
     rerender : function () {
-        this.clearTable();
-        this.collection.getDocuments(this.getDocsCallback.bind(this));
+      this.clearTable();
+      this.collection.getDocuments(this.getDocsCallback.bind(this));
+    },
+
+    selectActivePagesize: function() {
+      $('#documentSize').val(this.collection.getPageSize());
     },
 
     renderPaginationElements: function () {
