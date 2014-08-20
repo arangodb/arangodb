@@ -95,6 +95,9 @@ int Optimizer::createPlans (ExecutionPlan* plan) {
       while (oldPlans.size() > 0) {
         auto p = oldPlans.pop_front();
         try {
+          // keep should have a default value so rules that forget to set it
+          // have a deterministic behavior
+          keep = true; 
           res = r.func(this, p, newPlans, keep);
           if (keep) {
             nextOldPlans.push_back(p);
