@@ -5,9 +5,27 @@
   window.FoxxCollection = Backbone.Collection.extend({
     model: window.Foxx,
 
+    sortOptions: {
+      desc: false
+    },
+
     url: "/_admin/aardvark/foxxes",
 
-    comparator: "name",
+    comparator: function(item, item2) {
+      var a, b;
+      if (this.sortOptions.desc === true) {
+        a = item.get('name');
+        b = item2.get('name');
+        return a < b ? 1 : a > b ? -1 : 0;
+      }
+      a = item.get('name');
+      b = item2.get('name');
+      return a > b ? 1 : a < b ? -1 : 0;
+    },
+
+    setSortingDesc: function(val) {
+      this.sortOptions.desc = val;
+    },
 
     installFoxxFromGithub: function (url, name, version) {
 
