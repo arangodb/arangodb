@@ -59,6 +59,10 @@
       return query + parts.join(" &&");
     },
 
+    setPagesize: function(size) {
+      this.setPageSize(size);
+    },
+
     resetFilter: function() {
       this.filters = [];
     },
@@ -68,6 +72,7 @@
       var self = this,
           query,
           bindVars,
+          tmp,
           queryObj;
       bindVars = {
         "@collection": this.collectionID,
@@ -81,7 +86,16 @@
       if (this.getTotal() < 10000) {
         query += " SORT TO_NUMBER(x._key) == 0 ? x._key : TO_NUMBER(x._key)";
       }
-      query += " LIMIT @offset, @count RETURN x";
+      if (bindVars.count !== 'all') {
+        query += " LIMIT @offset, @count RETURN x";
+      }
+      else {
+        tmp = {
+          "@collection": this.collectionID
+        };
+        bindVars = tmp;
+        query += " RETURN x";
+      }
 
       queryObj = {
         query: query,
