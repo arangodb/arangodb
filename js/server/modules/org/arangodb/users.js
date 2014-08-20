@@ -44,6 +44,19 @@ var ArangoError = arangodb.ArangoError;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a user document to the legacy format
+////////////////////////////////////////////////////////////////////////////////
+
+var convertToLegacyFormat = function (doc) {
+  return {
+    user: doc.user,
+    active: doc.authData.active,
+    extra: doc.userData || {},
+    changePassword: doc.authData.changePassword
+  };
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief encode password using SHA256
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -156,7 +169,7 @@ exports.save = function (username, password, active, userData, changePassword) {
   // not exports.reload() as this is an abstract method...
   require("org/arangodb/users").reload();
 
-  return users.document(doc._id);
+  return convertToLegacyFormat(users.document(doc._id));
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -205,7 +218,7 @@ exports.replace = function (username, password, active, userData, changePassword
   // not exports.reload() as this is an abstract method...
   require("org/arangodb/users").reload();
 
-  return users.document(doc._id);
+  return convertToLegacyFormat(users.document(doc._id));
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -253,7 +266,7 @@ exports.update = function (username, password, active, userData, changePassword)
   // not exports.reload() as this is an abstract method...
   require("org/arangodb/users").reload();
 
-  return users.document(user._id);
+  return convertToLegacyFormat(users.document(user._id));
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -298,12 +311,7 @@ exports.document = function (username) {
     throw err;
   }
 
-  return {
-    user: user.user,
-    active: user.authData.active,
-    userData: user.userData || {},
-    changePassword: user.authData.changePassword
-  };
+  return convertToLegacyFormat(user);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -335,14 +343,7 @@ exports.isValid = function (username, password) {
 exports.all = function () {
   var users = getStorage();
 
-  return users.all().toArray().map(function(doc) {
-    return {
-      user: doc.user,
-      active: doc.authData.active,
-      userData: doc.userData || {},
-      changePassword: doc.authData.changePassword
-    };
-  });
+  return users.all().toArray().map(convertToLegacyFormat);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -421,13 +422,13 @@ exports.changePassword = function (token, password) {
 
   validatePassword(password);
 
-  var data = user._shallowCopy;
+  var authData = user._shallowCopy.authData;
 
-  delete data.authData.passwordToken;
-  data.authData.simple = hashPassword(password);
-  data.authData.changePassword = false;
+  delete authData.passwordToken;
+  authData.simple = hashPassword(password);
+  authData.changePassword = false;
 
-  users.replace(user, data);
+  users.update(user, {authData: authData});
 
   // not exports.reload() as this is an abstract method...
   require("org/arangodb/users").reload();
