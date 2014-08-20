@@ -8,9 +8,23 @@
 
     model: window.DatabaseModel,
 
+    sortOptions: {
+      desc: false
+    },
+
     shouldFetchUser: false,
 
-    comparator: function(item) {return item.get('name').toLowerCase();},
+    comparator: function(item, item2) {
+      var a, b;
+      if (this.sortOptions.desc === true) {
+        a = item.get('name');
+        b = item2.get('name');
+        return a < b ? 1 : a > b ? -1 : 0;
+      }
+      a = item.get('name');
+      b = item2.get('name');
+      return a > b ? 1 : a < b ? -1 : 0;
+    },
 
     sync: function(method, model, options) {
       if (method === "read") {
@@ -40,6 +54,10 @@
       this.fetch().done(function() {
         self.sort();
       });
+    },
+
+    setSortingDesc: function(yesno) {
+      this.sortOptions.desc = yesno;
     },
 
     getDatabases: function() {

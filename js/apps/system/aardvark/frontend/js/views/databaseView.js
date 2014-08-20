@@ -20,15 +20,38 @@
       "click #submitDeleteDatabase" : "submitDeleteDatabase",
       "click .contentRowInactive a" : "changeDatabase",
       "keyup #databaseSearchInput"  : "search",
-      "click #databaseSearchSubmit" : "search"
+      "click #databaseSearchSubmit" : "search",
+      "click #databaseToggle"       : "toggleSettingsDropdown",
+      "click .css-label"            : "checkBoxes",
+      "change #dbSortDesc"          : "sorting"
+    },
+
+    sorting: function() {
+      if ($('#dbSortDesc').is(":checked")) {
+        this.collection.setSortingDesc(true);
+      }
+      else {
+        this.collection.setSortingDesc(false);
+      }
+
+      this.render();
     },
 
     initialize: function() {
       this.collection.fetch({async:false});
     },
 
+    checkBoxes: function (e) {
+      //chrome bugfix
+      var clicked = e.currentTarget.id;
+      $('#'+clicked).click();
+    },
+
     render: function(){
       this.currentDatabase();
+
+
+      //sorting
       this.collection.sort();
 
       $(this.el).html(this.template.render({
@@ -40,40 +63,48 @@
       return this;
     },
 
+    toggleSettingsDropdown: function() {
+      //apply sorting to checkboxes
+      $('#dbSortDesc').attr('checked', this.collection.sortOptions.desc);
+
+      $('#databaseToggle').toggleClass('activated');
+      $('#databaseDropdown2').slideToggle(200);
+    },
+
     selectedDatabase: function () {
       return $('#selectDatabases').val();
     },
 
     handleError: function(status, text, dbname) {
       if (status === 409) {
-        arangoHelper.arangoError("Database " + dbname + " already exists.");
+        arangoHelper.arangoError("DB", "Database " + dbname + " already exists.");
         return;
       }
       if (status === 400) {
-        arangoHelper.arangoError("Invalid Parameters");
+        arangoHelper.arangoError("DB", "Invalid Parameters");
         return;
       }
       if (status === 403) {
-        arangoHelper.arangoError("Insufficent rights. Execute this from _system database");
+        arangoHelper.arangoError("DB", "Insufficent rights. Execute this from _system database");
         return;
       }
     },
 
     validateDatabaseInfo: function (db, user, pw) {
       if (user === "") {
-        arangoHelper.arangoError("You have to define an owner for the new database");
+        arangoHelper.arangoError("DB", "You have to define an owner for the new database");
         return false;
       }
       if (db === "") {
-        arangoHelper.arangoError("You have to define a name for the new database"); 
+        arangoHelper.arangoError("DB", "You have to define a name for the new database"); 
         return false;
       }
       if (db.indexOf("_") === 0) {
-        arangoHelper.arangoError("Databasename should not start with _");
+        arangoHelper.arangoError("DB ", "Databasename should not start with _");
         return false;
       }
       if (!db.match(/^[a-zA-Z][a-zA-Z0-9_\-]*$/)) {
-        arangoHelper.arangoError("Databasename may only contain numbers, letters, _ and -");
+        arangoHelper.arangoError("DB", "Databasename may only contain numbers, letters, _ and -");
         return false;
       }
       return true;
