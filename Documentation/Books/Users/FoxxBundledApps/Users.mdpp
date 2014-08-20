@@ -44,7 +44,7 @@ Thrown by the user storage's *create* method if passed a *userData* object with 
 
 ```js
 try {
-    userStorage.create({username: 'alreadyTaken'});
+    userStorage.create('alreadyTaken', {some: 'data'});
 } catch(err) {
     assertTrue(err instanceof userStorage.errors.UsernameNotAvailable);
 }
@@ -54,26 +54,28 @@ try {
 
 User objects are instances of a Foxx model with the following attributes:
 
-* *userData*: application-specific user data. This is an arbitrary object that must at least have a *username* property set to the user's username.
+* *user*: the user's unique *username*.
+* *userData*: application-specific user data.
 * *authData*: an arbitrary object used by authentication apps to store sensitive data. For password authentication this could be a hash, for third-party authentication services this could be information about the user's identity. This attribute should never be exposed to the user directly.
 
 !SUBSECTION Create a user
 
 Creates and saves a new instance of the user model.
 
-`userStorage.create(userData)`
+`userStorage.create(username, userData)`
 
 Throws *UsernameNotAvailable* if a user with the given username already exists.
 
 *Parameter*
 
-* *userData*: an arbitrary object that will be stored as the user's *userData* attribute when the model is saved to the database. This object must at least have a *username* property set to a string.
+* *username*: an arbitrary string that will be used as the user's username
+* *userData*: an arbitrary object that will be stored as the user's *userData* attribute when the model is saved to the database.
 
 @EXAMPLES
 
 ```js
-var user = userStorage.create({username: 'malaclypse'});
-assertEqual(user.get('userData').username, 'malaclypse');
+var user = userStorage.create('malaclypse', {hair: 'fuzzy'});
+assertEqual(user.get('userData').hair, 'fuzzy');
 ```
 
 !SUBSECTION Fetch an existing user
@@ -99,7 +101,7 @@ If the username can not be resolved, a *UserNotFound* exception will be thrown i
 
 ```js
 var user = userStorage.resolve('malaclypse');
-assertEqual(user.get('userData').username, 'malaclypse');
+assertEqual(user.user, 'malaclypse');
 ```
 
 !SUBSUBSECTION Resolve a user ID directly
