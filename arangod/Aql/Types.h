@@ -58,6 +58,16 @@ namespace triagens {
         // e.g. 10..1
         return _low - _high + 1;
       }
+      
+      int64_t at (size_t position) const {
+        if (_low <= _high) {
+          // e.g. 1..1, 1..10 etc.
+          return _low + static_cast<int64_t>(position);
+        }
+
+        // e.g. 10..1
+        return _low - static_cast<int64_t>(position);
+      }
         
       int64_t const _low;
       int64_t const _high;

@@ -401,33 +401,23 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone) const {
 
   if (type == NODE_TYPE_VALUE) {
     // dump value of "value" node
+    auto v = toJsonValue(zone);
+
+    if (v == nullptr) {
+      TRI_FreeJson(zone, node);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
     
+    TRI_Insert3ArrayJson(zone, node, "value", v);
     TRI_Insert3ArrayJson(zone, node, "vType", TRI_CreateStringCopyJson(zone, getValueTypeString().c_str()));
     TRI_Insert3ArrayJson(zone, node, "vTypeID", TRI_CreateNumberJson(zone, static_cast<int>(value.type)));
-    switch (value.type) {
-      case VALUE_TYPE_NULL:
-        TRI_Insert3ArrayJson(zone, node, "value", TRI_CreateStringCopyJson(zone, "null"));
-        break;
-      case VALUE_TYPE_BOOL:
-        TRI_Insert3ArrayJson(zone, node, "value", TRI_CreateBooleanJson(zone, value.value._bool));
-        break;
-      case VALUE_TYPE_INT:
-        TRI_Insert3ArrayJson(zone, node, "value", TRI_CreateNumberJson(zone, static_cast<double>(value.value._int)));
-        break;
-      case VALUE_TYPE_DOUBLE:
-        TRI_Insert3ArrayJson(zone, node, "value", TRI_CreateNumberJson(zone, value.value._double));
-        break;
-      case VALUE_TYPE_STRING:
-        TRI_Insert3ArrayJson(zone, node, "value", TRI_CreateStringCopyJson(zone, value.value._string));
-        break;
-      default: {
-      }
-    }
   }
 
   if (type == NODE_TYPE_VARIABLE ||
       type == NODE_TYPE_REFERENCE) {
     auto variable = static_cast<Variable*>(getData());
+
+    TRI_ASSERT(variable != nullptr);
 
     /// TODO: use variable.toJson()!!!
     TRI_Insert3ArrayJson(zone, node, "name", TRI_CreateStringCopyJson(zone, variable->name.c_str()));
@@ -520,16 +510,14 @@ bool AstNode::toBoolean () const {
 bool AstNode::isSimple () const {
   if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     TRI_ASSERT(numMembers() == 1);
-
     return getMember(0)->isSimple();
   }
-/*
+
   if (type == NODE_TYPE_INDEXED_ACCESS) {
     TRI_ASSERT(numMembers() == 2);
-
     return (getMember(0)->isSimple() && getMember(1)->isSimple());
   }
-*/
+
   if (type == NODE_TYPE_REFERENCE) {
     return true;
   }
@@ -559,6 +547,10 @@ bool AstNode::isSimple () const {
   if (type == NODE_TYPE_ARRAY_ELEMENT) {
     auto member = getMember(0);
     return member->isSimple();
+  }
+  
+  if (type == NODE_TYPE_VALUE) {
+    return true;
   }
 
   return false;

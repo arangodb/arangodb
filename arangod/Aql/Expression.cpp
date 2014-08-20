@@ -189,6 +189,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
                                               std::vector<RegisterId> const& regs) {
 
   if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    // array lookup, e.g. users.name
     TRI_ASSERT(node->numMembers() == 1);
 
     auto member = node->getMember(0);
@@ -200,8 +201,14 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     auto j = result.extractArrayMember(trx, myCollection, name);
     return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
   }
-/*  
+  
   else if (node->type == NODE_TYPE_INDEXED_ACCESS) {
+    // list lookup, e.g. users[0]
+    // note: it depends on the type of the value whether a list lookup or an array lookup is performed
+    // for example, if the value is an array, then its elements might be access like this:
+    // users['name'] or even users['0'] (as '0' is a valid attribute name, too)
+    // if the value is a list, then string indexes might also be used and will be converted to integers, e.g.
+    // users['0'] is the same as users[0], users['-2'] is the same as users[-2] etc.
     TRI_ASSERT(node->numMembers() == 2);
 
     auto member = node->getMember(0);
@@ -210,10 +217,46 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     TRI_document_collection_t const* myCollection = nullptr;
     AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
 
-    auto j = result.extractListMember(trx, myCollection, name);
-    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
+    if (result.isList()) {
+      if (index->isNumericValue()) {
+        auto j = result.extractListMember(trx, myCollection, index->getIntValue());
+        return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
+      }
+      else if (index->isStringValue()) {
+        char const* p = index->getStringValue();
+        TRI_ASSERT(p != nullptr);
+
+        try {
+          // stoll() might throw an exception if the string is not a number
+          int64_t position = static_cast<int64_t>(std::stoll(p));
+          auto j = result.extractListMember(trx, myCollection, position);
+          return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
+        }
+        catch (...) {
+          // no number found. 
+        }
+      }
+      // fall-through to returning null
+    }
+    else if (result.isArray()) {
+      if (index->isNumericValue()) {
+        std::string const indexString = std::to_string(index->getIntValue());
+        auto j = result.extractArrayMember(trx, myCollection, indexString.c_str());
+        return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
+      }
+      else if (index->isStringValue()) {
+        char const* p = index->getStringValue();
+        TRI_ASSERT(p != nullptr);
+
+        auto j = result.extractArrayMember(trx, myCollection, p);
+        return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
+      }
+      // fall-through to returning null
+    }
+      
+    return AqlValue(new Json(Json::Null));
   }
-  */
+  
   else if (node->type == NODE_TYPE_LIST) {
     auto list = new Json(Json::List);
 
@@ -272,6 +315,16 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
       }
     }
     // fall-through to exception
+  }
+  
+  else if (node->type == NODE_TYPE_VALUE) {
+    auto j = node->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
+
+    if (j == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j)); 
   }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unhandled type in simple expression");
