@@ -1,0 +1,44 @@
+{
+  "name": "sessions",
+  "author": "Alan Plum",
+  "version": "0.1",
+  "isSystem": true,
+  "description": "Session storage for Foxx.",
+
+  "controllers": {
+    "/": "app.js"
+  },
+
+  "exports": {
+    "sessionStorage": "storage.js"
+  },
+
+  "defaultDocument": "",
+
+  "lib": ".",
+
+  "setup": "setup.js",
+
+  "configuration": {
+    "timeToLive": {
+      "description": "Session expiry timeout in milliseconds.",
+      "type": "integer",
+      "default": 604800000
+    },
+    "ttlType": {
+      "description": "Timestamp session expiry should be checked against.",
+      "type": "string",
+      "default": "created"
+    },
+    "sidTimestamp": {
+      "description": "Append a timestamp to the session id.",
+      "type": "boolean",
+      "default": false
+    },
+    "sidLength": {
+      "description": "Length of the random part of the session id",
+      "type": "integer",
+      "default": 20
+    }
+  }
+}

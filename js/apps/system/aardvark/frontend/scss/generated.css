@@ -5837,12 +5837,6 @@ input.gv-radio-button {
 
 .jsoneditor .tree div {
   font-size: 11pt; }
-.jsoneditor .ace_layer div {
-  font-size: 11pt; }
-.jsoneditor .ace_text-layer div {
-  font-size: 11pt; }
-.jsoneditor .ace_line_group div {
-  font-size: 11pt; }
 .jsoneditor .outer .tree > table > tbody > tr:first-of-type {
   visibility: hidden; }
 
