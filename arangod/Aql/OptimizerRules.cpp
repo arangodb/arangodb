@@ -274,10 +274,11 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
   RangesInfo* _ranges; 
   ExecutionPlan* _plan;
   Variable const* _var;
+  EnumerateCollectionNode const* _enumColl;
 
   public:
     CalculationNodeFinder (ExecutionPlan* plan, Variable const * var) 
-      : _plan(plan), _var(var){
+      : _plan(plan), _var(var), _enumColl(){
         _ranges = new RangesInfo();
     };
 
@@ -288,28 +289,39 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
         if(outvar[0]->id == _var->id){
           auto node = static_cast<CalculationNode*>(en);
           std::string name;
-          buildRangeInfo(node->expression()->node(), name);
+          std::vector<std::string> attrs;
+          buildRangeInfo(node->expression()->node(), name, attrs);
+          //TODO: generalise this, how?
+          TRI_index_t* idx = _enumColl->getIndex(attrs[0]);
+          if (idx != nullptr) { //use RangeIndexNode instead of this whole mess . . .
+            // TODO check that we have a range for idx in _ranges
+            std::cout << "FOUND INDEX!\n";
+            // delete the appropriate nodes from the plan . . .
+          }
+
         }
       }
     }
 
-    void buildRangeInfo (AstNode const* node, std::string& name){
+    void buildRangeInfo (AstNode const* node, std::string& name, std::vector<std::string>& attrs){
       if(node->type == NODE_TYPE_REFERENCE){
         auto var = static_cast<Variable*>(node->getData());
         auto setter = _plan->getVarSetBy(var->id);
         if( setter != nullptr && 
             setter->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION){
           name = var->name;
+          _enumColl = static_cast<EnumerateCollectionNode*>(setter);
         }
         return;
       }
       
       if(node->type == NODE_TYPE_ATTRIBUTE_ACCESS){
         char const* attributeName = node->getStringValue();
-        buildRangeInfo(node->getMember(0), name);
+        buildRangeInfo(node->getMember(0), name, attrs);
         if(!name.empty()){
           name.push_back('.');
           name.append(attributeName);
+          attrs.push_back(attributeName);
         }
       }
       
@@ -331,14 +343,13 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
         }
         
         if(val != nullptr){
-          buildRangeInfo(nextNode, name);
+          buildRangeInfo(nextNode, name, attrs);
           if(!name.empty()){
             _ranges->insert(name, new RangeInfoBound(val, true), 
               new RangeInfoBound(val, true));
           }
         }
-
-        std::cout << _ranges->toString() << "\n";
+        //std::cout << _ranges->toString() << "\n";
       }
 
       if(node->type == NODE_TYPE_OPERATOR_BINARY_LT || 
@@ -383,21 +394,20 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
         }
 
         if(low != nullptr || high != nullptr){
-          buildRangeInfo(nextNode, name);
+          buildRangeInfo(nextNode, name, attrs);
           if(!name.empty()){
             _ranges->insert(name, low, high);
           }
         }
-        std::cout << _ranges->toString() << "\n";
+        //std::cout << _ranges->toString() << "\n";
       }
       
       if(node->type == NODE_TYPE_OPERATOR_BINARY_AND){
-        buildRangeInfo(node->getMember(0), name);
-        buildRangeInfo(node->getMember(1), name);
+        buildRangeInfo(node->getMember(0), name, attrs);
+        buildRangeInfo(node->getMember(1), name, attrs);
         std::cout << _ranges->toString() << "\n";
       }
     }
-
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -408,7 +418,7 @@ int triagens::aql::useIndexRange (Optimizer* opt,
                                   ExecutionPlan* plan, 
                                   Optimizer::PlanList& out,
                                   bool& keep) {
-  
+  keep = true;
   std::vector<ExecutionNode*> nodes
     = plan->findNodesOfType(triagens::aql::ExecutionNode::FILTER);
  
