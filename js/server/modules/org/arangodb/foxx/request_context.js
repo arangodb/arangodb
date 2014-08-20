@@ -254,9 +254,14 @@ extend(RequestContext.prototype, {
       }
       this.constraints.urlParams[paramName] = constraint;
       cfg = constraint.describe();
+      if (Array.isArray(cfg)) {
+        cfg = cfg[0];
+        type = 'string';
+      } else {
+        type = cfg.type;
+      }
       required = Boolean(cfg.flags && cfg.flags.presense === 'required');
       description = cfg.description;
-      type = cfg.type;
       if (
         type === 'number' &&
           _.isArray(cfg.rules) &&
@@ -328,9 +333,14 @@ extend(RequestContext.prototype, {
       }
       this.constraints.queryParams[paramName] = constraint;
       cfg = constraint.describe();
+      if (Array.isArray(cfg)) {
+        cfg = cfg[0];
+        type = 'string';
+      } else {
+        type = cfg.type;
+      }
       required = Boolean(cfg.flags && cfg.flags.presense === 'required');
       description = cfg.description;
-      type = cfg.type;
       if (
         type === 'number' &&
           _.isArray(cfg.rules) &&
