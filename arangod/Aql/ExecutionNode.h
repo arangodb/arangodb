@@ -531,21 +531,52 @@ namespace triagens {
           return v;
         }
 
-        TRI_index_t* getIndex (std::string attr) const {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get indexes with fields <attrs> or nullptr if none exist
+////////////////////////////////////////////////////////////////////////////////
+
+        vector<TRI_index_t*> getIndexes (vector<std::string> attrs) const {
+          vector<TRI_index_t*> out;
           TRI_document_collection_t* document = _collection->documentCollection();
           size_t const n = document->_allIndexes._length;
+          cout << "here are the attributes . . .\n";
+          for(size_t j = 0; j < attrs.size(); j++){
+            cout << attrs[j] << "\n";
+          }
+          cout << "attributes over. . .\n";
           for (size_t i = 0; i < n; ++i) {
             TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
-            for (size_t j = 0; j < idx->_fields._length; j++){
-              if (idx->_fields._buffer[j] == attr) {
-                //std::cout << idx->_fields._buffer[j] << "\n";
-                //std::cout << "HERE\n";
 
-                return idx;
+            size_t seen = 0;
+            for (size_t j = 0; j < idx->_fields._length; j++) {
+              bool found = false;
+              for (size_t k = 0; k < attrs.size(); k++){
+                if(std::string(idx->_fields._buffer[j]) == attrs[k]) {
+                  found = true;
+                  break;
+                }
+              }
+              if (found) {
+                seen++;
+              }
+              else {
+                break;
               }
             }
+
+            if (((idx->_type == TRI_IDX_TYPE_HASH_INDEX) && seen == idx->_fields._length ) 
+                || ((idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) && seen > 0 )) {
+              // all fields equal 
+              cout << idx->_iid << "\n";
+              cout << TRI_TypeNameIndex(idx->_type) << "\n";
+              for (size_t j = 0; j < idx->_fields._length; j++) {
+                cout << idx->_fields._buffer[j] << "\n";
+              }
+              cout << "\n";
+              out.push_back(idx);
+            }
           }
-          return nullptr;
+          return out;
         }
 
 // -----------------------------------------------------------------------------
@@ -800,28 +831,46 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
 
         ~RangesInfo(){}
         
-        RangeInfo* find(std::string name) const {
-          auto it = _ranges.find(name);
+        RangeInfo* find(std::string var, std::string name) const {
+          auto it1 = _ranges.find(var);
+          if (it1 == _ranges.end()) {
+            return nullptr;
+          }
+          auto it2 = it1->second.find(name);
+          if (it2 == it1->second.end()) {
+            return nullptr;
+          }
+          return (*it2).second;
+        }
+        
+        std::unordered_map<std::string, RangeInfo*>* find(std::string var) {
+          auto it = _ranges.find(var);
           if (it == _ranges.end()) {
             return nullptr;
           }
-          return (*it).second;
+          //std::unordered_map<std::string, RangeInfo*>* out = &((*it).second);
+          //return out;
+          return &((*it).second);
         }
-
-        /*void insert (std::string name, RangeInfo* range) {
-          if( find(name) == nullptr ){
-            _ranges.insert(make_pair(name, range));
-          }
-        }*/
-
-        void insert (std::string name, RangeInfoBound* low, RangeInfoBound* high){ 
-          auto oldRange = find(name);
-          auto newRange = new RangeInfo(low, high);
-          int cmp;
         
-          if( oldRange == nullptr ){
+        void insert (std::string var, std::string name, 
+                     RangeInfoBound* low, RangeInfoBound* high) { 
+          auto oldMap = find(var);
+          auto newRange = new RangeInfo(low, high);
+        
+          if (oldMap == nullptr) {
             // TODO add exception . . .
-            _ranges.insert(make_pair(name, newRange));
+            auto newMap = std::unordered_map<std::string, RangeInfo*>();
+            newMap.insert(make_pair(name, newRange));
+            _ranges.insert(std::make_pair(var, newMap));
+            return;
+          }
+          
+          auto oldRange = find(var, name); //TODO improve
+          
+          if (oldRange == nullptr) {
+            // TODO add exception . . .
+            oldMap->insert(make_pair(name, newRange));
             return;
           }
 
@@ -839,7 +888,7 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
           
           // check the new range bounds are valid
           if( oldRange->_low != nullptr && oldRange->_high != nullptr){
-            cmp = TRI_CompareValuesJson(oldRange->_low->_bound.json(), 
+            int cmp = TRI_CompareValuesJson(oldRange->_low->_bound.json(), 
                     oldRange->_high->_bound.json());
             if (cmp == 1 || (cmp == 0 && 
                   !(oldRange->_low->_include == true && oldRange->_high->_include == true ))){
@@ -854,7 +903,7 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
           return _ranges.size();
         }
 
-        Json toJson () const {
+        /*Json toJson () const {
           Json list(Json::List);
           for (auto x : _ranges) {
             Json item(Json::Array);
@@ -867,10 +916,10 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
         
         std::string toString() const {
           return this->toJson().toString();
-        }
+        }*/
 
       private: 
-        std::unordered_map<std::string, RangeInfo*> _ranges; 
+        std::unordered_map<std::string, std::unordered_map<std::string, RangeInfo*>> _ranges; 
     };
 
 ////////////////////////////////////////////////////////////////////////////////
