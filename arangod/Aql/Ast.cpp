@@ -941,6 +941,14 @@ std::unordered_set<Variable*> Ast::getReferencedVariables (AstNode const* node) 
   return result;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a node to the list of nodes
+////////////////////////////////////////////////////////////////////////////////
+
+void Ast::addNode (AstNode* node) {
+  _nodes.push_back(node);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -1511,7 +1519,7 @@ AstNode* Ast::createNode (AstNodeType type) {
   auto node = new AstNode(type);
 
   try {
-    _nodes.push_back(node);
+    addNode(node);
   }
   catch (...) {
     delete node;

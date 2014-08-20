@@ -44,6 +44,8 @@ namespace triagens {
 
   namespace aql {
 
+    class Ast;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief enumeration of AST node value types
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,7 +154,8 @@ namespace triagens {
 
       AstNode (AstNodeType); 
 
-      AstNode (triagens::aql::Query* Q, triagens::basics::Json const& json); 
+      AstNode (Ast*,
+               triagens::basics::Json const& json); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the node

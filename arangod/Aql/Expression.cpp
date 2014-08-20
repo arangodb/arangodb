@@ -65,10 +65,14 @@ Expression::Expression (V8Executor* executor,
   analyzeExpression();
 }
 
-Expression::Expression (triagens::aql::Query* Q,
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an expression from JSON
+////////////////////////////////////////////////////////////////////////////////
+
+Expression::Expression (Ast* ast,
                         triagens::basics::Json const& json)
-  : _executor(Q->executor()),
-    _node(Q->registerNode(new AstNode(Q, json.get("expression")))),
+  : _executor(ast->query()->executor()),
+    _node(new AstNode(ast, json.get("expression"))),
     _type(UNPROCESSED) {
 
   TRI_ASSERT(_executor != nullptr);

@@ -77,7 +77,7 @@ ExecutionPlan::~ExecutionPlan () {
 /// @brief create an execution plan from an AST
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast const* ast) {
+ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast* ast) {
   TRI_ASSERT(ast != nullptr);
 
   auto root = ast->root();
@@ -89,7 +89,8 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast const* ast) {
   try {
     plan->_root = plan->fromNode(ast, root);
     plan->findVarUsage();
-/* just for debugging
+// just for debugging
+/*
     auto JsonPlan = plan->_root->toJson();
     auto JsonString = JsonPlan.toString();
     std::cout << JsonString << "\n";
@@ -100,6 +101,7 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast const* ast) {
     TRI_ASSERT(otherJsonString == JsonString);
     return otherPlan;
 */
+//
     return plan;
   }
   catch (...) {
@@ -108,7 +110,7 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast const* ast) {
   }
 }
 
-ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast const* ast,
+ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast* ast,
                                                    triagens::basics::Json const& Json) {
   auto plan = new ExecutionPlan();
 
@@ -993,7 +995,7 @@ void ExecutionPlan::removeNode (ExecutionNode* node) {
 /// @brief create a plan from the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* ExecutionPlan::fromJson (Ast const* ast,
+ExecutionNode* ExecutionPlan::fromJson (Ast* ast,
                                         Json const& json) {
   ExecutionNode* ret = nullptr;
   Json nodes = json.get("nodes");

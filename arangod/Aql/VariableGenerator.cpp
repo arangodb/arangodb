@@ -129,6 +129,32 @@ Variable* VariableGenerator::createVariable (std::string const& name,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief generate a variable from JSON
+////////////////////////////////////////////////////////////////////////////////
+
+Variable* VariableGenerator::createVariable (triagens::basics::Json const& json) {
+  auto variable = new Variable(json);
+
+  auto existing = getVariable(variable->id);
+  if (existing != nullptr) {
+    // variable already existed. 
+    delete variable;
+    return existing;
+  }
+  
+  try {
+    _variables.insert(std::make_pair(variable->id, variable));
+  }
+  catch (...) {
+    // prevent memleak
+    delete variable;
+    throw;
+  }
+
+  return variable;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a temporary variable
 ////////////////////////////////////////////////////////////////////////////////
   
