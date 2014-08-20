@@ -539,11 +539,7 @@ namespace triagens {
           vector<TRI_index_t*> out;
           TRI_document_collection_t* document = _collection->documentCollection();
           size_t const n = document->_allIndexes._length;
-          cout << "here are the attributes . . .\n";
-          for(size_t j = 0; j < attrs.size(); j++){
-            cout << attrs[j] << "\n";
-          }
-          cout << "attributes over. . .\n";
+          
           for (size_t i = 0; i < n; ++i) {
             TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
 
@@ -567,12 +563,6 @@ namespace triagens {
             if (((idx->_type == TRI_IDX_TYPE_HASH_INDEX) && seen == idx->_fields._length ) 
                 || ((idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) && seen > 0 )) {
               // all fields equal 
-              cout << idx->_iid << "\n";
-              cout << TRI_TypeNameIndex(idx->_type) << "\n";
-              for (size_t j = 0; j < idx->_fields._length; j++) {
-                cout << idx->_fields._buffer[j] << "\n";
-              }
-              cout << "\n";
               out.push_back(idx);
             }
           }

@@ -154,6 +154,23 @@ namespace triagens {
 
         void removeNode (ExecutionNode*);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone the plane by recursively cloning starting from the root
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionPlan* clone (){
+          auto plan = new ExecutionPlan();
+          try {
+            plan->_root = _root->clone();
+            plan->findVarUsage();
+            return plan;
+          }
+          catch (...) {
+            delete plan;
+            throw;
+          }
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------

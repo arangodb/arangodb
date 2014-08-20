@@ -305,32 +305,35 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
             attrs.push_back(str.first);
           }
           std::vector<TRI_index_t*> idxs = node->getIndexes(attrs);
-          if (idxs.size() != 0) { //use RangeIndexNode . . . 
+          if (idxs.size() != 0) { 
             std::cout << "FOUND INDEX!\n";
-           
-           // copy/clone the plan . . . 
-           // keep map from the old nodes to the new nodes . . .
-           // create RangeIndexNode
-           // remove the enumerate coll node
-           // remember the previous node 
-           // make dependencies of new RangeIndexNode equal to the dep of
-           // deleted enumerate coll node, make dependencies of previous node
-           // equal to new RangeIndexNode . . .
-           // push_back to out
-
-            /*
-            // delete the enumerate collection node (not any other nodes) from the plan . . .
-            plan->removeNode(node);
-            
-            auto deps = node->getDependencies();
-            
-            // make one new plan per element in <idxs>
-            for (auto idx: idxs){
-              
-
-            }*/
-
           }
+          //use RangeIndexNode . . . 
+          for (auto idx: idxs) {
+            auto newPlan = _plan->clone();
+          }
+          // copy/clone the plan . . . 
+          // keep map from the old nodes to the new nodes . . .
+          // create RangeIndexNode
+          // remove the enumerate coll node
+          // remember the previous node 
+          // make dependencies of new RangeIndexNode equal to the dep of
+          // deleted enumerate coll node, make dependencies of previous node
+          // equal to new RangeIndexNode . . .
+          // push_back to out
+
+           /*
+           // delete the enumerate collection node (not any other nodes) from the plan . . .
+           plan->removeNode(node);
+           
+           auto deps = node->getDependencies();
+           
+           // make one new plan per element in <idxs>
+           for (auto idx: idxs){
+             
+
+           }*/
+
         }
       }
     }
