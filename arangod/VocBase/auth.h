@@ -49,7 +49,9 @@ struct TRI_vocbase_s;
 
 typedef struct TRI_vocbase_auth_s {
   char* _username;
-  char* _password;
+  char* _passwordMethod;
+  char* _passwordSalt;
+  char* _passwordHash;
   bool _active;
   bool _mustChange;
 }
