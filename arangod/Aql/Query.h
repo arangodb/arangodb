@@ -31,6 +31,7 @@
 #define ARANGODB_AQL_QUERY_H 1
 
 #include "Basics/Common.h"
+#include "Basics/JsonHelper.h"
 #include "Aql/BindParameters.h"
 #include "Aql/Collections.h"
 #include "Aql/QueryResult.h"
@@ -82,6 +83,10 @@ namespace triagens {
                char const*,
                size_t,
                struct TRI_json_s*);
+
+        Query (struct TRI_vocbase_s*,
+               triagens::basics::Json queryStruct,
+               QueryType Type);
 
         ~Query ();
 
@@ -231,6 +236,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         size_t const               _queryLength;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief query in a JSON structure
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::basics::Json const _queryJson;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of the query

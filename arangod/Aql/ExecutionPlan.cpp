@@ -111,11 +111,11 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast* ast) {
 }
 
 ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast* ast,
-                                                   triagens::basics::Json const& Json) {
+                                                   triagens::basics::Json const& json) {
   auto plan = new ExecutionPlan();
 
   try {
-    plan->_root = plan->fromJson(ast, Json);
+    plan->_root = plan->fromJson(ast, json);
     plan->findVarUsage();
     return plan;
   }
