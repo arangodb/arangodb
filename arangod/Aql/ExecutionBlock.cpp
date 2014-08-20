@@ -1132,6 +1132,7 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
 
 int FilterBlock::initialize () {
   int res = ExecutionBlock::initialize();
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -1143,6 +1144,12 @@ int FilterBlock::initialize () {
   auto it = _varOverview->varInfo.find(en->_inVariable->id);
   TRI_ASSERT(it != _varOverview->varInfo.end());
   _inReg = it->second.registerId;
+
+  if (en->_resultIsEmpty) {
+    // we know that the filter will never produce any results
+    // TODO: do we need to suck in (and free) data from all dependent nodes first??
+    _done = true;
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1188,6 +1195,7 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
                                 size_t& skipped) {
 
   TRI_ASSERT(result == nullptr && skipped == 0);
+
   if (_done) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -1208,7 +1216,7 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
       AqlItemBlock* cur = _buffer.front();
       if (_chosen.size() - _pos + skipped > atMost) {
         // The current block of chosen ones is too large for atMost:
-        if(!skipping){
+        if(! skipping) {
           unique_ptr<AqlItemBlock> more(cur->slice(_chosen,
                                                    _pos, _pos + (atMost - skipped)));
           collector.push_back(more.get());
@@ -1220,7 +1228,7 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
       else if (_pos > 0 || _chosen.size() < cur->size()) {
         // The current block fits into our result, but it is already
         // half-eaten or needs to be copied anyway:
-        if(!skipping){
+        if (! skipping) {
           unique_ptr<AqlItemBlock> more(cur->steal(_chosen, _pos, _chosen.size()));
           collector.push_back(more.get());
           more.release();
@@ -1234,7 +1242,7 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
       else {
         // The current block fits into our result and is fresh and
         // takes them all, so we can just hand it on:
-        if(!skipping){
+        if (! skipping) {
           collector.push_back(cur);
         }
         else {
@@ -1253,7 +1261,7 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
     }
     throw;
   }
-  if (!skipping) {
+  if (! skipping) {
     if (collector.size() == 1) {
       result = collector[0];
     }

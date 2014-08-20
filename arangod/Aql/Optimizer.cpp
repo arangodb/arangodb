@@ -45,14 +45,15 @@ Optimizer::Optimizer () {
   // registerRule (useIndexRange, 999);
 
   // remove filters from the query that are not necessary at all
-  // rule should be executed relatively early because it enables removal
-  // of then-unused filter variables
-  //registerRule(removeUnnecessaryFiltersRule, 10000);
+  // filters that are always true will be removed entirely
+  // filters that are always false will get a hint
+  registerRule(removeUnnecessaryFiltersRule, 10000);
 
   // move calculations up the dependency chain (to pull them out of inner loops etc.)
   // TODO: validate if this is really an optimization
   // registerRule(moveCalculationsUpRule, 1000);
 
+  // remove calculations that are never necessary
   registerRule(removeUnnecessaryCalculationsRule, 999);
 
   // Now sort them by pass:
