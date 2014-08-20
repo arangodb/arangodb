@@ -222,7 +222,7 @@
     filterCollection : function () {
       $('#indexCollection').removeClass('activated');
       $('#importCollection').removeClass('activated');
-      $('#markDocuments').removeClass('activated'); this.changeEditMode();
+      $('#markDocuments').removeClass('activated'); this.changeEditMode(false);
       $('#filterCollection').toggleClass('activated');
       this.activeFilter = true;
       $('#filterHeader').slideToggle(200);
@@ -242,7 +242,7 @@
     importCollection: function () {
       $('#filterCollection').removeClass('activated');
       $('#indexCollection').removeClass('activated');
-      $('#markDocuments').removeClass('activated'); this.changeEditMode();
+      $('#markDocuments').removeClass('activated'); this.changeEditMode(false);
       $('#importCollection').toggleClass('activated');
       $('#importHeader').slideToggle(200);
       $('#filterHeader').hide();
@@ -253,7 +253,7 @@
     indexCollection: function () {
       $('#filterCollection').removeClass('activated');
       $('#importCollection').removeClass('activated');
-      $('#markDocuments').removeClass('activated'); this.changeEditMode();
+      $('#markDocuments').removeClass('activated'); this.changeEditMode(false);
       $('#indexCollection').toggleClass('activated');
       $('#newIndexView').hide();
       $('#indexEditView').show();
@@ -263,8 +263,8 @@
       $('#filterHeader').hide();
     },
 
-    changeEditMode: function () {
-      if (this.editMode === true) {
+    changeEditMode: function (enable) {
+      if (enable === false || this.editMode === true) {
         $('#documentsTableID tr').css('cursor', 'default');
         $('.deleteButton').fadeIn();
         $('.addButton').fadeIn();
@@ -324,16 +324,12 @@
     restoreFilter: function () {
       var self = this, counter = 0;
 
+      this.filterId = 0;
       _.each(this.restoredFilters, function (f) {
         //change html here and restore filters
         if (counter !== 0) {
           self.addFilterItem();
         }
-
-        if (counter === 1) {
-          counter = 2;
-        }
-
         if (f.operator !== undefined) {
           $('#attribute_name' + counter).val(f.attribute);
           $('#operator' + counter).val(f.operator);
