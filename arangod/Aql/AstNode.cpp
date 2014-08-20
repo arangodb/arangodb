@@ -135,7 +135,7 @@ AstNode::AstNode (triagens::aql::Query* Q,
   case NODE_TYPE_VALUE: {
     int vType = JsonHelper::getNumericValue<int>(json.json(), "vTypeID", 0);
     validateValueType(vType);
-    value.type = (AstNodeValueType) vType;
+    value.type = static_cast<AstNodeValueType>(vType);
 
     switch (value.type) {
       case VALUE_TYPE_NULL:
@@ -145,7 +145,7 @@ AstNode::AstNode (triagens::aql::Query* Q,
         value.value._bool = JsonHelper::getBooleanValue(json.json(), "value", false);
         break;
       case VALUE_TYPE_INT:
-        setIntValue(JsonHelper::getNumericValue<int>(json.json(), "value", 0));
+        setIntValue(JsonHelper::getNumericValue<int64_t>(json.json(), "value", 0));
         break;
       case VALUE_TYPE_DOUBLE:
         setDoubleValue(JsonHelper::getNumericValue<double>(json.json(), "value", 0.0));
