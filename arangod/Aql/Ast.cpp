@@ -166,8 +166,6 @@ AstNode* Ast::createNodeLet (char const* variableName,
 
 AstNode* Ast::createNodeFilter (AstNode const* expression) {
   AstNode* node = createNode(NODE_TYPE_FILTER);
-  node->setIntValue(static_cast<int64_t>(FILTER_UNKNOWN));
-
   node->addMember(expression);
 
   return node;
@@ -846,11 +844,6 @@ void Ast::optimize () {
       return nullptr;
     }
 
-    // FILTER
-    if (node->type == NODE_TYPE_FILTER) {
-      return optimizeFilter(node);
-    }
-
     // unary operators
     if (node->type == NODE_TYPE_OPERATOR_UNARY_PLUS ||
         node->type == NODE_TYPE_OPERATOR_UNARY_MINUS) {
@@ -907,23 +900,14 @@ void Ast::optimize () {
     
     // LET
     if (node->type == NODE_TYPE_LET) {
-      return optimizeLet(node, *static_cast<int*>(data));
+      return optimizeLet(node);
     }
 
     return node;
   };
 
-  int pass;
-
-  // optimization pass 0
-  pass = 0;
-  _root = traverse(_root, func, &pass);
-
-  // optimization pass 1
-  pass = 1;
-  _root = traverse(_root, func, &pass); 
-
-  optimizeRoot();
+  // optimization
+  _root = traverse(_root, func, nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -987,43 +971,6 @@ AstNode* Ast::executeConstExpression (AstNode const* node) {
 
   return value;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief optimizes a FILTER node
-////////////////////////////////////////////////////////////////////////////////
-
-AstNode* Ast::optimizeFilter (AstNode* node) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_FILTER);
-  TRI_ASSERT(node->numMembers() == 1);
-  
-  if (node->getIntValue(true) != static_cast<int64_t>(FILTER_UNKNOWN)) {
-    // already processed filter
-    return node;
-  }
-  
-  AstNode* operand = node->getMember(0);
-  if (! operand->isConstant()) {
-    // unable to optimize non-constant expression
-    return node;
-  }
-
-  if (! operand->isBoolValue()) {
-    _query->registerError(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE);
-    return node;
-  }
-
-  if (operand->getBoolValue()) {
-    // FILTER is always true
-    node->setIntValue(static_cast<int64_t>(FILTER_TRUE));
-  }
-  else {
-    // FILTER is always false
-    node->setIntValue(static_cast<int64_t>(FILTER_FALSE));
-  }
-
-  return node;
-}  
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimizes the unary operators + and -
@@ -1365,9 +1312,6 @@ AstNode* Ast::optimizeReference (AstNode* node) {
 
   // constant propagation
   if (variable->constValue() == nullptr) {
-    // note which variables we are reading
-    variable->increaseReferenceCount();
-
     return node;
   }
 
@@ -1405,8 +1349,7 @@ AstNode* Ast::optimizeRange (AstNode* node) {
 /// @brief optimizes the LET statement 
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* Ast::optimizeLet (AstNode* node,
-                                int pass) {
+AstNode* Ast::optimizeLet (AstNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_LET);
   TRI_ASSERT(node->numMembers() == 2);
@@ -1417,63 +1360,15 @@ AstNode* Ast::optimizeLet (AstNode* node,
   auto v = static_cast<Variable*>(variable->getData());
   TRI_ASSERT(v != nullptr);
 
-  if (pass == 0) {  
-    if (expression->isConstant()) {
-      // if the expression assigned to the LET variable is constant, we'll store
-      // a pointer to the const value in the variable
-      // further optimizations can then use this pointer and optimize further, e.g.
-      // LET a = 1 LET b = a + 1, c = b + a can be optimized to LET a = 1 LET b = 2 LET c = 4
-      v->constValue(static_cast<void*>(expression));
-    }  
-  }
-  else if (pass == 1) {
-    if (! v->isReferenceCounted() && false) {
-      // this optimizes away the assignment of variables which are never read
-      // (i.e. assigned-only variables). this is currently not free of side-effects:
-      // for example, in the following query, the variable 'x' would be optimized 
-      // away, but actually the query should fail with an error: 
-      // LET x = SUM("foobar") RETURN 1
-      // TODO: check whether the right-hand side of the assignment produces an
-      // error and only throw away the variable if it is side-effects-free.
-
-      // TODO: also decrease the refcount of all variables used in the expression
-      // (i.e. getReferencedVariables(expression)). this might produce further unused
-      // variables
-
-      // TODO: COLLECT needs all variables in the scope if they do not appear directly
-      // in any expression
-      return createNodeNop();
-    }
-  }
+  if (expression->isConstant()) {
+    // if the expression assigned to the LET variable is constant, we'll store
+    // a pointer to the const value in the variable
+    // further optimizations can then use this pointer and optimize further, e.g.
+    // LET a = 1 LET b = a + 1, c = b + a can be optimized to LET a = 1 LET b = 2 LET c = 4
+    v->constValue(static_cast<void*>(expression));
+  }  
 
   return node; 
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief optimizes the top-level statements
-////////////////////////////////////////////////////////////////////////////////
-  
-void Ast::optimizeRoot() {
-  TRI_ASSERT(_root != nullptr);
-  TRI_ASSERT(_root->type == NODE_TYPE_ROOT);
-
-/* not yet ready for prime time...
-  size_t const n = _root->numMembers();
-  for (size_t i = 0; i < n; ++i) {
-    AstNode* member = _root->getMember(i);
-
-    if (member == nullptr) {
-      continue;
-    }
-
-    // TODO: replace trampoline variables / expressions
-    // TODO: detect common sub-expressions
-    // TODO: remove always-true filters
-    // TODO: remove blocks that contains always-false filters
-    // TODO: pull up LET assignments
-    // TODO: pull up FILTER
-  }
-*/
 }
 
 ////////////////////////////////////////////////////////////////////////////////
