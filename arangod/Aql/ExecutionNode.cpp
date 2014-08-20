@@ -33,6 +33,7 @@
 using namespace triagens::basics;
 using namespace triagens::aql;
 
+const static bool Optional = true;
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static initialization
 // -----------------------------------------------------------------------------
@@ -89,25 +90,25 @@ ExecutionNode* ExecutionNode::fromJsonFactory (Ast const* ast,
   auto JsonString = oneNode.toString();
 
   int nodeTypeID = JsonHelper::getNumericValue<int>(oneNode.json(), "typeID", 0);
-  triagens::aql::Query* query = ast->query();
+  triagens::aql::Query* q = ast->query();
   validateType(nodeTypeID);
 
   NodeType nodeType = (NodeType) nodeTypeID;
   switch (nodeType) {
     case SINGLETON:
-      return new SingletonNode(query, oneNode);
+      return new SingletonNode(q, oneNode);
     case ENUMERATE_COLLECTION:
-      return new EnumerateCollectionNode(query, oneNode);
+      return new EnumerateCollectionNode(q, oneNode);
     case ENUMERATE_LIST:
-      return new EnumerateListNode(query, oneNode);
+      return new EnumerateListNode(q, oneNode);
     case FILTER:
-      return new FilterNode(query, oneNode);
+      return new FilterNode(q, oneNode);
     case LIMIT:
-      return new LimitNode(query, oneNode);
+      return new LimitNode(q, oneNode);
     case CALCULATION:
-      return new CalculationNode(query, oneNode);
+      return new CalculationNode(q, oneNode);
     case SUBQUERY: 
-      return new SubqueryNode(ast, query, oneNode);
+      return new SubqueryNode(ast, q, oneNode);
     case SORT: {
       Json jsonElements = oneNode.get("elements");
       if (! jsonElements.isList()){
@@ -119,20 +120,15 @@ ExecutionNode* ExecutionNode::fromJsonFactory (Ast const* ast,
       for (size_t i = 0; i < len; i++) {
         Json oneJsonElement = jsonElements.at(i);
         bool ascending = JsonHelper::getBooleanValue(oneJsonElement.json(), "ascending", false);
-        Variable *v = query->registerVar(new Variable(oneJsonElement.get("inVariable")));
+        Variable *v = varFromJson(q, oneJsonElement, "inVariable");
         elements.push_back(std::make_pair(v, ascending));
       }
 
-      return new SortNode(query, oneNode, elements);
+      return new SortNode(q, oneNode, elements);
     }
     case AGGREGATE: {
 
-      Json outVariableJson = oneNode.get("outVariable");
-      Variable *outVariable = nullptr;
-
-      if (!outVariableJson.isEmpty()) /* Optional... */
-        outVariable = query->registerVar(new Variable(outVariableJson));
-
+      Variable *outVariable = varFromJson(q, oneNode, "outVariable", Optional);
 
       Json jsonAaggregates = oneNode.get("aggregates");
       if (!jsonAaggregates.isList()){
@@ -145,54 +141,81 @@ ExecutionNode* ExecutionNode::fromJsonFactory (Ast const* ast,
       aggregateVariables.reserve(len);
       for (int i = 0; i < len; i++) {
         Json oneJsonAggregate = jsonAaggregates.at(i);
-        Variable* outVariable = query->registerVar(new Variable(oneJsonAggregate.get("outVariable")));
-        Variable* inVariable =  query->registerVar(new Variable(oneJsonAggregate.get("inVariable")));
+        Variable* outVariable = varFromJson(q, oneJsonAggregate, "outVariable");
+        Variable* inVariable =  varFromJson(q, oneJsonAggregate, "inVariable");
 
         aggregateVariables.push_back(std::make_pair(outVariable, inVariable));
       }
 
-      return new AggregateNode(query,
+      return new AggregateNode(q,
                               oneNode,
                               outVariable,
                               ast->variables()->variables(false),
                               aggregateVariables);
     }
     case INSERT:
-      return new InsertNode(query, oneNode);
+      return new InsertNode(q, oneNode);
     case REMOVE:
-      return new RemoveNode(query, oneNode);
+      return new RemoveNode(q, oneNode);
     case REPLACE:
-      return new ReplaceNode(query, oneNode);
+      return new ReplaceNode(q, oneNode);
     case UPDATE:
-      return new UpdateNode(query, oneNode);
+      return new UpdateNode(q, oneNode);
     case RETURN:
-      return new ReturnNode(query, oneNode);
+      return new ReturnNode(q, oneNode);
     case INTERSECTION:
-      //return new (query, oneNode);
+      //return new (q, oneNode);
     case PROJECTION:
-      //return new (query, oneNode);
+      //return new (q, oneNode);
     case LOOKUP_JOIN:
-      //return new (query, oneNode);
+      //return new (q, oneNode);
     case MERGE_JOIN:
-      //return new (query, oneNode);
+      //return new (q, oneNode);
     case LOOKUP_INDEX_UNIQUE:
-      //return new (query, oneNode);
+      //return new (q, oneNode);
     case LOOKUP_INDEX_RANGE:
-      //return new (query, oneNode);
+      //return new (q, oneNode);
     case LOOKUP_FULL_COLLECTION:
-      //return new (query, oneNode);
+      //return new (q, oneNode);
     case CONCATENATION:
-      //return new (query, oneNode);
+      //return new (q, oneNode);
     case INDEX_RANGE:
-      //return new (query, oneNode);
+      //return new (q, oneNode);
     case MERGE:
-      //return new (query, oneNode);
+      //return new (q, oneNode);
     case REMOTE:
-      //return new (query, oneNode);
+      //return new (q, oneNode);
     case ILLEGAL:
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unhandled node type");
   }
   return nullptr;
+}
+
+Variable* ExecutionNode::varFromJson (triagens::aql::Query* q,
+                                      triagens::basics::Json const& base,
+                                      const char *variableName,
+                                      bool optional) {
+  Json variableJson = base.get(variableName);
+
+  if (variableJson.isEmpty()) {
+    if (optional) {
+      return nullptr;
+    }
+    else {
+      std::string msg;
+      msg += "Mandatory variable \"" + std::string(variableName) + "\"not found.";
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+    }
+  }
+  else {
+      return q->registerVar(new Variable(variableJson));
+  }
+}
+
+
+ExecutionNode::ExecutionNode (triagens::basics::Json const& json) 
+  : ExecutionNode(JsonHelper::getNumericValue<size_t>(json.json(), "id", 0),
+                  JsonHelper::getNumericValue<double>(json.json(), "estimatedCost", 0.0)) { 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -301,46 +324,7 @@ Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Json& nodes,
   if(this->_estimatedCost != 0){
     json("estimatedCost", Json(this->_estimatedCost));
   }
-  /*
-  if (_varUsageValid) {
-    Json varsValid(Json::List, _varsValid.size());
-    for (auto v : _varsValid) {
-      varsValid(v->toJson());
-    }
-    json("varsValid", varsValid);
-    Json varsUsedLater(Json::List, _varsUsedLater.size());
-    for (auto v : _varsUsedLater) {
-      varsUsedLater(v->toJson());
-    }
-    json("varsUsedLater", varsUsedLater);
-  }
-*/
   return json;
-}
-
-void ExecutionNode::fromJsonHelper (triagens::aql::Query* q, basics::Json const& base) {
-  this->_estimatedCost = JsonHelper::getNumericValue<double>(base.json(), "estimatedCost", 0.0);
-  /*  
-  Json varsUsedLaterJson = base.get("varsUsedLater");
-  if (!varsUsedLaterJson.isEmpty()) {
-    int len = varsUsedLaterJson.size();
-    _varsUsedLater.reserve(len);
-    for (int i = 0; i < len; i++) {
-      _varsUsedLater.insert(q->registerVar(new Variable(varsUsedLaterJson.at(i))));
-    }
-    _varUsageValid = true;
-  }
-
-  Json varsValidJson = base.get("varsValid");
-  if (!varsValidJson.isEmpty()) {
-    int len = varsValidJson.size();
-    _varsValid.reserve(len);
-    for (int i = 0; i < len; i++) {
-      _varsValid.insert(q->registerVar(new Variable(varsUsedLaterJson.at(i))));
-    }
-    _varUsageValid = true;
-  }
-  */
 }
 
 // -----------------------------------------------------------------------------
@@ -353,7 +337,6 @@ void ExecutionNode::fromJsonHelper (triagens::aql::Query* q, basics::Json const&
 
 SingletonNode::SingletonNode (triagens::aql::Query* query, basics::Json const& base)
   : ExecutionNode(base) {
-  fromJsonHelper(query, base);
 }
 
 void SingletonNode::toJsonHelper (triagens::basics::Json& nodes,
@@ -375,8 +358,7 @@ EnumerateCollectionNode::EnumerateCollectionNode (triagens::aql::Query* q, basic
   : ExecutionNode(base),
     _vocbase(q->vocbase()),
     _collection(q->collections()->get(JsonHelper::getStringValue(base.json(), "collection", ""))),
-    _outVariable(q->registerVar(new Variable(base.get("outVariable")))) {
-  fromJsonHelper(q, base);
+    _outVariable(varFromJson(q, base, "outVariable")) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -406,9 +388,8 @@ void EnumerateCollectionNode::toJsonHelper (triagens::basics::Json& nodes,
 
 EnumerateListNode::EnumerateListNode (triagens::aql::Query* q, basics::Json const& base)
   : ExecutionNode(base),
-    _inVariable(q->registerVar(new Variable(base.get("inVariable")))),
-    _outVariable(q->registerVar(new Variable(base.get("outVariable")))) {
-  fromJsonHelper(q, base);
+    _inVariable(varFromJson(q, base, "inVariable")),
+    _outVariable(varFromJson(q, base, "outVariable")) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -468,7 +449,6 @@ LimitNode::LimitNode (triagens::aql::Query* query, basics::Json const& base)
   : ExecutionNode(base) {
   _offset = JsonHelper::getNumericValue<double>(base.json(), "offset", 0.0);
   _limit = JsonHelper::getNumericValue<double>(base.json(), "limit", 0.0);
-  fromJsonHelper(query, base);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -496,9 +476,8 @@ void LimitNode::toJsonHelper (triagens::basics::Json& nodes,
 CalculationNode::CalculationNode (triagens::aql::Query* q, basics::Json const& base)
   : ExecutionNode(base),
     _expression(new Expression(q, base)),
-    _outVariable(q->registerVar(new Variable(base.get("outVariable")))) {
+    _outVariable(varFromJson(q, base, "outVariable")) {
    ////  _expression->fromJson(base, "expression")) -> list -> for schleife.
-  fromJsonHelper(q, base);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -530,8 +509,7 @@ SubqueryNode::SubqueryNode (Ast const* ast,
                             basics::Json const& base)
   : ExecutionNode(base),
     _subquery(nullptr),
-    _outVariable(q->registerVar(new Variable(base.get("outVariable")))) {
-  fromJsonHelper(q, base);
+    _outVariable(varFromJson(q, base, "outVariable")) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -621,8 +599,7 @@ std::vector<Variable const*> SubqueryNode::getVariablesUsedHere () {
 
 FilterNode::FilterNode (triagens::aql::Query* q, basics::Json const& base)
   : ExecutionNode(base),
-    _inVariable(q->registerVar(new Variable(base.get("inVariable")))) {
-   fromJsonHelper(q, base);
+    _inVariable(varFromJson(q, base, "inVariable")) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -651,7 +628,6 @@ SortNode::SortNode (triagens::aql::Query* query,
                     std::vector<std::pair<Variable const*, bool>> elements)
   : ExecutionNode(base),
     _elements(elements) {
-  fromJsonHelper(query, base);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -690,7 +666,6 @@ AggregateNode::AggregateNode (triagens::aql::Query* q,
     _aggregateVariables(aggregateVariables), 
     _outVariable(outVariable),
     _variableMap(variableMap) {
-  fromJsonHelper(q, base);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -728,8 +703,7 @@ void AggregateNode::toJsonHelper (triagens::basics::Json& nodes,
 
 ReturnNode::ReturnNode (triagens::aql::Query* q, basics::Json const& base)
   : ExecutionNode(base),
-    _inVariable(q->registerVar(new Variable(base.get("inVariable")))) {
-  fromJsonHelper(q, base);
+    _inVariable(varFromJson(q, base, "inVariable")) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -770,9 +744,8 @@ ModificationNode::ModificationNode (triagens::aql::Query* q,
 
 RemoveNode::RemoveNode (triagens::aql::Query* q, basics::Json const& base)
   : ModificationNode(q, base),
-    _inVariable(q->registerVar(new Variable(base.get("inVariable")))),
-    _outVariable(base.get("outVariable").isEmpty() ? nullptr : q->registerVar(new Variable(base.get("outVariable")))) {
-  fromJsonHelper(q, base);
+    _inVariable(varFromJson(q, base, "inVariable")),
+    _outVariable(varFromJson(q, base, "outVariable", Optional)) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -807,9 +780,8 @@ void RemoveNode::toJsonHelper (triagens::basics::Json& nodes,
 
 InsertNode::InsertNode (triagens::aql::Query* q, basics::Json const& base)
   : ModificationNode(q, base),
-    _inVariable(q->registerVar(new Variable(base.get("inVariable")))),
-    _outVariable(base.get("outVariable").isEmpty() ? nullptr : q->registerVar(new Variable(base.get("outVariable")))) {
-  fromJsonHelper(q, base);
+    _inVariable(varFromJson(q, base, "inVariable")),
+    _outVariable(varFromJson(q, base, "outVariable", Optional)) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -844,10 +816,9 @@ void InsertNode::toJsonHelper (triagens::basics::Json& nodes,
 
 UpdateNode::UpdateNode (triagens::aql::Query* q, basics::Json const& base)
   : ModificationNode(q, base),
-    _inDocVariable(q->registerVar(new Variable(base.get("inDocVariable")))),
-    _inKeyVariable(base.get("inKeyVariable").isEmpty() ? nullptr : q->registerVar(new Variable(base.get("inKeyVariable")))),
-    _outVariable(base.get("outVariable").isEmpty() ? nullptr : q->registerVar(new Variable(base.get("outVariable")))) {
-  fromJsonHelper(q, base);
+    _inDocVariable(varFromJson(q, base, "inDocVariable")),
+    _inKeyVariable(varFromJson(q, base, "inKeyVariable", Optional)),
+    _outVariable(varFromJson(q, base, "outVariable", Optional)) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -887,10 +858,9 @@ void UpdateNode::toJsonHelper (triagens::basics::Json& nodes,
 
 ReplaceNode::ReplaceNode (triagens::aql::Query* q, basics::Json const& base)
   : ModificationNode(q, base),
-    _inDocVariable(q->registerVar(new Variable(base.get("inDocVariable")))),
-    _inKeyVariable(base.get("inKeyVariable").isEmpty() ? nullptr : q->registerVar(new Variable(base.get("inKeyVariable")))),
-    _outVariable(base.get("outVariable").isEmpty() ? nullptr : q->registerVar(new Variable(base.get("outVariable")))) {
-  fromJsonHelper(q, base);
+    _inDocVariable(varFromJson(q, base, "inDocVariable")),
+    _inKeyVariable(varFromJson(q, base, "inKeyVariable", Optional)),
+    _outVariable(varFromJson(q, base, "outVariable", Optional)) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
