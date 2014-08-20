@@ -86,7 +86,8 @@
       "click #confirmDeleteIndexBtn"    : "deleteIndex",
       "click #documentsToolbar ul"      : "resetIndexForms",
       "click #indexHeader #addIndex"    :    "toggleNewIndexView",
-      "click #indexHeader #cancelIndex" :    "toggleNewIndexView"
+      "click #indexHeader #cancelIndex" :    "toggleNewIndexView",
+      "change #documentSize"            :    "setPagesize"
     },
 
     showSpinner: function() {
@@ -103,6 +104,12 @@
 
     hideImportModal: function() {
       $("#docImportModal").modal('hide');
+    },
+
+    setPagesize: function() {
+      var size = $('#documentSize').find(":selected").val();
+      this.collection.setPagesize(size);
+      this.collection.getDocuments(this.getDocsCallback.bind(this));
     },
 
     returnPressedHandler: function(event) {

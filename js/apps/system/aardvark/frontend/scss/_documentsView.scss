@@ -73,14 +73,14 @@
 .docsFirstCol {
   @extend %docs-col-no-border;
   height: 26px;
-  width: 70%;
+  width: 80%;
 }
 
 .docsSecCol {
   @extend %docs-col-no-border;
   height: 26px;
   min-width: 400px !important;
-  width: 20%;
+  width: 10%;
 }
 
 .docsThirdCol {
@@ -116,3 +116,8 @@
   color: $c-breadcrumb-a-active-bread;
 }
 
+.documents-size {
+  float: right;
+  margin-top: -58px;
+  width: 115px;
+}

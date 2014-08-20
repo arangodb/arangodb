@@ -6059,12 +6059,12 @@ table .sorting {
 
 .docsFirstCol {
   height: 26px;
-  width: 70%; }
+  width: 80%; }
 
 .docsSecCol {
   height: 26px;
   min-width: 400px !important;
-  width: 20%; }
+  width: 10%; }
 
 .docsThirdCol {
   height: 26px; }
@@ -6087,3 +6087,8 @@ table .sorting {
 
 .breadcrumb a.activeBread {
   color: #b9d375; }
+
+.documents-size {
+  float: right;
+  margin-top: -58px;
+  width: 115px; }
