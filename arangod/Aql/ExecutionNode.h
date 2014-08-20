@@ -531,6 +531,23 @@ namespace triagens {
           return v;
         }
 
+        TRI_index_t* getIndex (std::string attr) const {
+          TRI_document_collection_t* document = _collection->documentCollection();
+          size_t const n = document->_allIndexes._length;
+          for (size_t i = 0; i < n; ++i) {
+            TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
+            for (size_t j = 0; j < idx->_fields._length; j++){
+              if (idx->_fields._buffer[j] == attr) {
+                //std::cout << idx->_fields._buffer[j] << "\n";
+                //std::cout << "HERE\n";
+
+                return idx;
+              }
+            }
+          }
+          return nullptr;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
