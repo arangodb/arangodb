@@ -861,6 +861,117 @@ static v8::Handle<v8::Value> JS_ParseAql (v8::Arguments const& argv) {
 /// @brief executes an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
+static v8::Handle<v8::Value> JS_ExecuteAqlJson (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  if (vocbase == nullptr) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
+  if (argv.Length() < 1 || argv.Length() > 2) {
+    TRI_V8_EXCEPTION_USAGE(scope, "AQL_EXECUTEJSON(<queryjson>, <options>)");
+  }
+  
+  // return number of total records in cursor?
+  bool doCount = false;
+
+  // maximum number of results to return at once
+  size_t batchSize = SIZE_MAX;
+  
+  // ttl for cursor  
+  double ttl = 0.0;
+  
+  // extra return values
+  TRI_json_t* extra = nullptr;
+
+  if (! argv[0]->IsObject()) {
+    TRI_V8_TYPE_ERROR(scope, "expecting object for <queryjson>");
+  }
+  TRI_json_t* queryjson = TRI_ObjectToJson(argv[0]);
+
+  if (argv.Length() > 1) {
+    // we have options! yikes!
+    if (! argv[1]->IsObject()) {
+      TRI_V8_TYPE_ERROR(scope, "expecting object for <options>");
+    }
+
+    v8::Handle<v8::Object> argValue = v8::Handle<v8::Object>::Cast(argv[1]);
+      
+    v8::Handle<v8::String> optionName = v8::String::New("batchSize");
+    if (argValue->Has(optionName)) {
+      batchSize = static_cast<decltype(batchSize)>(TRI_ObjectToInt64(argValue->Get(optionName)));
+      if (batchSize == 0) {
+        TRI_V8_TYPE_ERROR(scope, "expecting non-zero value for <batchSize>");
+        // well, this makes no sense
+      }
+    }
+      
+    optionName = v8::String::New("count");
+    if (argValue->Has(optionName)) {
+      doCount = TRI_ObjectToBoolean(argValue->Get(optionName));
+    }
+      
+    optionName = v8::String::New("ttl");
+    if (argValue->Has(optionName)) {
+      ttl = TRI_ObjectToBoolean(argValue->Get(optionName));
+      ttl = (ttl <= 0.0 ? 30.0 : ttl);
+    }
+      
+    optionName = v8::String::New("extra");
+    if (argValue->Has(optionName)) {
+      extra = TRI_ObjectToJson(argValue->Get(optionName));
+    }
+  }
+
+  triagens::aql::Query query(vocbase, Json(TRI_UNKNOWN_MEM_ZONE, queryjson), triagens::aql::AQL_QUERY_READ);
+  
+  auto queryResult = query.execute();
+  
+  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_FULL(scope, queryResult.code, queryResult.details);
+  }
+  
+  if (TRI_LengthListJson(queryResult.json) <= batchSize) {
+    // return the array value as it is. this is a performance optimisation
+    v8::Handle<v8::Object> result = v8::Object::New();
+    if (queryResult.json != nullptr) {
+      result->Set(TRI_V8_STRING("json"), TRI_ObjectJson(queryResult.json));
+    }
+    return scope.Close(result);
+  }
+
+  TRI_general_cursor_result_t* cursorResult = TRI_CreateResultAql(queryResult.json);
+  
+  if (cursorResult == nullptr){
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+  
+  queryResult.json = nullptr;
+  
+  TRI_general_cursor_t* cursor = TRI_CreateGeneralCursor(vocbase, cursorResult, doCount,
+      batchSize, ttl, extra);
+
+  if (cursor == nullptr) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, cursorResult);
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+  TRI_ASSERT(cursor != nullptr);
+  
+  v8::Handle<v8::Value> cursorObject = TRI_WrapGeneralCursor(cursor);
+
+  if (cursorObject.IsEmpty()) {
+    TRI_V8_EXCEPTION_MEMORY(scope);
+  }
+
+  return scope.Close(cursorObject);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes an AQL query
+////////////////////////////////////////////////////////////////////////////////
+
 static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
   v8::HandleScope scope;
 
@@ -980,6 +1091,7 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
 
   return scope.Close(cursorObject);
 }
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          AHUACATL
@@ -2560,6 +2672,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   
   // new AQL functions. not intended to be used directly by end users
   TRI_AddGlobalFunctionVocbase(context, "AQL_EXECUTE", JS_ExecuteAql, true);
+  TRI_AddGlobalFunctionVocbase(context, "AQL_EXECUTEJSON", JS_ExecuteAqlJson, true);
   TRI_AddGlobalFunctionVocbase(context, "AQL_PARSE", JS_ParseAql, true);
 
   TRI_InitV8replication(context, server, vocbase, loader, threadNumber, v8g);

@@ -61,6 +61,7 @@ Query::Query (TRI_vocbase_t* vocbase,
     _executor(nullptr),
     _queryString(queryString),
     _queryLength(queryLength),
+    _queryJson(),
     _type(AQL_QUERY_READ),
     _bindParameters(bindParameters),
     _collections(vocbase),
@@ -68,6 +69,24 @@ Query::Query (TRI_vocbase_t* vocbase,
 
   TRI_ASSERT(_vocbase != nullptr);
   
+  _strings.reserve(32);
+}
+
+Query::Query (TRI_vocbase_t* vocbase,
+              triagens::basics::Json queryStruct,
+              QueryType Type)
+  : _vocbase(vocbase),
+    _executor(nullptr),
+    _queryString(nullptr),
+    _queryLength(0),
+    _queryJson(queryStruct),
+    _type(Type),
+    _bindParameters(nullptr),
+    _collections(vocbase),
+    _strings() {
+
+  TRI_ASSERT(_vocbase != nullptr);
+
   _strings.reserve(32);
 }
 
@@ -174,24 +193,28 @@ void Query::registerError (int code,
 
 QueryResult Query::execute () {
   try {
-    Parser parser(this);
-    parser.parse();
-
-    // put in bind parameters
-    parser.ast()->injectBindParameters(_bindParameters);
-    // optimize the ast
-    parser.ast()->optimize();
-    // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
-
+    ExecutionPlan* plan;
     triagens::arango::AqlTransaction<triagens::arango::V8TransactionContext<true>> trx(_vocbase, _collections.collections());
+    Parser parser(this);
+
+    if (_queryString != nullptr) {
+      parser.parse();
+      // put in bind parameters
+      parser.ast()->injectBindParameters(_bindParameters);
+      // optimize the ast
+      parser.ast()->optimize();
+      // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
+
+      plan = ExecutionPlan::instanciateFromAst(parser.ast());
+    }
+    else {
+      plan = ExecutionPlan::instanciateFromJson(parser.ast(), _queryJson);
+    }
 
     int res = trx.begin();
-
     if (res != TRI_ERROR_NO_ERROR) {
       return QueryResult(res, TRI_errno_string(res));
     }
-
-    auto plan = ExecutionPlan::instanciateFromAst(parser.ast());
 
     // Run the query optimiser:
     triagens::aql::Optimizer opt;
