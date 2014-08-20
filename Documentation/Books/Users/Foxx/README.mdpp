@@ -3,7 +3,7 @@
 
 Foxx is an easy way to create APIs and simple web applications from within 
 ArangoDB. It is inspired by Sinatra, the classy Ruby web framework. If 
-Foxx is Sinatra, [ArandoDB's Actions](../ArangoActions/README.md) are the corresponding *Rack*. 
+Foxx is Sinatra, [ArangoDB's Actions](../ArangoActions/README.md) are the corresponding *Rack*. 
 They provide all the HTTP goodness.
 
 If you just want to install an existing application, please use the 

@@ -86,7 +86,7 @@
   * [Example Data](Traversals/ExampleData.md)
 <!-- 15 -->
 * [Foxx](Foxx/README.md)
-  * [Handling Request](Foxx/HandlingRequest.md)
+  * [Handling Requests](Foxx/HandlingRequest.md)
   * [Manifest](Foxx/FoxxManifest.md)
   * [FoxxController](Foxx/FoxxController.md)
   * [FoxxModel](Foxx/FoxxModel.md)
