@@ -5953,6 +5953,10 @@ input.gv-radio-button {
     cursor: default; }
   .arangoDataTable .selected-row {
     background-color: #8aa051 !important; }
+    .arangoDataTable .selected-row div {
+      color: #fff !important; }
+    .arangoDataTable .selected-row li {
+      color: #fff !important; }
     .arangoDataTable .selected-row span {
       color: #fff !important; }
 

@@ -275,12 +275,14 @@
         $('#documentsTableID tr').css('cursor', 'default');
         $('.deleteButton').fadeIn();
         $('.addButton').fadeIn();
+        $('.selected-row').removeClass('selected-row');
         this.editMode = false;
       }
       else {
         $('#documentsTableID tr').css('cursor', 'copy');
         $('.deleteButton').fadeOut();
         $('.addButton').fadeOut();
+        $('.selectedCount').text(0);
         this.editMode = true;
       }
     },
@@ -649,6 +651,7 @@
         }
 
         var selected = this.getSelectedDocs();
+        $('.selectedCount').text(selected.length);
 
         if (selected.length > 0) {
           $('#deleteSelected').prop('disabled', false);
