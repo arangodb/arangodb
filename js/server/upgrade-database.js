@@ -727,6 +727,89 @@
     });
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief upgradeUserModel
+////////////////////////////////////////////////////////////////////////////////
+
+    // create a unique index on "user" attribute in _users
+    addTask({
+      name: "updateUserModel",
+      description: "convert documents in _users collection to new format",
+
+      mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
+      database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
+
+      task: function () {
+        var users = getCollection("_users");
+        if (! users) {
+          return false;
+        }
+
+        var results = users.all().toArray().map(function (oldDoc) {
+          if (!oldDoc.hasOwnProperty('userData')) {
+            if (typeof oldDoc.user !== 'string') {
+              logger.error("user with _key " + oldDoc._key + " has no username");
+              return false;
+            }
+            if (typeof oldDoc.password !== 'string') {
+              logger.error("user with username " + oldDoc.user + " has no password");
+              return false;
+            }
+            var newDoc = {
+              user: oldDoc.user,
+              userData: oldDoc.extra || {},
+              authData: {
+                active: Boolean(oldDoc.active),
+                changePassword: Boolean(oldDoc.changePassword)
+              }
+            };
+            if (oldDoc.passwordToken) {
+              newDoc.authData.passwordToken = oldDoc.passwordToken;
+            }
+            var passwd = oldDoc.password.split('$');
+            if (passwd[0] !== '' || passwd.length !== 4) {
+              logger.error("user with username " + oldDoc.user + " has unexpected password format");
+              return false;
+            }
+            newDoc.authData.simple = {
+              method: 'sha256',
+              salt: passwd[2],
+              hash: passwd[3]
+            };
+            var result = users.replace(oldDoc, newDoc);
+            return !result.errors;
+          }
+          if (!oldDoc.hasOwnProperty('authData')) {
+            logger.error("user with _key " + oldDoc._key + " has no authData");
+            return false;
+          }
+          return true;
+        });
+
+        return results.every(Boolean);
+      }
+    });
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief setupSessions
+///
+/// set up the collection _sessions
+////////////////////////////////////////////////////////////////////////////////
+
+    addTask({
+      name:        "setupSessions",
+      description: "setup _sessions collection",
+
+      mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
+      database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
+
+      task: function () {
+        return createSystemCollection("_sessions", { waitForSync : true });
+      }
+    });
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief setupGraphs
 ///
 /// set up the collection _graphs
