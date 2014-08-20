@@ -109,10 +109,19 @@ namespace triagens {
                                                basics::Json const& json);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief factory for (optional) Variables from json.
+////////////////////////////////////////////////////////////////////////////////
+
+        static Variable* varFromJson (triagens::aql::Query* q,
+                                      triagens::basics::Json const& base,
+                                      const char *variableName,
+                                      bool optional = false);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor using an id
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode (size_t id) 
+        ExecutionNode (size_t id, double cost = 0.0) 
           : _id(id), 
             _estimatedCost(0), 
             _varUsageValid(false) {
@@ -122,9 +131,7 @@ namespace triagens {
 /// @brief constructor using a JSON struct
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode (triagens::basics::Json const& json) 
-          : ExecutionNode(triagens::basics::JsonHelper::getNumericValue<size_t>(json.json(), "id", 0)) { 
-        }
+        ExecutionNode (triagens::basics::Json const& json);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor, free dependencies;
@@ -262,9 +269,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJsonHelper, for a generic node
 ////////////////////////////////////////////////////////////////////////////////
-
-        void fromJsonHelper (triagens::aql::Query* query,
-                             basics::Json const& base);
 
         triagens::basics::Json toJsonHelperGeneric (
                   triagens::basics::Json& nodes,
