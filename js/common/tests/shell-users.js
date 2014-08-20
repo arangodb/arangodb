@@ -115,7 +115,7 @@ function UsersSuite () {
         var passwd = "passwd-" + i;
 
         users.save(username, passwd);
-        assertEqual(username, c.firstExample({ 'userData.username': username }).userData.username);
+        assertEqual(username, c.firstExample({ user: username }).user);
       }
     },
 
@@ -128,7 +128,7 @@ function UsersSuite () {
       var passwd = "passwd";
 
       users.save(username, passwd);
-      assertEqual(username, c.firstExample({ 'userData.username': username }).userData.username);
+      assertEqual(username, c.firstExample({ user: username }).user);
 
       try {
         users.save(username, passwd);
@@ -148,7 +148,7 @@ function UsersSuite () {
       var passwd = "";
 
       users.save(username, passwd);
-      assertEqual(username, c.firstExample({ 'userData.username': username }).userData.username);
+      assertEqual(username, c.firstExample({ user: username }).user);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,7 +159,7 @@ function UsersSuite () {
       var username = "users-1";
 
       users.save(username);
-      assertEqual(username, c.firstExample({ 'userData.username': username }).userData.username);
+      assertEqual(username, c.firstExample({ user: username }).user);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,7 +171,7 @@ function UsersSuite () {
       var passwd = "arangodb-loves-you";
 
       users.save(username, passwd);
-      assertEqual(username, c.firstExample({ 'userData.username': username }).userData.username);
+      assertEqual(username, c.firstExample({ user: username }).user);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -184,11 +184,11 @@ function UsersSuite () {
         var passwd = "passwd-" + i;
 
         users.save(username, passwd);
-        assertEqual(username, c.firstExample({ 'userData.username': username }).userData.username);
+        assertEqual(username, c.firstExample({ user: username }).user);
         var d2 = users.replace(username, passwd + "xxx");
 
-        assertEqual(username, c.firstExample({ 'userData.username': username }).userData.username);
-        assertEqual(username, d2.userData.username);
+        assertEqual(username, c.firstExample({ user: username }).user);
+        assertEqual(username, d2.user);
       }
     },
 
@@ -216,7 +216,7 @@ function UsersSuite () {
         var passwd = "passwd-" + i;
 
         users.save(username, passwd);
-        assertEqual(username, c.firstExample({ 'userData.username': username }).userData.username);
+        assertEqual(username, c.firstExample({ user: username }).user);
         users.remove(username);
       }
     },
