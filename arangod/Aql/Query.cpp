@@ -333,10 +333,15 @@ char* Query::registerString (char const* p,
   return copy;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a string
+/// the string is freed when the query is destroyed
+////////////////////////////////////////////////////////////////////////////////
+
 char* Query::registerString (std::string const& p,
                              bool mustUnescape) {
 
-  return registerString (p.c_str(),p.length(), mustUnescape);
+  return registerString(p.c_str(), p.length(), mustUnescape);
 }
 
 // -----------------------------------------------------------------------------

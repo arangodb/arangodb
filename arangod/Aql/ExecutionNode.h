@@ -47,8 +47,6 @@
 
 using Json = triagens::basics::Json;
 
-
-
 namespace triagens {
   namespace aql {
 
@@ -102,22 +100,6 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief factory from json.
-////////////////////////////////////////////////////////////////////////////////
-
-        static ExecutionNode* fromJsonFactory (Ast const* ast,
-                                               basics::Json const& json);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief factory for (optional) Variables from json.
-////////////////////////////////////////////////////////////////////////////////
-
-        static Variable* varFromJson (triagens::aql::Query* q,
-                                      triagens::basics::Json const& base,
-                                      const char *variableName,
-                                      bool optional = false);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor using an id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -145,6 +127,13 @@ namespace triagens {
 // -----------------------------------------------------------------------------
       
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief factory from json.
+////////////////////////////////////////////////////////////////////////////////
+
+        static ExecutionNode* fromJsonFactory (Ast* ast,
+                                               basics::Json const& json);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the node's id
@@ -267,14 +256,6 @@ namespace triagens {
         triagens::basics::Json toJson (TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJsonHelper, for a generic node
-////////////////////////////////////////////////////////////////////////////////
-
-        triagens::basics::Json toJsonHelperGeneric (
-                  triagens::basics::Json& nodes,
-                  TRI_memory_zone_t* zone);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -350,6 +331,29 @@ namespace triagens {
         }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                               protected functions
+// -----------------------------------------------------------------------------
+      
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief factory for (optional) variables from json.
+////////////////////////////////////////////////////////////////////////////////
+
+        static Variable* varFromJson (Ast*,
+                                      triagens::basics::Json const& base,
+                                      const char *variableName,
+                                      bool optional = false);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJsonHelper, for a generic node
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::basics::Json toJsonHelperGeneric (
+                  triagens::basics::Json& nodes,
+                  TRI_memory_zone_t* zone);
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
       
@@ -390,6 +394,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::unordered_set<Variable const*> _varsUsedLater;
+
         std::unordered_set<Variable const*> _varsValid;
 
         bool _varUsageValid;
@@ -419,7 +424,7 @@ namespace triagens {
         : ExecutionNode(id) {
       }
 
-      SingletonNode (triagens::aql::Query* query, basics::Json const& base);
+      SingletonNode (Ast*, basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -488,7 +493,7 @@ namespace triagens {
           TRI_ASSERT(_outVariable != nullptr);
         }
 
-        EnumerateCollectionNode (triagens::aql::Query* Q, basics::Json const& base);
+        EnumerateCollectionNode (Ast*, basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -592,7 +597,7 @@ namespace triagens {
           TRI_ASSERT(_outVariable != nullptr);
         }
         
-        EnumerateListNode (triagens::aql::Query* Q, basics::Json const& base);
+        EnumerateListNode (Ast*, basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -1015,7 +1020,7 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
             _limit(limit) {
         }
         
-        LimitNode (triagens::aql::Query* query, basics::Json const& base);
+        LimitNode (Ast*, basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -1094,7 +1099,7 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
           TRI_ASSERT(_outVariable != nullptr);
         }
 
-        CalculationNode (triagens::aql::Query* Q, basics::Json const& base);
+        CalculationNode (Ast*, basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -1219,12 +1224,12 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
 
       public:
 
-        SubqueryNode (Ast const* ast,
-                      triagens::aql::Query* Q,
+        SubqueryNode (Ast*,
                       basics::Json const& base);
 
         SubqueryNode (size_t id,
-                      ExecutionNode* subquery, Variable const* outVariable)
+                      ExecutionNode* subquery, 
+                      Variable const* outVariable)
           : ExecutionNode(id), 
             _subquery(subquery), 
             _outVariable(outVariable) {
@@ -1349,7 +1354,7 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
           TRI_ASSERT(_inVariable != nullptr);
         }
         
-        FilterNode (triagens::aql::Query* Q, basics::Json const& base);
+        FilterNode (Ast*, basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -1431,7 +1436,7 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
             _elements(elements) {
         }
         
-        SortNode (triagens::aql::Query* query,
+        SortNode (Ast*,
                   basics::Json const& base,
                   std::vector<std::pair<Variable const*, bool>> elements);
 
@@ -1527,7 +1532,7 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
           // outVariable can be a nullptr
         }
         
-        AggregateNode (triagens::aql::Query* query,
+        AggregateNode (Ast*,
                        basics::Json const& base,
                        Variable const* outVariable,
                        std::unordered_map<VariableId, std::string const> const& variableMap,
@@ -1648,7 +1653,7 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
           TRI_ASSERT(_inVariable != nullptr);
         }
 
-        ReturnNode (triagens::aql::Query* Q, basics::Json const& base);
+        ReturnNode (Ast*, basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -1739,7 +1744,7 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
           TRI_ASSERT(_collection != nullptr);
         }
 
-        ModificationNode (triagens::aql::Query* q,
+        ModificationNode (Ast*,
                           basics::Json const& json);
 
 // -----------------------------------------------------------------------------
@@ -1802,7 +1807,7 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
           // _outVariable might be a nullptr
         }
         
-        RemoveNode (triagens::aql::Query* Q, basics::Json const& base);
+        RemoveNode (Ast*, basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -1914,7 +1919,7 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
           // _outVariable might be a nullptr
         }
         
-        InsertNode (triagens::aql::Query* Q, basics::Json const& base);
+        InsertNode (Ast*, basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -2028,7 +2033,7 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
           // _outVariable might be a nullptr
         }
         
-        UpdateNode (triagens::aql::Query* Q, basics::Json const& base);
+        UpdateNode (Ast*, basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -2152,7 +2157,7 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
           // _outVariable might be a nullptr
         }
 
-        ReplaceNode (triagens::aql::Query* Q, basics::Json const& base);
+        ReplaceNode (Ast*, basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node

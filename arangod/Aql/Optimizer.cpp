@@ -42,7 +42,7 @@ Optimizer::Optimizer () {
   // List all the rules in the system here:
 
   // try to find a filter after an enumerate collection and find an index . . . 
-  registerRule (useIndexRange, 999);
+  // registerRule (useIndexRange, 999);
 
   // remove filters from the query that are not necessary at all
   // rule should be executed relatively early because it enables removal
@@ -53,7 +53,7 @@ Optimizer::Optimizer () {
   // TODO: validate if this is really an optimization
   // registerRule(moveCalculationsUpRule, 1000);
 
-  //registerRule(removeUnnecessaryCalculationsRule, 999);
+  registerRule(removeUnnecessaryCalculationsRule, 999);
 
   // Now sort them by pass:
   std::stable_sort(_rules.begin(), _rules.end());

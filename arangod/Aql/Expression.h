@@ -46,6 +46,7 @@ namespace triagens {
 
     class AqlItemBlock;
     struct AqlValue;
+    class Ast;
     struct Variable;
     class V8Executor;
     struct V8Expression;
@@ -76,7 +77,7 @@ namespace triagens {
         Expression (V8Executor*,
                     AstNode const*);
 
-        Expression (triagens::aql::Query* Q,
+        Expression (Ast*,
                     triagens::basics::Json const &json);
 
 ////////////////////////////////////////////////////////////////////////////////

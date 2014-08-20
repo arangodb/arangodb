@@ -37,12 +37,11 @@ using Json = triagens::basics::Json;
 // --SECTION--                                           rules for the optimizer
 // -----------------------------------------------------------------------------
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove all unnecessary filters
-/// filters that are always true are removed
-/// filters that are always false will be removed plus their dependent nodes
-/// this modifies the plan in place
+/// this rule modifies the plan in place:
+/// - filters that are always true are removed completely
+/// - filters that are always false will be removed plus their dependent nodes
 ////////////////////////////////////////////////////////////////////////////////
 
 int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt, 
@@ -50,12 +49,12 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
                                                  Optimizer::PlanList& out,
                                                  bool& keep) {
   
-  keep = true;
+  keep = true; // plan will always be kept
   std::unordered_set<ExecutionNode*> toRemove;
   std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::FILTER);
   
   for (auto n : nodes) {
-    // filter has one input variable
+    // filter nodes always have one input variable
     auto varsUsedHere = n->getVariablesUsedHere();
     TRI_ASSERT(varsUsedHere.size() == 1);
 
@@ -63,67 +62,76 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
     auto variable = varsUsedHere[0];
     auto setter = plan->getVarSetBy(variable->id);
 
-    if (setter != nullptr && 
-        setter->getType() == triagens::aql::ExecutionNode::CALCULATION) {
-      // if it was a CalculationNode, check its expression
-      auto s = static_cast<CalculationNode*>(setter);
-      auto root = s->expression()->node();
+    if (setter == nullptr || 
+        setter->getType() != triagens::aql::ExecutionNode::CALCULATION) {
+      // filter variable was not introduced by a calculation. 
+      continue;
+    }
 
-      if (root->isConstant()) {
-        // the expression is a constant value
-        if (root->toBoolean()) {
-          // filter is always true
-          // remove filter node and merge with following node
-          toRemove.insert(n);
-        }
-        else {
-          // filter is always false
-         /* TODO 
-          // get all dependent nodes of the filter node
-          std::vector<ExecutionNode*> stack;
-          stack.push_back(n);
+    // filter variable was introduced a CalculationNode. now check the expression
+    auto s = static_cast<CalculationNode*>(setter);
+    auto root = s->expression()->node();
 
-          while (! stack.empty()) {
-            // pop a node from the stack
-            auto current = stack.back();
-            stack.pop_back();
+    if (! root->isConstant()) {
+      // filter expression can only be evaluated at runtime
+      continue;
+    }
 
-            bool removeNode = true;
+    // filter expression is constant and thus cannot throw
+    // we can now evaluate it safely
+    TRI_ASSERT(! s->expression()->canThrow());
 
-            if (toRemove.find(current) != toRemove.end()) {
-              // detected a cycle. TODO: decide whether a cycle is an error here or 
-              // if it is valid
-              break;
-            }
+    if (root->toBoolean()) {
+      // filter is always true
+      // remove filter node and merge with following node
+      toRemove.insert(n);
+    }
+    else {
+      // filter is always false
+      /* TODO 
+      // get all dependent nodes of the filter node
+      std::vector<ExecutionNode*> stack;
+      stack.push_back(n);
 
-            if (current->getType() == triagens::aql::ExecutionNode::SINGLETON) {
-              // stop at a singleton node
-              break;
-            }
+      while (! stack.empty()) {
+      // pop a node from the stack
+      auto current = stack.back();
+      stack.pop_back();
 
-            if (current->getType() == triagens::aql::ExecutionNode::CALCULATION) {
-              auto c = static_cast<CalculationNode*>(current);
-              if (c->expression()->node()->canThrow()) {
-                // the calculation may throw an exception. we must not remove it
-                // because its removal might change the query result
-                removeNode = false;
-                std::cout << "FOUND A CALCULATION THAT CAN THROW\n";
-              }
-            }
+      bool removeNode = true;
 
-            auto deps = current->getDependencies();
-            for (auto it = deps.begin(); it != deps.end(); ++it) {
-              stack.push_back((*it));
-            }
-
-            if (removeNode) {
-              std::cout << "REMOVING NODE " << current << " OF TYPE: " << current->getTypeString() << "\n";
-              toRemove.insert(current);
-            }
-          }
-          */
-        }
+      if (toRemove.find(current) != toRemove.end()) {
+      // detected a cycle. TODO: decide whether a cycle is an error here or 
+      // if it is valid
+      break;
       }
+
+      if (current->getType() == triagens::aql::ExecutionNode::SINGLETON) {
+      // stop at a singleton node
+      break;
+      }
+
+      if (current->getType() == triagens::aql::ExecutionNode::CALCULATION) {
+      auto c = static_cast<CalculationNode*>(current);
+      if (c->expression()->node()->canThrow()) {
+      // the calculation may throw an exception. we must not remove it
+      // because its removal might change the query result
+      removeNode = false;
+      std::cout << "FOUND A CALCULATION THAT CAN THROW\n";
+      }
+      }
+
+      auto deps = current->getDependencies();
+      for (auto it = deps.begin(); it != deps.end(); ++it) {
+      stack.push_back((*it));
+      }
+
+      if (removeNode) {
+      std::cout << "REMOVING NODE " << current << " OF TYPE: " << current->getTypeString() << "\n";
+      toRemove.insert(current);
+      }
+      }
+       */
     }
   }
   
@@ -159,6 +167,10 @@ int triagens::aql::moveCalculationsUpRule (Optimizer* opt,
     // (sorting is needed for intersection later)
     std::sort(neededVars.begin(), neededVars.end(), &Variable::Comparator);
 
+for (auto it = neededVars.begin(); it != neededVars.end(); ++it) {
+std::cout << "VAR USED IN CALC: " << (*it)->name << "\n";
+}
+
     std::vector<ExecutionNode*> stack;
     auto deps = n->getDependencies();
     
@@ -170,6 +182,7 @@ int triagens::aql::moveCalculationsUpRule (Optimizer* opt,
       auto current = stack.back();
       stack.pop_back();
 
+std::cout << "LOOKING AT NODE OF TYPE: " << current->getTypeString() << "\n";
       auto deps = current->getDependencies();
 
       if (deps.size() != 1) {
@@ -225,17 +238,20 @@ int triagens::aql::moveCalculationsUpRule (Optimizer* opt,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove CalculationNode(s) that are never needed
+/// this modifies an existing plan in place
 ////////////////////////////////////////////////////////////////////////////////
 
 int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt, 
                                                       ExecutionPlan* plan, 
                                                       Optimizer::PlanList& out, 
                                                       bool& keep) {
+  keep = true;
   std::vector<ExecutionNode*> nodes
     = plan->findNodesOfType(triagens::aql::ExecutionNode::CALCULATION);
   std::unordered_set<ExecutionNode*> toRemove;
   for (auto n : nodes) {
     auto nn = static_cast<CalculationNode*>(n);
+
     if (nn->expression()->canThrow()) {
       // If this node can throw, we must not optimize it away!
       continue;
@@ -257,12 +273,8 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
     std::cout << "Removing " << toRemove.size() << " unnecessary "
                  "CalculationNodes..." << std::endl;
     plan->removeNodes(toRemove);
-    out.push_back(plan);
-    keep = false;
   }
-  else {
-    keep = true;
-  }
+
   return TRI_ERROR_NO_ERROR;
 }
 
