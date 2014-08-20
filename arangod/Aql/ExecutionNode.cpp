@@ -477,7 +477,6 @@ CalculationNode::CalculationNode (triagens::aql::Query* q, basics::Json const& b
   : ExecutionNode(base),
     _expression(new Expression(q, base)),
     _outVariable(varFromJson(q, base, "outVariable")) {
-   ////  _expression->fromJson(base, "expression")) -> list -> for schleife.
 }
 
 ////////////////////////////////////////////////////////////////////////////////
