@@ -182,11 +182,6 @@
       this.$(this.id).html(this.table.render({content: this.tableDescription}));
       // fill select box with # of results
       var querySize = 1000;
-      if (typeof Storage) {
-        if (localStorage.getItem("querySize") > 0) {
-          querySize = parseInt(localStorage.getItem("querySize"), 10);
-        }
-      }
 
       var sizeBox = $('#querySize');
       sizeBox.empty();
@@ -249,13 +244,6 @@
       arangoHelper.fixTooltips(".queryTooltips, .icon_arangodb", "top");
 
       $('#aqlEditor .ace_text-input').focus();
-
-      if (typeof Storage) {
-        var queryContent = localStorage.getItem("queryContent");
-        var queryOutput = localStorage.getItem("queryOutput");
-        inputEditor.setValue(queryContent);
-        outputEditor.setValue(queryOutput);
-      }
 
       var windowHeight = $(window).height() - 295;
       $('#aqlEditor').height(windowHeight - 19);
