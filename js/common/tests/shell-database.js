@@ -251,14 +251,14 @@ function DatabaseSuite () {
       assertTrue(internal.db._createDatabase("UnitTestsDatabase0", { }, users));
 
       internal.db._useDatabase("UnitTestsDatabase0");
-      var m = require("org/arangodb/users");
-      var user = m.document("admin");
+      var userManager = require("org/arangodb/users");
+      var user = userManager.document("admin");
 
       assertEqual("admin", user.user);
       assertTrue(user.active);
       assertEqual("m", user.extra.gender);
 
-      user = m.document("foo");
+      user = userManager.document("foo");
       assertEqual("foo", user.user);
       assertFalse(user.active);
       assertEqual("f", user.extra.gender);
@@ -288,8 +288,8 @@ function DatabaseSuite () {
       assertTrue(internal.db._createDatabase("UnitTestsDatabase0", { }, users));
 
       internal.db._useDatabase("UnitTestsDatabase0");
-      var m = require("org/arangodb/users");
-      var user = m.document("admin");
+      var userManager = require("org/arangodb/users");
+      var user = userManager.document("admin");
       assertEqual("admin", user.user);
       assertTrue(user.active);
       assertEqual("m", user.extra.gender);

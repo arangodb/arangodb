@@ -192,14 +192,13 @@ function extendContext (context, app, root) {
   'use strict';
 
   var cp = context.collectionPrefix;
-  var cname = "";
 
-  if (cp !== "") {
-    cname = cp + "_";
+  if (cp !== "" && cp !== "_") {
+    cp += "_";
   }
 
   context.collectionName = function (name) {
-    var replaced = (cname + name).replace(/[^a-zA-Z0-9]/g, '_').replace(/(^_+|_+$)/g, '').substr(0, 64);
+    var replaced = (cp + name.replace(/[^a-zA-Z0-9]/g, '_').replace(/(^_+|_+$)/g, '')).substr(0, 64);
 
     if (replaced.length === 0) {
       throw new Error("Cannot derive collection name from '" + name + "'");
@@ -1023,6 +1022,24 @@ function checkConfiguration (app, options) {
     return false;
   }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns collection prefix for system apps
+////////////////////////////////////////////////////////////////////////////////
+
+  function systemCollectionPrefix (appName) {
+    'use strict';
+
+    if (appName === "sessions") {
+      return "_";
+    }
+
+    if (appName === "users") {
+      return "_";
+    }
+
+    return false;
+  }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -1236,7 +1253,7 @@ exports.unmount = function (mount) {
 
   var doc = mountFromId(mount);
 
-  if (doc.isSystem) {
+  if (doc.isSystem && mount.charAt(1) === '_') {
     throw new Error("Cannot unmount system application");
   }
 
@@ -1764,7 +1781,12 @@ exports.initializeFoxx = function () {
         var found = aal.firstExample({ type: "mount", mount: mount });
 
         if (found === null) {
-          exports.mount(appName, mount, {reload: false});
+          var opts = {reload: false};
+          var prefix = systemCollectionPrefix(appName);
+          if (prefix) {
+            opts.collectionPrefix = prefix;
+          }
+          exports.mount(appName, mount, opts);
 
           var doc = mountFromId(mount);
           var app = appFromAppId(doc.app);

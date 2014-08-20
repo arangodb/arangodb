@@ -1,0 +1,28 @@
+{
+  "name": "simple-auth",
+  "author": "Alan Plum",
+  "version": "0.1",
+  "isSystem": true,
+  "description": "Simple password-based authentication for Foxx.",
+
+  "exports": {
+    "auth": "auth.js"
+  },
+
+  "defaultDocument": "",
+
+  "lib": ".",
+
+  "configuration": {
+    "hashMethod": {
+      "description": "Cryptographic hash function to use for new passwords.",
+      "type": "string",
+      "default": "sha256"
+    },
+    "saltLength": {
+      "description": "Length of new salts.",
+      "type": "integer",
+      "default": 16
+    }
+  }
+}

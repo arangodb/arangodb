@@ -129,8 +129,8 @@ function UsersSuite () {
 
       users.save(username, passwd);
       assertEqual(username, c.firstExample({ user: username }).user);
-     
-      try { 
+
+      try {
         users.save(username, passwd);
         fail();
       }
