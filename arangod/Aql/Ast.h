@@ -58,12 +58,6 @@ namespace triagens {
 
     class Ast {
 
-      enum FilterType {
-        FILTER_UNKNOWN,
-        FILTER_TRUE,
-        FILTER_FALSE
-      };
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
@@ -497,12 +491,6 @@ namespace triagens {
         AstNode* executeConstExpression (AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief optimizes a FILTER node
-////////////////////////////////////////////////////////////////////////////////
-
-        AstNode* optimizeFilter (AstNode*);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief optimizes the unary operators + and -
 /// the unary plus will be converted into a simple value node if the operand of
 /// the operation is a constant number
@@ -562,14 +550,7 @@ namespace triagens {
 /// @brief optimizes the LET statement
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode* optimizeLet (AstNode*,
-                              int);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief optimizes the top-level statements
-////////////////////////////////////////////////////////////////////////////////
-
-        void optimizeRoot ();
+        AstNode* optimizeLet (AstNode*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST node from JSON
