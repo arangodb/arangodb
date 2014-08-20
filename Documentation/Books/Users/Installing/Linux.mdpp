@@ -32,7 +32,7 @@ provided by @mgiken.
 !SUBSECTION Debian sid
 
 To use ArangoDB on Debian sid (the development version of Debian), a different version
-of ICU is required. User basir provided the following instructions for getting ArangoDB 2.0.7
+of ICU is required. User baslr provided the following instructions for getting ArangoDB 2.0.7
 to work on an x86_64:
 
 [link to Github issue](https://github.com/triAGENS/ArangoDB/issues/865)
