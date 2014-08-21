@@ -34,10 +34,20 @@
     }).filter(Boolean);
   }
 
-  function createUser(username, userData) {
+  function createUser(username, userData, authData) {
     if (!userData) {
       userData = {};
     }
+    if (!authData) {
+      authData = {};
+    }
+    if (
+      applicationContext.mount.indexOf('/_system/') === 0
+        && !authData.hasOwnProperty('active')
+    ) {
+      authData.active = true;
+    }
+
     if (!username) {
       throw new Error('Must provide username!');
     }
@@ -54,11 +64,14 @@
         user = new User({
           user: username,
           userData: userData,
-          authData: {}
+          authData: {active: true}
         });
         users.save(user);
       }
     });
+    if (applicationContext.mount.indexOf('/_system/') === 0) {
+      require('org/arangodb/users').reload();
+    }
     return user;
   }
 
@@ -90,6 +103,9 @@
       }
       throw err;
     }
+    if (applicationContext.mount.indexOf('/_system/') === 0) {
+      require('org/arangodb/users').reload();
+    }
     return null;
   }
 
@@ -97,18 +113,24 @@
     save: function () {
       var user = this;
       users.replace(user);
+      if (applicationContext.mount.indexOf('/_system/') === 0) {
+        require('org/arangodb/users').reload();
+      }
       return user;
     },
     delete: function () {
       try {
         deleteUser(this.get('_key'));
-        return true;
       } catch (e) {
         if (e instanceof errors.UserNotFound) {
           return false;
         }
         throw e;
       }
+      if (applicationContext.mount.indexOf('/_system/') === 0) {
+        require('org/arangodb/users').reload();
+      }
+      return true;
     }
   });
 
