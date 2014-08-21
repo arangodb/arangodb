@@ -844,10 +844,13 @@ class NodeFinder : public WalkerWorker<ExecutionNode> {
 
     std::vector<ExecutionNode*>& _out;
 
+    bool _enterSubqueries;
+
   public:
     NodeFinder (ExecutionNode::NodeType lookingFor,
-                std::vector<ExecutionNode*>& out) 
-      : _lookingFor(lookingFor), _out(out) {
+                std::vector<ExecutionNode*>& out,
+                bool enterSubqueries) 
+      : _lookingFor(lookingFor), _out(out), _enterSubqueries(enterSubqueries) {
     };
 
     void before (ExecutionNode* en) {
@@ -856,13 +859,17 @@ class NodeFinder : public WalkerWorker<ExecutionNode> {
       }
     }
 
+    bool enterSubquery (ExecutionNode* super, ExecutionNode* sub) {
+      return _enterSubqueries;
+    }
 };
 
 std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType (
-                                  ExecutionNode::NodeType type) {
+                                  ExecutionNode::NodeType type,
+                                  bool enterSubqueries) {
 
   std::vector<ExecutionNode*> result;
-  NodeFinder finder(type, result);
+  NodeFinder finder(type, result, enterSubqueries);
   root()->walk(&finder);
   return result;
 }
