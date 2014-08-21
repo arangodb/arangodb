@@ -51,7 +51,7 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
   
   keep = true; // plan will always be kept
   std::unordered_set<ExecutionNode*> toRemove;
-  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::FILTER);
+  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::FILTER, true);
   
   for (auto n : nodes) {
     // filter nodes always have one input variable
@@ -160,7 +160,7 @@ int triagens::aql::moveCalculationsUpRule (Optimizer* opt,
                                            ExecutionPlan* plan, 
                                            Optimizer::PlanList& out,
                                            bool& keep) {
-  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::CALCULATION);
+  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::CALCULATION, true);
 
   for (auto n : nodes) {
     auto nn = static_cast<CalculationNode*>(n);
@@ -254,7 +254,7 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
                                                       bool& keep) {
   keep = true;
   std::vector<ExecutionNode*> nodes
-    = plan->findNodesOfType(triagens::aql::ExecutionNode::CALCULATION);
+    = plan->findNodesOfType(triagens::aql::ExecutionNode::CALCULATION, true);
   std::unordered_set<ExecutionNode*> toRemove;
   for (auto n : nodes) {
     auto nn = static_cast<CalculationNode*>(n);
@@ -429,7 +429,7 @@ int triagens::aql::useIndexRange (Optimizer* opt,
                                   bool& keep) {
   
   std::vector<ExecutionNode*> nodes
-    = plan->findNodesOfType(triagens::aql::ExecutionNode::FILTER);
+    = plan->findNodesOfType(triagens::aql::ExecutionNode::FILTER, true);
  
   for (auto n : nodes) {
     auto nn = static_cast<FilterNode*>(n);
