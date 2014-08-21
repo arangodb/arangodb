@@ -1350,8 +1350,7 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
         FilterNode (size_t id,
                     Variable const* inVariable)
           : ExecutionNode(id), 
-            _inVariable(inVariable),
-            _resultIsEmpty(false) {
+            _inVariable(inVariable) {
 
           TRI_ASSERT(_inVariable != nullptr);
         }
@@ -1384,23 +1383,10 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief this is a hint that the filter will never let any data pass
-////////////////////////////////////////////////////////////////////////////////
-
-        void setEmptyResult () {
-          _resultIsEmpty = true;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief the cost of a filter node is . . . FIXME
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () {
-          if (_resultIsEmpty) {
-            // filter will not let any data through
-            return 0;
-          }
-
           return _dependencies.at(0)->getCost() * 0.105;
           //FIXME! 0.005 is the cost of doing the filter node under the
           //assumption that it returns 10% of the results of its dependency
@@ -1424,11 +1410,6 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
 
         Variable const* _inVariable;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hint that is set to true if the filter will not let any data through
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _resultIsEmpty;
     };
 
 // -----------------------------------------------------------------------------
