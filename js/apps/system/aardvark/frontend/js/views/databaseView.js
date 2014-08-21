@@ -9,6 +9,8 @@
 
     template: templateEngine.createTemplate("databaseView.ejs"),
 
+    dropdownVisible: false,
+
     currentDB: "",
 
     events: {
@@ -32,6 +34,12 @@
       }
       else {
         this.collection.setSortingDesc(false);
+      }
+
+      if ($('#databaseDropdown').is(":visible")) {
+        this.dropdownVisible = true;
+      } else {
+        this.dropdownVisible = false;
       }
 
       this.render();
@@ -58,6 +66,12 @@
         searchString : '',
         currentDB    : this.currentDB
       }));
+
+      if (this.dropdownVisible === true) {
+        $('#dbSortDesc').attr('checked', this.collection.sortOptions.desc);
+        $('#databaseToggle').toggleClass('activated');
+        $('#databaseDropdown2').show();
+      }
 
       this.replaceSVGs();
       return this;
