@@ -194,7 +194,6 @@ void Query::registerError (int code,
 QueryResult Query::execute () {
   try {
     ExecutionPlan* plan;
-    triagens::arango::AqlTransaction<triagens::arango::V8TransactionContext<true>> trx(_vocbase, _collections.collections());
     Parser parser(this);
 
     if (_queryString != nullptr) {
@@ -204,16 +203,42 @@ QueryResult Query::execute () {
       // optimize the ast
       parser.ast()->optimize();
       // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
+    }
+
+    // create the transaction object, but do not start it yet
+    AQL_TRANSACTION_V8 trx(_vocbase, _collections.collections());
+
+    if (_queryString != nullptr) {
+      // we have an AST
+      int res = trx.begin();
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return QueryResult(res, TRI_errno_string(res));
+      }
 
       plan = ExecutionPlan::instanciateFromAst(parser.ast());
+      if (plan == nullptr) {
+        // oops
+        return QueryResult(TRI_ERROR_INTERNAL);
+      }
     }
     else {
+      // we have an execution plan in JSON format
       plan = ExecutionPlan::instanciateFromJson(parser.ast(), _queryJson);
-    }
+      if (plan == nullptr) {
+        // oops
+        return QueryResult(TRI_ERROR_INTERNAL);
+      }
 
-    int res = trx.begin();
-    if (res != TRI_ERROR_NO_ERROR) {
-      return QueryResult(res, TRI_errno_string(res));
+      // creating the plan may have produced some collections
+      // we need to add them to the transaction now (otherwise the query will fail)
+      trx.addCollections(_collections.collections());
+      
+      int res = trx.begin();
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return QueryResult(res, TRI_errno_string(res));
+      }
     }
 
     // Run the query optimiser:
