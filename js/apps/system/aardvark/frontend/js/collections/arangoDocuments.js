@@ -8,6 +8,8 @@
 
     filters: [],
 
+    sortAttribute: "_key",
+
     url: '/_api/documents',
     model: window.arangoDocumentModel,
 
@@ -31,6 +33,14 @@
       this.collectionID = id;
       this.setPage(1);
       this.loadTotal();
+    },
+
+    setSort: function(key) {
+      this.sortAttribute = key;
+    },
+
+    getSort: function() {
+      return this.sortAttribute;
     },
 
     addFilter: function(attr, op, val) {
@@ -83,9 +93,11 @@
       query = "FOR x in @@collection";
       query += this.setFiltersForQuery(bindVars);
       // Sort result, only useful for a small number of docs
-      if (this.getTotal() < 10000) {
-        query += " SORT TO_NUMBER(x._key) == 0 ? x._key : TO_NUMBER(x._key)";
+      if (this.getTotal() < 12000) {
+        query += " SORT TO_NUMBER(x." + this.getSort() + ") == 0 ? x."
+              + this.getSort() + " : TO_NUMBER(x." + this.getSort() + ")";
       }
+
       if (bindVars.count !== 'all') {
         query += " LIMIT @offset, @count RETURN x";
       }

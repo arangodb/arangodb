@@ -87,7 +87,8 @@
       "click #documentsToolbar ul"      : "resetIndexForms",
       "click #indexHeader #addIndex"    :    "toggleNewIndexView",
       "click #indexHeader #cancelIndex" :    "toggleNewIndexView",
-      "change #documentSize"            :    "setPagesize"
+      "change #documentSize"            :    "setPagesize",
+      "change #docsSort"                :    "setSorting"
     },
 
     showSpinner: function() {
@@ -112,7 +113,20 @@
       this.collection.getDocuments(this.getDocsCallback.bind(this));
     },
 
+    setSorting: function() {
+      var sortAttribute = $('#docsSort').val();
+
+      if (sortAttribute === '' || sortAttribute === undefined || sortAttribute === null) {
+        sortAttribute = '_key';
+      }
+
+      this.collection.setSort(sortAttribute);
+    },
+
     returnPressedHandler: function(event) {
+      if (event.keyCode === 13 && $(event.target).is($('#docsSort'))) {
+        this.collection.getDocuments(this.getDocsCallback.bind(this));
+      }
       if (event.keyCode === 13) {
         if ($("#confirmDeleteBtn").attr("disabled") === false) {
           this.confirmDelete();
@@ -334,6 +348,7 @@
       var self = this, counter = 0;
 
       this.filterId = 0;
+      $('#docsSort').val(this.collection.getSort());
       _.each(this.restoredFilters, function (f) {
         //change html here and restore filters
         if (counter !== 0) {
@@ -767,6 +782,7 @@
       else {
         if (this.lastCollectionName !== undefined) {
           this.collection.resetFilter();
+          this.collection.setSort('_key');
           this.restoredFilters = [];
           this.activeFilter = false;
         }
