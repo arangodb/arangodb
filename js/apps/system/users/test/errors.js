@@ -24,7 +24,7 @@
           expect(err.stack).to.contain(err.message);
         });
         it('uses its name in its stack trace', function () {
-          var err = new UserError('potato');
+          var err = new UserError();
           expect(err.stack).to.contain(name);
         });
       });
