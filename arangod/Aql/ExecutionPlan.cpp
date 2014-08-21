@@ -1021,10 +1021,11 @@ void ExecutionPlan::unlinkNode (ExecutionNode* node) {
 /// node and that one cannot replace the root node of the plan.
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionPlan::replaceNode (ExecutionNode* oldNode, ExecutionNode* newNode, 
-    ExecutionNode* oldNodeParent) {
+void ExecutionPlan::replaceNode (ExecutionNode* oldNode, 
+                                 ExecutionNode* newNode, 
+                                 ExecutionNode* oldNodeParent) {
   TRI_ASSERT(oldNode->id() != newNode->id());
-  TRI_ASSERT(newNode->getDependencies().size() ==0);
+  TRI_ASSERT(newNode->getDependencies().empty());
   TRI_ASSERT(oldNode != _root);
 
   std::vector<ExecutionNode*> deps = oldNode->getDependencies();
@@ -1033,10 +1034,31 @@ void ExecutionPlan::replaceNode (ExecutionNode* oldNode, ExecutionNode* newNode,
     newNode->addDependency(x);
   }
   
-  if(!oldNodeParent->replaceDependency(oldNode, newNode)){
+  if(! oldNodeParent->replaceDependency(oldNode, newNode)){
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                 "Could not replace dependencies of an old node.");
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insert <newNode> before <oldNode>. <newNode> must be registered with 
+/// the plan before this method is called
+////////////////////////////////////////////////////////////////////////////////
+
+void ExecutionPlan::insertDependency (ExecutionNode* oldNode, 
+                                      ExecutionNode* newNode) {
+  TRI_ASSERT(oldNode->id() != newNode->id());
+  TRI_ASSERT(newNode->getDependencies().size() == 1);
+  TRI_ASSERT(oldNode != _root);
+
+  auto&& oldDeps = oldNode->getDependencies();
+  if (! oldNode->replaceDependency(oldDeps[0], newNode)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                "Could not replace dependencies of an old node.");
+  }
+
+  newNode->removeDependencies();
+  newNode->addDependency(oldDeps[0]);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
