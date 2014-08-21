@@ -2514,6 +2514,29 @@ void ExecutionBlock::VarOverview::after (ExecutionBlock *eb) {
   eb->_varOverview = *me;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                              class NoResultsBlock
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initCursor, only call base
+////////////////////////////////////////////////////////////////////////////////
+
+int NoResultsBlock::initCursor (AqlItemBlock* items, size_t pos) {
+  _done = true;
+  return TRI_ERROR_NO_ERROR;
+}
+
+int NoResultsBlock::getOrSkipSome (size_t atLeast,
+                                   size_t atMost,
+                                   bool skipping,
+                                   AqlItemBlock*& result,
+                                   size_t& skipped) {
+
+  TRI_ASSERT(result == nullptr && skipped == 0);
+  return TRI_ERROR_NO_ERROR;
+}
+
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
