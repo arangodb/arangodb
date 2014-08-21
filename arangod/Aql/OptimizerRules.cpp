@@ -97,6 +97,96 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
   
   if (! toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
+    plan->findVarUsage();
+  }
+  
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief move calculations up in the plan
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::moveCalculationsUpRule (Optimizer* opt, 
+                                           ExecutionPlan* plan, 
+                                           Optimizer::PlanList& out,
+                                           bool& keep) {
+  
+  keep = true; // plan will always be kept
+  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::FILTER, true);
+  bool modified = false;
+  
+  for (auto n : nodes) {
+    auto nn = static_cast<CalculationNode*>(n);
+    if (nn->expression()->canThrow()) {
+      // we will only move expressions up that cannot throw
+      continue;
+    }
+     
+    auto neededVars = n->getVariablesUsedHere();
+    // sort the list of variables that the expression needs as its input
+    // (sorting is needed for intersection later)
+    std::sort(neededVars.begin(), neededVars.end(), &Variable::Comparator);
+
+std::cout << "FOUND A CALCULATIONNODE THAT CANNOT THROW\n";
+//std::cout << "JSON: " << nn->expression()->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString() << "\n";
+for (auto x : neededVars) {
+  std::cout << "CALC USES VAR: " << x->name << "\n";
+}
+
+    std::vector<ExecutionNode*> stack;
+    for (auto dep : n->getDependencies()) {
+      stack.push_back(dep);
+    }
+
+    while (! stack.empty()) {
+      auto current = stack.back();
+      stack.pop_back();
+
+      bool found = false;
+
+std::cout << "LOOKING AT NODE OF TYPE: " << current->getTypeString() << "\n";
+std::cout << "FOUND PREDEC NODE OF TYPE " << current->getTypeString() << "\n";
+
+      auto&& varsSet = current->getVariablesSetHere();
+      for (auto v : varsSet) {
+        for (auto it = neededVars.begin(); it != neededVars.end(); ++it) {
+          if ((*it)->id == v->id) {
+            // shared variable, cannot move up any more
+            std::cout << "FOUND SHARED VARIABLE: " << v->name << "\n"; 
+            found = true;
+            break;
+          }
+        }
+      }
+
+      if (found) {
+        // done with optimizing this calculation node
+        break;
+      }
+        
+      auto deps = current->getDependencies();
+      if (deps.size() != 1) {
+        // node either has no or more than one dependency. we don't know what to do and must abort
+        // note: this will also handle Singleton nodes
+        break;
+      }
+      
+      for (auto dep : deps) {
+        stack.push_back(dep);
+      }
+
+      // first, delete the calculation from the plan
+      plan->unlinkNode(n);
+      plan->insertDependency(current, n);
+      modified = true;
+    
+    }
+
+  }
+  
+  if (modified) {
+    plan->findVarUsage();
   }
   
   return TRI_ERROR_NO_ERROR;
@@ -136,16 +226,15 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
   }
 
   if (! toUnlink.empty()) {
-    std::cout << "Removing " << toUnlink.size() << " unnecessary "
-                 "CalculationNodes..." << std::endl;
     plan->unlinkNodes(toUnlink);
+    plan->findVarUsage();
   }
 
   return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief find nodes of a certain type
+/// @brief prefer IndexRange nodes over EnumerateCollection nodes
 ////////////////////////////////////////////////////////////////////////////////
 
 class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
@@ -158,6 +247,7 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
   //EnumerateCollectionNode const* _enumColl;
 
   public:
+
     CalculationNodeFinder (ExecutionPlan* plan, Variable const * var, Optimizer::PlanList& out) 
       : _plan(plan), _var(var), _out(out), _prev(nullptr){
         _ranges = new RangesInfo();
