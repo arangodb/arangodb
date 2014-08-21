@@ -891,6 +891,58 @@ std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType (
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check linkage of execution plan
+////////////////////////////////////////////////////////////////////////////////
+
+class LinkChecker : public WalkerWorker<ExecutionNode> {
+
+  public:
+    LinkChecker () {
+    }
+
+    void before (ExecutionNode* en) {
+      auto deps = en->getDependencies();
+      for (auto x : deps) {
+        auto parents = x->getParents();
+        bool ok = false;
+        for (auto it = parents.begin(); it != parents.end(); ++it) {
+          if (*it == en) {
+            ok = true;
+            break;
+          }
+        }
+        if (! ok) {
+          std::cout << "Found dependency which does not have us as a parent!"
+                    << std::endl;
+        }
+      }
+      auto parents = en->getParents();
+      if (parents.size() > 1) {
+        std::cout << "Found a node with more than one parent!" << std::endl;
+      }
+      for (auto x : parents) {
+        auto deps = x->getDependencies();
+        bool ok = false;
+        for (auto it = deps.begin(); it != deps.end(); ++it) {
+          if (*it == en) {
+            ok = true;
+            break;
+          }
+        }
+        if (! ok) {
+          std::cout << "Found parent which does not have us as a dependency!"
+                    << std::endl;
+        }
+      }
+    }
+};
+
+void ExecutionPlan::checkLinkage () {
+  LinkChecker checker;
+  root()->walk(&checker);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief helper struct for findVarUsage
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -964,7 +1016,7 @@ void ExecutionPlan::unlinkNodes (std::unordered_set<ExecutionNode*>& toRemove) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ExecutionPlan::unlinkNode (ExecutionNode* node) {
-  auto&& parents = node->getParents();
+  auto parents = node->getParents();
   if (parents.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "Cannot unlink root node of plan.");
@@ -974,9 +1026,10 @@ void ExecutionPlan::unlinkNode (ExecutionNode* node) {
         "Cannot remove node with more than one parent.");
   }
   else {
-    auto&& dep = node->getDependencies();
+    auto dep = node->getDependencies();
     parents[0]->removeDependency(node);
     for (auto x : dep) {
+      node->removeDependency(x);
       parents[0]->addDependency(x);
     }
   }
