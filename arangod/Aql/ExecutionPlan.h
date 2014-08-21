@@ -175,8 +175,7 @@ namespace triagens {
 /// @brief replace oldNode with newNode and fix dependencies 
 ////////////////////////////////////////////////////////////////////////////////
 
-        void replaceNode (ExecutionNode* oldNode, ExecutionNode* newNode, 
-            ExecutionNode* oldNodeParent);
+        void replaceNode (ExecutionNode* oldNode, ExecutionNode* newNode);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone the plan by recursively cloning starting from the root

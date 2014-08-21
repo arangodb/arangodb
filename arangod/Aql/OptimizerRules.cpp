@@ -89,12 +89,9 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
     else {
       // filter is always false
       // now insert a NoResults node below it
-      auto&& parents = n->getParents();
-      TRI_ASSERT(parents.size() == 1);
-
       auto noResults = new NoResultsNode(plan->nextId());
       plan->registerNode(noResults);
-      plan->replaceNode(n, noResults, parents[0]); 
+      plan->replaceNode(n, noResults);
     }
   }
   
@@ -304,8 +301,7 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
               delete newPlan;
               throw;
             }
-            newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode, 
-                newPlan->getNodeById(_prev->id()));
+            newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
             std::cout << newPlan->root()->toJson(TRI_UNKNOWN_MEM_ZONE, true).toString() << "\n";
             _out.push_back(newPlan);
           }
