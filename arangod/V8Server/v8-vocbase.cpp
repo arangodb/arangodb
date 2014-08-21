@@ -893,7 +893,7 @@ static v8::Handle<v8::Value> JS_ExecuteAqlJson (v8::Arguments const& argv) {
 
   if (argv.Length() > 1) {
     // we have options! yikes!
-    if (! argv[1]->IsObject()) {
+    if (! argv[1]->IsUndefined() && ! argv[1]->IsObject()) {
       TRI_V8_TYPE_ERROR(scope, "expecting object for <options>");
     }
 
