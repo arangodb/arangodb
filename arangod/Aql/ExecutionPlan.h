@@ -136,7 +136,8 @@ namespace triagens {
 /// @brief find nodes of a certain type
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<ExecutionNode*> findNodesOfType (ExecutionNode::NodeType);
+        std::vector<ExecutionNode*> findNodesOfType (ExecutionNode::NodeType,
+                                                     bool enterSubqueries);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine and set _varsUsedLater in all nodes
