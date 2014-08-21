@@ -4189,6 +4189,9 @@ div.dropdownInner {
 div.queryline {
   color: black;
   height: 35px; }
+  div.queryline .textDiv {
+    margin-right: 10px;
+    margin-top: 4px; }
   div.queryline select,
   div.queryline input {
     margin-bottom: 5px; }
