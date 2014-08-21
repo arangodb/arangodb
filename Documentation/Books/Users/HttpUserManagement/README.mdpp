@@ -9,9 +9,7 @@ users managed through this interface will be stored in the system collection
 This specialized interface intentionally does not provide all functionality that
 is available in the regular document REST API.
 
-Operations on users may become more restricted than regular document operations,
-and extra privileges and security security checks may be introduced in the
-future for this interface.
+You should not manipulate the *_users* collection directly. While the user management interface aims to maintain backwards compatibility, the underlying collection is now managed by the bundled *users* Foxx app.
 
 Please note that user operations are not included in ArangoDB's replication.
 
