@@ -168,6 +168,7 @@ namespace triagens {
 
         void addDependency (ExecutionNode* ep) {
           _dependencies.push_back(ep);
+          ep->_parents.push_back(this);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -176,6 +177,14 @@ namespace triagens {
 
         std::vector<ExecutionNode*> getDependencies () const {
           return _dependencies;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get all parents
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<ExecutionNode*> getParents () const {
+          return _parents;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -189,6 +198,27 @@ namespace triagens {
           while (it != _dependencies.end()) {
             if (*it == oldNode) {
               *it = newNode;
+              try {
+                newNode->_parents.push_back(this);
+              }
+              catch (...) {
+                *it = oldNode;  // roll back
+                return false;
+              }
+              try {
+                for (auto it2 = oldNode->_parents.begin();
+                     it2 != oldNode->_parents.end();
+                     ++it2) {
+                  if (*it2 == this) {
+                    oldNode->_parents.erase(it2);
+                    break;
+                  }
+                }
+              }
+              catch (...) {
+                // If this happens, we ignore that the _parents of oldNode
+                // are not set correctly
+              }
               return true;
             }
             ++it;
@@ -202,15 +232,39 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool removeDependency (ExecutionNode* ep) {
-          auto it = _dependencies.begin(); 
-
-          while (it != _dependencies.end()) {
+          bool ok = false;
+          for (auto it = _dependencies.begin();
+               it != _dependencies.end();
+               ++it) {
             if (*it == ep) {
-              _dependencies.erase(it);
+              try {
+                _dependencies.erase(it);
+              }
+              catch (...) {
+                return false;
+              }
+              ok = true;
+              break;
+            }
+          }
+          if (! ok) {
+            return false;
+          }
+
+          // Now remove us as a parent of the old dependency as well:
+          for (auto it = ep->_parents.begin(); 
+               it != ep->_parents.end(); 
+               ++it) {
+            if (*it == this) {
+              try {
+                ep->_parents.erase(it);
+              }
+              catch (...) {
+              }
               return true;
             }
-            ++it;
           }
+
           return false;
         }
 
@@ -219,6 +273,20 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void removeDependencies () {
+          for (auto x : _dependencies) {
+            for (auto it = x->_parents.begin();
+                 it != x->_parents.end();
+                 ++it) {
+              if (*it == this) {
+                try {
+                  x->_parents.erase(it);
+                }
+                catch (...) {
+                }
+                break;
+              }
+            }
+          }
           _dependencies.clear();
         }
 
@@ -235,7 +303,15 @@ namespace triagens {
         void cloneDependencies (ExecutionNode* theClone) const {
           auto it = _dependencies.begin();
           while (it != _dependencies.end()) {
-            theClone->_dependencies.push_back((*it)->clone());
+            auto c = (*it)->clone();
+            try {
+              c->_parents.push_back(theClone);
+              theClone->_dependencies.push_back(c);
+            }
+            catch (...) {
+              delete c;
+              throw;
+            }
             ++it;
           }
         }
@@ -399,6 +475,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<ExecutionNode*> _dependencies;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief our parent nodes
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<ExecutionNode*> _parents;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief NodeType to string mapping

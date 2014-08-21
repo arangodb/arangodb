@@ -174,6 +174,11 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
         root = eb;
         break;
       }
+      case ExecutionNode::NORESULTS: {
+        eb = new NoResultsBlock(engine,
+                                static_cast<NoResultsNode const*>(en));
+        break;
+      }
 
       default: {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "node type not handled");
