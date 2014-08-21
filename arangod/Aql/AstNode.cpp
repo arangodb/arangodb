@@ -227,8 +227,6 @@ AstNode::AstNode (Ast* ast,
     case NODE_TYPE_LIST:
     case NODE_TYPE_RANGE:
     case NODE_TYPE_NOP:
-      //TRI_ASSERT(false);
-      //THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "json dserializer: node type not implemented.");
       break;
     }
 
@@ -252,6 +250,10 @@ AstNode::~AstNode () {
   TRI_DestroyVectorPointer(&members);
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type name of a node
 ////////////////////////////////////////////////////////////////////////////////
@@ -265,6 +267,22 @@ std::string const& AstNode::getTypeString () const {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "missing node type in TypeNames");
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the value type name of a node
+////////////////////////////////////////////////////////////////////////////////
+
+std::string const& AstNode::getValueTypeString () const {
+  auto it = valueTypeNames.find(static_cast<int>(value.type));
+  if (it != valueTypeNames.end()) {
+    return (*it).second;
+  }
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "missing node type in valueTypeNames");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether we know a type of this kind; throws exception if not.
+////////////////////////////////////////////////////////////////////////////////
+
 void AstNode::validateType (int type) {
   auto it = TypeNames.find(static_cast<int>(type));
   if (it == TypeNames.end()) {
@@ -272,21 +290,10 @@ void AstNode::validateType (int type) {
   }
 }
 
-AstNodeType AstNode::getNodeTypeFromJson (triagens::basics::Json const& json) {
-  int type = JsonHelper::getNumericValue<int>(json.json(), "typeID", 0);
-  validateType (type);
-  return (AstNodeType) type;
-}
-
-
-
-const std::string& AstNode::getValueTypeString () const {
-  auto it = valueTypeNames.find(static_cast<int>(value.type));
-  if (it != valueTypeNames.end()) {
-    return (*it).second;
-  }
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "missing node type in valueTypeNames");
-}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether we know a value type of this kind; 
+/// throws exception if not.
+////////////////////////////////////////////////////////////////////////////////
 
 void AstNode::validateValueType (int type) {
   auto it = valueTypeNames.find(static_cast<int>(type));
@@ -295,10 +302,15 @@ void AstNode::validateValueType (int type) {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetch a node's type from json
+////////////////////////////////////////////////////////////////////////////////
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+AstNodeType AstNode::getNodeTypeFromJson (triagens::basics::Json const& json) {
+  int type = JsonHelper::getNumericValue<int>(json.json(), "typeID", 0);
+  validateType (type);
+  return (AstNodeType) type;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a JSON representation of the node value
@@ -373,7 +385,8 @@ TRI_json_t* AstNode::toJsonValue (TRI_memory_zone_t* zone) const {
 /// the caller is responsible for freeing the JSON later
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone) const {
+TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone,
+                             bool verbose) const {
   TRI_json_t* node = TRI_CreateArrayJson(zone);
 
   if (node == nullptr) {
@@ -382,7 +395,9 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone) const {
 
   // dump node type
   TRI_Insert3ArrayJson(zone, node, "type", TRI_CreateStringCopyJson(zone, getTypeString().c_str()));
-  TRI_Insert3ArrayJson(zone, node, "typeID", TRI_CreateNumberJson(zone, static_cast<int>(type)));
+  if (verbose) {
+    TRI_Insert3ArrayJson(zone, node, "typeID", TRI_CreateNumberJson(zone, static_cast<int>(type)));
+  }
 
   if (type == NODE_TYPE_COLLECTION ||
       type == NODE_TYPE_PARAMETER ||
@@ -396,7 +411,7 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone) const {
   if (type == NODE_TYPE_FCALL) {
     auto func = static_cast<Function*>(getData());
     TRI_Insert3ArrayJson(zone, node, "name", TRI_CreateStringCopyJson(zone, func->externalName.c_str()));
-    //// TODO: do we need the aruments?
+    // arguments are exported via node members
   }
 
   if (type == NODE_TYPE_VALUE) {
@@ -409,8 +424,10 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone) const {
     }
     
     TRI_Insert3ArrayJson(zone, node, "value", v);
-    TRI_Insert3ArrayJson(zone, node, "vType", TRI_CreateStringCopyJson(zone, getValueTypeString().c_str()));
-    TRI_Insert3ArrayJson(zone, node, "vTypeID", TRI_CreateNumberJson(zone, static_cast<int>(value.type)));
+    if (verbose) {
+      TRI_Insert3ArrayJson(zone, node, "vType", TRI_CreateStringCopyJson(zone, getValueTypeString().c_str()));
+      TRI_Insert3ArrayJson(zone, node, "vTypeID", TRI_CreateNumberJson(zone, static_cast<int>(value.type)));
+    }
   }
 
   if (type == NODE_TYPE_VARIABLE ||
@@ -439,7 +456,7 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone) const {
       for (size_t i = 0; i < n; ++i) {
         auto member = getMember(i);
         if (member != nullptr && member->type != NODE_TYPE_NOP) {
-          member->toJson(subNodes, zone);
+          member->toJson(subNodes, zone, verbose);
         }
       }
     }
@@ -461,10 +478,11 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone) const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void AstNode::toJson (TRI_json_t* json,
-                      TRI_memory_zone_t* zone) const {
+                      TRI_memory_zone_t* zone,
+                      bool verbose) const {
   TRI_ASSERT(TRI_IsListJson(json));
 
-  TRI_json_t* node = toJson(zone);
+  TRI_json_t* node = toJson(zone, verbose);
 
   if (node == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);

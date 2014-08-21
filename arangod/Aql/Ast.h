@@ -40,8 +40,6 @@
 
 #include <functional>
 
-struct TRI_json_s;
-
 namespace triagens {
   namespace aql {
 
@@ -198,7 +196,8 @@ namespace triagens {
 /// the caller is responsible for freeing the JSON later
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_json_s* toJson (TRI_memory_zone_t*);
+        TRI_json_t* toJson (TRI_memory_zone_t*,
+                            bool) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add an operation to the root node

@@ -141,7 +141,7 @@ QueryResult Parser::parse () {
   QueryResult result;
   result.collectionNames = _query->collectionNames();
   result.bindParameters  = _ast->bindParameters();
-  result.json            = _ast->toJson(TRI_UNKNOWN_MEM_ZONE);
+  result.json            = _ast->toJson(TRI_UNKNOWN_MEM_ZONE, false);
 
   return result;
 }
