@@ -951,46 +951,40 @@ void ExecutionPlan::findVarUsage () {
 /// @brief helper struct for unlinkNodes
 ////////////////////////////////////////////////////////////////////////////////
 
-struct NodeRemover : public WalkerWorker<ExecutionNode> {
+struct NodeUnlinker : public WalkerWorker<ExecutionNode> {
 
     ExecutionPlan* _plan;
     std::unordered_set<ExecutionNode*>& _toRemove;
-    std::vector<ExecutionNode*> parents;
 
-    NodeRemover (ExecutionPlan* plan,
+    NodeUnlinker (ExecutionPlan* plan,
                  std::unordered_set<ExecutionNode*>& toRemove) 
       : _plan(plan), 
         _toRemove(toRemove) {
     }
 
-    ~NodeRemover () {
+    ~NodeUnlinker () {
     }
 
     void before (ExecutionNode* en) {
       if (_toRemove.find(en) != _toRemove.end()) {
         // Remove this node:
+        auto&& parents = en->getParents();
         if (parents.empty()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
               "Cannot remove root node of plan.");
         }
+        else if (parents.size() > 1) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+              "Cannot remove node with more than one parent.");
+        }
         else {
-          auto dep = en->getDependencies();
-          //TODO make exception safe
-          parents.back()->removeDependency(en);
-          if (dep.size() == 1) {
-            parents.back()->addDependency(dep[0]);
-          }
-          else if (dep.size() > 1) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                "Cannot remove node with more than one dependency.");
+          auto&& dep = en->getDependencies();
+          parents[0]->removeDependency(en);
+          for (auto x : dep) {
+            parents[0]->addDependency(x);
           }
         }
       }
-      parents.push_back(en);
-    }
-
-    void after (ExecutionNode* en) {
-      parents.pop_back();
     }
 };
 
@@ -1000,7 +994,7 @@ struct NodeRemover : public WalkerWorker<ExecutionNode> {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ExecutionPlan::unlinkNodes (std::unordered_set<ExecutionNode*>& toRemove) {
-  NodeRemover remover(this, toRemove);
+  NodeUnlinker remover(this, toRemove);
   root()->walk(&remover);
 }
 
@@ -1021,8 +1015,7 @@ void ExecutionPlan::unlinkNode (ExecutionNode* node) {
 /// node and that one cannot replace the root node of the plan.
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionPlan::replaceNode (ExecutionNode* oldNode, ExecutionNode* newNode, 
-    ExecutionNode* oldNodeParent) {
+void ExecutionPlan::replaceNode (ExecutionNode* oldNode, ExecutionNode* newNode) {
   TRI_ASSERT(oldNode->id() != newNode->id());
   TRI_ASSERT(newNode->getDependencies().size() ==0);
   TRI_ASSERT(oldNode != _root);
@@ -1033,9 +1026,12 @@ void ExecutionPlan::replaceNode (ExecutionNode* oldNode, ExecutionNode* newNode,
     newNode->addDependency(x);
   }
   
-  if(!oldNodeParent->replaceDependency(oldNode, newNode)){
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                "Could not replace dependencies of an old node.");
+  auto&& oldNodeParents = oldNode->getParents();
+  for (auto oldNodeParent : oldNodeParents) {
+    if(!oldNodeParent->replaceDependency(oldNode, newNode)){
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                  "Could not replace dependencies of an old node.");
+    }
   }
 }
 
