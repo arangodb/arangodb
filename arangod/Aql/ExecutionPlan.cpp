@@ -110,6 +110,10 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast* ast) {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan from JSON
+////////////////////////////////////////////////////////////////////////////////
+
 ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast* ast,
                                                    triagens::basics::Json const& json) {
   auto plan = new ExecutionPlan();
