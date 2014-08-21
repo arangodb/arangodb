@@ -356,7 +356,7 @@ void SingletonNode::toJsonHelper (triagens::basics::Json& nodes,
 EnumerateCollectionNode::EnumerateCollectionNode (Ast* ast, basics::Json const& base)
   : ExecutionNode(base),
     _vocbase(ast->query()->vocbase()),
-    _collection(ast->query()->collections()->get(JsonHelper::getStringValue(base.json(), "collection", ""))),
+    _collection(ast->query()->collections()->add(JsonHelper::getStringValue(base.json(), "collection", ""), TRI_TRANSACTION_READ)),
     _outVariable(varFromJson(ast, base, "outVariable")) {
 }
 
@@ -730,7 +730,7 @@ ModificationNode::ModificationNode (Ast* ast,
                                     basics::Json const& base)
   : ExecutionNode(base), 
     _vocbase(ast->query()->vocbase()),
-    _collection(ast->query()->collections()->get(JsonHelper::getStringValue(base.json(), "collection", ""))),
+    _collection(ast->query()->collections()->add(JsonHelper::getStringValue(base.json(), "collection", ""), TRI_TRANSACTION_WRITE)),
     _options(base) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);

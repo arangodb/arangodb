@@ -70,8 +70,8 @@ namespace triagens {
           return nullptr;
         }
 
-        void add (std::string const& name,
-                  TRI_transaction_type_e accessType) {
+        Collection* add (std::string const& name,
+                         TRI_transaction_type_e accessType) {
           // check if collection already is in our map
           auto it = _collections.find(name);
 
@@ -84,6 +84,7 @@ namespace triagens {
               delete collection;
               throw;
             }
+            return collection;
           }
           else {
             // change access type from read to write
@@ -92,6 +93,7 @@ namespace triagens {
               (*it).second->accessType = TRI_TRANSACTION_WRITE;
             }
           }
+          return (*it).second;
         }
 
         std::vector<std::string> collectionNames () const {
