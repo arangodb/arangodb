@@ -116,7 +116,7 @@ namespace triagens {
 /// @brief appends all the plans to the target and clears *this at the same time
 ////////////////////////////////////////////////////////////////////////////////
 
-          void appendTo (vector<ExecutionPlan*>& target) {
+          void appendTo (std::vector<ExecutionPlan*>& target) {
             while (list.size() > 0) {
               auto p = list.front();
               list.pop_front();
@@ -226,7 +226,7 @@ namespace triagens {
 /// @brief getPlans, ownership of the plans remains with the optimizer
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<ExecutionPlan*>& getPlans () {
+        std::vector<ExecutionPlan*>& getPlans () {
           return _plans;
         }
 
@@ -252,8 +252,8 @@ namespace triagens {
 /// the optimizer will forget about them!
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<ExecutionPlan*> stealPlans () {
-          vector<ExecutionPlan*> res;
+        std::vector<ExecutionPlan*> stealPlans () {
+          std::vector<ExecutionPlan*> res;
           res.swap(_plans);
           return res;
         }
@@ -292,13 +292,13 @@ namespace triagens {
 /// @brief the rules database
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<Rule> _rules;
+        std::vector<Rule> _rules;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the current set of plans to be optimised
 ////////////////////////////////////////////////////////////////////////////////
 
-        vector<ExecutionPlan*> _plans;
+        std::vector<ExecutionPlan*> _plans;
 
     };
 

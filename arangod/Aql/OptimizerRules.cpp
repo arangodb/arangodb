@@ -48,7 +48,6 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
                                                  ExecutionPlan* plan, 
                                                  Optimizer::PlanList& out,
                                                  bool& keep) {
-  
   keep = true; // plan will always be kept
   std::unordered_set<ExecutionNode*> toUnlink;
   std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::FILTER, true);
@@ -97,6 +96,167 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
   
   if (! toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
+    plan->findVarUsage();
+  }
+  
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief move calculations up in the plan
+/// this rule modifies the plan in place
+/// it aims to move up calculations as far up in the plan as possible, to 
+/// avoid redundant calculations in inner loops
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::moveCalculationsUpRule (Optimizer* opt, 
+                                           ExecutionPlan* plan, 
+                                           Optimizer::PlanList& out,
+                                           bool& keep) {
+  keep = true; // plan will always be kept
+  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::CALCULATION, true);
+  bool modified = false;
+  
+  for (auto n : nodes) {
+    auto nn = static_cast<CalculationNode*>(n);
+    if (nn->expression()->canThrow()) {
+      // we will only move expressions up that cannot throw
+      continue;
+    }
+
+    auto neededVars = n->getVariablesUsedHere();
+    // sort the list of variables that the expression needs as its input
+    // (sorting is needed for intersection later)
+    std::sort(neededVars.begin(), neededVars.end(), &Variable::Comparator);
+
+    std::vector<ExecutionNode*> stack;
+    for (auto dep : n->getDependencies()) {
+      stack.push_back(dep);
+    }
+
+    while (! stack.empty()) {
+      auto current = stack.back();
+      stack.pop_back();
+
+      bool found = false;
+
+      auto&& varsSet = current->getVariablesSetHere();
+      for (auto v : varsSet) {
+        for (auto it = neededVars.begin(); it != neededVars.end(); ++it) {
+          if ((*it)->id == v->id) {
+            // shared variable, cannot move up any more
+            found = true;
+            break;
+          }
+        }
+      }
+
+      if (found) {
+        // done with optimizing this calculation node
+        break;
+      }
+        
+      auto deps = current->getDependencies();
+      if (deps.size() != 1) {
+        // node either has no or more than one dependency. we don't know what to do and must abort
+        // note: this will also handle Singleton nodes
+        break;
+      }
+      
+      for (auto dep : deps) {
+        stack.push_back(dep);
+      }
+
+      // first, unlink the calculation from the plan
+      plan->unlinkNode(n);
+      // and re-insert into before the current node
+      plan->insertDependency(current, n);
+      modified = true;
+    }
+
+  }
+  
+  if (modified) {
+    plan->findVarUsage();
+  }
+  
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief move filters up in the plan
+/// this rule modifies the plan in place
+/// filters are moved as far up in the plan as possible to make result sets
+/// as small as possible as early as possible
+/// filters are not pushed beyond limits
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::moveFiltersUpRule (Optimizer* opt, 
+                                      ExecutionPlan* plan, 
+                                      Optimizer::PlanList& out,
+                                      bool& keep) {
+  keep = true; // plan will always be kept
+  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::FILTER, true);
+  bool modified = false;
+  
+  for (auto n : nodes) {
+    auto neededVars = n->getVariablesUsedHere();
+    TRI_ASSERT(neededVars.size() == 1);
+
+    std::vector<ExecutionNode*> stack;
+    for (auto dep : n->getDependencies()) {
+      stack.push_back(dep);
+    }
+
+    while (! stack.empty()) {
+      auto current = stack.back();
+      stack.pop_back();
+
+      if (current->getType() == triagens::aql::ExecutionNode::LIMIT) {
+        // cannot push a filter beyond a LIMIT node
+        break;
+      }
+
+      bool found = false;
+
+      auto&& varsSet = current->getVariablesSetHere();
+      for (auto v : varsSet) {
+        for (auto it = neededVars.begin(); it != neededVars.end(); ++it) {
+          if ((*it)->id == v->id) {
+            // shared variable, cannot move up any more
+            found = true;
+            break;
+          }
+        }
+      }
+
+      if (found) {
+        // done with optimizing this calculation node
+        break;
+      }
+        
+      auto deps = current->getDependencies();
+      if (deps.size() != 1) {
+        // node either has no or more than one dependency. we don't know what to do and must abort
+        // note: this will also handle Singleton nodes
+        break;
+      }
+      
+      for (auto dep : deps) {
+        stack.push_back(dep);
+      }
+
+      // first, unlink the filter from the plan
+      plan->unlinkNode(n);
+      // and re-insert into before the current node
+      plan->insertDependency(current, n);
+      modified = true;
+    }
+
+  }
+  
+  if (modified) {
+    plan->findVarUsage();
   }
   
   return TRI_ERROR_NO_ERROR;
@@ -136,16 +296,15 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
   }
 
   if (! toUnlink.empty()) {
-    std::cout << "Removing " << toUnlink.size() << " unnecessary "
-                 "CalculationNodes..." << std::endl;
     plan->unlinkNodes(toUnlink);
+    plan->findVarUsage();
   }
 
   return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief find nodes of a certain type
+/// @brief prefer IndexRange nodes over EnumerateCollection nodes
 ////////////////////////////////////////////////////////////////////////////////
 
 class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
@@ -158,6 +317,7 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
   //EnumerateCollectionNode const* _enumColl;
 
   public:
+
     CalculationNodeFinder (ExecutionPlan* plan, Variable const * var, Optimizer::PlanList& out) 
       : _plan(plan), _var(var), _out(out), _prev(nullptr){
         _ranges = new RangesInfo();

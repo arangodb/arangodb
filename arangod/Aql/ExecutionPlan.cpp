@@ -1053,7 +1053,7 @@ void ExecutionPlan::replaceNode (ExecutionNode* oldNode,
     newNode->addDependency(x);
   }
   
-  auto&& oldNodeParents = oldNode->getParents();
+  auto oldNodeParents = oldNode->getParents();
   for (auto oldNodeParent : oldNodeParents) {
     if(! oldNodeParent->replaceDependency(oldNode, newNode)){
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1073,7 +1073,7 @@ void ExecutionPlan::insertDependency (ExecutionNode* oldNode,
   TRI_ASSERT(newNode->getDependencies().size() == 1);
   TRI_ASSERT(oldNode != _root);
 
-  auto&& oldDeps = oldNode->getDependencies();
+  auto oldDeps = oldNode->getDependencies();
   if (! oldNode->replaceDependency(oldDeps[0], newNode)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                 "Could not replace dependencies of an old node.");
