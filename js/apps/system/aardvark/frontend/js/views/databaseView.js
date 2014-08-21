@@ -58,6 +58,7 @@
         searchString : '',
         currentDB    : this.currentDB
       }));
+
       this.replaceSVGs();
       return this;
     },
@@ -205,8 +206,10 @@
       );
       $(this.el).html(this.template.render({
         collection   : reducedCollection,
-        searchString : searchString
+        searchString : searchString,
+        currentDB    : this.currentDB
       }));
+      this.replaceSVGs();
 
       //after rendering, get the "new" element
       searchInput = $('#databaseSearchInput');
