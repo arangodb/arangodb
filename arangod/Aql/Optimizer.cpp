@@ -50,7 +50,7 @@ Optimizer::Optimizer () {
   registerRule(removeUnnecessaryFiltersRule, 10000);
   
   // move calculations up the dependency chain (to pull them out of inner loops etc.)
-  // registerRule(moveCalculationsUpRule, 1000);
+  registerRule(moveCalculationsUpRule, 1000);
 
   // remove calculations that are never necessary
   registerRule(removeUnnecessaryCalculationsRule, 999);
