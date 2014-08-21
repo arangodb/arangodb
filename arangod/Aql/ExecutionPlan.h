@@ -155,21 +155,16 @@ namespace triagens {
         void removeNode (ExecutionNode*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief clone the plane by recursively cloning starting from the root
+/// @brief add a node to the plan, will delete node if addition fails
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionPlan* clone (){
-          auto plan = new ExecutionPlan();
-          try {
-            plan->_root = _root->clone();
-            plan->findVarUsage();
-            return plan;
-          }
-          catch (...) {
-            delete plan;
-            throw;
-          }
-        }
+        ExecutionNode* registerNode (ExecutionNode*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone the plan by recursively cloning starting from the root
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionPlan* clone ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -183,11 +178,6 @@ namespace triagens {
 
         ModificationOptions createOptions (AstNode const*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add a node to the plan, will delete node if addition fails
-////////////////////////////////////////////////////////////////////////////////
-
-        ExecutionNode* addNode (ExecutionNode*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a calculation node for an arbitrary expression

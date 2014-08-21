@@ -274,11 +274,14 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
   RangesInfo* _ranges; 
   ExecutionPlan* _plan;
   Variable const* _var;
+  Optimizer::PlanList _out;
+  ExecutionNode* _prev;
+
   //EnumerateCollectionNode const* _enumColl;
 
   public:
     CalculationNodeFinder (ExecutionPlan* plan, Variable const * var, Optimizer::PlanList& out) 
-      : _plan(plan), _var(var){
+      : _plan(plan), _var(var), _out(out), _prev(nullptr){
         _ranges = new RangesInfo();
     };
 
@@ -299,22 +302,38 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
         auto map = _ranges->find(var->name);        // check if we have any ranges with this var
         
         if (map != nullptr) {
-          // check the first components of <map> against indexes of <node> . .
+          // check the first components of <map> against indexes of <node> . . .
+          // FIXME does this need to be done like this? Couldn't we keep track
+          // earlier?
           std::vector<std::string> attrs;
-          for (auto str : *map){
-            attrs.push_back(str.first);
+          std::vector<RangeInfo*> rangeInfo;
+          for (auto x : *map){
+            attrs.push_back(x.first);
+            rangeInfo.push_back(x.second);
           }
           std::vector<TRI_index_t*> idxs = node->getIndexes(attrs);
+          // TODO remove next 3 lines . . .
           if (idxs.size() != 0) { 
             std::cout << "FOUND INDEX!\n";
           }
           //use RangeIndexNode . . . 
           for (auto idx: idxs) {
             auto newPlan = _plan->clone();
+            auto newNode = new IndexRangeNode( node->id(), node->vocbase(), 
+                node->collection(), node->outVariable(), idx, &rangeInfo);
+            newPlan->removeNode(newPlan->getNodeById(node->id()));
+            
+            newPlan->registerNode(newNode);
+            newNode->addDependency(newPlan->getNodeById(node->getDependencies()[0]->id()));
+            if(_prev != nullptr){
+              newPlan->getNodeById(_prev->id())->addDependency(newNode);
+            }
+            //add exception here
+            std::cout << newPlan->root()->toJson().toString() << "\n";
+            _out.push_back(newPlan);
           }
-          // copy/clone the plan . . . 
-          // keep map from the old nodes to the new nodes . . .
-          // create RangeIndexNode
+          // keep map from the old nodes to the new nodes . . . (just use the
+          // ids they should be equal) !?
           // remove the enumerate coll node
           // remember the previous node 
           // make dependencies of new RangeIndexNode equal to the dep of
@@ -322,20 +341,9 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
           // equal to new RangeIndexNode . . .
           // push_back to out
 
-           /*
-           // delete the enumerate collection node (not any other nodes) from the plan . . .
-           plan->removeNode(node);
-           
-           auto deps = node->getDependencies();
-           
-           // make one new plan per element in <idxs>
-           for (auto idx: idxs){
-             
-
-           }*/
-
         }
       }
+      _prev = en;
     }
 
     void buildRangeInfo (AstNode const* node, std::string& enumCollVar, std::string& attr){
