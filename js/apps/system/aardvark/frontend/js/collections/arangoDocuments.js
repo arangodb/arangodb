@@ -94,8 +94,13 @@
       query += this.setFiltersForQuery(bindVars);
       // Sort result, only useful for a small number of docs
       if (this.getTotal() < 12000) {
-        query += " SORT TO_NUMBER(x." + this.getSort() + ") == 0 ? x."
-              + this.getSort() + " : TO_NUMBER(x." + this.getSort() + ")";
+        if (this.getSort() === '_key') {
+          query += " SORT TO_NUMBER(x." + this.getSort() + ") == 0 ? x."
+                + this.getSort() + " : TO_NUMBER(x." + this.getSort() + ")";
+        }
+        else {
+          query += " SORT x." + this.getSort();
+        }
       }
 
       if (bindVars.count !== 'all') {
