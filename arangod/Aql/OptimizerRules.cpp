@@ -287,14 +287,15 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
           for (auto idx: idxs) {
             bool stop = false;
             if (idx->_type == TRI_IDX_TYPE_HASH_INDEX){
-              //only use a hash index if the corresponding rangeInfos are all
-              //equalities . . .
+              // only use a hash index if the corresponding rangeInfos are all
+              // equalities . . .
               for(auto x : rangeInfo){
                 if (x->_low == nullptr || x->_high == nullptr || 
                     !TRI_CheckSameValueJson(x->_low->_bound.json(),
-                    x->_high->_bound.json()) || x->_low->_include != false || 
-                    x->_high->_include == false ) {
+                    x->_high->_bound.json()) || !(x->_low->_include) || 
+                    !(x->_high->_include) ) {
                   stop = true;
+                  std::cout << "not using hash index . . .\n";
                   break;
                 }
               }
