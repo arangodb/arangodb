@@ -92,7 +92,8 @@ namespace triagens {
           REMOVE                  = 23,
           REPLACE                 = 24,
           UPDATE                  = 25,
-          RETURN                  = 26
+          RETURN                  = 26,
+          NORESULTS               = 27
         };
 
 // -----------------------------------------------------------------------------
@@ -415,7 +416,7 @@ namespace triagens {
       friend class SingletonBlock;
       
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor with a vocbase and a collection name
+/// @brief constructor with an id
 ////////////////////////////////////////////////////////////////////////////////
 
     public:
@@ -2264,6 +2265,67 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
 
     };
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                               class NoResultsNode
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class NoResultsNode
+////////////////////////////////////////////////////////////////////////////////
+
+    class NoResultsNode : public ExecutionNode {
+      
+      friend class ExecutionBlock;
+      friend class NoResultsBlock;
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor with an id
+////////////////////////////////////////////////////////////////////////////////
+
+    public:
+
+      NoResultsNode (size_t id) 
+        : ExecutionNode(id) {
+      }
+
+      NoResultsNode (Ast*, basics::Json const& base)
+        : ExecutionNode(base) {
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node
+////////////////////////////////////////////////////////////////////////////////
+
+      NodeType getType () const override {
+        return NORESULTS;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+      virtual void toJsonHelper (triagens::basics::Json& nodes,
+                                 TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+
+      virtual ExecutionNode* clone () const {
+        auto c = new NoResultsNode(_id);
+        cloneDependencies(c);
+        return static_cast<ExecutionNode*>(c);
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the cost of a NoResults is 0
+////////////////////////////////////////////////////////////////////////////////
+        
+      double estimateCost () {
+        return 0;
+      }
+
+    };
 
   }   // namespace triagens::aql
 }  // namespace triagens

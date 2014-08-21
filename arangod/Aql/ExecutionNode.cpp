@@ -58,7 +58,8 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
   { static_cast<int>(REMOVE),                       "RemoveNode" },
   { static_cast<int>(INSERT),                       "InsertNode" },
   { static_cast<int>(UPDATE),                       "UpdateNode" },
-  { static_cast<int>(REPLACE),                      "ReplaceNode" }
+  { static_cast<int>(REPLACE),                      "ReplaceNode" },
+  { static_cast<int>(NORESULTS),                    "NoResultsNode" }
 };
           
 // -----------------------------------------------------------------------------
@@ -162,6 +163,8 @@ ExecutionNode* ExecutionNode::fromJsonFactory (Ast* ast,
       return new UpdateNode(ast, oneNode);
     case RETURN:
       return new ReturnNode(ast, oneNode);
+    case NORESULTS:
+      return new NoResultsNode(ast, oneNode);
 
     case INTERSECTION:
     case PROJECTION:
@@ -886,6 +889,25 @@ void ReplaceNode::toJsonHelper (triagens::basics::Json& nodes,
   // output variable might be empty
   if (_outVariable != nullptr) {
     json("outVariable", _outVariable->toJson());
+  }
+
+  // And add it:
+  nodes(json);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          methods of NoResultsNode
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson, for NoResultsNode
+////////////////////////////////////////////////////////////////////////////////
+
+void NoResultsNode::toJsonHelper (triagens::basics::Json& nodes,
+                                  TRI_memory_zone_t* zone) {
+  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone));  // call base class method
+  if (json.isEmpty()) {
+    return;
   }
 
   // And add it:
