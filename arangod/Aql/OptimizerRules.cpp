@@ -224,8 +224,7 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
                 delete newPlan;
                 throw;
               }
-              newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode, 
-                  newPlan->getNodeById(_prev->id()));
+              newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
               std::cout << newPlan->root()->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString() 
                 << "\n";
               _out.push_back(newPlan);
