@@ -1,12 +1,22 @@
 <script id="userManagementView.ejs" type="text/template">
-<div class="headerBar">
-  <div class="pull-left">
-    <a class="arangoHeader">User Management</a>
+  <div class="headerBar">
+    <div class="headerButtonBar">
+      <ul class="headerButtonList">
+        <li class="enabled">
+        <a id="userManagementToggle" class="headerButton">
+          <span class="icon_arangodb_settings2" title="Settings"></span>
+        </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="pull-left">
+      <a class="arangoHeader">User Management</a>
+    </div>
+    <div class="search-field">
+      <input type="text" value="<%=searchString%>" id="userManagementSearchInput" class="search-input" placeholder="Search..."/><img id="userManagementSearchSubmit" class="search-submit-icon">
+    </div>
   </div>
-  <div class="search-field">
-    <input type="text" value="<%=searchString%>" id="userManagementSearchInput" class="search-input" placeholder="Search..."/><img id="userManagementSearchSubmit" class="search-submit-icon">
-  </div>
-</div>
 
 
 <div id="userManagementDropdown2" class="headerDropdown">
@@ -15,7 +25,7 @@
     <ul>
       <li class="nav-header">Sorting</li>
 
-      <li><a href="#">
+      <!--<li><a href="#">
         <label class="checkbox checkboxLabel">
           <input class="css-checkbox" type="checkbox" id="sortName">
           <label class="css-label css-label-round"></label>Sort by username
@@ -27,11 +37,11 @@
           <input class="css-checkbox" type="checkbox" id="sortType">
           <label class="css-label css-label-round"></label>Sort by status
         </label>
-      </a></li>
+      </a></li>-->
 
       <li><a href="#">
         <label class="checkbox checkboxLabel">
-          <input class="css-checkbox" type="checkbox" id="sortOrder">
+          <input class="css-checkbox" type="checkbox" id="userSortDesc">
           <label class="css-label"></label>Sort descending
         </label>
       </a></li>
