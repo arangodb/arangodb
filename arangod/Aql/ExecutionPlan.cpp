@@ -990,7 +990,6 @@ struct NodeRemover : public WalkerWorker<ExecutionNode> {
     }
 
     void after (ExecutionNode* en) {
-      _plan->unregisterNode(en);
       parents.pop_back();
     }
 };
