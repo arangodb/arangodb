@@ -843,6 +843,8 @@ bool ApplicationV8::prepareNamedContexts (const string& name,
     _nrInstances[name] = concurrency;
   }
   
+  bool result = true;
+
   for (size_t i = 0;  i < concurrency;  ++i) {
     bool ok = prepareV8Instance(name, i, false);
 
@@ -863,17 +865,24 @@ bool ApplicationV8::prepareNamedContexts (const string& name,
       v8::HandleScope scope;
       v8::TryCatch tryCatch;
 
-     // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
-     v8::Handle<v8::Object> current = v8::Context::GetCurrent()->Global();
-     v8::Local<v8::Function> ctor = v8::Local<v8::Function>::Cast(current->Get(v8::String::New("Function")));
-
-     // Invoke Function constructor to create function with the given body and no arguments
-     v8::Handle<v8::Value> args[2] = { v8::String::New("params"), v8::String::New(worker.c_str(), (int) worker.size()) };
-     v8::Local<v8::Object> function = ctor->NewInstance(2, args);
-
-     v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
-
-     TRI_AddGlobalVariableVocbase(context->_context, "MAIN", action);
+      v8::Handle<v8::Value> wfunc = TRI_ExecuteJavaScriptString(
+        context->_context,
+        v8::String::New(worker.c_str(), (int) worker.size()),
+        v8::String::New(name.c_str(), (int) name.size()),
+        false);
+        
+      if (tryCatch.HasCaught()) {
+        TRI_LogV8Exception(&tryCatch);
+        result = false;
+      }
+      else {
+        if (! wfunc.IsEmpty() && wfunc->IsFunction()) {
+          TRI_AddGlobalVariableVocbase(context->_context, "MAIN", wfunc);
+        }
+        else {
+          result = false;
+        }
+      }
     }
 
     context->_context->Exit();
@@ -881,7 +890,7 @@ bool ApplicationV8::prepareNamedContexts (const string& name,
     delete context->_locker;
   }
 
-  return true;
+  return result;
 }
 
 // -----------------------------------------------------------------------------
