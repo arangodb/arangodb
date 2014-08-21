@@ -51,12 +51,10 @@ using JsonHelper = triagens::basics::JsonHelper;
 ////////////////////////////////////////////////////////////////////////////////
 
 ExecutionPlan::ExecutionPlan () 
-  : _nodes(),
-    _ids(),
+  : _ids(),
     _root(nullptr),
     _nextId(0) {
 
-  _nodes.reserve(8);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -64,8 +62,8 @@ ExecutionPlan::ExecutionPlan ()
 ////////////////////////////////////////////////////////////////////////////////
 
 ExecutionPlan::~ExecutionPlan () {
-  for (auto it = _nodes.begin(); it != _nodes.end(); ++it) {
-    delete (*it);
+  for (auto x : _ids){
+    delete x.second;
   }
 }
 
@@ -183,7 +181,7 @@ ModificationOptions ExecutionPlan::createOptions (AstNode const* node) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add a node to the plan, will delete node if addition fails
+/// @brief register a node with the plan, will delete node if addition fails
 ////////////////////////////////////////////////////////////////////////////////
 
 ExecutionNode* ExecutionPlan::registerNode (ExecutionNode* node) {
@@ -191,21 +189,28 @@ ExecutionNode* ExecutionPlan::registerNode (ExecutionNode* node) {
   TRI_ASSERT(node->id() > 0);
 
   try {
-    _nodes.push_back(node);
-  }
-  catch (...) {
-    delete node;
-    throw;
-  }
-  try {
     _ids.insert(std::make_pair(node->id(), node));
   }
   catch (...) {
-    _nodes.pop_back();
     delete node;
     throw;
   }
   return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unregister a node to the plan
+////////////////////////////////////////////////////////////////////////////////
+
+void ExecutionPlan::unregisterNode (ExecutionNode* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->id() > 0);
+
+  auto it = _ids.find(node->id());
+  TRI_ASSERT(it != _ids.end());
+  TRI_ASSERT(it->second == node);
+
+  _ids.erase(it);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -227,6 +232,7 @@ CalculationNode* ExecutionPlan::createTemporaryCalculation (Ast const* ast,
     registerNode(reinterpret_cast<ExecutionNode*>(en));
     return en;
   }
+  
   catch (...) {
     // prevent memleak
     delete expr;
@@ -929,7 +935,7 @@ void ExecutionPlan::findVarUsage () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief helper struct for removeNodes
+/// @brief helper struct for unlinkNodes
 ////////////////////////////////////////////////////////////////////////////////
 
 struct NodeRemover : public WalkerWorker<ExecutionNode> {
@@ -956,6 +962,7 @@ struct NodeRemover : public WalkerWorker<ExecutionNode> {
         }
         else {
           auto dep = en->getDependencies();
+          //TODO make exception safe
           parents.back()->removeDependency(en);
           if (dep.size() == 1) {
             parents.back()->addDependency(dep[0]);
@@ -970,29 +977,54 @@ struct NodeRemover : public WalkerWorker<ExecutionNode> {
     }
 
     void after (ExecutionNode* en) {
+      _plan->unregisterNode(en);
       parents.pop_back();
     }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removeNodes, note that this does not delete the removed
+/// @brief unlinkNodes, note that this does not delete the removed
 /// nodes and that one cannot remove the root node of the plan.
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionPlan::removeNodes (std::unordered_set<ExecutionNode*>& toRemove) {
+void ExecutionPlan::unlinkNodes (std::unordered_set<ExecutionNode*>& toRemove) {
   NodeRemover remover(this, toRemove);
   root()->walk(&remover);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removeNode, note that this does not delete the removed
+/// @brief unlinkNode, note that this does not delete the removed
 /// node and that one cannot remove the root node of the plan.
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionPlan::removeNode (ExecutionNode* node) {
-  std::unordered_set<ExecutionNode*> toRemove;
-  toRemove.insert(node);
-  return removeNodes(toRemove);
+void ExecutionPlan::unlinkNode (ExecutionNode* node) {
+  std::unordered_set<ExecutionNode*> toUnlink;
+  toUnlink.insert(node);
+  return unlinkNodes(toUnlink);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replaceNode, note that <newNode> must be registered with the plan
+/// before this method is called, also this does not delete the old
+/// node and that one cannot replace the root node of the plan.
+////////////////////////////////////////////////////////////////////////////////
+
+void ExecutionPlan::replaceNode (ExecutionNode* oldNode, ExecutionNode* newNode, 
+    ExecutionNode* oldNodeParent) {
+  TRI_ASSERT(oldNode->id() != newNode->id());
+  TRI_ASSERT(newNode->getDependencies().size() ==0);
+  TRI_ASSERT(oldNode != _root);
+
+  std::vector<ExecutionNode*> deps = oldNode->getDependencies();
+  
+  for (auto x : deps) {
+    newNode->addDependency(x);
+  }
+  
+  if(!oldNodeParent->replaceDependency(oldNode, newNode)){
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                "Could not replace dependencies of an old node.");
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
