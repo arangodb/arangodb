@@ -1070,7 +1070,8 @@ void ExecutionPlan::replaceNode (ExecutionNode* oldNode,
 void ExecutionPlan::insertDependency (ExecutionNode* oldNode, 
                                       ExecutionNode* newNode) {
   TRI_ASSERT(oldNode->id() != newNode->id());
-  TRI_ASSERT(newNode->getDependencies().size() == 1);
+  TRI_ASSERT(newNode->getDependencies().empty());
+  TRI_ASSERT(oldNode->getDependencies().size() == 1);
   TRI_ASSERT(oldNode != _root);
 
   auto oldDeps = oldNode->getDependencies();
