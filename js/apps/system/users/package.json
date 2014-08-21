@@ -1,0 +1,14 @@
+{
+  "private": true,
+  "devDependencies": {
+    "expect.js": "^0.3.1",
+    "joi": "^4.6.2",
+    "mocha": "^1.21.4",
+    "mockuire": "^0.1.0",
+    "sinon": "^1.10.3",
+    "underscore": "^1.6.0"
+  },
+  "scripts": {
+    "test": "mocha --growl"
+  }
+}
