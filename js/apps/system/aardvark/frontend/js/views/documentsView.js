@@ -64,7 +64,7 @@
       "click #filterSend"          : "sendFilter",
       "click #addFilterItem"       : "addFilterItem",
       "click .removeFilterItem"    : "removeFilterItem",
-      "click #documentsTableID tr" : "clicked",
+      "click #documentsTableID tbody tr" : "clicked",
       "click #deleteDoc"           : "remove",
       "click #deleteSelected"      : "deleteSelectedDocs",
       "click #addDocumentButton"   : "addDocument",
@@ -287,14 +287,14 @@
 
     changeEditMode: function (enable) {
       if (enable === false || this.editMode === true) {
-        $('#documentsTableID tr').css('cursor', 'default');
+        $('#documentsTableID tbody tr').css('cursor', 'default');
         $('.deleteButton').fadeIn();
         $('.addButton').fadeIn();
         $('.selected-row').removeClass('selected-row');
         this.editMode = false;
       }
       else {
-        $('#documentsTableID tr').css('cursor', 'copy');
+        $('#documentsTableID tbody tr').css('cursor', 'copy');
         $('.deleteButton').fadeOut();
         $('.addButton').fadeOut();
         $('.selectedCount').text(0);
@@ -578,7 +578,7 @@
 
     getSelectedDocs: function() {
       var toDelete = [];
-      _.each($('#documentsTableID tr'), function(element) {
+      _.each($('#documentsTableID tbody tr'), function(element) {
         if ($(element).hasClass('selected-row')) {
           toDelete.push($($(element).children()[1]).find('.key').text());
         }
