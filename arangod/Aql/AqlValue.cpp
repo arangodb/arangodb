@@ -158,6 +158,29 @@ bool AqlValue::isString () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the AqlValue contains a numeric value
+////////////////////////////////////////////////////////////////////////////////
+
+bool AqlValue::isNumber () const {
+  switch (_type) {
+    case JSON: {
+      TRI_json_t const* json = _json->json();
+      return TRI_IsNumberJson(json);
+    }
+
+    case SHAPED: 
+    case DOCVEC: 
+    case RANGE: 
+    case EMPTY: {
+      return false;
+    }
+  }
+
+  TRI_ASSERT(false);
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the AqlValue contains a list value
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -303,21 +326,12 @@ v8::Handle<v8::Value> AqlValue::toV8 (AQL_TRANSACTION_V8* trx,
       TRI_ASSERT(_range != nullptr);
 
       // allocate the buffer for the result
-      int64_t const n = _range->_high - _range->_low + 1;
+      size_t const n = _range->size();
       v8::Handle<v8::Array> result = v8::Array::New(static_cast<int>(n));
       
-      uint32_t j = 0; // output row count
-      if (_range->_low <= _range->_high) {
-        for (int64_t i = _range->_low; i <= _range->_high; ++i) {
-          // is it safe to use a double here (precision loss)?
-          result->Set(j++, v8::Number::New(static_cast<double>(i)));
-        }
-      }
-      else {
-        for (int64_t i = _range->_low; i >= _range->_high; --i) {
-          // is it safe to use a double here (precision loss)?
-          result->Set(j++, v8::Number::New(static_cast<double>(i)));
-        }
+      for (uint32_t i = 0; i < n; ++i) {
+        // is it safe to use a double here (precision loss)?
+        result->Set(i, v8::Number::New(_range->at(static_cast<size_t>(i))));
       }
 
       return result;
@@ -409,12 +423,12 @@ Json AqlValue::toJson (AQL_TRANSACTION_V8* trx,
       TRI_ASSERT(_range != nullptr);
 
       // allocate the buffer for the result
-      int64_t const n = _range->_high - _range->_low + 1;
-      Json json(Json::List, static_cast<size_t>(n));
+      size_t const n = _range->size();
+      Json json(Json::List, n);
 
-      for (int64_t i = _range->_low; i <= _range->_high; ++i) {
+      for (size_t i = 0; i < n; ++i) {
         // is it safe to use a double here (precision loss)?
-        json.add(Json(static_cast<double>(i)));
+        json.add(Json(static_cast<double>(_range->at(i))));
       }
 
       return json;
@@ -430,7 +444,7 @@ Json AqlValue::toJson (AQL_TRANSACTION_V8* trx,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract an attribute value from the AqlValue 
-/// this will fail if the value is not an array
+/// this will return null if the value is not an array
 ////////////////////////////////////////////////////////////////////////////////
 
 Json AqlValue::extractArrayMember (AQL_TRANSACTION_V8* trx,
@@ -512,6 +526,76 @@ Json AqlValue::extractArrayMember (AQL_TRANSACTION_V8* trx,
     case RANGE:
     case EMPTY: {
       break;
+    }
+  }
+
+  return Json(Json::Null);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract a value from a list AqlValue 
+/// this will return null if the value is not a list
+////////////////////////////////////////////////////////////////////////////////
+
+Json AqlValue::extractListMember (AQL_TRANSACTION_V8* trx,
+                                  TRI_document_collection_t const* document,
+                                  int64_t position) const {
+  switch (_type) {
+    case JSON: {
+      TRI_ASSERT(_json != nullptr);
+      TRI_json_t const* json = _json->json();
+
+      if (TRI_IsListJson(json)) {
+        size_t const length = TRI_LengthListJson(json);
+        if (position < 0) {
+          // a negative position is allowed
+          position = static_cast<int64_t>(length) + position; 
+        }
+        
+        if (position >= 0 && position < static_cast<int64_t>(length)) {
+          // only look up the value if it is within list bounds
+          TRI_json_t const* found = TRI_LookupListJson(json, static_cast<size_t>(position));
+
+          if (found != nullptr) {
+            return Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, found));
+          }
+        }
+      }
+      
+      // attribute does not exist or something went wrong - fall-through to returning null below
+      return Json(Json::Null);
+    }
+
+    case RANGE: {
+      TRI_ASSERT(_range != nullptr);
+      size_t const n = _range->size();
+      size_t const p = static_cast<size_t>(position);
+
+      if (p < n) {
+        return Json(static_cast<double>(_range->at(p)));
+      }
+      break; // fall-through to returning null 
+    }
+    
+    case DOCVEC: {
+      TRI_ASSERT(_vector != nullptr);
+      size_t const p = static_cast<size_t>(position);
+
+      // calculate the result list length
+      size_t totalSize = 0;
+      for (auto it = _vector->begin(); it != _vector->end(); ++it) {
+        if (p < totalSize + (*it)->size()) {
+          // found the correct vector
+          auto vecCollection = (*it)->getDocumentCollection(0);
+          return (*it)->getValue(p - totalSize, 0).toJson(trx, vecCollection);
+        }
+      }
+      break; // fall-through to returning null
+    }
+
+    case SHAPED: 
+    case EMPTY: {
+      break; // fall-through to returning null
     }
   }
 

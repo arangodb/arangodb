@@ -31,6 +31,7 @@
 #define ARANGODB_AQL_QUERY_H 1
 
 #include "Basics/Common.h"
+#include "Basics/JsonHelper.h"
 #include "Aql/BindParameters.h"
 #include "Aql/Collections.h"
 #include "Aql/QueryResult.h"
@@ -45,6 +46,7 @@ namespace triagens {
     class Expression;
     struct Variable;
     struct AstNode;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
@@ -81,6 +83,10 @@ namespace triagens {
                char const*,
                size_t,
                struct TRI_json_s*);
+
+        Query (struct TRI_vocbase_s*,
+               triagens::basics::Json queryStruct,
+               QueryType Type);
 
         ~Query ();
 
@@ -193,44 +199,13 @@ namespace triagens {
                               size_t,
                               bool);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a string
+/// the string is freed when the query is destroyed
+////////////////////////////////////////////////////////////////////////////////
+
         char* registerString (std::string const&,
                               bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register an Expression
-/// the Expression is freed when the query is destroyed
-////////////////////////////////////////////////////////////////////////////////
-
-        Expression* registerExp (Expression* x) {
-          _expressions.push_back(x);
-          return x;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register an AstNode
-/// the AstNode is freed when the query is destroyed
-////////////////////////////////////////////////////////////////////////////////
-
-        AstNode* registerNode (AstNode* a) {
-          _nodes.push_back(a);
-          return a;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register a Variable
-/// the Variable is freed when the query is destroyed
-////////////////////////////////////////////////////////////////////////////////
-
-        Variable* registerVar (Variable* v) {
-          _variables.push_back(v);
-          return v;
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-      
-      private:
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -263,6 +238,13 @@ namespace triagens {
         size_t const               _queryLength;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief query in a JSON structure
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::basics::Json const _queryJson;
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief type of the query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -285,12 +267,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<char const*>   _strings;
-
-        std::vector<Expression*>   _expressions;
-
-        std::vector<AstNode*>      _nodes;
-
-        std::vector<Variable*>     _variables;
     };
 
   }

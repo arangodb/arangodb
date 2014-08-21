@@ -75,7 +75,7 @@ ExecutionPlan::~ExecutionPlan () {
 /// @brief create an execution plan from an AST
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast const* ast) {
+ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast* ast) {
   TRI_ASSERT(ast != nullptr);
 
   auto root = ast->root();
@@ -87,17 +87,19 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast const* ast) {
   try {
     plan->_root = plan->fromNode(ast, root);
     plan->findVarUsage();
-/*        
+// just for debugging
+/*
     auto JsonPlan = plan->_root->toJson();
     auto JsonString = JsonPlan.toString();
-
+    std::cout << JsonString << "\n";
     auto otherPlan = ExecutionPlan::instanciateFromJson (ast,
                                                          JsonPlan);
     auto otherJsonString = otherPlan->_root->toJson().toString();
-    ///    TRI_ASSERT(otherJsonString == JsonString);
-    ///    JsonHelper
+    std::cout << otherJsonString << "\n";
+    TRI_ASSERT(otherJsonString == JsonString);
     return otherPlan;
 */
+//
     return plan;
   }
   catch (...) {
@@ -106,12 +108,16 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast const* ast) {
   }
 }
 
-ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast const* ast,
-                                                   triagens::basics::Json const& Json) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan from JSON
+////////////////////////////////////////////////////////////////////////////////
+
+ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast* ast,
+                                                   triagens::basics::Json const& json) {
   auto plan = new ExecutionPlan();
 
   try {
-    plan->_root = plan->fromJson(ast, Json);
+    plan->_root = plan->fromJson(ast, json);
     plan->findVarUsage();
     return plan;
   }
@@ -854,10 +860,13 @@ class NodeFinder : public WalkerWorker<ExecutionNode> {
 
     std::vector<ExecutionNode*>& _out;
 
+    bool _enterSubqueries;
+
   public:
     NodeFinder (ExecutionNode::NodeType lookingFor,
-                std::vector<ExecutionNode*>& out) 
-      : _lookingFor(lookingFor), _out(out) {
+                std::vector<ExecutionNode*>& out,
+                bool enterSubqueries) 
+      : _lookingFor(lookingFor), _out(out), _enterSubqueries(enterSubqueries) {
     };
 
     void before (ExecutionNode* en) {
@@ -866,13 +875,17 @@ class NodeFinder : public WalkerWorker<ExecutionNode> {
       }
     }
 
+    bool enterSubquery (ExecutionNode* super, ExecutionNode* sub) {
+      return _enterSubqueries;
+    }
 };
 
 std::vector<ExecutionNode*> ExecutionPlan::findNodesOfType (
-                                  ExecutionNode::NodeType type) {
+                                  ExecutionNode::NodeType type,
+                                  bool enterSubqueries) {
 
   std::vector<ExecutionNode*> result;
-  NodeFinder finder(type, result);
+  NodeFinder finder(type, result, enterSubqueries);
   root()->walk(&finder);
   return result;
 }
@@ -1064,7 +1077,7 @@ ExecutionPlan* ExecutionPlan::clone (){
 /// @brief create a plan from the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* ExecutionPlan::fromJson (Ast const* ast,
+ExecutionNode* ExecutionPlan::fromJson (Ast* ast,
                                         Json const& json) {
   ExecutionNode* ret = nullptr;
   Json nodes = json.get("nodes");

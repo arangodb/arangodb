@@ -42,18 +42,19 @@ Optimizer::Optimizer () {
   // List all the rules in the system here:
 
   // try to find a filter after an enumerate collection and find an index . . . 
-  registerRule (useIndexRange, 999);
+  // registerRule (useIndexRange, 999);
 
   // remove filters from the query that are not necessary at all
-  // rule should be executed relatively early because it enables removal
-  // of then-unused filter variables
-  //registerRule(removeUnnecessaryFiltersRule, 10000);
+  // filters that are always true will be removed entirely
+  // filters that are always false will get a hint
+  registerRule(removeUnnecessaryFiltersRule, 10000);
 
   // move calculations up the dependency chain (to pull them out of inner loops etc.)
   // TODO: validate if this is really an optimization
   // registerRule(moveCalculationsUpRule, 1000);
 
-  //registerRule(removeUnnecessaryCalculationsRule, 999);
+  // remove calculations that are never necessary
+  registerRule(removeUnnecessaryCalculationsRule, 999);
 
   // Now sort them by pass:
   std::stable_sort(_rules.begin(), _rules.end());
@@ -95,6 +96,9 @@ int Optimizer::createPlans (ExecutionPlan* plan) {
       while (oldPlans.size() > 0) {
         auto p = oldPlans.pop_front();
         try {
+          // keep should have a default value so rules that forget to set it
+          // have a deterministic behavior
+          keep = true; 
           res = r.func(this, p, newPlans, keep);
           if (keep) {
             nextOldPlans.push_back(p);
