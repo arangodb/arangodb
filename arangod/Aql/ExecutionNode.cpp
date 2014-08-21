@@ -199,12 +199,13 @@ ExecutionNode::ExecutionNode (triagens::basics::Json const& json)
 /// @brief toJson, export an ExecutionNode to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-Json ExecutionNode::toJson (TRI_memory_zone_t* zone) {
+Json ExecutionNode::toJson (TRI_memory_zone_t* zone,
+                            bool verbose) const {
   Json json;
   Json nodes;
   try {
     nodes = Json(Json::List, 10);
-    toJsonHelper(nodes, zone);
+    toJsonHelper(nodes, zone, verbose);
     json = Json(Json::Array, 1)
              ("nodes", nodes);
   }
@@ -306,10 +307,11 @@ Variable* ExecutionNode::varFromJson (Ast* ast,
 ////////////////////////////////////////////////////////////////////////////////
 
 Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Json& nodes,
-                                         TRI_memory_zone_t* zone) {
+                                         TRI_memory_zone_t* zone,
+                                         bool verbose) const {
   size_t const n = _dependencies.size();
   for (size_t i = 0; i < n; i++) {
-    _dependencies[i]->toJsonHelper(nodes, zone);
+    _dependencies[i]->toJsonHelper(nodes, zone, verbose);
   }
 
   Json json;
@@ -342,8 +344,9 @@ SingletonNode::SingletonNode (Ast* ast, basics::Json const& base)
 }
 
 void SingletonNode::toJsonHelper (triagens::basics::Json& nodes,
-                                  TRI_memory_zone_t* zone) {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone));  // call base class method
+                                  TRI_memory_zone_t* zone,
+                                  bool verbose) const {
+  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
   }
@@ -368,8 +371,9 @@ EnumerateCollectionNode::EnumerateCollectionNode (Ast* ast, basics::Json const& 
 ////////////////////////////////////////////////////////////////////////////////
 
 void EnumerateCollectionNode::toJsonHelper (triagens::basics::Json& nodes,
-                                            TRI_memory_zone_t* zone) {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone));  // call base class method
+                                            TRI_memory_zone_t* zone,
+                                            bool verbose) const {
+  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
     return;
@@ -399,8 +403,9 @@ EnumerateListNode::EnumerateListNode (Ast* ast, basics::Json const& base)
 ////////////////////////////////////////////////////////////////////////////////
 
 void EnumerateListNode::toJsonHelper (triagens::basics::Json& nodes,
-                                      TRI_memory_zone_t* zone) {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone));  // call base class method
+                                      TRI_memory_zone_t* zone,
+                                      bool verbose) const {
+  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
   }
@@ -416,9 +421,9 @@ void EnumerateListNode::toJsonHelper (triagens::basics::Json& nodes,
 ////////////////////////////////////////////////////////////////////////////////
 
 void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
-                                   TRI_memory_zone_t* zone) {
-
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone));  
+                                   TRI_memory_zone_t* zone,
+                                   bool verbose) const {
+  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  
   // call base class method
 
   if (json.isEmpty()) {
@@ -458,8 +463,9 @@ LimitNode::LimitNode (Ast* ast, basics::Json const& base)
 ////////////////////////////////////////////////////////////////////////////////
 
 void LimitNode::toJsonHelper (triagens::basics::Json& nodes,
-                              TRI_memory_zone_t* zone) {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone));  // call base class method
+                              TRI_memory_zone_t* zone,
+                              bool verbose) const {
+  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
   }
@@ -486,13 +492,14 @@ CalculationNode::CalculationNode (Ast* ast, basics::Json const& base)
 ////////////////////////////////////////////////////////////////////////////////
 
 void CalculationNode::toJsonHelper (triagens::basics::Json& nodes,
-                                    TRI_memory_zone_t* zone) {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone));  // call base class method
+                                    TRI_memory_zone_t* zone,
+                                    bool verbose) const {
+  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
   }
   
-  json("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE))
+  json("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE, verbose))
       ("outVariable", _outVariable->toJson())
       ("canThrow", Json(_expression->canThrow()));
 
@@ -517,12 +524,13 @@ SubqueryNode::SubqueryNode (Ast* ast,
 ////////////////////////////////////////////////////////////////////////////////
 
 void SubqueryNode::toJsonHelper (triagens::basics::Json& nodes,
-                                 TRI_memory_zone_t* zone) {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone));  // call base class method
+                                 TRI_memory_zone_t* zone,
+                                 bool verbose) const {
+  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
   }
-  json("subquery",  _subquery->toJson(TRI_UNKNOWN_MEM_ZONE))
+  json("subquery",  _subquery->toJson(TRI_UNKNOWN_MEM_ZONE, verbose))
       ("outVariable", _outVariable->toJson());
 
   // And add it:
@@ -607,8 +615,9 @@ FilterNode::FilterNode (Ast* ast, basics::Json const& base)
 ////////////////////////////////////////////////////////////////////////////////
 
 void FilterNode::toJsonHelper (triagens::basics::Json& nodes,
-                               TRI_memory_zone_t* zone) {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone));  // call base class method
+                               TRI_memory_zone_t* zone,
+                               bool verbose) const {
+  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
   }
@@ -635,8 +644,9 @@ SortNode::SortNode (Ast* ast,
 ////////////////////////////////////////////////////////////////////////////////
 
 void SortNode::toJsonHelper (triagens::basics::Json& nodes,
-                             TRI_memory_zone_t* zone) {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone));  // call base class method
+                             TRI_memory_zone_t* zone,
+                             bool verbose) const {
+  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
   }
@@ -673,8 +683,9 @@ AggregateNode::AggregateNode (Ast* ast,
 ////////////////////////////////////////////////////////////////////////////////
 
 void AggregateNode::toJsonHelper (triagens::basics::Json& nodes,
-                                  TRI_memory_zone_t* zone) {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone));  // call base class method
+                                  TRI_memory_zone_t* zone,
+                                  bool verbose) const {
+  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
   }
@@ -711,8 +722,9 @@ ReturnNode::ReturnNode (Ast* ast, basics::Json const& base)
 ////////////////////////////////////////////////////////////////////////////////
 
 void ReturnNode::toJsonHelper (triagens::basics::Json& nodes,
-                               TRI_memory_zone_t* zone) {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone));  // call base class method
+                               TRI_memory_zone_t* zone,
+                               bool verbose) const {
+  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
     return;
@@ -753,8 +765,9 @@ RemoveNode::RemoveNode (Ast* ast, basics::Json const& base)
 ////////////////////////////////////////////////////////////////////////////////
 
 void RemoveNode::toJsonHelper (triagens::basics::Json& nodes,
-                               TRI_memory_zone_t* zone) {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone));  // call base class method
+                               TRI_memory_zone_t* zone,
+                               bool verbose) const {
+  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
     return;
@@ -789,8 +802,9 @@ InsertNode::InsertNode (Ast* ast, basics::Json const& base)
 ////////////////////////////////////////////////////////////////////////////////
 
 void InsertNode::toJsonHelper (triagens::basics::Json& nodes,
-                               TRI_memory_zone_t* zone) {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone));  // call base class method
+                               TRI_memory_zone_t* zone,
+                               bool verbose) const {
+  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
     return;
@@ -826,8 +840,9 @@ UpdateNode::UpdateNode (Ast* ast, basics::Json const& base)
 ////////////////////////////////////////////////////////////////////////////////
 
 void UpdateNode::toJsonHelper (triagens::basics::Json& nodes,
-                               TRI_memory_zone_t* zone) {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone));  // call base class method
+                               TRI_memory_zone_t* zone,
+                               bool verbose) const {
+  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
     return;
@@ -868,8 +883,9 @@ ReplaceNode::ReplaceNode (Ast* ast, basics::Json const& base)
 ////////////////////////////////////////////////////////////////////////////////
 
 void ReplaceNode::toJsonHelper (triagens::basics::Json& nodes,
-                                TRI_memory_zone_t* zone) {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone));  // call base class method
+                                TRI_memory_zone_t* zone,
+                                bool verbose) const {
+  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {
     return;
@@ -903,8 +919,9 @@ void ReplaceNode::toJsonHelper (triagens::basics::Json& nodes,
 ////////////////////////////////////////////////////////////////////////////////
 
 void NoResultsNode::toJsonHelper (triagens::basics::Json& nodes,
-                                  TRI_memory_zone_t* zone) {
-  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone));  // call base class method
+                                  TRI_memory_zone_t* zone,
+                                  bool verbose) const {
+  Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
   if (json.isEmpty()) {
     return;
   }
