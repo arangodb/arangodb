@@ -932,8 +932,10 @@ namespace triagens {
     // tighter than right, 0 that they are equal, 1 that right is tighter than
     // left. For example, (x<1) is tighter than (x<=1) and (x>1) is tighter
     // than (x>=1) . . .
+    // lowhigh should be -1 if the comparison is of lower bounds,
+    // and 1 if it is of upper bounds . . . 
     static int CompareRangeInfoBound (RangeInfoBound const* left, 
-        RangeInfoBound const* right) {
+        RangeInfoBound const* right, int lowhigh) {
       if (left == nullptr) {
         return (right == nullptr ? 0 : 1);
       } 
@@ -943,9 +945,9 @@ namespace triagens {
 
       int cmp = TRI_CompareValuesJson(left->_bound.json(), right->_bound.json());
       if (cmp == 0 && (left->_include != right->_include)) {
-        cmp = (left->_include?1:-1);
+        return (left->_include?1:-1);
       }
-      return cmp;
+      return cmp * lowhigh;
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1008,24 +1010,33 @@ namespace triagens {
             return;
           }
           
-          if(CompareRangeInfoBound(newRange->_low, oldRange->_low) == -1){
+          //this case is not covered by those below . . .
+          if (oldRange->is1ValueRangeInfo() && newRange->is1ValueRangeInfo()) {
+            if (!TRI_CheckSameValueJson(oldRange->_low->_bound.json(), 
+                newRange->_low->_bound.json())) {
+              oldRange->_valid = false;
+              return;
+            }
+          }
+
+          if (CompareRangeInfoBound(newRange->_low, oldRange->_low, -1) == -1) {
             oldRange->_low = newRange->_low;
           }
           
-          if(CompareRangeInfoBound(newRange->_high, oldRange->_high) == -1){
+          if (CompareRangeInfoBound(newRange->_high, oldRange->_high, 1) == -1) {
             oldRange->_high = newRange->_high;
           }
+
           // check the new range bounds are valid
-          if( oldRange->_low != nullptr && oldRange->_high != nullptr){
+          if (oldRange->_low != nullptr && oldRange->_high != nullptr) {
             int cmp = TRI_CompareValuesJson(oldRange->_low->_bound.json(), 
                     oldRange->_high->_bound.json());
             if (cmp == 1 || (cmp == 0 && 
-                  !(oldRange->_low->_include == true && oldRange->_high->_include == true ))){
+                  !(oldRange->_low->_include == true && oldRange->_high->_include == true ))) {
               // range invalid
               oldRange->_valid = false;
             }
           }
-          
         }
         
         size_t size () const {
