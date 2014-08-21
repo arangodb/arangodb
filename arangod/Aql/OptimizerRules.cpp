@@ -88,7 +88,7 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
             auto current = stack.back();
             stack.pop_back();
 
-            bool removeNode = true;
+            bool unlinkNode = true;
 
             if (toRemove.find(current) != toRemove.end()) {
               // detected a cycle. TODO: decide whether a cycle is an error here or 
@@ -106,7 +106,7 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
               if (c->expression()->node()->canThrow()) {
                 // the calculation may throw an exception. we must not remove it
                 // because its removal might change the query result
-                removeNode = false;
+                unlinkNode = false;
                 std::cout << "FOUND A CALCULATION THAT CAN THROW\n";
               }
             }
@@ -116,7 +116,7 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
               stack.push_back((*it));
             }
 
-            if (removeNode) {
+            if (unlinkNode) {
               std::cout << "REMOVING NODE " << current << " OF TYPE: " << current->getTypeString() << "\n";
               toRemove.insert(current);
             }
@@ -130,7 +130,7 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
   if (! toRemove.empty()) {
     std::cout << "Removing " << toRemove.size() << " unnecessary "
                  "nodes..." << std::endl;
-    plan->removeNodes(toRemove);
+    plan->unlinkNodes(toRemove);
   }
   
   return TRI_ERROR_NO_ERROR;
@@ -198,7 +198,7 @@ int triagens::aql::moveCalculationsUpRule (Optimizer* opt,
       // no shared variables found. we can move the calculation up the dependency chain
 
       // first, delete the calculation from the plan
-      plan->removeNode(n);
+      plan->unlinkNode(n);
 
       // fiddle dependencies of calculation node
       n->removeDependencies();
@@ -256,7 +256,7 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
   if (! toRemove.empty()) {
     std::cout << "Removing " << toRemove.size() << " unnecessary "
                  "CalculationNodes..." << std::endl;
-    plan->removeNodes(toRemove);
+    plan->unlinkNodes(toRemove);
     out.push_back(plan);
     keep = false;
   }
@@ -319,16 +319,11 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
           //use RangeIndexNode . . . 
           for (auto idx: idxs) {
             auto newPlan = _plan->clone();
-            auto newNode = new IndexRangeNode( node->id(), node->vocbase(), 
+            auto newNode = new IndexRangeNode( newPlan->nextId(), node->vocbase(), 
                 node->collection(), node->outVariable(), idx, &rangeInfo);
-            newPlan->removeNode(newPlan->getNodeById(node->id()));
-            
             newPlan->registerNode(newNode);
-            newNode->addDependency(newPlan->getNodeById(node->getDependencies()[0]->id()));
-            if(_prev != nullptr){
-              newPlan->getNodeById(_prev->id())->addDependency(newNode);
-            }
-            //add exception here
+            newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode, 
+                newPlan->getNodeById(_prev->id()));
             std::cout << newPlan->root()->toJson().toString() << "\n";
             _out.push_back(newPlan);
           }

@@ -182,6 +182,24 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief replace a dependency, returns true if the pointer was found and 
+/// replaced, please note that this does not delete oldNode!
+////////////////////////////////////////////////////////////////////////////////
+
+        bool replaceDependency (ExecutionNode* oldNode, ExecutionNode* newNode) {
+          auto it = _dependencies.begin(); 
+
+          while (it != _dependencies.end()) {
+            if (*it == oldNode) {
+              *it = newNode;
+              return true;
+            }
+            ++it;
+          }
+          return false;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief remove a dependency, returns true if the pointer was found and 
 /// removed, please note that this does not delete ep!
 ////////////////////////////////////////////////////////////////////////////////
