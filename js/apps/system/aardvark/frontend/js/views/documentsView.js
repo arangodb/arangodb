@@ -150,6 +150,7 @@
       $('input').val('');
       $('select').val('==');
       this.removeAllFilterItems();
+      $('#documentSize').val(this.collection.getPageSize());
 
       this.clearTable();
       $('#documents_last').css("visibility", "visible");
