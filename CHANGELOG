@@ -1,5 +1,10 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
+* front-end: added sorting feature to database, graph management and user management view.
+
+* issue #989: front-end: Databases view not refreshing after deleting a database
+
+* issue #991: front-end: Database search broken
 
 * front-end: added infobox which shows more information about a document (_id, _rev, _key) or
   an edge (_id, _rev, _key, _from, _to). The from and to attributes are clickable and redirect
