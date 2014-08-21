@@ -564,7 +564,7 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get indexes with fields <attrs> or nullptr if none exist
+/// @brief get vector of indexes with fields <attrs> 
 ////////////////////////////////////////////////////////////////////////////////
 
         vector<TRI_index_t*> getIndexes (vector<std::string> attrs) const {
@@ -832,24 +832,25 @@ namespace triagens {
 
     };
 
-// 3-way comparison: a return of -1 indicates that left is
-// tighter than right, 0 that they are equal, 1 that right is tighter than
-// left. For example, (x<1) is tighter than (x<=1) and (x>1) is tighter
-// than (x>=1) . . .
-static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound const* right) {
-  if (left == nullptr) {
-    return (right == nullptr ? 0 : 1);
-  } 
-  if (right == nullptr) {
-    return -1;
-  }
+    // 3-way comparison: a return of -1 indicates that left is
+    // tighter than right, 0 that they are equal, 1 that right is tighter than
+    // left. For example, (x<1) is tighter than (x<=1) and (x>1) is tighter
+    // than (x>=1) . . .
+    static int CompareRangeInfoBound (RangeInfoBound const* left, 
+        RangeInfoBound const* right) {
+      if (left == nullptr) {
+        return (right == nullptr ? 0 : 1);
+      } 
+      if (right == nullptr) {
+        return -1;
+      }
 
-  int cmp = TRI_CompareValuesJson(left->_bound.json(), right->_bound.json());
-  if (cmp == 0 && (left->_include != right->_include)) {
-    cmp = (left->_include?-1:1);
-  }
-  return cmp;
-};
+      int cmp = TRI_CompareValuesJson(left->_bound.json(), right->_bound.json());
+      if (cmp == 0 && (left->_include != right->_include)) {
+        cmp = (left->_include?-1:1);
+      }
+      return cmp;
+    };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class to keep a vector of RangeInfos . . .
