@@ -206,6 +206,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                 auto noRes = new NoResultsNode(newPlan->nextId());
                 newPlan->registerNode(noRes);
                 newPlan->insertDependency(x, noRes);
+                _out.push_back(newPlan);
               }
             }
           } 
