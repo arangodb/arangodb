@@ -25,7 +25,9 @@
       "click #userManagementSearchSubmit"   : "search",
       "click #callEditUserPassword"         : "editUserPassword",
       "click #submitEditUserPassword"       : "submitEditUserPassword",
-      "click #submitEditCurrentUserProfile" : "submitEditCurrentUserProfile"
+      "click #submitEditCurrentUserProfile" : "submitEditCurrentUserProfile",
+      "click .css-label"                    : "checkBoxes",
+      "change #userSortDesc"                : "sorting"
 
     },
 
@@ -33,6 +35,23 @@
       //fetch collection defined in router
       this.collection.fetch({async:false});
       this.currentUser = this.collection.findWhere({user: this.collection.whoAmI()});
+    },
+
+    checkBoxes: function (e) {
+      //chrome bugfix
+      var clicked = e.currentTarget.id;
+      $('#'+clicked).click();
+    },
+
+    sorting: function() {
+      if ($('#userSortDesc').is(":checked")) {
+        this.collection.setSortingDesc(true);
+      }
+      else {
+        this.collection.setSortingDesc(false);
+      }
+
+      this.render();
     },
 
     render: function (isProfile) {
@@ -50,6 +69,7 @@
 
       if (dropdownVisible === true) {
         $('#userManagementDropdown2').show();
+        $('#userSortDesc').attr('checked', this.collection.sortOptions.desc);
       }
 
 //      var searchOptions = this.collection.searchOptions;
@@ -255,6 +275,9 @@
     },
 
     toggleView: function() {
+      //apply sorting to checkboxes
+      $('#userSortDesc').attr('checked', this.collection.sortOptions.desc);
+
       $('#userManagementDropdown2').slideToggle(200);
     },
 
