@@ -325,6 +325,11 @@ Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Json& nodes,
     deps(Json(static_cast<double>(_dependencies[i]->id())));
   }
   json("dependencies", deps);
+  Json parents(Json::List, _parents.size());
+  for (size_t i = 0; i < _parents.size(); i++) {
+    parents(Json(static_cast<double>(_parents[i]->id())));
+  }
+  json("parents", parents);
   json("id", Json(static_cast<double>(id())));
 
   if (this->_estimatedCost != 0.0){
