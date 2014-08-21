@@ -11,6 +11,8 @@
     eCollList : [],
     removedECollList : [],
 
+    dropdownVisible: false,
+
     events: {
       "click #deleteGraph"                        : "deleteGraph",
       "click .icon_arangodb_settings2.editGraph"  : "editGraph",
@@ -106,6 +108,12 @@
         this.collection.setSortingDesc(false);
       }
 
+      if ($('#graphManagementDropdown').is(":visible")) {
+        this.dropdownVisible = true;
+      } else {
+        this.dropdownVisible = false;
+      }
+
       this.render();
     },
 
@@ -120,6 +128,13 @@
         graphs: this.collection,
         searchString : ''
       }));
+
+      if (this.dropdownVisible === true) {
+        $('#graphManagementDropdown2').show();
+        $('#graphSortDesc').attr('checked', this.collection.sortOptions.desc);
+        $('#graphManagementToggle').toggleClass('activated');
+        $('#graphManagementDropdown').show();
+      }
 
       this.events["click .tableRow"] = this.showHideDefinition.bind(this);
       this.events['change tr[id*="newEdgeDefinitions"]'] = this.setFromAndTo.bind(this);
