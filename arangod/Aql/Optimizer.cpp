@@ -46,7 +46,7 @@ Optimizer::Optimizer () {
 
   // remove filters from the query that are not necessary at all
   // filters that are always true will be removed entirely
-  // filters that are always false will get a hint
+  // filters that are always false will be replaced with a NoResults node
   registerRule(removeUnnecessaryFiltersRule, 10000);
 
   // move calculations up the dependency chain (to pull them out of inner loops etc.)
