@@ -569,6 +569,18 @@ namespace triagens {
           return out;
         }
 
+        TRI_vocbase_t* vocbase () const {
+          return _vocbase;
+        }
+
+        Collection* collection () const {
+          return _collection;
+        }
+
+        Variable const* outVariable () const {
+          return _outVariable;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -579,7 +591,7 @@ namespace triagens {
 /// @brief the database
 ////////////////////////////////////////////////////////////////////////////////
 
-      TRI_vocbase_t* _vocbase;
+        TRI_vocbase_t* _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection
@@ -591,7 +603,7 @@ namespace triagens {
 /// @brief output variable
 ////////////////////////////////////////////////////////////////////////////////
 
-      Variable const* _outVariable;
+        Variable const* _outVariable;
 
     };
 
@@ -932,7 +944,7 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
                         TRI_vocbase_t* vocbase, 
                         Collection* collection,
                         Variable const* outVariable,
-                        Index* index, 
+                        TRI_index_t* index, 
                         vector<RangeInfo*>* ranges)
           : ExecutionNode(id), 
             _vocbase(vocbase), 
@@ -1024,7 +1036,7 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
 /// @brief the index
 ////////////////////////////////////////////////////////////////////////////////
 
-        Index* _index;
+        TRI_index_t* _index;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the range info
