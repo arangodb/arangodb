@@ -89,12 +89,9 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
     else {
       // filter is always false
       // now insert a NoResults node below it
-      auto&& parents = n->getParents();
-      TRI_ASSERT(parents.size() == 1);
-
       auto noResults = new NoResultsNode(plan->nextId());
       plan->registerNode(noResults);
-      plan->replaceNode(n, noResults, parents[0]); 
+      plan->replaceNode(n, noResults);
     }
   }
   
@@ -105,98 +102,6 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief moves calculations up in the plan
-/// this modifies the plan in place
-////////////////////////////////////////////////////////////////////////////////
-/* not yet ready for primetime...
-int triagens::aql::moveCalculationsUpRule (Optimizer* opt, 
-                                           ExecutionPlan* plan, 
-                                           Optimizer::PlanList& out,
-                                           bool& keep) {
-  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::CALCULATION, true);
-
-  for (auto n : nodes) {
-    auto nn = static_cast<CalculationNode*>(n);
-    if (nn->expression()->canThrow()) {
-      // we will only move expressions up that cannot throw
-      continue;
-    }
-      
-    auto neededVars = n->getVariablesUsedHere();
-    // sort the list of variables that the expression needs as its input
-    // (sorting is needed for intersection later)
-    std::sort(neededVars.begin(), neededVars.end(), &Variable::Comparator);
-
-for (auto it = neededVars.begin(); it != neededVars.end(); ++it) {
-std::cout << "VAR USED IN CALC: " << (*it)->name << "\n";
-}
-
-    std::vector<ExecutionNode*> stack;
-    auto deps = n->getDependencies();
-    
-    for (auto it = deps.begin(); it != deps.end(); ++it) {
-      stack.push_back((*it));
-    }
-
-    while (! stack.empty()) {
-      auto current = stack.back();
-      stack.pop_back();
-
-std::cout << "LOOKING AT NODE OF TYPE: " << current->getTypeString() << "\n";
-      auto deps = current->getDependencies();
-
-      if (deps.size() != 1) {
-        // node either has no or more than one dependency. we don't know what to do and must abort
-        // note that this will also handle Singleton nodes
-        break;
-      }
-
-      // check which variables the current node defines
-      auto dependencyVars = current->getVariablesSetHere();
-      // sort the variables (sorting needed for intersection)
-      std::sort(dependencyVars.begin(), dependencyVars.end(), &Variable::Comparator);
-    
-      // create the intersection of variables
-      std::vector<Variable const*> shared;
-      std::set_intersection(neededVars.begin(), neededVars.end(), 
-                            dependencyVars.begin(), dependencyVars.end(),
-                            std::back_inserter(shared));
-
-      if (! shared.empty()) {
-        // shared variables found, meaning that the current node introduces a variable needed
-        // by our calculation. we cannot move the calculation up the chain
-        break;
-      }
-      
-      // no shared variables found. we can move the calculation up the dependency chain
-
-      // first, delete the calculation from the plan
-      plan->unlinkNode(n);
-
-      // fiddle dependencies of calculation node
-      n->removeDependencies();
-      n->addDependency(deps[0]);
-      n->invalidateVarUsage();
-
-      // fiddle dependencies of current node
-      current->removeDependency(deps[0]);
-      current->addDependency(n);
-      current->invalidateVarUsage();
-      deps[0]->invalidateVarUsage();
-            
-      for (auto it = deps.begin(); it != deps.end(); ++it) {
-        stack.push_back((*it));
-      }
-    }
-  }
-
-  plan->findVarUsage();
-
-  keep = true; 
-  return TRI_ERROR_NO_ERROR;
-}
-*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove CalculationNode(s) that are never needed
 /// this modifies an existing plan in place
@@ -304,8 +209,7 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
               delete newPlan;
               throw;
             }
-            newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode, 
-                newPlan->getNodeById(_prev->id()));
+            newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
             std::cout << newPlan->root()->toJson(TRI_UNKNOWN_MEM_ZONE, true).toString() << "\n";
             _out.push_back(newPlan);
           }
