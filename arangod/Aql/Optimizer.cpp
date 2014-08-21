@@ -42,15 +42,14 @@ Optimizer::Optimizer () {
   // List all the rules in the system here:
 
   // try to find a filter after an enumerate collection and find an index . . . 
-  registerRule (useIndexRange, 999);
+  // registerRule(useIndexRange, 999);
 
   // remove filters from the query that are not necessary at all
   // filters that are always true will be removed entirely
   // filters that are always false will be replaced with a NoResults node
   registerRule(removeUnnecessaryFiltersRule, 10000);
-
+  
   // move calculations up the dependency chain (to pull them out of inner loops etc.)
-  // TODO: validate if this is really an optimization
   // registerRule(moveCalculationsUpRule, 1000);
 
   // remove calculations that are never necessary
@@ -154,12 +153,10 @@ void Optimizer::estimatePlans () {
 /// @brief sortPlans
 ////////////////////////////////////////////////////////////////////////////////
 
-bool sortByEstimate (ExecutionPlan* const& a, ExecutionPlan* const& b) {
-  return a->getCost() < b->getCost();
-}
-
 void Optimizer::sortPlans () {
-  std::sort(_plans.begin(), _plans.end(), sortByEstimate);
+  std::sort(_plans.begin(), _plans.end(), [](ExecutionPlan* const& a, ExecutionPlan* const& b) -> bool {
+    return a->getCost() < b->getCost();
+  });
 }
 
 // Local Variables:

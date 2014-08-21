@@ -187,8 +187,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void replaceNode (ExecutionNode* oldNode, 
-                          ExecutionNode* newNode, 
-                          ExecutionNode* oldNodeParent);
+                          ExecutionNode* newNode); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief insert <newNode> before <oldNode>. <newNode> must be registered with 
