@@ -51,9 +51,22 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief move calculations up in the plan
+/// this rule modifies the plan in place
+/// it aims to move up calculations as far up in the plan as possible, to 
+/// avoid redundant calculations in inner loops
 ////////////////////////////////////////////////////////////////////////////////
 
     int moveCalculationsUpRule (Optimizer*, ExecutionPlan*, Optimizer::PlanList&, bool&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief move filters up in the plan
+/// this rule modifies the plan in place
+/// filters are moved as far up in the plan as possible to make result sets
+/// as small as possible as early as possible
+/// filters are not pushed beyond limits
+////////////////////////////////////////////////////////////////////////////////
+
+    int moveFiltersUpRule (Optimizer*, ExecutionPlan*, Optimizer::PlanList&, bool&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove a CalculationNode that is never needed
