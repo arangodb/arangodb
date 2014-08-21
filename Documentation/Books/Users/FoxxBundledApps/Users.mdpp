@@ -62,14 +62,17 @@ User objects are instances of a Foxx model with the following attributes:
 
 Creates and saves a new instance of the user model.
 
-`userStorage.create(username, userData)`
+`userStorage.create(username, [userData,] [authData])`
 
 Throws *UsernameNotAvailable* if a user with the given username already exists.
+
+**Note:** When using the system users app (mounted at */\_system/users*), new users will automatically have their *active* flag set to *true* if no value is provided in the *authData* (or if *authData* is omitted entirely).
 
 *Parameter*
 
 * *username*: an arbitrary string that will be used as the user's username
-* *userData*: an arbitrary object that will be stored as the user's *userData* attribute when the model is saved to the database.
+* *userData* (optional): an arbitrary object that will be stored as the user's *userData* attribute when the model is saved to the database.
+* *authData* (optional): an arbitrary object that will be stored as the user's *authData* attribute when the model is saved to the database.
 
 @EXAMPLES
 
