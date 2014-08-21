@@ -331,44 +331,42 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
             rangeInfo.push_back(x.second);
           }
           std::vector<TRI_index_t*> idxs = node->getIndexes(attrs);
-          // TODO remove next 3 lines . . .
-          if (idxs.size() != 0) { 
-            std::cout << "FOUND INDEX!\n";
-          }
-          //use RangeIndexNode . . . 
+          
+          //use make one new plan for every index in <idxs> that replaces the
+          //enumerate collection node with a RangeIndexNode . . . 
           for (auto idx: idxs) {
+            std::cout << "FOUND INDEX!\n";
             auto newPlan = _plan->clone();
-            auto newNode = new IndexRangeNode( newPlan->nextId(), node->vocbase(), 
-                node->collection(), node->outVariable(), idx, &rangeInfo);
-            newPlan->registerNode(newNode);
+            ExecutionNode* newNode = nullptr;
+            try{
+              newNode = new IndexRangeNode( newPlan->nextId(), node->vocbase(), 
+                  node->collection(), node->outVariable(), idx, &rangeInfo);
+              newPlan->registerNode(newNode);
+            }
+            catch (...) {
+              if (newNode != nullptr) {
+                delete newNode;
+              }
+              delete newPlan;
+              throw;
+            }
             newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode, 
                 newPlan->getNodeById(_prev->id()));
             std::cout << newPlan->root()->toJson().toString() << "\n";
             _out.push_back(newPlan);
           }
-          // keep map from the old nodes to the new nodes . . . (just use the
-          // ids they should be equal) !?
-          // remove the enumerate coll node
-          // remember the previous node 
-          // make dependencies of new RangeIndexNode equal to the dep of
-          // deleted enumerate coll node, make dependencies of previous node
-          // equal to new RangeIndexNode . . .
-          // push_back to out
-
         }
       }
       _prev = en;
     }
 
     void buildRangeInfo (AstNode const* node, std::string& enumCollVar, std::string& attr){
-      //std::vector<std::string>& attrs){
       if(node->type == NODE_TYPE_REFERENCE){
         auto x = static_cast<Variable*>(node->getData());
         auto setter = _plan->getVarSetBy(x->id);
         if( setter != nullptr && 
           setter->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION){
           enumCollVar = x->name;
-          //_enumColl = static_cast<EnumerateCollectionNode*>(setter);
         }
         return;
       }
