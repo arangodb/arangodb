@@ -31,6 +31,8 @@
 
     },
 
+    dropdownVisible: false,
+
     initialize: function() {
       //fetch collection defined in router
       this.collection.fetch({async:false});
@@ -51,6 +53,13 @@
         this.collection.setSortingDesc(false);
       }
 
+      if ($('#userManagementDropdown').is(":visible")) {
+        this.dropdownVisible = true;
+      } else {
+        this.dropdownVisible = false;
+      }
+
+
       this.render();
     },
 
@@ -70,6 +79,8 @@
       if (dropdownVisible === true) {
         $('#userManagementDropdown2').show();
         $('#userSortDesc').attr('checked', this.collection.sortOptions.desc);
+        $('#userManagementToggle').toggleClass('activated');
+        $('#userManagementDropdown').show();
       }
 
 //      var searchOptions = this.collection.searchOptions;
@@ -278,6 +289,7 @@
       //apply sorting to checkboxes
       $('#userSortDesc').attr('checked', this.collection.sortOptions.desc);
 
+      $('#userManagementToggle').toggleClass("activated");
       $('#userManagementDropdown2').slideToggle(200);
     },
 
