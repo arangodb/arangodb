@@ -1145,12 +1145,6 @@ int FilterBlock::initialize () {
   TRI_ASSERT(it != _varOverview->varInfo.end());
   _inReg = it->second.registerId;
 
-  if (en->_resultIsEmpty) {
-    // we know that the filter will never produce any results
-    // TODO: do we need to suck in (and free) data from all dependent nodes first??
-    _done = true;
-  }
-
   return TRI_ERROR_NO_ERROR;
 }
 

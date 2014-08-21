@@ -88,57 +88,10 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
     }
     else {
       // filter is always false
-
-             
-      // get all dependent nodes of the filter node
-      std::vector<ExecutionNode*> stack;
-      stack.push_back(n);
-
-      bool canOptimize = true;
-
-      while (! stack.empty()) {
-        // pop a node from the stack
-        auto current = stack.back();
-        stack.pop_back();
-
-        if (toRemove.find(current) != toRemove.end()) {
-          // detected a cycle. TODO: decide whether a cycle is an error here or 
-          // if it is valid
-          break;
-        }
-
-        if (current->getType() == triagens::aql::ExecutionNode::SINGLETON) {
-          // stop at a singleton node
-          break;
-        }
-        
-        if (current->getType() == triagens::aql::ExecutionNode::SUBQUERY) {
-          // if we find a subquery, we abort optimizations.
-          // TODO: peek into the subquery and check if it can throw an exception itself
-          canOptimize = false;
-          break;
-        }
-
-        if (current->getType() == triagens::aql::ExecutionNode::CALCULATION) {
-          auto c = static_cast<CalculationNode*>(current);
-          if (c->expression()->node()->canThrow()) {
-            // the calculation may throw an exception. we must not remove it
-            // because its removal might change the query result
-            canOptimize = false;
-            break;
-          }
-        }
-
-        auto deps = current->getDependencies();
-        for (auto it = deps.begin(); it != deps.end(); ++it) {
-          stack.push_back((*it));
-        }
-      }
-
-      if (canOptimize) {
-        // store a hint in the filter that it will never produce results
-        static_cast<FilterNode*>(n)->setEmptyResult();
-      }
+      // TODO: insert a NoResults node below it
+      //auto noResultsNode = plan->registerNode(new NoResultsNode(plan->nextId()));
+      //TRI_ASSERT(noResultsNode != nullptr);
+       
     }
   }
   
@@ -155,7 +108,7 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
 /// @brief moves calculations up in the plan
 /// this modifies the plan in place
 ////////////////////////////////////////////////////////////////////////////////
-
+/* not yet ready for primetime...
 int triagens::aql::moveCalculationsUpRule (Optimizer* opt, 
                                            ExecutionPlan* plan, 
                                            Optimizer::PlanList& out,
@@ -242,7 +195,7 @@ std::cout << "LOOKING AT NODE OF TYPE: " << current->getTypeString() << "\n";
   keep = true; 
   return TRI_ERROR_NO_ERROR;
 }
-
+*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove CalculationNode(s) that are never needed
 /// this modifies an existing plan in place

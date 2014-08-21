@@ -599,8 +599,7 @@ std::vector<Variable const*> SubqueryNode::getVariablesUsedHere () {
 
 FilterNode::FilterNode (Ast* ast, basics::Json const& base)
   : ExecutionNode(base),
-    _inVariable(varFromJson(ast, base, "inVariable")),
-    _resultIsEmpty(false) {
+    _inVariable(varFromJson(ast, base, "inVariable")) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
