@@ -66,6 +66,7 @@ add_executable(
     Aql/ExecutionEngine.cpp
     Aql/ExecutionNode.cpp
     Aql/ExecutionPlan.cpp
+    Aql/ExecutionStats.cpp
     Aql/Expression.cpp
     Aql/Function.cpp
     Aql/grammar.cpp

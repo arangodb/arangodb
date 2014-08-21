@@ -45,7 +45,8 @@ using namespace triagens::aql;
 ////////////////////////////////////////////////////////////////////////////////
 
 ExecutionEngine::ExecutionEngine (AQL_TRANSACTION_V8* trx)
-  : _blocks(),
+  : _stats(),
+    _blocks(),
     _root(nullptr),
     _trx(trx) {
 
@@ -88,42 +89,42 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
 
     switch (en->getType()) {
       case ExecutionNode::SINGLETON: {
-        eb = new SingletonBlock(engine->getTransaction(),
+        eb = new SingletonBlock(engine,
                                 static_cast<SingletonNode const*>(en));
         break;
       }
       case ExecutionNode::ENUMERATE_COLLECTION: {
-        eb = new EnumerateCollectionBlock(engine->getTransaction(),
+        eb = new EnumerateCollectionBlock(engine,
                                           static_cast<EnumerateCollectionNode const*>(en));
         break;
       }
       case ExecutionNode::ENUMERATE_LIST: {
-        eb = new EnumerateListBlock(engine->getTransaction(),
+        eb = new EnumerateListBlock(engine,
                                     static_cast<EnumerateListNode const*>(en));
         break;
       }
       case ExecutionNode::CALCULATION: {
-        eb = new CalculationBlock(engine->getTransaction(),
+        eb = new CalculationBlock(engine,
                                   static_cast<CalculationNode const*>(en));
         break;
       }
       case ExecutionNode::FILTER: {
-        eb = new FilterBlock(engine->getTransaction(),
+        eb = new FilterBlock(engine,
                              static_cast<FilterNode const*>(en));
         break;
       }
       case ExecutionNode::LIMIT: {
-        eb = new LimitBlock(engine->getTransaction(),
+        eb = new LimitBlock(engine,
                             static_cast<LimitNode const*>(en));
         break;
       }
       case ExecutionNode::SORT: {
-        eb = new SortBlock(engine->getTransaction(),
+        eb = new SortBlock(engine,
                            static_cast<SortNode const*>(en));
         break;
       }
       case ExecutionNode::AGGREGATE: {
-        eb = new AggregateBlock(engine->getTransaction(),
+        eb = new AggregateBlock(engine,
                                 static_cast<AggregateNode const*>(en));
         break;
       }
@@ -133,41 +134,41 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
 
         TRI_ASSERT(it != cache.end());
 
-        eb = new SubqueryBlock(engine->getTransaction(),
+        eb = new SubqueryBlock(engine,
                                static_cast<SubqueryNode const*>(en),
                                it->second);
         break;
       }
       case ExecutionNode::RETURN: {
-        eb = new ReturnBlock(engine->getTransaction(),
+        eb = new ReturnBlock(engine,
                              static_cast<ReturnNode const*>(en));
 
         root = eb;
         break;
       }
       case ExecutionNode::REMOVE: {
-        eb = new RemoveBlock(engine->getTransaction(),
+        eb = new RemoveBlock(engine,
                              static_cast<RemoveNode const*>(en));
 
         root = eb;
         break;
       }
       case ExecutionNode::INSERT: {
-        eb = new InsertBlock(engine->getTransaction(),
+        eb = new InsertBlock(engine,
                              static_cast<InsertNode const*>(en));
 
         root = eb;
         break;
       }
       case ExecutionNode::UPDATE: {
-        eb = new UpdateBlock(engine->getTransaction(),
+        eb = new UpdateBlock(engine,
                              static_cast<UpdateNode const*>(en));
 
         root = eb;
         break;
       }
       case ExecutionNode::REPLACE: {
-        eb = new ReplaceBlock(engine->getTransaction(),
+        eb = new ReplaceBlock(engine,
                               static_cast<ReplaceNode const*>(en));
 
         root = eb;
