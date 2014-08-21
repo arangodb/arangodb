@@ -31,6 +31,7 @@
 #define ARANGODB_AQL_VARIABLE_GENERATOR_H 1
 
 #include "Basics/Common.h"
+#include "Basics/JsonHelper.h"
 #include "Aql/Variable.h"
 
 namespace triagens {
@@ -85,6 +86,12 @@ namespace triagens {
 
         Variable* createVariable (std::string const&,
                                   bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate a variable from JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable* createVariable (triagens::basics::Json const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a temporary variable

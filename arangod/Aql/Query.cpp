@@ -61,6 +61,7 @@ Query::Query (TRI_vocbase_t* vocbase,
     _executor(nullptr),
     _queryString(queryString),
     _queryLength(queryLength),
+    _queryJson(),
     _type(AQL_QUERY_READ),
     _bindParameters(bindParameters),
     _collections(vocbase),
@@ -68,6 +69,24 @@ Query::Query (TRI_vocbase_t* vocbase,
 
   TRI_ASSERT(_vocbase != nullptr);
   
+  _strings.reserve(32);
+}
+
+Query::Query (TRI_vocbase_t* vocbase,
+              triagens::basics::Json queryStruct,
+              QueryType Type)
+  : _vocbase(vocbase),
+    _executor(nullptr),
+    _queryString(nullptr),
+    _queryLength(0),
+    _queryJson(queryStruct),
+    _type(Type),
+    _bindParameters(nullptr),
+    _collections(vocbase),
+    _strings() {
+
+  TRI_ASSERT(_vocbase != nullptr);
+
   _strings.reserve(32);
 }
 
@@ -174,24 +193,53 @@ void Query::registerError (int code,
 
 QueryResult Query::execute () {
   try {
+    ExecutionPlan* plan;
     Parser parser(this);
-    parser.parse();
 
-    // put in bind parameters
-    parser.ast()->injectBindParameters(_bindParameters);
-    // optimize the ast
-    parser.ast()->optimize();
-    // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
-
-    triagens::arango::AqlTransaction<triagens::arango::V8TransactionContext<true>> trx(_vocbase, _collections.collections());
-
-    int res = trx.begin();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return QueryResult(res, TRI_errno_string(res));
+    if (_queryString != nullptr) {
+      parser.parse();
+      // put in bind parameters
+      parser.ast()->injectBindParameters(_bindParameters);
+      // optimize the ast
+      parser.ast()->optimize();
+      // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
     }
 
-    auto plan = ExecutionPlan::instanciateFromAst(parser.ast());
+    // create the transaction object, but do not start it yet
+    AQL_TRANSACTION_V8 trx(_vocbase, _collections.collections());
+
+    if (_queryString != nullptr) {
+      // we have an AST
+      int res = trx.begin();
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return QueryResult(res, TRI_errno_string(res));
+      }
+
+      plan = ExecutionPlan::instanciateFromAst(parser.ast());
+      if (plan == nullptr) {
+        // oops
+        return QueryResult(TRI_ERROR_INTERNAL);
+      }
+    }
+    else {
+      // we have an execution plan in JSON format
+      plan = ExecutionPlan::instanciateFromJson(parser.ast(), _queryJson);
+      if (plan == nullptr) {
+        // oops
+        return QueryResult(TRI_ERROR_INTERNAL);
+      }
+
+      // creating the plan may have produced some collections
+      // we need to add them to the transaction now (otherwise the query will fail)
+      trx.addCollections(_collections.collections());
+      
+      int res = trx.begin();
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        return QueryResult(res, TRI_errno_string(res));
+      }
+    }
 
     // Run the query optimiser:
     triagens::aql::Optimizer opt;
@@ -333,10 +381,15 @@ char* Query::registerString (char const* p,
   return copy;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a string
+/// the string is freed when the query is destroyed
+////////////////////////////////////////////////////////////////////////////////
+
 char* Query::registerString (std::string const& p,
                              bool mustUnescape) {
 
-  return registerString (p.c_str(),p.length(), mustUnescape);
+  return registerString(p.c_str(), p.length(), mustUnescape);
 }
 
 // -----------------------------------------------------------------------------

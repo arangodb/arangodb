@@ -79,9 +79,13 @@ namespace triagens {
 /// @brief create an execution plan from an AST
 ////////////////////////////////////////////////////////////////////////////////
 
-        static ExecutionPlan* instanciateFromAst (Ast const*);
+        static ExecutionPlan* instanciateFromAst (Ast*);
 
-        static ExecutionPlan* instanciateFromJson (Ast const* ast,
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan from JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        static ExecutionPlan* instanciateFromJson (Ast* ast,
                                                    triagens::basics::Json const& Json);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,7 +136,8 @@ namespace triagens {
 /// @brief find nodes of a certain type
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<ExecutionNode*> findNodesOfType (ExecutionNode::NodeType);
+        std::vector<ExecutionNode*> findNodesOfType (ExecutionNode::NodeType,
+                                                     bool enterSubqueries);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determine and set _varsUsedLater in all nodes
@@ -301,8 +306,9 @@ namespace triagens {
         ExecutionNode* fromNode (Ast const*,
                                  AstNode const*);
 
-        ExecutionNode* fromJson (Ast const* ast,
+        ExecutionNode* fromJson (Ast*,
                                  triagens::basics::Json const& Json);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------

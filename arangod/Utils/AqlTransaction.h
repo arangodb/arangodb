@@ -81,6 +81,12 @@ namespace triagens {
         ~AqlTransaction () {
         }
 
+        void addCollections (std::map<std::string, triagens::aql::Collection*>* collections) {
+          for (auto it = collections->begin(); it != collections->end(); ++it) {
+            processCollection((*it).second);
+          }
+        }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a collection to the transaction
 ////////////////////////////////////////////////////////////////////////////////

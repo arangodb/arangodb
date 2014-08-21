@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/AstNode.h"
+#include "Aql/Ast.h"
 #include "Aql/Function.h"
 #include "Aql/Scopes.h"
 #include "Aql/V8Executor.h"
@@ -113,136 +114,136 @@ AstNode::AstNode (AstNodeType type)
   TRI_InitVectorPointer(&members, TRI_UNKNOWN_MEM_ZONE);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create the node from JSON
+////////////////////////////////////////////////////////////////////////////////
 
-AstNode::AstNode (triagens::aql::Query* Q,
-                  triagens::basics::Json const& json)
-  : type(getNodeTypeFromJson(json))
-{
+AstNode::AstNode (Ast* ast,
+                  triagens::basics::Json const& json) 
+  : type(getNodeTypeFromJson(json)) {
 
+  auto query = ast->query();
   TRI_InitVectorPointer(&members, TRI_UNKNOWN_MEM_ZONE);
 
-  switch(type) {
+  switch (type) {
+    case NODE_TYPE_COLLECTION:
+    case NODE_TYPE_PARAMETER:
+    case NODE_TYPE_ATTRIBUTE_ACCESS:
+    case NODE_TYPE_FCALL_USER:
+      value.type = VALUE_TYPE_STRING;
+      setStringValue(query->registerString(JsonHelper::getStringValue(json.json(),
+                                                                      "name", ""),
+                                           false));
+      break;
+    case NODE_TYPE_VALUE: {
+      int vType = JsonHelper::getNumericValue<int>(json.json(), "vTypeID", 0);
+      validateValueType(vType);
+      value.type = static_cast<AstNodeValueType>(vType);
 
-  case NODE_TYPE_COLLECTION:
-  case NODE_TYPE_PARAMETER:
-  case NODE_TYPE_ATTRIBUTE_ACCESS:
-  case NODE_TYPE_FCALL_USER:
-    value.type = VALUE_TYPE_STRING;
-    setStringValue(Q->registerString(JsonHelper::getStringValue(json.json(),
-                                                                "name", ""),
-                                     false));
-    break;
-  case NODE_TYPE_VALUE: {
-    int vType = JsonHelper::getNumericValue<int>(json.json(), "vTypeID", 0);
-    validateValueType(vType);
-    value.type = (AstNodeValueType) vType;
+      switch (value.type) {
+        case VALUE_TYPE_NULL:
+          break;
+        case VALUE_TYPE_BOOL:
+          value.value._bool = JsonHelper::getBooleanValue(json.json(), "value", false);
+          break;
+        case VALUE_TYPE_INT:
+          setIntValue(JsonHelper::getNumericValue<int64_t>(json.json(), "value", 0));
+          break;
+        case VALUE_TYPE_DOUBLE:
+          setDoubleValue(JsonHelper::getNumericValue<double>(json.json(), "value", 0.0));
+          break;
+        case VALUE_TYPE_STRING:
+          setStringValue(query->registerString(JsonHelper::getStringValue(json.json(),
+                                                                          "value", ""),
+                                               false));
+          break;
+        default: {
+        }
+      }
+      break;
+    }
+    case NODE_TYPE_VARIABLE: {
+      auto variable = ast->variables()->createVariable(json);
+      TRI_ASSERT(variable != nullptr);
+      setData(variable);
+      break;
+    }
+    case NODE_TYPE_REFERENCE: {
+      auto variableId = JsonHelper::getNumericValue<VariableId>(json.json(), "id", 0);
+      auto variable = ast->variables()->getVariable(variableId);
 
-    switch (value.type) {
-      case VALUE_TYPE_NULL:
-        /// todo? do we need to do anything?
-        break;
-      case VALUE_TYPE_BOOL:
-        value.value._bool = JsonHelper::getBooleanValue(json.json(), "value", false);
-        break;
-      case VALUE_TYPE_INT:
-        setIntValue(JsonHelper::getNumericValue<int>(json.json(), "value", 0));
-        break;
-      case VALUE_TYPE_DOUBLE:
-        setDoubleValue(JsonHelper::getNumericValue<double>(json.json(), "value", 0.0));
-        break;
-      case VALUE_TYPE_STRING:
-        setStringValue(Q->registerString(JsonHelper::getStringValue(json.json(),
-                                                                    "value", ""),
-                                         false));
-        break;
-      default: {
-      }
+      TRI_ASSERT(variable != nullptr);
+      setData(variable);
+      break;
     }
-    break;
-  }
-  case NODE_TYPE_VARIABLE:
-  case NODE_TYPE_REFERENCE:
-    /// auto varName=JsonHelper::getStringValue(json.json(), "name");
-    //    auto varId=JsonHelper::getStringValue(json.json(), "id");
-    setData(Q->registerVar(new Variable(json)));
-    break;
-  case NODE_TYPE_FCALL: {
-    setData(Q->executor()->getFunctionByName(JsonHelper::getStringValue(json.json(), "name", "")));
-    break;
-  }
-  case NODE_TYPE_ARRAY_ELEMENT:
-  case NODE_TYPE_ARRAY: {
-    setStringValue(Q->registerString(JsonHelper::getStringValue(json.json(),
-                                                                "name", ""),
-                                     false));
-    /*
-    Json subNodes = json.get("subNodes");
-    if (subNodes.isList()) {
-      int len = subNodes.size();
-      for (int i = 0; i < len; i++) {
-        Json subNode = subNodes.at(i);
-        addMember (new AstNode(subNode));
-      }
+    case NODE_TYPE_FCALL: {
+      setData(query->executor()->getFunctionByName(JsonHelper::getStringValue(json.json(), "name", "")));
+      break;
     }
-    */
-    break;
-  }
-  case NODE_TYPE_ROOT:
-  case NODE_TYPE_FOR:
-  case NODE_TYPE_LET:
-  case NODE_TYPE_FILTER:
-  case NODE_TYPE_RETURN:
-  case NODE_TYPE_REMOVE:
-  case NODE_TYPE_INSERT:
-  case NODE_TYPE_UPDATE:
-  case NODE_TYPE_REPLACE:
-  case NODE_TYPE_COLLECT:
-  case NODE_TYPE_SORT:
-  case NODE_TYPE_SORT_ELEMENT:
-  case NODE_TYPE_LIMIT:
-  case NODE_TYPE_ASSIGN:
-  case NODE_TYPE_OPERATOR_UNARY_PLUS:
-  case NODE_TYPE_OPERATOR_UNARY_MINUS:
-  case NODE_TYPE_OPERATOR_UNARY_NOT:
-  case NODE_TYPE_OPERATOR_BINARY_AND:
-  case NODE_TYPE_OPERATOR_BINARY_OR:
-  case NODE_TYPE_OPERATOR_BINARY_PLUS:
-  case NODE_TYPE_OPERATOR_BINARY_MINUS:
-  case NODE_TYPE_OPERATOR_BINARY_TIMES:
-  case NODE_TYPE_OPERATOR_BINARY_DIV:
-  case NODE_TYPE_OPERATOR_BINARY_MOD:
-  case NODE_TYPE_OPERATOR_BINARY_EQ:
-  case NODE_TYPE_OPERATOR_BINARY_NE:
-  case NODE_TYPE_OPERATOR_BINARY_LT:
-  case NODE_TYPE_OPERATOR_BINARY_LE:
-  case NODE_TYPE_OPERATOR_BINARY_GT:
-  case NODE_TYPE_OPERATOR_BINARY_GE:
-  case NODE_TYPE_OPERATOR_BINARY_IN:
-  case NODE_TYPE_OPERATOR_TERNARY:
-  case NODE_TYPE_SUBQUERY:
-  case NODE_TYPE_BOUND_ATTRIBUTE_ACCESS:
-  case NODE_TYPE_INDEXED_ACCESS:
-  case NODE_TYPE_EXPAND:
-  case NODE_TYPE_ITERATOR:
-  case NODE_TYPE_LIST:
-  case NODE_TYPE_RANGE:
-  case NODE_TYPE_NOP:
-    //TRI_ASSERT(false);
-    //THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "json dserializer: node type not implemented.");
-    break;
-  }
+    case NODE_TYPE_ARRAY_ELEMENT: {
+      setStringValue(query->registerString(JsonHelper::getStringValue(json.json(),
+                                                                      "name", ""),
+                                           false));
+      break;
+    }
+    case NODE_TYPE_ARRAY:
+    case NODE_TYPE_ROOT:
+    case NODE_TYPE_FOR:
+    case NODE_TYPE_LET:
+    case NODE_TYPE_FILTER:
+    case NODE_TYPE_RETURN:
+    case NODE_TYPE_REMOVE:
+    case NODE_TYPE_INSERT:
+    case NODE_TYPE_UPDATE:
+    case NODE_TYPE_REPLACE:
+    case NODE_TYPE_COLLECT:
+    case NODE_TYPE_SORT:
+    case NODE_TYPE_SORT_ELEMENT:
+    case NODE_TYPE_LIMIT:
+    case NODE_TYPE_ASSIGN:
+    case NODE_TYPE_OPERATOR_UNARY_PLUS:
+    case NODE_TYPE_OPERATOR_UNARY_MINUS:
+    case NODE_TYPE_OPERATOR_UNARY_NOT:
+    case NODE_TYPE_OPERATOR_BINARY_AND:
+    case NODE_TYPE_OPERATOR_BINARY_OR:
+    case NODE_TYPE_OPERATOR_BINARY_PLUS:
+    case NODE_TYPE_OPERATOR_BINARY_MINUS:
+    case NODE_TYPE_OPERATOR_BINARY_TIMES:
+    case NODE_TYPE_OPERATOR_BINARY_DIV:
+    case NODE_TYPE_OPERATOR_BINARY_MOD:
+    case NODE_TYPE_OPERATOR_BINARY_EQ:
+    case NODE_TYPE_OPERATOR_BINARY_NE:
+    case NODE_TYPE_OPERATOR_BINARY_LT:
+    case NODE_TYPE_OPERATOR_BINARY_LE:
+    case NODE_TYPE_OPERATOR_BINARY_GT:
+    case NODE_TYPE_OPERATOR_BINARY_GE:
+    case NODE_TYPE_OPERATOR_BINARY_IN:
+    case NODE_TYPE_OPERATOR_TERNARY:
+    case NODE_TYPE_SUBQUERY:
+    case NODE_TYPE_BOUND_ATTRIBUTE_ACCESS:
+    case NODE_TYPE_INDEXED_ACCESS:
+    case NODE_TYPE_EXPAND:
+    case NODE_TYPE_ITERATOR:
+    case NODE_TYPE_LIST:
+    case NODE_TYPE_RANGE:
+    case NODE_TYPE_NOP:
+      //TRI_ASSERT(false);
+      //THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "json dserializer: node type not implemented.");
+      break;
+    }
 
   Json subNodes = json.get("subNodes");
   if (subNodes.isList()) {
-    int len = subNodes.size();
-    for (int i = 0; i < len; i++) {
+    size_t const len = subNodes.size();
+    for (size_t i = 0; i < len; i++) {
       Json subNode = subNodes.at(i);
-      addMember (Q->registerNode(new AstNode(Q, subNode)));
+      addMember(new AstNode(ast, subNode));
     }
   }
-    
 
+  ast->addNode(this);
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the node
 ////////////////////////////////////////////////////////////////////////////////
@@ -251,12 +252,11 @@ AstNode::~AstNode () {
   TRI_DestroyVectorPointer(&members);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type name of a node
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::string& AstNode::getTypeString () const {
+std::string const& AstNode::getTypeString () const {
   auto it = TypeNames.find(static_cast<int>(type));
   if (it != TypeNames.end()) {
     return (*it).second;
@@ -401,33 +401,23 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone) const {
 
   if (type == NODE_TYPE_VALUE) {
     // dump value of "value" node
+    auto v = toJsonValue(zone);
+
+    if (v == nullptr) {
+      TRI_FreeJson(zone, node);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
     
+    TRI_Insert3ArrayJson(zone, node, "value", v);
     TRI_Insert3ArrayJson(zone, node, "vType", TRI_CreateStringCopyJson(zone, getValueTypeString().c_str()));
     TRI_Insert3ArrayJson(zone, node, "vTypeID", TRI_CreateNumberJson(zone, static_cast<int>(value.type)));
-    switch (value.type) {
-      case VALUE_TYPE_NULL:
-        TRI_Insert3ArrayJson(zone, node, "value", TRI_CreateStringCopyJson(zone, "null"));
-        break;
-      case VALUE_TYPE_BOOL:
-        TRI_Insert3ArrayJson(zone, node, "value", TRI_CreateBooleanJson(zone, value.value._bool));
-        break;
-      case VALUE_TYPE_INT:
-        TRI_Insert3ArrayJson(zone, node, "value", TRI_CreateNumberJson(zone, static_cast<double>(value.value._int)));
-        break;
-      case VALUE_TYPE_DOUBLE:
-        TRI_Insert3ArrayJson(zone, node, "value", TRI_CreateNumberJson(zone, value.value._double));
-        break;
-      case VALUE_TYPE_STRING:
-        TRI_Insert3ArrayJson(zone, node, "value", TRI_CreateStringCopyJson(zone, value.value._string));
-        break;
-      default: {
-      }
-    }
   }
 
   if (type == NODE_TYPE_VARIABLE ||
       type == NODE_TYPE_REFERENCE) {
     auto variable = static_cast<Variable*>(getData());
+
+    TRI_ASSERT(variable != nullptr);
 
     /// TODO: use variable.toJson()!!!
     TRI_Insert3ArrayJson(zone, node, "name", TRI_CreateStringCopyJson(zone, variable->name.c_str()));
@@ -520,16 +510,14 @@ bool AstNode::toBoolean () const {
 bool AstNode::isSimple () const {
   if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     TRI_ASSERT(numMembers() == 1);
-
     return getMember(0)->isSimple();
   }
-/*
+
   if (type == NODE_TYPE_INDEXED_ACCESS) {
     TRI_ASSERT(numMembers() == 2);
-
     return (getMember(0)->isSimple() && getMember(1)->isSimple());
   }
-*/
+
   if (type == NODE_TYPE_REFERENCE) {
     return true;
   }
@@ -559,6 +547,10 @@ bool AstNode::isSimple () const {
   if (type == NODE_TYPE_ARRAY_ELEMENT) {
     auto member = getMember(0);
     return member->isSimple();
+  }
+  
+  if (type == NODE_TYPE_VALUE) {
+    return true;
   }
 
   return false;

@@ -1237,6 +1237,53 @@ namespace triagens {
 
     };
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    NoResultsBlock
+// -----------------------------------------------------------------------------
+
+    class NoResultsBlock : public ExecutionBlock {
+
+      public:
+
+        NoResultsBlock (AQL_TRANSACTION_V8* trx, SingletonNode const* ep)
+          : ExecutionBlock(trx, ep) {
+        }
+
+        ~NoResultsBlock () {
+        }
+
+        int initialize () {
+          return ExecutionBlock::initialize();
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initCursor, store a copy of the register values coming from above
+////////////////////////////////////////////////////////////////////////////////
+
+        int initCursor (AqlItemBlock* items, size_t pos);
+
+        bool hasMore () {
+          return false;
+        }
+
+        int64_t count () {
+          return 0;
+        }
+
+        int64_t remaining () {
+          return 0;
+        }
+
+      private:
+
+        int getOrSkipSome (size_t atLeast,
+                           size_t atMost,
+                           bool skipping,
+                           AqlItemBlock*& result,
+                           size_t& skipped);
+
+    };
+
   }  // namespace triagens::aql
 }  // namespace triagens
 
