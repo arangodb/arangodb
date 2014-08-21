@@ -126,8 +126,9 @@ namespace triagens {
 /// @brief return a Json representation of the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::basics::Json toJson (TRI_memory_zone_t* zone) const {
-          return triagens::basics::Json(zone, _node->toJson(zone));
+        triagens::basics::Json toJson (TRI_memory_zone_t* zone,
+                                       bool verbose) const {
+          return triagens::basics::Json(zone, _node->toJson(zone, verbose));
         }
 
 ////////////////////////////////////////////////////////////////////////////////

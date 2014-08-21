@@ -97,11 +97,12 @@ Ast::~Ast () {
 /// the caller is responsible for freeing the JSON later
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* Ast::toJson (TRI_memory_zone_t* zone) {
+TRI_json_t* Ast::toJson (TRI_memory_zone_t* zone,
+                         bool verbose) const {
   TRI_json_t* json = TRI_CreateListJson(zone);
 
   try {
-    _root->toJson(json, zone);
+    _root->toJson(json, zone, verbose);
   }
   catch (...) {
     TRI_FreeJson(zone, json);

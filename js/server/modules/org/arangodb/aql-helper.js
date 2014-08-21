@@ -31,6 +31,7 @@
 var internal = require("internal");
 var arangodb = require("org/arangodb");
 var _ = require("underscore");
+var ShapedJson = internal.ShapedJson;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         AQL test helper functions
@@ -203,7 +204,10 @@ function typeName (value) {
   if (value === undefined) {
     return "undefined";
   }
-  if (value instanceof Array) {
+  if (value instanceof ShapedJson) {
+    return "object";
+  }
+  if (Array.isArray(value)) {
     return "array";
   }
 
