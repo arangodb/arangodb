@@ -937,7 +937,7 @@ namespace triagens {
 
       int cmp = TRI_CompareValuesJson(left->_bound.json(), right->_bound.json());
       if (cmp == 0 && (left->_include != right->_include)) {
-        cmp = (left->_include?-1:1);
+        cmp = (left->_include?1:-1);
       }
       return cmp;
     };
@@ -974,8 +974,6 @@ namespace triagens {
           if (it == _ranges.end()) {
             return nullptr;
           }
-          //std::unordered_map<std::string, RangeInfo*>* out = &((*it).second);
-          //return out;
           return &((*it).second);
         }
         
@@ -992,7 +990,7 @@ namespace triagens {
             return;
           }
           
-          auto oldRange = find(var, name); //TODO improve
+          auto oldRange = find(var, name); //TODO improve, using oldMap
           
           if (oldRange == nullptr) {
             // TODO add exception . . .
@@ -1004,14 +1002,13 @@ namespace triagens {
             return;
           }
           
-          if(CompareRangeInfoBound(newRange->_low, oldRange->_high) == -1){
+          if(CompareRangeInfoBound(newRange->_low, oldRange->_low) == -1){
             oldRange->_low = newRange->_low;
           }
           
           if(CompareRangeInfoBound(newRange->_high, oldRange->_high) == -1){
             oldRange->_high = newRange->_high;
           }
-          
           // check the new range bounds are valid
           if( oldRange->_low != nullptr && oldRange->_high != nullptr){
             int cmp = TRI_CompareValuesJson(oldRange->_low->_bound.json(), 
@@ -1029,20 +1026,23 @@ namespace triagens {
           return _ranges.size();
         }
 
-        /*Json toJson () const {
+        Json toJson () const {
           Json list(Json::List);
           for (auto x : _ranges) {
-            Json item(Json::Array);
-            item("name", Json(x.first))
-            ("range info", x.second->toJson());
-            list(item);
+            for (auto y: x.second){
+              Json item(Json::Array);
+              item("var", Json(x.first))
+                  ("attribute name", Json(y.first))
+                  ("range info", y.second->toJson());
+              list(item);
+            }
           }
           return list;
         }
         
         std::string toString() const {
           return this->toJson().toString();
-        }*/
+        }
 
       private: 
         std::unordered_map<std::string, std::unordered_map<std::string, RangeInfo*>> _ranges; 

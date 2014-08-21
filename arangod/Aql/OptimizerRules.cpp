@@ -153,17 +153,21 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
   ExecutionPlan* _plan;
   Variable const* _var;
   Optimizer::PlanList _out;
-  ExecutionNode* _prev;
-
+  ExecutionNode* _prev; //TODO replace with use of parents . . .
+  bool _canThrow; 
+  
   //EnumerateCollectionNode const* _enumColl;
 
   public:
     CalculationNodeFinder (ExecutionPlan* plan, Variable const * var, Optimizer::PlanList& out) 
-      : _plan(plan), _var(var), _out(out), _prev(nullptr){
+      : _plan(plan), _var(var), _out(out), _prev(nullptr), _canThrow(false){
         _ranges = new RangesInfo();
     };
 
     void before (ExecutionNode* en) {
+
+      _canThrow = (_canThrow || en->canThrow()); // can any node walked over throw?
+
       if (en->getType() == triagens::aql::ExecutionNode::CALCULATION) {
         auto outvar = en->getVariablesSetHere();
         TRI_ASSERT(outvar.size() == 1);
@@ -183,52 +187,65 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
           // check the first components of <map> against indexes of <node> . . .
           std::vector<std::string> attrs;
           std::vector<RangeInfo*> rangeInfo;
+          bool valid = true;
           for (auto x : *map){
             attrs.push_back(x.first);
             rangeInfo.push_back(x.second);
+            valid = valid && x.second->_valid; //make sure the ranges are all valid
           }
-          std::vector<TRI_index_t*> idxs = node->getIndexes(attrs);
-          
-          // make one new plan for every index in <idxs> that replaces the
-          // enumerate collection node with a RangeIndexNode . . . 
-          for (auto idx: idxs) {
-            bool stop = false;
-            if (idx->_type == TRI_IDX_TYPE_HASH_INDEX){
-              // only use a hash index if the corresponding rangeInfos are all
-              // equalities . . .
-              for(auto x : rangeInfo){
-                if (x->_low == nullptr || x->_high == nullptr || 
-                    !TRI_CheckSameValueJson(x->_low->_bound.json(),
-                    x->_high->_bound.json()) || !(x->_low->_include) || 
-                    !(x->_high->_include) ) {
-                  stop = true;
-                  std::cout << "not using hash index . . .\n";
-                  break;
-                }
+          if (!valid){ // ranges are not valid . . . 
+            std::cout << "INVALID RANGE!\n";
+            if (!_canThrow) {
+              
+              auto newPlan = _plan->clone();
+              auto parents = node->getParents();
+              for(auto x: parents){
+                auto noRes = new NoResultsNode(newPlan->nextId());
+                newPlan->registerNode(noRes);
+                newPlan->insertDependency(x, noRes);
               }
             }
-            
-            if (!stop) {
-              std::cout << "FOUND INDEX!\n";
-              auto newPlan = _plan->clone();
-              ExecutionNode* newNode = nullptr;
-              try{
-                newNode = new IndexRangeNode( newPlan->nextId(), node->vocbase(), 
-                    node->collection(), node->outVariable(), idx, &rangeInfo);
-                newPlan->registerNode(newNode);
-              }
-              catch (...) {
-                if (newNode != nullptr) {
-                  delete newNode;
+          } 
+          else {
+            std::vector<TRI_index_t*> idxs = node->getIndexes(attrs);
+            // make one new plan for every index in <idxs> that replaces the
+            // enumerate collection node with a RangeIndexNode . . . 
+            for (auto idx: idxs) {
+              bool stop = false;
+              if (idx->_type == TRI_IDX_TYPE_HASH_INDEX){
+                // only use a hash index if the corresponding rangeInfos are all
+                // equalities . . .
+                for(auto x : rangeInfo){
+                  if (x->_low == nullptr || x->_high == nullptr || 
+                      !TRI_CheckSameValueJson(x->_low->_bound.json(),
+                      x->_high->_bound.json()) || !(x->_low->_include) || 
+                      !(x->_high->_include) ) {
+                    stop = true;
+                    std::cout << "NOT USING HASH INDEX\n";
+                    break;
+                  }
                 }
-                delete newPlan;
-                throw;
               }
-              newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode, 
-                  newPlan->getNodeById(_prev->id()));
-              std::cout << newPlan->root()->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString() 
-                << "\n";
-              _out.push_back(newPlan);
+              
+              if (!stop) {
+                std::cout << "FOUND INDEX!\n";
+                auto newPlan = _plan->clone();
+                ExecutionNode* newNode = nullptr;
+                try{
+                  newNode = new IndexRangeNode( newPlan->nextId(), node->vocbase(), 
+                      node->collection(), node->outVariable(), idx, &rangeInfo);
+                  newPlan->registerNode(newNode);
+                }
+                catch (...) {
+                  if (newNode != nullptr) {
+                    delete newNode;
+                  }
+                  delete newPlan;
+                  throw;
+                }
+                newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
+                _out.push_back(newPlan);
+              }
             }
           }
         }
@@ -280,7 +297,6 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
                 new RangeInfoBound(val, true), new RangeInfoBound(val, true));
           }
         }
-        //std::cout << _ranges->toString() << "\n";
       }
 
       if(node->type == NODE_TYPE_OPERATOR_BINARY_LT || 
@@ -330,7 +346,6 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
             _ranges->insert(enumCollVar, attr.substr(0, attr.size()-1), low, high);
           }
         }
-        //std::cout << _ranges->toString() << "\n";
       }
       
       if(node->type == NODE_TYPE_OPERATOR_BINARY_AND){
@@ -338,7 +353,6 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
         buildRangeInfo(node->getMember(0), enumCollVar, attr);
         attr = "";
         buildRangeInfo(node->getMember(1), enumCollVar, attr);
-        //std::cout << _ranges->toString() << "\n";
       }
     }
 };
