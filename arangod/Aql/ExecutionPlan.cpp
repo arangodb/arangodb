@@ -1052,6 +1052,7 @@ ExecutionPlan* ExecutionPlan::clone (){
   auto plan = new ExecutionPlan();
   try {
     plan->_root = _root->clone();
+    plan->_nextId = _nextId;
     CloneNodeAdder adder(plan);
     plan->_root->walk(&adder);
     plan->findVarUsage();

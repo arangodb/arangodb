@@ -181,8 +181,6 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
         
         if (map != nullptr) {
           // check the first components of <map> against indexes of <node> . . .
-          // FIXME does this need to be done like this? Couldn't we keep track
-          // earlier?
           std::vector<std::string> attrs;
           std::vector<RangeInfo*> rangeInfo;
           for (auto x : *map){
@@ -191,27 +189,47 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
           }
           std::vector<TRI_index_t*> idxs = node->getIndexes(attrs);
           
-          //use make one new plan for every index in <idxs> that replaces the
-          //enumerate collection node with a RangeIndexNode . . . 
+          // make one new plan for every index in <idxs> that replaces the
+          // enumerate collection node with a RangeIndexNode . . . 
           for (auto idx: idxs) {
-            std::cout << "FOUND INDEX!\n";
-            auto newPlan = _plan->clone();
-            ExecutionNode* newNode = nullptr;
-            try{
-              newNode = new IndexRangeNode( newPlan->nextId(), node->vocbase(), 
-                  node->collection(), node->outVariable(), idx, &rangeInfo);
-              newPlan->registerNode(newNode);
-            }
-            catch (...) {
-              if (newNode != nullptr) {
-                delete newNode;
+            bool stop = false;
+            if (idx->_type == TRI_IDX_TYPE_HASH_INDEX){
+              // only use a hash index if the corresponding rangeInfos are all
+              // equalities . . .
+              for(auto x : rangeInfo){
+                if (x->_low == nullptr || x->_high == nullptr || 
+                    !TRI_CheckSameValueJson(x->_low->_bound.json(),
+                    x->_high->_bound.json()) || !(x->_low->_include) || 
+                    !(x->_high->_include) ) {
+                  stop = true;
+                  std::cout << "not using hash index . . .\n";
+                  break;
+                }
               }
-              delete newPlan;
-              throw;
             }
-            newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
-            std::cout << newPlan->root()->toJson(TRI_UNKNOWN_MEM_ZONE, true).toString() << "\n";
-            _out.push_back(newPlan);
+            
+            if (!stop) {
+              std::cout << "FOUND INDEX!\n";
+              auto newPlan = _plan->clone();
+              ExecutionNode* newNode = nullptr;
+              try{
+                newNode = new IndexRangeNode( newPlan->nextId(), node->vocbase(), 
+                    node->collection(), node->outVariable(), idx, &rangeInfo);
+                newPlan->registerNode(newNode);
+              }
+              catch (...) {
+                if (newNode != nullptr) {
+                  delete newNode;
+                }
+                delete newPlan;
+                throw;
+              }
+              newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode, 
+                  newPlan->getNodeById(_prev->id()));
+              std::cout << newPlan->root()->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString() 
+                << "\n";
+              _out.push_back(newPlan);
+            }
           }
         }
       }
