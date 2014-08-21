@@ -41,7 +41,7 @@ using Json = triagens::basics::Json;
 /// @brief remove all unnecessary filters
 /// this rule modifies the plan in place:
 /// - filters that are always true are removed completely
-/// - filters that are always false will be removed plus their dependent nodes
+/// - filters that are always false will be replaced by a NoResults node
 ////////////////////////////////////////////////////////////////////////////////
 
 int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt, 
@@ -88,15 +88,17 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
     }
     else {
       // filter is always false
-      // TODO: insert a NoResults node below it
-      //auto noResultsNode = plan->registerNode(new NoResultsNode(plan->nextId()));
-      //TRI_ASSERT(noResultsNode != nullptr);
+      // now insert a NoResults node below it
+      auto&& parents = n->getParents();
+      TRI_ASSERT(parents.size() == 1);
+
+      auto noResults = new NoResultsNode(plan->nextId());
+      plan->registerNode(noResults);
+      plan->replaceNode(n, noResults, parents[0]); 
     }
   }
   
   if (! toUnlink.empty()) {
-    std::cout << "Removing " << toUnlink.size() << " unnecessary "
-                 "nodes..." << std::endl;
     plan->unlinkNodes(toUnlink);
   }
   
