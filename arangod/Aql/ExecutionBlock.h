@@ -1276,7 +1276,7 @@ namespace triagens {
       public:
 
         NoResultsBlock (ExecutionEngine* engine,
-                        SingletonNode const* ep)
+                        NoResultsNode const* ep)
           : ExecutionBlock(engine, ep) {
         }
 

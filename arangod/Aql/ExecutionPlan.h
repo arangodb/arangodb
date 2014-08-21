@@ -89,6 +89,15 @@ namespace triagens {
                                                    triagens::basics::Json const& Json);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON, returns an AUTOFREE Json object
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::basics::Json toJson (TRI_memory_zone_t* zone,
+                                       bool verbose) const {
+          return _root->toJson(zone, verbose); 
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the next value for a node id
 ////////////////////////////////////////////////////////////////////////////////
         
@@ -172,11 +181,21 @@ namespace triagens {
         void unregisterNode (ExecutionNode* node);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief replace oldNode with newNode and fix dependencies 
+/// @brief replaceNode, note that <newNode> must be registered with the plan
+/// before this method is called, also this does not delete the old
+/// node and that one cannot replace the root node of the plan.
 ////////////////////////////////////////////////////////////////////////////////
 
-        void replaceNode (ExecutionNode* oldNode, ExecutionNode* newNode, 
-            ExecutionNode* oldNodeParent);
+        void replaceNode (ExecutionNode* oldNode, 
+                          ExecutionNode* newNode); 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insert <newNode> before <oldNode>. <newNode> must be registered with 
+/// the plan before this method is called
+////////////////////////////////////////////////////////////////////////////////
+
+        void insertDependency (ExecutionNode* oldNode, 
+                               ExecutionNode* newNode);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone the plan by recursively cloning starting from the root

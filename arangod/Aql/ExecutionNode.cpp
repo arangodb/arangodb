@@ -316,8 +316,10 @@ Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Json& nodes,
 
   Json json;
   json = Json(Json::Array, 2)
-           ("type", Json(getTypeString()));
-  json ("typeID", Json(static_cast<int>(getType())));
+              ("type", Json(getTypeString()));
+  if (verbose) {
+    json ("typeID", Json(static_cast<int>(getType())));
+  }
   Json deps(Json::List, n);
   for (size_t i = 0; i < n; i++) {
     deps(Json(static_cast<double>(_dependencies[i]->id())));
@@ -325,7 +327,7 @@ Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Json& nodes,
   json("dependencies", deps);
   json("id", Json(static_cast<double>(id())));
 
-  if(this->_estimatedCost != 0){
+  if (this->_estimatedCost != 0.0){
     json("estimatedCost", Json(this->_estimatedCost));
   }
   return json;

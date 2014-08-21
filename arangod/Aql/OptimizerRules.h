@@ -41,7 +41,10 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a CalculationNode that is never needed
+/// @brief remove all unnecessary filters
+/// this rule modifies the plan in place:
+/// - filters that are always true are removed completely
+/// - filters that are always false will be replaced by a NoResults node
 ////////////////////////////////////////////////////////////////////////////////
 
     int removeUnnecessaryFiltersRule (Optimizer*, ExecutionPlan*, Optimizer::PlanList&, bool&);
@@ -59,7 +62,7 @@ namespace triagens {
     int removeUnnecessaryCalculationsRule (Optimizer*, ExecutionPlan*, Optimizer::PlanList&, bool&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a CalculationNode that is never needed
+/// @brief prefer IndexRange nodes over EnumerateCollection nodes
 ////////////////////////////////////////////////////////////////////////////////
 
     int useIndexRange (Optimizer*, ExecutionPlan*, Optimizer::PlanList&, bool&);
