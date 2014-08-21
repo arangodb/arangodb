@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionEngine.h"
 #include "Basics/StringUtils.h"
 #include "Basics/json-utilities.h"
 #include "Utils/Exception.h"
@@ -104,6 +105,20 @@ size_t const ExecutionBlock::DefaultBatchSize = 1000;
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+ExecutionBlock::ExecutionBlock (ExecutionEngine* engine,
+                                ExecutionNode const* ep)
+  : _engine(engine),
+    _trx(engine->getTransaction()), 
+    _exeNode(ep), 
+    _varOverview(nullptr),
+    _depth(0),
+    _done(false) {
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -513,9 +528,9 @@ int SingletonBlock::getOrSkipSome (size_t atLeast,
 // --SECTION--                                    class EnumerateCollectionBlock
 // -----------------------------------------------------------------------------
 
-EnumerateCollectionBlock::EnumerateCollectionBlock (AQL_TRANSACTION_V8* trx,
+EnumerateCollectionBlock::EnumerateCollectionBlock (ExecutionEngine* engine,
                                                     EnumerateCollectionNode const* ep)
-  : ExecutionBlock(trx, ep),
+  : ExecutionBlock(engine, ep),
     _collection(ep->_collection),
     _posInAllDocs(0) {
 }
@@ -1144,12 +1159,6 @@ int FilterBlock::initialize () {
   auto it = _varOverview->varInfo.find(en->_inVariable->id);
   TRI_ASSERT(it != _varOverview->varInfo.end());
   _inReg = it->second.registerId;
-
-  if (en->_resultIsEmpty) {
-    // we know that the filter will never produce any results
-    // TODO: do we need to suck in (and free) data from all dependent nodes first??
-    _done = true;
-  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1890,12 +1899,11 @@ AqlItemBlock* ReturnBlock::getSome (size_t atLeast,
 // --SECTION--                                           class ModificationBlock
 // -----------------------------------------------------------------------------
 
-ModificationBlock::ModificationBlock (AQL_TRANSACTION_V8* trx,
+ModificationBlock::ModificationBlock (ExecutionEngine* engine,
                                       ModificationNode const* ep)
-  : ExecutionBlock(trx, ep),
+  : ExecutionBlock(engine, ep),
     _collection(ep->_collection) {
 }
-
 
 ModificationBlock::~ModificationBlock () {
 }
@@ -1995,15 +2003,36 @@ int ModificationBlock::extractKey (AqlValue const& value,
   return TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief process the result of a data-modification operation
+////////////////////////////////////////////////////////////////////////////////
+
+void ModificationBlock::handleResult (int code,
+                                      bool ignoreErrors) {
+  if (code == TRI_ERROR_NO_ERROR) {
+    // update the success counter
+    ++_engine->_stats.writesExecuted;
+  }
+  else {
+    if (ignoreErrors) {
+      // update the ignored counter
+      ++_engine->_stats.writesIgnored;
+    }
+    else {
+      // bubble up the error
+      THROW_ARANGO_EXCEPTION(code);
+    }
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class RemoveBlock
 // -----------------------------------------------------------------------------
 
-RemoveBlock::RemoveBlock (AQL_TRANSACTION_V8* trx,
+RemoveBlock::RemoveBlock (ExecutionEngine* engine,
                           RemoveNode const* ep)
-  : ModificationBlock(trx, ep) {
+  : ModificationBlock(engine, ep) {
 }
-
 
 RemoveBlock::~RemoveBlock () {
 }
@@ -2061,12 +2090,8 @@ void RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
                                    nullptr,
                                    ep->_options.waitForSync);
         }
-          
-        if (errorCode != TRI_ERROR_NO_ERROR && 
-            ! ep->_options.ignoreErrors) {
-          // bubble up the error
-          THROW_ARANGO_EXCEPTION(errorCode);
-        }
+        
+        handleResult(errorCode, ep->_options.ignoreErrors); 
       }
       // done with a block
 
@@ -2081,9 +2106,9 @@ void RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
 // --SECTION--                                                 class InsertBlock
 // -----------------------------------------------------------------------------
 
-InsertBlock::InsertBlock (AQL_TRANSACTION_V8* trx,
+InsertBlock::InsertBlock (ExecutionEngine* engine,
                           InsertNode const* ep)
-  : ModificationBlock(trx, ep) {
+  : ModificationBlock(engine, ep) {
 }
 
 InsertBlock::~InsertBlock () {
@@ -2178,10 +2203,7 @@ void InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
           }
         }
 
-        if (errorCode != TRI_ERROR_NO_ERROR && 
-            ! ep->_options.ignoreErrors) {
-          THROW_ARANGO_EXCEPTION(errorCode);
-        }
+        handleResult(errorCode, ep->_options.ignoreErrors); 
       }
       // done with a block
 
@@ -2196,9 +2218,9 @@ void InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
 // --SECTION--                                                 class UpdateBlock
 // -----------------------------------------------------------------------------
 
-UpdateBlock::UpdateBlock (AQL_TRANSACTION_V8* trx,
+UpdateBlock::UpdateBlock (ExecutionEngine* engine,
                           UpdateNode const* ep)
-  : ModificationBlock(trx, ep) {
+  : ModificationBlock(engine, ep) {
 }
 
 UpdateBlock::~UpdateBlock () {
@@ -2299,10 +2321,7 @@ void UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
           }
         }
 
-        if (errorCode != TRI_ERROR_NO_ERROR && 
-            ! ep->_options.ignoreErrors) {
-          THROW_ARANGO_EXCEPTION(errorCode);
-        }
+        handleResult(errorCode, ep->_options.ignoreErrors); 
       }
       // done with a block
 
@@ -2317,9 +2336,9 @@ void UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
 // --SECTION--                                                class ReplaceBlock
 // -----------------------------------------------------------------------------
 
-ReplaceBlock::ReplaceBlock (AQL_TRANSACTION_V8* trx,
+ReplaceBlock::ReplaceBlock (ExecutionEngine* engine,
                             ReplaceNode const* ep)
-  : ModificationBlock(trx, ep) {
+  : ModificationBlock(engine, ep) {
 }
 
 ReplaceBlock::~ReplaceBlock () {
@@ -2391,10 +2410,7 @@ void ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
           errorCode = _trx->update(trxCollection, key, 0, &mptr, json.json(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
         }
 
-        if (errorCode != TRI_ERROR_NO_ERROR && 
-            ! ep->_options.ignoreErrors) {
-          THROW_ARANGO_EXCEPTION(errorCode);
-        }
+        handleResult(errorCode, ep->_options.ignoreErrors); 
       }
       // done with a block
 

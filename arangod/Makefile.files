@@ -47,6 +47,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/ExecutionEngine.cpp \
 	arangod/Aql/ExecutionNode.cpp \
 	arangod/Aql/ExecutionPlan.cpp \
+	arangod/Aql/ExecutionStats.cpp \
 	arangod/Aql/Expression.cpp \
 	arangod/Aql/Function.cpp \
 	arangod/Aql/grammar.cpp \

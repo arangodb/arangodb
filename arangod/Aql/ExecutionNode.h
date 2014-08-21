@@ -272,14 +272,16 @@ namespace triagens {
 /// @brief export to JSON, returns an AUTOFREE Json object
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::basics::Json toJson (TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+        triagens::basics::Json toJson (TRI_memory_zone_t*,
+                                       bool) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json& nodes,
-                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE) = 0;
+        virtual void toJsonHelper (triagens::basics::Json&,
+                                   TRI_memory_zone_t*,
+                                   bool) const = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesUsedHere
@@ -368,9 +370,9 @@ namespace triagens {
 /// @brief toJsonHelper, for a generic node
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::basics::Json toJsonHelperGeneric (
-                  triagens::basics::Json& nodes,
-                  TRI_memory_zone_t* zone);
+        triagens::basics::Json toJsonHelperGeneric (triagens::basics::Json&,
+                                                    TRI_memory_zone_t*,
+                                                    bool) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
@@ -437,46 +439,47 @@ namespace triagens {
 /// @brief constructor with an id
 ////////////////////////////////////////////////////////////////////////////////
 
-    public:
+      public:
+ 
+        SingletonNode (size_t id) 
+          : ExecutionNode(id) {
+        }
 
-      SingletonNode (size_t id) 
-        : ExecutionNode(id) {
-      }
-
-      SingletonNode (Ast*, basics::Json const& base);
+        SingletonNode (Ast*, basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-      NodeType getType () const override {
-        return SINGLETON;
-      }
+        NodeType getType () const override {
+          return SINGLETON;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual void toJsonHelper (triagens::basics::Json& nodes,
-                                 TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+        virtual void toJsonHelper (triagens::basics::Json&,
+                                   TRI_memory_zone_t*,
+                                   bool) const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual ExecutionNode* clone () const {
-        auto c = new SingletonNode(_id);
-        cloneDependencies(c);
-        return static_cast<ExecutionNode*>(c);
-      }
+        virtual ExecutionNode* clone () const {
+          auto c = new SingletonNode(_id);
+          cloneDependencies(c);
+          return static_cast<ExecutionNode*>(c);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the cost of a singleton is 1
 ////////////////////////////////////////////////////////////////////////////////
         
-      double estimateCost () {
-        return 1;
-      }
+        double estimateCost () {
+          return 1;
+        }
 
     };
 
@@ -518,16 +521,17 @@ namespace triagens {
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-      NodeType getType () const override {
-        return ENUMERATE_COLLECTION;
-      }
+        NodeType getType () const override {
+          return ENUMERATE_COLLECTION;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual void toJsonHelper (triagens::basics::Json& nodes,
-                                 TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+        virtual void toJsonHelper (triagens::basics::Json&,
+                                   TRI_memory_zone_t*,
+                                   bool) const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
@@ -680,8 +684,9 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json& nodes,
-                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+        virtual void toJsonHelper (triagens::basics::Json&,
+                                   TRI_memory_zone_t*,
+                                   bool) const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
@@ -752,10 +757,10 @@ namespace triagens {
 /// nullptr instead if you want to have no bound.
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct RangeInfoBound{
+    struct RangeInfoBound {
 
       RangeInfoBound(AstNode const* bound, bool include) : _include(include) {
-        _bound = Json(TRI_UNKNOWN_MEM_ZONE, bound->toJson(TRI_UNKNOWN_MEM_ZONE));
+        _bound = Json(TRI_UNKNOWN_MEM_ZONE, bound->toJson(TRI_UNKNOWN_MEM_ZONE, true));
       }
       
       ~RangeInfoBound(){}
@@ -1002,8 +1007,9 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json& nodes,
-                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+        virtual void toJsonHelper (triagens::basics::Json&,
+                                   TRI_memory_zone_t*,
+                                   bool) const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
@@ -1121,8 +1127,9 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json& nodes,
-                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+        virtual void toJsonHelper (triagens::basics::Json&,
+                                   TRI_memory_zone_t*,
+                                   bool) const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
@@ -1210,8 +1217,9 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json& nodes,
-                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+        virtual void toJsonHelper (triagens::basics::Json&,
+                                   TRI_memory_zone_t*,
+                                   bool) const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
@@ -1337,8 +1345,9 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json& nodes,
-                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+        virtual void toJsonHelper (triagens::basics::Json&,
+                                   TRI_memory_zone_t*,
+                                   bool) const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
@@ -1436,8 +1445,7 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
         FilterNode (size_t id,
                     Variable const* inVariable)
           : ExecutionNode(id), 
-            _inVariable(inVariable),
-            _resultIsEmpty(false) {
+            _inVariable(inVariable) {
 
           TRI_ASSERT(_inVariable != nullptr);
         }
@@ -1456,8 +1464,9 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json& nodes,
-                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+        virtual void toJsonHelper (triagens::basics::Json&,
+                                   TRI_memory_zone_t*,
+                                   bool) const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
@@ -1470,23 +1479,10 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief this is a hint that the filter will never let any data pass
-////////////////////////////////////////////////////////////////////////////////
-
-        void setEmptyResult () {
-          _resultIsEmpty = true;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief the cost of a filter node is . . . FIXME
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () {
-          if (_resultIsEmpty) {
-            // filter will not let any data through
-            return 0;
-          }
-
           return _dependencies.at(0)->getCost() * 0.105;
           //FIXME! 0.005 is the cost of doing the filter node under the
           //assumption that it returns 10% of the results of its dependency
@@ -1510,11 +1506,6 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
 
         Variable const* _inVariable;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief hint that is set to true if the filter will not let any data through
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _resultIsEmpty;
     };
 
 // -----------------------------------------------------------------------------
@@ -1558,8 +1549,9 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json& nodes,
-                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+        virtual void toJsonHelper (triagens::basics::Json&,
+                                   TRI_memory_zone_t*,
+                                   bool) const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
@@ -1656,8 +1648,9 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json& nodes,
-                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+        virtual void toJsonHelper (triagens::basics::Json&,
+                                   TRI_memory_zone_t*,
+                                   bool) const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
@@ -1773,8 +1766,9 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json& nodes,
-                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+        virtual void toJsonHelper (triagens::basics::Json&,
+                                   TRI_memory_zone_t*,
+                                   bool) const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
@@ -1927,8 +1921,9 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json& nodes,
-                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+        virtual void toJsonHelper (triagens::basics::Json&,
+                                   TRI_memory_zone_t*,
+                                   bool) const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
@@ -2039,8 +2034,9 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json& nodes,
-                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+        virtual void toJsonHelper (triagens::basics::Json&,
+                                   TRI_memory_zone_t*,
+                                   bool) const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
@@ -2153,8 +2149,9 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json& nodes,
-                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+        virtual void toJsonHelper (triagens::basics::Json&,
+                                   TRI_memory_zone_t*,
+                                   bool) const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
@@ -2277,8 +2274,9 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json& nodes,
-                                   TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+        virtual void toJsonHelper (triagens::basics::Json&,
+                                   TRI_memory_zone_t*,
+                                   bool) const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
@@ -2368,48 +2366,49 @@ static int CompareRangeInfoBound (RangeInfoBound const* left, RangeInfoBound con
 /// @brief constructor with an id
 ////////////////////////////////////////////////////////////////////////////////
 
-    public:
+      public:
+  
+        NoResultsNode (size_t id) 
+          : ExecutionNode(id) {
+        }
 
-      NoResultsNode (size_t id) 
-        : ExecutionNode(id) {
-      }
-
-      NoResultsNode (Ast*, basics::Json const& base)
-        : ExecutionNode(base) {
-      }
+        NoResultsNode (Ast*, basics::Json const& base)
+          : ExecutionNode(base) {
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-      NodeType getType () const override {
-        return NORESULTS;
-      }
+        NodeType getType () const override {
+          return NORESULTS;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual void toJsonHelper (triagens::basics::Json& nodes,
-                                 TRI_memory_zone_t* zone = TRI_UNKNOWN_MEM_ZONE);
+        virtual void toJsonHelper (triagens::basics::Json&,
+                                   TRI_memory_zone_t*,
+                                   bool) const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-      virtual ExecutionNode* clone () const {
-        auto c = new NoResultsNode(_id);
-        cloneDependencies(c);
-        return static_cast<ExecutionNode*>(c);
-      }
+        virtual ExecutionNode* clone () const {
+          auto c = new NoResultsNode(_id);
+          cloneDependencies(c);
+          return static_cast<ExecutionNode*>(c);
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the cost of a NoResults is 0
 ////////////////////////////////////////////////////////////////////////////////
         
-      double estimateCost () {
-        return 0;
-      }
+        double estimateCost () {
+          return 0;
+        }
 
     };
 

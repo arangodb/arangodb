@@ -43,6 +43,8 @@
 namespace triagens {
   namespace aql {
 
+    class ExecutionEngine;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   AggregatorGroup
 // -----------------------------------------------------------------------------
@@ -99,11 +101,8 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionBlock (AQL_TRANSACTION_V8* trx,
-                        ExecutionNode const* ep)
-          : _trx(trx), _exeNode(ep), _done(false), _depth(0),
-            _varOverview(nullptr) {
-        }
+        ExecutionBlock (ExecutionEngine*,
+                        ExecutionNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -266,6 +265,7 @@ namespace triagens {
         void inheritRegisters (AqlItemBlock const* src,
                                AqlItemBlock* dst,
                                size_t row);
+        
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the following is internal to pull one more block and append it to
 /// our _buffer deque. Returns true if a new block was appended and false if
@@ -333,6 +333,12 @@ namespace triagens {
                                    size_t& skipped);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief the execution engine
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionEngine* _engine;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief the transaction for this query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -363,16 +369,16 @@ namespace triagens {
         std::deque<AqlItemBlock*> _buffer;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief info about variables, filled in by staticAnalysis
+////////////////////////////////////////////////////////////////////////////////
+
+        std::shared_ptr<VarOverview> _varOverview;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief current working position in the first entry of _buffer
 ////////////////////////////////////////////////////////////////////////////////
 
         size_t _pos;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief if this is set, we are done, this is reset to false by execute()
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _done;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief depth of frames (number of FOR statements here or above)
@@ -381,10 +387,14 @@ namespace triagens {
         int _depth;  // will be filled in by staticAnalysis
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief info about variables, filled in by staticAnalysis
+/// @brief if this is set, we are done, this is reset to false by execute()
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::shared_ptr<VarOverview> _varOverview;
+        bool _done;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public variables
+// -----------------------------------------------------------------------------
 
       public:
 
@@ -403,8 +413,10 @@ namespace triagens {
 
       public:
 
-        SingletonBlock (AQL_TRANSACTION_V8* trx, SingletonNode const* ep)
-          : ExecutionBlock(trx, ep), _inputRegisterValues(nullptr) {
+        SingletonBlock (ExecutionEngine* engine, 
+                        SingletonNode const* ep)
+          : ExecutionBlock(engine, ep), 
+            _inputRegisterValues(nullptr) {
         }
 
         ~SingletonBlock () {
@@ -467,7 +479,7 @@ namespace triagens {
 
       public:
 
-        EnumerateCollectionBlock (AQL_TRANSACTION_V8* trx,
+        EnumerateCollectionBlock (ExecutionEngine* engine,
                                   EnumerateCollectionNode const* ep);
 
         ~EnumerateCollectionBlock ();
@@ -557,9 +569,9 @@ namespace triagens {
 
       public:
 
-        EnumerateListBlock (AQL_TRANSACTION_V8* trx,
-                                  EnumerateListNode const* ep)
-          : ExecutionBlock(trx, ep) {
+        EnumerateListBlock (ExecutionEngine* engine,
+                            EnumerateListNode const* ep)
+          : ExecutionBlock(engine, ep) {
 
         }
 
@@ -638,9 +650,9 @@ namespace triagens {
 
       public:
 
-        CalculationBlock (AQL_TRANSACTION_V8* trx,
+        CalculationBlock (ExecutionEngine* engine,
                           CalculationNode const* en)
-          : ExecutionBlock(trx, en),
+          : ExecutionBlock(engine, en),
             _expression(en->expression()),
             _outReg(0) {
 
@@ -668,11 +680,12 @@ namespace triagens {
         virtual AqlItemBlock* getSome (size_t atLeast,
                                        size_t atMost);
 
+      private:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief we hold a pointer to the expression in the plan
 ////////////////////////////////////////////////////////////////////////////////
 
-      private:
         Expression* _expression;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -709,10 +722,11 @@ namespace triagens {
 
       public:
 
-        SubqueryBlock (AQL_TRANSACTION_V8* trx,
+        SubqueryBlock (ExecutionEngine* engine,
                        SubqueryNode const* en,
                        ExecutionBlock* subquery)
-          : ExecutionBlock(trx, en), _outReg(0),
+          : ExecutionBlock(engine, en), 
+            _outReg(0),
            _subquery(subquery) {
         }
 
@@ -755,8 +769,9 @@ namespace triagens {
 
       public:
 
-        FilterBlock (AQL_TRANSACTION_V8* trx, FilterNode const* ep)
-          : ExecutionBlock(trx, ep) {
+        FilterBlock (ExecutionEngine* engine,
+                     FilterNode const* ep)
+          : ExecutionBlock(engine, ep) {
         }
 
         ~FilterBlock () {
@@ -822,9 +837,9 @@ namespace triagens {
 
       public:
 
-        AggregateBlock (AQL_TRANSACTION_V8* trx,
+        AggregateBlock (ExecutionEngine* engine,
                         ExecutionNode const* ep)
-          : ExecutionBlock(trx, ep),
+          : ExecutionBlock(engine, ep),
             _groupRegister(0),
             _variableNames() {
         }
@@ -886,9 +901,9 @@ namespace triagens {
 
       public:
 
-        SortBlock (AQL_TRANSACTION_V8* trx,
+        SortBlock (ExecutionEngine* engine,
                    ExecutionNode const* ep)
-          : ExecutionBlock(trx, ep),
+          : ExecutionBlock(engine, ep),
             _stable(false) {
         }
 
@@ -955,8 +970,11 @@ namespace triagens {
 
       public:
 
-        LimitBlock (AQL_TRANSACTION_V8* trx, LimitNode const* ep)
-          : ExecutionBlock(trx, ep), _offset(ep->_offset), _limit(ep->_limit),
+        LimitBlock (ExecutionEngine* engine, 
+                    LimitNode const* ep)
+          : ExecutionBlock(engine, ep), 
+            _offset(ep->_offset), 
+            _limit(ep->_limit),
             _state(0) {  // start in the beginning
         }
 
@@ -1010,8 +1028,9 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ReturnBlock (AQL_TRANSACTION_V8* trx, ReturnNode const* ep)
-          : ExecutionBlock(trx, ep) {
+        ReturnBlock (ExecutionEngine* engine,
+                     ReturnNode const* ep)
+          : ExecutionBlock(engine, ep) {
 
         }
 
@@ -1043,7 +1062,8 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ModificationBlock (AQL_TRANSACTION_V8*, ModificationNode const*);
+        ModificationBlock (ExecutionEngine*, 
+                           ModificationNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -1086,6 +1106,13 @@ namespace triagens {
                         TRI_document_collection_t const*,
                         std::string&) const;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief process the result of a data-modification operation
+////////////////////////////////////////////////////////////////////////////////
+
+        void handleResult (int,
+                           bool);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
@@ -1100,7 +1127,6 @@ namespace triagens {
 
     };
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       RemoveBlock
 // -----------------------------------------------------------------------------
@@ -1113,7 +1139,8 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RemoveBlock (AQL_TRANSACTION_V8* trx, RemoveNode const* ep);
+        RemoveBlock (ExecutionEngine*, 
+                     RemoveNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -1147,7 +1174,8 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        InsertBlock (AQL_TRANSACTION_V8* trx, InsertNode const* ep);
+        InsertBlock (ExecutionEngine*, 
+                     InsertNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -1181,7 +1209,8 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        UpdateBlock (AQL_TRANSACTION_V8* trx, UpdateNode const* ep);
+        UpdateBlock (ExecutionEngine*, 
+                     UpdateNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -1215,7 +1244,8 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ReplaceBlock (AQL_TRANSACTION_V8* trx, ReplaceNode const* ep);
+        ReplaceBlock (ExecutionEngine*,
+                      ReplaceNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -1245,8 +1275,9 @@ namespace triagens {
 
       public:
 
-        NoResultsBlock (AQL_TRANSACTION_V8* trx, SingletonNode const* ep)
-          : ExecutionBlock(trx, ep) {
+        NoResultsBlock (ExecutionEngine* engine,
+                        SingletonNode const* ep)
+          : ExecutionBlock(engine, ep) {
         }
 
         ~NoResultsBlock () {
