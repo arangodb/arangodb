@@ -68,6 +68,11 @@ div.queryline {
   color: $c-black;
   height: 35px;
 
+  .textDiv {
+    margin-right: 10px;
+    margin-top: 4px;
+}
+
   select,
   input {
 
