@@ -916,6 +916,12 @@ namespace triagens {
           return this->toJson().toString();
         }
 
+        bool is1ValueRangeInfo () { //i.e. the range only covers single value
+          return _valid && _low != nullptr && _high != nullptr &&
+                  TRI_CheckSameValueJson(_low->_bound.json(), _high->_bound.json())
+                  && _low->_include && _high->_include;
+        }
+
         RangeInfoBound const* _low;
         RangeInfoBound const* _high;
         bool _valid;

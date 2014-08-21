@@ -148,19 +148,18 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
 /// @brief find nodes of a certain type
 ////////////////////////////////////////////////////////////////////////////////
 
-class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
+class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
   RangesInfo* _ranges; 
   ExecutionPlan* _plan;
   Variable const* _var;
   Optimizer::PlanList _out;
-  ExecutionNode* _prev; //TODO replace with use of parents . . .
   bool _canThrow; 
   
   //EnumerateCollectionNode const* _enumColl;
 
   public:
-    CalculationNodeFinder (ExecutionPlan* plan, Variable const * var, Optimizer::PlanList& out) 
-      : _plan(plan), _var(var), _out(out), _prev(nullptr), _canThrow(false){
+    FilterToEnumCollFinder (ExecutionPlan* plan, Variable const * var, Optimizer::PlanList& out) 
+      : _plan(plan), _var(var), _out(out), _canThrow(false){
         _ranges = new RangesInfo();
     };
 
@@ -188,10 +187,14 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
           std::vector<std::string> attrs;
           std::vector<RangeInfo*> rangeInfo;
           bool valid = true;
+          bool eq = true;
           for (auto x : *map){
             attrs.push_back(x.first);
             rangeInfo.push_back(x.second);
-            valid = valid && x.second->_valid; //make sure the ranges are all valid
+            valid = valid && x.second->_valid; // check the ranges are all valid
+            eq = eq && x.second->is1ValueRangeInfo(); 
+            // check if the condition is equality (i.e. the ranges only contain
+            // 1 value)
           }
           if (!valid){ // ranges are not valid . . . 
             std::cout << "INVALID RANGE!\n";
@@ -211,23 +214,10 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
             // make one new plan for every index in <idxs> that replaces the
             // enumerate collection node with a RangeIndexNode . . . 
             for (auto idx: idxs) {
-              bool stop = false;
-              if (idx->_type == TRI_IDX_TYPE_HASH_INDEX){
-                // only use a hash index if the corresponding rangeInfos are all
-                // equalities . . .
-                for(auto x : rangeInfo){
-                  if (x->_low == nullptr || x->_high == nullptr || 
-                      !TRI_CheckSameValueJson(x->_low->_bound.json(),
-                      x->_high->_bound.json()) || !(x->_low->_include) || 
-                      !(x->_high->_include) ) {
-                    stop = true;
-                    std::cout << "NOT USING HASH INDEX\n";
-                    break;
-                  }
-                }
-              }
-              
-              if (!stop) {
+              if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX || 
+                 (idx->_type == TRI_IDX_TYPE_HASH_INDEX && eq) ) {
+                //can only use the index if it is a skip list or (a hash and we
+                //are checking equality)
                 std::cout << "FOUND INDEX!\n";
                 auto newPlan = _plan->clone();
                 ExecutionNode* newNode = nullptr;
@@ -250,7 +240,6 @@ class CalculationNodeFinder : public WalkerWorker<ExecutionNode> {
           }
         }
       }
-      _prev = en;
     }
 
     void buildRangeInfo (AstNode const* node, std::string& enumCollVar, std::string& attr){
@@ -373,7 +362,7 @@ int triagens::aql::useIndexRange (Optimizer* opt,
     auto nn = static_cast<FilterNode*>(n);
     auto invars = nn->getVariablesUsedHere();
     TRI_ASSERT(invars.size() == 1);
-    CalculationNodeFinder finder(plan, invars[0], out);
+    FilterToEnumCollFinder finder(plan, invars[0], out);
     nn->walk(&finder);
   }
 
