@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, query results
+/// @brief Aql, execution statistics
 ///
 /// @file
 ///
@@ -27,72 +27,26 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_AQL_QUERY_RESULT_H
-#define ARANGODB_AQL_QUERY_RESULT_H 1
+#include "Aql/ExecutionStats.h"
 
-#include "Basics/Common.h"
-#include "BasicsC/json.h"
-
-namespace triagens {
-  namespace aql {
+using namespace triagens::aql;
+using Json = triagens::basics::Json;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                struct QueryResult
+// --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-    struct QueryResult {
-      QueryResult& operator= (QueryResult const& other) = delete;
-      
-      QueryResult (QueryResult&& other) {
-        code = other.code;
-        details = other.details;
-        json = other.json;
-        stats = other.stats;
-        zone = other.zone;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert the statistics to JSON
+////////////////////////////////////////////////////////////////////////////////
 
-        other.json = nullptr;
-        other.stats = nullptr;
-      }
+Json ExecutionStats::toJson () const {
+  Json json(Json::Array);
+  json.set("writesExecuted", Json(static_cast<double>(writesExecuted)));
+  json.set("writesIgnored", Json(static_cast<double>(writesIgnored)));
 
-      QueryResult (int code,
-                   std::string const& details) 
-        : code(code),
-          details(details),
-          zone(TRI_UNKNOWN_MEM_ZONE),
-          json(nullptr),
-          stats(nullptr) {
-      }
-      
-      explicit QueryResult (int code)
-        : QueryResult(code, "") {
-      }
-
-      QueryResult ()
-        : QueryResult(TRI_ERROR_NO_ERROR) {
-      }
-
-      ~QueryResult () {
-        if (json != nullptr) {
-          TRI_FreeJson(zone, json);
-        }
-        if (stats != nullptr) {
-          TRI_FreeJson(zone, stats);
-        }
-      }
-
-      int                             code;
-      std::string                     details;
-      std::unordered_set<std::string> bindParameters;
-      std::vector<std::string>        collectionNames;
-      TRI_memory_zone_t*              zone;
-      TRI_json_t*                     json;
-      TRI_json_t*                     stats;
-    };
-
-  }
+  return json;
 }
-
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

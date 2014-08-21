@@ -35,6 +35,7 @@
 #include "arangod/Aql/AqlItemBlock.h"
 #include "arangod/Aql/ExecutionBlock.h"
 #include "arangod/Aql/ExecutionPlan.h"
+#include "arangod/Aql/ExecutionStats.h"
 #include "Utils/AqlTransaction.h"
 
 namespace triagens {
@@ -124,7 +125,7 @@ namespace triagens {
 /// @brief hasMore
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool hasMore () {
+        inline bool hasMore () const {
           return _root->hasMore();
         }
 
@@ -132,7 +133,7 @@ namespace triagens {
 /// @brief count
 ////////////////////////////////////////////////////////////////////////////////
 
-        int64_t count () {
+        inline int64_t count () const {
           return _root->count();
         }
         
@@ -140,7 +141,7 @@ namespace triagens {
 /// @brief remaining
 ////////////////////////////////////////////////////////////////////////////////
 
-        int64_t remaining () {
+        inline int64_t remaining () const {
           return _root->remaining();
         }
 
@@ -149,6 +150,19 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void addBlock (ExecutionBlock*);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public variables
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execution statistics for the query
+/// note that the statistics are modification by execution blocks
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionStats               _stats;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

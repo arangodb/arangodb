@@ -1063,6 +1063,9 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
     if (queryResult.json != nullptr) {
       result->Set(TRI_V8_STRING("json"), TRI_ObjectJson(queryResult.json));
     }
+    if (queryResult.stats != nullptr) {
+      result->Set(TRI_V8_STRING("stats"), TRI_ObjectJson(queryResult.stats));
+    }
     return scope.Close(result);
   }
 

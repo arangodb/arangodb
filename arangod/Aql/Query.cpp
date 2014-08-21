@@ -248,6 +248,7 @@ QueryResult Query::execute () {
     plan = opt.stealBest(); // Now we own the best one again
 
     triagens::basics::Json json(triagens::basics::Json::List);
+    triagens::basics::Json stats;
 
     try { 
       auto engine = ExecutionEngine::instanciateFromPlan(&trx, plan);
@@ -268,6 +269,8 @@ QueryResult Query::execute () {
           delete value;
         }
 
+        stats = engine->_stats.toJson();
+
         delete engine;
       }
       catch (...) {
@@ -284,7 +287,8 @@ QueryResult Query::execute () {
     trx.commit();
     
     QueryResult result(TRI_ERROR_NO_ERROR);
-    result.json = json.steal(); 
+    result.json  = json.steal();
+    result.stats = stats.steal(); 
     return result;
   }
   catch (triagens::arango::Exception const& ex) {
