@@ -111,7 +111,7 @@ int triagens::aql::moveCalculationsUpRule (Optimizer* opt,
                                            ExecutionPlan* plan, 
                                            Optimizer::PlanList& out,
                                            bool& keep) {
-  
+
   keep = true; // plan will always be kept
   std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::FILTER, true);
   bool modified = false;
@@ -128,12 +128,6 @@ int triagens::aql::moveCalculationsUpRule (Optimizer* opt,
     // (sorting is needed for intersection later)
     std::sort(neededVars.begin(), neededVars.end(), &Variable::Comparator);
 
-std::cout << "FOUND A CALCULATIONNODE THAT CANNOT THROW\n";
-//std::cout << "JSON: " << nn->expression()->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString() << "\n";
-for (auto x : neededVars) {
-  std::cout << "CALC USES VAR: " << x->name << "\n";
-}
-
     std::vector<ExecutionNode*> stack;
     for (auto dep : n->getDependencies()) {
       stack.push_back(dep);
@@ -145,15 +139,11 @@ for (auto x : neededVars) {
 
       bool found = false;
 
-std::cout << "LOOKING AT NODE OF TYPE: " << current->getTypeString() << "\n";
-std::cout << "FOUND PREDEC NODE OF TYPE " << current->getTypeString() << "\n";
-
       auto&& varsSet = current->getVariablesSetHere();
       for (auto v : varsSet) {
         for (auto it = neededVars.begin(); it != neededVars.end(); ++it) {
           if ((*it)->id == v->id) {
             // shared variable, cannot move up any more
-            std::cout << "FOUND SHARED VARIABLE: " << v->name << "\n"; 
             found = true;
             break;
           }
@@ -178,9 +168,9 @@ std::cout << "FOUND PREDEC NODE OF TYPE " << current->getTypeString() << "\n";
 
       // first, delete the calculation from the plan
       plan->unlinkNode(n);
+      // and re-insert into before the current node
       plan->insertDependency(current, n);
       modified = true;
-    
     }
 
   }
@@ -201,6 +191,7 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
                                                       ExecutionPlan* plan, 
                                                       Optimizer::PlanList& out, 
                                                       bool& keep) {
+ std::cout << "REMOVE UNNECESSARY CALCULATIONS\n";  
   keep = true;
   std::vector<ExecutionNode*> nodes
     = plan->findNodesOfType(triagens::aql::ExecutionNode::CALCULATION, true);
