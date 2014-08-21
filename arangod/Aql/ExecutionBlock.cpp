@@ -355,12 +355,21 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
 
   // if _buffer.size() is > 0 then _pos points to a valid place . . .
   vector<AqlItemBlock*> collector;
+
+  auto freeCollector = [&collector]() {
+    for (auto x : collector) {
+      delete x;
+    }
+    collector.clear();
+  };
+
   try {
     while (skipped < atLeast) {
       if (_buffer.empty()) {
         if (skipping) {
           _dependencies[0]->skip(atLeast - skipped);
           skipped = atLeast;
+          freeCollector();
           return TRI_ERROR_NO_ERROR;
         }
         else {
@@ -377,7 +386,7 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
 
       if (cur->size() - _pos > atMost - skipped) {
         // The current block is too large for atMost:
-        if(!skipping){
+        if (! skipping){
           unique_ptr<AqlItemBlock> more(cur->slice(_pos, _pos + (atMost - skipped)));
           collector.push_back(more.get());
           more.release(); // do not delete it!
@@ -388,7 +397,7 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
       else if (_pos > 0) {
         // The current block fits into our result, but it is already
         // half-eaten:
-        if(!skipping){
+        if(! skipping){
           unique_ptr<AqlItemBlock> more(cur->slice(_pos, cur->size()));
           collector.push_back(more.get());
           more.release();
@@ -401,7 +410,7 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
       else {
         // The current block fits into our result and is fresh:
         skipped += cur->size();
-        if(!skipping){
+        if(! skipping){
           collector.push_back(cur);
         }
         else {
@@ -413,31 +422,27 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
     }
   }
   catch (...) {
-    for (auto x: collector){
-      delete x;
-    }
+    freeCollector();
     throw;
   }
 
-  if (!skipping) {
+  if (! skipping) {
     if (collector.size() == 1) {
       result = collector[0];
+      collector.clear();
     }
-    else if (collector.size() > 0) {
+    else if (! collector.empty()) {
       try {
         result = AqlItemBlock::concatenate(collector);
       }
       catch (...) {
-        for (auto x : collector) {
-          delete x;
-        }
+        freeCollector();
         throw;
-      }
-      for (auto x : collector) {
-        delete x;
       }
     }
   }
+
+  freeCollector();
   return TRI_ERROR_NO_ERROR;
 }
 

@@ -144,7 +144,7 @@ AqlItemBlock* AqlItemBlock::slice (size_t from,
           if (it == cache.end()) {
             AqlValue b = a.clone();
             res->_data[(row - from) * _nrRegs + col] = b;
-            cache.insert(make_pair(a,b));
+            cache.insert(make_pair(a, b));
           }
           else {
             res->_data[(row - from) * _nrRegs + col] = it->second;
