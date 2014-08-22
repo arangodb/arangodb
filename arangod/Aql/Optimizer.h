@@ -78,7 +78,7 @@ namespace triagens {
 /// @brief get number of plans contained
 ////////////////////////////////////////////////////////////////////////////////
 
-          size_t size () {
+          size_t size () const {
             return list.size();
           }
 

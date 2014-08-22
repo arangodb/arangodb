@@ -42,6 +42,7 @@ using namespace triagens::aql;
 VariableGenerator::VariableGenerator () 
   : _variables(),
     _id(0) {
+  _variables.reserve(8);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -72,7 +73,7 @@ std::unordered_map<VariableId, std::string const> VariableGenerator::variables (
       continue;
     }
 
-    result.insert(std::make_pair((*it).first, (*it).second->name));
+    result.emplace(std::make_pair((*it).first, (*it).second->name));
   }
 
   return result;
@@ -93,7 +94,7 @@ Variable* VariableGenerator::createVariable (char const* name,
   }
 
   try {
-    _variables.insert(std::make_pair(variable->id, variable));
+    _variables.emplace(std::make_pair(variable->id, variable));
   }
   catch (...) {
     // prevent memleak
@@ -117,7 +118,7 @@ Variable* VariableGenerator::createVariable (std::string const& name,
   }
 
   try {
-    _variables.insert(std::make_pair(variable->id, variable));
+    _variables.emplace(std::make_pair(variable->id, variable));
   }
   catch (...) {
     // prevent memleak
@@ -143,7 +144,7 @@ Variable* VariableGenerator::createVariable (triagens::basics::Json const& json)
   }
   
   try {
-    _variables.insert(std::make_pair(variable->id, variable));
+    _variables.emplace(std::make_pair(variable->id, variable));
   }
   catch (...) {
     // prevent memleak

@@ -80,7 +80,7 @@ std::string Scope::typeName () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Scope::addVariable (Variable* variable) {
-  _variables.insert(std::make_pair(variable->name, variable));
+  _variables.emplace(std::make_pair(variable->name, variable));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

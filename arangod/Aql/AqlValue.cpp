@@ -373,22 +373,22 @@ Json AqlValue::toJson (AQL_TRANSACTION_V8* trx,
       std::string id(trx->resolver()->getCollectionName(document->_info._cid));
       id.push_back('/');
       id.append(key);
-      json("_id", Json(id));
-      json("_rev", Json(std::to_string(TRI_EXTRACT_MARKER_RID(_marker))));
-      json("_key", Json(key));
+      json(TRI_VOC_ATTRIBUTE_ID, Json(id));
+      json(TRI_VOC_ATTRIBUTE_REV, Json(std::to_string(TRI_EXTRACT_MARKER_RID(_marker))));
+      json(TRI_VOC_ATTRIBUTE_KEY, Json(key));
 
       if (TRI_IS_EDGE_MARKER(_marker)) {
         // _from
         std::string from(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_FROM_CID(_marker)));
         from.push_back('/');
         from.append(TRI_EXTRACT_MARKER_FROM_KEY(_marker));
-        json("_from", Json(from));
+        json(TRI_VOC_ATTRIBUTE_FROM, Json(from));
         
         // _to
         std::string to(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_TO_CID(_marker)));
         to.push_back('/');
         to.append(TRI_EXTRACT_MARKER_TO_KEY(_marker));
-        json("_to", Json(to));
+        json(TRI_VOC_ATTRIBUTE_TO, Json(to));
       }
 
       // TODO: return _from and _to, and fix order of attributes!
@@ -475,27 +475,27 @@ Json AqlValue::extractArrayMember (AQL_TRANSACTION_V8* trx,
 
       // look for the attribute name in the shape
       if (*name == '_') {
-        if (strcmp(name, "_key") == 0) {
+        if (strcmp(name, TRI_VOC_ATTRIBUTE_KEY) == 0) {
           // _key value is copied into JSON
           return Json(TRI_UNKNOWN_MEM_ZONE, TRI_EXTRACT_MARKER_KEY(_marker));
         }
-        else if (strcmp(name, "_id") == 0) {
+        else if (strcmp(name, TRI_VOC_ATTRIBUTE_ID) == 0) {
           std::string id(trx->resolver()->getCollectionName(document->_info._cid));
           id.push_back('/');
           id.append(TRI_EXTRACT_MARKER_KEY(_marker));
           return Json(TRI_UNKNOWN_MEM_ZONE, id);
         }
-        else if (strcmp(name, "_rev") == 0) {
+        else if (strcmp(name, TRI_VOC_ATTRIBUTE_REV) == 0) {
           TRI_voc_rid_t rid = TRI_EXTRACT_MARKER_RID(_marker);
           return Json(TRI_UNKNOWN_MEM_ZONE, JsonHelper::uint64String(TRI_UNKNOWN_MEM_ZONE, rid));
         }
-        else if (strcmp(name, "_from") == 0) {
+        else if (strcmp(name, TRI_VOC_ATTRIBUTE_FROM) == 0) {
           std::string from(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_FROM_CID(_marker)));
           from.push_back('/');
           from.append(TRI_EXTRACT_MARKER_FROM_KEY(_marker));
           return Json(TRI_UNKNOWN_MEM_ZONE, from);
         }
-        else if (strcmp(name, "_to") == 0) {
+        else if (strcmp(name, TRI_VOC_ATTRIBUTE_TO) == 0) {
           std::string to(trx->resolver()->getCollectionName(TRI_EXTRACT_MARKER_TO_CID(_marker)));
           to.push_back('/');
           to.append(TRI_EXTRACT_MARKER_TO_KEY(_marker));

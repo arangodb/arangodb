@@ -437,7 +437,7 @@ AstNode* Ast::createNodeParameter (char const* name) {
   node->setStringValue(name);
 
   // insert bind parameter name into list of found parameters
-  _bindParameters.insert(std::string(name));
+  _bindParameters.emplace(name);
 
   return node;
 }

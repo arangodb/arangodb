@@ -196,7 +196,7 @@ ExecutionNode* ExecutionPlan::registerNode (ExecutionNode* node) {
   TRI_ASSERT(node->id() > 0);
 
   try {
-    _ids.insert(std::make_pair(node->id(), node));
+    _ids.emplace(std::make_pair(node->id(), node));
   }
   catch (...) {
     delete node;
@@ -974,7 +974,7 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
       auto&& setHere = en->getVariablesSetHere();
       for (auto v : setHere) {
         _valid.insert(v);
-        _varSetBy.insert(std::make_pair(v->id, en));
+        _varSetBy.emplace(std::make_pair(v->id, en));
       }
       en->setVarsValid(_valid);
       en->setVarUsageValid();
