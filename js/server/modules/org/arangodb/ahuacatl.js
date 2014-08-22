@@ -4912,7 +4912,7 @@ function RESOLVE_GRAPH_TO_EDGES (graphname, options) {
 /// @brief GET ALL EDGE and VERTEX COLLECTION ACCORDING TO DIRECTION
 ////////////////////////////////////////////////////////////////////////////////
 
-function RESOLVE_GRAPH_START_VERTICES(graphName, options) {
+function RESOLVE_GRAPH_START_VERTICES (graphName, options) {
   // check graph exists and load edgeDefintions
   var graph = DOCUMENT_HANDLE("_graphs/" + graphName), collections ;
   if (! graph) {
@@ -4926,7 +4926,7 @@ function RESOLVE_GRAPH_START_VERTICES(graphName, options) {
   return DOCUMENTS_BY_EXAMPLE(
     collections.fromCollections.filter(removeDuplicates), options.fromVertexExample
   );
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief GET ALL EDGE and VERTEX COLLECTION ACCORDING TO DIRECTION
