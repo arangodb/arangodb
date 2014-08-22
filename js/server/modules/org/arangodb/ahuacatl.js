@@ -4907,7 +4907,7 @@ function RESOLVE_GRAPH_START_VERTICES(graphName, options) {
   return DOCUMENTS_BY_EXAMPLE(
     collections.fromCollections.filter(removeDuplicates), options.fromVertexExample
   );
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief GET ALL EDGE and VERTEX COLLECTION ACCORDING TO DIRECTION
