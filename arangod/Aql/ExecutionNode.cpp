@@ -165,7 +165,8 @@ ExecutionNode* ExecutionNode::fromJsonFactory (Ast* ast,
       return new ReturnNode(ast, oneNode);
     case NORESULTS:
       return new NoResultsNode(ast, oneNode);
-
+    case INDEX_RANGE:
+      return new IndexRangeNode(ast, oneNode);
     case INTERSECTION:
     case PROJECTION:
     case LOOKUP_JOIN:
@@ -174,7 +175,6 @@ ExecutionNode* ExecutionNode::fromJsonFactory (Ast* ast,
     case LOOKUP_INDEX_RANGE:
     case LOOKUP_FULL_COLLECTION:
     case CONCATENATION:
-    case INDEX_RANGE:
     case MERGE:
     case REMOTE:
       // TODO: handle these types of nodes
@@ -493,6 +493,26 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
   
   // And add it:
   nodes(json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor for IndexRangeNode from Json
+////////////////////////////////////////////////////////////////////////////////
+
+IndexRangeNode::IndexRangeNode (Ast* ast, basics::Json const& base)
+  : ExecutionNode(base),
+    _vocbase(ast->query()->vocbase()),
+    _collection(ast->query()->collections()->add(JsonHelper::getStringValue(base.json(), 
+            "collection"), TRI_TRANSACTION_READ)),
+    _outVariable(varFromJson(ast, base, "outVariable")) {
+      
+  _ranges = new vector<RangeInfo*>;
+  for(size_t i = 0; i < base.size(); i++){ //loop over the ranges . . .
+    _ranges->push_back(new RangeInfo(base.at(i)));
+  }
+
+  // now the index . . . TODO the following could be a constructor method for
+  // an Index object when these are actually used
 }
 
 // -----------------------------------------------------------------------------

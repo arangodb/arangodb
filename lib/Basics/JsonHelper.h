@@ -32,7 +32,6 @@
 
 #include "Basics/Common.h"
 #include "BasicsC/json.h"
-#include "arangod/Utils/Exception.h"
 
 namespace triagens {
   namespace basics {
@@ -250,6 +249,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         static TRI_json_t const* getArray (TRI_json_t const* json, const char* name); 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a list sub-element, or a throws an exception if the
+/// sub-element does not exist or if it is not a list
+////////////////////////////////////////////////////////////////////////////////
+
+        static TRI_json_t const* getList (TRI_json_t const* json, const char* name); 
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -753,7 +759,7 @@ namespace triagens {
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json at (int pos) {
+        Json at (int pos) const {
           if (! TRI_IsListJson(_json)) {
             throw JsonException("Json is no list");
           }
@@ -846,7 +852,7 @@ namespace triagens {
 /// @brief returns the length of the list
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t size () throw() {
+        size_t size () const throw() {
           if (! TRI_IsListJson(_json)) {
             throw JsonException("Json is no list");
           }
