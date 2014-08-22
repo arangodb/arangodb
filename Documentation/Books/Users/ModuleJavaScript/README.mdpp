@@ -39,7 +39,7 @@ are described in the following chapters.
 
 !SUBSECTION Node Modules
 
-ArangoDB also support some [node](http://www.nodejs.org/)modules.
+ArangoDB also supports some [node](http://www.nodejs.org/) modules.
 
 * <a href="http://nodejs.org/api/assert.html">"assert"</a> implements 
   assertion and testing functions.
@@ -83,6 +83,10 @@ The following <a href="https://npmjs.org/">node packages</a> are preinstalled.
   for JavaScript that provides a lot of the functional programming support that 
   you would expect in Prototype.js (or Ruby), but without extending any of the
   built-in JavaScript objects.
+
+Other node modules may be installed and used in ArangoDB, too. However,
+only those modules will work in ArangoDB that do not refer to node.js-internal
+variables or methods and do not include further node modules that do so.
 
 !SUBSECTION require
 
