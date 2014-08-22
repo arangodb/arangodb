@@ -1,5 +1,10 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
+
+* front-end: added function to move documents to another collection
+
+* front-end: added sort-by attribute to the documents filter
+
 * front-end: added sorting feature to database, graph management and user management view.
 
 * issue #989: front-end: Databases view not refreshing after deleting a database
@@ -44,8 +49,8 @@ v2.3.0 (XXXX-XX-XX)
 * front-end: the user-set filter of a collection is now stored until the user navigates to
   another collection.
 
-* front-end: fetching and filtering of documents and query operations are now handled with
-  asynchronous ajax calls.
+* front-end: fetching and filtering of documents, statistics, and query operations are now
+  handled with asynchronous ajax calls.
 
 * front-end: added process indicator if the front-end is waiting for a server operation.
 
