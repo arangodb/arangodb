@@ -509,19 +509,24 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
 /// @brief constructor for IndexRangeNode from Json
 ////////////////////////////////////////////////////////////////////////////////
 
-IndexRangeNode::IndexRangeNode (Ast* ast, basics::Json const& base)
-  : ExecutionNode(base),
+IndexRangeNode::IndexRangeNode (Ast* ast, basics::Json const& json)
+  : ExecutionNode(json),
     _vocbase(ast->query()->vocbase()),
-    _collection(ast->query()->collections()->add(JsonHelper::getStringValue(base.json(), 
+    _collection(ast->query()->collections()->add(JsonHelper::getStringValue(json.json(), 
             "collection"), TRI_TRANSACTION_READ)),
-    _outVariable(varFromJson(ast, base, "outVariable")), _ranges() {
+    _outVariable(varFromJson(ast, json, "outVariable")), _ranges() {
       
-  for(size_t i = 0; i < base.size(); i++){ //loop over the ranges . . .
-    _ranges.push_back(new RangeInfo(base.at(i)));
+  for(size_t i = 0; i < json.size(); i++){ //loop over the ranges . . .
+    _ranges.push_back(new RangeInfo(json.at(i)));
   }
-
-  // now the index . . . TODO the following could be a constructor method for
+  
+  // now the index . . . 
+  // TODO the following could be a constructor method for
   // an Index object when these are actually used
+  auto index = JsonHelper::getArray(json.json(), "index");
+  auto iid = JsonHelper::getArrayElement(index, "id");
+  _index = TRI_LookupIndex(_collection->documentCollection(), 
+      JsonHelper::getNumericValue<TRI_idx_iid_t>(iid, 0));
 }
 
 // -----------------------------------------------------------------------------
