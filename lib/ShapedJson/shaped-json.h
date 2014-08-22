@@ -28,8 +28,8 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_SHAPED_JSON_SHAPED__JSON_H
-#define ARANGODB_SHAPED_JSON_SHAPED__JSON_H 1
+#ifndef ARANGODB_SHAPED_JSON_SHAPED_JSON_H
+#define ARANGODB_SHAPED_JSON_SHAPED_JSON_H 1
 
 #include "Basics/Common.h"
 
@@ -941,7 +941,6 @@ void TRI_SortShapeValues (TRI_shape_value_t* values,
 
 TRI_shaped_json_t* TRI_ShapedJsonJson (struct TRI_shaper_s*,
                                        TRI_json_t const*,
-                                       bool,
                                        bool);
 
 ////////////////////////////////////////////////////////////////////////////////

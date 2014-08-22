@@ -226,7 +226,7 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
 
     TRI_document_collection_t* document = trxCollection->_collection->_collection;
     TRI_memory_zone_t* zone = document->getShaper()->_memoryZone;  // PROTECTED by trx in trxCollection
-    TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(document->getShaper(), json, true, true);  // PROTECTED by trx in trxCollection
+    TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(document->getShaper(), json, true);  // PROTECTED by trx in trxCollection
     
     if (shaped == nullptr) {
       errorMsg = TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);

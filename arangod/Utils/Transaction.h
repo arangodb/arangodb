@@ -476,7 +476,7 @@ namespace triagens {
 
           TRI_shaper_t* shaper = this->shaper(trxCollection);
           TRI_memory_zone_t* zone = shaper->_memoryZone;
-          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json, true, isLocked(trxCollection, TRI_TRANSACTION_WRITE));
+          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json, true);
 
           if (shaped == nullptr) {
             return TRI_ERROR_ARANGO_SHAPER_FAILED;
@@ -511,7 +511,7 @@ namespace triagens {
 
           TRI_shaper_t* shaper = this->shaper(trxCollection);
           TRI_memory_zone_t* zone = shaper->_memoryZone;
-          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json, true, isLocked(trxCollection, TRI_TRANSACTION_WRITE));
+          TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(shaper, json, true);
 
           if (shaped == nullptr) {
             return TRI_ERROR_ARANGO_SHAPER_FAILED;

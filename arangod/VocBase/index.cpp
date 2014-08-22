@@ -1164,7 +1164,7 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
             return TRI_ERROR_BAD_PARAMETER;
           }
 
-          TRI_shaped_json_t* shapedObject = TRI_ShapedJsonJson(document->getShaper(), jsonObject, false, false);  // ONLY IN INDEX, PROTECTED by RUNTIME
+          TRI_shaped_json_t* shapedObject = TRI_ShapedJsonJson(document->getShaper(), jsonObject, false);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
           if (shapedObject != nullptr) {
             relationOperator->_fields[j] = *shapedObject; // shallow copy here is ok
