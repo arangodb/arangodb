@@ -284,7 +284,8 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
     _defaultWaitForSync(false),
     _disableReplicationApplier(false),
-    _server(nullptr) {
+    _server(nullptr),
+    _developmentMode(false) {
 
   char* p = TRI_GetTempPath();
   // copy the string
