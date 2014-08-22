@@ -204,30 +204,43 @@ describe ArangoDB do
         doc.headers["x-arango-replication-lastincluded"].should_not eq("0")
         doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
          
-        body = doc.response.body.split("\n")[0]
-        document = JSON.parse(body)
-      
-        document.should have_key("tick") 
-        document.should have_key("type") 
-        document.should have_key("cid") 
-        document.should have_key("collection") 
+        body = doc.response.body
+        
+        while 1
+          position = body.index("\n")
 
-        document["tick"].should match(/^\d+$/)
-        document["tick"].to_i.should >= fromTick.to_i
-        document["type"].should eq(2000) 
-        document["cid"].should eq(cid) 
+          break if position == nil
 
-        c = document["collection"]
-        c.should have_key("version")
-        c["type"].should eq(2)
-        c["cid"].should eq(cid)
-        c["deleted"].should eq(false)
-        c["doCompact"].should eq(true)
-        c.should have_key("maximalSize")
-        c["maximalSize"].should be_kind_of(Integer)
-        c["name"].should eq("UnitTestsReplication")
-        c["isVolatile"].should eq(false)
-        c["waitForSync"].should eq(true)
+          part = body.slice(0, position)
+          document = JSON.parse(part)
+          
+          if document["type"] == 2000 and document["cid"] == cid
+            document.should have_key("tick") 
+            document.should have_key("type") 
+            document.should have_key("cid") 
+            document.should have_key("collection") 
+
+            document["tick"].should match(/^\d+$/)
+            document["tick"].to_i.should >= fromTick.to_i
+            document["type"].should eq(2000) 
+            document["cid"].should eq(cid) 
+
+            c = document["collection"]
+            c.should have_key("version")
+            c["type"].should eq(2)
+            c["cid"].should eq(cid)
+            c["deleted"].should eq(false)
+            c["doCompact"].should eq(true)
+            c.should have_key("maximalSize")
+            c["maximalSize"].should be_kind_of(Integer)
+            c["name"].should eq("UnitTestsReplication")
+            c["isVolatile"].should eq(false)
+            c["waitForSync"].should eq(true)
+          end
+
+          body = body.slice(position + 1, body.length)
+        end
+         
       end
 
       it "fetches some collection operations from the follow log" do

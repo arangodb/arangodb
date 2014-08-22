@@ -4189,6 +4189,9 @@ div.dropdownInner {
 div.queryline {
   color: black;
   height: 35px; }
+  div.queryline .textDiv {
+    margin-right: 10px;
+    margin-top: 4px; }
   div.queryline select,
   div.queryline input {
     margin-bottom: 5px; }
@@ -4463,7 +4466,7 @@ div.breadcrumb a.disabledBread {
   .modal-body .tab-content {
     min-height: 200px; }
   .modal-body .errorMessage {
-    color: red;
+    color: #f00;
     font-size: 9pt;
     margin-bottom: 5px;
     margin-top: -9px;
@@ -4598,6 +4601,9 @@ pre.gv-object-view {
     margin-right: 5px; }
   .fixedDropdown .notificationItem {
     color: black; }
+    .fixedDropdown .notificationItem .notificationItemTitle:hover {
+      color: #000;
+      cursor: default; }
     .fixedDropdown .notificationItem i {
       color: rgba(0, 0, 0, 0.2);
       font-size: 20px;
@@ -4974,7 +4980,7 @@ pre.gv-object-view {
     margin-top: 1px; }
 
 .queryMethods button a {
-  color: white; }
+  color: #fff; }
 
 .aql-editor {
   border-color: #a0a0a0;
@@ -5800,7 +5806,7 @@ input.gv-radio-button {
   .arango-collection-ul a {
     font-size: 13px; } }
 .document-info {
-  background-color: #ffffff;
+  background-color: #fff;
   border: 1px solid rgba(0, 0, 0, 0.2);
   margin-bottom: 8px;
   margin-top: -10px;
@@ -5811,8 +5817,8 @@ input.gv-radio-button {
     width: 100%; }
     .document-info .document-info-container .document-inner-info-container {
       float: left;
-      margin-top: 5px;
-      margin-left: 10px; }
+      margin-left: 10px;
+      margin-top: 5px; }
       .document-info .document-info-container .document-inner-info-container .document-attribute {
         margin-right: 20px; }
         .document-info .document-info-container .document-inner-info-container .document-attribute div {
@@ -5822,7 +5828,7 @@ input.gv-radio-button {
     font-size: 11pt;
     min-width: 55px; }
   .document-info .document-thin-font {
-    color: green;
+    color: #008000;
     font-family: droid sans mono, monospace, courier new, courier, sans-serif;
     font-size: 11pt; }
   .document-info .document-type-container div {
@@ -5834,14 +5840,53 @@ input.gv-radio-button {
 
 .jsoneditor .tree div {
   font-size: 11pt; }
-.jsoneditor .ace_layer div {
-  font-size: 11pt; }
-.jsoneditor .ace_text-layer div {
-  font-size: 11pt; }
-.jsoneditor .ace_line_group div {
-  font-size: 11pt; }
 .jsoneditor .outer .tree > table > tbody > tr:first-of-type {
   visibility: hidden; }
+
+#progressPlaceholder {
+  bottom: 0;
+  left: 0;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 9999; }
+
+.progress-view {
+  opacity: 0;
+  background-color: transparent;
+  border-radius: 5px;
+  color: #333232;
+  height: 180px;
+  left: 50%;
+  margin: -100px 0 0 -150px;
+  position: absolute;
+  top: 50%;
+  opacity: 0;
+  width: 300px; }
+  .progress-view .progress-content {
+    margin-left: 90px;
+    margin-top: 10px;
+    opacity: 0; }
+    .progress-view .progress-content .fa-spinner {
+      opacity: 0;
+      font-size: 100pt; }
+  .progress-view .progress-message {
+    background-color: #333232;
+    border-radius: 0 0 5px 5px;
+    border-top: 1px solid #fff;
+    color: #fff;
+    font-weight: 200;
+    height: 25px;
+    padding-top: 3px;
+    text-align: center;
+    opacity: 0; }
+
+#progressPlaceholderIcon {
+  color: #8aa051;
+  float: left;
+  font-size: 22px;
+  margin-left: 10px;
+  margin-top: 6px; }
 
 .hotkeysList .hotkeysLabel {
   clear: both;
@@ -5923,6 +5968,14 @@ input.gv-radio-button {
     margin-top: 4px; }
   .arangoDataTable .dataTable .noPointer tr {
     cursor: default; }
+  .arangoDataTable .selected-row {
+    background-color: #8aa051 !important; }
+    .arangoDataTable .selected-row div {
+      color: #fff !important; }
+    .arangoDataTable .selected-row li {
+      color: #fff !important; }
+    .arangoDataTable .selected-row span {
+      color: #fff !important; }
 
 .api-container #resources > li.resource:nth-child(even),
 table.arangoDataTable tr.even {
@@ -6026,11 +6079,16 @@ table .sorting {
   border: 0 !important; }
 
 .docsFirstCol {
-  width: 70%; }
+  height: 26px;
+  width: 80%; }
 
 .docsSecCol {
+  height: 26px;
   min-width: 400px !important;
-  width: 20%; }
+  width: 10%; }
+
+.docsThirdCol {
+  height: 26px; }
 
 .add-filter-item {
   margin-left: 5px; }
@@ -6050,3 +6108,16 @@ table .sorting {
 
 .breadcrumb a.activeBread {
   color: #b9d375; }
+
+.documents-size {
+  float: right;
+  margin-top: -58px;
+  width: 115px; }
+
+.ace_error {
+  background: none !important; }
+
+#exportHeader .fa-exclamation-circle {
+  color: #333232;
+  font-size: 13pt;
+  margin-right: 10px; }

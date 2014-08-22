@@ -27,14 +27,24 @@
 
     initialize: function(){
       this._show = true;
-      this.buttonConfig = [
-        window.modalView.createDeleteButton(
-          "Uninstall", this.uninstall.bind(this)
-        ),
-        window.modalView.createSuccessButton(
-          "Save", this.changeFoxx.bind(this)
-        )
-      ];
+      var mount = this.model.get("mount");
+      var isSystem = (
+        this.model.get("isSystem") &&
+        mount.charAt(0) === '/' &&
+          mount.charAt(1) === '_'
+      );
+      if (isSystem) {
+        this.buttonConfig = [];
+      } else {
+        this.buttonConfig = [
+          window.modalView.createDeleteButton(
+            "Uninstall", this.uninstall.bind(this)
+          ),
+          window.modalView.createSuccessButton(
+            "Save", this.changeFoxx.bind(this)
+          )
+        ];
+      }
       this.showMod = window.modalView.show.bind(
         window.modalView,
         "modalTable.ejs",
@@ -72,6 +82,12 @@
         isSystem,
         active,
         modView = window.modalView;
+      var mount = this.model.get("mount");
+      var editable = !(
+        this.model.get("isSystem") &&
+        mount.charAt(0) === '/' &&
+          mount.charAt(1) === '_'
+      );
       if (this.model.get("isSystem")) {
         isSystem = "Yes";
       } else {
@@ -85,18 +101,24 @@
       list.push(modView.createReadOnlyEntry(
         "id_name", "Name", name
       ));
-      list.push(modView.createTextEntry(
-        "change-mount-point", "Mount", this.model.get("mount"),
-        "The path where the app can be reached.",
-        "mount-path",
-        true,
-        [
-          {
-            rule: Joi.string().required(),
-            msg: "No mount-path given."
-          }
-        ]
-      ));
+      if (editable) {
+        list.push(modView.createTextEntry(
+          "change-mount-point", "Mount", this.model.get("mount"),
+          "The path where the app can be reached.",
+          "mount-path",
+          true,
+          [
+            {
+              rule: Joi.string().required(),
+              msg: "No mount-path given."
+            }
+          ]
+        ));
+      } else {
+        list.push(modView.createReadOnlyEntry(
+          "change-mount-point", "Mount", this.model.get("mount")
+        ));
+      }
       /*
        * For the future, update apps to available newer versions
        * versOptions.push(modView.createOptionEntry(appInfos[2]));
@@ -116,9 +138,15 @@
 
     editFoxxDialog: function(event) {
       event.stopPropagation();
-      if (this.model.get("isSystem") || this.model.get("development")) {
+      var mount = this.model.get("mount");
+      var isSystem = (
+        this.model.get("isSystem") &&
+        mount.charAt(0) === '/' &&
+          mount.charAt(1) === '_'
+      );
+      if (this.model.get("development")) {
         this.buttonConfig[0].disabled = true;
-      } else {
+      } else if (!isSystem) {
         delete this.buttonConfig[0].disabled;
       }
       this.showMod(this.buttonConfig, this.fillValues());
@@ -163,11 +191,9 @@
     },
 
     uninstall: function () {
-      if (!this.model.get("isSystem")) {
-        this.model.destroy({ async: false });
-        window.modalView.hide();
-        this.appsView.reload();
-      }
+      this.model.destroy({ async: false });
+      window.modalView.hide();
+      this.appsView.reload();
     },
 
     showDocu: function(event) {

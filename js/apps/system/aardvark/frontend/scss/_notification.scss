@@ -39,6 +39,11 @@
   .notificationItem {
     color: $c-black;
 
+    .notificationItemTitle:hover {
+      color: #000;
+      cursor: default;
+    }
+
     i {
       @extend %pull-left;
       @extend %clickable;

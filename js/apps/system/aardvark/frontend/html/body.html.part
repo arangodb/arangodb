@@ -5,6 +5,7 @@
       <div class="navlogo">
         <a class="logo" href="#"><img src="img/logo_arangodb_white.png"/></a>
       </div>
+      <div id="progressPlaceholderIcon"></div>
         <div class="statmenu" id="statisticBar">
         </div>
         <div class="usermenu" id="userBar" style="float:right;">
@@ -21,6 +22,9 @@
   </div>
 
   <div id="modalPlaceholder">
+  </div>
+
+  <div id="progressPlaceholder" style="display:none">
   </div>
 
   </div>

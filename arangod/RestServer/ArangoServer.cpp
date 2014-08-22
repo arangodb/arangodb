@@ -799,6 +799,7 @@ int ArangoServer::startupServer () {
 
   _applicationV8->setVocbase(vocbase);
   _applicationV8->setConcurrency(concurrency);
+  _applicationV8->defineDouble("DISPATCHER_THREADS", _dispatcherThreads);
 
   // .............................................................................
   // prepare everything
@@ -967,7 +968,7 @@ int ArangoServer::runConsole (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
-  ApplicationV8::V8Context* context = _applicationV8->enterContext(vocbase, 0, true, true);
+  ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, 0, true, true);
 
   v8::HandleScope globalScope;
 
@@ -1017,7 +1018,7 @@ int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
-  ApplicationV8::V8Context* context = _applicationV8->enterContext(vocbase, 0, true, true);
+  ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, 0, true, true);
 
   v8::HandleScope globalScope;
 

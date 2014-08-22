@@ -72,18 +72,22 @@
 
 .docsFirstCol {
   @extend %docs-col-no-border;
-  width: 70%;
+  height: 26px;
+  width: 80%;
 }
 
 .docsSecCol {
   @extend %docs-col-no-border;
+  height: 26px;
   min-width: 400px !important;
-  width: 20%;
+  width: 10%;
 }
 
 .docsThirdCol {
   @extend %docs-col-no-border;
   @extend %pull-right;
+
+  height: 26px;
 }
 
 .add-filter-item {
@@ -112,3 +116,18 @@
   color: $c-breadcrumb-a-active-bread;
 }
 
+.documents-size {
+  float: right;
+  margin-top: -58px;
+  width: 115px;
+}
+
+.ace_error {
+  background: none !important;
+}
+
+#exportHeader .fa-exclamation-circle {
+  color: $c-nav-bg;
+  font-size: 13pt;
+  margin-right: 10px;
+}

@@ -38,6 +38,20 @@
       return this.pagesize;
     },
 
+    setPageSize: function(newPagesize) {
+      if (newPagesize === "all") {
+        this.pagesize = 'all';
+      }
+      else {
+        try {
+          newPagesize = parseInt(newPagesize, 10);
+          this.pagesize = newPagesize;
+        }
+        catch (ignore) {
+        }
+      }
+    },
+
     setToFirst: function() {
       this.page = 0;
     },
@@ -61,6 +75,10 @@
 
     getTotal: function() {
       return this.totalAmount;
+    },
+
+    setTotalMinusOne: function() {
+      this.totalAmount--;
     }
 
   });

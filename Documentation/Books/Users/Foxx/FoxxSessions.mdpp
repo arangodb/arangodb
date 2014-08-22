@@ -1,0 +1,54 @@
+!CHAPTER Foxx Sessions
+
+Foxx provides some convenience methods to make working with sessions easier.
+
+!SUBSECTION Activate sessions
+
+Enables session features for the controller.
+
+`controller.activateSessions(options)`
+
+Once sessions have been activated, a *session* property will be added to the *request* object passed to route handlers defined on the controller, which will be a saved instance of the session model provided by the session storage.
+
+If the option *autoCreateSession* has not explicitly been set to *false*, a new session will be created for users that do not yet have an active session.
+
+If *type* is set to *"cookie"*, the session cookie will be updated after every route.
+
+*Parameter*
+
+* *options* (optional): an object with any of the following properties:
+  * *sessionStorageApp* (optional): mount point of the session storage app to use. Default: *"/_system/sessions"*.
+  * *type* (optional): sessions type, currently only *"cookie"* is supported. Default: *"cookie"*.
+  * *cookieName* (optional): name of the session cookie if using cookie sessions. If a *cookieSecret* is provided, the signature will be stored in a cookie named *cookieName + "_sig"*. Defaults to *"sid"*.
+  * *cookieSecret* (optional): secret string to sign session cookies with if using cookie sessions.
+  * *autoCreateSession* (optional): whether a session should always be created if none exists. Default: *true*.
+
+@EXAMPLES
+
+```js
+var controller = new FoxxController(applicationContext);
+controller.activateSessions({
+  sessionStorageApp: '/_system/sessions',
+  cookieName: 'sid',
+  cookieSecret: 'secret',
+  type: 'cookie'
+});
+```
+
+!SUBSECTION Define a session destruction route
+
+Defines a route that will destroy the session.
+
+`controller.destroySession(path, options)`
+
+Defines a route handler on the controller that destroys the session.
+
+When using cookie sessions, this function will clear the session cookie (if *autoCreateSession* was disabled) or create a new session cookie, before calling the *after* function.
+
+*Parameter*
+
+* *path*: route path as passed to *controller.get*, *controller.post*, etc.
+* *options* (optional): an object with any of the following properties:
+  * *method* (optional): HTTP method to handle. Default: *"post"*.
+  * *before* (optional): function to execute before the session is destroyed. Receives the same arguments as a regular route handler.
+  * *after* (optional): function to execute after the session is destroyed. Receives the same arguments as a regular route handler. Default: a function that sends a *{"message": "logged out"}* JSON response.

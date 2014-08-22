@@ -248,6 +248,10 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(RESULT_KEY_NOT_FOUND, "key not found in structure");
   REG_ERROR(RESULT_ELEMENT_NOT_FOUND, "element not found in structure");
   REG_ERROR(ERROR_APP_ALREADY_EXISTS, "newest version of app already installed");
+  REG_ERROR(ERROR_QUEUE_ALREADY_EXISTS, "named queue already exists");
+  REG_ERROR(ERROR_DISPATCHER_IS_STOPPING, "dispatcher stopped");
+  REG_ERROR(ERROR_QUEUE_UNKNOWN, "named queue does not exist");
+  REG_ERROR(ERROR_QUEUE_FULL, "named queue is full");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

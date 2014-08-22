@@ -31,8 +31,6 @@
 #ifndef ARANGODB_DISPATCHER_DISPATCHER_THREAD_H
 #define ARANGODB_DISPATCHER_DISPATCHER_THREAD_H 1
 
-#include "Basics/Common.h"
-
 #include "Basics/Thread.h"
 
 #include "Dispatcher/Job.h"
