@@ -6116,3 +6116,8 @@ table .sorting {
 
 .ace_error {
   background: none !important; }
+
+#exportHeader .fa-exclamation-circle {
+  color: #333232;
+  font-size: 13pt;
+  margin-right: 10px; }

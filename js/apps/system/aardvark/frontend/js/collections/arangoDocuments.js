@@ -8,6 +8,10 @@
 
     filters: [],
 
+    MAX_SORT: 12000,
+
+    lastQuery: {},
+
     sortAttribute: "_key",
 
     url: '/_api/documents',
@@ -157,7 +161,7 @@
       query = "FOR x in @@collection";
       query += this.setFiltersForQuery(bindVars);
       // Sort result, only useful for a small number of docs
-      if (this.getTotal() < 12000) {
+      if (this.getTotal() < this.MAX_SORT) {
         if (this.getSort() === '_key') {
           query += " SORT TO_NUMBER(x." + this.getSort() + ") == 0 ? x."
                 + this.getSort() + " : TO_NUMBER(x." + this.getSort() + ")";
@@ -210,6 +214,7 @@
               });
             });
           }
+          self.lastQuery = queryObj;
           callback();
           window.progressView.hide();
         },
@@ -222,6 +227,30 @@
 
     clearDocuments: function () {
       this.reset();
+    },
+
+    buildDownloadDocumentQuery: function() {
+      var self = this, query, queryObj, bindVars;
+
+      bindVars = {
+        "@collection": this.collectionID
+      };
+
+      query = "FOR x in " + this.collectionID;
+      query += this.setFiltersForQuery(bindVars);
+      // Sort result, only useful for a small number of docs
+      if (this.getTotal() < this.MAX_SORT) {
+        query += " SORT x." + this.getSort();
+      }
+
+      query += " RETURN x";
+
+      queryObj = {
+        query: query,
+        bindVars: bindVars
+      };
+
+      return query;
     },
 
     updloadDocuments : function (file) {
