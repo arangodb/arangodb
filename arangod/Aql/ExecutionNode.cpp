@@ -329,11 +329,13 @@ Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Json& nodes,
   for (size_t i = 0; i < _parents.size(); i++) {
     parents(Json(static_cast<double>(_parents[i]->id())));
   }
-  json("parents", parents);
+  if (verbose) {
+    json("parents", parents);
+  }
   json("id", Json(static_cast<double>(id())));
 
-  if (this->_estimatedCost != 0.0){
-    json("estimatedCost", Json(this->_estimatedCost));
+  if (_estimatedCost != 0.0){
+    json("estimatedCost", Json(_estimatedCost));
   }
   return json;
 }
