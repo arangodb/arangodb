@@ -55,10 +55,10 @@ namespace triagens {
         _bound = Json(TRI_UNKNOWN_MEM_ZONE, bound->toJson(TRI_UNKNOWN_MEM_ZONE, true));
       }
       
-      RangeInfoBound (basics::Json const& base) : 
-        _bound(Json(basics::JsonHelper::getArray(base.json(), "bound"), 
+      RangeInfoBound (basics::Json const& json) : 
+        _bound(Json(basics::JsonHelper::getArray(json.json(), "bound"), 
               basics::Json::NOFREE)),
-        _include(basics::JsonHelper::getBooleanValue(base.json(), "include")) {};
+        _include(basics::JsonHelper::getBooleanValue(json.json(), "include")) {};
 
       ~RangeInfoBound(){}
       
@@ -91,12 +91,26 @@ namespace triagens {
                     RangeInfoBound const* high )
           : _var(var), _attr(attr), _low(low), _high(high), _valid(true) {}
        
-        RangeInfo (basics::Json const& base) :
-          _var(basics::JsonHelper::getStringValue(base.json(), "var")),
-          _attr(basics::JsonHelper::getStringValue(base.json(), "attr")),
-          _low(new RangeInfoBound(base.get("low"))),
-          _high(new RangeInfoBound(base.get("high"))),
-          _valid(basics::JsonHelper::getBooleanValue(base.json(), "valid")) {}
+        RangeInfo (basics::Json const& json) :
+          _var(basics::JsonHelper::getStringValue(json.json(), "var")),
+          _attr(basics::JsonHelper::getStringValue(json.json(), "attr")),
+          _valid(basics::JsonHelper::getBooleanValue(json.json(), "valid")){
+
+            if(!json.get("low").isEmpty()){
+              _low = new RangeInfoBound(json.get("low"));
+            }
+            else {
+              _low = nullptr;
+            }
+            
+            if(!json.get("high").isEmpty()){
+              _high = new RangeInfoBound(json.get("high"));
+            }
+            else {
+              _high = nullptr;
+            }
+
+          }
 
         RangeInfo( const RangeInfo& copy ) = delete;
         RangeInfo& operator= ( RangeInfo const& copy ) = delete;
