@@ -856,6 +856,7 @@ int TRI_RenameFile (char const* old, char const* filename) {
 
   if (! moveResult) {
     DWORD errorCode = GetLastError();
+    LOG_TRACE("cannot rename file from '%s' to '%s': %d", old, filename, (int) errorCode);
     res = -1;
   }
   else {

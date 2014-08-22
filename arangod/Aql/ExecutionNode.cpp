@@ -165,23 +165,24 @@ ExecutionNode* ExecutionNode::fromJsonFactory (Ast* ast,
       return new ReturnNode(ast, oneNode);
     case NORESULTS:
       return new NoResultsNode(ast, oneNode);
-
+    case INDEX_RANGE:
+      return new IndexRangeNode(ast, oneNode);
     case INTERSECTION:
-    case PROJECTION:
     case LOOKUP_JOIN:
     case MERGE_JOIN:
     case LOOKUP_INDEX_UNIQUE:
     case LOOKUP_INDEX_RANGE:
     case LOOKUP_FULL_COLLECTION:
     case CONCATENATION:
-    case INDEX_RANGE:
     case MERGE:
-    case REMOTE:
+    case REMOTE: {
       // TODO: handle these types of nodes
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "unhandled node type");
+    }
 
-    case ILLEGAL:
+    case ILLEGAL: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid node type");
+    }
   }
   return nullptr;
 }
@@ -334,7 +335,7 @@ Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Json& nodes,
   }
   json("id", Json(static_cast<double>(id())));
 
-  if (_estimatedCost != 0.0){
+  if (_estimatedCost != 0.0) {
     json("estimatedCost", Json(_estimatedCost));
   }
   return json;
@@ -480,19 +481,52 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
   // put together the range info . . .
   Json ranges(Json::List);
 
-  for (auto x : *_ranges) {
+  for (auto x : _ranges) {
     ranges(x->toJson());
   }
-
+      
   // Now put info about vocbase and cid in there
   json("database", Json(_vocbase->_name))
       ("collection", Json(_collection->name))
       ("outVariable", _outVariable->toJson())
-      ("index", _index->json(_index))
       ("ranges", ranges);
   
+  TRI_json_t* idxJson = _index->json(_index);
+  if (idxJson != nullptr) {
+    try {
+      json.set("index", Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson)));
+    }
+    catch (...) {
+    }
+    TRI_Free(TRI_CORE_MEM_ZONE, idxJson);
+  }
+
   // And add it:
   nodes(json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor for IndexRangeNode from Json
+////////////////////////////////////////////////////////////////////////////////
+
+IndexRangeNode::IndexRangeNode (Ast* ast, basics::Json const& json)
+  : ExecutionNode(json),
+    _vocbase(ast->query()->vocbase()),
+    _collection(ast->query()->collections()->add(JsonHelper::getStringValue(json.json(), 
+            "collection"), TRI_TRANSACTION_READ)),
+    _outVariable(varFromJson(ast, json, "outVariable")), _ranges() {
+      
+  for(size_t i = 0; i < json.size(); i++){ //loop over the ranges . . .
+    _ranges.push_back(new RangeInfo(json.at(i)));
+  }
+  
+  // now the index . . . 
+  // TODO the following could be a constructor method for
+  // an Index object when these are actually used
+  auto index = JsonHelper::getArray(json.json(), "index");
+  auto iid = JsonHelper::getArrayElement(index, "id");
+  _index = TRI_LookupIndex(_collection->documentCollection(), 
+      JsonHelper::getNumericValue<TRI_idx_iid_t>(iid, 0));
 }
 
 // -----------------------------------------------------------------------------

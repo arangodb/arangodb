@@ -311,19 +311,17 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
   RangesInfo* _ranges; 
   ExecutionPlan* _plan;
   Variable const* _var;
-  Optimizer::PlanList _out;
+  Optimizer::PlanList* _out;
   bool _canThrow; 
   
-  //EnumerateCollectionNode const* _enumColl;
-
   public:
-    FilterToEnumCollFinder (ExecutionPlan* plan, Variable const * var, Optimizer::PlanList& out) 
+
+    FilterToEnumCollFinder (ExecutionPlan* plan, Variable const * var, Optimizer::PlanList* out) 
       : _plan(plan), _var(var), _out(out), _canThrow(false){
         _ranges = new RangesInfo();
     };
 
     void before (ExecutionNode* en) {
-
       _canThrow = (_canThrow || en->canThrow()); // can any node walked over throw?
 
       if (en->getType() == triagens::aql::ExecutionNode::CALCULATION) {
@@ -355,17 +353,18 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             // check if the condition is equality (i.e. the ranges only contain
             // 1 value)
           }
-          if (!valid){ // ranges are not valid . . . 
+          if (! valid){ // ranges are not valid . . . 
             std::cout << "INVALID RANGE!\n";
-            if (!_canThrow) {
+            if (! _canThrow) {
               
               auto newPlan = _plan->clone();
               auto parents = node->getParents();
-              for(auto x: parents){
+              for(auto x: parents) {
                 auto noRes = new NoResultsNode(newPlan->nextId());
                 newPlan->registerNode(noRes);
                 newPlan->insertDependency(x, noRes);
-                _out.push_back(newPlan);
+                std::cout << newPlan->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString() << "\n";
+                _out->push_back(newPlan);
               }
             }
           } 
@@ -375,15 +374,15 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             // enumerate collection node with a RangeIndexNode . . . 
             for (auto idx: idxs) {
               if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX || 
-                 (idx->_type == TRI_IDX_TYPE_HASH_INDEX && eq) ) {
+                 (idx->_type == TRI_IDX_TYPE_HASH_INDEX && eq)) {
                 //can only use the index if it is a skip list or (a hash and we
                 //are checking equality)
                 std::cout << "FOUND INDEX!\n";
                 auto newPlan = _plan->clone();
                 ExecutionNode* newNode = nullptr;
                 try{
-                  newNode = new IndexRangeNode( newPlan->nextId(), node->vocbase(), 
-                      node->collection(), node->outVariable(), idx, &rangeInfo);
+                  newNode = new IndexRangeNode(newPlan->nextId(), node->vocbase(), 
+                      node->collection(), node->outVariable(), idx, rangeInfo);
                   newPlan->registerNode(newNode);
                 }
                 catch (...) {
@@ -394,7 +393,8 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                   throw;
                 }
                 newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
-                _out.push_back(newPlan);
+                std::cout << newPlan->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString() << "\n";
+                _out->push_back(newPlan);
               }
             }
           }
@@ -402,36 +402,36 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       }
     }
 
-    void buildRangeInfo (AstNode const* node, std::string& enumCollVar, std::string& attr){
-      if(node->type == NODE_TYPE_REFERENCE){
+    void buildRangeInfo (AstNode const* node, std::string& enumCollVar, std::string& attr) {
+      if (node->type == NODE_TYPE_REFERENCE){
         auto x = static_cast<Variable*>(node->getData());
         auto setter = _plan->getVarSetBy(x->id);
         if( setter != nullptr && 
-          setter->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION){
+          setter->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION) {
           enumCollVar = x->name;
         }
         return;
       }
       
-      if(node->type == NODE_TYPE_ATTRIBUTE_ACCESS){
+      if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
         char const* attributeName = node->getStringValue();
         buildRangeInfo(node->getMember(0), enumCollVar, attr);
-        if(!enumCollVar.empty()){
+        if (! enumCollVar.empty()){
           attr.append(attributeName);
           attr.push_back('.');
         }
       }
       
-      if(node->type == NODE_TYPE_OPERATOR_BINARY_EQ){
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
         auto lhs = node->getMember(0);
         auto rhs = node->getMember(1);
         AstNode const* val;
         AstNode const* nextNode;
-        if(rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && lhs->type == NODE_TYPE_VALUE){
+        if(rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && lhs->type == NODE_TYPE_VALUE) {
           val = lhs;
           nextNode = rhs;
         }
-        else if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->type == NODE_TYPE_VALUE){
+        else if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->type == NODE_TYPE_VALUE) {
           val = rhs;
           nextNode = lhs;
         }
@@ -439,10 +439,10 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           val = nullptr;
         }
         
-        if(val != nullptr){
+        if(val != nullptr) {
           buildRangeInfo(nextNode, enumCollVar, attr);
-          if(!enumCollVar.empty()){
-            _ranges->insert(enumCollVar, attr.substr(0, attr.size()-1), 
+          if (! enumCollVar.empty()) {
+            _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
                 new RangeInfoBound(val, true), new RangeInfoBound(val, true));
           }
         }
@@ -451,10 +451,10 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       if(node->type == NODE_TYPE_OPERATOR_BINARY_LT || 
          node->type == NODE_TYPE_OPERATOR_BINARY_GT ||
          node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
-         node->type == NODE_TYPE_OPERATOR_BINARY_GE){
+         node->type == NODE_TYPE_OPERATOR_BINARY_GE) {
         
         bool include = (node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
-         node->type == NODE_TYPE_OPERATOR_BINARY_GE);
+                        node->type == NODE_TYPE_OPERATOR_BINARY_GE);
         
         auto lhs = node->getMember(0);
         auto rhs = node->getMember(1);
@@ -464,10 +464,11 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && lhs->type == NODE_TYPE_VALUE) {
           if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
-           node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
+              node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
             high = new RangeInfoBound(lhs, include);
             low = nullptr;
-          } else {
+          } 
+          else {
             low = new RangeInfoBound(lhs, include);
             high =nullptr;
           }
@@ -475,10 +476,11 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         }
         else if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->type == NODE_TYPE_VALUE) {
           if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
-           node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
+              node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
             low = new RangeInfoBound(rhs, include);
             high = nullptr;
-          } else {
+          } 
+          else {
             high = new RangeInfoBound(rhs, include);
             low = nullptr;
           }
@@ -489,15 +491,15 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           high = nullptr;
         }
 
-        if(low != nullptr || high != nullptr){
+        if(low != nullptr || high != nullptr) {
           buildRangeInfo(nextNode, enumCollVar, attr);
-          if(!enumCollVar.empty()){
+          if(! enumCollVar.empty()){
             _ranges->insert(enumCollVar, attr.substr(0, attr.size()-1), low, high);
           }
         }
       }
       
-      if(node->type == NODE_TYPE_OPERATOR_BINARY_AND){
+      if(node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
         attr = "";
         buildRangeInfo(node->getMember(0), enumCollVar, attr);
         attr = "";
@@ -522,11 +524,177 @@ int triagens::aql::useIndexRange (Optimizer* opt,
     auto nn = static_cast<FilterNode*>(n);
     auto invars = nn->getVariablesUsedHere();
     TRI_ASSERT(invars.size() == 1);
-    FilterToEnumCollFinder finder(plan, invars[0], out);
+    FilterToEnumCollFinder finder(plan, invars[0], &out);
     nn->walk(&finder);
   }
 
   return TRI_ERROR_NO_ERROR;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief try to match sorts to indices
+////////////////////////////////////////////////////////////////////////////////
+
+class sortToIndexNode : public WalkerWorker<ExecutionNode> {
+  SortNode* _thisNode;
+  CalculationNode* _thisSortNodesCalculationNode;
+  RangesInfo* _ranges; 
+  ExecutionPlan* _plan;
+  std::vector<Variable const*> _vars;
+  std::vector<CalculationNode*> _myVars;
+  Variable const* _var;
+  Optimizer::PlanList _out;
+  ExecutionNode* _prev;
+  size_t _executionNodesFound;
+
+  public:
+    sortToIndexNode (ExecutionPlan* plan,
+                     std::vector<Variable const*>& vars,
+                     Optimizer::PlanList& out) 
+      :
+        _thisSortNodesCalculationNode(nullptr),
+        _plan(plan),
+        _vars(vars),
+        _out(out),
+        _prev(nullptr),
+        _executionNodesFound(0) {
+      _ranges = new RangesInfo();
+      _myVars.reserve(vars.size());
+    }
+
+    void before (ExecutionNode* en) {
+      std::cout << "type:" << en->getTypeString() << "\n";
+      size_t n = _vars.size();
+      auto outvar = en->getVariablesSetHere();
+
+      if ((_executionNodesFound < n) &&
+          en->getType() == triagens::aql::ExecutionNode::CALCULATION) {
+
+        // Look up whether this is one of the calculation nodes we reference.
+        for (size_t i = 0; i < n; i++) {
+          if (_vars[i]->id == outvar[0]->id) {
+            _myVars[i] = static_cast<triagens::aql::CalculationNode*>(en);
+            _executionNodesFound++;
+            break;
+          }
+        }
+        if (_executionNodesFound == n) {
+          // ok we got all, study them.
+          // TODO
+        }
+      }
+      else if (_executionNodesFound == n) {
+        if (en->getType() == triagens::aql::ExecutionNode::FILTER) {
+          ///      TODO: check whether to ABORT here?
+        }
+        if (en->getType() == triagens::aql::ExecutionNode::SORT) {
+          // TODO: subsequent sort - check whether its still needed.
+        }
+        if (en->getType() == triagens::aql::ExecutionNode::INDEX_RANGE) {
+          // TODO: we should also match INDEX_RANGE later on.
+        }
+        else if (en->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION) {
+          std::cout << "blub\n";
+          
+          std::vector<RangeInfo*> rangeInfo;
+          std::vector<std::string> attrSet;
+          std::vector<std::string> attrs;
+          
+          auto node = static_cast<EnumerateCollectionNode*>(en);
+          auto var = node->getVariablesSetHere()[0];  // should only be 1
+          auto exp = _myVars[0]->expression();
+
+          if (!exp->isSimple()) {
+            return;
+          }
+
+          auto expNode = exp->node();
+          
+          // digg through nested Attributes:
+          while (expNode->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+            attrSet.push_back(expNode->getStringValue());
+            expNode = expNode->getMember (0);
+          }
+          // we now should have the Collection Reference:
+          std::cout  << var->name << " \n";
+          if (expNode->type == triagens::aql::NODE_TYPE_REFERENCE) {
+            auto subVar = static_cast<Variable*>(expNode->getData());
+            if (subVar->name == var->name) {
+              // Yes, the requested collec    tion is a reference to this.
+            }
+          }
+          expNode = exp->node();
+          
+          std::cout << expNode->getStringValue() << " -- " << var->name << " \n";
+
+          TRI_ASSERT(attrSet.size() > 0)
+          attrs.push_back(attrSet[attrSet.size() - 1]);
+
+          std::vector<TRI_index_t*> idxs = node->getIndexes(attrs);
+
+          rangeInfo.push_back(new RangeInfo(var->name, expNode->getStringValue(), nullptr, nullptr));
+          // make one new plan for every index in <idxs> that replaces the
+          // enumerate collection node with a RangeIndexNode . . . 
+          for (auto idx: idxs) {
+            if ((idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) || 
+                (idx->_type == TRI_IDX_TYPE_HASH_INDEX) ) {
+              //can only use the index if it is a skip list or (a hash and we
+              //are checking equality)
+              std::cout << "FOUND INDEX!\n";
+
+              auto newPlan = _plan->clone();
+              ExecutionNode* newNode = nullptr;
+              try{
+                newNode = new IndexRangeNode( newPlan->nextId(), node->vocbase(), 
+                                              node->collection(), node->outVariable(), idx, rangeInfo);
+                newPlan->registerNode(newNode);
+              }
+              catch (...) {
+                if (newNode != nullptr) {
+                  delete newNode;
+                }
+                delete newPlan;
+                throw;
+              }
+              newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
+              auto JsonPlan = newPlan->toJson(TRI_UNKNOWN_MEM_ZONE, false);
+              auto JsonString = JsonPlan.toString();
+              std::cout <<"Added foo" << JsonString << "\n";
+              
+              _out.push_back(newPlan);
+
+            }
+          }
+
+        }
+      }
+    }
+};
+  
+
+
+
+int triagens::aql::useIndexForSort (Optimizer* opt, 
+                                    ExecutionPlan* plan, 
+                                    Optimizer::PlanList& out,
+                                    bool& keep) {
+  keep = true;
+  std::vector<ExecutionNode*> nodes
+    = plan->findNodesOfType(triagens::aql::ExecutionNode::SORT, true);
+
+  for (auto n : nodes) {
+    auto oneNode = static_cast<SortNode*>(n);
+    auto invars = oneNode->getVariablesUsedHere();
+    ////TRI_ASSERT(invars.size() == 1);/// todo: do we care about the invars? <- yes there may be more.
+    sortToIndexNode finder(plan, invars, out);
+    ///_thisNode = oneNode;
+    oneNode->walk(&finder);
+  }
+
+  return TRI_ERROR_NO_ERROR;
+
+
 }
 
 // Local Variables:

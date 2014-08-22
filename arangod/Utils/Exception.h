@@ -73,7 +73,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     class Exception : public virtual std::exception {
+
       public:
+
         Exception (int code,
                    char const* file,
                    int line);
@@ -86,19 +88,24 @@ namespace triagens {
         ~Exception () throw ();
 
       public:
-        char const * what () const throw ();
 
-        std::string message () const throw ();
+        char const * what () const throw (); 
+
+        std::string message () const throw () {
+          return _errorMessage;
+        }
         
-        int code () const throw();
+        int code () const throw () {
+          return _code;
+        }
 
         static std::string FillExceptionString (int, ...);
 
       protected:
         std::string const _errorMessage;
-        char const* _file;
-        int const _line;
-        int const _code;
+        char const*       _file;
+        int const         _line;
+        int const         _code;
     };
 
   }
