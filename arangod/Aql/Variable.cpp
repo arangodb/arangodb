@@ -50,7 +50,7 @@ Variable::Variable (std::string const& name,
 }
 
 Variable::Variable (Json const& json)
-  : Variable(JsonHelper::getStringValue(json.json(), "name", ""), JsonHelper::getNumericValue<VariableId>(json.json(), "id", 0)) {
+  : Variable(JsonHelper::checkAndGetStringValue(json.json(), "name"), JsonHelper::checkAndGetNumericValue<VariableId>(json.json(), "id")) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

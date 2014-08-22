@@ -31,6 +31,7 @@
 #define ARANGODB_BASICS_JSON_HELPER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "BasicsC/json.h"
 
 namespace triagens {
@@ -133,7 +134,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static inline bool isArray (TRI_json_t const* json) {
-          return json != 0 && json->_type == TRI_JSON_ARRAY;
+          return json != nullptr && json->_type == TRI_JSON_ARRAY;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -141,7 +142,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static inline bool isList (TRI_json_t const* json) {
-          return json != 0 && json->_type == TRI_JSON_LIST;
+          return json != nullptr && json->_type == TRI_JSON_LIST;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -157,7 +158,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static inline bool isNumber (TRI_json_t const* json) {
-          return json != 0 && json->_type == TRI_JSON_NUMBER;
+          return json != nullptr && json->_type == TRI_JSON_NUMBER;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -165,7 +166,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static inline bool isBoolean (TRI_json_t const* json) {
-          return json != 0 && json->_type == TRI_JSON_BOOLEAN;
+          return json != nullptr && json->_type == TRI_JSON_BOOLEAN;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -173,37 +174,30 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static TRI_json_t* getArrayElement (TRI_json_t const*,
-                                            const char* name);
+                                            char const* name);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a string element, or a default it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
 
         static std::string getStringValue (TRI_json_t const*,
-                                           const std::string&);
+                                           std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a string sub-element, or a default it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
 
         static std::string getStringValue (TRI_json_t const*,
-                                           const char*,
-                                           const std::string&);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns a string sub-element, or throws if <name> does not exist
-/// or it is not a string 
-////////////////////////////////////////////////////////////////////////////////
-
-        static std::string getStringValue (TRI_json_t const*,
-                                           const char* name);
+                                           char const*,
+                                           std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a numeric value
 ////////////////////////////////////////////////////////////////////////////////
 
-        template<typename T> static T getNumericValue (TRI_json_t const* json,
-                                                       T defaultValue) {
+        template<typename T> 
+        static T getNumericValue (TRI_json_t const* json,
+                                  T defaultValue) {
           if (isNumber(json)) {
             return (T) json->_value._number;
           }
@@ -215,9 +209,10 @@ namespace triagens {
 /// @brief returns a numeric sub-element, or a default it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
 
-        template<typename T> static T getNumericValue (TRI_json_t const* json,
-                                                       const char* name,
-                                                       T defaultValue) {
+        template<typename T> 
+        static T getNumericValue (TRI_json_t const* json,
+                                  char const* name,
+                                  T defaultValue) {
           TRI_json_t const* sub = getArrayElement(json, name);
 
           if (isNumber(sub)) {
@@ -232,30 +227,58 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static bool getBooleanValue (TRI_json_t const*,
-                                     const char*,
+                                     char const*,
                                      bool);
-        
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a boolean sub-element, or a throws an exception if the
 /// sub-element does not exist or if it is not boolean
 ////////////////////////////////////////////////////////////////////////////////
 
-        static bool getBooleanValue (TRI_json_t const*,
-                                     const char*);
+        static bool checkAndGetBooleanValue (TRI_json_t const*,
+                                             char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a numeric sub-element, or throws if <name> does not exist
+/// or it is not a number
+////////////////////////////////////////////////////////////////////////////////
+
+        template<typename T>     
+        static T checkAndGetNumericValue (TRI_json_t const* json,
+                                          char const* name) {
+          TRI_json_t const* sub = getArrayElement(json, name);
+
+          if (! isNumber(sub)) {
+            std::string msg = "The attribute '" + std::string(name)  
+              + "' was not found or is not a number.";
+            THROW_INTERNAL_ERROR(msg);
+          }
+          return static_cast<T>(sub->_value._number);
+        }
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a string sub-element, or throws if <name> does not exist
+/// or it is not a string 
+////////////////////////////////////////////////////////////////////////////////
+
+        static std::string checkAndGetStringValue (TRI_json_t const*,
+                                                   char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns an array sub-element, or a throws an exception if the
 /// sub-element does not exist or if it is not an array
 ////////////////////////////////////////////////////////////////////////////////
         
-        static TRI_json_t const* getArray (TRI_json_t const* json, const char* name); 
+        static TRI_json_t const* checkAndGetArrayValue (TRI_json_t const*, 
+                                                        char const*); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a list sub-element, or a throws an exception if the
 /// sub-element does not exist or if it is not a list
 ////////////////////////////////////////////////////////////////////////////////
 
-        static TRI_json_t const* getList (TRI_json_t const* json, const char* name); 
+        static TRI_json_t const* checkAndGetListValue (TRI_json_t const*, 
+                                                       char const*); 
     };
 
 ////////////////////////////////////////////////////////////////////////////////

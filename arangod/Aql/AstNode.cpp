@@ -136,7 +136,7 @@ AstNode::AstNode (Ast* ast,
                                            false));
       break;
     case NODE_TYPE_VALUE: {
-      int vType = JsonHelper::getNumericValue<int>(json.json(), "vTypeID", 0);
+      int vType = JsonHelper::checkAndGetNumericValue<int>(json.json(), "vTypeID");
       validateValueType(vType);
       value.type = static_cast<AstNodeValueType>(vType);
 
@@ -144,18 +144,16 @@ AstNode::AstNode (Ast* ast,
         case VALUE_TYPE_NULL:
           break;
         case VALUE_TYPE_BOOL:
-          value.value._bool = JsonHelper::getBooleanValue(json.json(), "value", false);
+          value.value._bool = JsonHelper::checkAndGetBooleanValue(json.json(), "value");
           break;
         case VALUE_TYPE_INT:
-          setIntValue(JsonHelper::getNumericValue<int64_t>(json.json(), "value", 0));
+          setIntValue(JsonHelper::checkAndGetNumericValue<int64_t>(json.json(), "value"));
           break;
         case VALUE_TYPE_DOUBLE:
-          setDoubleValue(JsonHelper::getNumericValue<double>(json.json(), "value", 0.0));
+          setDoubleValue(JsonHelper::checkAndGetNumericValue<double>(json.json(), "value"));
           break;
         case VALUE_TYPE_STRING:
-          setStringValue(query->registerString(JsonHelper::getStringValue(json.json(),
-                                                                          "value", ""),
-                                               false));
+          setStringValue(query->registerString(JsonHelper::checkAndGetStringValue(json.json(), "value"), false));
           break;
         default: {
         }
@@ -169,7 +167,7 @@ AstNode::AstNode (Ast* ast,
       break;
     }
     case NODE_TYPE_REFERENCE: {
-      auto variableId = JsonHelper::getNumericValue<VariableId>(json.json(), "id", 0);
+      auto variableId = JsonHelper::checkAndGetNumericValue<VariableId>(json.json(), "id");
       auto variable = ast->variables()->getVariable(variableId);
 
       TRI_ASSERT(variable != nullptr);
@@ -307,7 +305,7 @@ void AstNode::validateValueType (int type) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNodeType AstNode::getNodeTypeFromJson (triagens::basics::Json const& json) {
-  int type = JsonHelper::getNumericValue<int>(json.json(), "typeID", 0);
+  int type = JsonHelper::checkAndGetNumericValue<int>(json.json(), "typeID");
   validateType (type);
   return (AstNodeType) type;
 }
