@@ -53,6 +53,7 @@ using JsonHelper = triagens::basics::JsonHelper;
 ExecutionPlan::ExecutionPlan () 
   : _ids(),
     _root(nullptr),
+    _varUsageComputed(false),
     _nextId(0) {
 
 }
@@ -997,6 +998,15 @@ void ExecutionPlan::findVarUsage () {
   VarUsageFinder finder;
   root()->walk(&finder);
   _varSetBy = finder._varSetBy;
+  _varUsageComputed = true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine if the above are already set
+////////////////////////////////////////////////////////////////////////////////
+
+bool ExecutionPlan::varUsageComputed () {
+  return _varUsageComputed;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1033,6 +1043,7 @@ void ExecutionPlan::unlinkNode (ExecutionNode* node) {
       node->removeDependency(x);
     }
   }
+  _varUsageComputed = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1060,6 +1071,7 @@ void ExecutionPlan::replaceNode (ExecutionNode* oldNode,
                   "Could not replace dependencies of an old node.");
     }
   }
+  _varUsageComputed = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1082,6 +1094,7 @@ void ExecutionPlan::insertDependency (ExecutionNode* oldNode,
 
   newNode->removeDependencies();
   newNode->addDependency(oldDeps[0]);
+  _varUsageComputed = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1109,7 +1122,9 @@ ExecutionPlan* ExecutionPlan::clone (){
     plan->_nextId = _nextId;
     CloneNodeAdder adder(plan);
     plan->_root->walk(&adder);
-    plan->findVarUsage();
+    // plan->findVarUsage();
+    // Let's not do it here, because supposedly the plan is modified as
+    // the very next thing anyway!
     return plan;
   }
   catch (...) {

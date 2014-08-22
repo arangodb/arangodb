@@ -635,7 +635,7 @@ struct SubqueryVarUsageFinder : public WalkerWorker<ExecutionNode> {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<Variable const*> SubqueryNode::getVariablesUsedHere () {
+std::vector<Variable const*> SubqueryNode::getVariablesUsedHere () const {
   SubqueryVarUsageFinder finder;
   _subquery->walk(&finder);
       
@@ -753,6 +753,50 @@ void AggregateNode::toJsonHelper (triagens::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere
+////////////////////////////////////////////////////////////////////////////////
+
+struct UserVarFinder : public WalkerWorker<ExecutionNode> {
+  UserVarFinder () {};
+  ~UserVarFinder () {};
+  std::vector<Variable const*> userVars;
+
+  bool enterSubquery (ExecutionNode* super, ExecutionNode* sub) {
+    return false;
+  }
+  void before (ExecutionNode* en) {
+    auto vars = en->getVariablesSetHere();
+    for (auto v : vars) {
+      if (v->isUserDefined()) {
+        userVars.push_back(v);
+      }
+    }
+  }
+};
+
+std::vector<Variable const*> AggregateNode::getVariablesUsedHere () const {
+  std::unordered_set<Variable const*> v;
+  for (auto p : _aggregateVariables) {
+    v.insert(p.second);
+  }
+  if (_outVariable != nullptr) {
+    // Here we have to find all user defined variables in this query
+    // amonst our dependencies:
+    UserVarFinder finder;
+    auto myselfasnonconst = const_cast<AggregateNode*>(this);
+    myselfasnonconst->walk(&finder);
+    for (auto x : finder.userVars) {
+      v.insert(x);
+    }
+  }
+  std::vector<Variable const*> vv;
+  for (auto x : v) {
+    vv.push_back(x);
+  }
+  return vv;
 }
 
 // -----------------------------------------------------------------------------

@@ -89,7 +89,9 @@ int Optimizer::createPlans (ExecutionPlan* plan) {
 
     // Find variable usage for all old plans now:
     for (auto p : oldPlans.list) {
-      p->findVarUsage();
+      if (! p->varUsageComputed()) {
+        p->findVarUsage();
+      }
     }
 
     // For all rules:

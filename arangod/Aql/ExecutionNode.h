@@ -364,7 +364,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const {
           return std::vector<Variable const*>();
         }
 
@@ -372,7 +372,7 @@ namespace triagens {
 /// @brief getVariablesSetHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesSetHere () {
+        virtual std::vector<Variable const*> getVariablesSetHere () const {
           return std::vector<Variable const*>();
         }
 
@@ -388,7 +388,7 @@ namespace triagens {
 /// @brief getVarsUsedLater
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_set<Variable const*>& getVarsUsedLater () {
+        std::unordered_set<Variable const*> const& getVarsUsedLater () const {
           TRI_ASSERT(_varUsageValid);
           return _varsUsedLater;
         }
@@ -405,7 +405,7 @@ namespace triagens {
 /// @brief getVarsValid
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_set<Variable const*>& getVarsValid () {
+        std::unordered_set<Variable const*> const& getVarsValid () const {
           TRI_ASSERT(_varUsageValid);
           return _varsValid;
         }
@@ -648,7 +648,7 @@ namespace triagens {
 /// @brief getVariablesSetHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesSetHere () {
+        virtual std::vector<Variable const*> getVariablesSetHere () const {
           std::vector<Variable const*> v;
           v.push_back(_outVariable);
           return v;
@@ -770,7 +770,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const {
           std::vector<Variable const*> v;
           v.push_back(_inVariable);
           return v;
@@ -780,7 +780,7 @@ namespace triagens {
 /// @brief getVariablesSetHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesSetHere () {
+        virtual std::vector<Variable const*> getVariablesSetHere () const {
           std::vector<Variable const*> v;
           v.push_back(_outVariable);
           return v;
@@ -885,7 +885,7 @@ namespace triagens {
 /// @brief getVariablesSetHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesSetHere () {
+        virtual std::vector<Variable const*> getVariablesSetHere () const {
           std::vector<Variable const*> v;
           v.push_back(_outVariable);
           return v;
@@ -1110,7 +1110,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const {
           std::unordered_set<Variable*> vars = _expression->variables();
           std::vector<Variable const*> v;
           for (auto vv : vars) {
@@ -1123,7 +1123,7 @@ namespace triagens {
 /// @brief getVariablesSetHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesSetHere () {
+        virtual std::vector<Variable const*> getVariablesSetHere () const {
           std::vector<Variable const*> v;
           v.push_back(_outVariable);
           return v;
@@ -1248,13 +1248,13 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere ();
+        virtual std::vector<Variable const*> getVariablesUsedHere () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesSetHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesSetHere () {
+        virtual std::vector<Variable const*> getVariablesSetHere () const {
           std::vector<Variable const*> v;
           v.push_back(_outVariable);
           return v;
@@ -1358,7 +1358,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const {
           std::vector<Variable const*> v;
           v.push_back(_inVariable);
           return v;
@@ -1442,7 +1442,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const {
           std::vector<Variable const*> v;
           for (auto p : _elements) {
             v.push_back(p.first);
@@ -1541,19 +1541,13 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () {
-          std::vector<Variable const*> v;
-          for (auto p : _aggregateVariables) {
-            v.push_back(p.second);
-          }
-          return v;
-        }
+        virtual std::vector<Variable const*> getVariablesUsedHere () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesSetHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesSetHere () {
+        virtual std::vector<Variable const*> getVariablesSetHere () const {
           std::vector<Variable const*> v;
           for (auto p : _aggregateVariables) {
             v.push_back(p.first);
@@ -1658,7 +1652,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const {
           std::vector<Variable const*> v;
           v.push_back(_inVariable);
           return v;
@@ -1815,7 +1809,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const {
           std::vector<Variable const*> v;
           v.push_back(_inVariable);
           return v;
@@ -1825,7 +1819,7 @@ namespace triagens {
 /// @brief getVariablesSetHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesSetHere () {
+        virtual std::vector<Variable const*> getVariablesSetHere () const {
           std::vector<Variable const*> v;
           if (_outVariable != nullptr) {
             v.push_back(_outVariable);
@@ -1927,7 +1921,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const {
           std::vector<Variable const*> v;
           v.push_back(_inVariable);
           return v;
@@ -1937,7 +1931,7 @@ namespace triagens {
 /// @brief getVariablesSetHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesSetHere () {
+        virtual std::vector<Variable const*> getVariablesSetHere () const {
           std::vector<Variable const*> v;
           if (_outVariable != nullptr) {
             v.push_back(_outVariable);
@@ -2042,7 +2036,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const {
           std::vector<Variable const*> v;
           v.push_back(_inDocVariable);
 
@@ -2056,7 +2050,7 @@ namespace triagens {
 /// @brief getVariablesSetHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesSetHere () {
+        virtual std::vector<Variable const*> getVariablesSetHere () const {
           std::vector<Variable const*> v;
           if (_outVariable != nullptr) {
             v.push_back(_outVariable);
@@ -2167,7 +2161,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () {
+        virtual std::vector<Variable const*> getVariablesUsedHere () const {
           std::vector<Variable const*> v;
           v.push_back(_inDocVariable);
 
@@ -2181,7 +2175,7 @@ namespace triagens {
 /// @brief getVariablesSetHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesSetHere () {
+        virtual std::vector<Variable const*> getVariablesSetHere () const {
           std::vector<Variable const*> v;
           if (_outVariable != nullptr) {
             v.push_back(_outVariable);
