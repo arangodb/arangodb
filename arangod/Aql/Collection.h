@@ -59,6 +59,9 @@ namespace triagens {
           vocbase(vocbase),
           collection(nullptr),
           accessType(accessType) {
+          
+        TRI_ASSERT(! name.empty());
+        TRI_ASSERT(vocbase != nullptr);
       }
       
       ~Collection () {

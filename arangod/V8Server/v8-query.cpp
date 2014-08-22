@@ -286,8 +286,8 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
 
   TRI_json_t* parameters = TRI_CreateListJson(TRI_UNKNOWN_MEM_ZONE);
 
-  if (parameters == 0) {
-    return 0;
+  if (parameters == nullptr) {
+    return nullptr;
   }
 
   // iterate over all index fields
@@ -331,7 +331,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
 
       TRI_json_t* json = TRI_ObjectToJson(value);
 
-      if (json == 0) {
+      if (json == nullptr) {
         goto MEM_ERROR;
       }
 
@@ -380,7 +380,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
 
         TRI_json_t* cloned = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
 
-        if (cloned == 0) {
+        if (cloned == nullptr) {
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
           goto MEM_ERROR;
         }
@@ -391,7 +391,7 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
           // create equality operator if one is in queue
           TRI_json_t* clonedParams = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
 
-          if (clonedParams == 0) {
+          if (clonedParams == nullptr) {
             TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, cloned);
             goto MEM_ERROR;
           }
@@ -404,19 +404,19 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
         // create the operator for the current condition
         current = TRI_CreateIndexOperator(opType, NULL, NULL, cloned, shaper, NULL, cloned->_value._objects._length, NULL);
 
-        if (current == 0) {
+        if (current == nullptr) {
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, cloned);
           goto MEM_ERROR;
         }
 
-        if (lastOperator == 0) {
+        if (lastOperator == nullptr) {
           lastOperator = current;
         }
         else {
           // merge the current operator with previous operators using logical AND
           TRI_index_operator_t* newOperator = TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, lastOperator, current, NULL, shaper, NULL, 2, NULL);
 
-          if (newOperator == 0) {
+          if (newOperator == nullptr) {
             TRI_FreeIndexOperator(current);
             goto MEM_ERROR;
           }
@@ -431,12 +431,12 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
 
   if (numEq) {
     // create equality operator if one is in queue
-    TRI_ASSERT(lastOperator == 0);
+    TRI_ASSERT(lastOperator == nullptr);
     TRI_ASSERT(lastNonEq == 0);
 
     TRI_json_t* clonedParams = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, parameters);
 
-    if (clonedParams == 0) {
+    if (clonedParams == nullptr) {
       goto MEM_ERROR;
     }
     lastOperator = TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, NULL, NULL, clonedParams, shaper, NULL, clonedParams->_value._objects._length, NULL);
@@ -449,15 +449,12 @@ static TRI_index_operator_t* SetupConditionsSkiplist (TRI_index_t* idx,
 MEM_ERROR:
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
 
-  if (lastOperator == 0) {
+  if (lastOperator == nullptr) {
     TRI_FreeIndexOperator(lastOperator);
   }
 
-  return 0;
+  return nullptr;
 }
-
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets up the bitarray operator for a bitarray condition query
@@ -1020,7 +1017,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
   TRI_vocbase_col_t const* col;
   col = TRI_UnwrapClass<TRI_vocbase_col_t>(argv.Holder(), TRI_GetVocBaseColType());
 
-  if (col == 0) {
+  if (col == nullptr) {
     TRI_V8_EXCEPTION_INTERNAL(scope, "cannot extract collection");
   }
 
@@ -1084,7 +1081,7 @@ static v8::Handle<v8::Value> ExecuteSkiplistQuery (v8::Arguments const& argv,
 
   TRI_skiplist_iterator_t* skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator);
 
-  if (skiplistIterator == 0) {
+  if (skiplistIterator == nullptr) {
     int res = TRI_errno();
     if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
       return scope.Close(EmptyResult());
