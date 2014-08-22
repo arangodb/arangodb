@@ -1016,23 +1016,27 @@ void ExecutionPlan::unlinkNodes (std::unordered_set<ExecutionNode*>& toRemove) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ExecutionPlan::unlinkNode (ExecutionNode* node) {
+  checkLinkage();
+  std::cout << toJson(TRI_UNKNOWN_MEM_ZONE, true).toString() << std::endl;
   auto parents = node->getParents();
   if (parents.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "Cannot unlink root node of plan.");
   }
-  else if (parents.size() > 1) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-        "Cannot remove node with more than one parent.");
-  }
   else {
     auto dep = node->getDependencies();
-    parents[0]->removeDependency(node);
+    for (auto p : parents) {
+      p->removeDependency(node);
+      for (auto x : dep) {
+        p->addDependency(x);
+      }
+    }
     for (auto x : dep) {
       node->removeDependency(x);
-      parents[0]->addDependency(x);
     }
   }
+  std::cout << toJson(TRI_UNKNOWN_MEM_ZONE, true).toString() << std::endl;
+  checkLinkage();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
