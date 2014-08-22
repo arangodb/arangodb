@@ -198,7 +198,7 @@ void RestVocbaseBaseHandler::generate20x (HttpResponse::HttpResponseCode respons
 
   // _id and _key are safe and do not need to be JSON-encoded
   _response->body()
-    .appendText("{\"error\":false,\"_id\":\"")
+    .appendText("{\"error\":false,\"" TRI_VOC_ATTRIBUTE_ID "\":\"")
     .appendText(handle)
     .appendText("\",\"" TRI_VOC_ATTRIBUTE_REV "\":\"")
     .appendText(rev)
@@ -247,7 +247,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed (string const& collectio
     .appendText(",\"errorNum\":")
     .appendInteger((int32_t) TRI_ERROR_ARANGO_CONFLICT)
     .appendText(",\"errorMessage\":\"precondition failed\"")
-    .appendText(",\"_id\":\"")
+    .appendText(",\"" TRI_VOC_ATTRIBUTE_ID "\":\"")
     .appendText(DocumentHelper::assembleDocumentId(collectionName, key))
     .appendText("\",\"" TRI_VOC_ATTRIBUTE_REV "\":\"")
     .appendText(StringUtils::itoa(rid))
@@ -288,7 +288,7 @@ void RestVocbaseBaseHandler::generateDocument (SingleCollectionReadOnlyTransacti
   TRI_json_t* idJson = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, id.c_str(), id.size());
 
   if (idJson != nullptr) {
-    TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, "_id", idJson);
+    TRI_Insert2ArrayJson(TRI_UNKNOWN_MEM_ZONE, &augmented, TRI_VOC_ATTRIBUTE_ID, idJson);
   }
 
   // convert rid from uint64_t to string
