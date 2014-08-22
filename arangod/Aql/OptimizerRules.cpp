@@ -542,15 +542,12 @@ int triagens::aql::useIndexRange (Optimizer* opt,
 ////////////////////////////////////////////////////////////////////////////////
 
 class sortToIndexNode : public WalkerWorker<ExecutionNode> {
-  SortNode* _thisNode;
   CalculationNode* _thisSortNodesCalculationNode;
   RangesInfo* _ranges; 
   ExecutionPlan* _plan;
   std::vector<Variable const*> _vars;
   std::vector<CalculationNode*> _myVars;
-  Variable const* _var;
   Optimizer::PlanList _out;
-  ExecutionNode* _prev;
   size_t _executionNodesFound;
 
   public:
@@ -562,9 +559,9 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
         _plan(plan),
         _vars(vars),
         _out(out),
-        _prev(nullptr),
         _executionNodesFound(0) {
       _ranges = new RangesInfo();
+      // TODO: who is going to free _ranges??
       _myVars.reserve(vars.size());
     }
 
