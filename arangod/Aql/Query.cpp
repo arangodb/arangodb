@@ -202,7 +202,7 @@ QueryResult Query::execute () {
       parser.ast()->injectBindParameters(_bindParameters);
       // optimize the ast
       parser.ast()->optimize();
-      // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
+      // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE, false)) << "\n";
     }
 
     // create the transaction object, but do not start it yet
