@@ -4889,6 +4889,25 @@ function RESOLVE_GRAPH_TO_EDGES (graphname, options) {
   );
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief GET ALL EDGE and VERTEX COLLECTION ACCORDING TO DIRECTION
+////////////////////////////////////////////////////////////////////////////////
+
+function RESOLVE_GRAPH_START_VERTICES(graphName, options) {
+  // check graph exists and load edgeDefintions
+  var graph = DOCUMENT_HANDLE("_graphs/" + graphName), collections ;
+  if (! graph) {
+    THROW(INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
+  }
+
+  collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options);
+  var removeDuplicates = function(elem, pos, self) {
+    return self.indexOf(elem) === pos;
+  };
+  return DOCUMENTS_BY_EXAMPLE(
+    collections.fromCollections.filter(removeDuplicates), options.fromVertexExample
+  );
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief GET ALL EDGE and VERTEX COLLECTION ACCORDING TO DIRECTION
@@ -4908,7 +4927,7 @@ function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
   };
 
   var result =  {
-    fromVertices :DOCUMENTS_BY_EXAMPLE(
+    fromVertices : DOCUMENTS_BY_EXAMPLE(
       collections.fromCollections.filter(removeDuplicates), options.fromVertexExample
     ),
     toVertices : DOCUMENTS_BY_EXAMPLE(
@@ -5532,8 +5551,8 @@ function GRAPH_TRAVERSAL (vertexCollection,
 ////////////////////////////////////////////////////////////////////////////////
 function GENERAL_GRAPH_TRAVERSAL (graphName,
                                   startVertexExample,
-                          direction,
-                          options) {
+                                  direction,
+                                  options) {
   "use strict";
 
   var result = [];
@@ -5541,10 +5560,10 @@ function GENERAL_GRAPH_TRAVERSAL (graphName,
   options.fromVertexExample = startVertexExample;
   options.direction =  direction;
 
-  var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
+  var startVertices = RESOLVE_GRAPH_START_VERTICES(graphName, options);
   var factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
 
-  graph.fromVertices.forEach(function (f) {
+  startVertices.forEach(function (f) {
     result.push(TRAVERSAL_FUNC("GRAPH_TRAVERSAL",
       factory,
       TO_ID(f),
@@ -5735,10 +5754,10 @@ function GENERAL_GRAPH_TRAVERSAL_TREE (graphName,
   options.fromVertexExample = startVertexExample;
   options.direction =  direction;
 
-  var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
+  var startVertices = RESOLVE_GRAPH_START_VERTICES(graphName, options);
   var factory = TRAVERSAL.generalGraphDatasourceFactory(graphName), r;
 
-  graph.fromVertices.forEach(function (f) {
+  startVertices.forEach(function (f) {
     r = TRAVERSAL_FUNC("GRAPH_TRAVERSAL_TREE",
       factory,
       TO_ID(f),
