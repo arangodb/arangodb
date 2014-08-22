@@ -216,7 +216,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ExecutionPlan* getBest () {
-          if (_plans.size() == 0) {
+          if (_plans.empty()) {
             return nullptr;
           }
           return _plans[0];
@@ -236,7 +236,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ExecutionPlan* stealBest () {
-          if (_plans.size() == 0) {
+          if (_plans.empty()) {
             return nullptr;
           }
           auto res = _plans[0];
@@ -244,6 +244,8 @@ namespace triagens {
             delete _plans[i];
           }
           _plans.clear();
+
+          std::cout << res->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString() << "\n";
           return res;
         }
 
@@ -262,11 +264,11 @@ namespace triagens {
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
+      private:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief registerRule
 ////////////////////////////////////////////////////////////////////////////////
-
-      private:
 
         void registerRule (RuleFunction f, int pass) {
           _rules.emplace_back(f, pass);
@@ -287,6 +289,8 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private members
 // -----------------------------------------------------------------------------
+      
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the rules database
@@ -310,5 +314,4 @@ namespace triagens {
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-
 
