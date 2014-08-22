@@ -1185,7 +1185,7 @@ ExecutionNode* ExecutionPlan::fromJson (Ast* ast,
     }
    
     // read the node's own id 
-    auto thisId = JsonHelper::getNumericValue<size_t>(oneJsonNode.json(), "id", 0);
+    auto thisId = JsonHelper::checkAndGetNumericValue<size_t>(oneJsonNode.json(), "id");
     auto thisNode = getNodeById(thisId);
 
     // now re-link the dependencies

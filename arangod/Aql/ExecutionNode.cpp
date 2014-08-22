@@ -90,7 +90,7 @@ ExecutionNode* ExecutionNode::fromJsonFactory (Ast* ast,
                                                Json const& oneNode) {
   auto JsonString = oneNode.toString();
 
-  int nodeTypeID = JsonHelper::getNumericValue<int>(oneNode.json(), "typeID", 0);
+  int nodeTypeID = JsonHelper::checkAndGetNumericValue<int>(oneNode.json(), "typeID");
   validateType(nodeTypeID);
 
   NodeType nodeType = (NodeType) nodeTypeID;
@@ -119,7 +119,7 @@ ExecutionNode* ExecutionNode::fromJsonFactory (Ast* ast,
       elements.reserve(len);
       for (size_t i = 0; i < len; i++) {
         Json oneJsonElement = jsonElements.at(i);
-        bool ascending = JsonHelper::getBooleanValue(oneJsonElement.json(), "ascending", false);
+        bool ascending = JsonHelper::checkAndGetBooleanValue(oneJsonElement.json(), "ascending");
         Variable *v = varFromJson(ast, oneJsonElement, "inVariable");
         elements.push_back(std::make_pair(v, ascending));
       }
@@ -192,7 +192,7 @@ ExecutionNode* ExecutionNode::fromJsonFactory (Ast* ast,
 ////////////////////////////////////////////////////////////////////////////////
 
 ExecutionNode::ExecutionNode (triagens::basics::Json const& json) 
-  : ExecutionNode(JsonHelper::getNumericValue<size_t>(json.json(), "id", 0),
+  : ExecutionNode(JsonHelper::checkAndGetNumericValue<size_t>(json.json(), "id"),
                   JsonHelper::getNumericValue<double>(json.json(), "estimatedCost", 0.0)) { 
 }
 
@@ -372,7 +372,7 @@ void SingletonNode::toJsonHelper (triagens::basics::Json& nodes,
 EnumerateCollectionNode::EnumerateCollectionNode (Ast* ast, basics::Json const& base)
   : ExecutionNode(base),
     _vocbase(ast->query()->vocbase()),
-    _collection(ast->query()->collections()->add(JsonHelper::getStringValue(base.json(), "collection", ""), TRI_TRANSACTION_READ)),
+    _collection(ast->query()->collections()->add(JsonHelper::checkAndGetStringValue(base.json(), "collection"), TRI_TRANSACTION_READ)),
     _outVariable(varFromJson(ast, base, "outVariable")) {
 }
 
@@ -512,7 +512,7 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
 IndexRangeNode::IndexRangeNode (Ast* ast, basics::Json const& json)
   : ExecutionNode(json),
     _vocbase(ast->query()->vocbase()),
-    _collection(ast->query()->collections()->add(JsonHelper::getStringValue(json.json(), 
+    _collection(ast->query()->collections()->add(JsonHelper::checkAndGetStringValue(json.json(), 
             "collection"), TRI_TRANSACTION_READ)),
     _outVariable(varFromJson(ast, json, "outVariable")), _ranges() {
       
@@ -523,10 +523,10 @@ IndexRangeNode::IndexRangeNode (Ast* ast, basics::Json const& json)
   // now the index . . . 
   // TODO the following could be a constructor method for
   // an Index object when these are actually used
-  auto index = JsonHelper::getArray(json.json(), "index");
-  auto iid = JsonHelper::getArrayElement(index, "id");
-  _index = TRI_LookupIndex(_collection->documentCollection(), 
-      JsonHelper::getNumericValue<TRI_idx_iid_t>(iid, 0));
+  auto index = JsonHelper::checkAndGetArrayValue(json.json(), "index");
+  auto iid = JsonHelper::checkAndGetStringValue(index, "id");
+
+  _index = TRI_LookupIndex(_collection->documentCollection(), basics::StringUtils::uint64(iid)); 
 }
 
 // -----------------------------------------------------------------------------
@@ -535,8 +535,8 @@ IndexRangeNode::IndexRangeNode (Ast* ast, basics::Json const& json)
 
 LimitNode::LimitNode (Ast* ast, basics::Json const& base)
   : ExecutionNode(base) {
-  _offset = JsonHelper::getNumericValue<double>(base.json(), "offset", 0.0);
-  _limit = JsonHelper::getNumericValue<double>(base.json(), "limit", 0.0);
+  _offset = JsonHelper::checkAndGetNumericValue<double>(base.json(), "offset");
+  _limit = JsonHelper::checkAndGetNumericValue<double>(base.json(), "limit");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -869,7 +869,7 @@ ModificationNode::ModificationNode (Ast* ast,
                                     basics::Json const& base)
   : ExecutionNode(base), 
     _vocbase(ast->query()->vocbase()),
-    _collection(ast->query()->collections()->add(JsonHelper::getStringValue(base.json(), "collection", ""), TRI_TRANSACTION_WRITE)),
+    _collection(ast->query()->collections()->add(JsonHelper::checkAndGetStringValue(base.json(), "collection"), TRI_TRANSACTION_WRITE)),
     _options(base) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
@@ -1059,5 +1059,4 @@ void NoResultsNode::toJsonHelper (triagens::basics::Json& nodes,
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-
 

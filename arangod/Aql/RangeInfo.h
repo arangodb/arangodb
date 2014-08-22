@@ -56,9 +56,9 @@ namespace triagens {
       }
       
       RangeInfoBound (basics::Json const& json) : 
-        _bound(Json(basics::JsonHelper::getArray(json.json(), "bound"), 
-              basics::Json::NOFREE)),
-        _include(basics::JsonHelper::getBooleanValue(json.json(), "include")) {};
+        _bound(Json(basics::JsonHelper::checkAndGetArrayValue(json.json(), "bound"), basics::Json::NOFREE)),
+        _include(basics::JsonHelper::checkAndGetBooleanValue(json.json(), "include")) {
+      }
 
       ~RangeInfoBound(){}
       
@@ -89,21 +89,22 @@ namespace triagens {
                     std::string attr,
                     RangeInfoBound const* low, 
                     RangeInfoBound const* high )
-          : _var(var), _attr(attr), _low(low), _high(high), _valid(true) {}
+          : _var(var), _attr(attr), _low(low), _high(high), _valid(true) {
+        }
        
         RangeInfo (basics::Json const& json) :
-          _var(basics::JsonHelper::getStringValue(json.json(), "var")),
-          _attr(basics::JsonHelper::getStringValue(json.json(), "attr")),
-          _valid(basics::JsonHelper::getBooleanValue(json.json(), "valid")){
+          _var(basics::JsonHelper::checkAndGetStringValue(json.json(), "var")),
+          _attr(basics::JsonHelper::checkAndGetStringValue(json.json(), "attr")),
+          _valid(basics::JsonHelper::checkAndGetBooleanValue(json.json(), "valid")) {
 
-            if(!json.get("low").isEmpty()){
+            if (! json.get("low").isEmpty()) {
               _low = new RangeInfoBound(json.get("low"));
             }
             else {
               _low = nullptr;
             }
             
-            if(!json.get("high").isEmpty()){
+            if (! json.get("high").isEmpty()) {
               _high = new RangeInfoBound(json.get("high"));
             }
             else {
