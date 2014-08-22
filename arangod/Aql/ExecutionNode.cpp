@@ -514,11 +514,10 @@ IndexRangeNode::IndexRangeNode (Ast* ast, basics::Json const& base)
     _vocbase(ast->query()->vocbase()),
     _collection(ast->query()->collections()->add(JsonHelper::getStringValue(base.json(), 
             "collection"), TRI_TRANSACTION_READ)),
-    _outVariable(varFromJson(ast, base, "outVariable")) {
+    _outVariable(varFromJson(ast, base, "outVariable")), _ranges() {
       
-  _ranges = new vector<RangeInfo*>;
   for(size_t i = 0; i < base.size(); i++){ //loop over the ranges . . .
-    _ranges->push_back(new RangeInfo(base.at(i)));
+    _ranges.push_back(new RangeInfo(base.at(i)));
   }
 
   // now the index . . . TODO the following could be a constructor method for

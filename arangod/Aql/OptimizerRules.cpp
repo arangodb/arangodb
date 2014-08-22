@@ -364,7 +364,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                 newPlan->registerNode(noRes);
                 newPlan->insertDependency(x, noRes);
                 std::cout << newPlan->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString() << "\n";
-                _out.push_back(newPlan);
+                _out->push_back(newPlan);
               }
             }
           } 
@@ -394,7 +394,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                 }
                 newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
                 std::cout << newPlan->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString() << "\n";
-                _out.push_back(newPlan);
+                _out->push_back(newPlan);
               }
             }
           }
