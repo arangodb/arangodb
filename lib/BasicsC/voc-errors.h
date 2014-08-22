@@ -371,7 +371,7 @@ extern "C" {
 ///   Will be raised when a document attribute is re-assigned.
 /// - 1540: @LIT{usage of unknown function '\%s()'}
 ///   Will be raised when an undefined function is called.
-/// - 1541: @LIT{invalid number of arguments for function '\%s()'}
+/// - 1541: @LIT{invalid number of arguments for function '\%s()', expected number of arguments: minimum: \%d, maximum: \%d}
 ///   Will be raised when the number of arguments used in a function call does
 ///   not match the expected number of arguments for the function.
 /// - 1542: @LIT{invalid argument type used in call to function '\%s()'}
@@ -2129,7 +2129,8 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1541: ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH
 ///
-/// invalid number of arguments for function '%s()'
+/// invalid number of arguments for function '%s()', expected number of
+/// arguments: minimum: %d, maximum: %d
 ///
 /// Will be raised when the number of arguments used in a function call does
 /// not match the expected number of arguments for the function.
