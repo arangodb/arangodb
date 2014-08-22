@@ -806,7 +806,6 @@ namespace triagens {
 
     };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class IndexRangeNode
 ////////////////////////////////////////////////////////////////////////////////
@@ -815,7 +814,6 @@ namespace triagens {
       
       friend class ExecutionBlock;
       friend class IndexRangeBlock;
-  
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor with a vocbase and a collection name
@@ -828,7 +826,7 @@ namespace triagens {
                         Collection* collection,
                         Variable const* outVariable,
                         TRI_index_t* index, 
-                        vector<RangeInfo*>* ranges)
+                        std::vector<RangeInfo*> const& ranges)
           : ExecutionNode(id), 
             _vocbase(vocbase), 
             _collection(collection),
@@ -865,8 +863,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new IndexRangeNode(_id, _vocbase, _collection, _outVariable, _index, 
-              _ranges);
+          auto c = new IndexRangeNode(_id, _vocbase, _collection, _outVariable, _index, _ranges);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -925,7 +922,7 @@ namespace triagens {
 /// @brief the range info
 ////////////////////////////////////////////////////////////////////////////////
         
-        std::vector<RangeInfo*>* _ranges;
+        std::vector<RangeInfo*> _ranges;
     };
 
 // -----------------------------------------------------------------------------

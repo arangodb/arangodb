@@ -480,17 +480,26 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
   // put together the range info . . .
   Json ranges(Json::List);
 
-  for (auto x : *_ranges) {
+  for (auto x : _ranges) {
     ranges(x->toJson());
   }
-
+      
   // Now put info about vocbase and cid in there
   json("database", Json(_vocbase->_name))
       ("collection", Json(_collection->name))
       ("outVariable", _outVariable->toJson())
-      ("index", _index->json(_index))
       ("ranges", ranges);
   
+  TRI_json_t* idxJson = _index->json(_index);
+  if (idxJson != nullptr) {
+    try {
+      json.set("index", Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson)));
+    }
+    catch (...) {
+    }
+    TRI_Free(TRI_CORE_MEM_ZONE, idxJson);
+  }
+
   // And add it:
   nodes(json);
 }

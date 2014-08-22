@@ -214,9 +214,8 @@ void ExecutionBlock::staticAnalysis (ExecutionBlock* super) {
 }
 
 int ExecutionBlock::initialize () {
-  int res;
   for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
-    res = (*it)->initialize();
+    int res = (*it)->initialize();
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
