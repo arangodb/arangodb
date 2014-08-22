@@ -51,10 +51,15 @@ namespace triagens {
 
     struct RangeInfoBound {
 
-      RangeInfoBound(AstNode const* bound, bool include) : _include(include) {
+      RangeInfoBound (AstNode const* bound, bool include) : _include(include) {
         _bound = Json(TRI_UNKNOWN_MEM_ZONE, bound->toJson(TRI_UNKNOWN_MEM_ZONE, true));
       }
       
+      RangeInfoBound (basics::Json const& json) : 
+        _bound(Json(basics::JsonHelper::getArray(json.json(), "bound"), 
+              basics::Json::NOFREE)),
+        _include(basics::JsonHelper::getBooleanValue(json.json(), "include")) {};
+
       ~RangeInfoBound(){}
       
       RangeInfoBound ( RangeInfoBound const& copy ) = delete;
@@ -80,10 +85,33 @@ namespace triagens {
     
     struct RangeInfo{
         
-        RangeInfo ( RangeInfoBound const* low, 
+        RangeInfo ( std::string var,
+                    std::string attr,
+                    RangeInfoBound const* low, 
                     RangeInfoBound const* high )
-          : _low(low), _high(high), _valid(true) {}
-        
+          : _var(var), _attr(attr), _low(low), _high(high), _valid(true) {}
+       
+        RangeInfo (basics::Json const& json) :
+          _var(basics::JsonHelper::getStringValue(json.json(), "var")),
+          _attr(basics::JsonHelper::getStringValue(json.json(), "attr")),
+          _valid(basics::JsonHelper::getBooleanValue(json.json(), "valid")){
+
+            if(!json.get("low").isEmpty()){
+              _low = new RangeInfoBound(json.get("low"));
+            }
+            else {
+              _low = nullptr;
+            }
+            
+            if(!json.get("high").isEmpty()){
+              _high = new RangeInfoBound(json.get("high"));
+            }
+            else {
+              _high = nullptr;
+            }
+
+          }
+
         RangeInfo( const RangeInfo& copy ) = delete;
         RangeInfo& operator= ( RangeInfo const& copy ) = delete;
 
@@ -99,19 +127,14 @@ namespace triagens {
         //TODO improve 
         Json toJson () {
           Json item(basics::Json::Array);
-          if(_low != nullptr && _high != nullptr){
-            item("low", _low->toJson())
-                ("high", _high->toJson())
-                ("valid", Json(_valid));
+          item("var", Json(_var))("attr", Json(_attr));
+          if(_low != nullptr){
+            item("low", _low->toJson());
           }
-          else if(_low != nullptr){
-            item("low", _low->toJson())
-                ("valid", Json(_valid));
+          if(_high != nullptr){
+            item("high", _high->toJson());
           }
-          else if(_high != nullptr){
-            item("high", _high->toJson())
-                ("valid", Json(_valid));
-          }
+          item("valid", Json(_valid));
           return item;
         }
         
@@ -126,6 +149,8 @@ namespace triagens {
                   && _low->_include && _high->_include;
         }
 
+        std::string _var;
+        std::string _attr;
         RangeInfoBound const* _low;
         RangeInfoBound const* _high;
         bool _valid;
@@ -171,6 +196,8 @@ namespace triagens {
         
         // insert if it's not already there and otherwise intersection with
         // existing range
+        void insert (RangeInfo* range);
+        
         void insert (std::string var, std::string name, 
                      RangeInfoBound* low, RangeInfoBound* high);
 
@@ -196,8 +223,8 @@ namespace triagens {
           }
           return list;
         }
-
-      private: 
+        
+          private: 
         std::unordered_map<std::string, std::unordered_map<std::string, RangeInfo*>> _ranges; 
     };
   }

@@ -943,6 +943,7 @@ bool ApplicationV8::prepare2 () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationV8::start () {
+  TRI_ASSERT(_gcThread == nullptr);
   _gcThread = new V8GcThread(this);
   _gcThread->start();
 

@@ -89,13 +89,13 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast* ast) {
     plan->_root = plan->fromNode(ast, root);
     plan->findVarUsage();
 // just for debugging
-/*
-    auto JsonPlan = plan->_root->toJson();
+    auto JsonPlan = plan->_root->toJson(TRI_UNKNOWN_MEM_ZONE, false);
     auto JsonString = JsonPlan.toString();
     std::cout << JsonString << "\n";
+/*
     auto otherPlan = ExecutionPlan::instanciateFromJson (ast,
                                                          JsonPlan);
-    auto otherJsonString = otherPlan->_root->toJson().toString();
+    auto otherJsonString = otherPlan->_root->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString();
     std::cout << otherJsonString << "\n";
     TRI_ASSERT(otherJsonString == JsonString);
     return otherPlan;

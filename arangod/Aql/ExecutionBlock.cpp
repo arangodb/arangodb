@@ -261,9 +261,8 @@ void ExecutionBlock::staticAnalysis (ExecutionBlock* super) {
 }
 
 int ExecutionBlock::initialize () {
-  int res;
   for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
-    res = (*it)->initialize();
+    int res = (*it)->initialize();
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
@@ -777,6 +776,8 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
   : ExecutionBlock(engine, ep),
     _collection(ep->_collection),
     _posInAllDocs(0) {
+
+  std::cout << "USING INDEX: " << ep->_index->_iid << ", " << TRI_TypeNameIndex(ep->_index->_type) << "\n";
 }
 
 IndexRangeBlock::~IndexRangeBlock () {
@@ -2036,6 +2037,7 @@ bool SortBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
 
 int LimitBlock::initialize () {
   int res = ExecutionBlock::initialize();
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -2697,7 +2699,8 @@ ExecutionBlock::VarOverview::VarOverview (VarOverview const& v,
 
 void ExecutionBlock::VarOverview::after (ExecutionBlock *eb) {
   switch (eb->getPlanNode()->getType()) {
-    case ExecutionNode::ENUMERATE_COLLECTION: {
+    case ExecutionNode::ENUMERATE_COLLECTION: 
+    case ExecutionNode::INDEX_RANGE: {
       depth++;
       nrRegsHere.push_back(1);
       nrRegs.push_back(1 + nrRegs.back());
@@ -2729,6 +2732,7 @@ void ExecutionBlock::VarOverview::after (ExecutionBlock *eb) {
       totalNrRegs++;
       break;
     }
+
     case ExecutionNode::SUBQUERY: {
       nrRegsHere[depth]++;
       nrRegs[depth]++;
@@ -2740,6 +2744,7 @@ void ExecutionBlock::VarOverview::after (ExecutionBlock *eb) {
       subQueryBlocks.push_back(eb);
       break;
     }
+
     case ExecutionNode::AGGREGATE: {
       depth++;
       nrRegsHere.push_back(0);
@@ -2766,20 +2771,91 @@ void ExecutionBlock::VarOverview::after (ExecutionBlock *eb) {
       }
       break;
     }
+
     case ExecutionNode::SORT: {
       // sort sorts in place and does not produce new registers
       break;
     }
-
-    case ExecutionNode::REMOVE: {
-      // TODO: decide whether remove needs to produce new registers
+    
+    case ExecutionNode::RETURN: {
+      // return is special. it produces a result but is the last step in the pipeline
       break;
     }
-    
-      // TODO: potentially more cases
-    default:
+
+    case ExecutionNode::REMOVE: {
+      auto ep = static_cast<RemoveNode const*>(eb->getPlanNode());
+      if (ep->_outVariable != nullptr) {
+        nrRegsHere[depth]++;
+        nrRegs[depth]++;
+        varInfo.insert(make_pair(ep->_outVariable->id,
+                                 VarInfo(depth, totalNrRegs)));
+        totalNrRegs++;
+      }
       break;
+    }
+
+    case ExecutionNode::INSERT: {
+      auto ep = static_cast<InsertNode const*>(eb->getPlanNode());
+      if (ep->_outVariable != nullptr) {
+        nrRegsHere[depth]++;
+        nrRegs[depth]++;
+        varInfo.insert(make_pair(ep->_outVariable->id,
+                                 VarInfo(depth, totalNrRegs)));
+        totalNrRegs++;
+      }
+      break;
+    }
+
+    case ExecutionNode::UPDATE: {
+      auto ep = static_cast<UpdateNode const*>(eb->getPlanNode());
+      if (ep->_outVariable != nullptr) {
+        nrRegsHere[depth]++;
+        nrRegs[depth]++;
+        varInfo.insert(make_pair(ep->_outVariable->id,
+                                 VarInfo(depth, totalNrRegs)));
+        totalNrRegs++;
+      }
+      break;
+    }
+
+    case ExecutionNode::REPLACE: {
+      auto ep = static_cast<ReplaceNode const*>(eb->getPlanNode());
+      if (ep->_outVariable != nullptr) {
+        nrRegsHere[depth]++;
+        nrRegs[depth]++;
+        varInfo.insert(make_pair(ep->_outVariable->id,
+                                 VarInfo(depth, totalNrRegs)));
+        totalNrRegs++;
+      }
+      break;
+    }
+
+    case ExecutionNode::SINGLETON:
+    case ExecutionNode::FILTER:
+    case ExecutionNode::LIMIT:
+    case ExecutionNode::NORESULTS: {
+      // these node types do not produce any new registers
+      break;
+    }
+
+    case ExecutionNode::INTERSECTION: 
+    case ExecutionNode::LOOKUP_JOIN:
+    case ExecutionNode::MERGE_JOIN:
+    case ExecutionNode::LOOKUP_INDEX_UNIQUE:
+    case ExecutionNode::LOOKUP_INDEX_RANGE:
+    case ExecutionNode::LOOKUP_FULL_COLLECTION:
+    case ExecutionNode::CONCATENATION:
+    case ExecutionNode::MERGE:
+    case ExecutionNode::REMOTE: {
+      // TODO: these node types need to be implemented!
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "node type not implemented");
+    }
+    
+    case ExecutionNode::ILLEGAL: {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
   }
+
   eb->_depth = depth;
   eb->_varOverview = *me;
 
