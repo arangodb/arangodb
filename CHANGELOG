@@ -1,6 +1,10 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
 
+* front-end: added download feature for (filtered) documents
+
+* front-end: added download feature for the results of a user query
+
 * front-end: added function to move documents to another collection
 
 * front-end: added sort-by attribute to the documents filter
