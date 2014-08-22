@@ -93,13 +93,15 @@ void RangesInfo::insert (std::string var, std::string name,
     return;
   }
   
-  auto oldRange = find(var, name); //TODO improve, using oldMap
+  auto it = oldMap->find(name); 
   
-  if (oldRange == nullptr) {
+  if (it == oldMap->end()) {
     // TODO add exception . . .
     oldMap->insert(make_pair(name, newRange));
     return;
   }
+
+  auto oldRange = (*it).second;
 
   if (!oldRange->_valid) { // intersection of the empty set with any set is empty!
     return;
