@@ -23,6 +23,8 @@
       next: null
     },
 
+    editButtons: ["#deleteSelected", "#moveSelected"],
+
     initialize : function () {
       this.documentStore = this.options.documentStore;
       this.collectionsStore = this.options.collectionsStore;
@@ -67,6 +69,7 @@
       "click #documentsTableID tbody tr" : "clicked",
       "click #deleteDoc"           : "remove",
       "click #deleteSelected"      : "deleteSelectedDocs",
+      "click #moveSelected"        : "moveSelectedDocs",
       "click #addDocumentButton"   : "addDocument",
       "click #documents_first"     : "firstDocuments",
       "click #documents_last"      : "lastDocuments",
@@ -518,6 +521,67 @@
       }
     },
 
+    moveSelectedDocs: function() {
+      var buttons = [], tableContent = [];
+      var toDelete = this.getSelectedDocs();
+
+      if (toDelete.length === 0) {
+        return;
+      }
+
+      tableContent.push(
+        window.modalView.createTextEntry(
+          'move-documents-to',
+          'Move to',
+          '',
+          false,
+          'collection-name',
+          true,
+          [
+            {
+              rule: Joi.string().regex(/^[a-zA-Z]/),
+              msg: "Collection name must always start with a letter."
+            },
+            {
+              rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
+              msg: 'Only Symbols "_" and "-" are allowed.'
+            },
+            {
+              rule: Joi.string().required(),
+              msg: "No collection name given."
+            }
+          ]
+        )
+      );
+
+      buttons.push(
+        window.modalView.createSuccessButton('Move', this.confirmMoveSelectedDocs.bind(this))
+      );
+
+      window.modalView.show(
+        'modalTable.ejs',
+        'Move documents',
+        buttons,
+        tableContent
+      );
+    },
+
+    confirmMoveSelectedDocs: function() {
+      var toMove = this.getSelectedDocs(),
+      self = this,
+      toCollection = $('.modal-body').last().find('#move-documents-to').val();
+
+      var callback = function() {
+        this.collection.getDocuments(this.getDocsCallback.bind(this));
+        $('#markDocuments').click();
+        window.modalView.hide();
+      }.bind(this);
+
+      _.each(toMove, function(key) {
+        self.collection.moveDocument(key, self.collection.collectionID, toCollection, callback);
+      });
+    },
+
     deleteSelectedDocs: function() {
       var buttons = [], tableContent = [];
       var toDelete = this.getSelectedDocs();
@@ -681,18 +745,30 @@
         var selected = this.getSelectedDocs();
         $('.selectedCount').text(selected.length);
 
-        if (selected.length > 0) {
-          $('#deleteSelected').prop('disabled', false);
-          $('#deleteSelected').removeClass('button-neutral');
-          $('#deleteSelected').addClass('button-danger');
-          $('#deleteSelected').removeClass('disabled');
-        }
-        else {
-          $('#deleteSelected').prop('disabled', true);
-          $('#deleteSelected').addClass('disabled');
-          $('#deleteSelected').addClass('button-neutral');
-          $('#deleteSelected').removeClass('button-danger');
-        }
+        _.each(this.editButtons, function(button) {
+          if (selected.length > 0) {
+            $(button).prop('disabled', false);
+            $(button).removeClass('button-neutral');
+            $(button).removeClass('disabled');
+            if (button === "#moveSelected") {
+              $(button).addClass('button-success');
+            }
+            else {
+              $(button).addClass('button-danger');
+            }
+          }
+          else {
+            $(button).prop('disabled', true);
+            $(button).addClass('disabled');
+            $(button).addClass('button-neutral');
+            if (button === "#moveSelected") {
+              $(button).removeClass('button-success');
+            }
+            else {
+              $(button).removeClass('button-danger');
+            }
+          }
+        });
         return;
       }
 
