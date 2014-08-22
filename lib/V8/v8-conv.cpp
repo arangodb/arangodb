@@ -53,7 +53,7 @@ static int FillShapeValueJson (TRI_shaper_t* shaper,
                                v8::Handle<v8::Value> const json,
                                size_t level,
                                set<int>& seenHashes,
-                               vector< v8::Handle<v8::Object> >& seenObjects,
+                               vector< v8::Handle<v8::Object>>& seenObjects,
                                bool create);
 
 static v8::Handle<v8::Value> JsonShapeData (v8::Handle<v8::Value>&,
@@ -270,7 +270,7 @@ static int FillShapeValueList (TRI_shaper_t* shaper,
                                v8::Handle<v8::Array> const json,
                                size_t level,
                                set<int>& seenHashes,
-                               vector< v8::Handle<v8::Object> >& seenObjects,
+                               vector< v8::Handle<v8::Object>>& seenObjects,
                                bool create) {
   size_t total;
 
@@ -583,7 +583,7 @@ static int FillShapeValueArray (TRI_shaper_t* shaper,
                                 v8::Handle<v8::Object> const json,
                                 size_t level,
                                 set<int>& seenHashes,
-                                vector< v8::Handle<v8::Object> >& seenObjects,
+                                vector< v8::Handle<v8::Object>>& seenObjects,
                                 bool create) {
   TRI_shape_value_t* values;
   TRI_shape_value_t* p;
@@ -838,7 +838,7 @@ static int FillShapeValueJson (TRI_shaper_t* shaper,
                                v8::Handle<v8::Value> const json,
                                size_t level,
                                set<int>& seenHashes,
-                               vector< v8::Handle<v8::Object> >& seenObjects,
+                               vector< v8::Handle<v8::Object>>& seenObjects,
                                bool create) {
   if (json->IsRegExp() || json->IsFunction() || json->IsExternal()) {
     LOG_TRACE("shaper failed because regexp/function/external/date object cannot be converted");
@@ -870,8 +870,8 @@ static int FillShapeValueJson (TRI_shaper_t* shaper,
     if (seenHashes.find(hash) != seenHashes.end()) {
       // LOG_TRACE("found hash %d", hash);
 
-      for (vector< v8::Handle<v8::Object> >::iterator i = seenObjects.begin();  i != seenObjects.end();  ++i) {
-        if (json->StrictEquals(*i)) {
+      for (auto it = seenObjects.begin();  it != seenObjects.end();  ++it) {
+        if (json->StrictEquals(*it)) {
           LOG_TRACE("found duplicate for hash %d", hash);
           return TRI_ERROR_ARANGO_SHAPER_FAILED;
         }
@@ -1471,9 +1471,7 @@ static v8::Handle<v8::Value> ObjectJsonArray (TRI_json_t const* json) {
     }
 
     TRI_json_t const* j = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i + 1));
-    v8::Handle<v8::Value> val = TRI_ObjectJson(j);
-
-    object->Set(v8::String::New(key->_value._string.data, key->_value._string.length - 1), val);
+    object->Set(v8::String::New(key->_value._string.data, key->_value._string.length - 1), TRI_ObjectJson(j));
   }
 
   return object;
@@ -1596,7 +1594,7 @@ TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> const object,
                                            bool create) {
   TRI_shape_value_t dst;
   set<int> seenHashes;
-  vector< v8::Handle<v8::Object> > seenObjects;
+  vector< v8::Handle<v8::Object>> seenObjects;
 
   int res = FillShapeValueJson(shaper, &dst, object, 0, seenHashes, seenObjects, create);
 
@@ -1633,7 +1631,7 @@ int TRI_FillShapedJsonV8Object (v8::Handle<v8::Value> const object,
                                 bool create) {
   TRI_shape_value_t dst;
   set<int> seenHashes;
-  vector< v8::Handle<v8::Object> > seenObjects;
+  vector< v8::Handle<v8::Object>> seenObjects;
 
   int res = FillShapeValueJson(shaper, &dst, object, 0, seenHashes, seenObjects, create);
 
@@ -1657,7 +1655,7 @@ int TRI_FillShapedJsonV8Object (v8::Handle<v8::Value> const object,
 
 static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
                                  set<int>& seenHashes,
-                                 vector<v8::Handle<v8::Object> >& seenObjects) {
+                                 vector<v8::Handle<v8::Object>>& seenObjects) {
   if (parameter->IsBoolean()) {
     v8::Handle<v8::Boolean> booleanParameter = parameter->ToBoolean();
     return TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, booleanParameter->Value());
@@ -1706,8 +1704,7 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
 
     if (listJson != nullptr) {
       for (uint32_t j = 0; j < n; ++j) {
-        v8::Handle<v8::Value> item = arrayParameter->Get(j);
-        TRI_json_t* result = ObjectToJson(item, seenHashes, seenObjects);
+        TRI_json_t* result = ObjectToJson(arrayParameter->Get(j), seenHashes, seenObjects);
 
         if (result != nullptr) {
           TRI_PushBack3ListJson(TRI_UNKNOWN_MEM_ZONE, listJson, result);
@@ -1761,8 +1758,8 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
     if (seenHashes.find(hash) != seenHashes.end()) {
       // LOG_TRACE("found hash %d", hash);
 
-      for (vector< v8::Handle<v8::Object> >::iterator i = seenObjects.begin();  i != seenObjects.end();  ++i) {
-        if (parameter->StrictEquals(*i)) {
+      for (auto it = seenObjects.begin();  it != seenObjects.end();  ++it) {
+        if (parameter->StrictEquals(*it)) {
           LOG_TRACE("found duplicate for hash %d", hash);
           return nullptr;
         }
@@ -1783,8 +1780,7 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
     if (arrayJson != nullptr && n > 0) {
       for (uint32_t j = 0; j < n; ++j) {
         v8::Handle<v8::Value> key  = names->Get(j);
-        v8::Handle<v8::Value> item = arrayParameter->Get(key);
-        TRI_json_t* result = ObjectToJson(item, seenHashes, seenObjects);
+        TRI_json_t* result = ObjectToJson(arrayParameter->Get(key), seenHashes, seenObjects);
 
         if (result != nullptr) {
           TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, key);
@@ -1815,7 +1811,7 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
 
 TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> const parameter) {
   set<int> seenHashes;
-  vector< v8::Handle<v8::Object> > seenObjects;
+  vector< v8::Handle<v8::Object>> seenObjects;
 
   return ObjectToJson(parameter, seenHashes, seenObjects);
 }
