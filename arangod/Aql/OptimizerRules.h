@@ -80,6 +80,12 @@ namespace triagens {
 
     int useIndexRange (Optimizer*, ExecutionPlan*, Optimizer::PlanList&, bool&);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief try to use the index for sorting
+////////////////////////////////////////////////////////////////////////////////
+
+    int useIndexForSort (Optimizer*, ExecutionPlan*, Optimizer::PlanList&, bool&);
+
   }  // namespace aql
 }  // namespace triagens
 
