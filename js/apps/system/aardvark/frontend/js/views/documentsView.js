@@ -23,6 +23,8 @@
       next: null
     },
 
+    editButtons: ["#deleteSelected", "#moveSelected"],
+
     initialize : function () {
       this.documentStore = this.options.documentStore;
       this.collectionsStore = this.options.collectionsStore;
@@ -64,9 +66,10 @@
       "click #filterSend"          : "sendFilter",
       "click #addFilterItem"       : "addFilterItem",
       "click .removeFilterItem"    : "removeFilterItem",
-      "click #documentsTableID tr" : "clicked",
+      "click #documentsTableID tbody tr" : "clicked",
       "click #deleteDoc"           : "remove",
       "click #deleteSelected"      : "deleteSelectedDocs",
+      "click #moveSelected"        : "moveSelectedDocs",
       "click #addDocumentButton"   : "addDocument",
       "click #documents_first"     : "firstDocuments",
       "click #documents_last"      : "lastDocuments",
@@ -87,7 +90,8 @@
       "click #documentsToolbar ul"      : "resetIndexForms",
       "click #indexHeader #addIndex"    :    "toggleNewIndexView",
       "click #indexHeader #cancelIndex" :    "toggleNewIndexView",
-      "change #documentSize"            :    "setPagesize"
+      "change #documentSize"            :    "setPagesize",
+      "change #docsSort"                :    "setSorting"
     },
 
     showSpinner: function() {
@@ -112,7 +116,20 @@
       this.collection.getDocuments(this.getDocsCallback.bind(this));
     },
 
+    setSorting: function() {
+      var sortAttribute = $('#docsSort').val();
+
+      if (sortAttribute === '' || sortAttribute === undefined || sortAttribute === null) {
+        sortAttribute = '_key';
+      }
+
+      this.collection.setSort(sortAttribute);
+    },
+
     returnPressedHandler: function(event) {
+      if (event.keyCode === 13 && $(event.target).is($('#docsSort'))) {
+        this.collection.getDocuments(this.getDocsCallback.bind(this));
+      }
       if (event.keyCode === 13) {
         if ($("#confirmDeleteBtn").attr("disabled") === false) {
           this.confirmDelete();
@@ -136,6 +153,7 @@
       $('input').val('');
       $('select').val('==');
       this.removeAllFilterItems();
+      $('#documentSize').val(this.collection.getPageSize());
 
       this.clearTable();
       $('#documents_last').css("visibility", "visible");
@@ -143,6 +161,8 @@
       this.addDocumentSwitch = true;
       this.collection.resetFilter();
       this.collection.loadTotal();
+      this.restoredFilters = [];
+      this.markFilterToggle();
       this.collection.getDocuments(this.getDocsCallback.bind(this));
     },
 
@@ -215,10 +235,19 @@
       }
     },
 
+    markFilterToggle: function () {
+      if (this.restoredFilters.length > 0) {
+        $('#filterCollection').addClass('activated');
+      }
+      else {
+        $('#filterCollection').removeClass('activated');
+      }
+    },
+
     editDocuments: function () {
       $('#indexCollection').removeClass('activated');
       $('#importCollection').removeClass('activated');
-      $('#filterCollection').removeClass('activated');
+      this.markFilterToggle();
       $('#markDocuments').toggleClass('activated'); this.changeEditMode();
       $('#filterHeader').hide();
       $('#importHeader').hide();
@@ -230,7 +259,7 @@
       $('#indexCollection').removeClass('activated');
       $('#importCollection').removeClass('activated');
       $('#markDocuments').removeClass('activated'); this.changeEditMode(false);
-      $('#filterCollection').toggleClass('activated');
+      this.markFilterToggle();
       this.activeFilter = true;
       $('#filterHeader').slideToggle(200);
       $('#importHeader').hide();
@@ -247,7 +276,7 @@
     },
 
     importCollection: function () {
-      $('#filterCollection').removeClass('activated');
+      this.markFilterToggle();
       $('#indexCollection').removeClass('activated');
       $('#markDocuments').removeClass('activated'); this.changeEditMode(false);
       $('#importCollection').toggleClass('activated');
@@ -258,7 +287,7 @@
     },
 
     indexCollection: function () {
-      $('#filterCollection').removeClass('activated');
+      this.markFilterToggle();
       $('#importCollection').removeClass('activated');
       $('#markDocuments').removeClass('activated'); this.changeEditMode(false);
       $('#indexCollection').toggleClass('activated');
@@ -272,14 +301,14 @@
 
     changeEditMode: function (enable) {
       if (enable === false || this.editMode === true) {
-        $('#documentsTableID tr').css('cursor', 'default');
+        $('#documentsTableID tbody tr').css('cursor', 'default');
         $('.deleteButton').fadeIn();
         $('.addButton').fadeIn();
         $('.selected-row').removeClass('selected-row');
         this.editMode = false;
       }
       else {
-        $('#documentsTableID tr').css('cursor', 'copy');
+        $('#documentsTableID tbody tr').css('cursor', 'copy');
         $('.deleteButton').fadeOut();
         $('.addButton').fadeOut();
         $('.selectedCount').text(0);
@@ -328,12 +357,14 @@
       this.collection.setToFirst();
 
       this.collection.getDocuments(this.getDocsCallback.bind(this));
+      this.markFilterToggle();
     },
 
     restoreFilter: function () {
       var self = this, counter = 0;
 
       this.filterId = 0;
+      $('#docsSort').val(this.collection.getSort());
       _.each(this.restoredFilters, function (f) {
         //change html here and restore filters
         if (counter !== 0) {
@@ -490,6 +521,67 @@
       }
     },
 
+    moveSelectedDocs: function() {
+      var buttons = [], tableContent = [];
+      var toDelete = this.getSelectedDocs();
+
+      if (toDelete.length === 0) {
+        return;
+      }
+
+      tableContent.push(
+        window.modalView.createTextEntry(
+          'move-documents-to',
+          'Move to',
+          '',
+          false,
+          'collection-name',
+          true,
+          [
+            {
+              rule: Joi.string().regex(/^[a-zA-Z]/),
+              msg: "Collection name must always start with a letter."
+            },
+            {
+              rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
+              msg: 'Only Symbols "_" and "-" are allowed.'
+            },
+            {
+              rule: Joi.string().required(),
+              msg: "No collection name given."
+            }
+          ]
+        )
+      );
+
+      buttons.push(
+        window.modalView.createSuccessButton('Move', this.confirmMoveSelectedDocs.bind(this))
+      );
+
+      window.modalView.show(
+        'modalTable.ejs',
+        'Move documents',
+        buttons,
+        tableContent
+      );
+    },
+
+    confirmMoveSelectedDocs: function() {
+      var toMove = this.getSelectedDocs(),
+      self = this,
+      toCollection = $('.modal-body').last().find('#move-documents-to').val();
+
+      var callback = function() {
+        this.collection.getDocuments(this.getDocsCallback.bind(this));
+        $('#markDocuments').click();
+        window.modalView.hide();
+      }.bind(this);
+
+      _.each(toMove, function(key) {
+        self.collection.moveDocument(key, self.collection.collectionID, toCollection, callback);
+      });
+    },
+
     deleteSelectedDocs: function() {
       var buttons = [], tableContent = [];
       var toDelete = this.getSelectedDocs();
@@ -562,7 +654,7 @@
 
     getSelectedDocs: function() {
       var toDelete = [];
-      _.each($('#documentsTableID tr'), function(element) {
+      _.each($('#documentsTableID tbody tr'), function(element) {
         if ($(element).hasClass('selected-row')) {
           toDelete.push($($(element).children()[1]).find('.key').text());
         }
@@ -653,18 +745,30 @@
         var selected = this.getSelectedDocs();
         $('.selectedCount').text(selected.length);
 
-        if (selected.length > 0) {
-          $('#deleteSelected').prop('disabled', false);
-          $('#deleteSelected').removeClass('button-neutral');
-          $('#deleteSelected').addClass('button-danger');
-          $('#deleteSelected').removeClass('disabled');
-        }
-        else {
-          $('#deleteSelected').prop('disabled', true);
-          $('#deleteSelected').addClass('disabled');
-          $('#deleteSelected').addClass('button-neutral');
-          $('#deleteSelected').removeClass('button-danger');
-        }
+        _.each(this.editButtons, function(button) {
+          if (selected.length > 0) {
+            $(button).prop('disabled', false);
+            $(button).removeClass('button-neutral');
+            $(button).removeClass('disabled');
+            if (button === "#moveSelected") {
+              $(button).addClass('button-success');
+            }
+            else {
+              $(button).addClass('button-danger');
+            }
+          }
+          else {
+            $(button).prop('disabled', true);
+            $(button).addClass('disabled');
+            $(button).addClass('button-neutral');
+            if (button === "#moveSelected") {
+              $(button).removeClass('button-success');
+            }
+            else {
+              $(button).removeClass('button-danger');
+            }
+          }
+        });
         return;
       }
 
@@ -767,6 +871,7 @@
       else {
         if (this.lastCollectionName !== undefined) {
           this.collection.resetFilter();
+          this.collection.setSort('_key');
           this.restoredFilters = [];
           this.activeFilter = false;
         }
@@ -804,6 +909,7 @@
       this.drawTable();
       this.renderPaginationElements();
       this.selectActivePagesize();
+      this.markFilterToggle();
       return this;
     },
 

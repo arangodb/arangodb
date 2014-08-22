@@ -407,7 +407,7 @@
                          cuts[counter] : cuts[counter - 1] + " - " + cuts[counter];
     },
 
-    getStatistics: function () {
+    getStatistics: function (callback) {
       var self = this;
       var url = "/_db/_system/_admin/aardvark/statistics/short";
       var urlParams = "?start=";
@@ -430,13 +430,20 @@
 
       $.ajax(
         url + urlParams,
-        {async: false}
+        {async: true}
       ).done(
         function (d) {
           if (d.times.length > 0) {
             self.isUpdating = true;
             self.mergeHistory(d);
-          } 
+          }
+          if (self.isUpdating === false) {
+            return;
+          }
+          if (callback) {
+            callback();
+          }
+          self.updateCharts();
         }
       );
     },
@@ -459,7 +466,7 @@
 
       $.ajax(
         url + urlParams,
-        {async: false}
+        {async: true}
       ).done(
         function (d) {
           var i;
@@ -664,10 +671,6 @@
       }
       self.timer = window.setInterval(function () {
         self.getStatistics();
-        if (self.isUpdating === false) {
-          return;
-        }
-        self.updateCharts();
       },
       self.interval
     );
@@ -697,14 +700,19 @@
     if (!modalView)  {
       $(this.el).html(this.template.render());
     }
-    this.getStatistics();
-    this.prepareDygraphs();
-    if (this.isUpdating) {
-      this.prepareD3Charts();
-      this.prepareResidentSize();
-      this.updateTendencies();
-    }
-    this.startUpdating();
+    var callback = function() {
+      this.prepareDygraphs();
+      if (this.isUpdating) {
+        this.prepareD3Charts();
+        this.prepareResidentSize();
+        this.updateTendencies();
+      }
+      this.startUpdating();
+    }.bind(this);
+    this.getStatistics(callback);
+
+
+
   }
 });
 }());
