@@ -2,7 +2,6 @@
 /*global require, exports */
 (function () {
   'use strict';
-
   function UserNotFound(uid) {
     this.message = 'User with user id ' + uid + ' not found.';
     var err = new Error(this.message);
