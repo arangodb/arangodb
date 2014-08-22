@@ -310,7 +310,7 @@ namespace triagens {
 
         virtual bool hasMore ();
 
-        virtual int64_t count () {
+        virtual int64_t count () const {
           return _dependencies[0]->count();
         }
 
@@ -443,7 +443,7 @@ namespace triagens {
           return ! _done;
         }
 
-        int64_t count () {
+        int64_t count () const {
           return 1;
         }
 
@@ -804,7 +804,7 @@ namespace triagens {
 
         bool hasMore ();
 
-        int64_t count () {
+        int64_t count () const {
           return -1;   // refuse to work
         }
 
@@ -1297,7 +1297,7 @@ namespace triagens {
           return false;
         }
 
-        int64_t count () {
+        int64_t count () const {
           return 0;
         }
 
