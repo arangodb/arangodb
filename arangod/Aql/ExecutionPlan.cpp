@@ -1016,8 +1016,6 @@ void ExecutionPlan::unlinkNodes (std::unordered_set<ExecutionNode*>& toRemove) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ExecutionPlan::unlinkNode (ExecutionNode* node) {
-  checkLinkage();
-  std::cout << toJson(TRI_UNKNOWN_MEM_ZONE, true).toString() << std::endl;
   auto parents = node->getParents();
   if (parents.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1035,8 +1033,6 @@ void ExecutionPlan::unlinkNode (ExecutionNode* node) {
       node->removeDependency(x);
     }
   }
-  std::cout << toJson(TRI_UNKNOWN_MEM_ZONE, true).toString() << std::endl;
-  checkLinkage();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
