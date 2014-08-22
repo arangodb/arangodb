@@ -158,6 +158,8 @@
       this.addDocumentSwitch = true;
       this.collection.resetFilter();
       this.collection.loadTotal();
+      this.restoredFilters = [];
+      this.markFilterToggle();
       this.collection.getDocuments(this.getDocsCallback.bind(this));
     },
 
@@ -230,10 +232,19 @@
       }
     },
 
+    markFilterToggle: function () {
+      if (this.restoredFilters.length > 0) {
+        $('#filterCollection').addClass('activated');
+      }
+      else {
+        $('#filterCollection').removeClass('activated');
+      }
+    },
+
     editDocuments: function () {
       $('#indexCollection').removeClass('activated');
       $('#importCollection').removeClass('activated');
-      $('#filterCollection').removeClass('activated');
+      this.markFilterToggle();
       $('#markDocuments').toggleClass('activated'); this.changeEditMode();
       $('#filterHeader').hide();
       $('#importHeader').hide();
@@ -245,7 +256,7 @@
       $('#indexCollection').removeClass('activated');
       $('#importCollection').removeClass('activated');
       $('#markDocuments').removeClass('activated'); this.changeEditMode(false);
-      $('#filterCollection').toggleClass('activated');
+      this.markFilterToggle();
       this.activeFilter = true;
       $('#filterHeader').slideToggle(200);
       $('#importHeader').hide();
@@ -262,7 +273,7 @@
     },
 
     importCollection: function () {
-      $('#filterCollection').removeClass('activated');
+      this.markFilterToggle();
       $('#indexCollection').removeClass('activated');
       $('#markDocuments').removeClass('activated'); this.changeEditMode(false);
       $('#importCollection').toggleClass('activated');
@@ -273,7 +284,7 @@
     },
 
     indexCollection: function () {
-      $('#filterCollection').removeClass('activated');
+      this.markFilterToggle();
       $('#importCollection').removeClass('activated');
       $('#markDocuments').removeClass('activated'); this.changeEditMode(false);
       $('#indexCollection').toggleClass('activated');
@@ -343,6 +354,7 @@
       this.collection.setToFirst();
 
       this.collection.getDocuments(this.getDocsCallback.bind(this));
+      this.markFilterToggle();
     },
 
     restoreFilter: function () {
@@ -821,6 +833,7 @@
       this.drawTable();
       this.renderPaginationElements();
       this.selectActivePagesize();
+      this.markFilterToggle();
       return this;
     },
 
