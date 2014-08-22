@@ -29,7 +29,9 @@
 #include "Aql/ExecutionEngine.h"
 #include "Basics/StringUtils.h"
 #include "Basics/json-utilities.h"
+#include "HashIndex/hash-index.h"
 #include "Utils/Exception.h"
+#include "VocBase/index.h"
 #include "VocBase/vocbase.h"
 
 using namespace triagens::arango;
@@ -712,8 +714,10 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
   : ExecutionBlock(engine, ep),
     _collection(ep->_collection),
     _posInAllDocs(0) {
+  
+  // std::cout << "USING INDEX: " << ep->_index->_iid << ", " << TRI_TypeNameIndex(ep->_index->_type) << "\n";
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 
-  std::cout << "USING INDEX: " << ep->_index->_iid << ", " << TRI_TypeNameIndex(ep->_index->_type) << "\n";
 }
 
 IndexRangeBlock::~IndexRangeBlock () {
@@ -725,24 +729,33 @@ bool IndexRangeBlock::moreDocuments () {
   }
 
   _documents.clear();
-
-  int res = _trx->readIncremental(_trx->trxCollection(_collection->cid()),
-                                  _documents,
-                                  _internalSkip,
-                                  static_cast<TRI_voc_size_t>(DefaultBatchSize),
-                                  0,
-                                  TRI_QRY_NO_LIMIT,
-                                  &_totalCount);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
+  
+/*  
+  auto en = static_cast<IndexRangeNode const*>(getPlanNode());
+ 
+  if (en->_index->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+    readSkiplistIndex();
   }
-
+  else if (en->_index->_type == TRI_IDX_TYPE_HASH_INDEX) {
+    readHashIndex();
+  }
+  else {
+    TRI_ASSERT(false);
+  }
+*/
   return (! _documents.empty());
 }
 
 int IndexRangeBlock::initialize () {
-  return ExecutionBlock::initialize();
+  int res = ExecutionBlock::initialize();
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    if (_trx->orderBarrier(_trx->trxCollection(_collection->cid())) == nullptr) {
+      res = TRI_ERROR_OUT_OF_MEMORY;
+    }
+  }
+
+  return res;
 }
 
 int IndexRangeBlock::initCursor (AqlItemBlock* items, size_t pos) {
@@ -836,7 +849,6 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t atLeast,
 }
 
 size_t IndexRangeBlock::skipSome (size_t atLeast, size_t atMost) {
-
   size_t skipped = 0;
 
   if (_done) {
@@ -879,6 +891,93 @@ size_t IndexRangeBlock::skipSome (size_t atLeast, size_t atMost) {
   }
   return skipped;
 }
+/*
+void IndexRangeBlock::readSkiplistIndex () {
+  auto en = static_cast<IndexRangeNode const*>(getPlanNode());
+  TRI_index_t* idx = en->_index;
+  TRI_ASSERT(idx != nullptr);
+   
+  TRI_index_operator_t* skiplistOperator;
+  TRI_skiplist_iterator_t* skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator);
+
+  if (skiplistIterator == nullptr) {
+    int res = TRI_errno();
+    if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
+      return;
+    }
+
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
+  }
+
+  while (true) { // TODO: handle count
+    TRI_skiplist_index_element_t* indexElement = skiplistIterator->_next(skiplistIterator);
+
+    if (indexElement == nullptr) {
+      break;
+    }
+    _documents.push_back(*(indexElement->_document));
+  }
+
+  TRI_FreeSkiplistIterator(skiplistIterator);
+}
+
+
+void IndexRangeBlock::readHashIndex () {
+  auto en = static_cast<IndexRangeNode const*>(getPlanNode());
+  TRI_index_t* idx = en->_index;
+  TRI_ASSERT(idx != nullptr);
+  TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
+             
+  TRI_shaper_t* shaper = _collection->documentCollection()->getShaper(); 
+  TRI_ASSERT(shaper != nullptr);
+  
+  TRI_index_search_value_t searchValue;
+  
+  auto destroySearchValue = [&]() {
+    if (searchValue._values != nullptr) {
+      for (size_t i = 0; i < searchValue._length; ++i) {
+        TRI_DestroyShapedJson(shaper->_memoryZone, &searchValue._values[i]);
+      }
+      TRI_Free(TRI_CORE_MEM_ZONE, searchValue._values);
+    }
+    searchValue._values = nullptr;
+  };
+
+  auto setupSearchValue = [&]() {
+    size_t const n = hashIndex->_paths._length;
+    searchValue._length = 0;
+    searchValue._values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(TRI_shaped_json_t), true));
+
+    if (searchValue._values == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+    
+    searchValue._length = n;
+
+    for (size_t i = 0;  i < n;  ++i) {
+      TRI_shape_pid_t pid = *(static_cast<TRI_shape_pid_t*>(TRI_AtVector(&hashIndex->_paths, i)));
+      TRI_ASSERT(pid != 0);
+   
+      char const* name = TRI_AttributeNameShapePid(shaper, pid);
+
+      std::cout << "PID: " << pid << ", NAME: " << name << "\n";
+//      searchValue._values[i] = TRI_ShapedJsonJson(shaper, src, false, true); 
+    }
+  };
+ 
+  setupSearchValue();  
+  TRI_index_result_t list = TRI_LookupHashIndex(idx, &searchValue);
+
+  destroySearchValue();
+  
+  size_t const n = list._length;
+  for (size_t i = 0; i < n; ++i) {
+    _documents.push_back(*(list._documents[i]));
+  }
+  
+  TRI_DestroyIndexResult(&list);
+}
+*/
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          class EnumerateListBlock
