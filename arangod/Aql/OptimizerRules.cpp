@@ -317,8 +317,13 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
   public:
 
     FilterToEnumCollFinder (ExecutionPlan* plan, Variable const * var, Optimizer::PlanList* out) 
-      : _plan(plan), _var(var), _out(out), _canThrow(false){
-        _ranges = new RangesInfo();
+      : _plan(plan), 
+        _var(var), 
+        _out(out), 
+        _canThrow(false) {
+      _ranges = new RangesInfo();
+
+      // TODO: who is going to free _ranges??
     };
 
     void before (ExecutionNode* en) {
@@ -327,7 +332,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       if (en->getType() == triagens::aql::ExecutionNode::CALCULATION) {
         auto outvar = en->getVariablesSetHere();
         TRI_ASSERT(outvar.size() == 1);
-        if(outvar[0]->id == _var->id){
+        if (outvar[0]->id == _var->id) {
           auto node = static_cast<CalculationNode*>(en);
           std::string attr;
           std::string enumCollVar;
@@ -345,7 +350,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           std::vector<RangeInfo*> rangeInfo;
           bool valid = true;
           bool eq = true;
-          for (auto x : *map){
+          for (auto x : *map) {
             attrs.push_back(x.first);
             rangeInfo.push_back(x.second);
             valid = valid && x.second->_valid; // check the ranges are all valid
@@ -354,7 +359,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             // 1 value)
           }
           if (! valid){ // ranges are not valid . . . 
-            std::cout << "INVALID RANGE!\n";
+            // std::cout << "INVALID RANGE!\n";
             if (! _canThrow) {
               
               auto newPlan = _plan->clone();
@@ -376,7 +381,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                  (idx->_type == TRI_IDX_TYPE_HASH_INDEX && eq)) {
                 //can only use the index if it is a skip list or (a hash and we
                 //are checking equality)
-                std::cout << "FOUND INDEX!\n";
+                // std::cout << "FOUND INDEX!\n";
                 auto newPlan = _plan->clone();
                 ExecutionNode* newNode = nullptr;
                 try{
@@ -401,11 +406,11 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
     }
 
     void buildRangeInfo (AstNode const* node, std::string& enumCollVar, std::string& attr) {
-      if (node->type == NODE_TYPE_REFERENCE){
+      if (node->type == NODE_TYPE_REFERENCE) {
         auto x = static_cast<Variable*>(node->getData());
         auto setter = _plan->getVarSetBy(x->id);
-        if( setter != nullptr && 
-          setter->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION) {
+        if (setter != nullptr && 
+            setter->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION) {
           enumCollVar = x->name;
         }
         return;
@@ -414,7 +419,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
         char const* attributeName = node->getStringValue();
         buildRangeInfo(node->getMember(0), enumCollVar, attr);
-        if (! enumCollVar.empty()){
+        if (! enumCollVar.empty()) {
           attr.append(attributeName);
           attr.push_back('.');
         }
@@ -437,7 +442,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           val = nullptr;
         }
         
-        if(val != nullptr) {
+        if (val != nullptr) {
           buildRangeInfo(nextNode, enumCollVar, attr);
           if (! enumCollVar.empty()) {
             _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
@@ -489,15 +494,15 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           high = nullptr;
         }
 
-        if(low != nullptr || high != nullptr) {
+        if (low != nullptr || high != nullptr) {
           buildRangeInfo(nextNode, enumCollVar, attr);
-          if(! enumCollVar.empty()){
+          if (! enumCollVar.empty()) {
             _ranges->insert(enumCollVar, attr.substr(0, attr.size()-1), low, high);
           }
         }
       }
       
-      if(node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
         attr = "";
         buildRangeInfo(node->getMember(0), enumCollVar, attr);
         attr = "";
