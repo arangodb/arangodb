@@ -485,11 +485,11 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
   }
 
   // Now put info about vocbase and cid in there
-  /*json("database", Json(_vocbase->_name))
+  json("database", Json(_vocbase->_name))
       ("collection", Json(_collection->name))
       ("outVariable", _outVariable->toJson())
-      ("index", _index->index()->json(_index->index()))
-      ("ranges", ranges);*/
+      ("index", _index->json(_index))
+      ("ranges", ranges);
   
   // And add it:
   nodes(json);

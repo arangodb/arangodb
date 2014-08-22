@@ -29,20 +29,9 @@
 #define ARANGODB_AQL_RANGE_INFO_H 1
 
 #include <Basics/Common.h>
-
 #include <Basics/JsonHelper.h>
 
 #include "Aql/AstNode.h"
-
-//#include <VocBase/voc-types.h>
-//#include <VocBase/vocbase.h>
-//#include "Aql/Expression.h"
-//#include "Aql/Index.h"
-//#include "Aql/ModificationOptions.h"
-//#include "Aql/Variable.h"
-//#include "Aql/Types.h"
-//#include "Aql/WalkerWorker.h"
-//#include "Aql/Query.h"
 
 #include "lib/Basics/json-utilities.h"
 
@@ -131,7 +120,7 @@ namespace triagens {
         }
         
         // is the range a unique value (i.e. something like x<=1 and x>=1)
-        bool is1ValueRangeInfo () { //i.e. the range only covers single value
+        bool is1ValueRangeInfo () { 
           return _valid && _low != nullptr && _high != nullptr &&
                   TRI_CheckSameValueJson(_low->_bound.json(), _high->_bound.json())
                   && _low->_include && _high->_include;
