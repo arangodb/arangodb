@@ -2676,12 +2676,11 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
     ClusterCommResult* result;
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
-    bool force = false;
     char const* value;
     string forceopt;
     value = _request->value("force");
     if (value != nullptr) {
-      force = StringUtils::boolean(value);
+      bool force = StringUtils::boolean(value);
       if (force) {
         forceopt = "&force=true";
       }

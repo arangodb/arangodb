@@ -108,7 +108,8 @@ void TRI_doc_mptr_copy_t::setDataPtr (void const* d) {
 
 TRI_document_collection_t::TRI_document_collection_t () 
   : _useSecondaryIndexes(true),
-    _keyGenerator(nullptr) {
+    _keyGenerator(nullptr),
+    _uncollectedLogfileEntries(0) {
 
   _tickMax = 0;
 }
