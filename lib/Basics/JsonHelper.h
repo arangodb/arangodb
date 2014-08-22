@@ -852,7 +852,7 @@ namespace triagens {
 /// @brief returns the length of the list
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t size () {
+        size_t size () const {
           if (! TRI_IsListJson(_json)) {
             throw JsonException("Json is no list");
           }
