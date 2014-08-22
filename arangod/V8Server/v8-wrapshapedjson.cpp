@@ -64,8 +64,7 @@ static int const SLOT_BARRIER = 2;
 /// @brief add basic attributes (_key, _rev, _from, _to) to a document object
 ////////////////////////////////////////////////////////////////////////////////
 
-static v8::Handle<v8::Object> AddBasicDocumentAttributes (
-                                                          CollectionNameResolver const* resolver,
+static v8::Handle<v8::Object> AddBasicDocumentAttributes (CollectionNameResolver const* resolver,
                                                           TRI_v8_global_t* v8g,
                                                           TRI_voc_cid_t cid,
                                                           TRI_df_marker_t const* marker,
@@ -200,9 +199,9 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (triagens::arango::CollectionNameResolv
   // tell everyone else that this barrier is used by an external
   reinterpret_cast<TRI_barrier_blocker_t*>(barrier)->_usedByExternal = true;
 
-  map<void*, v8::Persistent<v8::Value> >::iterator i = v8g->JSBarriers.find(barrier);
+  auto it = v8g->JSBarriers.find(barrier);
 
-  if (i == v8g->JSBarriers.end()) {
+  if (it == v8g->JSBarriers.end()) {
     // increase the reference-counter for the database
     TRI_ASSERT(barrier->_container != nullptr);
     TRI_ASSERT(barrier->_container->_collection != nullptr);
@@ -211,11 +210,11 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (triagens::arango::CollectionNameResolv
     v8::Persistent<v8::Value> persistent = v8::Persistent<v8::Value>::New(isolate, v8::External::New(barrier));
     result->SetInternalField(SLOT_BARRIER, persistent);
 
-    v8g->JSBarriers[barrier] = persistent;
+    v8g->JSBarriers.insert(make_pair(barrier, persistent));
     persistent.MakeWeak(isolate, barrier, WeakBarrierCallback);
   }
   else {
-    result->SetInternalField(SLOT_BARRIER, i->second);
+    result->SetInternalField(SLOT_BARRIER, (*it).second);
   }
 
   return AddBasicDocumentAttributes(resolver, v8g, cid, marker, result);
@@ -321,10 +320,15 @@ static v8::Handle<v8::Value> MapGetNamedShapedJson (v8::Local<v8::String> name,
   v8::String::Utf8Value const str(name);
   string const key(*str, (size_t) str.length());
 
-  if (key[0] == '_' && 
-    (key == "_key" || key == "_rev" || key == "_id" || key == "_from" || key == "_to")) {
-    // strip reserved attributes
-    return scope.Close(v8::Handle<v8::Value>());
+  if (key[0] == '_') { 
+    if (key == TRI_VOC_ATTRIBUTE_KEY || 
+        key == TRI_VOC_ATTRIBUTE_REV || 
+        key == TRI_VOC_ATTRIBUTE_ID || 
+        key == TRI_VOC_ATTRIBUTE_FROM || 
+        key == TRI_VOC_ATTRIBUTE_TO) {
+      // strip reserved attributes
+      return scope.Close(v8::Handle<v8::Value>());
+    }
   }
 
   // get the underlying collection
@@ -387,7 +391,11 @@ static v8::Handle<v8::Integer> PropertyQueryShapedJson (v8::Local<v8::String> na
   }
 
   if (key[0] == '_') {
-    if (key == "_key" || key == "_rev" || key == "_id" || key == "_from" || key == "_to") {
+    if (key == TRI_VOC_ATTRIBUTE_KEY || 
+        key == TRI_VOC_ATTRIBUTE_REV || 
+        key == TRI_VOC_ATTRIBUTE_ID || 
+        key == TRI_VOC_ATTRIBUTE_FROM || 
+        key == TRI_VOC_ATTRIBUTE_TO) {
       return scope.Close(v8::Handle<v8::Integer>(v8::Integer::New(v8::ReadOnly)));
     }
   }
@@ -441,16 +449,16 @@ static v8::Handle<v8::Value> MapGetIndexedShapedJson (uint32_t idx,
   return scope.Close(MapGetNamedShapedJson(strVal, info));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate the TRI_shaped_json_t template
+////////////////////////////////////////////////////////////////////////////////
 
-  // .............................................................................
-  // generate the TRI_shaped_json_t template
-  // .............................................................................
 void TRI_InitV8shaped_json (v8::Handle<v8::Context> context,
                             TRI_server_t* server,
                             TRI_vocbase_t* vocbase,
                             triagens::arango::JSLoader* loader,
                             const size_t threadNumber,
-                            TRI_v8_global_t* v8g){
+                            TRI_v8_global_t* v8g) {
   v8::Handle<v8::ObjectTemplate> rt;
   v8::Handle<v8::FunctionTemplate> ft;
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
