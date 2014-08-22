@@ -377,7 +377,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             // make one new plan for every index in <idxs> that replaces the
             // enumerate collection node with a RangeIndexNode . . . 
             for (auto idx: idxs) {
-              if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX || 
+              if ( /*idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX || */
                  (idx->_type == TRI_IDX_TYPE_HASH_INDEX && eq)) {
                 //can only use the index if it is a skip list or (a hash and we
                 //are checking equality)
