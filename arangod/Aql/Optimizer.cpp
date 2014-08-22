@@ -41,6 +41,10 @@ using namespace triagens::aql;
 Optimizer::Optimizer () {
   // List all the rules in the system here:
 
+  // try to find sort blocks which are superseeded by indexes
+  // registerRule (useIndexForSort, 888);
+
+
   // try to find a filter after an enumerate collection and find an index . . . 
   registerRule(useIndexRange, 999);
 
