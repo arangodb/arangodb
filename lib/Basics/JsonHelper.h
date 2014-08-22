@@ -32,6 +32,7 @@
 
 #include "Basics/Common.h"
 #include "BasicsC/json.h"
+#include "arangod/Utils/Exception.h"
 
 namespace triagens {
   namespace basics {
@@ -191,6 +192,14 @@ namespace triagens {
                                            const std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a string sub-element, or throws if <name> does not exist
+/// or it is not a string 
+////////////////////////////////////////////////////////////////////////////////
+
+        static std::string getStringValue (TRI_json_t const*,
+                                           const char* name);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a numeric value
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -226,7 +235,21 @@ namespace triagens {
         static bool getBooleanValue (TRI_json_t const*,
                                      const char*,
                                      bool);
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a boolean sub-element, or a throws an exception if the
+/// sub-element does not exist or if it is not boolean
+////////////////////////////////////////////////////////////////////////////////
 
+        static bool getBooleanValue (TRI_json_t const*,
+                                     const char*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns an array sub-element, or a throws an exception if the
+/// sub-element does not exist or if it is not an array
+////////////////////////////////////////////////////////////////////////////////
+        
+        static TRI_json_t const* getArray (TRI_json_t const* json, const char* name); 
     };
 
 ////////////////////////////////////////////////////////////////////////////////

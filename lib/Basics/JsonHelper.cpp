@@ -271,6 +271,23 @@ std::string JsonHelper::getStringValue (TRI_json_t const* json,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a string sub-element, or throws if <name> does not exist
+/// or it is not a string 
+////////////////////////////////////////////////////////////////////////////////
+
+std::string JsonHelper::getStringValue (TRI_json_t const* json,
+                                        const char* name) {
+  TRI_json_t const* sub = getArrayElement(json, name);
+
+  if ( sub == nullptr || !isString(sub)) {
+    std::string msg = "The attribute name " + std::string(name)  
+      + " was not found or is not an string.";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+  }
+  return string(sub->_value._string.data, sub->_value._string.length - 1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a boolean sub-element, or a default it is does not exist
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -286,6 +303,41 @@ bool JsonHelper::getBooleanValue (TRI_json_t const* json,
   return defaultValue;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a boolean sub-element, or throws an exception if the
+/// sub-element does not exist or if it is not boolean
+////////////////////////////////////////////////////////////////////////////////
+
+bool JsonHelper::getBooleanValue (TRI_json_t const* json,
+                                  const char* name) {
+  TRI_json_t const* sub = getArrayElement(json, name);
+
+  if (sub == nullptr || !isBoolean(sub)) {
+    std::string msg = "The attribute name " + std::string(name) 
+      + " was not found or is not a boolean.";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+  }
+
+  return sub->_value._boolean;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns an array sub-element, or throws an exception if the
+/// sub-element does not exist or if it is not boolean
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t const* JsonHelper::getArray (TRI_json_t const* json,
+                                  const char* name) {
+  TRI_json_t const* sub = getArrayElement(json, name);
+
+  if (sub == nullptr || !isArray(sub)) {
+    std::string msg = "The attribute name " + std::string(name)
+      + " was not found or is not an array.";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+  }
+
+  return sub;
+}
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
