@@ -71,6 +71,8 @@ PLUS          [+]
 #define UNQUOTED_STRING 12
 #define STRING_CONSTANT_ASCII 13
 
+static char const* EmptyString = "";
+
 struct jsonData {
   TRI_memory_zone_t* _memoryZone;
   char const* _message;
@@ -391,41 +393,41 @@ static bool ParseObject (yyscan_t scanner, TRI_json_t* result, int c) {
     }
 
     case STRING_CONSTANT: {
-      char* ptr;
-      size_t outLength;
-
       if (yyleng <= 2) {
         // string is empty
-        ptr = TRI_DuplicateString2Z(yyextra._memoryZone, yytext + 1, 0);
-        outLength = 0;
+        char const* ptr = EmptyString; // we'll create a reference to this compiled-in string
+        TRI_InitStringReference2Json(result, ptr, 0);
       }
       else {
         // string is not empty, process it
-        ptr = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
+        size_t outLength;
+        char* ptr = TRI_UnescapeUtf8StringZ(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength);
+        if (ptr == NULL) {
+          yyextra._message = "out-of-memory";
+          return false;
+        }
+      
+       TRI_InitString2Json(result, ptr, outLength);
       }
-
-      if (ptr == NULL) {
-        yyextra._message = "out-of-memory";
-        return false;
-      }
-
-      TRI_InitString2Json(result, ptr, outLength);
-
       return true;
     }
     
     case STRING_CONSTANT_ASCII: {
-      char* ptr;
-
-      ptr = TRI_DuplicateString2Z(yyextra._memoryZone, yytext + 1, yyleng - 2);
-
-      if (ptr == NULL) {
-        yyextra._message = "out-of-memory";
-        return false;
+      if (yyleng <= 2) {
+        // string is empty
+        char const* ptr = EmptyString; // we'll create a reference to this compiled-in string
+        TRI_InitStringReference2Json(result, ptr, 0);
+       }
+      else {
+        char* ptr = TRI_DuplicateString2Z(yyextra._memoryZone, yytext + 1, yyleng - 2);
+ 
+        if (ptr == NULL) {
+          yyextra._message = "out-of-memory";
+          return false;
+        }
+ 
+        TRI_InitString2Json(result, ptr, yyleng - 2);
       }
-
-      TRI_InitString2Json(result, ptr, yyleng - 2);
-
       return true;
     }
 
