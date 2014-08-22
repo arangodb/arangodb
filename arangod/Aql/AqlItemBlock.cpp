@@ -155,6 +155,7 @@ AqlItemBlock* AqlItemBlock::slice (size_t from,
   TRI_ASSERT(from < to && to <= _nrItems);
 
   std::unordered_map<AqlValue, AqlValue> cache;
+  // TODO: should we pre-reserve space for cache to avoid later re-allocations?
 
   AqlItemBlock* res = nullptr;
   try {
@@ -172,6 +173,7 @@ AqlItemBlock* AqlItemBlock::slice (size_t from,
           if (it == cache.end()) {
             AqlValue b = a.clone();
             res->_data[(row - from) * _nrRegs + col] = b;
+            // TODO: can we use emplace() here instead of insert()?
             cache.insert(make_pair(a, b));
           }
           else {
@@ -200,6 +202,7 @@ AqlItemBlock* AqlItemBlock::slice (std::vector<size_t>& chosen,
   TRI_ASSERT(from < to && to <= chosen.size());
 
   std::unordered_map<AqlValue, AqlValue> cache;
+  // TODO: should we pre-reserve space for cache to avoid later re-allocations?
 
   AqlItemBlock* res = nullptr;
   try {
@@ -217,7 +220,8 @@ AqlItemBlock* AqlItemBlock::slice (std::vector<size_t>& chosen,
           if (it == cache.end()) {
             AqlValue b = a.clone();
             res->_data[(row - from) * _nrRegs + col] = b;
-            cache.insert(make_pair(a,b));
+            // TODO: can we use emplace() here instead of insert()?
+            cache.insert(make_pair(a, b));
           }
           else {
             res->_data[(row - from) * _nrRegs + col] = it->second;

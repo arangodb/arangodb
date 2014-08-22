@@ -100,7 +100,7 @@ void BindParameters::process () {
       THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, k.c_str()); 
     }
 
-    _parameters.insert(std::make_pair(k, std::make_pair(value, false)));
+    _parameters.emplace(std::make_pair(k, std::make_pair(value, false)));
   }
   
   _processed = true;

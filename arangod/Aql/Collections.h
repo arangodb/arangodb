@@ -79,7 +79,7 @@ namespace triagens {
           if (it == _collections.end()) {
             auto collection = new Collection(name, _vocbase, accessType);
             try {
-              _collections.insert(std::make_pair(name, collection));
+              _collections.emplace(std::make_pair(name, collection));
             }
             catch (...) {
               delete collection;
