@@ -38,6 +38,7 @@
       'click #arangoQueryTable .table-cell2 a': 'deleteAQL',
       'click #confirmQueryImport': 'importCustomQueries',
       'click #confirmQueryExport': 'exportCustomQueries',
+      'click #downloadQueryResult': 'downloadQueryResult',
       'click #importQueriesToggle': 'showImportMenu'
     },
 
@@ -292,6 +293,17 @@
         };
 
         self.collection.saveImportQueries(self.file, callback.bind(this));
+      }
+    },
+
+    downloadQueryResult: function() {
+      var inputEditor = ace.edit("aqlEditor");
+      var query = inputEditor.getValue();
+      if (query !== '' || query !== undefined || query !== null) {
+        window.open(encodeURI("query/result/download/" + query));
+      }
+      else {
+        arangoHelper.arangoError("Query error", "could not query result.");
       }
     },
 

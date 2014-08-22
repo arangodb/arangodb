@@ -63,6 +63,7 @@
       "click #markDocuments"       : "editDocuments",
       "click #indexCollection"     : "indexCollection",
       "click #importCollection"    : "importCollection",
+      "click #exportCollection"    : "exportCollection",
       "click #filterSend"          : "sendFilter",
       "click #addFilterItem"       : "addFilterItem",
       "click .removeFilterItem"    : "removeFilterItem",
@@ -83,6 +84,7 @@
       "click #importModal"         : "showImportModal",
       "click #resetView"           : "resetView",
       "click #confirmDocImport"    : "startUpload",
+      "click #exportDocuments"     : "startDownload",
       "change #newIndexType"       : "selectIndexType",
       "click #createIndex"         : "createIndex",
       "click .deleteIndex"         : "prepDeleteIndex",
@@ -166,6 +168,17 @@
       this.collection.getDocuments(this.getDocsCallback.bind(this));
     },
 
+    startDownload: function() {
+      var query = this.collection.buildDownloadDocumentQuery();
+
+      if (query !== '' || query !== undefined || query !== null) {
+        window.open(encodeURI("query/result/download/" + query));
+      }
+      else {
+        arangoHelper.arangoError("Document error", "could not download documents");
+      }
+    },
+
     startUpload: function () {
       var result;
       if (this.allowUpload === true) {
@@ -244,27 +257,33 @@
       }
     },
 
+    //need to make following functions automatically!
+
     editDocuments: function () {
       $('#indexCollection').removeClass('activated');
       $('#importCollection').removeClass('activated');
+      $('#exportCollection').removeClass('activated');
       this.markFilterToggle();
       $('#markDocuments').toggleClass('activated'); this.changeEditMode();
       $('#filterHeader').hide();
       $('#importHeader').hide();
       $('#indexHeader').hide();
       $('#editHeader').slideToggle(200);
+      $('#exportHeader').hide();
     },
 
     filterCollection : function () {
       $('#indexCollection').removeClass('activated');
       $('#importCollection').removeClass('activated');
+      $('#exportCollection').removeClass('activated');
       $('#markDocuments').removeClass('activated'); this.changeEditMode(false);
       this.markFilterToggle();
       this.activeFilter = true;
-      $('#filterHeader').slideToggle(200);
       $('#importHeader').hide();
       $('#indexHeader').hide();
       $('#editHeader').hide();
+      $('#exportHeader').hide();
+      $('#filterHeader').slideToggle(200);
 
       var i;
       for (i in this.filters) {
@@ -275,20 +294,37 @@
       }
     },
 
+    exportCollection: function () {
+      $('#indexCollection').removeClass('activated');
+      $('#importCollection').removeClass('activated');
+      $('#filterHeader').removeClass('activated');
+      $('#markDocuments').removeClass('activated'); this.changeEditMode(false);
+      $('#exportCollection').addClass('activated');
+      this.markFilterToggle();
+      $('#exportHeader').slideToggle(200);
+      $('#importHeader').hide();
+      $('#indexHeader').hide();
+      $('#filterHeader').hide();
+      $('#editHeader').hide();
+    },
+
     importCollection: function () {
       this.markFilterToggle();
       $('#indexCollection').removeClass('activated');
       $('#markDocuments').removeClass('activated'); this.changeEditMode(false);
       $('#importCollection').toggleClass('activated');
+      $('#exportCollection').removeClass('activated');
       $('#importHeader').slideToggle(200);
       $('#filterHeader').hide();
       $('#indexHeader').hide();
       $('#editHeader').hide();
+      $('#exportHeader').hide();
     },
 
     indexCollection: function () {
       this.markFilterToggle();
       $('#importCollection').removeClass('activated');
+      $('#exportCollection').removeClass('activated');
       $('#markDocuments').removeClass('activated'); this.changeEditMode(false);
       $('#indexCollection').toggleClass('activated');
       $('#newIndexView').hide();
@@ -297,6 +333,7 @@
       $('#importHeader').hide();
       $('#editHeader').hide();
       $('#filterHeader').hide();
+      $('#exportHeader').hide();
     },
 
     changeEditMode: function (enable) {
