@@ -75,29 +75,44 @@ static int CompareRangeInfoBound (RangeInfoBound const* left,
   return cmp * lowhigh;
 };
 
+// the following isn't used for anything . . . 
+
+/* RangesInfo* RangesInfofromJson (Json base) {
+  RangesInfo* out = new RangesInfo();
+
+  for(size_t i = 0; i < base.size(); i++){ //loop over the ranges . . .
+    std::string var = JsonHelper::getStringValue(base.at(i).json(), "var");
+    std::string attr = 
+          JsonHelper::getStringValue(base.at(i).json(), "attr");
+    out->insert(new RangeInfo(base.at(i)));
+  }
+  return out;
+}; */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief  insert if there is no range corresponding to variable name <var>,
 /// and attribute <name>, and otherwise intersection with existing range
 ////////////////////////////////////////////////////////////////////////////////
 
-void RangesInfo::insert (std::string var, std::string name, 
-                         RangeInfoBound* low, RangeInfoBound* high) { 
-  auto oldMap = find(var);
-  auto newRange = new RangeInfo(low, high);
+// remove var and name from here, they are inside newRange anyway ! TODO
+
+void RangesInfo::insert (RangeInfo* newRange) { 
+
+  auto oldMap = find(newRange->_var);
 
   if (oldMap == nullptr) {
     // TODO add exception . . .
     auto newMap = std::unordered_map<std::string, RangeInfo*>();
-    newMap.insert(make_pair(name, newRange));
-    _ranges.insert(std::make_pair(var, newMap));
+    newMap.insert(make_pair(newRange->_attr, newRange));
+    _ranges.insert(std::make_pair(newRange->_var, newMap));
     return;
   }
   
-  auto it = oldMap->find(name); 
+  auto it = oldMap->find(newRange->_attr); 
   
   if (it == oldMap->end()) {
     // TODO add exception . . .
-    oldMap->insert(make_pair(name, newRange));
+    oldMap->insert(make_pair(newRange->_attr, newRange));
     return;
   }
 
@@ -134,4 +149,14 @@ void RangesInfo::insert (std::string var, std::string name,
       oldRange->_valid = false;
     }
   }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief  insert if there is no range corresponding to variable name <var>,
+/// and attribute <name>, and otherwise intersection with existing range
+////////////////////////////////////////////////////////////////////////////////
+
+void RangesInfo::insert (std::string var, std::string name, 
+                         RangeInfoBound* low, RangeInfoBound* high) { 
+  insert(new RangeInfo(var, name, low, high));
 };

@@ -815,7 +815,6 @@ namespace triagens {
       
       friend class ExecutionBlock;
       friend class IndexRangeBlock;
-  
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor with a vocbase and a collection name
@@ -840,6 +839,8 @@ namespace triagens {
           TRI_ASSERT(_outVariable != nullptr);
           TRI_ASSERT(_index != nullptr);
         }
+
+        IndexRangeNode (Ast*, basics::Json const& base);
 
         ~IndexRangeNode () {
         }

@@ -314,8 +314,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
   Optimizer::PlanList _out;
   bool _canThrow; 
   
-  //EnumerateCollectionNode const* _enumColl;
-
   public:
     FilterToEnumCollFinder (ExecutionPlan* plan, Variable const * var, Optimizer::PlanList& out) 
       : _plan(plan), _var(var), _out(out), _canThrow(false){
@@ -365,6 +363,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                 auto noRes = new NoResultsNode(newPlan->nextId());
                 newPlan->registerNode(noRes);
                 newPlan->insertDependency(x, noRes);
+                std::cout << newPlan->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString() << "\n";
                 _out.push_back(newPlan);
               }
             }
@@ -394,6 +393,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                   throw;
                 }
                 newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
+                std::cout << newPlan->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString() << "\n";
                 _out.push_back(newPlan);
               }
             }
