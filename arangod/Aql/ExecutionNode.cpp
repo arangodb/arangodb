@@ -167,7 +167,6 @@ ExecutionNode* ExecutionNode::fromJsonFactory (Ast* ast,
       return new NoResultsNode(ast, oneNode);
 
     case INTERSECTION:
-    case PROJECTION:
     case LOOKUP_JOIN:
     case MERGE_JOIN:
     case LOOKUP_INDEX_UNIQUE:
@@ -176,12 +175,14 @@ ExecutionNode* ExecutionNode::fromJsonFactory (Ast* ast,
     case CONCATENATION:
     case INDEX_RANGE:
     case MERGE:
-    case REMOTE:
+    case REMOTE: {
       // TODO: handle these types of nodes
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "unhandled node type");
+    }
 
-    case ILLEGAL:
+    case ILLEGAL: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid node type");
+    }
   }
   return nullptr;
 }

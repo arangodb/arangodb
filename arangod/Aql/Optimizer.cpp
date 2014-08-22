@@ -42,7 +42,7 @@ Optimizer::Optimizer () {
   // List all the rules in the system here:
 
   // try to find a filter after an enumerate collection and find an index . . . 
-  // registerRule(useIndexRange, 999);
+  registerRule(useIndexRange, 999);
 
   // remove filters from the query that are not necessary at all
   // filters that are always true will be removed entirely
@@ -137,7 +137,7 @@ int Optimizer::createPlans (ExecutionPlan* plan) {
 
   estimatePlans();
   sortPlans();
-
+                
   return TRI_ERROR_NO_ERROR;
 }
 

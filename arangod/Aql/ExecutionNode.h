@@ -76,7 +76,6 @@ namespace triagens {
           FILTER                  =  5, 
           LIMIT                   =  6, 
           INTERSECTION            =  7,
-          PROJECTION              =  8, 
           CALCULATION             =  9, 
           SUBQUERY                = 10, 
           SORT                    = 11, 
