@@ -858,6 +858,59 @@ static v8::Handle<v8::Value> JS_ParseAql (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief explains an AQL query
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_ExplainAql (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  TRI_vocbase_t* vocbase = GetContextVocBase();
+
+  if (vocbase == nullptr) {
+    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
+  if (argv.Length() < 1 || argv.Length() > 2) {
+    TRI_V8_EXCEPTION_USAGE(scope, "AQL_EXPLAIN(<querystring>, <bindvalues>)");
+  }
+
+  // get the query string
+  if (! argv[0]->IsString()) {
+    TRI_V8_TYPE_ERROR(scope, "expecting string for <querystring>");
+  }
+
+  string const&& queryString = TRI_ObjectToString(argv[0]);
+
+  // bind parameters
+  TRI_json_t* parameters = nullptr;
+  
+  if (argv.Length() > 1) {
+    if (! argv[1]->IsUndefined() && ! argv[1]->IsNull() && ! argv[1]->IsObject()) {
+      TRI_V8_TYPE_ERROR(scope, "expecting object for <bindvalues>");
+    }
+    if (argv[1]->IsObject()) {
+      parameters = TRI_ObjectToJson(argv[1]);
+    }
+  }
+
+  // bind parameters will be freed by the query later
+  triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), parameters);
+  
+  auto queryResult = query.explain();
+  
+  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+    TRI_V8_EXCEPTION_FULL(scope, queryResult.code, queryResult.details);
+  }
+  
+  v8::Handle<v8::Object> result = v8::Object::New();
+  if (queryResult.json != nullptr) {
+    result->Set(TRI_V8_STRING("plan"), TRI_ObjectJson(queryResult.json));
+  }
+
+  return scope.Close(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1097,7 +1150,6 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
 
   return scope.Close(cursorObject);
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          AHUACATL
@@ -2679,6 +2731,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // new AQL functions. not intended to be used directly by end users
   TRI_AddGlobalFunctionVocbase(context, "AQL_EXECUTE", JS_ExecuteAql, true);
   TRI_AddGlobalFunctionVocbase(context, "AQL_EXECUTEJSON", JS_ExecuteAqlJson, true);
+  TRI_AddGlobalFunctionVocbase(context, "AQL_EXPLAIN", JS_ExplainAql, true);
   TRI_AddGlobalFunctionVocbase(context, "AQL_PARSE", JS_ParseAql, true);
 
   TRI_InitV8replication(context, server, vocbase, loader, threadNumber, v8g);
