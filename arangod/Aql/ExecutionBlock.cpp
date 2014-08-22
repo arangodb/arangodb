@@ -1430,13 +1430,13 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
       else {
         // The current block fits into our result and is fresh and
         // takes them all, so we can just hand it on:
+        skipped += cur->size();
         if (! skipping) {
           collector.push_back(cur);
         }
         else {
           delete cur;
         }
-        skipped += cur->size();
         _buffer.pop_front();
         _chosen.clear();
         _pos = 0;
