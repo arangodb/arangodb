@@ -26,6 +26,11 @@
       </a>
     </li>
     <li class="enabled">
+      <a id="exportCollection" class="headerButton">
+        <span class="icon_arangodb_export" title="Download documents as JSON file"></span>
+      </a>
+    </li>
+    <li class="enabled">
       <a id="indexCollection" class="headerButton">
         <span class="icon_arangodb_checklist" title="Index collection"></span>
       </a>
@@ -65,6 +70,13 @@
       <button id="confirmDocImport" class="button-success btn-old-padding" style="float:right">
         <img id="uploadIndicator" class="upload-indicator" src="img/ajax-loader.gif"/>Import JSON
       </button>
+    </div>
+  </div>
+
+  <div id="exportHeader" class="headerDropdown">
+    <div class="queryline">
+      <div style="float:left; margin-top:7px"><i class="fa fa-exclamation-circle"></i>Please be careful. If no filter is set, the whole collection will be downloaded.</div>
+      <button id="exportDocuments" class="button-success btn-old-padding" style="float:right">Download JSON</button>
     </div>
   </div>
 
