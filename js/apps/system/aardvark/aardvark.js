@@ -391,6 +391,23 @@ controller.get("/query/download/:user", function(req, res) {
 }).summary("Download all user queries")
   .notes("This function downloads all user queries from the given user");
 
+/** Download a query result
+ *
+ * Download and export all queries from the given username.
+ *
+ */
+
+controller.get("/query/result/download/:query", function(req, res) {
+  var query = req.params("query");
+
+  var result = db._query(query).toArray();
+  res.set("Content-Type", "application/json");
+  res.set("Content-Disposition", "attachment; filename=results.json");
+  res.json(result);
+
+}).summary("Download the result of a query")
+  .notes("This function downloads the result of a user query.");
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
