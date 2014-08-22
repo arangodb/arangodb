@@ -74,6 +74,7 @@ add_executable(
     Aql/OptimizerRules.cpp
     Aql/Parser.cpp
     Aql/Query.cpp
+    Aql/RangeInfo.cpp
     Aql/Scopes.cpp
     Aql/Types.cpp
     Aql/tokens.cpp
