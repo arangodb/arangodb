@@ -119,6 +119,34 @@ void AqlItemBlock::shrink (size_t nrItems) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief clears out some columns (registers), this deletes the values if
+/// necessary, using the reference count.
+////////////////////////////////////////////////////////////////////////////////
+
+void AqlItemBlock::clearRegisters (std::unordered_set<RegisterId>& toClear) {
+  for (auto reg : toClear) {
+    for (size_t i = 0; i < _nrItems; i++) {
+      AqlValue& a(_data[_nrRegs * i + reg]);
+      if (! a.isEmpty()) {
+        auto it = _valueCount.find(a);
+        if (it != _valueCount.end()) {
+          if (--it->second == 0) {
+            try {
+              _valueCount.erase(it);
+            }
+            catch (...) {
+              it->second++;
+              throw;
+            }
+          }
+        }
+        a.erase();
+      }
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief slice/clone, this does a deep copy of all entries
 ////////////////////////////////////////////////////////////////////////////////
 

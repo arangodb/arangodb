@@ -295,6 +295,27 @@ namespace triagens {
         virtual AqlItemBlock* getSome (size_t atLeast, size_t atMost);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief getSomeWithoutRegisterClearout, same as above, however, this
+/// is the actual worker which does not clear out registers at the end
+/// the idea is that somebody who wants to call the generic functionality
+/// in a derived class but wants to modify the results before the register
+/// cleanup can use this method, internal use only
+////////////////////////////////////////////////////////////////////////////////
+
+      protected:
+
+        AqlItemBlock* getSomeWithoutRegisterClearout (size_t atLeast, size_t atMost);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clearRegisters, clears out registers holding values that are no
+/// longer needed by later nodes
+////////////////////////////////////////////////////////////////////////////////
+
+        void clearRegisters (AqlItemBlock* result);
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief getSome, skips some more items, semantic is as follows: not
 /// more than atMost items may be skipped. The method tries to
 /// skip a block of at least atLeast items, however, it may skip
@@ -318,6 +339,14 @@ namespace triagens {
 
         ExecutionNode const* getPlanNode () {
           return _exeNode;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set regs to be deleted
+////////////////////////////////////////////////////////////////////////////////
+
+        void setRegsToClear (std::unordered_set<RegisterId>& toClear) {
+          _regsToClear = toClear;
         }
 
       protected:
@@ -372,6 +401,7 @@ namespace triagens {
 /// @brief info about variables, filled in by staticAnalysis
 ////////////////////////////////////////////////////////////////////////////////
 
+public:
         std::shared_ptr<VarOverview> _varOverview;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -391,6 +421,16 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _done;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the following contains the registers which should be cleared
+/// just before this node hands on results. This is computed during
+/// the static analysis for each node using the variable usage in the plan.
+////////////////////////////////////////////////////////////////////////////////
+
+public:
+
+        std::unordered_set<RegisterId> _regsToClear;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables

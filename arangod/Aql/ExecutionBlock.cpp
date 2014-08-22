@@ -196,6 +196,45 @@ void ExecutionBlock::walk (WalkerWorker<ExecutionBlock>* worker) {
 /// @brief static analysis
 ////////////////////////////////////////////////////////////////////////////////
 
+struct StaticAnalysisDebugger : public WalkerWorker<ExecutionBlock> {
+  StaticAnalysisDebugger () : indent(0) {};
+  ~StaticAnalysisDebugger () {};
+
+  int indent;
+
+  bool enterSubquery (ExecutionBlock* super, ExecutionBlock* sub) {
+    indent++;
+    return true;
+  }
+
+  void leaveSubquery (ExecutionBlock* super, ExecutionBlock* sub) {
+    indent--;
+  }
+
+  void after (ExecutionBlock* eb) {
+    ExecutionNode const* ep = eb->getPlanNode();
+    for (int i = 0; i < indent; i++) {
+      std::cout << " ";
+    }
+    std::cout << ep->getTypeString() << " ";
+    std::cout << "regsUsedHere: ";
+    for (auto v : ep->getVariablesUsedHere()) {
+      std::cout << eb->_varOverview->varInfo.find(v->id)->second.registerId
+                << " ";
+    }
+    std::cout << "regsSetHere: ";
+    for (auto v : ep->getVariablesSetHere()) {
+      std::cout << eb->_varOverview->varInfo.find(v->id)->second.registerId
+                << " ";
+    }
+    std::cout << "regsToClear: ";
+    for (auto r : eb->_regsToClear) {
+      std::cout << r << " ";
+    }
+    std::cout << std::endl;
+  }
+};
+
 void ExecutionBlock::staticAnalysis (ExecutionBlock* super) {
   // The super is only for the case of subqueries.
   shared_ptr<VarOverview> v;
@@ -213,6 +252,14 @@ void ExecutionBlock::staticAnalysis (ExecutionBlock* super) {
     sq->getSubquery()->staticAnalysis(s);
   }
   v->reset();
+
+  // Just for debugging:
+  /*
+  std::cout << std::endl;
+  StaticAnalysisDebugger debugger;
+  walk(&debugger);
+  std::cout << std::endl;
+  */
 }
 
 int ExecutionBlock::initialize () {
@@ -251,19 +298,20 @@ void ExecutionBlock::inheritRegisters (AqlItemBlock const* src,
   RegisterId const n = src->getNrRegs();
 
   for (RegisterId i = 0; i < n; i++) {
-    if (! src->getValue(row, i).isEmpty()) {
-      AqlValue a = src->getValue(row, i).clone();
-      try {
-        dst->setValue(0, i, a);
+    if (_regsToClear.find(i) == _regsToClear.end()) {
+      if (! src->getValue(row, i).isEmpty()) {
+        AqlValue a = src->getValue(row, i).clone();
+        try {
+          dst->setValue(0, i, a);
+        }
+        catch (...) {
+          a.destroy();
+          throw;
+        }
       }
-      catch (...) {
-        a.destroy();
-        throw;
-      }
+      // copy collection
+      dst->setDocumentCollection(i, src->getDocumentCollection(i));
     }
-
-    // copy collection
-    dst->setDocumentCollection(i, src->getDocumentCollection(i));
   }
 }
 
@@ -282,7 +330,14 @@ bool ExecutionBlock::getBlock (size_t atLeast, size_t atMost) {
   return true;
 }
 
-AqlItemBlock* ExecutionBlock::getSome (size_t atLeast, size_t atMost) {
+AqlItemBlock* ExecutionBlock::getSome(size_t atLeast, size_t atMost) {
+  std::unique_ptr<AqlItemBlock> result(getSomeWithoutRegisterClearout(atLeast, atMost));
+  clearRegisters(result.get());
+  return result.release();
+}
+
+AqlItemBlock* ExecutionBlock::getSomeWithoutRegisterClearout (
+                                  size_t atLeast, size_t atMost) {
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
@@ -291,6 +346,13 @@ AqlItemBlock* ExecutionBlock::getSome (size_t atLeast, size_t atMost) {
     THROW_ARANGO_EXCEPTION(out);
   }
   return result;
+}
+
+void ExecutionBlock::clearRegisters (AqlItemBlock* result) {
+  // Clear out registers not needed later on:
+  if (result != nullptr) {
+    result->clearRegisters(_regsToClear);
+  }
 }
 
 size_t ExecutionBlock::skipSome (size_t atLeast, size_t atMost) {
@@ -657,6 +719,8 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t atLeast,
       }
     }
   }
+  // Clear out registers no longer needed later:
+  clearRegisters(res.get());
   return res.release();
 }
 
@@ -845,6 +909,8 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t atLeast,
       }
     }
   }
+  // Clear out registers no longer needed later:
+  clearRegisters(res.get());
   return res.release();
 }
 
@@ -1148,6 +1214,9 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t atLeast, size_t atMost) {
   }
   while (res.get() == nullptr);
 
+  // Clear out registers no longer needed later:
+  clearRegisters(res.get());
+
   return res.release();
 }
 
@@ -1349,13 +1418,16 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
 AqlItemBlock* CalculationBlock::getSome (size_t atLeast,
                                          size_t atMost) {
 
-  unique_ptr<AqlItemBlock> res(ExecutionBlock::getSome(atLeast, atMost));
+  unique_ptr<AqlItemBlock> res(ExecutionBlock::getSomeWithoutRegisterClearout(
+                                                     atLeast, atMost));
 
   if (res.get() == nullptr) {
     return nullptr;
   }
 
   doEvaluation(res.get());
+  // Clear out registers no longer needed later:
+  clearRegisters(res.get());
   return res.release();
 }
 
@@ -1382,7 +1454,8 @@ int SubqueryBlock::initialize () {
 
 AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
                                       size_t atMost) {
-  unique_ptr<AqlItemBlock> res(ExecutionBlock::getSome(atLeast, atMost));
+  unique_ptr<AqlItemBlock> res(ExecutionBlock::getSomeWithoutRegisterClearout(
+                                                    atLeast, atMost));
 
   if (res.get() == nullptr) {
     return nullptr;
@@ -1415,6 +1488,8 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
       throw;
     }
   }
+  // Clear out registers no longer needed later:
+  clearRegisters(res.get());
   return res.release();
 }
 
@@ -2130,7 +2205,7 @@ int LimitBlock::getOrSkipSome (size_t atLeast,
 AqlItemBlock* ReturnBlock::getSome (size_t atLeast,
                                     size_t atMost) {
 
-  auto res = ExecutionBlock::getSome(atLeast, atMost);
+  auto res = ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost);
 
   if (res == nullptr) {
     return res;
@@ -2208,7 +2283,7 @@ AqlItemBlock* ModificationBlock::getSome (size_t atLeast,
   // loop over input until it is exhausted
   try {
     while (true) { 
-      auto res = ExecutionBlock::getSome(atLeast, atMost);
+      auto res = ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost);
 
       if (res == nullptr) {
         break;
@@ -2882,6 +2957,28 @@ void ExecutionBlock::VarOverview::after (ExecutionBlock *eb) {
 
   eb->_depth = depth;
   eb->_varOverview = *me;
+
+  // Now find out which registers ought to be erased after this node:
+  auto ep = eb->getPlanNode();
+  if (ep->getType() != ExecutionNode::RETURN) {
+    // ReturnBlocks are special, since they return a single column anyway
+    std::unordered_set<Variable const*> const& varsUsedLater = ep->getVarsUsedLater();
+    std::vector<Variable const*> const& varsUsedHere = ep->getVariablesUsedHere();
+    
+    // We need to delete those variables that have been used here but are not
+    // used any more later:
+    std::unordered_set<RegisterId> regsToClear;
+    for (auto v : varsUsedHere) {
+      auto it = varsUsedLater.find(v);
+      if (it == varsUsedLater.end()) {
+        auto it2 = varInfo.find(v->id);
+        TRI_ASSERT(it2 != varInfo.end());
+        RegisterId r = it2->second.registerId;
+        regsToClear.insert(r);
+      }
+    }
+    eb->setRegsToClear(regsToClear);
+  }
 }
 
 // -----------------------------------------------------------------------------

@@ -191,6 +191,14 @@ namespace triagens {
                                            const std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a string sub-element, or throws if <name> does not exist
+/// or it is not a string 
+////////////////////////////////////////////////////////////////////////////////
+
+        static std::string getStringValue (TRI_json_t const*,
+                                           const char* name);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a numeric value
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -226,7 +234,28 @@ namespace triagens {
         static bool getBooleanValue (TRI_json_t const*,
                                      const char*,
                                      bool);
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a boolean sub-element, or a throws an exception if the
+/// sub-element does not exist or if it is not boolean
+////////////////////////////////////////////////////////////////////////////////
 
+        static bool getBooleanValue (TRI_json_t const*,
+                                     const char*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns an array sub-element, or a throws an exception if the
+/// sub-element does not exist or if it is not an array
+////////////////////////////////////////////////////////////////////////////////
+        
+        static TRI_json_t const* getArray (TRI_json_t const* json, const char* name); 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a list sub-element, or a throws an exception if the
+/// sub-element does not exist or if it is not a list
+////////////////////////////////////////////////////////////////////////////////
+
+        static TRI_json_t const* getList (TRI_json_t const* json, const char* name); 
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -730,7 +759,7 @@ namespace triagens {
 /// returned.
 ////////////////////////////////////////////////////////////////////////////////
 
-        Json at (int pos) {
+        Json at (int pos) const {
           if (! TRI_IsListJson(_json)) {
             throw JsonException("Json is no list");
           }
@@ -823,7 +852,7 @@ namespace triagens {
 /// @brief returns the length of the list
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t size () throw() {
+        size_t size () const {
           if (! TRI_IsListJson(_json)) {
             throw JsonException("Json is no list");
           }

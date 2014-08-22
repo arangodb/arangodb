@@ -165,7 +165,8 @@ ExecutionNode* ExecutionNode::fromJsonFactory (Ast* ast,
       return new ReturnNode(ast, oneNode);
     case NORESULTS:
       return new NoResultsNode(ast, oneNode);
-
+    case INDEX_RANGE:
+      return new IndexRangeNode(ast, oneNode);
     case INTERSECTION:
     case LOOKUP_JOIN:
     case MERGE_JOIN:
@@ -173,7 +174,6 @@ ExecutionNode* ExecutionNode::fromJsonFactory (Ast* ast,
     case LOOKUP_INDEX_RANGE:
     case LOOKUP_FULL_COLLECTION:
     case CONCATENATION:
-    case INDEX_RANGE:
     case MERGE:
     case REMOTE: {
       // TODO: handle these types of nodes
@@ -505,6 +505,30 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
   nodes(json);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor for IndexRangeNode from Json
+////////////////////////////////////////////////////////////////////////////////
+
+IndexRangeNode::IndexRangeNode (Ast* ast, basics::Json const& json)
+  : ExecutionNode(json),
+    _vocbase(ast->query()->vocbase()),
+    _collection(ast->query()->collections()->add(JsonHelper::getStringValue(json.json(), 
+            "collection"), TRI_TRANSACTION_READ)),
+    _outVariable(varFromJson(ast, json, "outVariable")), _ranges() {
+      
+  for(size_t i = 0; i < json.size(); i++){ //loop over the ranges . . .
+    _ranges.push_back(new RangeInfo(json.at(i)));
+  }
+  
+  // now the index . . . 
+  // TODO the following could be a constructor method for
+  // an Index object when these are actually used
+  auto index = JsonHelper::getArray(json.json(), "index");
+  auto iid = JsonHelper::getArrayElement(index, "id");
+  _index = TRI_LookupIndex(_collection->documentCollection(), 
+      JsonHelper::getNumericValue<TRI_idx_iid_t>(iid, 0));
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              methods of LimitNode
 // -----------------------------------------------------------------------------
@@ -645,7 +669,7 @@ struct SubqueryVarUsageFinder : public WalkerWorker<ExecutionNode> {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<Variable const*> SubqueryNode::getVariablesUsedHere () {
+std::vector<Variable const*> SubqueryNode::getVariablesUsedHere () const {
   SubqueryVarUsageFinder finder;
   _subquery->walk(&finder);
       
@@ -763,6 +787,50 @@ void AggregateNode::toJsonHelper (triagens::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere
+////////////////////////////////////////////////////////////////////////////////
+
+struct UserVarFinder : public WalkerWorker<ExecutionNode> {
+  UserVarFinder () {};
+  ~UserVarFinder () {};
+  std::vector<Variable const*> userVars;
+
+  bool enterSubquery (ExecutionNode* super, ExecutionNode* sub) {
+    return false;
+  }
+  void before (ExecutionNode* en) {
+    auto vars = en->getVariablesSetHere();
+    for (auto v : vars) {
+      if (v->isUserDefined()) {
+        userVars.push_back(v);
+      }
+    }
+  }
+};
+
+std::vector<Variable const*> AggregateNode::getVariablesUsedHere () const {
+  std::unordered_set<Variable const*> v;
+  for (auto p : _aggregateVariables) {
+    v.insert(p.second);
+  }
+  if (_outVariable != nullptr) {
+    // Here we have to find all user defined variables in this query
+    // amonst our dependencies:
+    UserVarFinder finder;
+    auto myselfasnonconst = const_cast<AggregateNode*>(this);
+    myselfasnonconst->walk(&finder);
+    for (auto x : finder.userVars) {
+      v.insert(x);
+    }
+  }
+  std::vector<Variable const*> vv;
+  for (auto x : v) {
+    vv.push_back(x);
+  }
+  return vv;
 }
 
 // -----------------------------------------------------------------------------
