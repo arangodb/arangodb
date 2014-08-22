@@ -323,10 +323,65 @@ QueryResult Query::parse () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief explain an AQL query - TODO: implement and determine return type
+/// @brief explain an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
-void Query::explain () {
+QueryResult Query::explain () {
+  try {
+    ExecutionPlan* plan;
+    Parser parser(this);
+
+    parser.parse();
+    // put in bind parameters
+    parser.ast()->injectBindParameters(_bindParameters);
+    // optimize the ast
+    parser.ast()->optimize();
+    // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
+
+    // create the transaction object, but do not start it yet
+    AQL_TRANSACTION_V8 trx(_vocbase, _collections.collections());
+
+    // we have an AST
+    int res = trx.begin();
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return QueryResult(res, TRI_errno_string(res));
+    }
+
+    plan = ExecutionPlan::instanciateFromAst(parser.ast());
+    if (plan == nullptr) {
+      // oops
+      return QueryResult(TRI_ERROR_INTERNAL);
+    }
+
+    // Run the query optimiser:
+    triagens::aql::Optimizer opt;
+    opt.createPlans(plan);  // Now plan and all derived plans belong to the
+                            // optimizer
+    plan = opt.stealBest(); // Now we own the best one again
+    TRI_ASSERT(plan != nullptr);
+
+    trx.commit();
+    //triagens::basic::Json json(triagens::basic::Json::Array);
+
+    QueryResult result(TRI_ERROR_NO_ERROR);
+    result.json = plan->toJson(TRI_UNKNOWN_MEM_ZONE, false).steal(); //json();
+    delete plan;
+    
+    return result;
+  }
+  catch (triagens::arango::Exception const& ex) {
+    return QueryResult(ex.code(), ex.message());
+  }
+  catch (std::bad_alloc const& ex) {
+    return QueryResult(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+  }
+  catch (std::exception const& ex) {
+    return QueryResult(TRI_ERROR_INTERNAL, ex.what());
+  }
+  catch (...) {
+    return QueryResult(TRI_ERROR_INTERNAL, TRI_errno_string(TRI_ERROR_INTERNAL));
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

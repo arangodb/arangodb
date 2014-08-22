@@ -329,11 +329,13 @@ Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Json& nodes,
   for (size_t i = 0; i < _parents.size(); i++) {
     parents(Json(static_cast<double>(_parents[i]->id())));
   }
-  json("parents", parents);
+  if (verbose) {
+    json("parents", parents);
+  }
   json("id", Json(static_cast<double>(id())));
 
-  if (this->_estimatedCost != 0.0){
-    json("estimatedCost", Json(this->_estimatedCost));
+  if (_estimatedCost != 0.0){
+    json("estimatedCost", Json(_estimatedCost));
   }
   return json;
 }
@@ -393,6 +395,44 @@ void EnumerateCollectionNode::toJsonHelper (triagens::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get vector of indexes with fields <attrs> 
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<TRI_index_t*> EnumerateCollectionNode::getIndexes (vector<std::string> attrs) const {
+  std::vector<TRI_index_t*> out;
+  TRI_document_collection_t* document = _collection->documentCollection();
+  size_t const n = document->_allIndexes._length;
+  
+  for (size_t i = 0; i < n; ++i) {
+    TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
+
+    size_t seen = 0;
+    for (size_t j = 0; j < idx->_fields._length; j++) {
+      bool found = false;
+      for (size_t k = 0; k < attrs.size(); k++){
+        if(std::string(idx->_fields._buffer[j]) == attrs[k]) {
+          found = true;
+          break;
+        }
+      }
+      if (found) {
+        seen++;
+      }
+      else {
+        break;
+      }
+    }
+
+    if (((idx->_type == TRI_IDX_TYPE_HASH_INDEX) && seen == idx->_fields._length ) 
+        || ((idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) && seen > 0 )) {
+      // all fields equal 
+      out.push_back(idx);
+    }
+  }
+  return out;
 }
 
 // -----------------------------------------------------------------------------

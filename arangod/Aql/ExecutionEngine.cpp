@@ -93,6 +93,11 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
                                 static_cast<SingletonNode const*>(en));
         break;
       }
+      case ExecutionNode::INDEX_RANGE: {
+        eb = new IndexRangeBlock(engine,
+                                 static_cast<IndexRangeNode const*>(en));
+        break;
+      }
       case ExecutionNode::ENUMERATE_COLLECTION: {
         eb = new EnumerateCollectionBlock(engine,
                                           static_cast<EnumerateCollectionNode const*>(en));
