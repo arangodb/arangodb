@@ -1009,7 +1009,6 @@ char* TRI_DecodeHexString (char const* source, size_t sourceLen, size_t* dstLen)
   char* result;
   uint8_t* dst;
   uint8_t* src;
-  uint8_t d;
   size_t j;
 
   *dstLen = (sourceLen / 2);
@@ -1019,6 +1018,7 @@ char* TRI_DecodeHexString (char const* source, size_t sourceLen, size_t* dstLen)
   src = (uint8_t*) source;
 
   for (j = 0;  j < sourceLen;  j += 2) {
+    uint8_t d;
     d  = HexDecodeLookup[*src++] << 4;
     d |= HexDecodeLookup[*src++];
 

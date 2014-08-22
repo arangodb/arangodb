@@ -802,7 +802,6 @@ static uint64_t HashBlock (uint64_t hash, char const* buffer, size_t length) {
 static uint64_t HashJsonRecursive (uint64_t hash, TRI_json_t const* object) {
   size_t n;
   size_t i;
-  uint64_t tmphash;
   TRI_json_t const* subjson;
 
   if (0 == object) {
@@ -840,7 +839,7 @@ static uint64_t HashJsonRecursive (uint64_t hash, TRI_json_t const* object) {
     case TRI_JSON_ARRAY: {
       hash = HashBlock(hash, "array", 5);   // strlen("array")
       n = object->_value._objects._length;
-      tmphash = hash;
+      uint64_t tmphash = hash;
       for (i = 0;  i < n;  i += 2) {
         subjson = (const TRI_json_t*) TRI_AtVector(&object->_value._objects, i);
         TRI_ASSERT(TRI_IsStringJson(subjson));
