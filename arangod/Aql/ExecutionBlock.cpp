@@ -713,6 +713,8 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
   : ExecutionBlock(engine, ep),
     _collection(ep->_collection),
     _posInAllDocs(0) {
+
+  std::cout << "USING INDEX: " << ep->_index->_iid << ", " << TRI_TypeNameIndex(ep->_index->_type) << "\n";
 }
 
 IndexRangeBlock::~IndexRangeBlock () {
@@ -1961,6 +1963,7 @@ bool SortBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
 
 int LimitBlock::initialize () {
   int res = ExecutionBlock::initialize();
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }

@@ -334,7 +334,7 @@ Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Json& nodes,
   }
   json("id", Json(static_cast<double>(id())));
 
-  if (_estimatedCost != 0.0){
+  if (_estimatedCost != 0.0) {
     json("estimatedCost", Json(_estimatedCost));
   }
   return json;

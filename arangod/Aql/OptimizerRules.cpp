@@ -311,13 +311,13 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
   RangesInfo* _ranges; 
   ExecutionPlan* _plan;
   Variable const* _var;
-  Optimizer::PlanList _out;
+  Optimizer::PlanList* _out;
   bool _canThrow; 
   
   //EnumerateCollectionNode const* _enumColl;
 
   public:
-    FilterToEnumCollFinder (ExecutionPlan* plan, Variable const * var, Optimizer::PlanList& out) 
+    FilterToEnumCollFinder (ExecutionPlan* plan, Variable const * var, Optimizer::PlanList* out) 
       : _plan(plan), _var(var), _out(out), _canThrow(false){
         _ranges = new RangesInfo();
     };
@@ -365,7 +365,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                 auto noRes = new NoResultsNode(newPlan->nextId());
                 newPlan->registerNode(noRes);
                 newPlan->insertDependency(x, noRes);
-                _out.push_back(newPlan);
+                _out->push_back(newPlan);
               }
             }
           } 
@@ -394,7 +394,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                   throw;
                 }
                 newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
-                _out.push_back(newPlan);
+                _out->push_back(newPlan);
               }
             }
           }
@@ -522,7 +522,7 @@ int triagens::aql::useIndexRange (Optimizer* opt,
     auto nn = static_cast<FilterNode*>(n);
     auto invars = nn->getVariablesUsedHere();
     TRI_ASSERT(invars.size() == 1);
-    FilterToEnumCollFinder finder(plan, invars[0], out);
+    FilterToEnumCollFinder finder(plan, invars[0], &out);
     nn->walk(&finder);
   }
 
