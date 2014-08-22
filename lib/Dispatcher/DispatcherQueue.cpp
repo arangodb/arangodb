@@ -52,9 +52,11 @@ DispatcherQueue::DispatcherQueue (Scheduler* scheduler,
                                   Dispatcher* dispatcher,
                                   std::string const& name,
                                   Dispatcher::newDispatcherThread_fptr creator,
+                                  void* threadData,
                                   size_t nrThreads,
                                   size_t maxSize)
   : _name(name),
+    _threadData(threadData),
     _accessQueue(),
     _readyJobs(),
     _runningJobs(),
@@ -303,7 +305,7 @@ bool DispatcherQueue::isRunning () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool DispatcherQueue::startQueueThread () {
-  DispatcherThread * thread = (*createDispatcherThread)(this);
+  DispatcherThread * thread = (*createDispatcherThread)(this, _threadData);
   bool ok = thread->start();
 
   if (! ok) {

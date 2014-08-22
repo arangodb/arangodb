@@ -312,7 +312,7 @@ namespace triagens {
             _jobManager->initAsyncJob<S, HF>(job, jobId);
           }
 
-          if (! _dispatcher->addJob(job)) {
+          if (_dispatcher->addJob(job) != TRI_ERROR_NO_ERROR) {
             // could not add job to job queue
             delete handler;
 

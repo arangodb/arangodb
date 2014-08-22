@@ -72,7 +72,8 @@ exports.work = function (job) {
     success = true,
     callback = null,
     now = Date.now(),
-    maxFailures;
+    maxFailures,
+    result;
 
   if (!cfg) {
     console.warn('Unknown job type for job ' + job._key + ':', job.type);
@@ -87,7 +88,7 @@ exports.work = function (job) {
   ) || 0;
 
   try {
-    cfg.execute(job.data, job._id);
+    result = cfg.execute(job.data, job._id);
   } catch (executeErr) {
     console.error('Job ' + job._key + ' failed:', executeErr);
     job.failures.push(flatten(executeErr));
@@ -120,6 +121,7 @@ exports.work = function (job) {
       eval('(' + callback + ')(' + [
         JSON.stringify(job._id),
         JSON.stringify(job.data),
+        JSON.stringify(result),
         JSON.stringify(job.failures)
       ].join(', ') + ')');
     } catch (callbackErr) {

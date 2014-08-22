@@ -11,13 +11,18 @@
     eCollList : [],
     removedECollList : [],
 
+    dropdownVisible: false,
+
     events: {
       "click #deleteGraph"                        : "deleteGraph",
       "click .icon_arangodb_settings2.editGraph"  : "editGraph",
       "click #createGraph"                        : "addNewGraph",
       "keyup #graphManagementSearchInput"         : "search",
       "click #graphManagementSearchSubmit"        : "search",
-      "click .tile-graph"                         : "loadGraphViewer"
+      "click .tile-graph"                         : "loadGraphViewer",
+      "click #graphManagementToggle"              : "toggleGraphDropdown",
+      "click .css-label"                          : "checkBoxes",
+      "change #graphSortDesc"                     : "sorting"
     },
 
     loadGraphViewer: function(e) {
@@ -81,15 +86,56 @@
       });
     },
 
+    checkBoxes: function (e) {
+      //chrome bugfix
+      var clicked = e.currentTarget.id;
+      $('#'+clicked).click();
+    },
+
+    toggleGraphDropdown: function() {
+      //apply sorting to checkboxes
+      $('#graphSortDesc').attr('checked', this.collection.sortOptions.desc);
+
+      $('#graphManagementToggle').toggleClass('activated');
+      $('#graphManagementDropdown2').slideToggle(200);
+    },
+
+    sorting: function() {
+      if ($('#graphSortDesc').is(":checked")) {
+        this.collection.setSortingDesc(true);
+      }
+      else {
+        this.collection.setSortingDesc(false);
+      }
+
+      if ($('#graphManagementDropdown').is(":visible")) {
+        this.dropdownVisible = true;
+      } else {
+        this.dropdownVisible = false;
+      }
+
+      this.render();
+    },
+
     render: function() {
       this.collection.fetch({
         async: false
       });
 
+      this.collection.sort();
+
       $(this.el).html(this.template.render({
         graphs: this.collection,
         searchString : ''
       }));
+
+      if (this.dropdownVisible === true) {
+        $('#graphManagementDropdown2').show();
+        $('#graphSortDesc').attr('checked', this.collection.sortOptions.desc);
+        $('#graphManagementToggle').toggleClass('activated');
+        $('#graphManagementDropdown').show();
+      }
+
       this.events["click .tableRow"] = this.showHideDefinition.bind(this);
       this.events['change tr[id*="newEdgeDefinitions"]'] = this.setFromAndTo.bind(this);
       this.events["click .graphViewer-icon-button"] = this.addRemoveDefinition.bind(this);

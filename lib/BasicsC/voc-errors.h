@@ -371,7 +371,7 @@ extern "C" {
 ///   Will be raised when a document attribute is re-assigned.
 /// - 1540: @LIT{usage of unknown function '\%s()'}
 ///   Will be raised when an undefined function is called.
-/// - 1541: @LIT{invalid number of arguments for function '\%s()', expected number of arguments: minimum: \%d, maximum: \%d}
+/// - 1541: @LIT{invalid number of arguments for function '\%s()'}
 ///   Will be raised when the number of arguments used in a function call does
 ///   not match the expected number of arguments for the function.
 /// - 1542: @LIT{invalid argument type used in call to function '\%s()'}
@@ -586,6 +586,14 @@ extern "C" {
 ///   Will be returned if the element was not found in the structure.
 /// - 20000: @LIT{newest version of app already installed}
 ///   newest version of app already installed
+/// - 21000: @LIT{named queue already exists}
+///    "Will be returned if a queue with this name already exists."
+/// - 21001: @LIT{dispatcher stopped}
+///   Will be returned if a shutdown is in progress.
+/// - 21002: @LIT{named queue does not exist}
+///    "Will be returned if a queue with this name does not exist."
+/// - 21003: @LIT{named queue is full}
+///    "Will be returned if a queue with this name is full."
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2121,8 +2129,7 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1541: ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH
 ///
-/// invalid number of arguments for function '%s()', expected number of
-/// arguments: minimum: %d, maximum: %d
+/// invalid number of arguments for function '%s()'
 ///
 /// Will be raised when the number of arguments used in a function call does
 /// not match the expected number of arguments for the function.
@@ -3068,6 +3075,46 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_APP_ALREADY_EXISTS                                      (20000)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 21000: ERROR_QUEUE_ALREADY_EXISTS
+///
+/// named queue already exists
+///
+///  "Will be returned if a queue with this name already exists."
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUEUE_ALREADY_EXISTS                                    (21000)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 21001: ERROR_DISPATCHER_IS_STOPPING
+///
+/// dispatcher stopped
+///
+/// Will be returned if a shutdown is in progress.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_DISPATCHER_IS_STOPPING                                  (21001)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 21002: ERROR_QUEUE_UNKNOWN
+///
+/// named queue does not exist
+///
+///  "Will be returned if a queue with this name does not exist."
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUEUE_UNKNOWN                                           (21002)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 21003: ERROR_QUEUE_FULL
+///
+/// named queue is full
+///
+///  "Will be returned if a queue with this name is full."
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUEUE_FULL                                              (21003)
 
 
 ////////////////////////////////////////////////////////////////////////////////

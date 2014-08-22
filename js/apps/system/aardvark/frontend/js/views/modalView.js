@@ -100,13 +100,13 @@
     createModalHotkeys: function() {
       //submit modal
       $(this.el).bind('keydown', 'ctrl+return', function(){
-        $('.button-success').click();
+        $('.modal-footer .button-success').click();
       });
       $("input", $(this.el)).bind('keydown', 'return', function(){
-        $('.button-success').click();
+        $('.modal-footer .button-success').click();
       });
       $("select", $(this.el)).bind('keydown', 'return', function(){
-        $('.button-success').click();
+        $('.modal-footer .button-success').click();
       });
     },
 

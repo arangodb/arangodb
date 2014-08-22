@@ -41,19 +41,10 @@
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace rest {
-    class ApplicationDispatcher;
-    class ApplicationScheduler;
-  }
-
   namespace arango {
     class ApplicationV8;
   }
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           ACTIONS
-// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  module functions
@@ -65,8 +56,6 @@ namespace triagens {
 
 void TRI_InitV8Actions (v8::Handle<v8::Context> context,
                         TRI_vocbase_t* vocbase,
-                        triagens::rest::ApplicationScheduler* scheduler,
-                        triagens::rest::ApplicationDispatcher* dispatcher,
                         triagens::arango::ApplicationV8*);
 
 #endif

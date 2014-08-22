@@ -31,5 +31,5 @@
     </span>
   </div>
 <%}%>
-<h5 class="collectionName"><%= appInfos[1] %><%= attributes.isSystem ? " (system)" : "" %><%= appInfos[0] === "dev" ? " (dev)" : ""%></h5>
+<h5 class="collectionName"><%= appInfos[1] %><%= attributes.isSystem && attributes.mount.charAt(0) === "/" && attributes.mount.charAt(1) === "_" ? " (system)" : "" %><%= appInfos[0] === "dev" ? " (dev)" : ""%></h5>
 </script>

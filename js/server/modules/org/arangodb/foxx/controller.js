@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, regexp: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, regexp: true, vars: true */
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -43,8 +43,8 @@ var Controller,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Create a new Controller
 /// @startDocuBlock JSF_foxx_controller_initializer
+///
 /// `new FoxxController(applicationContext, options)`
 ///
 /// This creates a new Controller. The first argument is the controller
@@ -60,6 +60,7 @@ var Controller,
 ///     urlPrefix: "/meadow"
 ///   });
 /// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -221,6 +222,7 @@ extend(Controller.prototype, {
 ///   // Take this request and deal with it!
 /// });
 /// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -244,6 +246,7 @@ extend(Controller.prototype, {
 ///   // Take this request and deal with it!
 /// });
 /// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -267,6 +270,7 @@ extend(Controller.prototype, {
 ///   // Take this request and deal with it!
 /// });
 /// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -290,6 +294,7 @@ extend(Controller.prototype, {
 ///   // Take this request and deal with it!
 /// });
 /// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -321,6 +326,7 @@ extend(Controller.prototype, {
 ///   // Take this request and deal with it!
 /// });
 /// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -351,6 +357,7 @@ extend(Controller.prototype, {
 ///   //Do some crazy request logging
 /// });
 /// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -388,6 +395,7 @@ extend(Controller.prototype, {
 ///   //Do some crazy response logging
 /// });
 /// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -448,13 +456,14 @@ extend(Controller.prototype, {
 /// @EXAMPLES
 ///
 /// ```js
-/// app.activateAuthentication({
-///   type: "cookie",
-///   cookieLifetime: 360000,
-///   cookieName: "my_cookie",
-///   sessionLifetime: 400,
-/// });
+///     app.activateAuthentication({
+///       type: "cookie",
+///       cookieLifetime: 360000,
+///       cookieName: "my_cookie",
+///       sessionLifetime: 400,
+///     });
 /// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   activateAuthentication: function (opts) {
@@ -496,6 +505,7 @@ extend(Controller.prototype, {
 ///   }
 /// });
 /// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   login: function (route, opts) {
@@ -533,6 +543,7 @@ extend(Controller.prototype, {
 ///   }
 /// });
 /// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   logout: function (route, opts) {
@@ -581,6 +592,7 @@ extend(Controller.prototype, {
 ///   }
 /// });
 /// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   register: function (route, opts) {
@@ -622,14 +634,98 @@ extend(Controller.prototype, {
 ///   }
 /// });
 /// ```
+///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   changePassword: function (route, opts) {
     'use strict';
     var authentication = require("org/arangodb/foxx/authentication");
     return this.post(route, authentication.createStandardChangePasswordHandler(this.getUsers(), opts));
-  }
+  },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @fn JSF_foxx_controller_getSessions
+/// @brief Get the sessions object of this controller
+////////////////////////////////////////////////////////////////////////////////
+  getSessions: function () {
+    'use strict';
+    return this.sessions;
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_controller_activateSessions
+///
+/// `FoxxController#activateAuthentication(opts)`
+///
+/// To activate sessions for this sessions, first call this function.
+/// Provide the following arguments:
+///
+/// * *type*: Currently we only support *cookie*, but this will change in the future. Defaults to *"cookie"*.
+/// * *cookieName*: A string used as the name of the cookie. Defaults to *"sid"*.
+/// * *cookieSecret*: A secret string used to sign the cookie (as "*cookieName*_sig"). Optional.
+/// * *autoCreateSession*: Whether to always create a session if none exists. Defaults to *true*.
+/// * *sessionStorageApp*: Mount path of the app to use for sessions. Defaults to */_system/sessions*
+///
+///
+/// @EXAMPLES
+///
+/// ```js
+/// app.activateSessions({
+///   type: "cookie",
+///   cookieName: "my_cookie",
+///   autoCreateSession: true,
+///   sessionStorageApp: "/my-sessions"
+/// });
+/// ```
+///
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+  activateSessions: function (opts) {
+    'use strict';
+    var sessions = require("org/arangodb/foxx/sessions");
+
+    this.sessions = new sessions.Sessions(opts);
+    sessions.decorateController(this.sessions, this);
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_controller_destroySession
+///
+/// `FoxxController#logout(path, opts)`
+///
+/// This adds a path to your app for the destroySession functionality.
+/// You can customize it with custom *before* and *after* function:
+/// *before* is a function that you can define to do something before
+/// the session is destroyed.
+/// *after* is a function that you can define to do something after the
+/// session is destroyed. This defaults to a function that returns a
+/// JSON object with *message* set to "logged out".
+/// Both *before* and *after* should take request and result as arguments.
+/// If you only want to provide an *after* function, you can pass the
+/// function directly instead of an object.
+///
+/// @EXAMPLES
+///
+/// ```js
+/// app.destroySession('/logout', function (req, res) {
+///   res.json({"message": "Bye, Bye"});
+/// });
+/// ```
+///
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+  destroySession: function (route, opts) {
+    'use strict';
+    var method = opts.method;
+    if (typeof method === 'string') {
+      method = method.toLowerCase();
+    }
+    if (!method || typeof this[method] !== 'function') {
+      method = 'post';
+    }
+    var sessions = require("org/arangodb/foxx/sessions");
+    return this[method](route, sessions.createDestroySessionHandler(this.getSessions(), opts));
+  }
 });
 
 exports.Controller = Controller;

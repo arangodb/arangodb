@@ -14,13 +14,32 @@ window.ApplicationsView = Backbone.View.extend({
     "click #importFoxxToggle"   : "slideToggleImport",
     "change #importFoxx"        : "uploadSetup",
     "click #confirmFoxxImport"  : "importFoxx",
-    "click #installFoxxFromGithub" : "createGithubModal"
+    "click #installFoxxFromGithub" : "createGithubModal",
+    "click .css-label"             : "checkBoxes",
+    "change #appsDesc"             : "sorting"
+  },
+
+  checkBoxes: function (e) {
+    //chrome bugfix
+    var clicked = e.currentTarget.id;
+    $('#'+clicked).click();
   },
 
   uploadSetup: function (e) {
     var files = e.target.files || e.dataTransfer.files;
     this.file = files[0];
     this.allowUpload = true;
+  },
+
+  sorting: function() {
+    if ($('#appsDesc').is(":checked")) {
+      this.collection.setSortingDesc(true);
+    }
+    else {
+      this.collection.setSortingDesc(false);
+    }
+
+    this.render();
   },
 
   createGithubModal: function() {
@@ -192,6 +211,9 @@ window.ApplicationsView = Backbone.View.extend({
   },
 
   slideToggle: function() {
+    //apply sorting to checkboxes
+    $('#appsDesc').attr('checked', this.collection.sortOptions.desc);
+
     $('#importFoxxToggle').removeClass('activated');
     $('#foxxToggle').toggleClass('activated');
     $('#foxxDropdownOut').slideToggle(200);
@@ -245,6 +267,9 @@ window.ApplicationsView = Backbone.View.extend({
   },
 
   render: function() {
+
+    this.collection.sort();
+
     $(this.el).html(this.template.render({}));
     var self = this, name;
     var versions = {};

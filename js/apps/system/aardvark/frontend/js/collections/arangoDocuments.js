@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true */
-/*global require, exports, window, Backbone, arangoDocumentModel, _, $*/
+/*global require, exports, window, Backbone, arangoDocumentModel, _, arangoHelper, $*/
 (function() {
   "use strict";
 
@@ -7,6 +7,12 @@
     collectionID: 1,
 
     filters: [],
+
+    MAX_SORT: 12000,
+
+    lastQuery: {},
+
+    sortAttribute: "_key",
 
     url: '/_api/documents',
     model: window.arangoDocumentModel,
@@ -31,6 +37,14 @@
       this.collectionID = id;
       this.setPage(1);
       this.loadTotal();
+    },
+
+    setSort: function(key) {
+      this.sortAttribute = key;
+    },
+
+    getSort: function() {
+      return this.sortAttribute;
     },
 
     addFilter: function(attr, op, val) {
@@ -59,14 +73,84 @@
       return query + parts.join(" &&");
     },
 
+    setPagesize: function(size) {
+      this.setPageSize(size);
+    },
+
     resetFilter: function() {
       this.filters = [];
     },
 
-    getDocuments: function () {
+    moveDocument: function (key, fromCollection, toCollection, callback) {
+      var querySave, queryRemove, queryObj, bindVars = {
+        "@collection": fromCollection,
+        "filterid": key
+      }, queryObj1, queryObj2;
+
+      querySave = "FOR x IN @@collection";
+      querySave += " FILTER x._key == @filterid";
+      querySave += " INSERT x IN ";
+      querySave += toCollection;
+
+      queryRemove = "FOR x in @@collection";
+      queryRemove += " FILTER x._key == @filterid";
+      queryRemove += " REMOVE x IN @@collection";
+
+      queryObj1 = {
+        query: querySave,
+        bindVars: bindVars
+      };
+
+      queryObj2 = {
+        query: queryRemove,
+        bindVars: bindVars
+      };
+
+      window.progressView.show();
+      // first insert docs in toCollection
+      $.ajax({
+        cache: false,
+        type: 'POST',
+        async: true,
+        url: '/_api/cursor',
+        data: JSON.stringify(queryObj1),
+        contentType: "application/json",
+        success: function(data) {
+          // if successful remove unwanted docs
+          $.ajax({
+            cache: false,
+            type: 'POST',
+            async: true,
+            url: '/_api/cursor',
+            data: JSON.stringify(queryObj2),
+            contentType: "application/json",
+            success: function(data) {
+              if (callback) {
+                callback();
+              }
+              window.progressView.hide();
+            },
+            error: function(data) {
+              window.progressView.hide();
+              arangoHelper.arangoNotification(
+                "Document error", "Documents inserted, but could not be removed."
+              );
+            }
+          });
+        },
+        error: function(data) {
+          window.progressView.hide();
+          arangoHelper.arangoNotification("Document error", "Could not move selected documents.");
+        }
+      });
+    },
+
+    getDocuments: function (callback) {
+      window.progressView.show("Fetching documents...");
       var self = this,
           query,
           bindVars,
+          tmp,
           queryObj;
       bindVars = {
         "@collection": this.collectionID,
@@ -77,10 +161,26 @@
       query = "FOR x in @@collection";
       query += this.setFiltersForQuery(bindVars);
       // Sort result, only useful for a small number of docs
-      if (this.getTotal() < 10000) {
-        query += " SORT TO_NUMBER(x._key) == 0 ? x._key : TO_NUMBER(x._key)";
+      if (this.getTotal() < this.MAX_SORT) {
+        if (this.getSort() === '_key') {
+          query += " SORT TO_NUMBER(x." + this.getSort() + ") == 0 ? x."
+                + this.getSort() + " : TO_NUMBER(x." + this.getSort() + ")";
+        }
+        else {
+          query += " SORT x." + this.getSort();
+        }
       }
-      query += " LIMIT @offset, @count RETURN x";
+
+      if (bindVars.count !== 'all') {
+        query += " LIMIT @offset, @count RETURN x";
+      }
+      else {
+        tmp = {
+          "@collection": this.collectionID
+        };
+        bindVars = tmp;
+        query += " RETURN x";
+      }
 
       queryObj = {
         query: query,
@@ -95,7 +195,7 @@
       $.ajax({
         cache: false,
         type: 'POST',
-        async: false,
+        async: true,
         url: '/_api/cursor',
         data: JSON.stringify(queryObj),
         contentType: "application/json",
@@ -114,12 +214,43 @@
               });
             });
           }
+          self.lastQuery = queryObj;
+          callback();
+          window.progressView.hide();
+        },
+        error: function(data) {
+          window.progressView.hide();
+          arangoHelper.arangoNotification("Document error", "Could not fetch requested documents.");
         }
       });
     },
 
     clearDocuments: function () {
       this.reset();
+    },
+
+    buildDownloadDocumentQuery: function() {
+      var self = this, query, queryObj, bindVars;
+
+      bindVars = {
+        "@collection": this.collectionID
+      };
+
+      query = "FOR x in " + this.collectionID;
+      query += this.setFiltersForQuery(bindVars);
+      // Sort result, only useful for a small number of docs
+      if (this.getTotal() < this.MAX_SORT) {
+        query += " SORT x." + this.getSort();
+      }
+
+      query += " RETURN x";
+
+      queryObj = {
+        query: query,
+        bindVars: bindVars
+      };
+
+      return query;
     },
 
     updloadDocuments : function (file) {

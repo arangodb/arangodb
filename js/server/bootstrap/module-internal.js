@@ -5,7 +5,7 @@
          REPLICATION_LOGGER_STATE, REPLICATION_LOGGER_CONFIGURE, REPLICATION_SERVER_ID,
          REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_SHUTDOWN, 
          REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE, REPLICATION_SYNCHRONISE,
-         ENABLE_STATISTICS */ 
+         ENABLE_STATISTICS, DISPATCHER_THREADS, SYS_CREATE_NAMED_QUEUE, SYS_ADD_JOB */ 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -88,6 +88,13 @@
 
   internal.enableStatistics = ENABLE_STATISTICS;
   delete ENABLE_STATISTICS;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dispatcherThreads
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.dispatcherThreads = DISPATCHER_THREADS;
+  delete DISPATCHER_THREADS;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -321,6 +328,24 @@
   internal.loadStartup = function (path) {
     return internal.load(fs.join(internal.startupPath, path));
   };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief createNamedQueue
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_CREATE_NAMED_QUEUE !== "undefined") {
+    internal.createNamedQueue = SYS_CREATE_NAMED_QUEUE;
+    delete SYS_CREATE_NAMED_QUEUE;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief addJob
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_ADD_JOB !== "undefined") {
+    internal.addJob = SYS_ADD_JOB;
+    delete SYS_ADD_JOB;
+  }
 
 }());
 

@@ -58,6 +58,7 @@
     initialize: function () {
       // This should be the only global object
       window.modalView = new window.ModalView();
+      window.progressView = new window.ProgressView();
       var self = this;
 
       this.currentDB = new window.CurrentDatabase();
@@ -82,7 +83,7 @@
           {shouldFetchUser: true}
         ),
         currentDB: this.currentDB,
-        notificationCollection: new window.NotificationCollection(),
+        notificationCollection: self.notificationList,
         userCollection: this.userCollection
       });
 
@@ -95,6 +96,7 @@
         self.handleResize();
       });
       window.checkVersion();
+
     },
 
     checkUser: function () {

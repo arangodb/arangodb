@@ -43,14 +43,14 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             public static methods
+// --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the default dispatcher thread
 ////////////////////////////////////////////////////////////////////////////////
 
-DispatcherThread* Dispatcher::defaultDispatcherThread (DispatcherQueue* queue) {
+static DispatcherThread* defaultDispatcherThread (DispatcherQueue* queue, void*) {
   return new DispatcherThread(queue);
 }
 
@@ -100,48 +100,78 @@ bool Dispatcher::isRunning () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a new queue
+/// @brief adds the standard queue
 ////////////////////////////////////////////////////////////////////////////////
 
-void Dispatcher::addQueue (std::string const& name,
-                           size_t nrThreads,
-                           size_t maxSize) {
+int Dispatcher::addStandardQueue (size_t nrThreads,
+                                   size_t maxSize) {
+  MUTEX_LOCKER(_accessDispatcher);
+
+  static const string name = "STANDARD";
+
+  if (_queues.find(name) != _queues.end()) {
+    return TRI_ERROR_QUEUE_ALREADY_EXISTS;
+  }
+
   _queues[name] = new DispatcherQueue(
     _scheduler,
     this,
     name,
     defaultDispatcherThread,
+    nullptr,
     nrThreads,
     maxSize);
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a queue which given dispatcher thread type
+/// @brief starts a new named queue
 ////////////////////////////////////////////////////////////////////////////////
 
-void Dispatcher::addQueue (std::string const& name,
-                           newDispatcherThread_fptr func,
-                           size_t nrThreads,
-                           size_t maxSize) {
+int Dispatcher::startNamedQueue (std::string const& name,
+                                  newDispatcherThread_fptr func,
+                                  void* threadData,
+                                  size_t nrThreads,
+                                  size_t maxSize) {
+  MUTEX_LOCKER(_accessDispatcher);
+
+  if (_queues.find(name) != _queues.end()) {
+    return TRI_ERROR_QUEUE_ALREADY_EXISTS;
+  }
+
+  if (_stopping != 0) {
+    return TRI_ERROR_DISPATCHER_IS_STOPPING;
+  }
+
   _queues[name] = new DispatcherQueue(
     _scheduler,
     this,
     name,
     func,
+    threadData,
     nrThreads,
     maxSize);
+
+  _queues[name]->start();
+
+  while (! _queues[name]->isStarted()) {
+    usleep(10 * 1000);
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new job
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Dispatcher::addJob (Job* job) {
+int Dispatcher::addJob (Job* job) {
   RequestStatisticsAgentSetQueueStart(job);
 
   // do not start new jobs if we are already shutting down
   if (_stopping != 0) {
-    return false;
+    return TRI_ERROR_DISPATCHER_IS_STOPPING;
   }
 
   // try to find a suitable queue
@@ -150,7 +180,7 @@ bool Dispatcher::addJob (Job* job) {
 
   if (queue == 0) {
     LOG_WARNING("unknown queue '%s'", name.c_str());
-    return false;
+    return TRI_ERROR_QUEUE_UNKNOWN;
   }
 
   // log success, but do this BEFORE the real add, because the addJob might execute
@@ -159,11 +189,11 @@ bool Dispatcher::addJob (Job* job) {
 
   // add the job to the list of ready jobs
   if (! queue->addJob(job)) {
-    return false; // queue full etc.
+    return TRI_ERROR_QUEUE_FULL; // queue full etc.
   }
 
   // indicate success, BUT never access job after it has been added to the queue
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,6 +201,8 @@ bool Dispatcher::addJob (Job* job) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Dispatcher::cancelJob (uint64_t jobId) {
+  MUTEX_LOCKER(_accessDispatcher);
+
   bool done = false;
 
   for (map<string, DispatcherQueue*>::iterator i = _queues.begin();  i != _queues.end() && ! done;  ++i) {
@@ -303,6 +335,8 @@ void Dispatcher::reportStatus () {
 ////////////////////////////////////////////////////////////////////////////////
 
 DispatcherQueue* Dispatcher::lookupQueue (const std::string& name) {
+  MUTEX_LOCKER(_accessDispatcher);
+
   map<std::string, DispatcherQueue*>::const_iterator i = _queues.find(name);
 
   if (i == _queues.end()) {

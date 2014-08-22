@@ -39,6 +39,23 @@
       cursor: default;
     }
   }
+
+  .selected-row {
+    background-color: $c-positive !important;
+
+    div {
+      color: #fff !important;
+    }
+
+    li {
+      color: #fff !important;
+    }
+
+    span {
+      color: #fff !important;
+    }
+
+  }
 }
 
 // Odd / Even coloring

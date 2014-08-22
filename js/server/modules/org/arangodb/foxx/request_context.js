@@ -35,9 +35,9 @@ var RequestContext,
   extend = _.extend,
   internal = require("org/arangodb/foxx/internals"),
   is = require("org/arangodb/is"),
-  UnauthorizedError = require("org/arangodb/foxx/authentication").UnauthorizedError,
   elementExtractFactory,
   bubbleWrapFactory,
+  UnauthorizedError = require("org/arangodb/foxx/sessions").UnauthorizedError,
   createErrorBubbleWrap,
   createBodyParamBubbleWrap,
   addCheck;
@@ -254,9 +254,14 @@ extend(RequestContext.prototype, {
       }
       this.constraints.urlParams[paramName] = constraint;
       cfg = constraint.describe();
+      if (Array.isArray(cfg)) {
+        cfg = cfg[0];
+        type = 'string';
+      } else {
+        type = cfg.type;
+      }
       required = Boolean(cfg.flags && cfg.flags.presense === 'required');
       description = cfg.description;
-      type = cfg.type;
       if (
         type === 'number' &&
           _.isArray(cfg.rules) &&
@@ -328,9 +333,14 @@ extend(RequestContext.prototype, {
       }
       this.constraints.queryParams[paramName] = constraint;
       cfg = constraint.describe();
+      if (Array.isArray(cfg)) {
+        cfg = cfg[0];
+        type = 'string';
+      } else {
+        type = cfg.type;
+      }
       required = Boolean(cfg.flags && cfg.flags.presense === 'required');
       description = cfg.description;
-      type = cfg.type;
       if (
         type === 'number' &&
           _.isArray(cfg.rules) &&
@@ -524,7 +534,8 @@ extend(RequestContext.prototype, {
 ///
 /// `FoxxController#onlyIf(code, reason)`
 ///
-/// Please activate authentification for this app if you want to use this function.
+/// Please activate sessions for this app if you want to use this function.
+/// Or activate authentication (deprecated).
 /// If the user is logged in, it will do nothing. Otherwise it will respond with
 /// the status code and the reason you provided (the route handler won't be called).
 /// This will also add the according documentation for this route.
@@ -543,7 +554,10 @@ extend(RequestContext.prototype, {
     var check;
 
     check = function (req) {
-      if (!(req.user && req.currentSession)) {
+      if (
+        !(req.session && req.session.get('uid')) // new and shiny
+          && !(req.user && req.currentSession) // old and busted
+      ) {
         throw new UnauthorizedError();
       }
     };

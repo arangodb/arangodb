@@ -11,15 +11,35 @@ window.ArangoUsers = Backbone.Collection.extend({
     "testing": true
   },
 
+  sortOptions: {
+    desc: false
+  },
+
   url: "/_api/user",
 
-  comparator : function(obj) {
-    return obj.get("user").toLowerCase();
+  //comparator : function(obj) {
+  //  return obj.get("user").toLowerCase();
+  //},
+
+  comparator: function(item, item2) {
+    var a, b;
+    if (this.sortOptions.desc === true) {
+      a = item.get('user');
+      b = item2.get('user');
+      return a < b ? 1 : a > b ? -1 : 0;
+    }
+    a = item.get('user');
+    b = item2.get('user');
+    return a > b ? 1 : a < b ? -1 : 0;
   },
 
   login: function (username, password) {
     this.activeUser = username;
     return true;
+  },
+
+  setSortingDesc: function(yesno) {
+    this.sortOptions.desc = yesno;
   },
 
   logout: function () {

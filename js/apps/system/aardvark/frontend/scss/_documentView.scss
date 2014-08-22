@@ -1,7 +1,7 @@
 .document-info {
 
-  background-color: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.2);
+  background-color: #fff;
+  border: 1px solid rgba(0, 0, 0, .2);
   margin-bottom: 8px;
   margin-top: -10px;
   min-height: 65px;
@@ -13,12 +13,13 @@
 
     .document-inner-info-container {
       float: left;
-      margin-top: 5px;
       margin-left: 10px;
+      margin-top: 5px;
 
       .document-attribute {
-        margin-right: 20px;
         @extend %clear-float;
+        margin-right: 20px;
+
         div {
           float: left;
         }
@@ -33,7 +34,7 @@
   }
 
   .document-thin-font {
-    color: green;
+    color: #008000;
     font-family: droid sans mono, monospace, courier new, courier, sans-serif;
     font-size: 11pt;
   }
@@ -57,27 +58,9 @@
     }
   }
 
-  .ace_layer {
-    div {
-      font-size: 11pt;
-    }
-  }
-
-  .ace_text-layer {
-    div {
-      font-size: 11pt;
-    }
-  }
-
-  .ace_line_group {
-    div {
-      font-size: 11pt;
-    }
-  }
-
   .outer {
     .tree > table > tbody > tr:first-of-type {
-     visibility: hidden;
+      visibility: hidden;
     }
   }
 
