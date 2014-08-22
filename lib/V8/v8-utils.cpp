@@ -836,7 +836,7 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
         return scope.Close(v8::ThrowException(tryCatch.Exception()));
       }
       else {
-        TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+        TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
         v8g->_canceled = true;
         return scope.Close(v8::Undefined());
@@ -857,7 +857,7 @@ static v8::Handle<v8::Value> JS_Execute (v8::Arguments const& argv) {
         return scope.Close(v8::ThrowException(tryCatch.Exception()));
       }
       else {
-        TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+        TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
         v8g->_canceled = true;
         return scope.Close(v8::Undefined());
@@ -908,7 +908,7 @@ static v8::Handle<v8::Value> JS_RegisterExecuteFile (v8::Arguments const& argv) 
   v8::HandleScope scope;
 
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData());
 
   // extract arguments
   if (argv.Length() != 1) {
@@ -2975,7 +2975,7 @@ static v8::Handle<v8::Value> JS_TestPort (v8::Arguments const& argv) {
 static v8::Handle<v8::Value> JS_ArangoError (const v8::Arguments& args) {
   v8::HandleScope scope;
 
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
   v8::Handle<v8::Object> self = args.Holder()->ToObject();
 
@@ -3012,7 +3012,7 @@ static v8::Handle<v8::Value> JS_ArangoError (const v8::Arguments& args) {
 static v8::Handle<v8::Value> JS_SleepAndRequeue (const v8::Arguments& args) {
   v8::HandleScope scope;
 
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
   v8::Handle<v8::Object> self = args.Holder()->ToObject();
 
@@ -3320,7 +3320,7 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString (v8::Handle<v8::Context> conte
           TRI_LogV8Exception(&tryCatch);
         }
         else {
-          TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+          TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
           v8g->_canceled = true;
           return scope.Close(v8::Undefined());

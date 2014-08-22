@@ -221,32 +221,33 @@ int ProcessIndexFields (v8::Handle<v8::Object> const obj,
                         TRI_json_t* json,
                         int numFields,
                         bool create) {
-  vector<string> fields;
+  set<string> fields;
 
-  if (obj->Has(TRI_V8_SYMBOL("fields")) && obj->Get(TRI_V8_SYMBOL("fields"))->IsArray()) {
+  v8::Handle<v8::String> fieldsString = v8::String::New("fields");
+  if (obj->Has(fieldsString) && obj->Get(fieldsString)->IsArray()) {
     // "fields" is a list of fields
-    v8::Handle<v8::Array> fieldList = v8::Handle<v8::Array>::Cast(obj->Get(TRI_V8_SYMBOL("fields")));
+    v8::Handle<v8::Array> fieldList = v8::Handle<v8::Array>::Cast(obj->Get(fieldsString));
 
-    const uint32_t n = fieldList->Length();
+    uint32_t const n = fieldList->Length();
 
     for (uint32_t i = 0; i < n; ++i) {
       if (! fieldList->Get(i)->IsString()) {
         return TRI_ERROR_BAD_PARAMETER;
       }
 
-      const string f = TRI_ObjectToString(fieldList->Get(i));
+      string const f = TRI_ObjectToString(fieldList->Get(i));
 
       if (f.empty() || (create && f[0] == '_')) {
         // accessing internal attributes is disallowed
         return TRI_ERROR_BAD_PARAMETER;
       }
 
-      if (std::find(fields.begin(), fields.end(), f) != fields.end()) {
+      if (fields.find(f) != fields.end()) {
         // duplicate attribute name
         return TRI_ERROR_BAD_PARAMETER;
       }
 
-      fields.push_back(f);
+      fields.insert(f);
     }
   }
 
@@ -1161,7 +1162,7 @@ static v8::Handle<v8::Value> CreateCollectionCoordinator (
   // now create the JSON for the collection
   TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
-  if (json == 0) {
+  if (json == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_OUT_OF_MEMORY);
   }
 

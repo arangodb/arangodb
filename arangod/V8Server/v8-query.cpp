@@ -2944,9 +2944,9 @@ void TRI_InitV8Queries (v8::Handle<v8::Context> context) {
   v8::Handle<v8::ObjectTemplate> rt;
 
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  TRI_v8_global_t* v8g = (TRI_v8_global_t*) isolate->GetData();
+  TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData());
 
-  TRI_ASSERT(v8g != 0);
+  TRI_ASSERT(v8g != nullptr);
 
   // .............................................................................
   // generate the TRI_vocbase_col_t template

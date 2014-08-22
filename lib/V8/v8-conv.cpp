@@ -99,7 +99,7 @@ static int FillShapeValueNull (TRI_shaper_t* shaper,
   dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NULL);
   dst->_fixedSized = true;
   dst->_size = 0;
-  dst->_value = 0;
+  dst->_value = nullptr;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -119,7 +119,7 @@ static int FillShapeValueBoolean (TRI_shaper_t* shaper,
   dst->_size = sizeof(TRI_shape_boolean_t);
   dst->_value = (char*) (ptr = (TRI_shape_boolean_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
 
-  if (dst->_value == 0) {
+  if (dst->_value == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -143,7 +143,7 @@ static int FillShapeValueBoolean (TRI_shaper_t* shaper,
   dst->_size = sizeof(TRI_shape_boolean_t);
   dst->_value = (char*) (ptr = (TRI_shape_boolean_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
 
-  if (dst->_value == 0) {
+  if (dst->_value == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -167,7 +167,7 @@ static int FillShapeValueNumber (TRI_shaper_t* shaper,
   dst->_size = sizeof(TRI_shape_number_t);
   dst->_value = (char*) (ptr = (TRI_shape_number_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
 
-  if (dst->_value == 0) {
+  if (dst->_value == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -191,7 +191,7 @@ static int FillShapeValueNumber (TRI_shaper_t* shaper,
   dst->_size = sizeof(TRI_shape_number_t);
   dst->_value = (char*) (ptr = (TRI_shape_number_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
 
-  if (dst->_value == 0) {
+  if (dst->_value == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -219,7 +219,7 @@ static int FillShapeValueString (TRI_shaper_t* shaper,
     dst->_size = sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT;
     dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
 
-    if (dst->_value == 0) {
+    if (dst->_value == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
@@ -360,9 +360,7 @@ static int FillShapeValueList (TRI_shaper_t* shaper,
 
   // homogeneous sized
   if (hs && hl) {
-    TRI_homogeneous_sized_list_shape_t* shape;
-
-    shape = (TRI_homogeneous_sized_list_shape_t*) TRI_Allocate(shaper->_memoryZone, sizeof(TRI_homogeneous_sized_list_shape_t), true);
+    auto shape = static_cast<TRI_homogeneous_sized_list_shape_t*>(TRI_Allocate(shaper->_memoryZone, sizeof(TRI_homogeneous_sized_list_shape_t), true));
 
     if (shape == nullptr) {
       for (p = values;  p < e;  ++p) {
@@ -411,7 +409,7 @@ static int FillShapeValueList (TRI_shaper_t* shaper,
     dst->_size = sizeof(TRI_shape_length_list_t) + total;
     dst->_value = (ptr = static_cast<char*>(TRI_Allocate(shaper->_memoryZone, dst->_size, false)));
 
-    if (dst->_value == NULL) {
+    if (dst->_value == nullptr) {
       for (p = values;  p < e;  ++p) {
         if (p->_value != nullptr) {
           TRI_Free(shaper->_memoryZone, p->_value);
@@ -435,9 +433,7 @@ static int FillShapeValueList (TRI_shaper_t* shaper,
 
   // homogeneous
   else if (hs) {
-    TRI_homogeneous_list_shape_t* shape;
-
-    shape = (TRI_homogeneous_list_shape_t*) TRI_Allocate(shaper->_memoryZone, sizeof(TRI_homogeneous_list_shape_t), true);
+    auto shape = static_cast<TRI_homogeneous_list_shape_t*>(TRI_Allocate(shaper->_memoryZone, sizeof(TRI_homogeneous_list_shape_t), true));
 
     if (shape == nullptr) {
       for (p = values;  p < e;  ++p) {
@@ -1057,7 +1053,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray (v8::Handle<v8::Value>& value,
       shapeCache._sid = sid;
     }
 
-    if (subshape == 0) {
+    if (subshape == nullptr) {
       LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
       continue;
     }
@@ -1065,7 +1061,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray (v8::Handle<v8::Value>& value,
     TRI_shape_aid_t aid = *aids;
     char const* name = shaper->lookupAttributeId(shaper, aid);
 
-    if (name == 0) {
+    if (name == nullptr) {
       LOG_WARNING("cannot find attribute #%u", (unsigned int) aid);
       continue;
     }
@@ -1089,7 +1085,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray (v8::Handle<v8::Value>& value,
       shapeCache._sid = sid;
     }
 
-    if (subshape == 0) {
+    if (subshape == nullptr) {
       LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
       continue;
     }
@@ -1097,7 +1093,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray (v8::Handle<v8::Value>& value,
     TRI_shape_aid_t aid = *aids;
     char const* name = shaper->lookupAttributeId(shaper, aid);
 
-    if (name == 0) {
+    if (name == nullptr) {
       LOG_WARNING("cannot find attribute #%u", (unsigned int) aid);
       continue;
     }
@@ -1164,7 +1160,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray (TRI_shaper_t* shaper,
       shapeCache._sid = sid;
     }
 
-    if (subshape == 0) {
+    if (subshape == nullptr) {
       LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
       continue;
     }
@@ -1172,7 +1168,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray (TRI_shaper_t* shaper,
     TRI_shape_aid_t aid = *aids;
     char const* name = shaper->lookupAttributeId(shaper, aid);
 
-    if (name == 0) {
+    if (name == nullptr) {
       LOG_WARNING("cannot find attribute #%u", (unsigned int) aid);
       continue;
     }
@@ -1196,7 +1192,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray (TRI_shaper_t* shaper,
       shapeCache._sid = sid;
     }
 
-    if (subshape == 0) {
+    if (subshape == nullptr) {
       LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
       continue;
     }
@@ -1204,7 +1200,7 @@ static v8::Handle<v8::Value> JsonShapeDataArray (TRI_shaper_t* shaper,
     TRI_shape_aid_t aid = *aids;
     char const* name = shaper->lookupAttributeId(shaper, aid);
 
-    if (name == 0) {
+    if (name == nullptr) {
       LOG_WARNING("cannot find attribute #%u", (unsigned int) aid);
       continue;
     }
@@ -1231,7 +1227,6 @@ static v8::Handle<v8::Value> JsonShapeDataList (TRI_shaper_t* shaper,
   TRI_shape_size_t const* offsets;
   shape_cache_t shapeCache;
   char const* ptr;
-  v8::Handle<v8::Array> list;
 
   ptr = data;
   l = * (TRI_shape_length_list_t const*) ptr;
@@ -1242,7 +1237,7 @@ static v8::Handle<v8::Value> JsonShapeDataList (TRI_shaper_t* shaper,
 
   shapeCache._sid   = 0;
   shapeCache._shape = 0;
-  list = v8::Array::New(l);
+  v8::Handle<v8::Array> list = v8::Array::New(l);
 
   ptr += sizeof(TRI_shape_length_list_t);
   sids = (TRI_shape_sid_t const*) ptr;
@@ -1262,7 +1257,7 @@ static v8::Handle<v8::Value> JsonShapeDataList (TRI_shaper_t* shaper,
       shapeCache._sid   = sid;
     }
 
-    if (subshape == 0) {
+    if (subshape == nullptr) {
       LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
       continue;
     }
@@ -1290,7 +1285,6 @@ static v8::Handle<v8::Value> JsonShapeDataHomogeneousList (TRI_shaper_t* shaper,
   TRI_shape_size_t const* offsets;
   char const* ptr;
   TRI_shape_t const* subshape;
-  v8::Handle<v8::Array> list;
 
   s = (TRI_homogeneous_list_shape_t const*) shape;
   sid = s->_sidEntry;
@@ -1303,12 +1297,12 @@ static v8::Handle<v8::Value> JsonShapeDataHomogeneousList (TRI_shaper_t* shaper,
 
   subshape = shaper->lookupShapeId(shaper, sid);
 
-  if (subshape == 0) {
+  if (subshape == nullptr) {
     LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
     return v8::Array::New();
   }
 
-  list = v8::Array::New(l);
+  v8::Handle<v8::Array> list = v8::Array::New(l);
 
   for (i = 0;  i < l;  ++i, ++offsets) {
     TRI_shape_size_t offset = *offsets;
@@ -1335,7 +1329,6 @@ static v8::Handle<v8::Value> JsonShapeDataHomogeneousSizedList (TRI_shaper_t* sh
   TRI_shape_size_t length;
   char const* ptr;
   TRI_shape_t const* subshape;
-  v8::Handle<v8::Array> list;
 
   s = (TRI_homogeneous_sized_list_shape_t const*) shape;
 
@@ -1351,13 +1344,14 @@ static v8::Handle<v8::Value> JsonShapeDataHomogeneousSizedList (TRI_shaper_t* sh
 
   subshape = shaper->lookupShapeId(shaper, sid);
 
-  if (subshape == 0) {
+  if (subshape == nullptr) {
     LOG_WARNING("cannot find shape #%u", (unsigned int) sid);
     return v8::Array::New();
   }
 
   TRI_shape_size_t offset = sizeof(TRI_shape_length_list_t);
-  list = v8::Array::New(l);
+ 
+  v8::Handle<v8::Array> list = v8::Array::New(l);
 
   for (i = 0;  i < l;  ++i, offset += length) {
     v8::Handle<v8::Value> element = JsonShapeData(shaper, subshape, data + offset, length);
@@ -1522,7 +1516,7 @@ v8::Handle<v8::Array> TRI_ArrayAssociativePointer (TRI_associative_pointer_t con
   for (uint32_t i = 0;  i < n;  ++i) {
     char* value = (char*) array->_table[i];
 
-    if (value == 0) {
+    if (value == nullptr) {
       continue;
     }
 
@@ -1710,7 +1704,7 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
 
     TRI_json_t* listJson = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, (const size_t) n);
 
-    if (listJson != 0) {
+    if (listJson != nullptr) {
       for (uint32_t j = 0; j < n; ++j) {
         v8::Handle<v8::Value> item = arrayParameter->Get(j);
         TRI_json_t* result = ObjectToJson(item, seenHashes, seenObjects);
@@ -1770,7 +1764,7 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
       for (vector< v8::Handle<v8::Object> >::iterator i = seenObjects.begin();  i != seenObjects.end();  ++i) {
         if (parameter->StrictEquals(*i)) {
           LOG_TRACE("found duplicate for hash %d", hash);
-          return 0;
+          return nullptr;
         }
       }
     }
@@ -1786,13 +1780,13 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
 
     TRI_json_t* arrayJson = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, (const size_t) n);
 
-    if (arrayJson != 0 && n > 0) {
+    if (arrayJson != nullptr && n > 0) {
       for (uint32_t j = 0; j < n; ++j) {
         v8::Handle<v8::Value> key  = names->Get(j);
         v8::Handle<v8::Value> item = arrayParameter->Get(key);
         TRI_json_t* result = ObjectToJson(item, seenHashes, seenObjects);
 
-        if (result != 0) {
+        if (result != nullptr) {
           TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, key);
 
           if (*str != 0) {

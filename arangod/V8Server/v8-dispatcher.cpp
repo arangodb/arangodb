@@ -176,7 +176,7 @@ static v8::Handle<v8::Value> JS_RegisterTask (v8::Arguments const& argv) {
   }
 
   // extract the parameters
-  TRI_json_t* parameters = 0;
+  TRI_json_t* parameters = nullptr;
 
   if (obj->HasOwnProperty(TRI_V8_SYMBOL("params"))) {
     parameters = TRI_ObjectToJson(obj->Get(TRI_V8_SYMBOL("params")));

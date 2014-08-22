@@ -26,6 +26,7 @@
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "v8-collection.h"
 #include "v8-vocbaseprivate.h"
 
@@ -46,6 +47,7 @@ static int const SLOT_COLLECTION = 2;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free a coordinator collection
 ////////////////////////////////////////////////////////////////////////////////
+
 void FreeCoordinatorCollection (TRI_vocbase_col_t* collection) {
   TRI_DestroyReadWriteLock(&collection->_lock);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, collection);
@@ -54,13 +56,15 @@ void FreeCoordinatorCollection (TRI_vocbase_col_t* collection) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a collection
 ////////////////////////////////////////////////////////////////////////////////
- void ReleaseCollection (TRI_vocbase_col_t const* collection) {
+
+void ReleaseCollection (TRI_vocbase_col_t const* collection) {
   TRI_ReleaseCollectionVocBase(collection->_vocbase, const_cast<TRI_vocbase_col_t*>(collection));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a collection info into a TRI_vocbase_col_t
 ////////////////////////////////////////////////////////////////////////////////
+
 TRI_vocbase_col_t* CoordinatorCollection (TRI_vocbase_t* vocbase,
                                           CollectionInfo const& ci) {
   TRI_vocbase_col_t* c = static_cast<TRI_vocbase_col_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vocbase_col_t), false));
@@ -108,6 +112,7 @@ TRI_vocbase_col_t* CoordinatorCollection (TRI_vocbase_t* vocbase,
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief check if a name belongs to a collection
 ////////////////////////////////////////////////////////////////////////////////
+
 bool EqualCollection (CollectionNameResolver const* resolver,
                       string const& collectionName,
                       TRI_vocbase_col_t const* collection) {
@@ -136,6 +141,7 @@ bool EqualCollection (CollectionNameResolver const* resolver,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a v8 collection id value from the internal collection id
 ////////////////////////////////////////////////////////////////////////////////
+
 static inline v8::Handle<v8::Value> V8CollectionId (TRI_voc_cid_t cid) {
   char buffer[21];
   size_t len = TRI_StringUInt64InPlace((uint64_t) cid, (char*) &buffer);
@@ -146,6 +152,7 @@ static inline v8::Handle<v8::Value> V8CollectionId (TRI_voc_cid_t cid) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief weak reference callback for collections
 ////////////////////////////////////////////////////////////////////////////////
+
 static void WeakCollectionCallback (v8::Isolate* isolate,
                                     v8::Persistent<v8::Value> object,
                                     void* parameter) {
@@ -175,6 +182,7 @@ static void WeakCollectionCallback (v8::Isolate* isolate,
 /////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a TRI_vocbase_col_t
 ////////////////////////////////////////////////////////////////////////////////
+
 v8::Handle<v8::Object> WrapCollection (TRI_vocbase_col_t const* collection) {
   v8::HandleScope scope;
 
@@ -210,3 +218,4 @@ v8::Handle<v8::Object> WrapCollection (TRI_vocbase_col_t const* collection) {
 
   return scope.Close(result);
 }
+
