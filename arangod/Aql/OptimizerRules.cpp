@@ -311,17 +311,17 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
   RangesInfo* _ranges; 
   ExecutionPlan* _plan;
   Variable const* _var;
-  Optimizer::PlanList _out;
+  Optimizer::PlanList* _out;
   bool _canThrow; 
   
   public:
-    FilterToEnumCollFinder (ExecutionPlan* plan, Variable const * var, Optimizer::PlanList& out) 
+
+    FilterToEnumCollFinder (ExecutionPlan* plan, Variable const * var, Optimizer::PlanList* out) 
       : _plan(plan), _var(var), _out(out), _canThrow(false){
         _ranges = new RangesInfo();
     };
 
     void before (ExecutionNode* en) {
-
       _canThrow = (_canThrow || en->canThrow()); // can any node walked over throw?
 
       if (en->getType() == triagens::aql::ExecutionNode::CALCULATION) {
@@ -353,13 +353,13 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             // check if the condition is equality (i.e. the ranges only contain
             // 1 value)
           }
-          if (!valid){ // ranges are not valid . . . 
+          if (! valid){ // ranges are not valid . . . 
             std::cout << "INVALID RANGE!\n";
-            if (!_canThrow) {
+            if (! _canThrow) {
               
               auto newPlan = _plan->clone();
               auto parents = node->getParents();
-              for(auto x: parents){
+              for(auto x: parents) {
                 auto noRes = new NoResultsNode(newPlan->nextId());
                 newPlan->registerNode(noRes);
                 newPlan->insertDependency(x, noRes);
@@ -374,15 +374,15 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             // enumerate collection node with a RangeIndexNode . . . 
             for (auto idx: idxs) {
               if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX || 
-                 (idx->_type == TRI_IDX_TYPE_HASH_INDEX && eq) ) {
+                 (idx->_type == TRI_IDX_TYPE_HASH_INDEX && eq)) {
                 //can only use the index if it is a skip list or (a hash and we
                 //are checking equality)
                 std::cout << "FOUND INDEX!\n";
                 auto newPlan = _plan->clone();
                 ExecutionNode* newNode = nullptr;
                 try{
-                  newNode = new IndexRangeNode( newPlan->nextId(), node->vocbase(), 
-                      node->collection(), node->outVariable(), idx, &rangeInfo);
+                  newNode = new IndexRangeNode(newPlan->nextId(), node->vocbase(), 
+                      node->collection(), node->outVariable(), idx, rangeInfo);
                   newPlan->registerNode(newNode);
                 }
                 catch (...) {
@@ -402,36 +402,36 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       }
     }
 
-    void buildRangeInfo (AstNode const* node, std::string& enumCollVar, std::string& attr){
-      if(node->type == NODE_TYPE_REFERENCE){
+    void buildRangeInfo (AstNode const* node, std::string& enumCollVar, std::string& attr) {
+      if (node->type == NODE_TYPE_REFERENCE){
         auto x = static_cast<Variable*>(node->getData());
         auto setter = _plan->getVarSetBy(x->id);
         if( setter != nullptr && 
-          setter->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION){
+          setter->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION) {
           enumCollVar = x->name;
         }
         return;
       }
       
-      if(node->type == NODE_TYPE_ATTRIBUTE_ACCESS){
+      if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
         char const* attributeName = node->getStringValue();
         buildRangeInfo(node->getMember(0), enumCollVar, attr);
-        if(!enumCollVar.empty()){
+        if (! enumCollVar.empty()){
           attr.append(attributeName);
           attr.push_back('.');
         }
       }
       
-      if(node->type == NODE_TYPE_OPERATOR_BINARY_EQ){
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
         auto lhs = node->getMember(0);
         auto rhs = node->getMember(1);
         AstNode const* val;
         AstNode const* nextNode;
-        if(rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && lhs->type == NODE_TYPE_VALUE){
+        if(rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && lhs->type == NODE_TYPE_VALUE) {
           val = lhs;
           nextNode = rhs;
         }
-        else if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->type == NODE_TYPE_VALUE){
+        else if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->type == NODE_TYPE_VALUE) {
           val = rhs;
           nextNode = lhs;
         }
@@ -439,10 +439,10 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           val = nullptr;
         }
         
-        if(val != nullptr){
+        if(val != nullptr) {
           buildRangeInfo(nextNode, enumCollVar, attr);
-          if(!enumCollVar.empty()){
-            _ranges->insert(enumCollVar, attr.substr(0, attr.size()-1), 
+          if (! enumCollVar.empty()) {
+            _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
                 new RangeInfoBound(val, true), new RangeInfoBound(val, true));
           }
         }
@@ -451,10 +451,10 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       if(node->type == NODE_TYPE_OPERATOR_BINARY_LT || 
          node->type == NODE_TYPE_OPERATOR_BINARY_GT ||
          node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
-         node->type == NODE_TYPE_OPERATOR_BINARY_GE){
+         node->type == NODE_TYPE_OPERATOR_BINARY_GE) {
         
         bool include = (node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
-         node->type == NODE_TYPE_OPERATOR_BINARY_GE);
+                        node->type == NODE_TYPE_OPERATOR_BINARY_GE);
         
         auto lhs = node->getMember(0);
         auto rhs = node->getMember(1);
@@ -464,10 +464,11 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && lhs->type == NODE_TYPE_VALUE) {
           if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
-           node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
+              node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
             high = new RangeInfoBound(lhs, include);
             low = nullptr;
-          } else {
+          } 
+          else {
             low = new RangeInfoBound(lhs, include);
             high =nullptr;
           }
@@ -475,10 +476,11 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         }
         else if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->type == NODE_TYPE_VALUE) {
           if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
-           node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
+              node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
             low = new RangeInfoBound(rhs, include);
             high = nullptr;
-          } else {
+          } 
+          else {
             high = new RangeInfoBound(rhs, include);
             low = nullptr;
           }
@@ -489,15 +491,15 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           high = nullptr;
         }
 
-        if(low != nullptr || high != nullptr){
+        if(low != nullptr || high != nullptr) {
           buildRangeInfo(nextNode, enumCollVar, attr);
-          if(!enumCollVar.empty()){
+          if(! enumCollVar.empty()){
             _ranges->insert(enumCollVar, attr.substr(0, attr.size()-1), low, high);
           }
         }
       }
       
-      if(node->type == NODE_TYPE_OPERATOR_BINARY_AND){
+      if(node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
         attr = "";
         buildRangeInfo(node->getMember(0), enumCollVar, attr);
         attr = "";
@@ -522,7 +524,7 @@ int triagens::aql::useIndexRange (Optimizer* opt,
     auto nn = static_cast<FilterNode*>(n);
     auto invars = nn->getVariablesUsedHere();
     TRI_ASSERT(invars.size() == 1);
-    FilterToEnumCollFinder finder(plan, invars[0], out);
+    FilterToEnumCollFinder finder(plan, invars[0], &out);
     nn->walk(&finder);
   }
 

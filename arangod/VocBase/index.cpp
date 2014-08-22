@@ -1304,12 +1304,12 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
   // Obtain the skip listindex structure
   // ...........................................................................
 
-  skiplistIndex = (TRI_skiplist_index_t*) idx;
-
   if (idx == nullptr) {
     LOG_WARNING("internal error in InsertSkiplistIndex");
     return TRI_ERROR_INTERNAL;
   }
+  
+  skiplistIndex = (TRI_skiplist_index_t*) idx;
 
   // ...........................................................................
   // Allocate storage to shaped json objects stored as a simple list.

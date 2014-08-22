@@ -168,7 +168,6 @@ ExecutionNode* ExecutionNode::fromJsonFactory (Ast* ast,
     case INDEX_RANGE:
       return new IndexRangeNode(ast, oneNode);
     case INTERSECTION:
-    case PROJECTION:
     case LOOKUP_JOIN:
     case MERGE_JOIN:
     case LOOKUP_INDEX_UNIQUE:
@@ -176,12 +175,14 @@ ExecutionNode* ExecutionNode::fromJsonFactory (Ast* ast,
     case LOOKUP_FULL_COLLECTION:
     case CONCATENATION:
     case MERGE:
-    case REMOTE:
+    case REMOTE: {
       // TODO: handle these types of nodes
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "unhandled node type");
+    }
 
-    case ILLEGAL:
+    case ILLEGAL: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid node type");
+    }
   }
   return nullptr;
 }
@@ -334,7 +335,7 @@ Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Json& nodes,
   }
   json("id", Json(static_cast<double>(id())));
 
-  if (_estimatedCost != 0.0){
+  if (_estimatedCost != 0.0) {
     json("estimatedCost", Json(_estimatedCost));
   }
   return json;
@@ -480,17 +481,26 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
   // put together the range info . . .
   Json ranges(Json::List);
 
-  for (auto x : *_ranges) {
+  for (auto x : _ranges) {
     ranges(x->toJson());
   }
-
+      
   // Now put info about vocbase and cid in there
   json("database", Json(_vocbase->_name))
       ("collection", Json(_collection->name))
       ("outVariable", _outVariable->toJson())
-      ("index", _index->json(_index))
       ("ranges", ranges);
   
+  TRI_json_t* idxJson = _index->json(_index);
+  if (idxJson != nullptr) {
+    try {
+      json.set("index", Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson)));
+    }
+    catch (...) {
+    }
+    TRI_Free(TRI_CORE_MEM_ZONE, idxJson);
+  }
+
   // And add it:
   nodes(json);
 }

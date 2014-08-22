@@ -137,7 +137,7 @@ int Optimizer::createPlans (ExecutionPlan* plan) {
 
   estimatePlans();
   sortPlans();
-
+                
   return TRI_ERROR_NO_ERROR;
 }
 

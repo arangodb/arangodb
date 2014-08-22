@@ -426,6 +426,7 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
             ZONE_DEBUG_PARAMS,
             (int) * (uintptr_t*) p,
             (int) zone->_zid);
+    TRI_ASSERT(false);
   }
 
   p = REALLOC_WRAPPER(zone, p, (size_t) n + sizeof(uintptr_t));
@@ -504,6 +505,7 @@ void TRI_Free (TRI_memory_zone_t* zone, void* m) {
             ZONE_DEBUG_PARAMS,
             (int) * (uintptr_t*) p,
             (int) zone->_zid);
+    TRI_ASSERT(false);
   }
 
   free(p);

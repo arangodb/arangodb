@@ -76,7 +76,6 @@ namespace triagens {
           FILTER                  =  5, 
           LIMIT                   =  6, 
           INTERSECTION            =  7,
-          PROJECTION              =  8, 
           CALCULATION             =  9, 
           SUBQUERY                = 10, 
           SORT                    = 11, 
@@ -806,7 +805,6 @@ namespace triagens {
 
     };
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class IndexRangeNode
 ////////////////////////////////////////////////////////////////////////////////
@@ -827,7 +825,7 @@ namespace triagens {
                         Collection* collection,
                         Variable const* outVariable,
                         TRI_index_t* index, 
-                        vector<RangeInfo*>* ranges)
+                        std::vector<RangeInfo*> const& ranges)
           : ExecutionNode(id), 
             _vocbase(vocbase), 
             _collection(collection),
@@ -866,8 +864,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new IndexRangeNode(_id, _vocbase, _collection, _outVariable, _index, 
-              _ranges);
+          auto c = new IndexRangeNode(_id, _vocbase, _collection, _outVariable, _index, _ranges);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -926,7 +923,7 @@ namespace triagens {
 /// @brief the range info
 ////////////////////////////////////////////////////////////////////////////////
         
-        std::vector<RangeInfo*>* _ranges;
+        std::vector<RangeInfo*> _ranges;
     };
 
 // -----------------------------------------------------------------------------

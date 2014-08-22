@@ -73,7 +73,13 @@ Exception::~Exception () throw () {
 ////////////////////////////////////////////////////////////////////////////////
 
 char const* Exception::what () const throw () {
-  string message("exception in '");
+  // we have to use an instance member here because we should not return a 
+  // pointer (c_str()) to the internals of a stack object (stack object will
+  // be destroyed when function is left...)
+  // additionally, we should not create new string values here as this might
+  // throw exceptions - but this function is marked to throw no exceptions!
+  /*
+  std::string message = "exception in '";
   message.append(_file);
   message.append("' at line ");
   message.append(basics::StringUtils::itoa(_line));
@@ -81,22 +87,9 @@ char const* Exception::what () const throw () {
   message += this->message();
 
   return message.c_str();
-}
+  */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return exception message
-////////////////////////////////////////////////////////////////////////////////
-
-string Exception::message () const throw () {
-  return _errorMessage;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return exception code
-////////////////////////////////////////////////////////////////////////////////
-
-int Exception::code () const throw () {
-  return _code;
+  return _errorMessage.c_str();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
