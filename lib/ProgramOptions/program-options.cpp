@@ -1410,7 +1410,7 @@ bool TRI_ParseArgumentsProgramOptions (TRI_program_options_t * options,
   extern int optind;
 
   TRI_string_buffer_t buffer;
-  TRI_PO_item_t * item;
+  TRI_PO_item_t* item = nullptr;
   const char* shortOptions;
   size_t i;
   int idx;

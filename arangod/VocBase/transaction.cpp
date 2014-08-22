@@ -865,7 +865,7 @@ int TRI_AddCollectionTransaction (TRI_transaction_t* trx,
   }
 
   // check if we already have got this collection in the _collections vector
-  size_t position;
+  size_t position = 0;
   TRI_transaction_collection_t* trxCollection = FindCollection(trx, cid, &position);
 
   if (trxCollection != nullptr) {

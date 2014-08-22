@@ -310,7 +310,7 @@ namespace triagens {
 
         virtual bool hasMore ();
 
-        virtual int64_t count () {
+        virtual int64_t count () const {
           return _dependencies[0]->count();
         }
 
@@ -443,7 +443,7 @@ namespace triagens {
           return ! _done;
         }
 
-        int64_t count () {
+        int64_t count () const {
           return 1;
         }
 
@@ -483,6 +483,96 @@ namespace triagens {
                                   EnumerateCollectionNode const* ep);
 
         ~EnumerateCollectionBlock ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize fetching of documents
+////////////////////////////////////////////////////////////////////////////////
+
+        void initDocuments () {
+          _internalSkip = 0;
+          if (! moreDocuments()) {
+            _done = true;
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief continue fetching of documents
+////////////////////////////////////////////////////////////////////////////////
+
+        bool moreDocuments ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize, here we fetch all docs from the database
+////////////////////////////////////////////////////////////////////////////////
+
+        int initialize ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initCursor, here we release our docs from this collection
+////////////////////////////////////////////////////////////////////////////////
+
+        int initCursor (AqlItemBlock* items, size_t pos);
+
+        AqlItemBlock* getSome (size_t atLeast, size_t atMost);
+
+////////////////////////////////////////////////////////////////////////////////
+// skip between atLeast and atMost, returns the number actually skipped . . .
+// will only return less than atLeast if there aren't atLeast many
+// things to skip overall.
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t skipSome (size_t atLeast, size_t atMost);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection
+////////////////////////////////////////////////////////////////////////////////
+
+        Collection* _collection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief total number of documents in the collection
+////////////////////////////////////////////////////////////////////////////////
+
+        uint32_t _totalCount;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief internal skip value
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_voc_size_t _internalSkip;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief document buffer
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<TRI_doc_mptr_copy_t> _documents;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief current position in _allDocs
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t _posInAllDocs;
+
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   IndexRangeBlock
+// -----------------------------------------------------------------------------
+
+    class IndexRangeBlock : public ExecutionBlock {
+
+      public:
+
+        IndexRangeBlock (ExecutionEngine* engine,
+                         IndexRangeNode const* ep);
+
+        ~IndexRangeBlock ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize fetching of documents
@@ -804,7 +894,7 @@ namespace triagens {
 
         bool hasMore ();
 
-        int64_t count () {
+        int64_t count () const {
           return -1;   // refuse to work
         }
 
@@ -1297,7 +1387,7 @@ namespace triagens {
           return false;
         }
 
-        int64_t count () {
+        int64_t count () const {
           return 0;
         }
 
