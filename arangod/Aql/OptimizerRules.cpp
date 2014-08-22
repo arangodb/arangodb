@@ -531,6 +531,172 @@ int triagens::aql::useIndexRange (Optimizer* opt,
   return TRI_ERROR_NO_ERROR;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief try to match sorts to indices
+////////////////////////////////////////////////////////////////////////////////
+
+class sortToIndexNode : public WalkerWorker<ExecutionNode> {
+  SortNode* _thisNode;
+  CalculationNode* _thisSortNodesCalculationNode;
+  RangesInfo* _ranges; 
+  ExecutionPlan* _plan;
+  std::vector<Variable const*> _vars;
+  std::vector<CalculationNode*> _myVars;
+  Variable const* _var;
+  Optimizer::PlanList _out;
+  ExecutionNode* _prev;
+  size_t _executionNodesFound;
+
+  public:
+    sortToIndexNode (ExecutionPlan* plan,
+                     std::vector<Variable const*>& vars,
+                     Optimizer::PlanList& out) 
+      :
+        _thisSortNodesCalculationNode(nullptr),
+        _plan(plan),
+        _vars(vars),
+        _out(out),
+        _prev(nullptr),
+        _executionNodesFound(0) {
+      _ranges = new RangesInfo();
+      _myVars.reserve(vars.size());
+    }
+
+    void before (ExecutionNode* en) {
+      std::cout << "type:" << en->getTypeString() << "\n";
+      size_t n = _vars.size();
+      auto outvar = en->getVariablesSetHere();
+
+      if ((_executionNodesFound < n) &&
+          en->getType() == triagens::aql::ExecutionNode::CALCULATION) {
+
+        // Look up whether this is one of the calculation nodes we reference.
+        for (size_t i = 0; i < n; i++) {
+          if (_vars[i]->id == outvar[0]->id) {
+            _myVars[i] = static_cast<triagens::aql::CalculationNode*>(en);
+            _executionNodesFound++;
+            break;
+          }
+        }
+        if (_executionNodesFound == n) {
+          // ok we got all, study them.
+          // TODO
+        }
+      }
+      else if (_executionNodesFound == n) {
+        if (en->getType() == triagens::aql::ExecutionNode::FILTER) {
+          ///      TODO: check whether to ABORT here?
+        }
+        if (en->getType() == triagens::aql::ExecutionNode::SORT) {
+          // TODO: subsequent sort - check whether its still needed.
+        }
+        if (en->getType() == triagens::aql::ExecutionNode::INDEX_RANGE) {
+          // TODO: we should also match INDEX_RANGE later on.
+        }
+        else if (en->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION) {
+          std::cout << "blub\n";
+          
+          std::vector<RangeInfo*> rangeInfo;
+          std::vector<std::string> attrSet;
+          std::vector<std::string> attrs;
+          
+          auto node = static_cast<EnumerateCollectionNode*>(en);
+          auto var = node->getVariablesSetHere()[0];  // should only be 1
+          auto exp = _myVars[0]->expression();
+
+          if (!exp->isSimple()) {
+            return;
+          }
+
+          auto expNode = exp->node();
+          
+          // digg through nested Attributes:
+          while (expNode->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+            attrSet.push_back(expNode->getStringValue());
+            expNode = expNode->getMember (0);
+          }
+          // we now should have the Collection Reference:
+          std::cout  << var->name << " \n";
+          if (expNode->type == triagens::aql::NODE_TYPE_REFERENCE) {
+            auto subVar = static_cast<Variable*>(expNode->getData());
+            if (subVar->name == var->name) {
+              // Yes, the requested collec    tion is a reference to this.
+            }
+          }
+          expNode = exp->node();
+          
+          std::cout << expNode->getStringValue() << " -- " << var->name << " \n";
+
+          TRI_ASSERT(attrSet.size() > 0)
+          attrs.push_back(attrSet[attrSet.size() - 1]);
+
+          std::vector<TRI_index_t*> idxs = node->getIndexes(attrs);
+
+          rangeInfo.push_back(new RangeInfo(var->name, expNode->getStringValue(), nullptr, nullptr));
+          // make one new plan for every index in <idxs> that replaces the
+          // enumerate collection node with a RangeIndexNode . . . 
+          for (auto idx: idxs) {
+            if ((idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) || 
+                (idx->_type == TRI_IDX_TYPE_HASH_INDEX) ) {
+              //can only use the index if it is a skip list or (a hash and we
+              //are checking equality)
+              std::cout << "FOUND INDEX!\n";
+
+              auto newPlan = _plan->clone();
+              ExecutionNode* newNode = nullptr;
+              try{
+                newNode = new IndexRangeNode( newPlan->nextId(), node->vocbase(), 
+                                              node->collection(), node->outVariable(), idx, rangeInfo);
+                newPlan->registerNode(newNode);
+              }
+              catch (...) {
+                if (newNode != nullptr) {
+                  delete newNode;
+                }
+                delete newPlan;
+                throw;
+              }
+              newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
+              auto JsonPlan = newPlan->toJson(TRI_UNKNOWN_MEM_ZONE, false);
+              auto JsonString = JsonPlan.toString();
+              std::cout <<"Added foo" << JsonString << "\n";
+              
+              _out.push_back(newPlan);
+
+            }
+          }
+
+        }
+      }
+    }
+};
+  
+
+
+
+int triagens::aql::useIndexForSort (Optimizer* opt, 
+                                    ExecutionPlan* plan, 
+                                    Optimizer::PlanList& out,
+                                    bool& keep) {
+  keep = true;
+  std::vector<ExecutionNode*> nodes
+    = plan->findNodesOfType(triagens::aql::ExecutionNode::SORT, true);
+
+  for (auto n : nodes) {
+    auto oneNode = static_cast<SortNode*>(n);
+    auto invars = oneNode->getVariablesUsedHere();
+    ////TRI_ASSERT(invars.size() == 1);/// todo: do we care about the invars? <- yes there may be more.
+    sortToIndexNode finder(plan, invars, out);
+    ///_thisNode = oneNode;
+    oneNode->walk(&finder);
+  }
+
+  return TRI_ERROR_NO_ERROR;
+
+
+}
+
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
