@@ -102,7 +102,7 @@ void JsonLegend::clear () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int JsonLegend::addAttributeId (TRI_shape_aid_t aid) {
-  unordered_set<TRI_shape_aid_t>::const_iterator it = _have_attribute.find(aid);
+  auto it = _have_attribute.find(aid);
   if (it != _have_attribute.end()) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -147,7 +147,7 @@ int JsonLegend::addShape (TRI_shape_sid_t sid,
       return TRI_ERROR_LEGEND_INCOMPLETE;
     }
 
-    unordered_set<TRI_shape_sid_t>::const_iterator it = _have_shape.find(sid);
+    auto it = _have_shape.find(sid);
 
     if (it == _have_shape.end()) {
       _have_shape.insert(it, sid);
