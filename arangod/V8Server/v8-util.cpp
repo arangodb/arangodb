@@ -41,6 +41,7 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the vocbase pointer from the current V8 context
 ////////////////////////////////////////////////////////////////////////////////
+
 TRI_vocbase_t* GetContextVocBase () {
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
 
@@ -51,7 +52,8 @@ TRI_vocbase_t* GetContextVocBase () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a v8 tick id value from the internal tick id
 ////////////////////////////////////////////////////////////////////////////////
- v8::Handle<v8::Value> V8TickId (TRI_voc_tick_t tick) {
+
+v8::Handle<v8::Value> V8TickId (TRI_voc_tick_t tick) {
   char buffer[21];
   size_t len = TRI_StringUInt64InPlace((uint64_t) tick, (char*) &buffer);
 
@@ -61,6 +63,7 @@ TRI_vocbase_t* GetContextVocBase () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a v8 revision id value from the internal revision id
 ////////////////////////////////////////////////////////////////////////////////
+
 v8::Handle<v8::Value> V8RevisionId (TRI_voc_rid_t rid) {
   char buffer[21];
   size_t len = TRI_StringUInt64InPlace((uint64_t) rid, (char*) &buffer);
@@ -71,8 +74,9 @@ v8::Handle<v8::Value> V8RevisionId (TRI_voc_rid_t rid) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a v8 document id value from the parameters
 ////////////////////////////////////////////////////////////////////////////////
+
 v8::Handle<v8::Value> V8DocumentId (string const& collectionName,
-                                                  string const& key) {
+                                    string const& key) {
   string const&& id = DocumentHelper::assembleDocumentId(collectionName, key);
 
   return v8::String::New(id.c_str(), (int) id.size());
@@ -81,6 +85,7 @@ v8::Handle<v8::Value> V8DocumentId (string const& collectionName,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an Ahuacatl error in a javascript object
 ////////////////////////////////////////////////////////////////////////////////
+
 v8::Handle<v8::Object> CreateErrorObjectAhuacatl (TRI_aql_error_t* error) {
   v8::HandleScope scope;
 
@@ -95,7 +100,6 @@ v8::Handle<v8::Object> CreateErrorObjectAhuacatl (TRI_aql_error_t* error) {
 
   return scope.Close(TRI_CreateErrorObject(error->_file, error->_line, TRI_ERROR_OUT_OF_MEMORY));
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if argument is a document identifier
@@ -134,10 +138,10 @@ static bool ParseDocumentHandle (v8::Handle<v8::Value> const arg,
   return false;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse document or document handle from a v8 value (string | object)
 ////////////////////////////////////////////////////////////////////////////////
+
 bool ExtractDocumentHandle (v8::Handle<v8::Value> const val,
                             string& collectionName,
                             TRI_voc_key_t& key,
