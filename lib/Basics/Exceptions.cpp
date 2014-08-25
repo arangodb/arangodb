@@ -51,6 +51,13 @@ TriagensError::TriagensError (string const& type, string const& details, char co
   if (! details.empty()) {
     _message += " details = '" + _details + "'";
   }
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+#if HAVE_BACKTRACE
+  _backtrace();
+#endif
+#endif
+
 }
 
 
