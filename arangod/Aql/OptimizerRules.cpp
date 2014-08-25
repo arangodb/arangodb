@@ -368,7 +368,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                 auto noRes = new NoResultsNode(newPlan->nextId());
                 newPlan->registerNode(noRes);
                 newPlan->insertDependency(x, noRes);
-                std::cout << newPlan->toJson(TRI_UNKNOWN_MEM_ZONE, true).toString() << "\n";
                 _out->push_back(newPlan);
               }
             }
@@ -377,7 +376,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
               // make one new plan for every index in <idxs> that replaces the
               // enumerate collection node with a RangeIndexNode . . . 
               for (auto idx: idxs) {
-                if ( /*idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX || */
+                if ( idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX || 
                    (idx->_type == TRI_IDX_TYPE_HASH_INDEX && eq)) {
                   //can only use the index if it is a skip list or (a hash and we
                   //are checking equality)
@@ -397,7 +396,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                     throw;
                   }
                   newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
-                  std::cout << newPlan->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString() << "\n";
                   _out->push_back(newPlan);
                 }
               }
