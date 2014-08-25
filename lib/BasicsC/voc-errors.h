@@ -8,7 +8,7 @@ extern "C" {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ArangoErrors Error codes and meanings
-///
+/// @startDocuBlock errorCodes
 /// The following errors might be raised when running ArangoDB:
 ///
 /// - 0: @LIT{no error}
@@ -587,13 +587,14 @@ extern "C" {
 /// - 20000: @LIT{newest version of app already installed}
 ///   newest version of app already installed
 /// - 21000: @LIT{named queue already exists}
-///    "Will be returned if a queue with this name already exists."
+///   Will be returned if a queue with this name already exists.
 /// - 21001: @LIT{dispatcher stopped}
 ///   Will be returned if a shutdown is in progress.
 /// - 21002: @LIT{named queue does not exist}
-///    "Will be returned if a queue with this name does not exist."
+///   Will be returned if a queue with this name does not exist.
 /// - 21003: @LIT{named queue is full}
-///    "Will be returned if a queue with this name is full."
+///   Will be returned if a queue with this name is full.
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
