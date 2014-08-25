@@ -285,12 +285,22 @@ namespace triagens {
 /// @brief JsonException, an exception class for the Json class
 ////////////////////////////////////////////////////////////////////////////////
 
-    class JsonException : std::exception {
+    class JsonException : public virtual std::exception {
         std::string _msg;
       public:
         JsonException () : _msg("Json exception") {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+#if HAVE_BACKTRACE
+          _backtrace();
+#endif
+#endif
         }
         JsonException (string msg) : _msg(msg) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+#if HAVE_BACKTRACE
+          _backtrace();
+#endif
+#endif
         }
         char const* what () const throw() {
           return _msg.c_str();
