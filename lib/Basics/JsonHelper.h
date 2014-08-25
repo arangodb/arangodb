@@ -442,6 +442,7 @@ namespace triagens {
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
           }
+          std::cout << "SHOULDN'T BE HERE!\n";
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -548,7 +549,16 @@ namespace triagens {
           : _zone(z), _json(j), _autofree(autofree) {
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor for a memzone and a const TRI_json_t*
+////////////////////////////////////////////////////////////////////////////////
+
+        explicit Json (TRI_memory_zone_t* z, TRI_json_t const* j, autofree_e autofree = NOFREE)
+          : _zone(z), _json(const_cast<TRI_json_t*>(j)), _autofree(autofree) {
+        }
+
         explicit Json (TRI_json_t* j) = delete;
+        explicit Json (TRI_json_t const *) = delete;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief "copy" constructor, note that in the AUTOFREE case this steals
