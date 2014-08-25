@@ -1445,7 +1445,26 @@ v8::Handle<v8::Object> PrepareClusterCommResultForJS(
     }
     else if (res->status == CL_COMM_SENT) {
       r->Set(v8g->StatusKey, v8::String::New("SENT"));
-      // Maybe return the response of the initial request???
+      // This might be the result of a synchronous request and thus
+      // contain the actual response. If it is an asynchronous request
+      // which has not yet been answered, the following information is
+      // probably rather boring:
+
+      // The headers:
+      v8::Handle<v8::Object> h = v8::Object::New();
+      map<string,string> headers = res->result->getHeaderFields();
+      for (auto i = headers.begin(); i != headers.end(); ++i) {
+        h->Set(v8::String::New(i->first.c_str()),
+               v8::String::New(i->second.c_str()));
+      }
+      r->Set(v8::String::New("headers"), h);
+
+      // The body:
+      triagens::basics::StringBuffer& body = res->result->getBody();
+      if (body.length() != 0) {
+        r->Set(v8::String::New("body"), v8::String::New(body.c_str(),
+                                                    (int) body.length()));
+      }
     }
     else if (res->status == CL_COMM_TIMEOUT) {
       r->Set(v8g->StatusKey, v8::String::New("TIMEOUT"));
