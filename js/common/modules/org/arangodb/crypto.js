@@ -153,6 +153,68 @@ exports.constantEquals = function (a, b) {
   return result;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Encodes JSON Web Token
+////////////////////////////////////////////////////////////////////////////////
+
+function jwtUrlEncode(str) {
+  return str.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+exports.jwtEncode = function (key, message, algorithm) {
+  'use strict';
+  if (algorithm) {
+    algorithm = algorithm.toUpperCase();
+  } else {
+    algorithm = 'HS256';
+  }
+  if (algorithm !== 'HS256') {
+    throw new Error('Only HS256 is supported at this time!');
+  }
+  var header = {typ: 'JWT', alg: algorithm}, segments = [];
+  segments.push(jwtUrlEncode(new Buffer(JSON.stringify(header)).toString('base64')));
+  segments.push(jwtUrlEncode(new Buffer(JSON.stringify(message)).toString('base64')));
+  segments.push(jwtUrlEncode(new Buffer(exports.hmac(key, segments.join('.'), 'sha256'), 'hex').toString('base64')));
+  return segments.join('.');
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Decodes JSON Web Token
+////////////////////////////////////////////////////////////////////////////////
+
+function jwtUrlDecode(str) {
+  str += Array(5 - str.length % 4).join('=');
+  return str.replace(/\-/g, '+').replace(/_/g, '/');
+}
+
+exports.jwtDecode = function (key, token, noVerify) {
+  'use strict';
+  if (!token) return null;
+
+  var segments = token.split('.');
+  if (segments.length !== 3) {
+    throw new Error('Wrong number of JWT segments!');
+  }
+  var headerSeg = new Buffer(jwtUrlDecode(segments[0]), 'base64').toString();
+  var messageSeg = new Buffer(jwtUrlDecode(segments[1]), 'base64').toString();
+  segments[2] = new Buffer(jwtUrlDecode(segments[2]), 'base64').toString('hex');
+
+  if (!noVerify) {
+    var header = JSON.parse(headerSeg);
+    if (header.alg !== 'HS256') {
+      throw new Error('Only HS256 is supported at this time!');
+    }
+    if (!exports.constantEquals(
+      exports.hmac(key, segments.slice(0, 2).join('.'), 'sha256'),
+        segments[2]
+    )) {
+      throw new Error('Signature verification failed!');
+    }
+  }
+
+  return JSON.parse(messageSeg);
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

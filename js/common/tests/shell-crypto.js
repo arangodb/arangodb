@@ -225,6 +225,31 @@ function CryptoSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test jwtEncode / jwtDecode
+////////////////////////////////////////////////////////////////////////////////
+
+    testJwt : function () {
+      var data = [
+        [ "secret", "", undefined, "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.IiI.NXK2YUp4x5L1lDfGi34S-_Sk3q6Xeehm3gSwpwpjFDk" ],
+        [ "secret", "", "hs256", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.IiI.NXK2YUp4x5L1lDfGi34S-_Sk3q6Xeehm3gSwpwpjFDk" ],
+        [ "secret", "", "HS256", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.IiI.NXK2YUp4x5L1lDfGi34S-_Sk3q6Xeehm3gSwpwpjFDk" ],
+        [ "secret", " ", "hs256", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.IiAi.FKO_hoD03EEA3P7487qeO9JqAi8VriTu2JaEnHfZvz8"],
+        [ "secret", "arangodb", "hs256", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.ImFyYW5nb2RiIg.pyWsjffR5WfVkRxtckXKwh-emE2kmKH0ZJRCCllqIYc" ],
+        [ "secret", "Arangodb", "hs256", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.IkFyYW5nb2RiIg.BjQqhHpWiGqi2RBeAjV1V0gkUBPNZHtKCu5rgeu9eno" ],
+        [ "secret", {foxx: "roxx"}, "HS256", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJmb3h4Ijoicm94eCJ9.tCZwaqnZ7Wj9BljBndyDtINYWmmvr0eLsq8bkmtXhg0" ],
+        [ "SECRET", {foxx: "roxx"}, "HS256", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJmb3h4Ijoicm94eCJ9.oXcCBnmuv9GzqFc0_N2qFXLWKDjCKEmN015CccDAgfw" ]
+      ];
+
+      data.forEach(function (value) {
+        if (value[2] === undefined) {
+          assertEqual(value[3], crypto.jwtEncode(value[0], value[1]));
+        }
+        assertEqual(value[3], crypto.jwtEncode(value[0], value[1], value[2]));
+        assertEqual(value[1], crypto.jwtDecode(value[0], value[3]));
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test random
 ////////////////////////////////////////////////////////////////////////////////
 
