@@ -163,18 +163,23 @@ function jwtUrlEncode(str) {
 
 exports.jwtEncode = function (key, message, algorithm) {
   'use strict';
-  if (algorithm) {
-    algorithm = algorithm.toUpperCase();
-  } else {
+  if (!algorithm) {
     algorithm = 'HS256';
-  }
-  if (algorithm !== 'HS256') {
-    throw new Error('Only HS256 is supported at this time!');
+  } else if (algorithm.toLowerCase() === 'none') {
+    algorithm = 'none';
+  } else if (algorithm.toUpperCase() === 'HS256') {
+    algorithm = 'HS256';
+  } else {
+    throw new Error('Only HS256 and none are supported at this time!');
   }
   var header = {typ: 'JWT', alg: algorithm}, segments = [];
   segments.push(jwtUrlEncode(new Buffer(JSON.stringify(header)).toString('base64')));
   segments.push(jwtUrlEncode(new Buffer(JSON.stringify(message)).toString('base64')));
-  segments.push(jwtUrlEncode(new Buffer(exports.hmac(key, segments.join('.'), 'sha256'), 'hex').toString('base64')));
+  if (algorithm === 'HS256') {
+    segments.push(jwtUrlEncode(new Buffer(exports.hmac(key, segments.join('.'), 'sha256'), 'hex').toString('base64')));
+  } else if (algorithm === 'none') {
+    segments.push('');
+  }
   return segments.join('.');
 };
 
@@ -201,14 +206,15 @@ exports.jwtDecode = function (key, token, noVerify) {
 
   if (!noVerify) {
     var header = JSON.parse(headerSeg);
-    if (header.alg !== 'HS256') {
-      throw new Error('Only HS256 is supported at this time!');
-    }
-    if (!exports.constantEquals(
-      exports.hmac(key, segments.slice(0, 2).join('.'), 'sha256'),
-        segments[2]
-    )) {
-      throw new Error('Signature verification failed!');
+    if (header.alg.toUpperCase() === 'HS256') {
+      if (!exports.constantEquals(
+        exports.hmac(key, segments.slice(0, 2).join('.'), 'sha256'),
+          segments[2]
+      )) {
+        throw new Error('Signature verification failed!');
+      }
+    } else if (header.alg.toLowerCase() !== 'none') {
+      throw new Error('Only HS256 and none are supported at this time!');
     }
   }
 
