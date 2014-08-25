@@ -88,20 +88,8 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast* ast) {
   try {
     plan->_root = plan->fromNode(ast, root);
     plan->findVarUsage();
-// just for debugging
-    auto JsonPlan = plan->_root->toJson(TRI_UNKNOWN_MEM_ZONE, false);
-    auto JsonString = JsonPlan.toString();
-    std::cout << JsonString << "\n";
-/*
-    auto otherPlan = ExecutionPlan::instanciateFromJson (ast,
-                                                         JsonPlan);
-    auto otherJsonString = otherPlan->_root->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString();
-    std::cout << otherJsonString << "\n";
-    TRI_ASSERT(otherJsonString == JsonString);
-    return otherPlan;
-*/
-//
     return plan;
+    // just for debugging
   }
   catch (...) {
     delete plan;
@@ -1062,6 +1050,7 @@ void ExecutionPlan::replaceNode (ExecutionNode* oldNode,
   
   for (auto x : deps) {
     newNode->addDependency(x);
+    oldNode->removeDependency(x);
   }
   
   auto oldNodeParents = oldNode->getParents();
@@ -1156,7 +1145,6 @@ ExecutionNode* ExecutionPlan::fromJson (Ast* ast,
     if (! oneJsonNode.isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json node is not an array");
     }
-    
     ret = ExecutionNode::fromJsonFactory(ast,
                                          oneJsonNode);
 

@@ -515,9 +515,11 @@ IndexRangeNode::IndexRangeNode (Ast* ast, basics::Json const& json)
     _collection(ast->query()->collections()->add(JsonHelper::checkAndGetStringValue(json.json(), 
             "collection"), TRI_TRANSACTION_READ)),
     _outVariable(varFromJson(ast, json, "outVariable")), _ranges() {
-      
-  for(size_t i = 0; i < json.size(); i++){ //loop over the ranges . . .
-    _ranges.push_back(new RangeInfo(json.at(i)));
+
+  Json ranges(TRI_UNKNOWN_MEM_ZONE, JsonHelper::checkAndGetListValue(json.json(), "ranges"));
+  std::cout << "ranges = " << ranges.toString() << "\n";     
+  for(size_t i = 0; i < ranges.size(); i++){ //loop over the ranges . . .
+    _ranges.push_back(new RangeInfo(ranges.at(i)));
   }
   
   // now the index . . . 
@@ -540,7 +542,7 @@ LimitNode::LimitNode (Ast* ast, basics::Json const& base)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toJson, for LimitNode
+// @brief toJson, for LimitNode
 ////////////////////////////////////////////////////////////////////////////////
 
 void LimitNode::toJsonHelper (triagens::basics::Json& nodes,

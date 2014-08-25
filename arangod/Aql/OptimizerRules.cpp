@@ -358,9 +358,9 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             // check if the condition is equality (i.e. the ranges only contain
             // 1 value)
           }
-          if (! valid){ // ranges are not valid . . . 
+          if (! _canThrow) {
+            if (! valid){ // ranges are not valid . . . 
             // std::cout << "INVALID RANGE!\n";
-            if (! _canThrow) {
               
               auto newPlan = _plan->clone();
               auto parents = node->getParents();
@@ -368,38 +368,38 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                 auto noRes = new NoResultsNode(newPlan->nextId());
                 newPlan->registerNode(noRes);
                 newPlan->insertDependency(x, noRes);
-                std::cout << newPlan->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString() << "\n";
+                std::cout << newPlan->toJson(TRI_UNKNOWN_MEM_ZONE, true).toString() << "\n";
                 _out->push_back(newPlan);
               }
             }
-          } 
-          else {
-            std::vector<TRI_index_t*> idxs = node->getIndexes(attrs);
-            // make one new plan for every index in <idxs> that replaces the
-            // enumerate collection node with a RangeIndexNode . . . 
-            for (auto idx: idxs) {
-              if ( /*idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX || */
-                 (idx->_type == TRI_IDX_TYPE_HASH_INDEX && eq)) {
-                //can only use the index if it is a skip list or (a hash and we
-                //are checking equality)
-                // std::cout << "FOUND INDEX!\n";
-                auto newPlan = _plan->clone();
-                ExecutionNode* newNode = nullptr;
-                try{
-                  newNode = new IndexRangeNode(newPlan->nextId(), node->vocbase(), 
-                      node->collection(), node->outVariable(), idx, rangeInfo);
-                  newPlan->registerNode(newNode);
-                }
-                catch (...) {
-                  if (newNode != nullptr) {
-                    delete newNode;
+            else {
+              std::vector<TRI_index_t*> idxs = node->getIndexes(attrs);
+              // make one new plan for every index in <idxs> that replaces the
+              // enumerate collection node with a RangeIndexNode . . . 
+              for (auto idx: idxs) {
+                if ( /*idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX || */
+                   (idx->_type == TRI_IDX_TYPE_HASH_INDEX && eq)) {
+                  //can only use the index if it is a skip list or (a hash and we
+                  //are checking equality)
+                  // std::cout << "FOUND INDEX!\n";
+                  auto newPlan = _plan->clone();
+                  ExecutionNode* newNode = nullptr;
+                  try{
+                    newNode = new IndexRangeNode(newPlan->nextId(), node->vocbase(), 
+                        node->collection(), node->outVariable(), idx, rangeInfo);
+                    newPlan->registerNode(newNode);
                   }
-                  delete newPlan;
-                  throw;
+                  catch (...) {
+                    if (newNode != nullptr) {
+                      delete newNode;
+                    }
+                    delete newPlan;
+                    throw;
+                  }
+                  newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
+                  std::cout << newPlan->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString() << "\n";
+                  _out->push_back(newPlan);
                 }
-                newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
-                std::cout << newPlan->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString() << "\n";
-                _out->push_back(newPlan);
               }
             }
           }
