@@ -55,7 +55,8 @@ namespace triagens {
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
-        virtual void before (T* en) {
+        virtual bool before (T* en) {
+          return false; // true to abort the whole walking process
         }
 
         virtual void after (T* en) {

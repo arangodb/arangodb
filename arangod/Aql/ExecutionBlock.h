@@ -116,7 +116,7 @@ namespace triagens {
 /// @brief functionality to walk an execution block recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        void walk (WalkerWorker<ExecutionBlock>* worker);
+        bool walk (WalkerWorker<ExecutionBlock>* worker);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a dependency

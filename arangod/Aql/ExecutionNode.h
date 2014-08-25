@@ -342,7 +342,7 @@ namespace triagens {
 /// @brief walk a complete execution plan recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        void walk (WalkerWorker<ExecutionNode>* worker);
+        bool walk (WalkerWorker<ExecutionNode>* worker);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON, returns an AUTOFREE Json object
