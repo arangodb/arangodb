@@ -246,7 +246,7 @@ static inline void _backtrace(void)
             int status = 0;
             char * demangled_name = abi::__cxa_demangle(mangled_name, 0, 0, &status);
             if (status == 0) {
-              fprintf(stderr, "%s %s\n", strings[i], demangled_name);
+              fprintf(stderr, "%s() [%p] %s\n", strings[i], stack_frames[i], demangled_name);
             }
             else {
               fprintf(stderr, "%s\n", strings[i]);
@@ -260,7 +260,7 @@ static inline void _backtrace(void)
         }
     }
     else
-      fprintf(stderr, "%p\n", stack_frames[i]);
+      fprintf(stderr, "[%p]\n", stack_frames[i]);
   }
   free(strings);  
 #endif
