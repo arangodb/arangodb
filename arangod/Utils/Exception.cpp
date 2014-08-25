@@ -44,6 +44,11 @@ Exception::Exception (int code,
     _file(file),
     _line(line),
     _code(code) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+#if HAVE_BACKTRACE
+  _backtrace();
+#endif
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -59,6 +64,11 @@ Exception::Exception (int code,
     _file(file),
     _line(line),
     _code(code) {
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+#if HAVE_BACKTRACE
+  _backtrace();
+#endif
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
