@@ -237,7 +237,9 @@ function CryptoSuite () {
         [ "secret", "arangodb", "hs256", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.ImFyYW5nb2RiIg.pyWsjffR5WfVkRxtckXKwh-emE2kmKH0ZJRCCllqIYc" ],
         [ "secret", "Arangodb", "hs256", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.IkFyYW5nb2RiIg.BjQqhHpWiGqi2RBeAjV1V0gkUBPNZHtKCu5rgeu9eno" ],
         [ "secret", {foxx: "roxx"}, "HS256", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJmb3h4Ijoicm94eCJ9.tCZwaqnZ7Wj9BljBndyDtINYWmmvr0eLsq8bkmtXhg0" ],
-        [ "SECRET", {foxx: "roxx"}, "HS256", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJmb3h4Ijoicm94eCJ9.oXcCBnmuv9GzqFc0_N2qFXLWKDjCKEmN015CccDAgfw" ]
+        [ "SECRET", {foxx: "roxx"}, "HS256", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJmb3h4Ijoicm94eCJ9.oXcCBnmuv9GzqFc0_N2qFXLWKDjCKEmN015CccDAgfw" ],
+        [ "secret", {foxx: "roxx"}, "none", "eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.eyJmb3h4Ijoicm94eCJ9." ],
+        [ "SECRET", {foxx: "roxx"}, "none", "eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.eyJmb3h4Ijoicm94eCJ9." ]
       ];
 
       data.forEach(function (value) {
