@@ -56,7 +56,9 @@ namespace triagens {
       }
       
       RangeInfoBound (basics::Json const& json) : 
-        _bound(Json(basics::JsonHelper::checkAndGetArrayValue(json.json(), "bound"), basics::Json::NOFREE)),
+        _bound(Json(TRI_UNKNOWN_MEM_ZONE,
+              basics::JsonHelper::checkAndGetArrayValue(json.json(), "bound"), 
+              basics::Json::NOFREE).copy()),
         _include(basics::JsonHelper::checkAndGetBooleanValue(json.json(), "include")) {
       }
 
