@@ -128,8 +128,9 @@ ExecutionNode* ExecutionPlan::getNodeById (size_t id) const {
     return (*it).second;
   }
 
+  std::string msg =  std::string("node [") + std::to_string(id) + std::string("] wasn't found");
   // node unknown
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "node not found");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
 }
 
 // -----------------------------------------------------------------------------
