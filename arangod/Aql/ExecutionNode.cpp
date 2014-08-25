@@ -517,7 +517,6 @@ IndexRangeNode::IndexRangeNode (Ast* ast, basics::Json const& json)
     _outVariable(varFromJson(ast, json, "outVariable")), _ranges() {
 
   Json ranges(TRI_UNKNOWN_MEM_ZONE, JsonHelper::checkAndGetListValue(json.json(), "ranges"));
-  std::cout << "ranges = " << ranges.toString() << "\n";     
   for(size_t i = 0; i < ranges.size(); i++){ //loop over the ranges . . .
     _ranges.push_back(new RangeInfo(ranges.at(i)));
   }
