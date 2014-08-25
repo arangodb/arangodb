@@ -1,5 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, exports, Buffer */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Some crypto functions
@@ -142,6 +142,7 @@ exports.checkAndMarkNonce = function (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.constantEquals = function (a, b) {
+  'use strict';
   var length, result, i;
   length = a.length > b.length ? a.length : b.length;
   result = true;
@@ -158,7 +159,8 @@ exports.constantEquals = function (a, b) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function jwtUrlEncode(str) {
-  return str.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  'use strict';
+  return str.replace(/[+]/g, '-').replace(/[\/]/g, '_').replace(/[=]/g, '');
 }
 
 exports.jwtEncode = function (key, message, algorithm) {
@@ -188,13 +190,18 @@ exports.jwtEncode = function (key, message, algorithm) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function jwtUrlDecode(str) {
-  str += Array(5 - str.length % 4).join('=');
+  'use strict';
+  while ((str.length % 4) !== 0) {
+    str += '=';
+  }
   return str.replace(/\-/g, '+').replace(/_/g, '/');
 }
 
 exports.jwtDecode = function (key, token, noVerify) {
   'use strict';
-  if (!token) return null;
+  if (!token) {
+    return null;
+  }
 
   var segments = token.split('.');
   if (segments.length !== 3) {
