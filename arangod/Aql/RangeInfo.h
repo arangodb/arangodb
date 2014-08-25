@@ -99,21 +99,21 @@ namespace triagens {
           _attr(basics::JsonHelper::checkAndGetStringValue(json.json(), "attr")),
           _valid(basics::JsonHelper::checkAndGetBooleanValue(json.json(), "valid")) {
 
-            if (! json.get("low").isEmpty()) {
-              _low = new RangeInfoBound(json.get("low"));
-            }
-            else {
-              _low = nullptr;
-            }
-            
-            if (! json.get("high").isEmpty()) {
-              _high = new RangeInfoBound(json.get("high"));
-            }
-            else {
-              _high = nullptr;
-            }
-
+          if (! json.get("low").isEmpty()) {
+            _low = new RangeInfoBound(json.get("low"));
           }
+          else {
+            _low = nullptr;
+          }
+          
+          if (! json.get("high").isEmpty()) {
+            _high = new RangeInfoBound(json.get("high"));
+          }
+          else {
+            _high = nullptr;
+          }
+
+        }
 
         RangeInfo( const RangeInfo& copy ) = delete;
         RangeInfo& operator= ( RangeInfo const& copy ) = delete;

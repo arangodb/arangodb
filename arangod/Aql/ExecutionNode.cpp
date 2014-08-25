@@ -482,7 +482,9 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
   Json ranges(Json::List);
 
   for (auto x : _ranges) {
-    ranges(x->toJson());
+    for(auto y : x) {
+      ranges(y->toJson());
+    }
   }
       
   // Now put info about vocbase and cid in there
@@ -518,7 +520,9 @@ IndexRangeNode::IndexRangeNode (Ast* ast, basics::Json const& json)
 
   Json ranges(TRI_UNKNOWN_MEM_ZONE, JsonHelper::checkAndGetListValue(json.json(), "ranges"));
   for(size_t i = 0; i < ranges.size(); i++){ //loop over the ranges . . .
-    _ranges.push_back(new RangeInfo(ranges.at(i)));
+    for(size_t j = 0; j < ranges.at(i).size(); j++){
+      _ranges.at(i).push_back(new RangeInfo(ranges.at(i).at(j)));
+    }
   }
   
   // now the index . . . 

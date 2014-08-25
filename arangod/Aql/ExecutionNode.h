@@ -825,7 +825,7 @@ namespace triagens {
                         Collection* collection,
                         Variable const* outVariable,
                         TRI_index_t* index, 
-                        std::vector<RangeInfo*> const& ranges)
+                        std::vector<std::vector<RangeInfo*>> const& ranges)
           : ExecutionNode(id), 
             _vocbase(vocbase), 
             _collection(collection),
@@ -923,7 +923,7 @@ namespace triagens {
 /// @brief the range info
 ////////////////////////////////////////////////////////////////////////////////
         
-        std::vector<RangeInfo*> _ranges;
+        std::vector<std::vector<RangeInfo*>> _ranges;
     };
 
 // -----------------------------------------------------------------------------

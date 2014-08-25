@@ -347,12 +347,12 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         if (map != nullptr) {
           // check the first components of <map> against indexes of <node> . . .
           std::vector<std::string> attrs;
-          std::vector<RangeInfo*> rangeInfo;
+          std::vector<std::vector<RangeInfo*>> rangeInfo;
           bool valid = true;
           bool eq = true;
           for (auto x : *map) {
             attrs.push_back(x.first);
-            rangeInfo.push_back(x.second);
+            rangeInfo.at(0).push_back(x.second);
             valid = valid && x.second->_valid; // check the ranges are all valid
             eq = eq && x.second->is1ValueRangeInfo(); 
             // check if the condition is equality (i.e. the ranges only contain
@@ -594,7 +594,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
         else if (en->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION) {
           std::cout << "blub\n";
           
-          std::vector<RangeInfo*> rangeInfo;
+          std::vector<std::vector<RangeInfo*>> rangeInfo;
           std::vector<std::string> attrSet;
           std::vector<std::string> attrs;
           
@@ -630,7 +630,8 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
 
           std::vector<TRI_index_t*> idxs = node->getIndexes(attrs);
 
-          rangeInfo.push_back(new RangeInfo(var->name, expNode->getStringValue(), nullptr, nullptr));
+          rangeInfo.at(0).push_back(new RangeInfo(var->name, 
+                expNode->getStringValue(), nullptr, nullptr));
           // make one new plan for every index in <idxs> that replaces the
           // enumerate collection node with a RangeIndexNode . . . 
           for (auto idx: idxs) {
@@ -644,7 +645,9 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
               ExecutionNode* newNode = nullptr;
               try{
                 newNode = new IndexRangeNode( newPlan->nextId(), node->vocbase(), 
-                                              node->collection(), node->outVariable(), idx, rangeInfo);
+                                              node->collection(),
+                                              node->outVariable(), idx,
+                                              rangeInfo);
                 newPlan->registerNode(newNode);
               }
               catch (...) {
