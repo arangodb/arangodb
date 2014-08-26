@@ -1,4 +1,4 @@
-/*jslint es5: true, indent: 2, nomen: true, maxlen: 120 */
+/*jslint indent: 2, nomen: true, maxlen: 120 */
 /*global module, require */
 
 ////////////////////////////////////////////////////////////////////////////////

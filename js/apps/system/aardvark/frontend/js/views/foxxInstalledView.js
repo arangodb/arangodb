@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true regexp: true, es5: true*/
+/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true, regexp: true */
 /*global Backbone, $, window, _, templateEngine, alert*/
 
 (function() {

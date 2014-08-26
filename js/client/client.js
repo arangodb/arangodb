@@ -1,5 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, nonpropdel: true, white: true, plusplus: true, evil: true */
-/*global require, console, IS_EXECUTE_SCRIPT, IS_EXECUTE_STRING, IS_CHECK_SCRIPT, IS_UNIT_TESTS, IS_JS_LINT */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, -W051: true, white: true, plusplus: true, evil: true */
+/*global require, console: true, IS_EXECUTE_SCRIPT, IS_EXECUTE_STRING, IS_CHECK_SCRIPT, IS_UNIT_TESTS, IS_JS_LINT */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoShell client API
@@ -86,8 +86,8 @@ function clear () {
 /// @brief global 'console'
 ////////////////////////////////////////////////////////////////////////////////
 
-if (console === undefined) {
-  var console = require("console");
+if (typeof console === 'undefined') {
+  console = require("console");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
