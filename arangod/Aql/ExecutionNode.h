@@ -654,10 +654,42 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get vector of indexes with fields <attrs> 
+/// @brief get vector of indexes that has any match in its fields with <attrs> 
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<TRI_index_t*> getIndexes (vector<std::string> attrs) const;
+        std::vector<TRI_index_t*> getIndexesUnordered (vector<std::string> attrs) const;
+
+        enum MatchType {
+          FULL_MATCH,
+          REVERSE_MATCH,
+          NOT_COVERED_IDX,
+          NOT_COVERED_ATTR,
+          NO_MATCH
+        };
+
+        struct IndexMatch{
+          TRI_index_t* index;     // The index concerned; if null, this is a nonmatch.
+          vector<MatchType> Match;// qualification of the attrs match quality
+          bool fullmatch;         // do all critereons match
+        };
+
+        typedef std::vector<std::pair<std::string, bool>> IndexMatchVec;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inspect one index; only skiplist indices which match attrs in sequence.
+/// @returns a a qualification how good they match;
+///      match->index==nullptr means no match at all.
+////////////////////////////////////////////////////////////////////////////////
+        IndexMatch CompareIndex (TRI_index_t* idx,
+                                 IndexMatchVec &attrs) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get vector of skiplist indices which match attrs in sequence.
+/// @returns a list of indexes with a qualification how good they match 
+///    the specified indexes.
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<IndexMatch> getIndexesOrdered (IndexMatchVec &attrs) const;
 
         TRI_vocbase_t* vocbase () const {
           return _vocbase;
