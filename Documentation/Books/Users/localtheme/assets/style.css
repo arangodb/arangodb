@@ -7543,7 +7543,7 @@ text-decoration: none;
 color: rgba(0,0,0,0.6)
 }
 .book .book-body .navigation.navigation-next {
-right: 10
+right: 10px
 }
 .book .book-body .navigation.navigation-prev {
 left: 50px
