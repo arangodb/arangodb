@@ -831,6 +831,46 @@ void SortNode::toJsonHelper (triagens::basics::Json& nodes,
   nodes(json);
 }
 
+class SortNodeFindMyExpressions : public WalkerWorker<ExecutionNode> {
+
+public:
+  size_t _foundCalcNodes;
+  std::vector<std::pair<Variable const*, bool>> _elms;
+  std::vector<std::pair<CalculationNode*, bool>> _myVars;
+
+  SortNodeFindMyExpressions(SortNode* me)
+    : _foundCalcNodes(0),
+      _elms(me->getElements())
+  {
+    _myVars.reserve(_elms.size());
+  }
+
+  bool before (ExecutionNode* en) {
+    if (en->getType() == triagens::aql::ExecutionNode::CALCULATION) {
+      auto cn = static_cast<triagens::aql::CalculationNode*>(en);
+      for (size_t n = 0; n < _elms.size(); n++) {
+        if (_elms[n].first->id == cn->outVariable()->id) {
+          _myVars[n] = std::make_pair(cn, _elms[n].second);
+          _foundCalcNodes ++;
+          break;
+        }
+      }
+    }
+    return _foundCalcNodes >= _elms.size();
+  }
+};
+
+std::vector<std::pair<CalculationNode*, bool>> SortNode::getCalcNodePairs ()
+{
+  SortNodeFindMyExpressions findExp(this);
+  _dependencies[0]->walk(&findExp);
+  if (findExp._foundCalcNodes < _elements.size()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "SortNode wasn't able to locate all its CalculationNodes");
+  }
+  return findExp._myVars;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                          methods of AggregateNode
 // -----------------------------------------------------------------------------
