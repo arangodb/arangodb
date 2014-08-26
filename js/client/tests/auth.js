@@ -1,4 +1,4 @@
-/*jslint indent: 2, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, nomen: true, sloppy: true */
+/*jslint indent: 2, maxlen: 120, vars: true, white: true, plusplus: true, -W051: true, nomen: true, sloppy: true */
 /*global require, fail, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////

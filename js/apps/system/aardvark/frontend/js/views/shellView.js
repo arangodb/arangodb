@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true, evil: true, es5:true  */
+/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true, evil: true  */
 /*global require, exports, Backbone, EJS, $, window, ace, jqconsole, handler, help, location*/
 /*global templateEngine*/
 

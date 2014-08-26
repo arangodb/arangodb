@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true*/
+/*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true*/
 /*global describe, beforeEach, afterEach, it, spyOn, expect, jasmine*/
 /*global window, document, hljs, $, require*/
 

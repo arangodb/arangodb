@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
+/*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true, browser: true*/
 /*global describe, beforeEach, afterEach, it, */
 /*global spyOn, expect, runs, waitsFor*/
 /*global templateEngine, $, uiMatchers*/

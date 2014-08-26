@@ -1,4 +1,4 @@
-/*jslint indent: 2, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, sloppy: true, proto: true */
+/*jslint indent: 2, maxlen: 120, vars: true, white: true, plusplus: true, -W051: true, sloppy: true, proto: true */
 /*global require, SYS_GETLINE, SYS_LOG, jqconsole */
 
 ////////////////////////////////////////////////////////////////////////////////

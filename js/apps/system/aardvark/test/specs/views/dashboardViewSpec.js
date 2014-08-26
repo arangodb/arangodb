@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
+/*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true, browser: true*/
 /*global $, arangoHelper, jasmine, nv, d3, describe, beforeEach, afterEach, it, spyOn, expect*/
 
 (function () {

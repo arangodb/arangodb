@@ -1,6 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global _*/
-/*global document, window*/
+/*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true */
+/*global _, document, window*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
