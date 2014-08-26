@@ -1,3 +1,19 @@
 {
+  "bitwise": true,
+  "curly": true,
+  "eqeqeq": true,
+  "forin": true,
+  "freeze": true,
+  "immed": true,
+  "indent": true,
+  "newcap": true,
+  "noarg": true,
+  "noempty": true,
+  "nonbsp": true,
+  "nonew": true,
+  "plusplus": true,
+  "undef": true,
+  "strict": true,
+  "maxlen": 120,
   "-W014": true
 }

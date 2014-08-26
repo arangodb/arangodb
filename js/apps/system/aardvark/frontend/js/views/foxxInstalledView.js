@@ -469,7 +469,7 @@
         error: function(e, info) {
           if (info.responseText.indexOf("already used by") > -1) {
             alert("Mount-Path already in use.");
-          } else if (info.responseText.indexOf("app is not defined") > -1) {
+          } else if (info.responseText.indexOf("app is not defined") > -1) {
             //temp ignore this message, fix needs to be server-side
             window.modalView.hide();
             self.appsView.reload();

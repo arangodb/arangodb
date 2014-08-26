@@ -1,11 +1,12 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, stupid: true, continue: true, regexp: true */
+/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, stupid: true,
+  continue: true, regexp: true */
 /*global require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief database version check
 ///
 /// @file
-/// 
+///
 /// Checks if the database needs to be upgraded.
 ///
 /// DISCLAIMER
