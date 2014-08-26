@@ -691,7 +691,7 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_controller_destroySession
 ///
-/// `FoxxController#logout(path, opts)`
+/// `FoxxController#destroySession(path, opts)`
 ///
 /// This adds a path to your app for the destroySession functionality.
 /// You can customize it with custom *before* and *after* function:
