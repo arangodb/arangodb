@@ -326,6 +326,10 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       // TODO: who is going to free _ranges??
     };
 
+    ~FilterToEnumCollFinder () {
+      delete _ranges;
+    }
+
     bool before (ExecutionNode* en) {
       _canThrow = (_canThrow || en->canThrow()); // can any node walked over throw?
 
