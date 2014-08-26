@@ -342,7 +342,7 @@ namespace triagens {
 /// @brief walk a complete execution plan recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        void walk (WalkerWorker<ExecutionNode>* worker);
+        bool walk (WalkerWorker<ExecutionNode>* worker);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON, returns an AUTOFREE Json object
@@ -1448,6 +1448,13 @@ namespace triagens {
           return v;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get Variables Used Here including ASC/DESC
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<std::pair<Variable const*, bool>> getElements () {
+          return _elements;
+        }
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------

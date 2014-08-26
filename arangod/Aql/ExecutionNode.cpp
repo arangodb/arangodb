@@ -247,31 +247,40 @@ void ExecutionNode::appendAsString (std::string& st, int indent) {
 /// @brief functionality to walk an execution plan recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
+bool ExecutionNode::walk (WalkerWorker<ExecutionNode>* worker) {
   // Only do every node exactly once:
   if (worker->done(this)) {
-    return;
+    return false;
   }
 
-  worker->before(this);
+  if (worker->before(this)) {
+    return true;
+  }
   
   // Now the children in their natural order:
   for (auto it = _dependencies.begin();
             it != _dependencies.end(); 
             ++it) {
-    (*it)->walk(worker);
+    if ((*it)->walk(worker)) {
+      return true;
+    }
   }
   
   // Now handle a subquery:
   if (getType() == SUBQUERY) {
     auto p = static_cast<SubqueryNode*>(this);
     if (worker->enterSubquery(this, p->getSubquery())) {
-      p->getSubquery()->walk(worker);
+      bool abort = p->getSubquery()->walk(worker);
       worker->leaveSubquery(this, p->getSubquery());
+      if (abort) {
+        return true;
+      }
     }
   }
 
   worker->after(this);
+
+  return false;
 }
 
 // -----------------------------------------------------------------------------
@@ -637,12 +646,13 @@ struct SubqueryVarUsageFinder : public WalkerWorker<ExecutionNode> {
   ~SubqueryVarUsageFinder () {
   }
 
-  void before (ExecutionNode* en) {
+  bool before (ExecutionNode* en) {
     // Add variables used here to _usedLater:
     auto&& usedHere = en->getVariablesUsedHere();
     for (auto v : usedHere) {
       _usedLater.insert(v);
     }
+    return false;
   }
 
   void after (ExecutionNode* en) {
@@ -806,13 +816,14 @@ struct UserVarFinder : public WalkerWorker<ExecutionNode> {
   bool enterSubquery (ExecutionNode* super, ExecutionNode* sub) {
     return false;
   }
-  void before (ExecutionNode* en) {
+  bool before (ExecutionNode* en) {
     auto vars = en->getVariablesSetHere();
     for (auto v : vars) {
       if (v->isUserDefined()) {
         userVars.push_back(v);
       }
     }
+    return false;
   }
 };
 

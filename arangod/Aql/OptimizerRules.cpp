@@ -322,11 +322,13 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         _out(out), 
         _canThrow(false) {
       _ranges = new RangesInfo();
-
-      // TODO: who is going to free _ranges??
     };
 
-    void before (ExecutionNode* en) {
+    ~FilterToEnumCollFinder () {
+      delete _ranges;
+    }
+
+    bool before (ExecutionNode* en) {
       _canThrow = (_canThrow || en->canThrow()); // can any node walked over throw?
 
       if (en->getType() == triagens::aql::ExecutionNode::CALCULATION) {
@@ -404,6 +406,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           }
         }
       }
+      return true;
     }
 
     void buildRangeInfo (AstNode const* node, std::string& enumCollVar, std::string& attr) {
@@ -541,27 +544,33 @@ int triagens::aql::useIndexRange (Optimizer* opt,
 ////////////////////////////////////////////////////////////////////////////////
 
 class sortToIndexNode : public WalkerWorker<ExecutionNode> {
+  SortNode *_sortNode;
   RangesInfo* _ranges; 
   ExecutionPlan* _plan;
   std::vector<Variable const*> _vars;
   std::vector<CalculationNode*> _myVars;
+  std::vector<size_t> _idsToRemove;
   Optimizer::PlanList _out;
   size_t _executionNodesFound;
 
   public:
     sortToIndexNode (ExecutionPlan* plan,
                      std::vector<Variable const*>& vars,
-                     Optimizer::PlanList& out) 
-      : _plan(plan),
+                     Optimizer::PlanList& out,
+                     SortNode* Node) 
+      : _sortNode(Node),
+        _plan(plan),
         _vars(vars),
+        ///        _idsToRemove(sortNodeID),
         _out(out),
         _executionNodesFound(0) {
       _ranges = new RangesInfo();
       // TODO: who is going to free _ranges??
       _myVars.reserve(vars.size());
+      _idsToRemove.push_back(Node->id());
     }
 
-    void before (ExecutionNode* en) {
+    bool before (ExecutionNode* en) {
       std::cout << "type:" << en->getTypeString() << "\n";
       size_t n = _vars.size();
       auto outvar = en->getVariablesSetHere();
@@ -574,6 +583,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
           if (_vars[i]->id == outvar[0]->id) {
             _myVars[i] = static_cast<triagens::aql::CalculationNode*>(en);
             _executionNodesFound++;
+            _idsToRemove.push_back (en->id());
             break;
           }
         }
@@ -593,46 +603,86 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
           // TODO: we should also match INDEX_RANGE later on.
         }
         else if (en->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION) {
+          /*
           std::cout << "blub\n";
-          
+          auto JsonPlan = _plan->toJson(TRI_UNKNOWN_MEM_ZONE, false);
+          auto JsonString = JsonPlan.toString();
+          std::cout <<"Old Plan: \n" << JsonString << "\n";
+          */
+          size_t nVarsIndexable = 0;
           std::vector<std::vector<RangeInfo*>> rangeInfo;
-          std::vector<std::string> attrSet;
+          std::vector<std::string> attributeVector;
           std::vector<std::string> attrs;
+          std::string collectionName;
           
           auto node = static_cast<EnumerateCollectionNode*>(en);
           auto var = node->getVariablesSetHere()[0];  // should only be 1
-          auto exp = _myVars[0]->expression();
 
-          if (!exp->isSimple()) {
-            return;
-          }
+          auto sortElements = _sortNode->getElements();
+ 
+          for (size_t n = 0; n < sortElements.size(); n++) {
+            // we should have already made shure this works above.
+            TRI_ASSERT(sortElements[n].first->id == _myVars[n]->outVariable()->id);
+            bool ASC = sortElements[n].second; /// TODO what to do with this?
+            
+            auto exp = _myVars[n]->expression();
 
-          auto expNode = exp->node();
-          
-          // digg through nested Attributes:
-          while (expNode->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-            attrSet.push_back(expNode->getStringValue());
-            expNode = expNode->getMember (0);
-          }
-          // we now should have the Collection Reference:
-          std::cout  << var->name << " \n";
-          if (expNode->type == triagens::aql::NODE_TYPE_REFERENCE) {
-            auto subVar = static_cast<Variable*>(expNode->getData());
-            if (subVar->name == var->name) {
-              // Yes, the requested collec    tion is a reference to this.
+            if (!exp->isSimple()) {
+              if (n == 0)
+                return true; /* first one isn't simple? bail out. */
+              else
+                break; /* subsequent one, try working with the former */
             }
-          }
-          expNode = exp->node();
-          
-          std::cout << expNode->getStringValue() << " -- " << var->name << " \n";
 
-          TRI_ASSERT(attrSet.size() > 0)
-          attrs.push_back(attrSet[attrSet.size() - 1]);
+            auto expNode = exp->node();
+          
+            // digg through nested Attributes:
+            while (expNode->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+              attributeVector.push_back(expNode->getStringValue());
+              expNode = expNode->getMember (0);
+            }
+
+            // And concatenate the attributes again in reverse order:
+            std::string attributeVectorStr = "";
+            for (auto oneAttr = attributeVector.rbegin();
+                 oneAttr != attributeVector.rend();
+                 ++oneAttr) {
+              if (attributeVectorStr.size() > 0)
+                attributeVectorStr += std::string(".");
+              attributeVectorStr += *oneAttr;
+            }
+            // we now should have the Collection Reference:
+            if (expNode->type != triagens::aql::NODE_TYPE_REFERENCE) {
+              break;
+            }
+            auto subVar = static_cast<Variable*>(expNode->getData());
+            if (subVar->name != var->name) {
+              // No, the requested collection is not a reference to this.
+              break;
+            }
+            expNode = exp->node();
+          
+            attrs.push_back(attributeVectorStr);
+            collectionName = expNode->getStringValue();
+
+            rangeInfo.push_back(std::vector<RangeInfo*>());
+            rangeInfo.at(nVarsIndexable).push_back(new RangeInfo(var->name, 
+                                                                 attributeVectorStr,
+                                                                 nullptr, nullptr));
+            nVarsIndexable++;
+          }
+
+          if (nVarsIndexable == 0) {
+            return true;
+          }
 
           std::vector<TRI_index_t*> idxs = node->getIndexes(attrs);
 
-          rangeInfo.at(0).push_back(new RangeInfo(var->name, 
-                expNode->getStringValue(), nullptr, nullptr));
+          if (idxs.size() == 0) {
+            return true;
+          }
+
+
           // make one new plan for every index in <idxs> that replaces the
           // enumerate collection node with a RangeIndexNode . . . 
           for (auto idx: idxs) {
@@ -659,9 +709,19 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
                 throw;
               }
               newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
+
               auto JsonPlan = newPlan->toJson(TRI_UNKNOWN_MEM_ZONE, false);
               auto JsonString = JsonPlan.toString();
-              std::cout <<"Added foo" << JsonString << "\n";
+              std::cout <<"New Plan: \n" << JsonString << "\n";
+
+              for (auto idToRemove = _idsToRemove.begin();
+                   idToRemove != _idsToRemove.end();
+                   ++idToRemove) {
+                newPlan->unlinkNode(newPlan->getNodeById(*idToRemove));
+              }
+              JsonPlan = newPlan->toJson(TRI_UNKNOWN_MEM_ZONE, false);
+              JsonString = JsonPlan.toString();
+              std::cout <<"removed foo \n" << JsonString << "\n";
               
               _out.push_back(newPlan);
 
@@ -670,6 +730,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
 
         }
       }
+      return false;
     }
 };
   
@@ -683,12 +744,14 @@ int triagens::aql::useIndexForSort (Optimizer* opt,
   keep = true;
   std::vector<ExecutionNode*> nodes
     = plan->findNodesOfType(triagens::aql::ExecutionNode::SORT, true);
-
   for (auto n : nodes) {
     auto oneNode = static_cast<SortNode*>(n);
     auto invars = oneNode->getVariablesUsedHere();
     ////TRI_ASSERT(invars.size() == 1);/// todo: do we care about the invars? <- yes there may be more.
-    sortToIndexNode finder(plan, invars, out);
+    //Json json = Json(Json::List, 0);
+    //oneNode->toJsonHelper(json, TRI_UNKNOWN_MEM_ZONE, false);
+    //std::cout << " original sort node:" << json.toString () << "\n";
+    sortToIndexNode finder(plan, invars, out, oneNode);
     ///_thisNode = oneNode;
     oneNode->walk(&finder);
   }
