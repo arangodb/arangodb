@@ -411,7 +411,7 @@ void EnumerateCollectionNode::toJsonHelper (triagens::basics::Json& nodes,
 /// @brief get vector of indexes with fields <attrs> 
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<TRI_index_t*> EnumerateCollectionNode::getIndexes (vector<std::string> attrs) const {
+std::vector<TRI_index_t*> EnumerateCollectionNode::getIndexesUnordered (vector<std::string> attrs) const {
   std::vector<TRI_index_t*> out;
   TRI_document_collection_t* document = _collection->documentCollection();
   size_t const n = document->_allIndexes._length;
@@ -444,6 +444,78 @@ std::vector<TRI_index_t*> EnumerateCollectionNode::getIndexes (vector<std::strin
   }
   return out;
 }
+
+
+EnumerateCollectionNode::IndexMatch
+EnumerateCollectionNode::CompareIndex (TRI_index_t* idx,
+                                       EnumerateCollectionNode::IndexMatchVec& attrs) const
+{
+  IndexMatch match;
+  match.fullmatch = true;
+  match.index = nullptr; // while null, this is a non-match.
+
+  if (idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX) {
+    return match;
+  }
+
+  size_t interestingCount = 0;
+  size_t j = 0;
+
+  for (;
+       ((j < idx->_fields._length) && (j < attrs.size()));
+       j++) {
+    if(std::string(idx->_fields._buffer[j]) == attrs[j].first) {
+      // index always is ASC.
+      if (attrs[j].second) {
+        match.Match.push_back(FULL_MATCH);
+      }
+      else {
+        match.Match.push_back(REVERSE_MATCH);
+        match.fullmatch = false;
+      }
+      interestingCount ++;
+    }
+    else {
+      match.Match.push_back(NO_MATCH);
+      match.fullmatch = false;
+    }
+  }
+
+  if (interestingCount > 0) {
+    match.index = idx;
+
+    if (j < idx->_fields._length) { // more index fields
+      for (; j < idx->_fields._length; j++) {
+        match.Match.push_back(NOT_COVERED_IDX);
+      }
+    }
+    else if (j < attrs.size()) { // more sorts
+      for (; j < attrs.size(); j++) {
+        match.Match.push_back(NOT_COVERED_ATTR);
+      }
+      match.fullmatch = false;
+    }
+  }
+  return match;
+}
+
+std::vector<EnumerateCollectionNode::IndexMatch> EnumerateCollectionNode::getIndexesOrdered (IndexMatchVec &attrs) const {
+
+  std::vector<IndexMatch> out;
+  TRI_document_collection_t* document = _collection->documentCollection();
+  size_t const n = document->_allIndexes._length;
+
+  for (size_t i = 0; i < n; ++i) {
+    TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
+
+    IndexMatch match = CompareIndex(idx, attrs);
+    if (match.index != nullptr) {
+      out.push_back(match);
+    }
+  }
+  return out;
+}
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      methods of EnumerateListNode

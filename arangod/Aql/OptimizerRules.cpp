@@ -374,7 +374,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
               }
             }
             else {
-              std::vector<TRI_index_t*> idxs = node->getIndexes(attrs);
+              std::vector<TRI_index_t*> idxs = node->getIndexesUnordered(attrs);
               // make one new plan for every index in <idxs> that replaces the
               // enumerate collection node with a RangeIndexNode . . . 
               for (auto idx: idxs) {
@@ -593,13 +593,18 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
       }
       else if (_executionNodesFound == n) {
         if (en->getType() == triagens::aql::ExecutionNode::FILTER) {
+          /// skip. we don't care.
           ///      TODO: check whether to ABORT here?
         }
         if (en->getType() == triagens::aql::ExecutionNode::SORT) {
-          // TODO: subsequent sort - check whether its still needed.
+          return true; // pulling two sorts together is done elsewhere.
+        }
+        if (en->getType() == triagens::aql::ExecutionNode::LIMIT) {
+          return true; // LIMIT is criterion to stop
         }
         if (en->getType() == triagens::aql::ExecutionNode::INDEX_RANGE) {
           // TODO: we should also match INDEX_RANGE later on.
+          // todo: this may only be done if there is a full index match.
         }
         else if (en->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION) {
           /*
@@ -611,7 +616,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
           size_t nVarsIndexable = 0;
           std::vector<std::vector<RangeInfo*>> rangeInfo;
           std::vector<std::string> attributeVector;
-          std::vector<std::string> attrs;
+          EnumerateCollectionNode::IndexMatchVec attrs;
           std::string collectionName;
           
           auto node = static_cast<EnumerateCollectionNode*>(en);
@@ -627,14 +632,15 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
             auto exp = _myVars[n]->expression();
 
             if (!exp->isSimple()) {
-              if (n == 0)
-                return true; /* first one isn't simple? bail out. */
-              else
-                break; /* subsequent one, try working with the former */
+                break; // nott simple? stop evaluation.
             }
 
             auto expNode = exp->node();
-          
+
+            if (expNode->type != triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+              break; // we only support attribute accesses.
+            }
+
             // digg through nested Attributes:
             while (expNode->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
               attributeVector.push_back(expNode->getStringValue());
@@ -650,10 +656,12 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
                 attributeVectorStr += std::string(".");
               attributeVectorStr += *oneAttr;
             }
-            // we now should have the Collection Reference:
+
+            // we now should have a Collection Reference:
             if (expNode->type != triagens::aql::NODE_TYPE_REFERENCE) {
-              break;
+              break; // some other operation - can't work with this.
             }
+
             auto subVar = static_cast<Variable*>(expNode->getData());
             if (subVar->name != var->name) {
               // No, the requested collection is not a reference to this.
@@ -661,70 +669,74 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
             }
             expNode = exp->node();
           
-            attrs.push_back(attributeVectorStr);
+            attrs.push_back(std::make_pair(attributeVectorStr, ASC));
             collectionName = expNode->getStringValue();
 
             rangeInfo.push_back(std::vector<RangeInfo*>());
-            rangeInfo.at(nVarsIndexable).push_back(new RangeInfo(var->name, 
+            rangeInfo.at(nVarsIndexable).push_back(new RangeInfo(var->name, /// todo: asc/desc
                                                                  attributeVectorStr,
+                                                                 ///(ASC)? a:b,
+                                                                 ///(ASC)? b:a,
+
                                                                  nullptr, nullptr));
             nVarsIndexable++;
           }
 
           if (nVarsIndexable == 0) {
-            return true;
+            return true; // we didn't find anything replaceable by this index
           }
 
-          std::vector<TRI_index_t*> idxs = node->getIndexes(attrs);
+          auto indexes = node->getIndexesOrdered(attrs);
 
-          if (idxs.size() == 0) {
+          if (indexes.size() == 0) {
             return true;
           }
 
 
           // make one new plan for every index in <idxs> that replaces the
           // enumerate collection node with a RangeIndexNode . . . 
-          for (auto idx: idxs) {
-            if ((idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) || 
-                (idx->_type == TRI_IDX_TYPE_HASH_INDEX) ) {
-              //can only use the index if it is a skip list or (a hash and we
-              //are checking equality)
-              std::cout << "FOUND INDEX!\n";
+          for (auto idx: indexes) {
 
-              auto newPlan = _plan->clone();
-              ExecutionNode* newNode = nullptr;
-              try{
-                newNode = new IndexRangeNode( newPlan->nextId(), node->vocbase(), 
-                                              node->collection(),
-                                              node->outVariable(), idx,
-                                              rangeInfo);
-                newPlan->registerNode(newNode);
+            //can only use the index if it is a skip list or (a hash and we
+            //are checking equality)
+            std::cout << "FOUND INDEX!\n";
+
+            auto newPlan = _plan->clone();
+            ExecutionNode* newNode = nullptr;
+            try{
+              newNode = new IndexRangeNode( newPlan->nextId(),
+                                            node->vocbase(), 
+                                            node->collection(),
+                                            node->outVariable(),
+                                            idx.index,/// TODO: estimate cost on match quality
+                                            rangeInfo);
+              newPlan->registerNode(newNode);
+            }
+            catch (...) {
+              if (newNode != nullptr) {
+                delete newNode;
               }
-              catch (...) {
-                if (newNode != nullptr) {
-                  delete newNode;
-                }
-                delete newPlan;
-                throw;
-              }
-              newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
+              delete newPlan;
+              throw;
+            }
+            newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
 
-              auto JsonPlan = newPlan->toJson(TRI_UNKNOWN_MEM_ZONE, false);
-              auto JsonString = JsonPlan.toString();
-              std::cout <<"New Plan: \n" << JsonString << "\n";
+            auto JsonPlan = newPlan->toJson(TRI_UNKNOWN_MEM_ZONE, false);
+            auto JsonString = JsonPlan.toString();
+            std::cout <<"New Plan: \n" << JsonString << "\n";
 
+            if (idx.fullmatch) { // if the index replaces the sort, remove it.
               for (auto idToRemove = _idsToRemove.begin();
                    idToRemove != _idsToRemove.end();
                    ++idToRemove) {
                 newPlan->unlinkNode(newPlan->getNodeById(*idToRemove));
               }
-              JsonPlan = newPlan->toJson(TRI_UNKNOWN_MEM_ZONE, false);
-              JsonString = JsonPlan.toString();
-              std::cout <<"removed foo \n" << JsonString << "\n";
-              
-              _out.push_back(newPlan);
-
             }
+            JsonPlan = newPlan->toJson(TRI_UNKNOWN_MEM_ZONE, false);
+            JsonString = JsonPlan.toString();
+            std::cout <<"removed foo \n" << JsonString << "\n";
+              
+            _out.push_back(newPlan);
           }
 
         }
