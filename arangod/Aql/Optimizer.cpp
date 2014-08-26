@@ -46,7 +46,7 @@ Optimizer::Optimizer () {
 
 
   // try to find a filter after an enumerate collection and find an index . . . 
-  //registerRule(useIndexRange, 999);
+  registerRule(useIndexRange, 999);
 
   // remove filters from the query that are not necessary at all
   // filters that are always true will be removed entirely
