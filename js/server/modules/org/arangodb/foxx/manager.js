@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, regexp: true, plusplus: true, continue: true */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, regexp: true, plusplus: true,
+  continue: true */
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1319,7 +1320,7 @@ exports.gitinfo = function (key) {
 exports.mountinfo = function (key) {
   'use strict';
 
-  var _ = require("underscore"), mountinfo = [];
+  var _ = require("underscore"), mountinfo = [];
 
   if (key === undefined) {
     _.each(exports.appRoutes(), function(m) {
