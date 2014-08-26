@@ -543,6 +543,7 @@ int triagens::aql::useIndexRange (Optimizer* opt,
 ////////////////////////////////////////////////////////////////////////////////
 
 class sortToIndexNode : public WalkerWorker<ExecutionNode> {
+  SortNode *_sortNode;
   RangesInfo* _ranges; 
   ExecutionPlan* _plan;
   std::vector<Variable const*> _vars;
@@ -555,8 +556,9 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
     sortToIndexNode (ExecutionPlan* plan,
                      std::vector<Variable const*>& vars,
                      Optimizer::PlanList& out,
-                     size_t sortNodeID) 
-      : _plan(plan),
+                     SortNode* Node) 
+      : _sortNode(Node),
+        _plan(plan),
         _vars(vars),
         ///        _idsToRemove(sortNodeID),
         _out(out),
@@ -564,7 +566,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
       _ranges = new RangesInfo();
       // TODO: who is going to free _ranges??
       _myVars.reserve(vars.size());
-      _idsToRemove.push_back(sortNodeID);
+      _idsToRemove.push_back(Node->id());
     }
 
     bool before (ExecutionNode* en) {
@@ -600,69 +602,88 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
           // TODO: we should also match INDEX_RANGE later on.
         }
         else if (en->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION) {
+          /*
           std::cout << "blub\n";
           auto JsonPlan = _plan->toJson(TRI_UNKNOWN_MEM_ZONE, false);
           auto JsonString = JsonPlan.toString();
           std::cout <<"Old Plan: \n" << JsonString << "\n";
-
+          */
+          size_t nVarsIndexable = 0;
           std::vector<std::vector<RangeInfo*>> rangeInfo;
-
           std::vector<std::string> attributeVector;
-
           std::vector<std::string> attrs;
+          std::string collectionName;
           
           auto node = static_cast<EnumerateCollectionNode*>(en);
           auto var = node->getVariablesSetHere()[0];  // should only be 1
-          auto exp = _myVars[0]->expression();
 
-          if (!exp->isSimple()) {
-            return true;
-          }
+          auto sortElements = _sortNode->getElements();
+ 
+          for (size_t n = 0; n < sortElements.size(); n++) {
+            // we should have already made shure this works above.
+            TRI_ASSERT(sortElements[n].first->id == _myVars[n]->outVariable()->id);
+            bool ASC = sortElements[n].second; /// TODO what to do with this?
+            
+            auto exp = _myVars[n]->expression();
 
-          auto expNode = exp->node();
+            if (!exp->isSimple()) {
+              if (n == 0)
+                return true; /* first one isn't simple? bail out. */
+              else
+                break; /* subsequent one, try working with the former */
+            }
+
+            auto expNode = exp->node();
           
-          // digg through nested Attributes:
-          while (expNode->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-            std::cout  << expNode->getStringValue() << " \n";
-            attributeVector.push_back(expNode->getStringValue());
-            expNode = expNode->getMember (0);
-          }
+            // digg through nested Attributes:
+            while (expNode->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+              attributeVector.push_back(expNode->getStringValue());
+              expNode = expNode->getMember (0);
+            }
 
-          // And concatenate them again in reverse order:
-          std::string attributeVectorStr = "";
-          for (auto oneAttr = attributeVector.rbegin();
-               oneAttr != attributeVector.rend();
-               ++oneAttr) {
-            if (attributeVectorStr.size() > 0)
-              attributeVectorStr += std::string(".");
-            attributeVectorStr += *oneAttr;
-          }
-          // we now should have the Collection Reference:
-          std::cout  << attributeVectorStr << var->name << " \n";
-          if (expNode->type != triagens::aql::NODE_TYPE_REFERENCE) {
-            return true;
-          }
-          auto subVar = static_cast<Variable*>(expNode->getData());
-          if (subVar->name != var->name) {
-            // No, the requested collection is not a reference to this.
-            return true;
-          }
-          expNode = exp->node();
+            // And concatenate the attributes again in reverse order:
+            std::string attributeVectorStr = "";
+            for (auto oneAttr = attributeVector.rbegin();
+                 oneAttr != attributeVector.rend();
+                 ++oneAttr) {
+              if (attributeVectorStr.size() > 0)
+                attributeVectorStr += std::string(".");
+              attributeVectorStr += *oneAttr;
+            }
+            // we now should have the Collection Reference:
+            if (expNode->type != triagens::aql::NODE_TYPE_REFERENCE) {
+              break;
+            }
+            auto subVar = static_cast<Variable*>(expNode->getData());
+            if (subVar->name != var->name) {
+              // No, the requested collection is not a reference to this.
+              break;
+            }
+            expNode = exp->node();
           
-          std::cout << expNode->getStringValue() << " -- " << var->name << " \n";
+            attrs.push_back(attributeVectorStr);
+            collectionName = expNode->getStringValue();
 
-          attrs.push_back(attributeVectorStr);
+            rangeInfo.push_back(std::vector<RangeInfo*>());
+            rangeInfo.at(nVarsIndexable).push_back(new RangeInfo(var->name, 
+                                                                 attributeVectorStr,
+                                                                 nullptr, nullptr));
+            nVarsIndexable++;
+          }
+
+          if (nVarsIndexable == 0) {
+            return true;
+          }
 
           std::vector<TRI_index_t*> idxs = node->getIndexes(attrs);
 
-          rangeInfo.at(0).push_back(new RangeInfo(var->name, 
-                expNode->getStringValue(), nullptr, nullptr));
-          // make one new plan for every index in <idxs> that replaces the
-          // enumerate collection node with a RangeIndexNode . . . 
           if (idxs.size() == 0) {
             return true;
           }
-            
+
+
+          // make one new plan for every index in <idxs> that replaces the
+          // enumerate collection node with a RangeIndexNode . . . 
           for (auto idx: idxs) {
             if ((idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) || 
                 (idx->_type == TRI_IDX_TYPE_HASH_INDEX) ) {
@@ -729,7 +750,7 @@ int triagens::aql::useIndexForSort (Optimizer* opt,
     //Json json = Json(Json::List, 0);
     //oneNode->toJsonHelper(json, TRI_UNKNOWN_MEM_ZONE, false);
     //std::cout << " original sort node:" << json.toString () << "\n";
-    sortToIndexNode finder(plan, invars, out, oneNode->id());
+    sortToIndexNode finder(plan, invars, out, oneNode);
     ///_thisNode = oneNode;
     oneNode->walk(&finder);
   }
