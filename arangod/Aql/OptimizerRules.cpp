@@ -406,7 +406,13 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           }
         }
       }
-      return true;
+      else if (en->getType() == triagens::aql::ExecutionNode::LIMIT) {
+        // if we meet a limit node between a filter and an enumerate collection,
+        // we abort . . . 
+        return true;
+      }
+      
+      return false;
     }
 
     void buildRangeInfo (AstNode const* node, std::string& enumCollVar, std::string& attr) {
