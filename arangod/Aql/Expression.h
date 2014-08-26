@@ -146,9 +146,22 @@ namespace triagens {
 /// @brief check whether this is a simple expression.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isSimple () {
+        bool isSimple () const {
           return _type == SIMPLE;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether this is a simple access to a Reference.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isSimpleAccessReference () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief this gives you ("variable.access", "Reference")
+/// call isSimpleAccessReference in advance to enshure no exceptions.
+////////////////////////////////////////////////////////////////////////////////
+
+        std::pair<std::string, std::string> getAccessNRef() const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
