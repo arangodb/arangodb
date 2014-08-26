@@ -348,6 +348,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           // check the first components of <map> against indexes of <node> . . .
           std::vector<std::string> attrs;
           std::vector<std::vector<RangeInfo*>> rangeInfo;
+          rangeInfo.push_back(std::vector<RangeInfo*>());
           bool valid = true;
           bool eq = true;
           for (auto x : *map) {
@@ -360,7 +361,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           }
           if (! _canThrow) {
             if (! valid){ // ranges are not valid . . . 
-            // std::cout << "INVALID RANGE!\n";
+            std::cout << "INVALID RANGE!\n";
               
               auto newPlan = _plan->clone();
               auto parents = node->getParents();
@@ -380,7 +381,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                    (idx->_type == TRI_IDX_TYPE_HASH_INDEX && eq)) {
                   //can only use the index if it is a skip list or (a hash and we
                   //are checking equality)
-                  // std::cout << "FOUND INDEX!\n";
+                  std::cout << "FOUND INDEX!\n";
                   auto newPlan = _plan->clone();
                   ExecutionNode* newNode = nullptr;
                   try{

@@ -618,18 +618,12 @@ public:
 /// @brief initialize fetching of documents
 ////////////////////////////////////////////////////////////////////////////////
 
-        void initDocuments () {
+        /*void initDocuments () {
           _internalSkip = 0;
           if (! moreDocuments()) {
             _done = true;
           }
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief continue fetching of documents
-////////////////////////////////////////////////////////////////////////////////
-
-        bool moreDocuments ();
+        }*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize, here we fetch all docs from the database
@@ -651,13 +645,19 @@ public:
 // things to skip overall.
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t skipSome (size_t atLeast, size_t atMost);
+        virtual size_t skipSome (size_t atLeast, size_t atMost);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
       
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief continue fetching of documents
+////////////////////////////////////////////////////////////////////////////////
+
+        bool readIndex ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read using a skiplist index
@@ -705,7 +705,7 @@ public:
 /// @brief current position in _allDocs
 ////////////////////////////////////////////////////////////////////////////////
 
-        size_t _posInAllDocs;
+        size_t _posInDocs;
 
     };
 
