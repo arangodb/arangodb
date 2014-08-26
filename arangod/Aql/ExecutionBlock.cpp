@@ -168,27 +168,35 @@ int ExecutionBlock::initCursor (AqlItemBlock* items, size_t pos) {
 /// @brief functionality to walk an execution block recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionBlock::walk (WalkerWorker<ExecutionBlock>* worker) {
+bool ExecutionBlock::walk (WalkerWorker<ExecutionBlock>* worker) {
   // Only do every node exactly once:
   if (worker->done(this)) {
-    return;
+    return false;
   }
 
-  worker->before(this);
+  if (worker->before(this)) {
+    return true;
+  }
 
   // Now the children in their natural order:
   for (auto c : _dependencies) {
-    c->walk(worker);
+    if (c->walk(worker)) {
+      return true;
+    }
   }
   // Now handle a subquery:
   if (_exeNode->getType() == ExecutionNode::SUBQUERY) {
     auto p = static_cast<SubqueryBlock*>(this);
     if (worker->enterSubquery(this, p->getSubquery())) {
-      p->getSubquery()->walk(worker);
+      bool abort = p->getSubquery()->walk(worker);
       worker->leaveSubquery(this, p->getSubquery());
+      if (abort) {
+        return true;
+      }
     }
   }
   worker->after(this);
+  return false;
 }
 
 

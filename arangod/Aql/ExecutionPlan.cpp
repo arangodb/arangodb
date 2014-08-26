@@ -859,10 +859,11 @@ class NodeFinder : public WalkerWorker<ExecutionNode> {
       : _lookingFor(lookingFor), _out(out), _enterSubqueries(enterSubqueries) {
     };
 
-    void before (ExecutionNode* en) {
+    bool before (ExecutionNode* en) {
       if (en->getType() == _lookingFor) {
         _out.push_back(en);
       }
+      return false;
     }
 
     bool enterSubquery (ExecutionNode* super, ExecutionNode* sub) {
@@ -890,7 +891,7 @@ class LinkChecker : public WalkerWorker<ExecutionNode> {
     LinkChecker () {
     }
 
-    void before (ExecutionNode* en) {
+    bool before (ExecutionNode* en) {
       auto deps = en->getDependencies();
       for (auto x : deps) {
         auto parents = x->getParents();
@@ -924,6 +925,7 @@ class LinkChecker : public WalkerWorker<ExecutionNode> {
                     << std::endl;
         }
       }
+      return false;
     }
 };
 
@@ -948,7 +950,7 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
     ~VarUsageFinder () {
     }
 
-    void before (ExecutionNode* en) {
+    bool before (ExecutionNode* en) {
       en->invalidateVarUsage();
       en->setVarsUsedLater(_usedLater);
       // Add variables used here to _usedLater:
@@ -956,6 +958,7 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
       for (auto v : usedHere) {
         _usedLater.insert(v);
       }
+      return false;
     }
 
     void after (ExecutionNode* en) {
@@ -1100,8 +1103,9 @@ class CloneNodeAdder : public WalkerWorker<ExecutionNode> {
     
     ~CloneNodeAdder (){}
 
-    void before (ExecutionNode* node){
+    bool before (ExecutionNode* node){
       _plan->registerNode(node);
+      return false;
     }
 };
 
