@@ -322,8 +322,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         _out(out), 
         _canThrow(false) {
       _ranges = new RangesInfo();
-
-      // TODO: who is going to free _ranges??
     };
 
     ~FilterToEnumCollFinder () {
