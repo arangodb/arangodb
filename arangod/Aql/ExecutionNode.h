@@ -1487,6 +1487,10 @@ namespace triagens {
         std::vector<std::pair<Variable const*, bool>> getElements () {
           return _elements;
         }
+
+
+        std::vector<std::pair<CalculationNode*, bool>> getCalcNodePairs ();
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------

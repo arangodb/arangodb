@@ -573,7 +573,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
       std::cout << "type:" << en->getTypeString() << "\n";
       size_t n = _vars.size();
       auto outvar = en->getVariablesSetHere();
-
+      /*
       if ((_executionNodesFound < n) &&
           en->getType() == triagens::aql::ExecutionNode::CALCULATION) {
 
@@ -591,7 +591,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
           // TODO
         }
       }
-      else if (_executionNodesFound == n) {
+      else if (_executionNodesFound == n) {*/
         if (en->getType() == triagens::aql::ExecutionNode::FILTER) {
           /// skip. we don't care.
           ///      TODO: check whether to ABORT here?
@@ -621,6 +621,12 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
           
           auto node = static_cast<EnumerateCollectionNode*>(en);
           auto var = node->getVariablesSetHere()[0];  // should only be 1
+
+
+
+          auto blarg = _sortNode->getExpressions();
+
+
 
           auto sortElements = _sortNode->getElements();
  
@@ -740,7 +746,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
           }
 
         }
-      }
+        //      }
       return false;
     }
 };
