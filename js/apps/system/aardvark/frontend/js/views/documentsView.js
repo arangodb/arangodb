@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global require, arangoHelper, _, $, window, arangoHelper, templateEngine, Joi*/
+/*global require, arangoHelper, _, $, window, arangoHelper, templateEngine, Joi, btoa */
 
 (function() {
   "use strict";
@@ -172,7 +172,7 @@
       var query = this.collection.buildDownloadDocumentQuery();
 
       if (query !== '' || query !== undefined || query !== null) {
-        window.open(encodeURI("query/result/download/" + query));
+        window.open(encodeURI("query/result/download/" + btoa(JSON.stringify(query))));
       }
       else {
         arangoHelper.arangoError("Document error", "could not download documents");
