@@ -187,6 +187,32 @@ namespace triagens {
           return _parents;
         }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inspect one index; only skiplist indices which match attrs in sequence.
+/// @returns a a qualification how good they match;
+///      match->index==nullptr means no match at all.
+////////////////////////////////////////////////////////////////////////////////
+        enum MatchType {
+          FULL_MATCH,
+          REVERSE_MATCH,
+          NOT_COVERED_IDX,
+          NOT_COVERED_ATTR,
+          NO_MATCH
+        };
+
+        struct IndexMatch{
+          TRI_index_t* index;     // The index concerned; if null, this is a nonmatch.
+          vector<MatchType> Match;// qualification of the attrs match quality
+          bool fullmatch;         // do all critereons match
+        };
+
+        typedef std::vector<std::pair<std::string, bool>> IndexMatchVec;
+
+        static IndexMatch CompareIndex (TRI_index_t* idx,
+                                        IndexMatchVec &attrs);
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replace a dependency, returns true if the pointer was found and 
 /// replaced, please note that this does not delete oldNode!
@@ -659,30 +685,6 @@ namespace triagens {
 
         std::vector<TRI_index_t*> getIndicesUnordered (vector<std::string> attrs) const;
 
-        enum MatchType {
-          FULL_MATCH,
-          REVERSE_MATCH,
-          NOT_COVERED_IDX,
-          NOT_COVERED_ATTR,
-          NO_MATCH
-        };
-
-        struct IndexMatch{
-          TRI_index_t* index;     // The index concerned; if null, this is a nonmatch.
-          vector<MatchType> Match;// qualification of the attrs match quality
-          bool fullmatch;         // do all critereons match
-        };
-
-        typedef std::vector<std::pair<std::string, bool>> IndexMatchVec;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief inspect one index; only skiplist indices which match attrs in sequence.
-/// @returns a a qualification how good they match;
-///      match->index==nullptr means no match at all.
-////////////////////////////////////////////////////////////////////////////////
-        IndexMatch CompareIndex (TRI_index_t* idx,
-                                 IndexMatchVec &attrs) const;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get vector of skiplist indices which match attrs in sequence.
 /// @returns a list of indexes with a qualification how good they match 
@@ -920,6 +922,11 @@ namespace triagens {
           v.push_back(_outVariable);
           return v;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether the pattern matches this nodes index
+////////////////////////////////////////////////////////////////////////////////
+        bool MatchesIndex (IndexMatchVec pattern) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

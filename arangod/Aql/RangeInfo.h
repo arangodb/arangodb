@@ -74,6 +74,34 @@ namespace triagens {
               ("include", Json(_include));
         return item;
       }
+      
+      TRI_index_operator_t* toIndexOperator (bool high, Json parameters,
+          TRI_shaper_t* shaper) const {
+        TRI_index_operator_type_e op;
+
+        if (high) {
+          if (_include) {
+            op = TRI_LE_INDEX_OPERATOR;
+          }
+          else {
+            op = TRI_LT_INDEX_OPERATOR;
+          }
+        } 
+        else {
+          if (_include) {
+            op = TRI_GE_INDEX_OPERATOR;
+          }
+          else {
+            op = TRI_GT_INDEX_OPERATOR;
+          }
+        }
+        std::cout << "\nparameters = " << parameters.toString() << "\n";
+        std::cout << "\n_bound = " << _bound.toString() << "\n";
+        parameters.add(_bound.get("value").copy());
+        size_t nr = parameters.size();
+        return TRI_CreateIndexOperator(op, NULL, NULL, parameters.steal(),
+            shaper, NULL, nr, NULL);
+      }
 
       Json _bound;
       bool _include;
@@ -127,7 +155,6 @@ namespace triagens {
           }
         }
 
-        //TODO improve 
         Json toJson () {
           Json item(basics::Json::Array);
           item("var", Json(_var))("attr", Json(_attr));
@@ -151,6 +178,36 @@ namespace triagens {
                   TRI_CheckSameValueJson(_low->_bound.json(), _high->_bound.json())
                   && _low->_include && _high->_include;
         }
+        
+        /*TRI_index_operator_t* toIndexOperator (TRI_shaper_t* shaper) {
+
+          // lower bound 
+          TRI_index_operator_t* left = nullptr;
+          if(_low != nullptr){
+            left = _low->toIndexOperator(false, shaper);
+          } 
+          
+          // upper bound
+          TRI_index_operator_t* right = nullptr;
+          if(_high != nullptr){
+            right = _high->toIndexOperator(true, shaper);
+          } 
+        
+          TRI_index_operator_t* out = nullptr;
+          if (left != nullptr) {
+            if (right != nullptr) {
+              out = TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, left, right,
+                  NULL, shaper, NULL, 2, NULL);
+            } 
+            else {
+              out = left;
+            }
+          }
+          else if (right != nullptr) {
+            out = right;
+          }
+          return out;
+        }*/
 
         std::string _var;
         std::string _attr;
@@ -230,6 +287,9 @@ namespace triagens {
           private: 
         std::unordered_map<std::string, std::unordered_map<std::string, RangeInfo*>> _ranges; 
     };
+
+
+    typedef std::vector<std::vector<RangeInfo*>> RangeInfoVec;
   }
 }
 
