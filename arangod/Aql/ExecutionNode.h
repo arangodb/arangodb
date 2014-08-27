@@ -654,10 +654,10 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get vector of indexes that has any match in its fields with <attrs> 
+/// @brief get vector of indices that has any match in its fields with <attrs> 
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<TRI_index_t*> getIndexesUnordered (vector<std::string> attrs) const;
+        std::vector<TRI_index_t*> getIndicesUnordered (vector<std::string> attrs) const;
 
         enum MatchType {
           FULL_MATCH,
@@ -689,7 +689,7 @@ namespace triagens {
 ///    the specified indexes.
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<IndexMatch> getIndexesOrdered (IndexMatchVec &attrs) const;
+        std::vector<IndexMatch> getIndicesOrdered (IndexMatchVec &attrs) const;
 
         TRI_vocbase_t* vocbase () const {
           return _vocbase;
@@ -1487,6 +1487,10 @@ namespace triagens {
         std::vector<std::pair<Variable const*, bool>> getElements () {
           return _elements;
         }
+
+
+        std::vector<std::pair<CalculationNode*, bool>> getCalcNodePairs ();
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
