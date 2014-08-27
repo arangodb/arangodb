@@ -654,10 +654,10 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get vector of indexes that has any match in its fields with <attrs> 
+/// @brief get vector of indices that has any match in its fields with <attrs> 
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<TRI_index_t*> getIndexesUnordered (vector<std::string> attrs) const;
+        std::vector<TRI_index_t*> getIndicesUnordered (vector<std::string> attrs) const;
 
         enum MatchType {
           FULL_MATCH,
@@ -689,7 +689,7 @@ namespace triagens {
 ///    the specified indexes.
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<IndexMatch> getIndexesOrdered (IndexMatchVec &attrs) const;
+        std::vector<IndexMatch> getIndicesOrdered (IndexMatchVec &attrs) const;
 
         TRI_vocbase_t* vocbase () const {
           return _vocbase;
@@ -1291,13 +1291,12 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief can the node throw?
+/// @brief can the node throw? Note that this means that an exception can
+/// *originate* from this node. That is, this method does not need to
+/// return true just because a dependent node can throw an exception.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool canThrow () {
-          std::cout << "SubqueryNode method for canThrow is not implemented!\n";
-          return true;
-        }
+        bool canThrow ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -1487,6 +1486,10 @@ namespace triagens {
         std::vector<std::pair<Variable const*, bool>> getElements () {
           return _elements;
         }
+
+
+        std::vector<std::pair<CalculationNode*, bool>> getCalcNodePairs ();
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
