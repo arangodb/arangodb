@@ -641,7 +641,11 @@ bool AstNode::isComparisonOperator () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AstNode::alwaysProducesBoolValue () const {
-  return (isBoolValue() || isComparisonOperator());
+  return (isBoolValue() || 
+          isComparisonOperator() ||
+          type == NODE_TYPE_OPERATOR_BINARY_AND ||
+          type == NODE_TYPE_OPERATOR_BINARY_OR ||
+          type == NODE_TYPE_OPERATOR_UNARY_NOT);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -663,10 +667,14 @@ bool AstNode::canThrow () const {
   // no sub-node throws, now check ourselves
 
   if (type == NODE_TYPE_OPERATOR_UNARY_PLUS ||
-      type == NODE_TYPE_OPERATOR_UNARY_MINUS ||
-      type == NODE_TYPE_OPERATOR_UNARY_NOT) {
+      type == NODE_TYPE_OPERATOR_UNARY_MINUS) {
     // all unary operators may throw
     return true;
+  }
+      
+  if (type == NODE_TYPE_OPERATOR_UNARY_NOT) {
+    // we can throw if the sole operand is not a boolean
+    return (! getMember(0)->alwaysProducesBoolValue());
   }
 
   if (type == NODE_TYPE_OPERATOR_BINARY_AND ||
