@@ -236,7 +236,7 @@
         "@collection": this.collectionID
       };
 
-      query = "FOR x in " + this.collectionID;
+      query = "FOR x in @@collection";
       query += this.setFiltersForQuery(bindVars);
       // Sort result, only useful for a small number of docs
       if (this.getTotal() < this.MAX_SORT) {
@@ -250,7 +250,7 @@
         bindVars: bindVars
       };
 
-      return query;
+      return queryObj;
     },
 
     updloadDocuments : function (file) {

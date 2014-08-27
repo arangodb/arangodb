@@ -1,5 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports */
+/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
+/*global require, exports, Buffer */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Some crypto functions
@@ -142,6 +142,7 @@ exports.checkAndMarkNonce = function (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.constantEquals = function (a, b) {
+  'use strict';
   var length, result, i;
   length = a.length > b.length ? a.length : b.length;
   result = true;
@@ -151,6 +152,80 @@ exports.constantEquals = function (a, b) {
     }
   }
   return result;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Encodes JSON Web Token
+////////////////////////////////////////////////////////////////////////////////
+
+function jwtUrlEncode(str) {
+  'use strict';
+  return str.replace(/[+]/g, '-').replace(/[\/]/g, '_').replace(/[=]/g, '');
+}
+
+exports.jwtEncode = function (key, message, algorithm) {
+  'use strict';
+  if (!algorithm) {
+    algorithm = 'HS256';
+  } else if (algorithm.toLowerCase() === 'none') {
+    algorithm = 'none';
+  } else if (algorithm.toUpperCase() === 'HS256') {
+    algorithm = 'HS256';
+  } else {
+    throw new Error('Only HS256 and none are supported at this time!');
+  }
+  var header = {typ: 'JWT', alg: algorithm}, segments = [];
+  segments.push(jwtUrlEncode(new Buffer(JSON.stringify(header)).toString('base64')));
+  segments.push(jwtUrlEncode(new Buffer(JSON.stringify(message)).toString('base64')));
+  if (algorithm === 'HS256') {
+    segments.push(jwtUrlEncode(new Buffer(exports.hmac(key, segments.join('.'), 'sha256'), 'hex').toString('base64')));
+  } else if (algorithm === 'none') {
+    segments.push('');
+  }
+  return segments.join('.');
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Decodes JSON Web Token
+////////////////////////////////////////////////////////////////////////////////
+
+function jwtUrlDecode(str) {
+  'use strict';
+  while ((str.length % 4) !== 0) {
+    str += '=';
+  }
+  return str.replace(/\-/g, '+').replace(/_/g, '/');
+}
+
+exports.jwtDecode = function (key, token, noVerify) {
+  'use strict';
+  if (!token) {
+    return null;
+  }
+
+  var segments = token.split('.');
+  if (segments.length !== 3) {
+    throw new Error('Wrong number of JWT segments!');
+  }
+  var headerSeg = new Buffer(jwtUrlDecode(segments[0]), 'base64').toString();
+  var messageSeg = new Buffer(jwtUrlDecode(segments[1]), 'base64').toString();
+  segments[2] = new Buffer(jwtUrlDecode(segments[2]), 'base64').toString('hex');
+
+  if (!noVerify) {
+    var header = JSON.parse(headerSeg);
+    if (header.alg.toUpperCase() === 'HS256') {
+      if (!exports.constantEquals(
+        exports.hmac(key, segments.slice(0, 2).join('.'), 'sha256'),
+          segments[2]
+      )) {
+        throw new Error('Signature verification failed!');
+      }
+    } else if (header.alg.toLowerCase() !== 'none') {
+      throw new Error('Only HS256 and none are supported at this time!');
+    }
+  }
+
+  return JSON.parse(messageSeg);
 };
 
 // -----------------------------------------------------------------------------

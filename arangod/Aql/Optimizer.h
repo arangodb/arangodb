@@ -49,6 +49,7 @@ namespace triagens {
 
         struct PlanList {
           std::deque<ExecutionPlan*> list;
+          std::deque<int> levelDone;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -60,8 +61,8 @@ namespace triagens {
 /// @brief constructor with a plan
 ////////////////////////////////////////////////////////////////////////////////
 
-          PlanList (ExecutionPlan* p) {
-            list.push_back(p);
+          PlanList (ExecutionPlan* p, int level) {
+            push_back(p, level);
           }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -83,12 +84,22 @@ namespace triagens {
           }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if empty
+////////////////////////////////////////////////////////////////////////////////
+
+          bool empty () const {
+            return list.empty();
+          }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief pop the first one
 ////////////////////////////////////////////////////////////////////////////////
 
-          ExecutionPlan* pop_front () {
+          ExecutionPlan* pop_front (int& levelDoneOut) {
             auto p = list.front();
+            levelDoneOut = levelDone.front();
             list.pop_front();
+            levelDone.pop_front();
             return p;
           }
 
@@ -96,8 +107,15 @@ namespace triagens {
 /// @brief push_back
 ////////////////////////////////////////////////////////////////////////////////
 
-          void push_back (ExecutionPlan* p) {
+          void push_back (ExecutionPlan* p, int level) {
             list.push_back(p);
+            try {
+              levelDone.push_back(level);
+            }
+            catch (...) {
+              list.pop_back();
+              throw;
+            }
           }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -106,22 +124,26 @@ namespace triagens {
 
           void steal (PlanList& b) {
             list.swap(b.list);
+            levelDone.swap(b.levelDone);
             for (auto p : b.list) {
               delete p;
             }
             b.list.clear();
+            b.levelDone.clear();
           }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends all the plans to the target and clears *this at the same time
 ////////////////////////////////////////////////////////////////////////////////
 
-          void appendTo (std::vector<ExecutionPlan*>& target) {
+          void appendTo (PlanList& target) {
             while (list.size() > 0) {
               auto p = list.front();
+              int level = levelDone.front();
               list.pop_front();
+              levelDone.pop_front();
               try {
-                target.push_back(p);
+                target.push_back(p, level);
               }
               catch (...) {
                 delete p;
@@ -130,20 +152,34 @@ namespace triagens {
             }
           }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clear, deletes all plans contained
+////////////////////////////////////////////////////////////////////////////////
+
+          void clear () {
+            for (auto p : list) {
+              delete p;
+            }
+            list.clear();
+            levelDone.clear();
+          }
+
         };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief type of an optimizer rule function, the function gets an optimiser,
-/// an ExecutionPlan and has to append one or more plans to the resulting
-/// deque. This must not include the original plan. The rule has to set keep
-/// to indicate whether or not the original plan is kept in the resulting
-/// list. Note that the optimization is done in multiple passes 
+/// @brief type of an optimizer rule function, the function gets an
+/// optimiser, an ExecutionPlan, the current level of this rule and
+/// has to append one or more plans to the resulting deque. This must
+/// include the original plan if it ought to be kept. The rule has to
+/// set the level of the appended plan to the largest level of rule
+/// that ought to be considered as done to indicate which rule is to be
+/// applied next.
 ////////////////////////////////////////////////////////////////////////////////
 
         typedef std::function<int(Optimizer* opt, 
-                                  ExecutionPlan* plan, 
-                                  PlanList& out,
-                                  bool& keep)>
+                                  ExecutionPlan* plan,
+                                  int level,
+                                  PlanList& out)>
                 RuleFunction;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -152,10 +188,10 @@ namespace triagens {
 
         struct Rule {
           RuleFunction func;
-          int rank;
+          int level;
 
-          Rule (RuleFunction f, int r)
-            : func(f), rank(r) {
+          Rule (RuleFunction f, int l)
+            : func(f), level(l) {
           }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -163,16 +199,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
           bool operator< (Rule const& b) const {
-            return rank > b.rank;
+            return level < b.level;
           }
 
         };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief number of passes in optimization
-////////////////////////////////////////////////////////////////////////////////
-
-        static int const numberOfPasses = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximal number of plans to produce:
@@ -192,10 +222,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~Optimizer () {
-          for (auto p : _plans) {
-            delete p;
-          }
-          _plans.clear();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -219,15 +245,15 @@ namespace triagens {
           if (_plans.empty()) {
             return nullptr;
           }
-          return _plans[0];
+          return _plans.list.front();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getPlans, ownership of the plans remains with the optimizer
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<ExecutionPlan*>& getPlans () {
-          return _plans;
+        std::deque<ExecutionPlan*>& getPlans () {
+          return _plans.list;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -239,11 +265,12 @@ namespace triagens {
           if (_plans.empty()) {
             return nullptr;
           }
-          auto res = _plans[0];
+          auto res = _plans.list.front();
           for (size_t i = 1; i < _plans.size(); i++) {
-            delete _plans[i];
+            delete _plans.list[i];
           }
-          _plans.clear();
+          _plans.list.clear();
+          _plans.levelDone.clear();
 
           std::cout << res->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString() << "\n";
           return res;
@@ -254,9 +281,10 @@ namespace triagens {
 /// the optimizer will forget about them!
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<ExecutionPlan*> stealPlans () {
-          std::vector<ExecutionPlan*> res;
-          res.swap(_plans);
+        std::deque<ExecutionPlan*> stealPlans () {
+          std::deque<ExecutionPlan*> res;
+          res.swap(_plans.list);
+          _plans.levelDone.clear();
           return res;
         }
 
@@ -270,8 +298,8 @@ namespace triagens {
 /// @brief registerRule
 ////////////////////////////////////////////////////////////////////////////////
 
-        void registerRule (RuleFunction f, int pass) {
-          _rules.emplace_back(f, pass);
+        void registerRule (RuleFunction f, int level) {
+          _rules.emplace_back(f, level);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -302,7 +330,7 @@ namespace triagens {
 /// @brief the current set of plans to be optimised
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<ExecutionPlan*> _plans;
+        PlanList _plans;
 
     };
 
