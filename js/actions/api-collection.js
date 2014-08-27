@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 150, sloppy: true, vars: true, white: true, plusplus: true, stupid: true */
 /*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -162,7 +161,7 @@ function parseBodyForCreateCollection (req, res) {
   if (body.hasOwnProperty("distributeShardsLike") && cluster.isCoordinator()) {
     r.parameter.distributeShardsLike = body.distributeShardsLike || "";
   }
-  
+
   return r;
 }
 

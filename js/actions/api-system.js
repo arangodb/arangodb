@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, evil: true */
 /*global require, exports, module, ArangoServerState */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -179,8 +178,7 @@ actions.defineHttp({
       return;
     }
 
-    /*jslint node: true, stupid: true */
-    internal.wal.flush(req.parameters.waitForSync === "true",
+        internal.wal.flush(req.parameters.waitForSync === "true",
                        req.parameters.waitForCollector === "true");
     actions.resultOk(req, res, actions.HTTP_OK);
   }
@@ -1014,6 +1012,7 @@ actions.defineHttp({
   prefix : false,
 
   callback : function (req, res) {
+    /*jshint evil: true */
     var body = req.requestBody;
     var result;
 
