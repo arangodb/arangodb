@@ -904,11 +904,13 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the cost of an enumerate collection node is a multiple of the cost of
+/// @brief the cost of an index range node is a multiple of the cost of
 /// its unique dependency
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () { 
+          // TODO: take into accout that we might have the range -inf ... +inf
+          // if we use the index only for sorting 
           return 1;
           //FIXME improve this estimate . . .
         }
@@ -926,6 +928,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the pattern matches this nodes index
 ////////////////////////////////////////////////////////////////////////////////
+
         bool MatchesIndex (IndexMatchVec pattern) const;
 
 // -----------------------------------------------------------------------------
