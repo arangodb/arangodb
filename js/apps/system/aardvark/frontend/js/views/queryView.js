@@ -557,13 +557,15 @@
       var inputEditor = ace.edit("aqlEditor");
       var selectedText = inputEditor.session.getTextRange(inputEditor.getSelectionRange());
 
-
       var sizeBox = $('#querySize');
       var data = {
         query: selectedText || inputEditor.getValue(),
         batchSize: parseInt(sizeBox.val(), 10)
       };
       var outputEditor = ace.edit("queryOutput");
+
+      // clear result
+      outputEditor.setValue('');
 
       window.progressView.show("Query is operating...");
       $.ajax({
@@ -583,7 +585,7 @@
           try {
             var temp = JSON.parse(data.responseText);
             outputEditor.setValue('[' + temp.errorNum + '] ' + temp.errorMessage);
-            arangoHelper.arangoError("Query error",temp.errorNum);
+            arangoHelper.arangoError("Query error", temp.errorNum);
           }
           catch (e) {
             outputEditor.setValue('ERROR');
