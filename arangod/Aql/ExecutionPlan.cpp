@@ -1198,6 +1198,38 @@ ExecutionNode* ExecutionPlan::fromJson (Ast* ast,
   return ret;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief show an overview over the plan
+////////////////////////////////////////////////////////////////////////////////
+
+struct Shower : public WalkerWorker<ExecutionNode> {
+  int indent;
+  Shower () : indent(0) {
+  }
+  ~Shower () {}
+
+  bool enterSubquery (ExecutionNode* super, ExecutionNode* sub) {
+    indent++;
+    return true;
+  }
+
+  void leaveSubquery (ExecutionNode* super, ExecutionNode* sub) {
+    indent--;
+  }
+
+  void after (ExecutionNode* en) {
+    for (int i = 0; i < indent; i++) {
+      std::cout << ' ';
+    }
+    std::cout << en->getTypeString() << std::endl;
+  }
+};
+
+void ExecutionPlan::show () {
+  Shower shower;
+  _root->walk(&shower);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
