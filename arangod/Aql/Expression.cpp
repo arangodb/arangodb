@@ -335,7 +335,10 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
 }
 
 
-bool Expression::isSimpleAccessReference() const {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether this is a simple access to a variable with n attributes.
+////////////////////////////////////////////////////////////////////////////////
+bool Expression::isMultipleAttributeAccess () const {
   if (!isSimple()) {
     return false;
   }
@@ -353,7 +356,11 @@ bool Expression::isSimpleAccessReference() const {
   return (expNode->type == triagens::aql::NODE_TYPE_REFERENCE);
 }
 
-std::pair<std::string, std::string> Expression::getAccessNRef() const {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief this gives you ("variable.access", "Reference")
+/// call isSimpleAccessReference in advance to enshure no exceptions.
+////////////////////////////////////////////////////////////////////////////////
+std::pair<std::string, std::string> Expression::getMultipleAttributes() const {
   if (!isSimple()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "getAccessNRef works only on simple expressions!");
@@ -386,9 +393,9 @@ std::pair<std::string, std::string> Expression::getAccessNRef() const {
                                    "getAccessNRef works only on simple expressions!");
   }
 
-  auto var = static_cast<Variable*>(expNode->getData());
+  auto variable = static_cast<Variable*>(expNode->getData());
 
-  return std::make_pair(attributeVectorStr, var->name);
+  return std::make_pair(variable->name, attributeVectorStr);
 
 }
 
