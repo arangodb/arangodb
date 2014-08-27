@@ -151,17 +151,17 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether this is a simple access to a Reference.
+/// @brief check whether this is a simple access to a variable with n attributes.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isSimpleAccessReference () const;
+        bool isMultipleAttributeAccess () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this gives you ("variable.access", "Reference")
 /// call isSimpleAccessReference in advance to enshure no exceptions.
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::pair<std::string, std::string> getAccessNRef() const;
+        std::pair<std::string, std::string> getMultipleAttributes() const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
