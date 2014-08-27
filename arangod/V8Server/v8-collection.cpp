@@ -126,7 +126,6 @@ static inline bool ExtractWaitForSync (v8::Arguments const& argv,
   return (argv.Length() >= index && TRI_ObjectToBoolean(argv[index - 1]));
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the update policy from a boolean parameter
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,7 +133,6 @@ static inline bool ExtractWaitForSync (v8::Arguments const& argv,
 static inline TRI_doc_update_policy_e ExtractUpdatePolicy (bool overwrite) {
   return (overwrite ? TRI_DOC_UPDATE_LAST_WRITE : TRI_DOC_UPDATE_ERROR);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a v8 collection id value from the internal collection id
@@ -268,7 +266,6 @@ static v8::Handle<v8::Value> ParseDocumentOrDocumentHandle (TRI_vocbase_t* vocba
 
   TRI_ASSERT(collection != nullptr);
 
-  v8::Handle<v8::Value> empty;
   return scope.Close(v8::Handle<v8::Value>());
 }
 
@@ -307,7 +304,7 @@ static int ParseKeyAndRef (v8::Handle<v8::Value> const arg,
 
   size_t pos = key.find('/');
   if (pos != string::npos) {
-    key = key.substr(pos+1);
+    key = key.substr(pos + 1);
   }
   return TRI_ERROR_NO_ERROR;
 }
@@ -356,14 +353,14 @@ static v8::Handle<v8::Value> DocumentVocbaseColCoordinator (TRI_vocbase_col_t co
   // For the error processing we have to distinguish whether we are in
   // the ".exists" case (generateDocument==false) or the ".document" case
   // (generateDocument==true).
-  TRI_json_t* json = 0;
+  TRI_json_t* json = nullptr;
   if (generateDocument) {
     json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
   }
   if (responseCode >= triagens::rest::HttpResponse::BAD) {
-    if (!TRI_IsArrayJson(json)) {
+    if (! TRI_IsArrayJson(json)) {
       if (generateDocument) {
-        if (0 != json) {
+        if (nullptr != json) {
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         }
         TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
@@ -375,15 +372,15 @@ static v8::Handle<v8::Value> DocumentVocbaseColCoordinator (TRI_vocbase_col_t co
     if (generateDocument) {
       int errorNum = 0;
       string errorMessage;
-      if (0 != json) {
+      if (nullptr != json) {
         TRI_json_t* subjson = TRI_LookupArrayJson(json, "errorNum");
-        if (0 != subjson && TRI_IsNumberJson(subjson)) {
+        if (nullptr != subjson && TRI_IsNumberJson(subjson)) {
           errorNum = static_cast<int>(subjson->_value._number);
         }
         subjson = TRI_LookupArrayJson(json, "errorMessage");
-        if (0 != subjson && TRI_IsStringJson(subjson)) {
+        if (nullptr != subjson && TRI_IsStringJson(subjson)) {
           errorMessage = string(subjson->_value._string.data,
-                                subjson->_value._string.length-1);
+                                subjson->_value._string.length - 1);
         }
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       }
@@ -396,14 +393,14 @@ static v8::Handle<v8::Value> DocumentVocbaseColCoordinator (TRI_vocbase_col_t co
   if (generateDocument) {
     v8::Handle<v8::Value> ret = TRI_ObjectJson(json);
 
-    if (0 != json) {
+    if (nullptr != json) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
     return scope.Close(ret);
   }
   else {
     // Note that for this case we will never get a 304 "NOT_MODIFIED"
-    if (json != 0) {
+    if (json != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
     return scope.Close(v8::True());
@@ -450,7 +447,7 @@ static v8::Handle<v8::Value> DocumentVocbaseCol (bool useCollection,
   V8ResolverGuard resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, resolver.getResolver(), col, key, rid, argv[0]);
 
-  LocalCollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
+  LocalCollectionGuard g(useCollection ? nullptr : const_cast<TRI_vocbase_col_t*>(col));
 
   if (key == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -630,7 +627,7 @@ static v8::Handle<v8::Value> ExistsVocbaseCol (bool useCollection,
   V8ResolverGuard resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, resolver.getResolver(), col, key, rid, argv[0]);
 
-  LocalCollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
+  LocalCollectionGuard g(useCollection ? nullptr : const_cast<TRI_vocbase_col_t*>(col));
 
   if (key == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -757,20 +754,20 @@ static v8::Handle<v8::Value> ModifyVocbaseColCoordinator (
   // 400/404
   json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
   if (responseCode >= triagens::rest::HttpResponse::BAD) {
-    if (!TRI_IsArrayJson(json)) {
-      if (0 != json) {
+    if (! TRI_IsArrayJson(json)) {
+      if (nullptr != json) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       }
       TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
     }
     int errorNum = 0;
     TRI_json_t* subjson = TRI_LookupArrayJson(json, "errorNum");
-    if (0 != subjson && TRI_IsNumberJson(subjson)) {
+    if (TRI_IsNumberJson(subjson)) {
       errorNum = static_cast<int>(subjson->_value._number);
     }
     string errorMessage;
     subjson = TRI_LookupArrayJson(json, "errorMessage");
-    if (0 != subjson && TRI_IsStringJson(subjson)) {
+    if (TRI_IsStringJson(subjson)) {
       errorMessage = string(subjson->_value._string.data,
                             subjson->_value._string.length-1);
     }
@@ -792,7 +789,6 @@ static v8::Handle<v8::Value> ModifyVocbaseColCoordinator (
     return scope.Close(ret);
   }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces a document
@@ -869,7 +865,7 @@ static v8::Handle<v8::Value> ReplaceVocbaseCol (bool useCollection,
   V8ResolverGuard resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, resolver.getResolver(), col, key, rid, argv[0]);
 
-  LocalCollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
+  LocalCollectionGuard g(useCollection ? nullptr : const_cast<TRI_vocbase_col_t*>(col));
 
   if (key == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -1326,21 +1322,21 @@ static v8::Handle<v8::Value> RemoveVocbaseColCoordinator (TRI_vocbase_col_t cons
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, resultBody.c_str());
   if (responseCode >= triagens::rest::HttpResponse::BAD) {
     if (! TRI_IsArrayJson(json)) {
-      if (0 != json) {
+      if (nullptr != json) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       }
       TRI_V8_EXCEPTION(scope, TRI_ERROR_INTERNAL);
     }
     int errorNum = 0;
     TRI_json_t* subjson = TRI_LookupArrayJson(json, "errorNum");
-    if (0 != subjson && TRI_IsNumberJson(subjson)) {
+    if (TRI_IsNumberJson(subjson)) {
       errorNum = static_cast<int>(subjson->_value._number);
     }
     string errorMessage;
     subjson = TRI_LookupArrayJson(json, "errorMessage");
-    if (0 != subjson && TRI_IsStringJson(subjson)) {
+    if (TRI_IsStringJson(subjson)) {
       errorMessage = string(subjson->_value._string.data,
-                            subjson->_value._string.length-1);
+                            subjson->_value._string.length - 1);
     }
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
@@ -1428,7 +1424,7 @@ static v8::Handle<v8::Value> RemoveVocbaseCol (bool useCollection,
   V8ResolverGuard resolver(vocbase);
   v8::Handle<v8::Value> err = ParseDocumentOrDocumentHandle(vocbase, resolver.getResolver(), col, key, rid, argv[0]);
 
-  LocalCollectionGuard g(useCollection ? 0 : const_cast<TRI_vocbase_col_t*>(col));
+  LocalCollectionGuard g(useCollection ? nullptr : const_cast<TRI_vocbase_col_t*>(col));
 
   if (key == nullptr) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
@@ -1605,7 +1601,6 @@ static v8::Handle<v8::Value> JS_DropVocbaseCol (v8::Arguments const& argv) {
 
   return scope.Close(v8::Undefined());
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether a document exists
@@ -1868,7 +1863,6 @@ static v8::Handle<v8::Value> JS_FiguresVocbaseCol (v8::Arguments const& argv) {
 
   return scope.Close(result);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads a collection
