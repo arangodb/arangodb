@@ -1,4 +1,5 @@
-/*global module, require, exports, ArangoAgency */
+/*jshint unused: false */
+/*global require, exports, ArangoAgency */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Agency Communication

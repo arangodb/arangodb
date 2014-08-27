@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require, exports, module, ArangoServerState */
+/*global require, ArangoServerState */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief administration actions

@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
+/*jshint browser: true */
+/*jshint unused: false */
 /*global describe, beforeEach, afterEach, it, spyOn, expect,
  require, jasmine,  exports, window */
 (function () {
@@ -38,7 +39,7 @@
       });
       spyOn(window.App, "registerForUpdate").andCallFake(function(o) {
         o.updateUrl();
-      }); 
+      });
       spyOn(window.App, "addAuth");
       col = new window.ClusterStatisticsCollection();
     });

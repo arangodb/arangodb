@@ -1,4 +1,4 @@
-/*jshint strict: false */
+/*jshint strict: false, unused: false */
 /*global require, exports, COMPARE_STRING, MATCHES */
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,4 +1,4 @@
-/*jshint strict: false */
+/*jshint strict: false, unused: false */
 /*global ArangoAgency, ArangoClusterComm, ArangoClusterInfo, ArangoServerState, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -35,7 +35,6 @@ var ArangoError = arangodb.ArangoError;
 var PortFinder = require("org/arangodb/cluster/planner").PortFinder;
 var Planner = require("org/arangodb/cluster/planner").Planner;
 var Kickstarter = require("org/arangodb/cluster/kickstarter").Kickstarter;
-var internal = require("internal");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get values from Plan or Current by a prefix

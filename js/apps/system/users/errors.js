@@ -1,4 +1,4 @@
-/*global require, exports */
+/*global exports */
 (function () {
   'use strict';
   function UserNotFound(uid) {

@@ -1,4 +1,4 @@
-/*global module, require, exports */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx Controller
@@ -30,7 +30,6 @@
 var Controller,
   RequestContext = require("org/arangodb/foxx/request_context").RequestContext,
   RequestContextBuffer = require("org/arangodb/foxx/request_context").RequestContextBuffer,
-  db = require("org/arangodb").db,
   BaseMiddleware = require("org/arangodb/foxx/base_middleware").BaseMiddleware,
   _ = require("underscore"),
   extend = _.extend,

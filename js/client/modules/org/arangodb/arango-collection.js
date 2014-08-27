@@ -159,7 +159,7 @@ ArangoCollection.prototype._documenturl = function (id) {
 /// @brief return the base url for collection index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype._indexurl = function (suffix) {
+ArangoCollection.prototype._indexurl = function () {
   return this._prefixurl("/_api/index?collection=" + encodeURIComponent(this.name()));
 };
 

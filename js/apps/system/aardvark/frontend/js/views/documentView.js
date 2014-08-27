@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true, forin: true */
+/*jshint browser: true */
+/*jshint unused: false */
 /*global require, exports, Backbone, EJS, $, window, arangoHelper, jsoneditor, templateEngine */
 /*global document, _ */
 

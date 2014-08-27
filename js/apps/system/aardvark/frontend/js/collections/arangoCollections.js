@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true, stupid: true*/
+/*jshint browser: true */
+/*jshint unused: false */
 /*global require, exports, Backbone, window, arangoCollectionModel, $, arangoHelper, data, _ */
 (function() {
   "use strict";
@@ -23,7 +24,7 @@
         switch (status) {
           case 0:
             return 'corrupted';
-          case 1: 
+          case 1:
             return 'new born collection';
           case 2:
             return 'unloaded';
@@ -91,7 +92,7 @@
       getFiltered : function (options) {
         var result = [ ];
         var searchPhrases = [ ];
-          
+
         if (options.searchPhrase !== null) {
           var searchPhrase = options.searchPhrase.toLowerCase();
           // kick out whitespace

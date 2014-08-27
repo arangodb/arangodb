@@ -1,3 +1,4 @@
+/*jshint strict: false */
 /*global require, exports, Graph, ArangoClusterComm, arguments */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1720,7 +1721,7 @@ var _create = function (graphName, edgeDefinitions, orphanCollections, options) 
   );
 
   try {
-    var g = gdb.document(graphName);
+    gdb.document(graphName);
   } catch (e) {
     if (e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
       throw e;

@@ -43,7 +43,6 @@
 (function () {
   "use strict";
   var internal = require("internal");
-  var db = internal.db;
 
   // in the cluster the kickstarter will call boostrap-role.js
   if (ArangoAgency.prefix() !== "") {

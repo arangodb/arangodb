@@ -1,5 +1,6 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
-/*global window, document, Backbone, EJS, SwaggerUi, hljs, templateEngine, $ */
+/*jshint browser: true */
+/*jshint unused: false */
+/*global window, document, Backbone, SwaggerUi, hljs, templateEngine, $ */
 (function() {
   "use strict";
   window.ApiView = Backbone.View.extend({
@@ -33,7 +34,7 @@
           docExpansion: "none"
       });
     },
-    
+
     render: function(){
       $(this.el).html(this.template.render({}));
       this.swaggerUi.load();

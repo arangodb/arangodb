@@ -1,4 +1,4 @@
-/*jshint strict: false */
+/*jshint strict: false, unused: false */
 /*global require, exports, FORMAT_DATETIME, PARSE_DATETIME */
 
 ////////////////////////////////////////////////////////////////////////////////

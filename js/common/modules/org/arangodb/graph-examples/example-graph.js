@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require, exports, Graph, arguments */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph Data for Example

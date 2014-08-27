@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, continue: true, regexp: true */
 /*global require, _, Dygraph, window, document */
 
 (function () {
@@ -166,7 +165,7 @@
         div: "requestsChart"
       }
     },
-    
+
     getDashBoardFigures : function (all) {
       var result = [], self = this;
       Object.keys(this.figureDependedOptions).forEach(function (k) {
@@ -243,7 +242,7 @@
           interactionModel: null,
           showLabelsOnHighlight: true,
           highlightCircleSize: 2.5,
-          legend: "always", 
+          legend: "always",
           labelsDiv: "div#detailLegend.dashboard-legend-inner"
         }
       );

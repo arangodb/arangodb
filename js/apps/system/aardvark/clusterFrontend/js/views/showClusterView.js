@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true, continue: true */
 /*global window, $, Backbone, templateEngine, alert, _, d3, Dygraph, document */
 
 (function() {
@@ -366,7 +365,7 @@
       var cbCounter = statCollect.size();
 
       this.data = [];
-      
+
       var successCB = function(m) {
         cbCounter--;
         var time = m.get("time");
@@ -421,8 +420,7 @@
     .data(pie(dataset))
     .enter().append("g")
     .attr("class", "slice");
-    /*jslint unparam: true*/
-    slices.append("path")
+        slices.append("path")
     .attr("d", arc)
     .style("fill", function (item, i) {
       return color[i % color.length];
@@ -430,8 +428,7 @@
     .style("stroke", function (item, i) {
       return color[i % color.length];
     });
-    /*jslint unparam: false*/
-    slices.append("text")
+        slices.append("text")
     .attr("transform", function(d) { return "translate(" + arc.centroid(d) + ")"; })
     // .attr("dy", "0.35em")
     .style("text-anchor", "middle")

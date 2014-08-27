@@ -1,5 +1,5 @@
-/*jshint strict: false */
-/*global require, exports, module, SYS_CLUSTER_TEST, UPGRADE_ARGS: true,
+/*jshint strict: false, unused: false */
+/*global require, SYS_CLUSTER_TEST, UPGRADE_ARGS: true,
   ArangoServerState, ArangoClusterComm, ArangoClusterInfo */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -34,8 +34,6 @@
 var actions = require("org/arangodb/actions");
 var cluster = require("org/arangodb/cluster");
 var internal = require("internal");
-var console = require("console");
-var fs = require("fs");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions

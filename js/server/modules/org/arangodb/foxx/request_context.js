@@ -1,4 +1,4 @@
-/*global module, require, exports */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx Request Context
@@ -521,7 +521,7 @@ extend(RequestContext.prototype, {
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  onlyIf: function (check, ErrorClass) {
+  onlyIf: function (check) {
     'use strict';
     var handler = this.route.action.callback;
     this.route.action.callback = addCheck(handler, check);

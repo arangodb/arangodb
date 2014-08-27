@@ -1,4 +1,4 @@
-/*jshint strict: false, -W051: true */
+/*jshint strict: false, unused: false, -W051: true */
 /*global require, module, Module, ArangoError, SleepAndRequeue,
   CONFIGURE_ENDPOINT, REMOVE_ENDPOINT, LIST_ENDPOINTS, STARTUP_PATH,
   SYS_BASE64DECODE, SYS_BASE64ENCODE, SYS_DEBUG_SEGFAULT,
