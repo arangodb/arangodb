@@ -334,6 +334,65 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unhandled type in simple expression");
 }
 
+
+bool Expression::isSimpleAccessReference() const {
+  if (!isSimple()) {
+    return false;
+  }
+
+  auto expNode = _node;
+
+  if (expNode->type != triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    return false;
+  }
+
+  while (expNode->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    expNode = expNode->getMember (0);
+  }
+  
+  return (expNode->type == triagens::aql::NODE_TYPE_REFERENCE);
+}
+
+std::pair<std::string, std::string> Expression::getAccessNRef() const {
+  if (!isSimple()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "getAccessNRef works only on simple expressions!");
+  }
+
+  auto expNode = _node;
+  std::vector<std::string> attributeVector;
+
+  if (expNode->type != triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "getAccessNRef works only on simple expressions!");
+  }
+
+  while (expNode->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+    attributeVector.push_back(expNode->getStringValue());
+    expNode = expNode->getMember (0);
+  }
+  
+  std::string attributeVectorStr = "";
+  for (auto oneAttr = attributeVector.rbegin();
+       oneAttr != attributeVector.rend();
+       ++oneAttr) {
+    if (attributeVectorStr.size() > 0)
+      attributeVectorStr += std::string(".");
+    attributeVectorStr += *oneAttr;
+  }
+
+  if (expNode->type != triagens::aql::NODE_TYPE_REFERENCE) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "getAccessNRef works only on simple expressions!");
+  }
+
+  auto var = static_cast<Variable*>(expNode->getData());
+
+  return std::make_pair(attributeVectorStr, var->name);
+
+}
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
