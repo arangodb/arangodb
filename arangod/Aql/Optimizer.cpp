@@ -34,37 +34,16 @@ using namespace triagens::aql;
 // --SECTION--                                               the optimizer class
 // -----------------------------------------------------------------------------
 
+std::vector<Optimizer::Rule> Optimizer::_rules;
+
 ////////////////////////////////////////////////////////////////////////////////
 // @brief constructor, this will initialize the rules database
 ////////////////////////////////////////////////////////////////////////////////
 
 Optimizer::Optimizer () {
-  // List all the rules in the system here:
-
-  // try to find sort blocks which are superseeded by indexes
-  registerRule("use-index-for-sort", useIndexForSort, 2000);
-
-
-  // try to find a filter after an enumerate collection and find an index . . . 
-  registerRule("use-index-range", useIndexRange, 999);
-
-  // remove filters from the query that are not necessary at all
-  // filters that are always true will be removed entirely
-  // filters that are always false will be replaced with a NoResults node
-  registerRule("remove-unnecessary-filters", removeUnnecessaryFiltersRule, 100);
-  
-  // move calculations up the dependency chain (to pull them out of inner loops etc.)
-  registerRule("move-calculations-up", moveCalculationsUpRule, 1000);
-
-  // move filters up the dependency chain (to make result sets as small as possible
-  // as early as possible)
-  registerRule("move-filters-up", moveFiltersUpRule, 1010);
-
-  // remove calculations that are never necessary
-  registerRule("remove-unnecessary-calculations", removeUnnecessaryCalculationsRule, 1020);
-
-  // Now sort them by level:
-  std::stable_sort(_rules.begin(), _rules.end());
+  if (_rules.empty()) {
+    setupRules();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,6 +156,41 @@ void Optimizer::sortPlans () {
   std::sort(_plans.list.begin(), _plans.list.end(), [](ExecutionPlan* const& a, ExecutionPlan* const& b) -> bool {
     return a->getCost() < b->getCost();
   });
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up the optimizer rules once and forever
+////////////////////////////////////////////////////////////////////////////////
+
+void Optimizer::setupRules () {
+  TRI_ASSERT(_rules.empty());
+
+  // List all the rules in the system here:
+
+  // try to find sort blocks which are superseeded by indexes
+  registerRule("use-index-for-sort", useIndexForSort, 2000);
+
+
+  // try to find a filter after an enumerate collection and find an index . . . 
+  registerRule("use-index-range", useIndexRange, 999);
+
+  // remove filters from the query that are not necessary at all
+  // filters that are always true will be removed entirely
+  // filters that are always false will be replaced with a NoResults node
+  registerRule("remove-unnecessary-filters", removeUnnecessaryFiltersRule, 100);
+  
+  // move calculations up the dependency chain (to pull them out of inner loops etc.)
+  registerRule("move-calculations-up", moveCalculationsUpRule, 1000);
+
+  // move filters up the dependency chain (to make result sets as small as possible
+  // as early as possible)
+  registerRule("move-filters-up", moveFiltersUpRule, 1010);
+
+  // remove calculations that are never necessary
+  registerRule("remove-unnecessary-calculations", removeUnnecessaryCalculationsRule, 1020);
+
+  // Now sort them by level:
+  std::stable_sort(_rules.begin(), _rules.end());
 }
 
 // Local Variables:
