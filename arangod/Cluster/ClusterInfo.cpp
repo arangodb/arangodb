@@ -650,7 +650,9 @@ void ClusterInfo::loadPlannedCollections (bool acquireLock) {
       _shards.insert(
               make_pair(collection,shared_ptr<vector<string> >(shards)));
 
-      // insert the collection into the existing map
+      // insert the collection into the existing map, insert it under its
+      // ID as well as under its name, so that a lookup can be done with
+      // either of the two.
 
       (*it2).second.insert(std::make_pair(collection, collectionData));
       (*it2).second.insert(std::make_pair(collectionData->name(),
@@ -687,7 +689,7 @@ shared_ptr<CollectionInfo> ClusterInfo::getCollection
       AllCollections::const_iterator it = _collections.find(databaseID);
 
       if (it != _collections.end()) {
-        // look up collection by id
+        // look up collection by id (or by name)
         DatabaseCollections::const_iterator it2 = (*it).second.find(collectionID);
 
         if (it2 != (*it).second.end()) {
