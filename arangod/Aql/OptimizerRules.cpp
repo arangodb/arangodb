@@ -548,87 +548,149 @@ int triagens::aql::useIndexRange (Optimizer* opt,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief try to match sorts to indices
 ////////////////////////////////////////////////////////////////////////////////
+class sortAnalysis
+{
+  using ECN = triagens::aql::EnumerateCollectionNode;
+  typedef std::pair<ECN::IndexMatchVec, RangeInfoVec> Range_IndexPair;
+  struct sortNodeData {
+    bool ASC;
+    size_t nodeID;
+    std::string collection;/// variablename todo
+    std::string attributevec;
+  };
 
-class sortToIndexNode : public WalkerWorker<ExecutionNode> {
-  using EN = triagens::aql::ExecutionNode;
+  std::vector<sortNodeData*> _sortNodeData;
+public:
+  size_t const sortNodeID;
 
-  SortNode *_sortNode;
-  RangesInfo* _ranges; 
-  ExecutionPlan* _plan;
-  std::vector<Variable const*> _vars;
-  std::vector<CalculationNode*> _myVars;
-  std::vector<size_t> _idsToRemove;
-  Optimizer::PlanList _out;
-  size_t _executionNodesFound;
+  sortAnalysis (SortNode * node)
+  : sortNodeID(node->id())
+  {
+    auto sortParams = node->getCalcNodePairs();
 
-  public:
-    sortToIndexNode (ExecutionPlan* plan,
-                     std::vector<Variable const*>& vars,
-                     Optimizer::PlanList& out,
-                     SortNode* Node) 
-      : _sortNode(Node),
-        _plan(plan),
-        _vars(vars),
-        ///        _idsToRemove(sortNodeID),
-        _out(out),
-        _executionNodesFound(0) {
-      _ranges = new RangesInfo();
-      // TODO: who is going to free _ranges??
-      _myVars.reserve(vars.size());
-      _idsToRemove.push_back(Node->id());
-    }
+    for (size_t n = 0; n < sortParams.size(); n++) {
+      auto d = new sortNodeData;
+      auto oneSortExpression = sortParams[n].first->expression();
+      d->ASC = sortParams[n].second;
+      d->nodeID = sortParams[n].first->id();
 
-  void RemoveSortNode (ExecutionPlan *newPlan) {
-    for (auto idToRemove = _idsToRemove.begin();
-         idToRemove != _idsToRemove.end();
-         ++idToRemove) {
-      newPlan->unlinkNode(newPlan->getNodeById(*idToRemove));
+      if (oneSortExpression->isSimpleAccessReference()) {
+        auto simpleExpression = oneSortExpression->getAccessNRef();
+        d->collection = simpleExpression.second;
+        d->attributevec = simpleExpression.first;
+      }
+      _sortNodeData.push_back(d);
     }
   }
 
-  void handleEnumerateCollectionNode(EnumerateCollectionNode* node)
-  {
-    auto collectionName = node->getVariablesSetHere()[0]->name;
-    auto sortParams = _sortNode->getCalcNodePairs();
+  ~sortAnalysis () {
+    for (auto x : _sortNodeData){
+      delete x;
+    }
+  }
 
-    EnumerateCollectionNode::IndexMatchVec attrs;
-    std::vector<std::vector<RangeInfo*>> rangeInfo;
-    size_t nVarsIndexable = 0;
-
-    for (size_t n = 0; n < sortParams.size(); n++) {
-      bool ASC = sortParams[n].second;
-      auto oneSortExpression = sortParams[n].first->expression();
-      _idsToRemove.push_back(sortParams[n].first->id());
-
-      if (!oneSortExpression->isSimpleAccessReference()) {
-        continue;
+  bool isAnalyzeable () {
+    if (_sortNodeData.size() == 0) {
+      return false;
+    }
+    size_t j;
+    for (j = 0; j < _sortNodeData.size(); j ++) {
+      if (_sortNodeData[j]->collection.length() == 0) {
+        return false;
       }
+    }
 
-      auto simpleExpression = oneSortExpression->getAccessNRef();
-            
-      if (simpleExpression.second != collectionName) {
-        continue;
+    /*  are we all from one collection? * /
+    int j = 0;
+    for (; (j < _sortNodeData.size() && 
+            sortNodeData[j]->collection.length() == 0);
+         j ++);
+    last = sortNodeData[j];
+    j ++;
+    for (j < _sortNodeData.size(); j++) {
+      if (sortNodeData[j]->collection.length)
+      if (last->collection != sortNodeData[j]->collection) {
+        return false;
       }
-            
-      attrs.push_back(std::make_pair(simpleExpression.first, ASC));
+      last = sortNodeData[j];
+    }
+     alle nodes gesetzt, ja.
+    */ 
+    return true;
+  }
 
+  Range_IndexPair getAttrsForCollection (std::string &collectionName) {/// todo variableName
+    ECN::IndexMatchVec v;
+    RangeInfoVec rangeInfo;
+
+    for (size_t j = 0; j < _sortNodeData.size(); j ++) {
+      if (_sortNodeData[j]->collection != collectionName) {
+        return std::make_pair(v, rangeInfo); // for now, no mixed support.
+      }
+    }
+    for (size_t j = 0; j < _sortNodeData.size(); j ++) {
+      v.push_back(std::make_pair(_sortNodeData[j]->attributevec,
+                                 _sortNodeData[j]->ASC));
       rangeInfo.push_back(std::vector<RangeInfo*>());
 
-      rangeInfo.at(nVarsIndexable).push_back(new RangeInfo(collectionName,
-                                                           simpleExpression.first,
-                                                           nullptr, nullptr));
-      nVarsIndexable++;
+      rangeInfo.at(j).push_back(new RangeInfo(collectionName,
+                                              _sortNodeData[j]->attributevec,
+                                              nullptr, nullptr));
+    }
+    return std::make_pair(v, rangeInfo);;
+  }
+
+  void removeSortNodeFromPlan (ExecutionPlan *newPlan) {
+    newPlan->unlinkNode(newPlan->getNodeById(sortNodeID));
+
+    for (auto idToRemove = _sortNodeData.begin();
+         idToRemove != _sortNodeData.end();
+         ++idToRemove) {
+      newPlan->unlinkNode(newPlan->getNodeById((*idToRemove)->nodeID));
+    }
+  }
+};
+
+class sortToIndexNode : public WalkerWorker<ExecutionNode> {
+  using EN  = triagens::aql::ExecutionNode;
+  using ECN = triagens::aql::EnumerateCollectionNode;
+
+  ExecutionPlan*       _plan;
+  Optimizer::PlanList  _out;
+  sortAnalysis *       _sortNode;
+
+  public:
+  sortToIndexNode (ExecutionPlan* plan,
+                   Optimizer::PlanList& out,
+                   sortAnalysis* Node)
+    : _plan(plan),
+      _out(out),
+      _sortNode(Node) {
+  }
+
+  bool handleIndexRangeNode(IndexRangeNode* node) {
+    auto collectionName = node->getVariablesSetHere()[0]->name;/// todo variablename
+    auto result = _sortNode->getAttrsForCollection(collectionName);
+
+    if (node->MatchesIndex(result.first)) {
+        _sortNode->removeSortNodeFromPlan(_plan);
+    }
+    return true;
+  }
+
+  bool handleEnumerateCollectionNode(EnumerateCollectionNode* node)
+  {
+    auto collectionName = node->getVariablesSetHere()[0]->name;
+    auto result = _sortNode->getAttrsForCollection(collectionName);
+
+    if (result.first.size() == 0) {
+      return false; // we didn't find anything replaceable by indice
     }
 
-    if (nVarsIndexable == 0) {
-      return; // we didn't find anything replaceable by indice
-    }
+    for (auto idx: node->getIndicesOrdered(result.first)) {
+      // make one new plan for each index that replaces this
+      // EnumerateCollectionNode with an IndexRangeNode
 
-    auto indices = node->getIndicesOrdered(attrs);
-
-    // make one new plan for each index that replaces this
-    // EnumerateCollectionNode with an IndexRangeNode
-    for (auto idx: indices) {
       //can only use the index if it is a skip list or (a hash and we
       //are checking equality)
       auto newPlan = _plan->clone();
@@ -639,13 +701,11 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
                                       node->collection(),
                                       node->outVariable(),
                                       idx.index,/// TODO: estimate cost on match quality
-                                      rangeInfo);
+                                      result.second);
         newPlan->registerNode(newNode);
       }
       catch (...) {
-        if (newNode != nullptr) {
-          delete newNode;
-        }
+        delete newNode;
         delete newPlan;
         throw;
       }
@@ -653,35 +713,56 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
       newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
 
       if (idx.fullmatch) { // if the index superseedes the sort, remove it.
-        RemoveSortNode(newPlan);
+        _sortNode->removeSortNodeFromPlan(newPlan);
       }
       _out.push_back(newPlan);
     }
+    return true;
   }
+
+  bool enterSubQuery () { return false; }
 
   bool before (ExecutionNode* en) {
-    std::cout << "type:" << en->getTypeString() << "\n";
     switch (en->getType()) {
-    default:         // skip. we don't care.
-    case EN::FILTER: // skip. we don't care.
-      return false;  ///   TODO: check whether to ABORT here?
-    case EN::SORT:  // pulling two sorts together is done elsewhere.
-      return en != _sortNode;
-    case EN::LIMIT: // LIMIT is criterion to stop
-      return true; 
+    case EN::ENUMERATE_LIST:
+    case EN::CALCULATION:
+    case EN::SUBQUERY:        /// TODO: find out whether it may throw
+    case EN::FILTER:
+      return false;                           // skip. we don't care.
+
+    case EN::INTERSECTION:
+    case EN::SINGLETON:
+    case EN::AGGREGATE:
+    case EN::LOOKUP_JOIN:
+    case EN::MERGE_JOIN:
+    case EN::LOOKUP_INDEX_UNIQUE:
+    case EN::LOOKUP_INDEX_RANGE:
+    case EN::LOOKUP_FULL_COLLECTION:
+    case EN::CONCATENATION:
+    case EN::MERGE:
+    case EN::REMOTE:
+    case EN::INSERT:
+    case EN::REMOVE:
+    case EN::REPLACE:
+    case EN::UPDATE:
+    case EN::RETURN:
+    case EN::NORESULTS:
+    case EN::ILLEGAL:
+    case EN::LIMIT:                      // LIMIT is criterion to stop
+      return true;  // abort.
+
+    case EN::SORT:     // pulling two sorts together is done elsewhere.
+      return en->id() != _sortNode->sortNodeID;    // ignore ourselves.
+
     case EN::INDEX_RANGE:
-      // TODO: we should also match INDEX_RANGE later on.
-      // todo: this may only be done if there is a full index match.
-      return true;
+      return handleIndexRangeNode(static_cast<IndexRangeNode*>(en));
+
     case EN::ENUMERATE_COLLECTION:
-      handleEnumerateCollectionNode(static_cast<EnumerateCollectionNode*>(en));
-      return true; // no matching index found.
+      return handleEnumerateCollectionNode(static_cast<EnumerateCollectionNode*>(en));
     }
+    return true;
   }
 };
-  
-
-
 
 int triagens::aql::useIndexForSort (Optimizer* opt, 
                                     ExecutionPlan* plan, 
@@ -691,20 +772,15 @@ int triagens::aql::useIndexForSort (Optimizer* opt,
   std::vector<ExecutionNode*> nodes
     = plan->findNodesOfType(triagens::aql::ExecutionNode::SORT, true);
   for (auto n : nodes) {
-    auto oneNode = static_cast<SortNode*>(n);
-    auto invars = oneNode->getVariablesUsedHere();
-    ////TRI_ASSERT(invars.size() == 1);/// todo: do we care about the invars? <- yes there may be more.
-    //Json json = Json(Json::List, 0);
-    //oneNode->toJsonHelper(json, TRI_UNKNOWN_MEM_ZONE, false);
-    //std::cout << " original sort node:" << json.toString () << "\n";
-    sortToIndexNode finder(plan, invars, out, oneNode);
-    ///_thisNode = oneNode;
-    oneNode->walk(&finder);
+    auto thisSortNode = static_cast<SortNode*>(n);
+    sortAnalysis node(thisSortNode);
+    if (node.isAnalyzeable()) {
+      sortToIndexNode finder(plan, out, &node);
+      thisSortNode->walk(&finder);/// todo auf der dependency anfangen
+    }
   }
 
   return TRI_ERROR_NO_ERROR;
-
-
 }
 
 // Local Variables:
