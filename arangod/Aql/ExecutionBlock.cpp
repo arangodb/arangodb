@@ -824,14 +824,13 @@ bool IndexRangeBlock::readIndex () {
 int IndexRangeBlock::initialize () {
   int res = ExecutionBlock::initialize();
 
-  readIndex(); // this is currently only done once in the lifetime of the node
-
   if (res == TRI_ERROR_NO_ERROR) {
     if (_trx->orderBarrier(_trx->trxCollection(_collection->cid())) == nullptr) {
       res = TRI_ERROR_OUT_OF_MEMORY;
     }
   }
-
+  
+  readIndex();
   return res;
 }
 
@@ -842,6 +841,11 @@ int IndexRangeBlock::initCursor (AqlItemBlock* items, size_t pos) {
   }
   _pos = 0;
   _posInDocs = 0;
+  
+  if (_documents.size() == 0){
+    _done = true;
+  }
+
   return TRI_ERROR_NO_ERROR; 
 }
 
