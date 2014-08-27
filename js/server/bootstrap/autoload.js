@@ -36,6 +36,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
+  "use strict";
   return {
     startup: function () {
       var internal = require("internal");

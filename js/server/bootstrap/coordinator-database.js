@@ -36,6 +36,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
+  /*jshint strict: false */
   var internal = require("internal");
 
   // do not overwrite arguments set from the calling C++ code

@@ -1,4 +1,4 @@
-/*jshint -W051: true */
+/*jshint strict: false, -W051: true */
 /*global require, exports, module, ArangoAgency, UPGRADE_ARGS: true, UPGRADE_STARTED: true */
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,3 +1,4 @@
+/*jshint strict: false */
 /*global ArangoAgency, ArangoClusterComm, ArangoClusterInfo, ArangoServerState, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////

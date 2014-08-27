@@ -55,7 +55,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  // cannot use strict here as we are going to delete globals
+  /*jshint strict: false */
 
   var exports = require("fs");
   var isWindows = require("internal").platform.substr(0, 3) === 'win';

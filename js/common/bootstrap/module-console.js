@@ -29,8 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  // cannot use strict here as we are going to delete globals
-
+  /*jshint strict: false */
   var exports = require("console");
 
   var sprintf = require("internal").sprintf;

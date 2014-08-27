@@ -37,6 +37,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
+  /*jshint strict: false */
   var internal = require("internal");
   var console = require("console");
   var db = internal.db;

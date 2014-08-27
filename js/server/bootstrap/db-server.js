@@ -37,6 +37,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
+  /*jshint strict: false */
   return function () {
     var internal = require("internal");
     var console = require("console");
