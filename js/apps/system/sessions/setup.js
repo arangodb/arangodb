@@ -6,6 +6,6 @@
     sessionsName = applicationContext.collectionName('sessions');
 
   if (db._collection(sessionsName) === null) {
-    db._create(sessionsName);
+    db._create(sessionsName, {isSystem: true});
   }
 }());

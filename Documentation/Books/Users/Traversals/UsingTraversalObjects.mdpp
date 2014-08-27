@@ -342,8 +342,13 @@ is called for each vertex in a traversal, and will push it into the result.
 This is the reason why the *result* variable looked different after the traversal, and
 needed to be initialized before the traversal was started.
 
+Note that the default visitor (named `trackingVisitor`) will add every visited vertex
+into the result, including the full from the start node. This is useful for learning and
+debugging purposes, but should be avoided in production. Instead, only those data should
+be copied into the result that are actually necessary.
+
 We can write our own visitor function if we want to. The general function signature for
-visitor function is as follows:
+visitor functions is as follows:
 
 ```js
 var config = {
@@ -371,7 +376,45 @@ var config = {
 
 var traverser = new traversal.Traverser(config);
 traverser.traverse(undefined, startVertex);
+```
+
+To write a visitor that increments a counter each time a vertex is visited,
+we could write the following custom visitor:
+
 ```js
+config.visitor = function (config, result, vertex, path) {
+  if (! result) {
+    return;
+  }
+
+  if (result.hasOwnProperty('count')) {
+    // increment by one
+    ++result.count;
+  }
+  else {
+    // result not yet there, so set it to one
+    result.count = 1;
+  }
+}
+```
+
+Note that such visitor is already predefined. It can be used as follows:
+```js
+config.visitor = traversal.countingVisitor;
+```
+
+Another example of a visitor is one that prints the `_id` values of vertices 
+encountered:
+
+```js
+config.visitor = function (config, result, vertex, path) {
+  if (! result || ! result.visited || ! result.visited.vertices) {
+    return;
+  }
+
+  result.visited.vertices.push(vertex._id);
+}
+```
 
 !SUBSECTION Filtering Vertices and Edges
 
@@ -531,7 +574,7 @@ Finding the connected edges / vertices based on an attribute *when* in the
 connected vertices. The goal is to follow the edge that leads to the vertex
 with the highest value in the *when* attribute:
  
- ```js
+```js
 var config = {
   ...
   expander: function (config, vertex, path) {
@@ -602,6 +645,79 @@ var config = {
 };
 ```
 
+
+!SUBSECTION Handling Uniqueness
+
+Graphs may contain cycles. To be on top of what happens when a traversal encounters a vertex
+or an edge it has already visited, there are configuration options.
+
+The default configuration is to visit every vertex, regardless of whether it was already visited
+in the same traversal. However, edges will by default only be followed if they are not already 
+present in the current path.
+
+Imagine the following graph which contains a cycle:
+```
+A -> B -> C -> A
+```
+
+When the traversal finds the edge from *C* to *A*, it will by default follow it. This is because
+we have not seen this edge yet. It will also visit vertex *A* again. This is because by default
+all vertices will be visited, regardless of whether already visited or not.
+
+However, the traversal will not again following the outgoing edge from *A* to *B*. This is because
+we already have the edge from *A* to *B* in our current path.
+
+These default settings will prevent infinite traversals.
+
+To adjust the uniqueness for visiting vertices, there are the following options for *uniqueness.vertices*:
+
+* *"none"*: always visit a vertices, regardless of whether it was already visited or not
+* *"global"*: visit a vertex only if it was not visited in the traversal
+* *"path"*: visit a vertex if it is not included in the current path
+
+To adjust the uniqueness for following edges, there are the following options for *uniqueness.edges*:
+
+* *"none"*: always follow an edge, regardless of whether it was followed before
+* *"global"*: follow an edge only if it wasn't followed in the traversal
+* *"path"*: follow an edge if it is not included in the current path
+``` 
+
+Note that uniqueness checking will have some effect on both runtime and memory usage. For example, when
+uniqueness checks are set to *"global"*, lists of visited vertices and edges must be kept in memory while the
+traversal is executed. Global uniqueness should thus only be used when a traversal is expected to visit
+few nodes.
+
+In terms of runtime, turning off uniqueness checks (by setting both options to *"none"*) is the best choice,
+but it is only safe for graphs that do not contain cycles. When uniqueness checks are deactivated in a graph
+with cycles, the traversal might not abort in a sensible amount of time.
+
+
+!SUBSECTION Optimization
+
+There are a few options for making a traversal run faster.
+
+The best option is to make the amount of visited vertices and followed edges as small as possible. This can
+be achieved by writing custom filter and expander functions. Such functions should only include vertices of
+interest, and only follow edges that might be interesting.
+
+Traversal depth can also be bounded with the *minDepth* and *maxDepth* options.
+
+Another way to speed up traversals is to write a custom visitor function. The default visitor function will
+copy any visited vertex into the result. If vertices contain lots of data, this might be expensive. It is
+there recommended to only copy such data into the result that is actually needed. The default visitor function
+will also copy the full path to the visited document into the result. This is even more expensive and should
+be avoided if possible.
+
+For graphs that are known to not contain any cycles, uniqueness checks may be turned off. This can achieved
+via the *uniqueness* configuration options. Note that uniqueness checks should not be turned off for graphs
+that contain cycles or if there is no information about the graph's structure.
+
+Finally, the *buildVertices* configuration option can be set to *false* to avoid looking up and fully constructing
+vertex data. If all that's needed from vertices are the *_id* or *_key* attributes, the *buildvertices* 
+option can be set to *false*. If visitor, filter or expandFilter functions need to access other vertex
+attributes, the option should not be changed.
+
+
 !SUBSECTION Configuration Overview
 
 This section summarizes the configuration attributes for the traversal object. The
@@ -642,8 +758,13 @@ configuration can consist of the following attributes:
 - *uniqueness*: an object that defines how repeated visitations of vertices should be handled.
   The *uniqueness* object can have a sub-attribute *vertices*, and a sub-attribute *edges*. Each
   sub-attribute can have one of the following values:
-  - *none*: no uniqueness constraints
-  - *path*: element is excluded if it is already contained in the current path. This setting may be
+  - *"none"*: no uniqueness constraints
+  - *"path"*: element is excluded if it is already contained in the current path. This setting may be
     sensible for graphs that contain cycles (e.g. A -> B -> C -> A).
-  - *global*: element is excluded if it was already found/visited at any point during the traversal.
-
+  - *"global"*: element is excluded if it was already found/visited at any point during the traversal.
+- *buildVertices*: this attribute controls whether vertices encountered during the traversal will be
+  looked up in the database and will be made available to visitor, filter, and expandFilter functions.
+  By default, vertices will be looked up and made available. However, there are some special use
+  cases when fully constructing vertex objects is not necessary and can be avoided. For example, if
+  a traversal is meant to only count the number of visited vertices but do not read any data from 
+  vertices, this option might be set to *true*.
