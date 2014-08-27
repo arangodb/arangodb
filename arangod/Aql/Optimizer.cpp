@@ -42,26 +42,26 @@ Optimizer::Optimizer () {
   // List all the rules in the system here:
 
   // try to find sort blocks which are superseeded by indexes
-  registerRule (useIndexForSort, 2000);
+  registerRule("use-index-for-sort", useIndexForSort, 2000);
 
 
   // try to find a filter after an enumerate collection and find an index . . . 
-  registerRule(useIndexRange, 999);
+  registerRule("use-index-range", useIndexRange, 999);
 
   // remove filters from the query that are not necessary at all
   // filters that are always true will be removed entirely
   // filters that are always false will be replaced with a NoResults node
-  registerRule(removeUnnecessaryFiltersRule, 100);
+  registerRule("remove-unnecessary-filters", removeUnnecessaryFiltersRule, 100);
   
   // move calculations up the dependency chain (to pull them out of inner loops etc.)
-  registerRule(moveCalculationsUpRule, 1000);
+  registerRule("move-calculations-up", moveCalculationsUpRule, 1000);
 
   // move filters up the dependency chain (to make result sets as small as possible
   // as early as possible)
-  registerRule(moveFiltersUpRule, 1010);
+  registerRule("move-filters-up", moveFiltersUpRule, 1010);
 
   // remove calculations that are never necessary
-  registerRule(removeUnnecessaryCalculationsRule, 1020);
+  registerRule("remove-unnecessary-calculations", removeUnnecessaryCalculationsRule, 1020);
 
   // Now sort them by level:
   std::stable_sort(_rules.begin(), _rules.end());
@@ -112,15 +112,13 @@ int Optimizer::createPlans (ExecutionPlan* plan) {
         newPlans.push_back(p, level);  // nothing to do, just keep it
       }
       else {   // some rule needs applying
-        Rule r(dummyRule, level);
+        Rule r("dummy", dummyRule, level);
         auto it = std::upper_bound(_rules.begin(), _rules.end(), r);
         TRI_ASSERT(it != _rules.end());
-        std::cout << "Trying rule " << &(it->func) << " with level "
+        std::cout << "Trying rule " << it->name << " (" << &(it->func) << ") with level "
                   << it->level << " on plan " << count++
                   << std::endl;
         try {
-          // keep should have a default value so rules that forget to set it
-          // have a deterministic behavior
           res = it->func(this, p, it->level, newPlans);
         }
         catch (...) {

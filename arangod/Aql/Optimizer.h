@@ -187,11 +187,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         struct Rule {
+          std::string name;
           RuleFunction func;
           int level;
 
-          Rule (RuleFunction f, int l)
-            : func(f), level(l) {
+          Rule (std::string const& name, RuleFunction f, int l)
+            : name(name), func(f), level(l) {
           }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -298,8 +299,8 @@ namespace triagens {
 /// @brief registerRule
 ////////////////////////////////////////////////////////////////////////////////
 
-        void registerRule (RuleFunction f, int level) {
-          _rules.emplace_back(f, level);
+        void registerRule (std::string const& name, RuleFunction f, int level) {
+          _rules.emplace_back(name, f, level);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
