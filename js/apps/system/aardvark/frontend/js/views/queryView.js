@@ -468,6 +468,7 @@
         batchSize: parseInt(sizeBox.val(), 10)
       };
       var outputEditor = ace.edit("queryOutput");
+      outputEditor.setValue('querying...');
 
       $.ajax({
         type: "POST",
@@ -521,6 +522,9 @@
           $("#" + element).parent().addClass("active");
           $(divId).addClass("active");
           $(contentDivId).show();
+          if (switchId === 'query-switch') {
+            $('#aqlEditor .ace_text-input').focus();
+          }
         } else {
           $("#" + element).parent().removeClass("active");
           $(divId).removeClass("active");
