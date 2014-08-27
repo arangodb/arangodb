@@ -48,8 +48,7 @@ module = null;
 ////////////////////////////////////////////////////////////////////////////////
 
 function require (path) {
-  'use strict';
-
+  "use strict";
   return module.require(path);
 }
 
@@ -58,6 +57,7 @@ function require (path) {
 // -----------------------------------------------------------------------------
 
 (function () {
+  /*jshint strict: false */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief running under windows

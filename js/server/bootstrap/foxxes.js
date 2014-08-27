@@ -36,6 +36,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
+  "use strict";
   var internal = require("internal");
   var db = internal.db;
 

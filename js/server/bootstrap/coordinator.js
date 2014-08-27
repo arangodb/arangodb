@@ -36,6 +36,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
+  "use strict";
   return function () {
     var internal = require("internal");
     var console = require("console");

@@ -1,4 +1,4 @@
-/*jshint -W051: true */
+/*jshint strict: false, -W051: true */
 /*global require, ArangoConnection, print, SYS_ARANGO, window */
 
 ////////////////////////////////////////////////////////////////////////////////

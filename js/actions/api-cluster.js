@@ -1,5 +1,6 @@
-/*global require, exports, module, SYS_CLUSTER_TEST, ArangoServerState, ArangoClusterComm, ArangoClusterInfo,
-         UPGRADE_ARGS: true */
+/*jshint strict: false */
+/*global require, exports, module, SYS_CLUSTER_TEST, UPGRADE_ARGS: true,
+  ArangoServerState, ArangoClusterComm, ArangoClusterInfo */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cluster actions

@@ -39,6 +39,7 @@
 // -----------------------------------------------------------------------------
 
 (function () {
+  /*jshint strict: false */
   var internal = require("internal");
   var fs = require("fs");
   var console = require("console");
