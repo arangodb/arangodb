@@ -95,7 +95,12 @@ int Optimizer::createPlans (ExecutionPlan* plan) {
       }
     }
 
-    std::cout << "Have " << _plans.size() << " plans." << std::endl;
+    std::cout << "Have " << _plans.size() << " plans:" << std::endl;
+
+    for (auto p : _plans.list) {
+      p->show();
+      std::cout << std::endl;
+    }
 
     int count = 0;
 
