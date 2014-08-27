@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global module, require, exports, ArangoAgency */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Cluster planning functionality

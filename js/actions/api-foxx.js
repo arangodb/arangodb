@@ -155,7 +155,7 @@ actions.defineHttp({
 
   callback: easyPostCallback({
     body: true,
-    callback: function (body) {
+    callback: function () {
       foxxManager.scanAppDirectory();
       return true;
     }

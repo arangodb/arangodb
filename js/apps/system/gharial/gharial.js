@@ -1100,7 +1100,7 @@
     }
   )
   .errorResponse(
-    Error, actions.HTTP_BAD, "Edge is invalid.", function(e) {
+    Error, actions.HTTP_BAD, "Edge is invalid.", function() {
       return buildError({
         errorNum: errors.ERROR_GRAPH_INVALID_EDGE.code,
         errorMessage: errors.ERROR_GRAPH_INVALID_EDGE.message

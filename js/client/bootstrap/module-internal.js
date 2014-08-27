@@ -1,5 +1,5 @@
 /*jshint strict: false, -W051: true */
-/*global require, ArangoConnection, print, SYS_ARANGO, window */
+/*global require, ArangoConnection, SYS_ARANGO, window */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -310,7 +310,7 @@
 
         var i = 0;
 
-        return format.replace(/%[dfs]/, function (match) {
+        return format.replace(/%[dfs]/, function () {
           return String(arguments[++i]);
         });
       };

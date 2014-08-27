@@ -1,4 +1,3 @@
-/*jslint indent: 2, maxlen: 120, vars: true, white: true, plusplus: true, -W051: true, sloppy: true, proto: true */
 /*global require, SYS_GETLINE, SYS_LOG, jqconsole */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,7 +64,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   var log;
- 
+
   try {
     // this will work when we are in arangod but not in the browser / web interface
     log = SYS_LOG;
@@ -102,7 +101,7 @@
     if (0 < args.length && typeof args[0] !== "string") {
       result.push("%s");
     }
-    
+
     for (i = 0;  i < args.length;  ++i) {
       var arg = args[i];
 
@@ -390,7 +389,7 @@
     if (! time) {
       throw new Error('No such label: ' + label);
     }
-    
+
     var duration = Date.now() - time;
 
     delete timers[label];

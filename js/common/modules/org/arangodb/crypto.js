@@ -45,7 +45,7 @@ var internal = require("internal");
 /// if random number generation fails, then undefined is returned
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.rand = function (value) {
+exports.rand = function () {
   return internal.rand();
 };
 

@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require, exports, module, ArangoServerState */
+/*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief open actions
@@ -31,7 +31,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var actions = require("org/arangodb/actions");
-var console = require("console");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions

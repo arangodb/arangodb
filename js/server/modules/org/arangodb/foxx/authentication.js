@@ -58,8 +58,8 @@ var db = require("org/arangodb").db,
 // -----------------------------------------------------------------------------
 
 createAuthenticationMiddleware = function (auth, applicationContext) {
-  'use strict';
-  return function (req, res) {
+  "use strict";
+  return function (req) {
     var users = new Users(applicationContext),
       authResult = auth.authenticate(req);
 
@@ -74,8 +74,8 @@ createAuthenticationMiddleware = function (auth, applicationContext) {
 };
 
 createSessionUpdateMiddleware = function () {
-  'use strict';
-  return function (req, res) {
+  "use strict";
+  return function (req) {
     var session = req.currentSession;
 
     if (is.existy(session)) {
@@ -85,7 +85,7 @@ createSessionUpdateMiddleware = function () {
 };
 
 createAuthObject = function (applicationContext, opts) {
-  'use strict';
+  "use strict";
   var sessions,
     cookieAuth,
     auth,
@@ -101,7 +101,7 @@ createAuthObject = function (applicationContext, opts) {
 };
 
 checkAuthenticationOptions = function (options) {
-  'use strict';
+  "use strict";
   if (options.type !== "cookie") {
     throw new Error("Currently only the following auth types are supported: cookie");
   }
@@ -121,7 +121,7 @@ defaultsFor.login = {
   passwordField: "password",
 
   onSuccess: function (req, res) {
-    'use strict';
+    "use strict";
     res.json({
       user: req.user.identifier,
       key: req.currentSession._key
@@ -129,7 +129,7 @@ defaultsFor.login = {
   },
 
   onError: function (req, res) {
-    'use strict';
+    "use strict";
     res.status(401);
     res.json({
       error: "Username or Password was wrong"
@@ -138,7 +138,7 @@ defaultsFor.login = {
 };
 
 createStandardLoginHandler = function (auth, users, opts) {
-  'use strict';
+  "use strict";
   var options = _.defaults(opts || {}, defaultsFor.login);
 
   return function (req, res) {
@@ -157,14 +157,14 @@ createStandardLoginHandler = function (auth, users, opts) {
 
 defaultsFor.logout = {
   onSuccess: function (req, res) {
-    'use strict';
+    "use strict";
     res.json({
       notice: "Logged out!"
     });
   },
 
   onError: function (req, res) {
-    'use strict';
+    "use strict";
     res.status(401);
     res.json({
       error: "No session was found"
@@ -173,7 +173,7 @@ defaultsFor.logout = {
 };
 
 createStandardLogoutHandler = function (auth, opts) {
-  'use strict';
+  "use strict";
   var options = _.defaults(opts || {}, defaultsFor.logout);
 
   return function (req, res) {
@@ -195,14 +195,14 @@ defaultsFor.registration = {
   defaultAttributes: {},
 
   onSuccess: function (req, res) {
-    'use strict';
+    "use strict";
     res.json({
       user: req.user
     });
   },
 
   onError: function (req, res) {
-    'use strict';
+    "use strict";
     res.status(401);
     res.json({
       error: "Registration failed"
@@ -211,7 +211,7 @@ defaultsFor.registration = {
 };
 
 createStandardRegistrationHandler = function (auth, users, opts) {
-  'use strict';
+  "use strict";
   var options = _.defaults(opts || {}, defaultsFor.registration);
 
   return function (req, res) {
@@ -240,14 +240,14 @@ defaultsFor.changePassword = {
   passwordField: "password",
 
   onSuccess: function (req, res) {
-    'use strict';
+    "use strict";
     res.json({
       notice: "Changed password!"
     });
   },
 
   onError: function (req, res) {
-    'use strict';
+    "use strict";
     res.status(401);
     res.json({
       error: "No session was found"
@@ -256,7 +256,7 @@ defaultsFor.changePassword = {
 };
 
 createStandardChangePasswordHandler = function (users, opts) {
-  'use strict';
+  "use strict";
   var options = _.defaults(opts || {}, defaultsFor.changePassword);
 
   return function (req, res) {
@@ -286,7 +286,7 @@ createStandardChangePasswordHandler = function (users, opts) {
 ////////////////////////////////////////////////////////////////////////////////
 
 generateToken = function () {
-  'use strict';
+  "use strict";
 
   return internal.genRandomAlphaNumbers(32);
 };
@@ -325,7 +325,7 @@ cloneDocument = function (obj) {
 ////////////////////////////////////////////////////////////////////////////////
 
 checkPassword = function (plain, encoded) {
-  'use strict';
+  "use strict";
   var salted = encoded.substr(3, 8) + plain,
     hex = crypto.sha256(salted);
 
@@ -337,7 +337,7 @@ checkPassword = function (plain, encoded) {
 ////////////////////////////////////////////////////////////////////////////////
 
 encodePassword = function (password) {
-  'use strict';
+  "use strict";
   var salt,
     encoded,
     random;
@@ -379,7 +379,7 @@ encodePassword = function (password) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users = function (applicationContext, options) {
-  'use strict';
+  "use strict";
 
   this._options = options || {};
   this._collection = null;
@@ -409,7 +409,7 @@ Users = function (applicationContext, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.storage = function () {
-  'use strict';
+  "use strict";
 
   if (this._collection === null) {
     this._collection = db._collection(this._collectionName);
@@ -427,15 +427,15 @@ Users.prototype.storage = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype._validateIdentifier = function (identifier, allowObject) {
-  'use strict';
+  "use strict";
 
   if (allowObject) {
-    if (typeof identifier === 'object' && identifier.hasOwnProperty("identifier")) {
+    if (typeof identifier === "object" && identifier.hasOwnProperty("identifier")) {
       identifier = identifier.identifier;
     }
   }
 
-  if (typeof identifier !== 'string') {
+  if (typeof identifier !== "string") {
     throw new TypeError("invalid type for 'identifier'");
   }
 
@@ -464,11 +464,11 @@ Users.prototype._validateIdentifier = function (identifier, allowObject) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.setup = function (options) {
-  'use strict';
+  "use strict";
   var journalSize,
     createOptions;
 
-  if (typeof options === 'object' && options.hasOwnProperty('journalSize')) {
+  if (typeof options === "object" && options.hasOwnProperty("journalSize")) {
     journalSize = options.journalSize;
   }
 
@@ -488,7 +488,7 @@ Users.prototype.setup = function (options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.teardown = function () {
-  'use strict';
+  "use strict";
   var c = db._collection(this._collectionName);
 
   if (c) {
@@ -501,7 +501,7 @@ Users.prototype.teardown = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.flush = function () {
-  'use strict';
+  "use strict";
 
   this.storage().truncate();
 };
@@ -511,13 +511,13 @@ Users.prototype.flush = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.add = function (identifier, password, active, data) {
-  'use strict';
+  "use strict";
   var c = this.storage(),
     user;
 
   identifier = this._validateIdentifier(identifier, false);
 
-  if (typeof password !== 'string') {
+  if (typeof password !== "string") {
     throw new TypeError("invalid type for 'password'");
   }
 
@@ -565,7 +565,7 @@ Users.prototype.add = function (identifier, password, active, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.updateData = function (identifier, data) {
-  'use strict';
+  "use strict";
   var c = this.storage();
 
   identifier = this._validateIdentifier(identifier, true);
@@ -598,7 +598,7 @@ Users.prototype.updateData = function (identifier, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.setActive = function (identifier, active) {
-  'use strict';
+  "use strict";
   var c = this.storage(),
     user,
     doc;
@@ -624,14 +624,14 @@ Users.prototype.setActive = function (identifier, active) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.setPassword = function (identifier, password) {
-  'use strict';
+  "use strict";
   var c = this.storage(),
     user,
     doc;
 
   identifier = this._validateIdentifier(identifier, true);
 
-  if (typeof password !== 'string') {
+  if (typeof password !== "string") {
     throw new TypeError("invalid type for 'password'");
   }
 
@@ -653,7 +653,7 @@ Users.prototype.setPassword = function (identifier, password) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.remove = function (identifier) {
-  'use strict';
+  "use strict";
   var c = this.storage(),
     user;
 
@@ -678,7 +678,7 @@ Users.prototype.remove = function (identifier) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.get = function (identifier) {
-  'use strict';
+  "use strict";
   var c = this.storage(),
     user;
 
@@ -700,7 +700,7 @@ Users.prototype.get = function (identifier) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.exists = function (identifier) {
-  'use strict';
+  "use strict";
   var c = this.storage(),
     user;
 
@@ -714,7 +714,7 @@ Users.prototype.exists = function (identifier) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.isValid = function (identifier, password) {
-  'use strict';
+  "use strict";
   var c = this.storage(),
     user;
 
@@ -761,7 +761,7 @@ Users.prototype.isValid = function (identifier, password) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Sessions = function (applicationContext, options) {
-  'use strict';
+  "use strict";
 
   this._applicationContext = applicationContext;
   this._options = options || {};
@@ -796,7 +796,7 @@ Sessions = function (applicationContext, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype._toObject = function (session) {
-  'use strict';
+  "use strict";
   var that = this;
 
   return {
@@ -854,11 +854,11 @@ Sessions.prototype._toObject = function (session) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype.setup = function (options) {
-  'use strict';
+  "use strict";
   var journalSize,
     createOptions;
 
-  if (typeof options === 'object' && options.hasOwnProperty('journalSize')) {
+  if (typeof options === "object" && options.hasOwnProperty("journalSize")) {
     journalSize = options.journalSize;
   }
 
@@ -878,7 +878,7 @@ Sessions.prototype.setup = function (options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype.teardown = function () {
-  'use strict';
+  "use strict";
   var c = db._collection(this._collectionName);
 
   if (c) {
@@ -891,7 +891,7 @@ Sessions.prototype.teardown = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype.storage = function () {
-  'use strict';
+  "use strict";
 
   if (this._collection === null) {
     this._collection = db._collection(this._collectionName);
@@ -909,7 +909,7 @@ Sessions.prototype.storage = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype.generate = function (identifier, data) {
-  'use strict';
+  "use strict";
   var storage, token, session;
 
   if (typeof identifier !== "string" || identifier.length === 0) {
@@ -959,7 +959,7 @@ Sessions.prototype.generate = function (identifier, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype.update = function (token, data) {
-  'use strict';
+  "use strict";
 
   this.storage().update(token, {
     expires: internal.time() + this._options.sessionLifetime,
@@ -972,7 +972,7 @@ Sessions.prototype.update = function (token, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype.terminate = function (token) {
-  'use strict';
+  "use strict";
 
   try {
     this.storage().remove(token);
@@ -986,7 +986,7 @@ Sessions.prototype.terminate = function (token) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype.get = function (token) {
-  'use strict';
+  "use strict";
   var storage = this.storage(),
     session,
     sessionLifetime;
@@ -1040,7 +1040,7 @@ Sessions.prototype.get = function (token) {
 ////////////////////////////////////////////////////////////////////////////////
 
 CookieAuthentication = function (applicationContext, options) {
-  'use strict';
+  "use strict";
 
   options = options || {};
 
@@ -1077,7 +1077,7 @@ CookieAuthentication = function (applicationContext, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 CookieAuthentication.prototype.getTokenFromRequest = function (req) {
-  'use strict';
+  "use strict";
 
   if (!req.hasOwnProperty("cookies")) {
     return null;
@@ -1095,7 +1095,7 @@ CookieAuthentication.prototype.getTokenFromRequest = function (req) {
 ////////////////////////////////////////////////////////////////////////////////
 
 CookieAuthentication.prototype.setCookie = function (res, value) {
-  'use strict';
+  "use strict";
   var name = this._options.name,
     cookie,
     i,
@@ -1136,7 +1136,7 @@ CookieAuthentication.prototype.setCookie = function (res, value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 CookieAuthentication.prototype.getAuthenticationData = function (req) {
-  'use strict';
+  "use strict";
 
   var token = this.getTokenFromRequest(req);
 
@@ -1153,9 +1153,8 @@ CookieAuthentication.prototype.getAuthenticationData = function (req) {
 /// @brief generate authentication data
 ////////////////////////////////////////////////////////////////////////////////
 
-CookieAuthentication.prototype.beginSession = function (req, res, token, identifier, data) {
-  'use strict';
-
+CookieAuthentication.prototype.beginSession = function (req, res, token) {
+  "use strict";
   this.setCookie(res, token);
 };
 
@@ -1164,8 +1163,7 @@ CookieAuthentication.prototype.beginSession = function (req, res, token, identif
 ////////////////////////////////////////////////////////////////////////////////
 
 CookieAuthentication.prototype.endSession = function (req, res) {
-  'use strict';
-
+  "use strict";
   this.setCookie(res, "");
 };
 
@@ -1174,8 +1172,7 @@ CookieAuthentication.prototype.endSession = function (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 
 CookieAuthentication.prototype.updateSession = function (req, res, session) {
-  'use strict';
-
+  "use strict";
   // update the cookie (expire date)
   this.setCookie(res, session._key);
 };
@@ -1184,9 +1181,8 @@ CookieAuthentication.prototype.updateSession = function (req, res, session) {
 /// @brief check whether the authentication handler is responsible
 ////////////////////////////////////////////////////////////////////////////////
 
-CookieAuthentication.prototype.isResponsible = function (req) {
-  'use strict';
-
+CookieAuthentication.prototype.isResponsible = function () {
+  "use strict";
   return true;
 };
 
@@ -1212,7 +1208,7 @@ CookieAuthentication.prototype.isResponsible = function (req) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Authentication = function (applicationContext, sessions, authenticators) {
-  'use strict';
+  "use strict";
 
   this._applicationContext = applicationContext;
   this._sessions = sessions;
@@ -1242,7 +1238,7 @@ Authentication = function (applicationContext, sessions, authenticators) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Authentication.prototype.authenticate = function (req) {
-  'use strict';
+  "use strict";
   var i,
     n = this._authenticators.length,
     authenticator,
@@ -1273,7 +1269,7 @@ Authentication.prototype.authenticate = function (req) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Authentication.prototype.beginSession = function (req, res, identifier, data) {
-  'use strict';
+  "use strict";
   var session = this._sessions.generate(identifier, data),
     i,
     n = this._authenticators.length,
@@ -1296,7 +1292,7 @@ Authentication.prototype.beginSession = function (req, res, identifier, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Authentication.prototype.endSession = function (req, res, token) {
-  'use strict';
+  "use strict";
   var i,
     n = this._authenticators.length,
     authenticator;
@@ -1318,7 +1314,7 @@ Authentication.prototype.endSession = function (req, res, token) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Authentication.prototype.updateSession = function (req, res, session) {
-  'use strict';
+  "use strict";
   var i,
     n = this._authenticators.length,
     authenticator;
@@ -1355,7 +1351,7 @@ Authentication.prototype.updateSession = function (req, res, session) {
 ////////////////////////////////////////////////////////////////////////////////
 
 UserAlreadyExistsError = function (message) {
-  'use strict';
+  "use strict";
   this.message = message || "User already exists";
   this.statusCode = 400;
 };
@@ -1363,7 +1359,7 @@ UserAlreadyExistsError = function (message) {
 UserAlreadyExistsError.prototype = new Error();
 
 UnauthorizedError = function (message) {
-  'use strict';
+  "use strict";
   this.message = message || "Unauthorized";
   this.statusCode = 401;
 };

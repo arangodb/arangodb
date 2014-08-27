@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global ArangoServerState, require, exports */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief General unittest framework
@@ -444,12 +444,12 @@ testFuncs.shell_client = function(options) {
     }
   }
   print("Shutting down...");
-  shutdownInstance(instanceInfo,options);
+  shutdownInstance(instanceInfo, options);
   print("done.");
   return results;
 };
 
-testFuncs.config = function (options) {
+testFuncs.config = function () {
   var topDir = findTopDir();
   var results = {};
   var ts = ["arangod", "arangob", "arangodump", "arangoimp", "arangorestore",

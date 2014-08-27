@@ -325,7 +325,7 @@
 
       var paths = Array.prototype.slice.call(arguments, 0);
 
-      return normalize(paths.filter(function(p, index) {
+      return normalize(paths.filter(function(p) {
         if (typeof p !== 'string') {
           throw new TypeError('Arguments to path.join must be strings');
         }
@@ -438,7 +438,7 @@
 /// @brief readFileSync (node compatibility)
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.readFileSync = function (filename, encoding) {
+  exports.readFileSync = function (filename) {
     return exports.read(filename);
   };
 

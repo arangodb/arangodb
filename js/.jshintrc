@@ -1,6 +1,4 @@
 {
-  "unused": false,
-
   "bitwise": true,
   "curly": true,
   "eqeqeq": true,
@@ -15,6 +13,7 @@
   "nonew": true,
   "strict": true,
   "undef": true,
+  "unused": true,
   "indent": 2,
   "maxlen": 120
 }

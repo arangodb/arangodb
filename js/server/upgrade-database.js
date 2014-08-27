@@ -1,5 +1,5 @@
-/*jshint strict: false, -W051: true */
-/*global require, exports, module, ArangoAgency, UPGRADE_ARGS: true, UPGRADE_STARTED: true */
+/*jshint strict: false, unused: false, -W051: true */
+/*global require, module, ArangoAgency, UPGRADE_ARGS: true, UPGRADE_STARTED: true */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief upgrade or initialise the database

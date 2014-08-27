@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true */
 /*global window, Backbone, _, console */
 (function() {
 
@@ -7,7 +6,7 @@
   window.ClusterServers = window.AutomaticRetryCollection.extend({
 
     model: window.ClusterServer,
-    
+
     url: "/_admin/aardvark/cluster/DBServers",
 
     updateUrl: function() {
@@ -22,17 +21,17 @@
       switch (s) {
         case "ok":
           return "success";
-        case "warning": 
+        case "warning":
           return "warning";
         case "critical":
           return "danger";
         case "missing":
           return "inactive";
-        default: 
+        default:
           return "danger";
       }
     },
-  
+
     getStatuses: function(cb) {
       if(!this.checkRetries()) {
         return;

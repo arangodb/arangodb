@@ -58,6 +58,7 @@ function RunTest (path, options) {
   }
 
   var result = { };
+  content = content.replace("/*jslint", "/*xxxxxx");
   result["passed"] = JSHINT(content, _.extend({}, jshintrc, options));
 
   if (JSHINT.errors) {

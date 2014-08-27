@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global module, require, exports */
+/*global require, exports */
 
 // Excerpt from Backbone Helpers
 // -------

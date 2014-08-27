@@ -1,4 +1,4 @@
-/*global module, require, exports */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx Template Middleware
@@ -53,8 +53,8 @@ var TemplateMiddleware,
 ////////////////////////////////////////////////////////////////////////////////
 
 TemplateMiddleware = function (templateCollection, helper) {
-  'use strict';
-  var middleware = function (request, response, options) {
+  "use strict";
+  var middleware = function (request, response) {
     var responseFunctions,
       _ = require("underscore");
 

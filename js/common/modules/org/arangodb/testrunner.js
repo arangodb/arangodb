@@ -1,4 +1,4 @@
-/*global module, require, exports, print */
+/*global require, exports, print */
 
 var runTest = require('jsunity').runTest,
   _ = require('underscore'),

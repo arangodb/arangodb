@@ -1,11 +1,12 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true, evil: true */
+/*jshint browser: true, evil: true */
+/*jshint unused: false */
 /*global Backbone, templateEngine, $, window*/
 
 (function() {
   "use strict";
 
   window.EditListEntryView = Backbone.View.extend({
-    
+
     template: templateEngine.createTemplate("editListEntryView.ejs"),
 
     initialize: function(opts) {
@@ -15,7 +16,7 @@
     },
 
     events: {
-      "click .deleteAttribute": "removeRow" 
+      "click .deleteAttribute": "removeRow"
     },
 
     render: function() {
@@ -31,7 +32,7 @@
     },
 
     getKey: function() {
-      return $(".key").val(); 
+      return $(".key").val();
     },
 
     getValue: function() {

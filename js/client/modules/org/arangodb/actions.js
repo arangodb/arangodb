@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require, exports, module */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript actions module

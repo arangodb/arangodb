@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true */
+/*jshint unused: false */
 /*global _, document, window*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -32,7 +32,7 @@ var helper = helper || {};
 
 (function objectsHelper() {
   "use strict";
-  
+
   helper.insertNSimpleNodes = function (nodes, n) {
     var i;
     for (i = 0; i < n; i++) {
@@ -51,7 +51,7 @@ var helper = helper || {};
       });
     }
   };
-  
+
   helper.createSimpleNodes = function (ids) {
     var nodes = [];
     _.each(ids, function(i) {
@@ -71,7 +71,7 @@ var helper = helper || {};
     });
     return nodes;
   };
-  
+
   helper.insertSimpleNode = function (nodes, id) {
     var n = {
       _id: String(id),
@@ -90,13 +90,13 @@ var helper = helper || {};
     nodes.push(n);
     return index;
   };
-  
+
   helper.insertSimpleNodes = function (nodes, ids) {
     _.each(ids, function(i) {
       helper.insertSimpleNode(nodes, i);
     });
   };
-  
+
   helper.createSimpleEdge = function(nodes, s, t) {
     nodes[s]._outboundCounter++;
     nodes[t]._inboundCounter++;
@@ -105,7 +105,7 @@ var helper = helper || {};
       target: nodes[t]
     };
   };
-  
+
   helper.insertClique = function(nodes, edges, toConnect) {
     var i, j;
     for (i = 0; i < toConnect.length - 1; i++) {
@@ -115,7 +115,7 @@ var helper = helper || {};
       }
     }
   };
-  
+
   helper.insertSatelite = function(nodes, edges, source, size) {
     var i, s, t;
     s = helper.insertSimpleNode(nodes, source);
@@ -125,6 +125,6 @@ var helper = helper || {};
     }
     return s;
   };
-  
-  
+
+
 }());
