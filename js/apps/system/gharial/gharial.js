@@ -1,5 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, white: true, plusplus: true, unparam: true, regexp: true, vars: true,
-  stupid: true */
 /*global require, applicationContext*/
 
 ////////////////////////////////////////////////////////////////////////////////
