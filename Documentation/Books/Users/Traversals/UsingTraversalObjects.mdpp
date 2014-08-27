@@ -343,7 +343,7 @@ This is the reason why the *result* variable looked different after the traversa
 needed to be initialized before the traversal was started.
 
 We can write our own visitor function if we want to. The general function signature for
-visitor function is as follows:
+visitor functions is as follows:
 
 ```js
 var config = {
@@ -372,6 +372,31 @@ var config = {
 var traverser = new traversal.Traverser(config);
 traverser.traverse(undefined, startVertex);
 ```js
+
+To write a visitor that increments a counter each time a vertex is visited,
+we could write the following custom visitor:
+
+```js
+config.visitor = function (config, result, vertex, path) {
+  if (! result) {
+    return;
+  }
+
+  if (result.hasOwnProperty('count')) {
+    // increment by one
+    ++result.count;
+  }
+  else {
+    // result not yet there, so set it to one
+    result.count = 1;
+  }
+}
+```
+
+Note that such visitor is already predefined. It can be used as follows:
+```
+config.countingVisitor = traversal.countingVisitor;
+```
 
 !SUBSECTION Filtering Vertices and Edges
 
@@ -602,6 +627,52 @@ var config = {
 };
 ```
 
+!SUBSECTION Handling Uniqueness
+
+Graphs may contain cycles. To be on top of what happens when a traversal encounters a vertex
+or an edge it has already visited, there are configuration options.
+
+The default configuration is to visit every vertex, regardless of whether it was already visited
+in the same traversal. However, edges will by default only be followed if they are not already 
+present in the current path.
+
+Imagine the following graph which contains a cycle:
+```
+A -> B -> C -> A
+```
+
+When the traversal finds the edge from `C` to `A`, it will by default follow it. This is because
+we have not seen this edge yet. It will also visit vertex `A` again. This is because by default
+all vertices will be visited, regardless of whether already visited or not.
+
+However, the traversal will not again following the outgoing edge from `A` to `B`. This is because
+we already have the edge from `A` to `B` in our current path.
+
+These default settings will prevent infinite traversals.
+
+To adjust the uniqueness for visiting vertices, there are the following options for `config.uniqueness.vertices`:
+
+* "none": always visit a vertices, regardless of whether it was already visited or not
+* "global": visit a vertex only if it was not visited in the traversal
+* "path": visit a vertex if it is not included in the current path
+
+To adjust the uniqueness for following edges, there are the following options for `config.uniqueness.edges`:
+
+* "none": always follow an edge, regardless of whether it was followed before
+* "global": follow an edge only if it wasn't followed in the traversal
+* "path": follow an edge if it is not included in the current path
+``` 
+
+Note that uniqueness checking will have some effect on both runtime and memory usage. For example, when
+uniqueness checks are set to `"global"`, lists of visited vertices and edges must be kept in memory while the
+traversal is executed. Global uniqueness should thus only be used when a traversal is expected to visit
+few nodes.
+
+In terms of runtime, turning off uniqueness checks (by setting both options to `"none"`) is the best choice,
+but it is only safe for graphs that do not contain cycles. When uniqueness checks are deactivated in a graph
+with cycles, the traversal might not abort in a sensible amount of time.
+
+
 !SUBSECTION Configuration Overview
 
 This section summarizes the configuration attributes for the traversal object. The
@@ -646,4 +717,9 @@ configuration can consist of the following attributes:
   - *path*: element is excluded if it is already contained in the current path. This setting may be
     sensible for graphs that contain cycles (e.g. A -> B -> C -> A).
   - *global*: element is excluded if it was already found/visited at any point during the traversal.
-
+- *buildVertices*: this attribute controls whether vertices encountered during the traversal will be
+  looked up in the database and will be made available to visitor, filter, and expandFilter functions.
+  By default, vertices will be looked up and made available. However, there are some special use
+  cases when fully constructing vertex objects is not necessary and can be avoided. For example, if
+  a traversal is meant to only count the number of visited vertices but do not read any data from 
+  vertices, this option might be set to `true`.
