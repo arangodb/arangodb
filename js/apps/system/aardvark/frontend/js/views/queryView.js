@@ -615,6 +615,10 @@
           $("#" + element).parent().addClass("active");
           $(divId).addClass("active");
           $(contentDivId).show();
+          if (switchId === 'query-switch') {
+            // issue #1000: set focus to query input
+            $('#aqlEditor .ace_text-input').focus();
+          }
         } else {
           $("#" + element).parent().removeClass("active");
           $(divId).removeClass("active");
