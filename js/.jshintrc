@@ -8,13 +8,13 @@
   "forin": true,
   "freeze": true,
   "immed": true,
-  "indent": true,
+  "laxbreak": true,
   "newcap": true,
   "noarg": true,
   "noempty": true,
   "nonbsp": true,
   "nonew": true,
   "undef": true,
-  "maxlen": 120,
-  "-W014": true
+  "indent": 2,
+  "maxlen": 120
 }
