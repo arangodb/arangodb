@@ -1510,6 +1510,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
 
   // argument is a list of vertices
   if (argv[0]->IsArray()) {
+    documents = v8::Array::New();
     v8::Handle<v8::Array> vertices = v8::Handle<v8::Array>::Cast(argv[0]);
     uint32_t count = 0;
     const uint32_t len = vertices->Length();
