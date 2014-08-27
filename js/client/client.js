@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, evil: true */
 /*jshint -W051: true */
 /*global require, console: true, IS_EXECUTE_SCRIPT, IS_EXECUTE_STRING, IS_CHECK_SCRIPT, IS_UNIT_TESTS, IS_JS_LINT */
 
@@ -38,6 +37,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 function start_pager () {
+  "use strict";
   var internal = require("internal");
   internal.startPager();
 }
@@ -47,6 +47,7 @@ function start_pager () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function stop_pager () {
+  "use strict";
   var internal = require("internal");
   internal.stopPager();
 }
@@ -56,6 +57,7 @@ function stop_pager () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function help () {
+  "use strict";
   var internal = require("internal");
   var arangodb = require("org/arangodb");
   var arangosh = require("org/arangodb/arangosh");
@@ -73,6 +75,7 @@ function help () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function clear () {
+  "use strict";
   var internal = require("internal");
   var i;
   var result = '';
@@ -136,6 +139,7 @@ var tutorial = require("org/arangodb/tutorial");
 ////////////////////////////////////////////////////////////////////////////////
 
 (function() {
+  "use strict";
   var internal = require("internal");
   var arangosh = require("org/arangodb/arangosh");
   var special;
@@ -170,6 +174,7 @@ var tutorial = require("org/arangodb/tutorial");
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
+  /*jshint strict: false */
   var __special__;
 
   try {
@@ -187,6 +192,7 @@ var tutorial = require("org/arangodb/tutorial");
       var __rcf__ = __fs__.join(__fs__.home(), ".arangosh.rc");
 
       if (__fs__.exists(__rcf__)) {
+        /*jshint evil: true */
         var __content__ = __fs__.read(__rcf__);
         eval(__content__);
       }

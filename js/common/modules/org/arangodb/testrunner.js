@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, regexp: true */
 /*global module, require, exports, print */
 
 var runTest = require('jsunity').runTest,

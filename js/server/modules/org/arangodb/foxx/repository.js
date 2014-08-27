@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, white: false, sloppy: false */
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////

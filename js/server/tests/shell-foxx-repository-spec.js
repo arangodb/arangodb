@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, todo: true, white: false, sloppy: false */
 /*global require, describe, beforeEach, it, expect, spyOn, createSpy, createSpyObj */
 
 var FoxxRepository = require("org/arangodb/foxx/repository").Repository,

@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, stupid: true */
 /*global module, require, exports, ArangoServerState */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -108,7 +107,7 @@ function encode (st) {
     }
     else if (st[i] === "@") {
       st2 += "@@";
-    } 
+    }
     else {
       st2 += st[i];
     }
@@ -164,7 +163,7 @@ function waitForServerDown (endpoint, timeout) {
 function sendToAgency (agencyURL, path, obj) {
   var res;
   var body;
-  
+
   console.info("Sending %s to agency...", path);
   if (typeof obj === "string") {
     var count = 0;
@@ -228,7 +227,7 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
                                        cmd.extPort));
   var args = ["-data-dir", agentDataDir,
               "-name", "agent"+cmd.agencyPrefix+cmd.extPort,
-              "-bind-addr", (cmd.onlyLocalhost ? "127.0.0.1:" 
+              "-bind-addr", (cmd.onlyLocalhost ? "127.0.0.1:"
                                                : "0.0.0.0:")+cmd.extPort,
               "-addr", extEndpoint,
               "-peer-bind-addr", (cmd.onlyLocalhost ? "127.0.0.1:"
@@ -255,10 +254,10 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
     agentPath = ArangoServerState.agentPath();
   }
   if (! fs.exists(agentPath)) {
-    return {"error":true, "isStartAgent": true, 
+    return {"error":true, "isStartAgent": true,
             "errorMessage": "agency binary not found at '" + agentPath + "'"};
   }
-  
+
   var pid = executeExternal(agentPath, args);
   var res;
   var count = 0;
@@ -266,11 +265,11 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
     wait(0.5);   // Wait a bit to give it time to startup
     res = download("http://localhost:"+cmd.extPort+"/v2/keys/");
     if (res.code === 200) {
-      return {"error":false, "isStartAgent": true, "pid": pid, 
+      return {"error":false, "isStartAgent": true, "pid": pid,
               "endpoint": "tcp://"+extEndpoint};
     }
   }
-  return {"error":true, "isStartAgent": true, 
+  return {"error":true, "isStartAgent": true,
           "errorMessage": "agency did not come alive"};
 };
 
@@ -347,7 +346,7 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     args = args.concat([
             "--cluster.disable-dispatcher-kickstarter", "true",
             "--cluster.disable-dispatcher-frontend", "true",
-            "--cluster.my-id", id, 
+            "--cluster.my-id", id,
             "--cluster.agency-prefix", cmd.agency.agencyPrefix,
             "--cluster.agency-endpoint", cmd.agency.endpoints[0],
             "--server.endpoint"]);
@@ -398,7 +397,7 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     }
   }
 
-  return {"error": error, "isStartServers": true, 
+  return {"error": error, "isStartServers": true,
           "pids": pids, "endpoints": endpoints, "roles": roles};
 };
 
@@ -418,7 +417,7 @@ launchActions.bootstrapServers = function (dispatchers, cmd, isRelaunch,
 
   // autorization header for coordinator
   var hdrs = {
-    Authorization: getAuthorizationHeader(username, password) 
+    Authorization: getAuthorizationHeader(username, password)
   };
 
   // default options
@@ -449,7 +448,7 @@ launchActions.bootstrapServers = function (dispatchers, cmd, isRelaunch,
     console.error("upgrading cluster database failed: %s", extractErrorMessage(result));
     return {"error": true, "bootstrapServers": true};
   }
-  
+
   // bootstrap coordinators
   var i;
 
@@ -504,7 +503,7 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
   for (i = 0;i < run.pids.length;i++) {
     var s = statusExternal(run.pids[i]);
     if (s.status !== "TERMINATED") {
-      console.info("Shutting down %s the hard way...", 
+      console.info("Shutting down %s the hard way...",
                    JSON.stringify(run.pids[i]));
       killExternal(run.pids[i]);
       console.info("done.");
@@ -539,7 +538,7 @@ cleanupActions.startServers = function (dispatchers, cmd, isRelaunch) {
   if (logPath !== cmd.logPath) {    // path was relative
     logPath = fs.normalize(fs.join(ArangoServerState.logPath(), cmd.logPath));
   }
-  
+
   var servers = cmd.DBservers.concat(cmd.Coordinators);
   var i;
   var logfile, datadir;
@@ -659,7 +658,7 @@ upgradeActions.startServers = function (dispatchers, cmd, isRelaunch) {
     args = args.concat([
             "--cluster.disable-dispatcher-kickstarter", "true",
             "--cluster.disable-dispatcher-frontend", "true",
-            "--cluster.my-id", id, 
+            "--cluster.my-id", id,
             "--cluster.agency-prefix", cmd.agency.agencyPrefix,
             "--cluster.agency-endpoint", cmd.agency.endpoints[0],
             "--server.endpoint"]);
@@ -697,7 +696,7 @@ upgradeActions.startServers = function (dispatchers, cmd, isRelaunch) {
   }
 
   if (error === true) {
-    return {"error": error, "isStartServers": true, 
+    return {"error": error, "isStartServers": true,
             "errorMessage": "error on upgrade"};
   }
 
@@ -736,7 +735,7 @@ upgradeActions.startServers = function (dispatchers, cmd, isRelaunch) {
     args = args.concat([
             "--cluster.disable-dispatcher-kickstarter", "true",
             "--cluster.disable-dispatcher-frontend", "true",
-            "--cluster.my-id", id, 
+            "--cluster.my-id", id,
             "--cluster.agency-prefix", cmd.agency.agencyPrefix,
             "--cluster.agency-endpoint", cmd.agency.endpoints[0],
             "--server.endpoint"]);
@@ -787,7 +786,7 @@ upgradeActions.startServers = function (dispatchers, cmd, isRelaunch) {
     }
   }
 
-  return {"error": error, "isStartServers": true, 
+  return {"error": error, "isStartServers": true,
           "pids": pids, "endpoints": endpoints, "roles": roles};
 };
 
@@ -809,7 +808,7 @@ upgradeActions.bootstrapServers = function (dispatchers, cmd, isRelaunch,
 
   // autorization header for coordinator
   var hdrs = {
-    Authorization: getAuthorizationHeader(username, password) 
+    Authorization: getAuthorizationHeader(username, password)
   };
 
   // default options
@@ -842,7 +841,7 @@ upgradeActions.bootstrapServers = function (dispatchers, cmd, isRelaunch,
     console.error("upgrading cluster database failed: %s", extractErrorMessage(result));
     return {"error": true, "bootstrapServers": true};
   }
-  
+
   // bootstrap coordinators
   var i;
 
@@ -872,7 +871,7 @@ upgradeActions.bootstrapServers = function (dispatchers, cmd, isRelaunch,
 /// This constructor constructs a kickstarter object. Its first
 /// argument is a cluster plan as for example provided by the planner
 /// (see Cluster Planner Constructor and the general
-/// explanations before this reference). The second argument is 
+/// explanations before this reference). The second argument is
 /// optional and is taken to be "me" if omitted, it is the ID of the
 /// dispatcher this object should consider itself to be. If the plan
 /// contains startup commands for the dispatcher with this ID, these
@@ -900,15 +899,15 @@ function Kickstarter (clusterPlan, myname) {
 /// `Kickstarter.launch()`
 ///
 /// This starts up a cluster as described in the plan which was given to
-/// the constructor. To this end, other dispatchers are contacted as 
+/// the constructor. To this end, other dispatchers are contacted as
 /// necessary. All startup commands for the local dispatcher are
 /// executed immediately.
 ///
 /// The result is an object that contains information about the started
 /// processes, this object is also stored in the Kickstarter object
 /// itself. We do not go into details here about the data structure,
-/// but the most important information are the process IDs of the 
-/// started processes. The corresponding 
+/// but the most important information are the process IDs of the
+/// started processes. The corresponding
 /// [shutdown method](see ../ModulePlanner/README.html#shutdown) needs this information to
 /// shut down all processes.
 ///
@@ -995,15 +994,15 @@ Kickstarter.prototype.launch = function () {
 /// `Kickstarter.relaunch()`
 ///
 /// This starts up a cluster as described in the plan which was given to
-/// the constructor. To this end, other dispatchers are contacted as 
+/// the constructor. To this end, other dispatchers are contacted as
 /// necessary. All startup commands for the local dispatcher are
 /// executed immediately.
 ///
 /// The result is an object that contains information about the started
 /// processes, this object is also stored in the Kickstarter object
 /// itself. We do not go into details here about the data structure,
-/// but the most important information are the process IDs of the 
-/// started processes. The corresponding 
+/// but the most important information are the process IDs of the
+/// started processes. The corresponding
 /// [shutdown method ](see ../ModulePlanner/README.html#shutdown) needs this information to
 /// shut down all processes.
 ///
@@ -1097,7 +1096,7 @@ Kickstarter.prototype.relaunch = function (username, password) {
 /// `Kickstarter.shutdown()`
 ///
 /// This shuts down a cluster as described in the plan which was given to
-/// the constructor. To this end, other dispatchers are contacted as 
+/// the constructor. To this end, other dispatchers are contacted as
 /// necessary. All processes in the cluster are gracefully shut down
 /// in the right order.
 /// @endDocuBlock
@@ -1156,7 +1155,7 @@ Kickstarter.prototype.shutdown = function() {
           results.push(res.results[0]);
         }
         catch (err) {
-          results.push({"error":true, 
+          results.push({"error":true,
                         "errorMessage": "exception in JSON.parse"});
           error = true;
         }
@@ -1177,7 +1176,7 @@ Kickstarter.prototype.shutdown = function() {
 /// `Kickstarter.cleanup()`
 ///
 /// This cleans up all the data and logs of a previously shut down cluster.
-/// To this end, other dispatchers are contacted as necessary. 
+/// To this end, other dispatchers are contacted as necessary.
 /// [Use shutdown](see ../ModulePlanner/README.html#shutdown) first and
 /// use with caution, since potentially a lot of data is being erased with
 /// this call!
@@ -1234,7 +1233,7 @@ Kickstarter.prototype.cleanup = function() {
           results.push(res.results[0]);
         }
         catch (err) {
-          results.push({"error":true, 
+          results.push({"error":true,
                         "errorMessage": "exception in JSON.parse"});
           error = true;
         }
@@ -1316,7 +1315,7 @@ Kickstarter.prototype.isHealthy = function() {
           }
         }
         catch (err) {
-          results.push({"error":true, 
+          results.push({"error":true,
                         "errorMessage": "exception in JSON.parse"});
           error = true;
         }
@@ -1349,9 +1348,9 @@ Kickstarter.prototype.isHealthy = function() {
 /// The result is an object that contains information about the started
 /// processes, this object is also stored in the Kickstarter object
 /// itself. We do not go into details here about the data structure,
-/// but the most important information are the process IDs of the 
-/// started processes. The corresponding 
-/// [shutdown method](see ../ModulePlanner/README.html#shutdown) needs 
+/// but the most important information are the process IDs of the
+/// started processes. The corresponding
+/// [shutdown method](see ../ModulePlanner/README.html#shutdown) needs
 /// this information to shut down all processes.
 ///
 /// Note that this methods needs that all data in the DBservers and the
@@ -1381,7 +1380,7 @@ Kickstarter.prototype.upgrade = function (username, password) {
     cmd = cmds[i];
     if (cmd.dispatcher === undefined || cmd.dispatcher === myname) {
       if (upgradeActions.hasOwnProperty(cmd.action)) {
-        res = upgradeActions[cmd.action](dispatchers, cmd, true, 
+        res = upgradeActions[cmd.action](dispatchers, cmd, true,
                                          username, password);
         results.push(res);
         if (res.error === true) {

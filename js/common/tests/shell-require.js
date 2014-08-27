@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 80 */
 /*global require, assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,19 +72,19 @@ function RequireTestSuite () {
 
       assertTrue(data.hasOwnProperty("tags"));
       assertEqual([ "foo", "bar", "baz" ], data.tags);
-      
+
       assertTrue(data.hasOwnProperty("author"));
       assertEqual({ "first" : "foo", "last" : "bar" }, data.author);
-      
+
       assertTrue(data.hasOwnProperty("number"));
       assertEqual(42, data.number);
-      
+
       assertTrue(data.hasOwnProperty("sensible"));
       assertFalse(data.sensible);
-      
+
       assertTrue(data.hasOwnProperty("nullValue"));
       assertNull(data.nullValue);
-      
+
       assertFalse(data.hasOwnProperty("schabernack"));
     },
 
@@ -180,8 +179,8 @@ function CommonJSTestSuite () {
     testRequireCommonJS : function () {
       var i;
       var tests = [
-        "absolute", "cyclic", "determinism", "exactExports", "hasOwnProperty", 
-        "method", "missing", "monkeys", "nested", "relative", "transitive" ]; 
+        "absolute", "cyclic", "determinism", "exactExports", "hasOwnProperty",
+        "method", "missing", "monkeys", "nested", "relative", "transitive" ];
 
       for (i = 0;  i < tests.length;  i++) {
         var name = tests[i];

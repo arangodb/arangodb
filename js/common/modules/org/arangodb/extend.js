@@ -1,5 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true */
 /*global module, require, exports */
+
 // Excerpt from Backbone Helpers
 // -------
 // Backbone.js 1.0.0

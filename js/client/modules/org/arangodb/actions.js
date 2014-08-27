@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, regexp: true, plusplus: true */
 /*global require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,7 +100,7 @@ function printRoutingMethod (indent, routes) {
   if (routes.hasOwnProperty('prefix')) {
     arangodb.printf("%sPREFIX\n", indent);
     printRoutingMethod(indent + " ", routes.prefix);
-  }  
+  }
 }
 
 // -----------------------------------------------------------------------------
