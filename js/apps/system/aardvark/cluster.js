@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true, unparam: true */
 /*global require, applicationContext*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,7 +153,7 @@
     // only make these functions available in dispatcher mode!
     controller.post("/plan", startUp);
     controller.put("/plan", startUp);
-    
+
     controller.put("/plan/credentials", function(req, res) {
       var body = req.body(),
         u = body.user,
@@ -202,7 +201,7 @@
 
     controller.get("/upgrade", function(req, res) {
       //uname pswd
-      
+
       var k = getStarter();
       var u = plans.getCredentials();
       var r = k.upgrade(u.name, u.passwd);
@@ -214,7 +213,7 @@
         plans.replaceRunInfo(r.runInfo);
         res.json("ok");
       }
-     
+
     });
 
     controller.get("/cleanup", function(req, res) {
@@ -259,7 +258,7 @@
      *
      * Returns a string containing the cluster type
      * Possible anwers:
-     * - testSetup 
+     * - testSetup
      * - symmetricalSetup
      * - asymmetricalSetup
      *
@@ -308,7 +307,7 @@
         list = coords.getList(),
         diffList = diff.Coordinators(),
         didBeat = beats.didBeat();
-      
+
       _.each(list, function(v, k) {
         v.name = k;
         resList.push(v);

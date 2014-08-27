@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 120 */
 /*global require, module, exports, describe, it, beforeEach */
 (function () {
   'use strict';
