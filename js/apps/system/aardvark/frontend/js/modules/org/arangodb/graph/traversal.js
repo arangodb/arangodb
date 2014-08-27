@@ -1,6 +1,6 @@
 module.define("org/arangodb/graph/traversal", function(exports, module) {
 /*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, continue: true */
-/*global require, exports */
+/*global require, exports, ArangoClusterComm */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Traversal "classes"
@@ -39,7 +39,7 @@ var ArangoError = arangodb.ArangoError;
 var db = arangodb.db;
 
 var ArangoTraverser;
-
+  
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
 // -----------------------------------------------------------------------------
@@ -112,8 +112,16 @@ function collectionDatasourceFactory (edgeCollection) {
     c = db._collection(c);
   }
 
+  // we can call the "fast" version of some edge functions if we are
+  // running server-side and are not a coordinator
+  var useBuiltIn = (typeof ArangoClusterComm === "object");
+  if (useBuiltIn && require("org/arangodb/cluster").isCoordinator()) {
+    useBuiltIn = false;
+  }
+
   return {
     edgeCollection: c,
+    useBuiltIn: useBuiltIn,
 
     getVertexId: function (vertex) {
       return vertex._id;
@@ -143,24 +151,40 @@ function collectionDatasourceFactory (edgeCollection) {
       return edge._id;
     },
 
+    getEdgeFrom: function (edge) {
+      return edge._from;
+    },
+
+    getEdgeTo: function (edge) {
+      return edge._to;
+    },
+
     getLabel: function (edge) {
       return edge.$label;
     },
 
     getAllEdges: function (vertex) {
+      if (this.useBuiltIn) {
+        return this.edgeCollection.EDGES(vertex._id);
+      }
       return this.edgeCollection.edges(vertex._id);
     },
     
     getInEdges: function (vertex) {
+      if (this.useBuiltIn) {
+        return this.edgeCollection.INEDGES(vertex._id);
+      }
       return this.edgeCollection.inEdges(vertex._id);
     },
     
     getOutEdges: function (vertex) {
+      if (this.useBuiltIn) {
+        return this.edgeCollection.OUTEDGES(vertex._id);
+      }
       return this.edgeCollection.outEdges(vertex._id);
     }
   };
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief general graph datasource
@@ -206,6 +230,14 @@ function generalGraphDatasourceFactory (graph) {
     getEdgeId: function (edge) {
       return edge._id;
     },
+    
+    getEdgeFrom: function (edge) {
+      return edge._from;
+    },
+    
+    getEdgeTo: function (edge) {
+      return edge._to;
+    },
 
     getLabel: function (edge) {
       return edge.$label;
@@ -224,8 +256,6 @@ function generalGraphDatasourceFactory (graph) {
     }
   };
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default Graph datasource
@@ -256,6 +286,14 @@ function graphDatasourceFactory (name) {
 
     getEdgeId: function (edge) {
       return edge.getId();
+    },
+    
+    getEdgeFrom: function (edge) {
+      return edge._properties._from;
+    },
+    
+    getEdgeTo: function (edge) {
+      return edge._properties._to;
     },
 
     getLabel: function (edge) {
@@ -304,7 +342,15 @@ function outboundExpander (config, vertex, path) {
 
   outEdges.forEach(function (edge) {
     try {
-      var v = datasource.getInVertex(edge);
+      var v;
+      if (config.buildVertices) {
+        v = datasource.getInVertex(edge);
+      }
+      else {
+        // optimization to save vertex lookups
+        v = { _id: datasource.getEdgeTo(edge) };
+        v._key = v._id.split("/")[1];
+      }
 
       if (! config.expandFilter || config.expandFilter(config, v, edge, path)) {
         connections.push({ edge: edge, vertex: v });    
@@ -325,6 +371,7 @@ function outboundExpander (config, vertex, path) {
 function inboundExpander (config, vertex, path) {
   var datasource = config.datasource;
   var connections = [ ];
+ 
   var inEdges = datasource.getInEdges(vertex);
       
   if (inEdges.length > 1 && config.sort) {
@@ -333,8 +380,16 @@ function inboundExpander (config, vertex, path) {
 
   inEdges.forEach(function (edge) {
     try {
-      var v = datasource.getOutVertex(edge);
-
+      var v;
+      if (config.buildVertices) {
+        v = datasource.getOutVertex(edge);
+      }
+      else {
+        // optimization to save vertex lookups
+        v = { _id: datasource.getEdgeFrom(edge) };
+        v._key = v._id.split("/")[1];
+      }
+      
       if (! config.expandFilter || config.expandFilter(config, v, edge, path)) {
         connections.push({ edge: edge, vertex: v });    
       }
@@ -343,7 +398,7 @@ function inboundExpander (config, vertex, path) {
       // continue even in the face of non-existing documents
     }
   });
-      
+
   return connections;
 }
 
@@ -362,7 +417,22 @@ function anyExpander (config, vertex, path) {
 
   edges.forEach(function (edge) {
     try {
-      var v = datasource.getPeerVertex(edge, vertex);
+      var v;
+      if (config.buildVertices) {
+        v = datasource.getPeerVertex(edge, vertex);
+      }
+      else {
+        // optimization to save vertex lookups
+        v = { };
+        if (datasource.getEdgeFrom(edge) === vertex._id) {
+          v._id = datasource.getEdgeTo(edge);
+          v._key = v._id.split("/")[1];
+        }
+        else if (datasource.getEdgeTo(edge) === vertex._id) {
+          v._id = datasource.getEdgeFrom(edge);
+          v._key = v._id.split("/")[1];
+        }
+      }
 
       if (! config.expandFilter || config.expandFilter(config, v, edge, path)) {
         connections.push({ edge: edge, vertex: v });    
@@ -495,6 +565,23 @@ function trackingVisitor (config, result, vertex, path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief a visitor that counts the number of nodes visited
+////////////////////////////////////////////////////////////////////////////////
+
+function countingVisitor (config, result, vertex, path) {
+  if (! result) {
+    return;
+  }
+
+  if (result.hasOwnProperty('count')) {
+    ++result.count;
+  }
+  else {
+    result.count = 1;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @}
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -520,7 +607,7 @@ function visitAllFilter () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function maxDepthFilter (config, vertex, path) {
-  if (path.vertices.length > config.maxDepth) {
+  if (path && path.vertices && path.vertices.length > config.maxDepth) {
     return ArangoTraverser.PRUNE;
   }
 }
@@ -530,7 +617,7 @@ function maxDepthFilter (config, vertex, path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function minDepthFilter (config, vertex, path) {
-  if (path.vertices.length <= config.minDepth) {
+  if (path && path.vertices && path.vertices.length <= config.minDepth) {
     return ArangoTraverser.EXCLUDE;
   }
 }
@@ -805,6 +892,7 @@ function breadthFirstSearch () {
           }
 
           var filterResult = parseFilterResult(config.filter(config, vertex, path));
+
           if (config.order === ArangoTraverser.PRE_ORDER && filterResult.visit) {
             // preorder
             config.visitor(config, result, vertex, path);
@@ -872,6 +960,9 @@ function depthFirstSearch () {
       var path    = { edges: [ ], vertices: [ ] };
       var visited = { edges: { }, vertices: { } };
       var reverse = checkReverse(config);
+      var uniqueness = config.uniqueness;
+      var haveUniqueness = ((uniqueness.vertices !== ArangoTraverser.UNIQUE_NONE) ||
+                            (uniqueness.edges !== ArangoTraverser.UNIQUE_NONE));
 
       while (toVisit.length > 0) {
         if (visitCounter++ > maxIterations) {
@@ -890,19 +981,21 @@ function depthFirstSearch () {
         if (current.visit === null || current.visit === undefined) {
           current.visit = false;
 
-          // first apply uniqueness check
-          if (config.uniqueness.vertices === ArangoTraverser.UNIQUE_PATH) {
-            visited.vertices = this.getPathItems(config.datasource.getVertexId, path.vertices);
-          }
+          if (haveUniqueness) {
+            // first apply uniqueness check
+            if (uniqueness.vertices === ArangoTraverser.UNIQUE_PATH) {
+              visited.vertices = this.getPathItems(config.datasource.getVertexId, path.vertices);
+            }
 
-          if (config.uniqueness.edges === ArangoTraverser.UNIQUE_PATH) {
-            visited.edges = this.getPathItems(config.datasource.getEdgeId, path.edges);
-          }
+            if (uniqueness.edges === ArangoTraverser.UNIQUE_PATH) {
+              visited.edges = this.getPathItems(config.datasource.getEdgeId, path.edges);
+            }
 
-          if (! checkUniqueness(config, visited, vertex, edge)) {
-            // skip element if not unique
-            toVisit.pop();
-            continue;
+            if (! checkUniqueness(config, visited, vertex, edge)) {
+              // skip element if not unique
+              toVisit.pop();
+              continue;
+            }
           }
 
           // push the current element onto the path stack
@@ -1067,12 +1160,15 @@ function dijkstraSearch () {
           var weight = 1;
           if (config.distance) {
             weight = config.distance(config, currentNode.vertex, neighbor.vertex, edge);
-          } else if (config.weight) {
+          } 
+          else if (config.weight) {
             if (typeof edge[config.weight] === "number") {
               weight = edge[config.weight];
-            } else if (config.defaultWeight) {
+            } 
+            else if (config.defaultWeight) {
               weight = config.defaultWeight;
-            } else {
+            } 
+            else {
               weight = Infinity;
             }
           }
@@ -1238,12 +1334,13 @@ ArangoTraverser = function (config) {
       edges: ArangoTraverser.UNIQUE_PATH
     },
     visitor: trackingVisitor,
-    filter: visitAllFilter,
+    filter: null,
     expander: outboundExpander,
     datasource: null,
     maxIterations: 10000,
     minDepth: 0,
-    maxDepth: 256
+    maxDepth: 256,
+    buildVertices: true
   }, d;
 
   var err;
@@ -1336,15 +1433,24 @@ ArangoTraverser = function (config) {
   
   // prepare an array of filters
   var filters = [ ];
-  if (config.minDepth !== undefined && config.minDepth >= 0) {
+  if (config.minDepth !== undefined &&
+      config.minDepth !== null &&
+      config.minDepth > 0) {
     filters.push(minDepthFilter);
   }
-  if (config.maxDepth !== undefined && config.maxDepth > 0) {
+  if (config.maxDepth !== undefined && 
+      config.maxDepth !== null &&
+      config.maxDepth > 0) {
     filters.push(maxDepthFilter);
   }
 
   if (! Array.isArray(config.filter)) {
-    config.filter = [ config.filter ];
+    if (typeof config.filter === "function") {
+      config.filter = [ config.filter ];
+    }
+    else {
+      config.filter = [ ];
+    }
   }
 
   config.filter.forEach( function (f) {
@@ -1357,14 +1463,20 @@ ArangoTraverser = function (config) {
 
     filters.push(f);
   });
-
-  if (filters.length === 0) {
-    filters.push(visitAllFilter);
+  
+  if (filters.length > 1) {
+    // more than one filter. combine their results
+    config.filter = function (config, vertex, path) {
+      return combineFilters(filters, config, vertex, path);
+    };
   }
-
-  config.filter = function (config, vertex, path) {
-    return combineFilters(filters, config, vertex, path);
-  };
+  else if (filters.length === 1) {
+    // exactly one filter
+    config.filter = filters[0];
+  }
+  else {
+    config.filter = visitAllFilter;
+  }
 
   if (typeof config.expander !== "function") {
     config.expander = validate(config.expander, {
@@ -1574,6 +1686,7 @@ exports.expandInEdgesWithLabels         = expandInEdgesWithLabels;
 exports.expandEdgesWithLabels           = expandEdgesWithLabels;
 
 exports.trackingVisitor                 = trackingVisitor;
+exports.countingVisitor                 = countingVisitor;
 
 exports.visitAllFilter                  = visitAllFilter;
 exports.maxDepthFilter                  = maxDepthFilter;

@@ -6121,3 +6121,6 @@ table .sorting {
   color: #333232;
   font-size: 13pt;
   margin-right: 10px; }
+
+.totalDocuments:hover {
+  color: #000; }

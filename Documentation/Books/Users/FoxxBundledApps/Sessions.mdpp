@@ -6,7 +6,7 @@ The sessions app provides a session storage JavaScript API that can be used in o
 
 This app has the following configuration options:
 
-* *timeToLive* (optional): number of milliseconds until the session expires. Default: *604800000* (one week).
+* *timeToLive* (optional): number of milliseconds until the session expires or *0* to disable session expiry. Default: *604800000* (one week).
 * *ttlType* (optional): attribute against which the *timeToLive* is enforced. Valid options: *lastAccess*, *lastUpdate*, *created*. Default: *"created"*.
 * *sidTimestamp* (optional): whether to append a timestamp to the random part of generated session IDs. Default: *false*.
 * *sidLength* (optional): number of random characters to use for new session IDs. Default *20*.
@@ -221,6 +221,22 @@ session.setUser(user);
 assertEqual(session.get('uid'), user.get('_key'));
 assertEqual(session.get('userData'), user.get('userData'));
 ```
+
+!SUBSECTION Determine whether a session has expired
+
+Get a session's expiry state.
+
+`session.hasExpired()`
+
+Returns *true* if the session's expiry time lies in the past, *false* otherwise.
+
+!SUBSECTION Determine when a session will expire
+
+Get a session's expiry time.
+
+`session.getExpiry()`
+
+Returns an integer representing the time at which the session will expire, or *Number.MAX_VALUE* (indicating the session will never expire) if session expiry is disabled.
 
 !SUBSECTION Add a session cookie to a response
 

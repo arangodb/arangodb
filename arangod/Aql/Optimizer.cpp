@@ -42,7 +42,7 @@ Optimizer::Optimizer () {
   // List all the rules in the system here:
 
   // try to find sort blocks which are superseeded by indexes
-  registerRule (useIndexForSort, 888);
+  registerRule (useIndexForSort, 2000);
 
 
   // try to find a filter after an enumerate collection and find an index . . . 
@@ -51,19 +51,19 @@ Optimizer::Optimizer () {
   // remove filters from the query that are not necessary at all
   // filters that are always true will be removed entirely
   // filters that are always false will be replaced with a NoResults node
-  registerRule(removeUnnecessaryFiltersRule, 10000);
+  registerRule(removeUnnecessaryFiltersRule, 100);
   
   // move calculations up the dependency chain (to pull them out of inner loops etc.)
-  registerRule(moveCalculationsUpRule, 1001);
+  registerRule(moveCalculationsUpRule, 1000);
 
   // move filters up the dependency chain (to make result sets as small as possible
   // as early as possible)
-  registerRule(moveFiltersUpRule, 1000);
+  registerRule(moveFiltersUpRule, 1010);
 
   // remove calculations that are never necessary
-  registerRule(removeUnnecessaryCalculationsRule, 999);
+  registerRule(removeUnnecessaryCalculationsRule, 1020);
 
-  // Now sort them by pass:
+  // Now sort them by level:
   std::stable_sort(_rules.begin(), _rules.end());
 }
 
@@ -72,46 +72,51 @@ Optimizer::Optimizer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Optimizer::createPlans (ExecutionPlan* plan) {
-  // This vector holds the plans we have created in the previous pass:
-  PlanList oldPlans(plan);
-
-  bool keep;  // used as a return value for rules
   int res;
+  int leastDoneLevel = 0;
+  int maxRuleLevel = _rules.back().level;
 
-  // _plans contains the final result
-  for (auto p : _plans) {
-    delete p;
-  }
+  // _plans contains the previous optimisation result
   _plans.clear();
+  _plans.push_back(plan, 0);
 
-  for (int pass = 1; pass <= numberOfPasses; pass++) {
+  int pass = 1;
+  while (leastDoneLevel < maxRuleLevel) {
     std::cout << "Entering pass " << pass << " of query optimization..." 
               << std::endl;
-
+    
     // This vector holds the plans we have created in this pass:
     PlanList newPlans;
 
     // Find variable usage for all old plans now:
-    for (auto p : oldPlans.list) {
+    for (auto p : _plans.list) {
       if (! p->varUsageComputed()) {
         p->findVarUsage();
       }
     }
 
-    // For all rules:
-    for (auto r : _rules) {
-      PlanList nextOldPlans;
-      // For all old plans:
-      while (oldPlans.size() > 0) {
-        auto p = oldPlans.pop_front();
+    std::cout << "Have " << _plans.size() << " plans." << std::endl;
+
+    int count = 0;
+
+    // For all current plans:
+    while (_plans.size() > 0) {
+      int level;
+      auto p = _plans.pop_front(level);
+      if (level == maxRuleLevel) {
+        newPlans.push_back(p, level);  // nothing to do, just keep it
+      }
+      else {   // some rule needs applying
+        Rule r(dummyRule, level);
+        auto it = std::upper_bound(_rules.begin(), _rules.end(), r);
+        TRI_ASSERT(it != _rules.end());
+        std::cout << "Trying rule " << &(it->func) << " with level "
+                  << it->level << " on plan " << count++
+                  << std::endl;
         try {
           // keep should have a default value so rules that forget to set it
           // have a deterministic behavior
-          keep = true; 
-          res = r.func(this, p, newPlans, keep);
-          if (keep) {
-            nextOldPlans.push_back(p);
-          }
+          res = it->func(this, p, it->level, newPlans);
         }
         catch (...) {
           delete p;
@@ -121,28 +126,30 @@ int Optimizer::createPlans (ExecutionPlan* plan) {
           return res;
         }
       }
-      oldPlans.steal(nextOldPlans);
     }
-    // Now move the surviving old plans to the result:
-    oldPlans.appendTo(_plans);
-    // Now move all the new plans to old:
-    oldPlans.steal(newPlans);
-
-    // A shortcut if nothing new was produced:
-    if (oldPlans.size() == 0) {
-      break;
+    _plans.steal(newPlans);
+    leastDoneLevel = maxRuleLevel;
+    for (auto l : _plans.levelDone) {
+      if (l < leastDoneLevel) {
+        leastDoneLevel = l;
+      }
     }
+    std::cout << "Least done level is " << leastDoneLevel << std::endl;
 
     // Stop if the result gets out of hand:
-    if (_plans.size() + oldPlans.size() >= maxNumberOfPlans) {
+    if (_plans.size() >= maxNumberOfPlans) {
       break;
     }
   }
-  // Append the surviving plans to the result:
-  oldPlans.appendTo(_plans);
 
   estimatePlans();
   sortPlans();
+  std::cout << "Optimisation ends with " << _plans.size() << " plans."
+            << std::endl;
+  std::cout << "Costs:" << std::endl;
+  for (auto p : _plans.list) {
+    std::cout << p->getCost() << std::endl;
+  }
                 
   return TRI_ERROR_NO_ERROR;
 }
@@ -152,7 +159,7 @@ int Optimizer::createPlans (ExecutionPlan* plan) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Optimizer::estimatePlans () {
-  for (auto p : _plans) {
+  for (auto p : _plans.list) {
     p->getCost();
     // this value is cached in the plan, so formally this step is
     // unnecessary, but for the sake of cleanliness...
@@ -164,7 +171,7 @@ void Optimizer::estimatePlans () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Optimizer::sortPlans () {
-  std::sort(_plans.begin(), _plans.end(), [](ExecutionPlan* const& a, ExecutionPlan* const& b) -> bool {
+  std::sort(_plans.list.begin(), _plans.list.end(), [](ExecutionPlan* const& a, ExecutionPlan* const& b) -> bool {
     return a->getCost() < b->getCost();
   });
 }

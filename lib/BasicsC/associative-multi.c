@@ -535,10 +535,14 @@ TRI_vector_pointer_t TRI_LookupByKeyMultiPointer (TRI_memory_zone_t* zone,
 
   if (array->_table[i].ptr != NULL) {
     // We found the beginning of the linked list:
+
+    // pre-initialize the result to save at least a few reallocs
+    TRI_InitVectorPointer2(&result, zone, 4);
     do {
       TRI_PushBackVectorPointer(&result, array->_table[i].ptr);
       i = array->_table[i].next;
-    } while (i != TRI_MULTI_POINTER_INVALID_INDEX);
+    } 
+    while (i != TRI_MULTI_POINTER_INVALID_INDEX);
   }
 
   // return whatever we found

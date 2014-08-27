@@ -1,6 +1,6 @@
 module.define("org/arangodb/general-graph", function(exports, module) {
 /*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, Graph, arguments */
+/*global require, exports, Graph, ArangoClusterComm, arguments */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -2233,8 +2233,17 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
   if (!orphanCollections) {
     orphanCollections = [];
   }
+
+  // we can call the "fast" version of some edge functions if we are
+  // running server-side and are not a coordinator
+  var useBuiltIn = (typeof ArangoClusterComm === "object");
+  if (useBuiltIn && require("org/arangodb/cluster").isCoordinator()) {
+    useBuiltIn = false;
+  }
+
   var self = this;
   // Create Hidden Properties
+  createHiddenProperty(this, "__useBuiltIn", useBuiltIn);
   createHiddenProperty(this, "__name", graphName);
   createHiddenProperty(this, "__vertexCollections", vertexCollections);
   createHiddenProperty(this, "__edgeCollections", edgeCollections);
@@ -2245,10 +2254,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
   createHiddenProperty(this, "__rev", revision);
   createHiddenProperty(this, "__orphanCollections", orphanCollections);
   updateBindCollections(self);
-
 };
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_graph
@@ -2499,22 +2505,18 @@ Graph.prototype._EDGES = function(vertexId) {
     err.errorMessage = arangodb.errors.ERROR_GRAPH_NOT_FOUND.message + ": " + vertexId;
     throw err;
   }
-  var collection = vertexId.split("/")[0];
-  if (!db._collection(collection)) {
-    err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
-    err.errorMessage = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message + ": " + collection;
-    throw err;
-  }
 
-  var edgeCollections = this._edgeCollections();
-  var result = [];
-
-  edgeCollections.forEach(
-    function(edgeCollection) {
-      result = result.concat(edgeCollection.edges(vertexId));
+  var result = [], c;
+  for (c in this.__edgeCollections) {
+    if (this.__edgeCollections.hasOwnProperty(c)) {
+      if (this.__useBuiltIn) {
+        result = result.concat(this.__edgeCollections[c].EDGES(vertexId));
+      }
+      else {
+        result = result.concat(this.__edgeCollections[c].edges(vertexId));
+      }
     }
-  );
+  }
   return result;
 };
 
@@ -2530,23 +2532,18 @@ Graph.prototype._INEDGES = function(vertexId) {
     err.errorMessage = arangodb.errors.ERROR_GRAPH_NOT_FOUND.message + ": " + vertexId;
     throw err;
   }
-  var collection = vertexId.split("/")[0];
-  if (!db._collection(collection)) {
-    err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
-    err.errorMessage = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message + ": " + collection;
-    throw err;
-  }
 
-  var edgeCollections = this._edgeCollections();
-  var result = [];
-
-
-  edgeCollections.forEach(
-    function(edgeCollection) {
-      result = result.concat(edgeCollection.inEdges(vertexId));
+  var result = [], c;
+  for (c in this.__edgeCollections) {
+    if (this.__edgeCollections.hasOwnProperty(c)) {
+      if (this.__useBuiltIn) {
+        result = result.concat(this.__edgeCollections[c].INEDGES(vertexId));
+      }
+      else {
+        result = result.concat(this.__edgeCollections[c].inEdges(vertexId));
+      }
     }
-  );
+  }
   return result;
 };
 
@@ -2562,23 +2559,18 @@ Graph.prototype._OUTEDGES = function(vertexId) {
     err.errorMessage = arangodb.errors.ERROR_GRAPH_NOT_FOUND.message + ": " + vertexId;
     throw err;
   }
-  var collection = vertexId.split("/")[0];
-  if (!db._collection(collection)) {
-    err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
-    err.errorMessage = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message + ": " + collection;
-    throw err;
-  }
 
-  var edgeCollections = this._edgeCollections();
-  var result = [];
-
-
-  edgeCollections.forEach(
-    function(edgeCollection) {
-      result = result.concat(edgeCollection.outEdges(vertexId));
+  var result = [], c;
+  for (c in this.__edgeCollections) {
+    if (this.__edgeCollections.hasOwnProperty(c)) {
+      if (this.__useBuiltIn) {
+        result = result.concat(this.__edgeCollections[c].OUTEDGES(vertexId));
+      }
+      else {
+        result = result.concat(this.__edgeCollections[c].outEdges(vertexId));
+      }
     }
-  );
+  }
   return result;
 };
 
@@ -3926,7 +3918,7 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
   //check if edgeCollection not already used
   var eC = edgeDefinition.collection;
   // ... in same graph
-  if (this.__edgeCollections[eC]  !== undefined) {
+  if (this.__edgeCollections[eC] !== undefined) {
     err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.code;
     err.errorMessage = arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.message;

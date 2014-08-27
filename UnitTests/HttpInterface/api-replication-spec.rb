@@ -318,9 +318,11 @@ describe ArangoDB do
               c["name"].should eq("UnitTestsReplication")
               c["isVolatile"].should eq(false)
               c["waitForSync"].should eq(true)
+          
+              i = i + 1
             end
 
-          elsif i == 1
+          elsif i == 1 and document["type"] == 2300 and document["cid"] == cid
             # create document
             document.should have_key("tick") 
             document.should have_key("type") 
@@ -341,7 +343,9 @@ describe ArangoDB do
             document["data"]["_key"].should eq("test") 
             document["data"]["_rev"].should eq(rev)
             document["data"]["test"].should eq(false)
-          elsif i == 2
+              
+            i = i + 1
+          elsif i == 2 and document["type"] == 2302 and document["cid"] == cid
             # delete document
             document.should have_key("tick") 
             document.should have_key("type") 
@@ -356,7 +360,9 @@ describe ArangoDB do
             document["key"].should eq("test") 
             document["rev"].should match(/^\d+$/)
             document["rev"].should_not eq(rev)
-          elsif i == 3
+              
+            i = i + 1
+          elsif i == 3 and document["type"] == 2001 and document["cid"] == cid
             # drop collection
             document.should have_key("tick") 
             document.should have_key("type") 
@@ -366,10 +372,11 @@ describe ArangoDB do
             document["tick"].to_i.should >= fromTick.to_i
             document["type"].should eq(2001) 
             document["cid"].should eq(cid) 
+              
+            i = i + 1
           end
 
           body = body.slice(position + 1, body.length)
-          i = i + 1
         end
          
       end
