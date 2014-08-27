@@ -169,20 +169,28 @@ namespace triagens {
                                    (&_vocbase->_collectionsById, &cid));
 
             if (nullptr != found) {
-              name = triagens::basics::StringUtils::itoa(found->_planId);
+              if (found->_planId == 0) {
+                // DBserver local case
+                char* n = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
+                if (0 != n) {
+                  name = n;
+                  TRI_Free(TRI_UNKNOWN_MEM_ZONE, n);
+                }
+              }
+              else {
+                // DBserver case of a shard:
+                name = triagens::basics::StringUtils::itoa(found->_planId);
+                shared_ptr<CollectionInfo> ci
+                  = ClusterInfo::instance()->getCollection(found->_dbName,name);
+                name = ci->name();   // can be empty, if collection unknown
+              }
             }
 
             TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(_vocbase);
-
-            if (! name.empty()) {
-              shared_ptr<CollectionInfo> ci
-                = ClusterInfo::instance()->getCollection(found->_dbName, name);
-              name = ci->name();
-            }
           }
           else {
             // exactly as in the non-cluster case
-            char *n = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
+            char* n = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
             if (0 != n) {
               name = n;
               TRI_Free(TRI_UNKNOWN_MEM_ZONE, n);
