@@ -338,6 +338,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether this is a simple access to a variable with n attributes.
 ////////////////////////////////////////////////////////////////////////////////
+
 bool Expression::isMultipleAttributeAccess () const {
   if (!isSimple()) {
     return false;
