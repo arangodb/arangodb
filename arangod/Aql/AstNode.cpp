@@ -623,6 +623,28 @@ bool AstNode::isConstant () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a node is a comparison operator
+////////////////////////////////////////////////////////////////////////////////
+
+bool AstNode::isComparisonOperator () const {
+  return (type == NODE_TYPE_OPERATOR_BINARY_EQ ||
+          type == NODE_TYPE_OPERATOR_BINARY_NE ||
+          type == NODE_TYPE_OPERATOR_BINARY_LT ||
+          type == NODE_TYPE_OPERATOR_BINARY_LE ||
+          type == NODE_TYPE_OPERATOR_BINARY_GT ||
+          type == NODE_TYPE_OPERATOR_BINARY_GE ||
+          type == NODE_TYPE_OPERATOR_BINARY_IN);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a node always produces a boolean value
+////////////////////////////////////////////////////////////////////////////////
+
+bool AstNode::alwaysProducesBoolValue () const {
+  return (isBoolValue() || isComparisonOperator());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a node (and its subnodes) can throw a runtime
 /// exception
 ////////////////////////////////////////////////////////////////////////////////
@@ -649,7 +671,12 @@ bool AstNode::canThrow () const {
 
   if (type == NODE_TYPE_OPERATOR_BINARY_AND ||
       type == NODE_TYPE_OPERATOR_BINARY_OR) {
-    // the logical operators can throw
+    // the logical operators can throw if the operands are not booleans
+    if (getMember(0)->alwaysProducesBoolValue() &&
+        getMember(1)->alwaysProducesBoolValue()) {
+      return false;
+    }
+
     return true;
   }
 
