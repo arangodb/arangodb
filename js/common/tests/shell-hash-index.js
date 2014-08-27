@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 80 */
 /*global require, db, assertEqual, assertTrue, ArangoCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -188,7 +187,7 @@ function HashIndexSuite() {
       var s = collection.byExampleHash(idx.id, { a : 2, b : 1 });
       assertEqual(1, s.count());
       assertEqual([d2], s.toArray().map(fun));
-      
+
       s = collection.byExampleHash(idx.id, { b : 1, a : 2 });
       assertEqual(1, s.count());
       assertEqual([d2], s.toArray().map(fun));
@@ -196,7 +195,7 @@ function HashIndexSuite() {
       s = collection.byExampleHash(idx.id, { a : 1, b : 1 });
       assertEqual(2, s.count());
       assertEqual([d1, d6], s.toArray().map(fun).sort(sorter));
-      
+
       s = collection.byExampleHash(idx.id, { b : 1, a : 1 });
       assertEqual(2, s.count());
       assertEqual([d1, d6], s.toArray().map(fun).sort(sorter));
@@ -204,7 +203,7 @@ function HashIndexSuite() {
       s = collection.byExampleHash(idx.id, { a : 1, b : null });
       assertEqual(2, s.count());
       assertEqual([d7, d8], s.toArray().map(fun).sort(sorter));
-      
+
       s = collection.byExampleHash(idx.id, { b : null, a : 1 });
       assertEqual(2, s.count());
       assertEqual([d7, d8], s.toArray().map(fun).sort(sorter));
@@ -231,7 +230,7 @@ function HashIndexSuite() {
       catch (err3) {
         assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err3.errorNum);
       }
-      
+
       idx = collection.ensureHashIndex("c");
       s = collection.byExampleHash(idx.id, { c : 1 });
 
@@ -255,7 +254,7 @@ function HashIndexSuite() {
       var s = collection.byExampleHash(idx.id, { a : 2 });
       assertEqual(1, s.count());
       assertEqual(d2, s.toArray()[0]._id);
-      
+
       collection.drop();
 
       try {
@@ -282,17 +281,17 @@ function HashIndexSuite() {
       }
       catch (err1) {
       }
-        
+
       var doc1 = collection.save({ a : "test2", b : 1});
       assertTrue(doc1._key !== "");
-      
+
       try {
         collection.save({ a : "test1", b : 1});
         fail();
       }
       catch (err2) {
       }
-      
+
       var doc2 = collection.save({ a : "test3", b : 1});
       assertTrue(doc2._key !== "");
     },
@@ -312,17 +311,17 @@ function HashIndexSuite() {
       }
       catch (err1) {
       }
-        
+
       var doc1 = collection.save({ a : "test2", b : 1});
       assertTrue(doc1._key !== "");
-      
+
       try {
         collection.save({ a : "test1", b : 1});
         fail();
       }
       catch (err2) {
       }
-      
+
       var doc2 = collection.save({ a : "test3", b : 1});
       assertTrue(doc2._key !== "");
     }

@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, stupid: true */
 /*global module, require, exports, ArangoAgency */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -32,7 +31,7 @@
 // --SECTION--                                              Agency-Communication
 // -----------------------------------------------------------------------------
 exports.Communication = function() {
-  "use strict"; 
+  "use strict";
   var agency,
     AgencyWrapper,
     splitServerName,
@@ -111,7 +110,7 @@ exports.Communication = function() {
         route: newRoute
       };
       _.each(functions, function(f) {
-        newLevel[f] = stubs[f].bind(null, newLevel.route); 
+        newLevel[f] = stubs[f].bind(null, newLevel.route);
       });
       base[name] = newLevel;
       return newLevel;
@@ -138,7 +137,7 @@ exports.Communication = function() {
     this.addLevel = addLevel;
   };
 
-  agency = new AgencyWrapper(); 
+  agency = new AgencyWrapper();
 
 
 // -----------------------------------------------------------------------------
@@ -178,8 +177,8 @@ exports.Communication = function() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Stores database servers in cache
 ///
-/// Stores a list of database servers into a cache object. 
-/// It will convert their roles accordingly. 
+/// Stores a list of database servers into a cache object.
+/// It will convert their roles accordingly.
 ////////////////////////////////////////////////////////////////////////////////
 
   storeServersInCache = function(place, servers) {
@@ -310,8 +309,8 @@ exports.Communication = function() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Object for Collection configuration
 ///
-/// Allows to collect the information stored about a collection. 
-/// This includes indices, journalSize etc. and also shards. 
+/// Allows to collect the information stored about a collection.
+/// This includes indices, journalSize etc. and also shards.
 /// Also convenience functions for shards are added,
 /// allowing to get a mapping server -> shards
 /// and a mapping shard -> server.
@@ -369,8 +368,8 @@ exports.Communication = function() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Object for content of a Database
 ///
-/// Allows to collect the information stored about a database. 
-/// It allos to get a list of collections and to select one of them for 
+/// Allows to collect the information stored about a database.
+/// It allos to get a list of collections and to select one of them for
 /// further information.
 ////////////////////////////////////////////////////////////////////////////////
   var DBObject = function(route, db, writeAccess) {
@@ -411,7 +410,7 @@ exports.Communication = function() {
 
   var DatabasesObject = function(route, writeAccess) {
     this.getList = function() {
-      return route.list();            
+      return route.list();
     };
     this.select = function(name) {
       updateDatabaseRoutes(route, writeAccess);
@@ -602,7 +601,7 @@ exports.Communication = function() {
     };
 
   };
-  
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              Sync
 // -----------------------------------------------------------------------------
@@ -648,7 +647,7 @@ exports.Communication = function() {
         var res = agency.sync.beat.get(true);
         _.each(res, function(v, k) {
           delete res[k];
-          res[splitServerName(k)] = v;  
+          res[splitServerName(k)] = v;
         });
         return res;
       };
@@ -798,16 +797,16 @@ exports.Communication = function() {
         return diff;
       };
       this.DBServers = function() {
-        return difference(supRoute.DBServers().getList(), 
-                          infRoute.DBServers().getList(), 
+        return difference(supRoute.DBServers().getList(),
+                          infRoute.DBServers().getList(),
                           supRoute.DBServers().getEndpoint,
-                          supRoute.DBServers().getProtocol); 
+                          supRoute.DBServers().getProtocol);
       };
       this.Coordinators = function() {
-        return difference(supRoute.Coordinators().getList(), 
-                          infRoute.Coordinators().getList(), 
+        return difference(supRoute.Coordinators().getList(),
+                          infRoute.Coordinators().getList(),
                           supRoute.Coordinators().getEndpoint,
-                          supRoute.Coordinators().getProtocol); 
+                          supRoute.Coordinators().getProtocol);
       };
     };
 

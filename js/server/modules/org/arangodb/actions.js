@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, regexp: true, plusplus: true */
 /*global require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -906,9 +905,9 @@ function startup () {
     if (file.match(/api-.*\.js$/)) {
       var full = fs.join(actionPath, file);
       var content = fs.read(full);
-      
+
       content = "(function () {\n" + content + "\n}());";
-      
+
       internal.executeScript(content, undefined, full);
     }
   }

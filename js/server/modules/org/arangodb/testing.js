@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
 /*global ArangoServerState, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -108,13 +107,13 @@ var optionsDefaults = { "cluster": false,
 
 function findTopDir () {
   var topDir = fs.normalize(fs.makeAbsolute("."));
-  if (! fs.exists("3rdParty") && ! fs.exists("arangod") && 
+  if (! fs.exists("3rdParty") && ! fs.exists("arangod") &&
       ! fs.exists("arangosh") && ! fs.exists("UnitTests")) {
     throw "Must be in ArangoDB topdir to execute unit tests.";
   }
   return topDir;
 }
-  
+
 function makeTestingArgs () {
   var topDir = findTopDir();
   return [ "--configuration",                  "none",
@@ -167,7 +166,7 @@ function startInstance (protocol, options, addArgs) {
       dispatcher.arangodExtraArgs = addArgs;
     }
     print("Temporary cluster data and logs are in",tmpDataDir);
-    var p = new Planner({"numberOfDBservers":2, 
+    var p = new Planner({"numberOfDBservers":2,
                          "numberOfCoordinators":1,
                          "dispatchers": {"me": dispatcher},
                          "dataPath": tmpDataDir,
@@ -296,7 +295,7 @@ function findTests () {
             function(x) {
               return fs.join(makePath("js/server/tests"),x);
             }).sort();
-  tests_shell_server_ahuacatl_extended = 
+  tests_shell_server_ahuacatl_extended =
             _.filter(fs.list(makePath("js/server/tests")),
             function (p) {
               return p.substr(0,9) === "ahuacatl-" &&
@@ -529,7 +528,7 @@ function rubyTests (options, ssl) {
   var tmpname = fs.getTempFile()+".rb";
   fs.write(tmpname,'RSpec.configure do |c|\n'+
                    '  c.add_setting :ARANGO_SERVER\n'+
-                   '  c.ARANGO_SERVER = "' + 
+                   '  c.ARANGO_SERVER = "' +
                           instanceInfo.endpoint.substr(6) + '"\n'+
                    '  c.add_setting :ARANGO_SSL\n'+
                    '  c.ARANGO_SSL = "' + (ssl ? '1' : '0') + '"\n'+
@@ -570,7 +569,7 @@ function rubyTests (options, ssl) {
       }
     }
   }
-  
+
   print("Shutting down...");
   fs.remove(tmpname);
   shutdownInstance(instanceInfo,options);
@@ -641,7 +640,7 @@ function runArangoBenchmark (options, instanceInfo, cmds) {
   return executeAndWait(exe, args);
 }
 
-var impTodo = [ 
+var impTodo = [
   {id: "json1", data: makePath("UnitTests/import-1.json"),
    coll: "UnitTestsImportJson1", type: "json", create: undefined},
   {id: "json2", data: makePath("UnitTests/import-2.json"),
@@ -671,12 +670,12 @@ testFuncs.importing = function (options) {
     print("Skipped because of cluster.");
     return {"ok":true, "skipped":0};
   }
-    
+
   var instanceInfo = startInstance("tcp",options);
 
   var result = {};
   try {
-    var r = runInArangosh(options, instanceInfo, 
+    var r = runInArangosh(options, instanceInfo,
                           makePath("js/server/tests/import-setup.js"));
     result.setup = r;
     if (r !== 0) {
@@ -746,13 +745,13 @@ testFuncs.foxx_manager = function (options) {
   print("foxx_manager tests...");
   var instanceInfo = startInstance("tcp",options);
   var results = {};
-  
-  results.update = runArangoshCmd(options, instanceInfo, 
+
+  results.update = runArangoshCmd(options, instanceInfo,
                                   ["--configuration",
                                    "etc/relative/foxx-manager.conf",
                                    "update"]);
   if (results.update === 0 || options.force) {
-    results.search = runArangoshCmd(options, instanceInfo, 
+    results.search = runArangoshCmd(options, instanceInfo,
                                     ["--configuration",
                                      "etc/relative/foxx-manager.conf",
                                      "search","itzpapalotl"]);
@@ -775,7 +774,7 @@ testFuncs.dump = function (options) {
   print("dump tests...");
   var instanceInfo = startInstance("tcp",options);
   var results = {};
-  results.setup = runInArangosh(options, instanceInfo, 
+  results.setup = runInArangosh(options, instanceInfo,
        makePath("js/server/tests/dump-setup"+cluster+".js"));
   if (results.setup === 0) {
     results.dump = runArangoDumpRestore(options, instanceInfo, "dump",
@@ -807,14 +806,14 @@ var benchTodo = [
    "10", "--complexity", "1"],
   ["--requests","2000","--concurrency","2","--test","crud", "--complexity", "1"],
   ["--requests","4000","--concurrency","2","--test","crud-append", "--complexity", "4"],
-  ["--requests","4000","--concurrency","2","--test","edge", "--complexity", "4"], 
-  ["--requests","5000","--concurrency","2","--test","hash","--complexity","1"], 
+  ["--requests","4000","--concurrency","2","--test","edge", "--complexity", "4"],
+  ["--requests","5000","--concurrency","2","--test","hash","--complexity","1"],
   ["--requests","5000","--concurrency","2","--test","skiplist","--complexity","1"],
   ["--requests","500","--concurrency","3","--test","aqltrx","--complexity","1"],
   ["--requests","100","--concurrency","3","--test","counttrx"],
   ["--requests","500","--concurrency","3","--test","multitrx"]
 ];
-  
+
 testFuncs.arangob = function (options) {
   print("arangob tests...");
   var instanceInfo = startInstance("tcp",options);
@@ -924,7 +923,7 @@ testFuncs.authentication_parameters = function (options) {
 };
 
 
-var allTests = 
+var allTests =
   [
     "config",
     "boost",
@@ -953,7 +952,7 @@ function printUsage () {
     }
   }
   print('       and options can contain the following boolean properties:');
-  print('         "force": continue despite a failed test'); 
+  print('         "force": continue despite a failed test');
   print('         "skipBoost": skip the boost unittests');
   print('         "skipGeo": skip the geo index tests');
   print('         "skipAhuacatl": skip the ahuacatl tests');
@@ -1008,7 +1007,7 @@ function UnitTest (which, options) {
   rr[which] = r = testFuncs[which](options);
   ok = true;
   for (i in r) {
-    if (r.hasOwnProperty(i) && 
+    if (r.hasOwnProperty(i) &&
         (which !== "single" || i !== "test")) {
       if (r[i] !== 0 && r[i] !== true) {
         ok = false;

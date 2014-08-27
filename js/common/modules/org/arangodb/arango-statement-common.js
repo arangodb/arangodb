@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -46,19 +45,19 @@ function ArangoStatement (database, data) {
   this._batchSize = null;
   this._bindVars = {};
   this._options = undefined;
- 
+
   if (typeof data === "string") {
     data = { query: data };
   }
   if (! (data instanceof Object)) {
     throw "ArangoStatement needs initial data";
   }
-    
+
   if (data.query === undefined || data.query === "") {
     throw "ArangoStatement needs a valid query attribute";
   }
   this.setQuery(data.query);
-  
+
   if (data.bindVars instanceof Object) {
     this.bind(data.bindVars);
   }
@@ -81,7 +80,7 @@ function ArangoStatement (database, data) {
 /// @brief binds a parameter to the statement
 ///
 /// This function can be called multiple times, once for each bind parameter.
-/// All bind parameters will be transferred to the server in one go when 
+/// All bind parameters will be transferred to the server in one go when
 /// execute() is called.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -225,7 +224,7 @@ ArangoStatement.prototype.execute = function () {
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
 
-exports.ArangoStatement = ArangoStatement; 
+exports.ArangoStatement = ArangoStatement;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -60,7 +59,7 @@ function locateContentFromCollection (req, options) {
 
   path = "/" + req.suffix.join("/");
 
-  return collection.firstExample({ 
+  return collection.firstExample({
     path: path,
     prefix: options.prefix,
     application: options.application });
@@ -87,7 +86,7 @@ exports.head = function (req, res, options, next) {
   var content;
 
   content = locateContentFromCollection(req, options);
-  
+
   if (content === null) {
     res.responseCode = actions.HTTP_NOT_IMPLEMENTED;
     res.contentType = "text/plain";
@@ -108,7 +107,7 @@ exports.get = function (req, res, options, next) {
   var content;
 
   content = locateContentFromCollection(req, options);
-  
+
   if (content === null) {
     res.responseCode = actions.HTTP_NOT_IMPLEMENTED;
     res.contentType = "text/plain";

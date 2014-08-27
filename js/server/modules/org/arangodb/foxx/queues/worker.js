@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, evil: true */
+/*jshint evil: true */
 /*global exports, require */
 
 ////////////////////////////////////////////////////////////////////////////////

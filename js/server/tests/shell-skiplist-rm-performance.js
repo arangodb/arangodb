@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 80 */
 /*global require, db, assertEqual, assertTrue, ArangoCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,36 +76,36 @@ function SkipListPerfSuite() {
 
     testDeletionPerformance : function () {
         var time = require("internal").time;
-        collection.ensureSkiplist("value"); 
+        collection.ensureSkiplist("value");
         var N=100000;
         var p=14777;  // must be coprime to N
-        for (i = 0;i < N;i++) { 
-            collection.save({value:i}); 
-        }; 
+        for (i = 0;i < N;i++) {
+            collection.save({value:i});
+        };
         var l = collection.toArray();
         var t = time();
         var j = 0;
         var x;
-        for (var i = 0;i < l.length;i++) { 
+        for (var i = 0;i < l.length;i++) {
             x = l[j];
             j = (j+p) % l.length;
             collection.remove(x._key)
-        }; 
+        };
         var t1 = time()-t;
-        internal.db._drop(cn); 
-        collection = internal.db._create(cn); 
-        collection.ensureSkiplist("value"); 
-        for (i = 0;i < N;i++) { 
-            collection.save({value: i % 10}); 
-        }; 
+        internal.db._drop(cn);
+        collection = internal.db._create(cn);
+        collection.ensureSkiplist("value");
+        for (i = 0;i < N;i++) {
+            collection.save({value: i % 10});
+        };
         l = collection.toArray();
         t = time();
         j = 0;
-        for (i = 0;i < l.length;i++) { 
+        for (i = 0;i < l.length;i++) {
             x = l[j];
             j = (j+p) % l.length;
             collection.remove(x._key)
-        }; 
+        };
         t2 = time()-t;
         assertFalse(t2 > 5*t1,"Removal with skip-list index is slow");
     }

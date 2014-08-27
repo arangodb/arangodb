@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -158,7 +157,7 @@ GeneralArrayCursor.prototype._PRINT = function (context) {
 /// @brief returns all elements of the cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralArrayCursor.prototype.toArray = 
+GeneralArrayCursor.prototype.toArray =
 GeneralArrayCursor.prototype.elements = function () {
   return this._documents;
 };
@@ -323,7 +322,7 @@ SimpleQuery.prototype.clone = function () {
 /// **Note**: There is no need to explicitly call the execute method if another
 /// means of fetching the query results is chosen. The following two approaches
 /// lead to the same result:
-/// 
+///
 /// @EXAMPLE_ARANGOSH_OUTPUT{executeQuery}
 /// ~ db._create("users");
 /// ~ db.users.save({ name: "Gerhard" });
@@ -1192,10 +1191,10 @@ SimpleQueryNear = function (collection, latitude, longitude, iid) {
 
   if (iid === undefined) {
     idx = collection.getIndexes();
-    
+
     for (i = 0;  i < idx.length;  ++i) {
       var index = idx[i];
-      
+
       if (index.type === "geo1" || index.type === "geo2") {
         if (this._index === null) {
           this._index = index.id;
@@ -1206,7 +1205,7 @@ SimpleQueryNear = function (collection, latitude, longitude, iid) {
       }
     }
   }
-    
+
   if (this._index === null) {
     var err = new ArangoError();
     err.errorNum = arangodb.ERROR_QUERY_GEO_INDEX_MISSING;
@@ -1340,10 +1339,10 @@ SimpleQueryWithin = function (collection, latitude, longitude, radius, iid) {
 
   if (iid === undefined) {
     idx = collection.getIndexes();
-    
+
     for (i = 0;  i < idx.length;  ++i) {
       var index = idx[i];
-      
+
       if (index.type === "geo1" || index.type === "geo2") {
         if (this._index === null) {
           this._index = index.id;
@@ -1354,7 +1353,7 @@ SimpleQueryWithin = function (collection, latitude, longitude, radius, iid) {
       }
     }
   }
-    
+
   if (this._index === null) {
     var err = new ArangoError();
     err.errorNum = arangodb.ERROR_QUERY_GEO_INDEX_MISSING;
@@ -1389,7 +1388,7 @@ SimpleQueryWithin.prototype.clone = function () {
   query = new SimpleQueryWithin(this._collection,
                                 this._latitude,
                                 this._longitude,
-                                this._radius, 
+                                this._radius,
                                 this._index);
   query._skip = this._skip;
   query._limit = this._limit;
@@ -1486,7 +1485,7 @@ function SimpleQueryFulltext (collection, attribute, query, iid) {
   this._attribute = attribute;
   this._query = query;
   this._index = (iid === undefined ? null : iid);
- 
+
   if (iid === undefined) {
     var idx = collection.getIndexes();
     var i;
@@ -1505,7 +1504,7 @@ function SimpleQueryFulltext (collection, attribute, query, iid) {
       }
     }
   }
-    
+
   if (this._index === null) {
     var err = new ArangoError();
     err.errorNum = arangodb.ERROR_QUERY_FULLTEXT_INDEX_MISSING;
@@ -1558,7 +1557,7 @@ SimpleQueryFulltext.prototype._PRINT = function (context) {
        + ", \""
        + this._query
        + "\")";
-  
+
   if (this._skip !== null && this._skip !== 0) {
     text += ".skip(" + this._skip + ")";
   }
