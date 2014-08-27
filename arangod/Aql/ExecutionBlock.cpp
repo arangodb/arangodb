@@ -1020,7 +1020,7 @@ void IndexRangeBlock::readSkiplistIndex () {
     for (auto x: ranges.at(0)){
       if(std::string(idx->_fields._buffer[i]) == x->_attr) {
         if (x->is1ValueRangeInfo()) {   // it's an equality . . . 
-          parameters(x->_low->_bound.copy());
+          parameters(x->_low->_bound.get("value").copy());
         } 
         else {                          // it's not an equality . . . 
           if (seen > 0) {
@@ -1038,7 +1038,7 @@ void IndexRangeBlock::readSkiplistIndex () {
           }
 
           if (x->_high != nullptr) {
-            auto op = x->_high->toIndexOperator(false, parameters.copy(), shaper);
+            auto op = x->_high->toIndexOperator(true, parameters.copy(), shaper);
             if (skiplistOperator != nullptr) {
               skiplistOperator = TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, 
                   skiplistOperator, op, NULL, shaper, NULL, 2, NULL);
