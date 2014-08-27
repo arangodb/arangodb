@@ -95,8 +95,6 @@ namespace triagens {
             op = TRI_GT_INDEX_OPERATOR;
           }
         }
-        std::cout << "\nparameters = " << parameters.toString() << "\n";
-        std::cout << "\n_bound = " << _bound.toString() << "\n";
         parameters.add(_bound.get("value").copy());
         size_t nr = parameters.size();
         return TRI_CreateIndexOperator(op, NULL, NULL, parameters.steal(),
