@@ -38,6 +38,17 @@ using Json = triagens::basics::Json;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief dummyrule
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::dummyRule (Optimizer*,
+                              ExecutionPlan*,
+                              int level,
+                              Optimizer::PlanList&) {
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief remove all unnecessary filters
 /// this rule modifies the plan in place:
 /// - filters that are always true are removed completely
@@ -46,9 +57,8 @@ using Json = triagens::basics::Json;
 
 int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt, 
                                                  ExecutionPlan* plan, 
-                                                 Optimizer::PlanList& out,
-                                                 bool& keep) {
-  keep = true; // plan will always be kept
+                                                 int level,
+                                                 Optimizer::PlanList& out) {
   std::unordered_set<ExecutionNode*> toUnlink;
   std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::FILTER, true);
   
@@ -99,6 +109,8 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
     plan->findVarUsage();
   }
   
+  out.push_back(plan, level);
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -111,9 +123,8 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
 
 int triagens::aql::moveCalculationsUpRule (Optimizer* opt, 
                                            ExecutionPlan* plan, 
-                                           Optimizer::PlanList& out,
-                                           bool& keep) {
-  keep = true; // plan will always be kept
+                                           int level,
+                                           Optimizer::PlanList& out) {
   std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::CALCULATION, true);
   bool modified = false;
   
@@ -180,6 +191,8 @@ int triagens::aql::moveCalculationsUpRule (Optimizer* opt,
     plan->findVarUsage();
   }
   
+  out.push_back(plan, level);
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -192,10 +205,9 @@ int triagens::aql::moveCalculationsUpRule (Optimizer* opt,
 ////////////////////////////////////////////////////////////////////////////////
 
 int triagens::aql::moveFiltersUpRule (Optimizer* opt, 
-                                      ExecutionPlan* plan, 
-                                      Optimizer::PlanList& out,
-                                      bool& keep) {
-  keep = true; // plan will always be kept
+                                      ExecutionPlan* plan,
+                                      int level,
+                                      Optimizer::PlanList& out) {
   std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::FILTER, true);
   bool modified = false;
   
@@ -259,6 +271,8 @@ int triagens::aql::moveFiltersUpRule (Optimizer* opt,
     plan->findVarUsage();
   }
   
+  out.push_back(plan, level);
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -268,10 +282,9 @@ int triagens::aql::moveFiltersUpRule (Optimizer* opt,
 ////////////////////////////////////////////////////////////////////////////////
 
 int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt, 
-                                                      ExecutionPlan* plan, 
-                                                      Optimizer::PlanList& out, 
-                                                      bool& keep) {
-  keep = true;
+                                                      ExecutionPlan* plan,
+                                                      int level,
+                                                      Optimizer::PlanList& out) {
   std::vector<ExecutionNode*> nodes
     = plan->findNodesOfType(triagens::aql::ExecutionNode::CALCULATION, true);
   std::unordered_set<ExecutionNode*> toUnlink;
@@ -299,6 +312,8 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
     plan->unlinkNodes(toUnlink);
     plan->findVarUsage();
   }
+
+  out.push_back(plan, level);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -370,7 +385,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                 auto noRes = new NoResultsNode(newPlan->nextId());
                 newPlan->registerNode(noRes);
                 newPlan->insertDependency(x, noRes);
-                _out->push_back(newPlan);
+                _out->push_back(newPlan, 0);
               }
             }
             else {
@@ -398,7 +413,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                     throw;
                   }
                   newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
-                  _out->push_back(newPlan);
+                  _out->push_back(newPlan, 0);
                 }
               }
             }
@@ -520,9 +535,8 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 
 int triagens::aql::useIndexRange (Optimizer* opt, 
                                   ExecutionPlan* plan, 
-                                  Optimizer::PlanList& out,
-                                  bool& keep) {
-  keep = true;
+                                  int level,
+                                  Optimizer::PlanList& out) {
   std::vector<ExecutionNode*> nodes
     = plan->findNodesOfType(triagens::aql::ExecutionNode::FILTER, true);
  
@@ -533,6 +547,8 @@ int triagens::aql::useIndexRange (Optimizer* opt,
     FilterToEnumCollFinder finder(plan, invars[0], &out);
     nn->walk(&finder);
   }
+
+  out.push_back(plan, level);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -648,7 +664,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
       if (idx.fullmatch) { // if the index superseedes the sort, remove it.
         RemoveSortNode(newPlan);
       }
-      _out.push_back(newPlan);
+      _out.push_back(newPlan, 0);
     }
   }
 
@@ -677,10 +693,9 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
 
 
 int triagens::aql::useIndexForSort (Optimizer* opt, 
-                                    ExecutionPlan* plan, 
-                                    Optimizer::PlanList& out,
-                                    bool& keep) {
-  keep = true;
+                                    ExecutionPlan* plan,
+                                    int level,
+                                    Optimizer::PlanList& out) {
   std::vector<ExecutionNode*> nodes
     = plan->findNodesOfType(triagens::aql::ExecutionNode::SORT, true);
   for (auto n : nodes) {
@@ -695,9 +710,52 @@ int triagens::aql::useIndexForSort (Optimizer* opt,
     oneNode->walk(&finder);
   }
 
+  out.push_back(plan, level);
+
   return TRI_ERROR_NO_ERROR;
 
 
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief interchange adjacent EnumerateCollectionNodes in all possible ways
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::interchangeAdjacentEnumerations (Optimizer* opt,
+                                                    ExecutionPlan* plan,
+                                                    int level,
+                                                    Optimizer::PlanList& out) {
+
+  std::vector<ExecutionNode*> nodes
+    = plan->findNodesOfType(triagens::aql::ExecutionNode::ENUMERATE_COLLECTION, 
+                            true);
+ 
+  // We use that the order of the nodes is such that a node B that is among the
+  // recursive dependencies of a node A is later in the vector.
+  for (size_t i = 0; i < nodes.size(); i++) {
+    ExecutionNode* n = nodes[i];
+    std::vector<ExecutionNode*> nn;
+    nn.push_back(n);
+    // Now follow the dependencies as long as we see further such nodes:
+    while (true) {
+      auto deps = n->getDependencies();
+      if (deps.size() == 0) {
+        break;
+      }
+      if (deps[0]->getType() != triagens::aql::ExecutionNode::ENUMERATE_COLLECTION) {
+        break;
+      }
+      n = deps[0];
+      nn.push_back(n);
+    }
+    if (nn.size() > 1) {
+      // Now we want to compute all permutations of nn
+    }
+  }
+
+  out.push_back(plan, level);
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 // Local Variables:
