@@ -808,12 +808,11 @@ bool IndexRangeBlock::readIndex () {
   
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
  
-  /*  
+    
   if (en->_index->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
     readSkiplistIndex();
   }
-  else */
-  if (en->_index->_type == TRI_IDX_TYPE_HASH_INDEX) {
+  else if (en->_index->_type == TRI_IDX_TYPE_HASH_INDEX) {
     readHashIndex();
   }
   else {
@@ -968,14 +967,99 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
   return skipped; 
 }
 
-/* void IndexRangeBlock::readSkiplistIndex () {
+// it is only possible to query a skip list using more than one attribute if we
+// only have equalities followed by a single arbitrary comparison (i.e x.a == 1
+// && x.b == 2 && x.c > 3 && x.c <= 4). Then we do: 
+//
+//   TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, left, right, NULL, shaper,
+//     NULL, 2, NULL);
+//
+// where 
+//
+//   left =  TRI_CreateIndexOperator(TRI_GT_INDEX_OPERATOR, NULL, NULL, [1,2,3],
+//     shaper, NULL, 3, NULL)
+//
+//   right =  TRI_CreateIndexOperator(TRI_LE_INDEX_OPERATOR, NULL, NULL, [1,2,4],
+//     shaper, NULL, 3, NULL)
+//
+// If the final comparison is an equality (x.a == 1 && x.b == 2 && x.c ==3), then 
+// we just do:
+//
+//   TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, NULL, NULL, [1,2,3],
+//     shaper, NULL, 3, NULL)
+//
+// It is necessary that values of the attributes are listed in the correct
+// order (i.e. <a> must be the first attribute indexed, and <b> must be the
+// second). If one of the attributes is not indexed, then it is ignored,
+// provided we are querying all the previously indexed attributes (i.e. we
+// cannot do (x.c == 1 && x.a == 2) if the index covers <a>, <b>, <c> in this
+// order but we can do (x.a == 2)).
+//
+// If the comparison is not equality, then the values of the parameters 
+// (i.e. the 1 in x.c >= 1) cannot be lists or arrays.
+//
+
+void IndexRangeBlock::readSkiplistIndex () {
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
   TRI_index_t* idx = en->_index;
   TRI_ASSERT(idx != nullptr);
-   
-  TRI_index_operator_t* skiplistOperator;
-  TRI_skiplist_iterator_t* skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator);
+  
+  std::vector<std::vector<RangeInfo*>> ranges = en->_ranges;
 
+  TRI_shaper_t* shaper = _collection->documentCollection()->getShaper(); 
+  TRI_ASSERT(shaper != nullptr);
+  
+  TRI_index_operator_t* skiplistOperator = nullptr; 
+
+  size_t seen = 0;
+  Json parameters(Json::List); 
+  
+  for (size_t i = 0; i < idx->_fields._length && seen < ranges.at(0).size(); i++, seen++) {
+    // TODO doing 1 dim case at the moment . . .
+    // FIXME assume that ranges.at(0) is of the correct type!
+    for (auto x: ranges.at(0)){
+      if(std::string(idx->_fields._buffer[i]) == x->_attr) {
+        if (x->is1ValueRangeInfo()) {   // it's an equality . . . 
+          parameters(x->_low->_bound.copy());
+        } 
+        else {                          // it's not an equality . . . 
+          if (seen > 0) {
+            skiplistOperator = TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, NULL,
+                NULL, parameters.copy().steal(), shaper, NULL, seen, NULL);
+          }
+          if (x->_low != nullptr) {
+            auto op = x->_low->toIndexOperator(false, parameters.copy(), shaper);
+            if (skiplistOperator != nullptr) {
+              skiplistOperator = TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, 
+                  skiplistOperator, op, NULL, shaper, NULL, 2, NULL);
+            } else {
+              skiplistOperator = op;
+            }
+          }
+
+          if (x->_high != nullptr) {
+            auto op = x->_high->toIndexOperator(false, parameters.copy(), shaper);
+            if (skiplistOperator != nullptr) {
+              skiplistOperator = TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, 
+                  skiplistOperator, op, NULL, shaper, NULL, 2, NULL);
+            } else {
+              skiplistOperator = op;
+            }
+          }
+          break;
+        }
+      }
+    }
+  }
+
+  if(skiplistOperator == nullptr){      // only have equalities . . .
+    skiplistOperator = TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, NULL,
+        NULL, parameters.steal(), shaper, NULL, seen, NULL);
+  }
+
+  TRI_skiplist_iterator_t* skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator);
+  //skiplistOperator is deleted by the prev line 
+  
   if (skiplistIterator == nullptr) {
     int res = TRI_errno();
     if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
@@ -985,7 +1069,7 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
-  while (true) { // TODO: handle count
+  while (true) { 
     TRI_skiplist_index_element_t* indexElement = skiplistIterator->_next(skiplistIterator);
 
     if (indexElement == nullptr) {
@@ -995,7 +1079,7 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
   }
 
   TRI_FreeSkiplistIterator(skiplistIterator);
-}*/
+}
 
 void IndexRangeBlock::readHashIndex () {
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
@@ -1038,11 +1122,9 @@ void IndexRangeBlock::readHashIndex () {
 
       for (auto x: en->_ranges.at(0)) {
         if (x->_attr == std::string(name)){//found attribute
-          std::cout << "found " << x->_attr << "\n";
-          std::cout <<  x->_low->_bound.toString() << "\n";
           auto shaped = TRI_ShapedJsonJson(shaper, 
               JsonHelper::getArrayElement(x->_low->_bound.json(), "value"), false); 
-          std::cout << "MADE IT\n";
+          // here x->_low->_bound = x->_high->_bound 
           searchValue._values[i] = *shaped;
           
         }
