@@ -1158,19 +1158,30 @@ static int FillLookupSLOperator (TRI_index_operator_t* slOperator,
         for (size_t j = 0; j < relationOperator->_numFields; ++j) {
           TRI_json_t* jsonObject = (TRI_json_t*) TRI_AtVector(&(relationOperator->_parameters->_value._objects), j);
 
+          // find out if the search value is a list or an array
           if ((TRI_IsListJson(jsonObject) || TRI_IsArrayJson(jsonObject)) &&
               slOperator->_type != TRI_EQ_INDEX_OPERATOR) {
-            // non-equality operator used on complex data type, this is disallowed
+            // non-equality operator used on list or array data type, this is disallowed
+            // because we need to shape these objects first. however, at this place (index lookup)
+            // we never want to create new shapes so we will have a problem if we cannot find an
+            // existing shape for the search value. in this case we would need to raise an error
+            // but then the query results would depend on the state of the shaper and if it had
+            // seen previous such objects
+
+            // we still allow looking for list or array values using equality. this is safe.
             return TRI_ERROR_BAD_PARAMETER;
           }
 
+          // now shape the search object (but never create any new shapes)
           TRI_shaped_json_t* shapedObject = TRI_ShapedJsonJson(document->getShaper(), jsonObject, false);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
           if (shapedObject != nullptr) {
+            // found existing shape
             relationOperator->_fields[j] = *shapedObject; // shallow copy here is ok
             TRI_Free(TRI_UNKNOWN_MEM_ZONE, shapedObject); // don't require storage anymore
           }
           else {
+            // shape not found
             return TRI_RESULT_ELEMENT_NOT_FOUND;
           }
         }

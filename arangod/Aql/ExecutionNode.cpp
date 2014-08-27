@@ -408,10 +408,10 @@ void EnumerateCollectionNode::toJsonHelper (triagens::basics::Json& nodes,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get vector of indexes with fields <attrs> 
+/// @brief get vector of indices with fields <attrs> 
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<TRI_index_t*> EnumerateCollectionNode::getIndexesUnordered (vector<std::string> attrs) const {
+std::vector<TRI_index_t*> EnumerateCollectionNode::getIndicesUnordered (vector<std::string> attrs) const {
   std::vector<TRI_index_t*> out;
   TRI_document_collection_t* document = _collection->documentCollection();
   size_t const n = document->_allIndexes._length;
@@ -499,7 +499,7 @@ EnumerateCollectionNode::CompareIndex (TRI_index_t* idx,
   return match;
 }
 
-std::vector<EnumerateCollectionNode::IndexMatch> EnumerateCollectionNode::getIndexesOrdered (IndexMatchVec &attrs) const {
+std::vector<EnumerateCollectionNode::IndexMatch> EnumerateCollectionNode::getIndicesOrdered (IndexMatchVec &attrs) const {
 
   std::vector<IndexMatch> out;
   TRI_document_collection_t* document = _collection->documentCollection();
@@ -829,6 +829,46 @@ void SortNode::toJsonHelper (triagens::basics::Json& nodes,
 
   // And add it:
   nodes(json);
+}
+
+class SortNodeFindMyExpressions : public WalkerWorker<ExecutionNode> {
+
+public:
+  size_t _foundCalcNodes;
+  std::vector<std::pair<Variable const*, bool>> _elms;
+  std::vector<std::pair<CalculationNode*, bool>> _myVars;
+
+  SortNodeFindMyExpressions(SortNode* me)
+    : _foundCalcNodes(0),
+      _elms(me->getElements())
+  {
+    _myVars.resize(_elms.size());
+  }
+
+  bool before (ExecutionNode* en) {
+    if (en->getType() == triagens::aql::ExecutionNode::CALCULATION) {
+      auto cn = static_cast<triagens::aql::CalculationNode*>(en);
+      for (size_t n = 0; n < _elms.size(); n++) {
+        if (_elms[n].first->id == cn->outVariable()->id) {
+          _myVars[n] = std::make_pair(cn, _elms[n].second);
+          _foundCalcNodes ++;
+          break;
+        }
+      }
+    }
+    return _foundCalcNodes >= _elms.size();
+  }
+};
+
+std::vector<std::pair<CalculationNode*, bool>> SortNode::getCalcNodePairs ()
+{
+  SortNodeFindMyExpressions findExp(this);
+  _dependencies[0]->walk(&findExp);
+  if (findExp._foundCalcNodes < _elements.size()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "SortNode wasn't able to locate all its CalculationNodes");
+  }
+  return findExp._myVars;
 }
 
 // -----------------------------------------------------------------------------
