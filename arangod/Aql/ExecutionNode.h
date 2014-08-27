@@ -1291,13 +1291,12 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief can the node throw?
+/// @brief can the node throw? Note that this means that an exception can
+/// *originate* from this node. That is, this method does not need to
+/// return true just because a dependent node can throw an exception.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool canThrow () {
-          std::cout << "SubqueryNode method for canThrow is not implemented!\n";
-          return true;
-        }
+        bool canThrow ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

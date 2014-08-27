@@ -769,6 +769,43 @@ std::vector<Variable const*> SubqueryNode::getVariablesUsedHere () const {
   return v;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief can the node throw? We have to find whether any node in the 
+/// subquery plan can throw.
+////////////////////////////////////////////////////////////////////////////////
+
+struct CanThrowFinder : public WalkerWorker<ExecutionNode> {
+  bool _canThrow;
+
+  CanThrowFinder () : _canThrow(false) {
+  };
+
+  ~CanThrowFinder () {
+  };
+
+  bool enterSubQuery (ExecutionNode* super, ExecutionNode* sub) {
+    return false;
+  }
+
+  bool before (ExecutionNode* node) {
+
+    if (node->canThrow()) {
+      _canThrow = true;
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+
+};
+
+bool SubqueryNode::canThrow () {
+  CanThrowFinder finder;
+  walk(&finder);
+  return finder._canThrow;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             methods of FilterNode
 // -----------------------------------------------------------------------------
