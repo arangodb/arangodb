@@ -285,6 +285,9 @@ namespace triagens {
           private: 
         std::unordered_map<std::string, std::unordered_map<std::string, RangeInfo*>> _ranges; 
     };
+
+
+    typedef std::vector<std::vector<RangeInfo*>> RangeInfoVec;
   }
 }
 
