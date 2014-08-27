@@ -689,8 +689,8 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
   using ECN = triagens::aql::EnumerateCollectionNode;
 
   ExecutionPlan*       _plan;
-  Optimizer::PlanList  _out;
-  sortAnalysis *       _sortNode;
+  Optimizer::PlanList& _out;
+  sortAnalysis*        _sortNode;
 
   public:
   sortToIndexNode (ExecutionPlan* plan,
