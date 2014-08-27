@@ -104,9 +104,9 @@ namespace triagens {
 /// @brief constructor using an id
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode (size_t id, double cost = 0.0) 
+        ExecutionNode (size_t id)
           : _id(id), 
-            _estimatedCost(0), 
+            _estimatedCost(0.0), 
             _varUsageValid(false) {
         }
 
@@ -353,7 +353,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double getCost () {
-          if (_estimatedCost == 0){
+          if (_estimatedCost == 0.0) {
             _estimatedCost = estimateCost();
           }
           return _estimatedCost;
