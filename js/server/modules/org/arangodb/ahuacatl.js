@@ -4379,7 +4379,7 @@ function GRAPH_PATHS (vertices, edgeCollection, direction, followCycles, minLeng
 /// *Parameters*
 ///
 /// * *graphName*     : The name of the graph as a string.
-/// * *options*     : An object containing the following options::
+/// * *options*     : An object containing the following options:
 ///   * *direction*        : The direction of the edges. Possible values are *any*,
 /// *inbound* and *outbound* (default).
 ///   * *followCycles* (optional) : If set to *true* the query follows cycles in the graph,
@@ -5412,7 +5412,7 @@ function IS_EXAMPLE_SET (example) {
 /// (see [example](#short_explanation_of_the_example_parameter)).
 /// * *endVertexExample*   : An example for the desired
 /// end Vertices (see [example](#short_explanation_of_the_example_parameter)).
-/// * *options* (optional) : An object containing the following options::
+/// * *options* (optional) : An object containing the following options:
 ///   * *direction*                        : The direction of the edges as a string.
 ///   Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeCollectionRestriction*        : One or multiple edge
@@ -5895,7 +5895,7 @@ function GRAPH_NEIGHBORS (vertexCollection,
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
 /// vertices (see [example](#short_explanation_of_the_example_parameter)).
-/// * *options*            : An object containing the following options::
+/// * *options*            : An object containing the following options:
 ///   * *direction*                        : The direction
 ///      of the edges. Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeExamples*                     : A filter example for the edges to
@@ -6015,7 +6015,7 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
 /// vertices (see [example](#short_explanation_of_the_example_parameter)).
-/// * *options* (optional) : An object containing the following options::
+/// * *options* (optional) : An object containing the following options:
 ///   * *direction*                        : The direction
 /// of the edges as a string. Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeCollectionRestriction*        : One or multiple edge
@@ -6100,7 +6100,7 @@ function GENERAL_GRAPH_EDGES (
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
 /// vertices (see [example](#short_explanation_of_the_example_parameter)).
-/// * *options* (optional)           : An object containing the following options::
+/// * *options* (optional)           : An object containing the following options:
 ///   * *direction*        : The direction of the edges as a string. Possible values are
 ///      *outbound*, *inbound* and *any* (default).
 ///   * *vertexCollectionRestriction*      : One or multiple
@@ -6302,7 +6302,7 @@ function GENERAL_GRAPH_COMMON_NEIGHBORS (
 /// vertices (see [example](#short_explanation_of_the_example_parameter)).
 /// * *vertex2Example*     : An example for the desired
 /// vertices (see [example](#short_explanation_of_the_example_parameter)).
-/// * *options* (optional)    : An object containing the following options::
+/// * *options* (optional)    : An object containing the following options:
 ///   * *vertex1CollectionRestriction* : One or multiple vertex
 ///   collection names. Only vertices from these collections will be considered.
 ///   * *vertex2CollectionRestriction*   : One or multiple vertex
@@ -6436,7 +6436,7 @@ function GENERAL_GRAPH_COMMON_PROPERTIES (
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*      : An example for the desired
 /// vertices (see [example](#short_explanation_of_the_example_parameter)).
-/// * *options* (optional)    : An object containing the following options::
+/// * *options* (optional)    : An object containing the following options:
 ///   * *direction*                        : The direction of the edges as a string.
 /// Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeCollectionRestriction*        : One or multiple edge
@@ -6538,7 +6538,7 @@ function GENERAL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)
 /// *Parameters*
 ///
 /// * *graphName*          : The name of the graph as a string.
-/// * *options* (optional) : An object containing the following options::
+/// * *options* (optional) : An object containing the following options:
 ///   * *direction*       : The direction of the edges as a string.
 /// Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *algorithm*       : The algorithm to calculate the shortest paths as a string. Possible
@@ -6618,7 +6618,7 @@ function GENERAL_GRAPH_ECCENTRICITY (graphName, options) {
 /// * *graphName*          : The name of the graph as a string.
 /// * *vertexExample*     : An example for the desired
 /// vertices (see [example](#short_explanation_of_the_example_parameter)).
-/// * *options*     : An object containing the following options::
+/// * *options*     : An object containing the following options:
 ///   * *direction*                        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeCollectionRestriction*        : One or multiple edge
@@ -6720,7 +6720,7 @@ function GENERAL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
 /// *Parameters*
 ///
 /// * *graphName*          : The name of the graph as a string.
-/// * *options*     : An object containing the following options::
+/// * *options*     : An object containing the following options:
 ///   * *direction*                        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *algorithm*                        : The algorithm to calculate
@@ -6816,7 +6816,7 @@ function GENERAL_GRAPH_CLOSENESS (graphName, options) {
 ///
 ///
 /// * *graphName*          : The name of the graph as a string.
-/// * *options*            : An object containing the following options::
+/// * *options*            : An object containing the following options:
 ///   * *direction*                        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *weight*                           : The name of the attribute of
@@ -6924,7 +6924,7 @@ function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 /// *Parameters*
 ///
 /// * *graphName*          : The name of the graph as a string.
-/// * *options*     : An object containing the following options::
+/// * *options*     : An object containing the following options:
 ///   * *direction*                        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *weight*                           : The name of the attribute of
@@ -7005,7 +7005,7 @@ function GENERAL_GRAPH_BETWEENNESS (graphName, options) {
 /// [here](#the_complexity_of_the_shortest_path_algorithms).
 ///
 /// * *graphName*       : The name of the graph as a string.
-/// * *options*     : An object containing the following options::
+/// * *options*     : An object containing the following options:
 ///   * *direction*     : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *algorithm*     : The algorithm to calculate the shortest paths as a string. Possible
@@ -7097,7 +7097,7 @@ function GENERAL_GRAPH_RADIUS (graphName, options) {
 /// *Parameters*
 ///
 /// * *graphName*          : The name of the graph as a string.
-/// * *options*     : An object containing the following options::
+/// * *options*     : An object containing the following options:
 ///   * *direction*        : The direction of the edges.
 /// Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *algorithm*        : The algorithm to calculate the shortest paths as a string. Possible

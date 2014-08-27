@@ -119,10 +119,10 @@ exports.work = function (job) {
   if (callback) {
     try {
       eval('(' + callback + ')(' + [
-        JSON.stringify(job._id),
-        JSON.stringify(job.data),
-        JSON.stringify(result),
-        JSON.stringify(job.failures)
+        JSON.stringify(job._id) || 'null',
+        JSON.stringify(job.data) || 'null',
+        JSON.stringify(result) || 'null',
+        JSON.stringify(job.failures) || 'null'
       ].join(', ') + ')');
     } catch (callbackErr) {
       console.error(

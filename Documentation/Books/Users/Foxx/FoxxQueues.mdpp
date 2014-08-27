@@ -117,6 +117,7 @@ If *opts* is a function, it will be treated as the *execute* function.
   * *execute*: a function to pass the job data to when a job is executed.
   * *maxFailures* (optional): the number of times a job will be re-tried before it is marked as *"failed"*. A negative value or *Infinity* means that the job will be re-tried on failure indefinitely. Default: *0*.
   * *schema* (optional): a [Joi](https://github.com/hapijs/joi) schema to validate a job's data against before accepting it.
+  * *preprocess* (optional): a function to pre-process a job's (validated) data before serializing it in the queue.
   * *backOff* (optional): either a function that takes the number of times the job has failed before as input and returns the number of milliseconds to wait before trying the job again, or the delay to be used to calculate an [exponential back-off](https://en.wikipedia.org/wiki/Exponential_backoff), or *0* for no delay. Default: *1000*.
 
 *Examples*

@@ -6,6 +6,6 @@
     usersName = applicationContext.collectionName('users');
 
   if (db._collection(usersName) === null) {
-    db._create(usersName);
+    db._create(usersName, {isSystem: true});
   }
 }());

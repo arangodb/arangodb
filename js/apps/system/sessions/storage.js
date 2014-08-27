@@ -127,17 +127,22 @@
 
   _.extend(Session.prototype, {
     enforceTimeout: function () {
-      if (!cfg.timeToLive) {
-        return;
+      if (this.hasExpired()) {
+        throw new errors.SessionExpired(this.get('_key'));
       }
-      var now = Number(new Date()),
-        prop = cfg.ttlType;
+    },
+    hasExpired: function () {
+      return Date.now() > this.getExpiry();
+    },
+    getExpiry: function () {
+      if (!cfg.timeToLive) {
+        return Number.MAX_VALUE;
+      }
+      var prop = cfg.ttlType;
       if (!prop || !this.get(prop)) {
         prop = 'created';
       }
-      if (cfg.timeToLive < (now - this.get(prop))) {
-        throw new errors.SessionExpired(this.get('_key'));
-      }
+      return this.get(prop) + cfg.timeToLive;
     },
     addCookie: function (res, cookieName, secret) {
       var value = this.get('_key'),

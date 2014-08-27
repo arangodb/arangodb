@@ -224,6 +224,9 @@ _.extend(Queue.prototype, {
         }
         data = result.value;
       }
+      if (type.preprocess) {
+        data = type.preprocess(data);
+      }
     } else if (opts.allowUnknown) {
       console.warn('Unknown job type: ' + name);
     } else {
