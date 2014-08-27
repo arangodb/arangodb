@@ -111,7 +111,7 @@ int Optimizer::createPlans (ExecutionPlan* plan) {
         auto it = std::upper_bound(_rules.begin(), _rules.end(), r);
         TRI_ASSERT(it != _rules.end());
         std::cout << "Trying rule " << &(it->func) << " with level "
-                  << it->level << " to plan " << count++
+                  << it->level << " on plan " << count++
                   << std::endl;
         try {
           // keep should have a default value so rules that forget to set it
