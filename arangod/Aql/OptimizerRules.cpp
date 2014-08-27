@@ -546,23 +546,30 @@ int triagens::aql::useIndexRange (Optimizer* opt,
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief try to match sorts to indices
+/// @brief analyse the sortnode and its calculation nodes
 ////////////////////////////////////////////////////////////////////////////////
 class sortAnalysis
 {
   using ECN = triagens::aql::EnumerateCollectionNode;
+
   typedef std::pair<ECN::IndexMatchVec, RangeInfoVec> Range_IndexPair;
+
   struct sortNodeData {
     bool ASC;
-    size_t nodeID;
-    std::string collection;/// variablename todo
+    size_t calculationNodeID;
+    std::string variableName;
     std::string attributevec;
   };
 
   std::vector<sortNodeData*> _sortNodeData;
+
 public:
   size_t const sortNodeID;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor; fetches the referenced calculation nodes and builds 
+///   _sortNodeData for later use.
+////////////////////////////////////////////////////////////////////////////////
   sortAnalysis (SortNode * node)
   : sortNodeID(node->id())
   {
@@ -572,12 +579,12 @@ public:
       auto d = new sortNodeData;
       auto oneSortExpression = sortParams[n].first->expression();
       d->ASC = sortParams[n].second;
-      d->nodeID = sortParams[n].first->id();
+      d->calculationNodeID = sortParams[n].first->id();
 
-      if (oneSortExpression->isSimpleAccessReference()) {
-        auto simpleExpression = oneSortExpression->getAccessNRef();
-        d->collection = simpleExpression.second;
-        d->attributevec = simpleExpression.first;
+      if (oneSortExpression->isMultipleAttributeAccess()) {
+        auto simpleExpression = oneSortExpression->getMultipleAttributes();
+        d->variableName = simpleExpression.first;
+        d->attributevec = simpleExpression.second;
       }
       _sortNodeData.push_back(d);
     }
@@ -589,27 +596,30 @@ public:
     }
   }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks the whether we only have simple calculation nodes
+////////////////////////////////////////////////////////////////////////////////
   bool isAnalyzeable () {
     if (_sortNodeData.size() == 0) {
       return false;
     }
     size_t j;
     for (j = 0; j < _sortNodeData.size(); j ++) {
-      if (_sortNodeData[j]->collection.length() == 0) {
+      if (_sortNodeData[j]->variableName.length() == 0) {
         return false;
       }
     }
 
-    /*  are we all from one collection? * /
+    /*  are we all from one variable? * /
     int j = 0;
     for (; (j < _sortNodeData.size() && 
-            sortNodeData[j]->collection.length() == 0);
+            sortNodeData[j]->variableName.length() == 0);
          j ++);
     last = sortNodeData[j];
     j ++;
     for (j < _sortNodeData.size(); j++) {
-      if (sortNodeData[j]->collection.length)
-      if (last->collection != sortNodeData[j]->collection) {
+      if (sortNodeData[j]->variableName.length)
+      if (last->variableName != sortNodeData[j]->variableName) {
         return false;
       }
       last = sortNodeData[j];
@@ -619,12 +629,16 @@ public:
     return true;
   }
 
-  Range_IndexPair getAttrsForCollection (std::string &collectionName) {/// todo variableName
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether our calculation nodes reference variableName; 
+/// @returns pair used for further processing with the indices.
+////////////////////////////////////////////////////////////////////////////////
+  Range_IndexPair getAttrsForVariableName (std::string &variableName) {
     ECN::IndexMatchVec v;
     RangeInfoVec rangeInfo;
 
     for (size_t j = 0; j < _sortNodeData.size(); j ++) {
-      if (_sortNodeData[j]->collection != collectionName) {
+      if (_sortNodeData[j]->variableName != variableName) {
         return std::make_pair(v, rangeInfo); // for now, no mixed support.
       }
     }
@@ -633,20 +647,23 @@ public:
                                  _sortNodeData[j]->ASC));
       rangeInfo.push_back(std::vector<RangeInfo*>());
 
-      rangeInfo.at(j).push_back(new RangeInfo(collectionName,
+      rangeInfo.at(j).push_back(new RangeInfo(variableName,
                                               _sortNodeData[j]->attributevec,
                                               nullptr, nullptr));
     }
     return std::make_pair(v, rangeInfo);;
   }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief removes the sortNode and its referenced Calculationnodes from the plan.
+////////////////////////////////////////////////////////////////////////////////
   void removeSortNodeFromPlan (ExecutionPlan *newPlan) {
     newPlan->unlinkNode(newPlan->getNodeById(sortNodeID));
 
     for (auto idToRemove = _sortNodeData.begin();
          idToRemove != _sortNodeData.end();
          ++idToRemove) {
-      newPlan->unlinkNode(newPlan->getNodeById((*idToRemove)->nodeID));
+      newPlan->unlinkNode(newPlan->getNodeById((*idToRemove)->calculationNodeID));
     }
   }
 };
@@ -668,9 +685,12 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
       _sortNode(Node) {
   }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief if the sort is already done by an indexrange, remove the sort.
+////////////////////////////////////////////////////////////////////////////////
   bool handleIndexRangeNode(IndexRangeNode* node) {
-    auto collectionName = node->getVariablesSetHere()[0]->name;/// todo variablename
-    auto result = _sortNode->getAttrsForCollection(collectionName);
+    auto variableName = node->getVariablesSetHere()[0]->name;
+    auto result = _sortNode->getAttrsForVariableName(variableName);
 
     if (node->MatchesIndex(result.first)) {
         _sortNode->removeSortNodeFromPlan(_plan);
@@ -678,10 +698,13 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
     return true;
   }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether we can sort via an index.
+////////////////////////////////////////////////////////////////////////////////
   bool handleEnumerateCollectionNode(EnumerateCollectionNode* node)
   {
-    auto collectionName = node->getVariablesSetHere()[0]->name;
-    auto result = _sortNode->getAttrsForCollection(collectionName);
+    auto variableName = node->getVariablesSetHere()[0]->name;
+    auto result = _sortNode->getAttrsForVariableName(variableName);
 
     if (result.first.size() == 0) {
       return false; // we didn't find anything replaceable by indice
