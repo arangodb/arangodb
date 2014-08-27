@@ -244,6 +244,64 @@ void ExecutionNode::appendAsString (std::string& st, int indent) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief inspect one index; only skiplist indices which match attrs in sequence.
+/// @returns a a qualification how good they match;
+///      match->index==nullptr means no match at all.
+////////////////////////////////////////////////////////////////////////////////
+ExecutionNode::IndexMatch
+ExecutionNode::CompareIndex (TRI_index_t* idx,
+                             ExecutionNode::IndexMatchVec& attrs)
+{
+  IndexMatch match;
+  match.fullmatch = true;
+  match.index = nullptr; // while null, this is a non-match.
+
+  if (idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX) {
+    return match;
+  }
+
+  size_t interestingCount = 0;
+  size_t j = 0;
+
+  for (;
+       ((j < idx->_fields._length) && (j < attrs.size()));
+       j++) {
+    if(std::string(idx->_fields._buffer[j]) == attrs[j].first) {
+      // index always is ASC.
+      if (attrs[j].second) {
+        match.Match.push_back(FULL_MATCH);
+      }
+      else {
+        match.Match.push_back(REVERSE_MATCH);
+        match.fullmatch = false;
+      }
+      interestingCount ++;
+    }
+    else {
+      match.Match.push_back(NO_MATCH);
+      match.fullmatch = false;
+    }
+  }
+
+  if (interestingCount > 0) {
+    match.index = idx;
+
+    if (j < idx->_fields._length) { // more index fields
+      for (; j < idx->_fields._length; j++) {
+        match.Match.push_back(NOT_COVERED_IDX);
+      }
+    }
+    else if (j < attrs.size()) { // more sorts
+      for (; j < attrs.size(); j++) {
+        match.Match.push_back(NOT_COVERED_ATTR);
+      }
+      match.fullmatch = false;
+    }
+  }
+  return match;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief functionality to walk an execution plan recursively
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -445,60 +503,6 @@ std::vector<TRI_index_t*> EnumerateCollectionNode::getIndicesUnordered (vector<s
   return out;
 }
 
-
-EnumerateCollectionNode::IndexMatch
-EnumerateCollectionNode::CompareIndex (TRI_index_t* idx,
-                                       EnumerateCollectionNode::IndexMatchVec& attrs) const
-{
-  IndexMatch match;
-  match.fullmatch = true;
-  match.index = nullptr; // while null, this is a non-match.
-
-  if (idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX) {
-    return match;
-  }
-
-  size_t interestingCount = 0;
-  size_t j = 0;
-
-  for (;
-       ((j < idx->_fields._length) && (j < attrs.size()));
-       j++) {
-    if(std::string(idx->_fields._buffer[j]) == attrs[j].first) {
-      // index always is ASC.
-      if (attrs[j].second) {
-        match.Match.push_back(FULL_MATCH);
-      }
-      else {
-        match.Match.push_back(REVERSE_MATCH);
-        match.fullmatch = false;
-      }
-      interestingCount ++;
-    }
-    else {
-      match.Match.push_back(NO_MATCH);
-      match.fullmatch = false;
-    }
-  }
-
-  if (interestingCount > 0) {
-    match.index = idx;
-
-    if (j < idx->_fields._length) { // more index fields
-      for (; j < idx->_fields._length; j++) {
-        match.Match.push_back(NOT_COVERED_IDX);
-      }
-    }
-    else if (j < attrs.size()) { // more sorts
-      for (; j < attrs.size(); j++) {
-        match.Match.push_back(NOT_COVERED_ATTR);
-      }
-      match.fullmatch = false;
-    }
-  }
-  return match;
-}
-
 std::vector<EnumerateCollectionNode::IndexMatch> EnumerateCollectionNode::getIndicesOrdered (IndexMatchVec &attrs) const {
 
   std::vector<IndexMatch> out;
@@ -613,6 +617,11 @@ IndexRangeNode::IndexRangeNode (Ast* ast, basics::Json const& json)
   auto iid = JsonHelper::checkAndGetStringValue(index, "id");
 
   _index = TRI_LookupIndex(_collection->documentCollection(), basics::StringUtils::uint64(iid)); 
+}
+
+bool IndexRangeNode::MatchesIndex (IndexMatchVec pattern) const {
+  auto match = CompareIndex(_index, pattern);
+  return match.fullmatch;
 }
 
 // -----------------------------------------------------------------------------
