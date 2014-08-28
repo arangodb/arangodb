@@ -498,6 +498,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                     delete newPlan;
                     throw;
                   }
+                  // FIXME: the following two could throw as well?
                   newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
                   _out->push_back(newPlan, 0);
                 }
