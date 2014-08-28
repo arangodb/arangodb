@@ -753,6 +753,11 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
       }
       _out.push_back(newPlan, 0);
     }
+    for (auto x : result.second) {
+      for (auto y : x) {
+        delete y;
+      }
+    }
     return true;
   }
 
