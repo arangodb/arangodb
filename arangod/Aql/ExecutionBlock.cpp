@@ -1011,43 +1011,41 @@ void IndexRangeBlock::readSkiplistIndex () {
 
   Json parameters(Json::List); 
   size_t i = 0;
-  for (; i < idx->_fields._length && i < ranges.at(0).size(); i++) {
+  for (;i < ranges.at(0).size(); i++) {
+    // ranges.at(0) corresponds to a prefix of idx->_fields . . .
     // TODO only doing 1 dim case at the moment . . .
-    for (auto x: ranges.at(0)) {
-      if (std::string(idx->_fields._buffer[i]) == x->_attr) {
-        if (x->is1ValueRangeInfo()) {   // it's an equality . . . 
-          parameters(x->_low->_bound.get("value").copy());
-        } 
-        else {                          // it's not an equality and the final comparison 
-          if (parameters.size() != 0) {
-            skiplistOperator = TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, NULL,
-                NULL, parameters.copy().steal(), shaper, NULL, i, NULL);
-          }
-          if (x->_low != nullptr) {
-            auto op = x->_low->toIndexOperator(false, parameters.copy(), shaper);
-            if (skiplistOperator != nullptr) {
-              skiplistOperator = TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, 
-                  skiplistOperator, op, NULL, shaper, NULL, 2, NULL);
-            } else {
-              skiplistOperator = op;
-            }
-          }
-          if (x->_high != nullptr) {
-            auto op = x->_high->toIndexOperator(true, parameters.copy(), shaper);
-            if (skiplistOperator != nullptr) {
-              skiplistOperator = TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, 
-                  skiplistOperator, op, NULL, shaper, NULL, 2, NULL);
-            } else {
-              skiplistOperator = op;
-            }
-          }
+    auto range = ranges.at(0).at(i);
+    if (range->is1ValueRangeInfo()) {   // it's an equality . . . 
+      parameters(range->_low->_bound.get("value").copy());
+    } 
+    else {                          // it's not an equality and so the final comparison 
+      if (parameters.size() != 0) {
+        skiplistOperator = TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, NULL,
+            NULL, parameters.copy().steal(), shaper, NULL, i, NULL);
+      }
+      if (range->_low != nullptr) {
+        auto op = range->_low->toIndexOperator(false, parameters.copy(), shaper);
+        if (skiplistOperator != nullptr) {
+          skiplistOperator = TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, 
+              skiplistOperator, op, NULL, shaper, NULL, 2, NULL);
+        } else {
+          skiplistOperator = op;
         }
-        break; // we found idx->_fields._buffer[i] and can move onto the next one . . 
+      }
+      if (range->_high != nullptr) {
+        auto op = range->_high->toIndexOperator(true, parameters.copy(), shaper);
+        if (skiplistOperator != nullptr) {
+          skiplistOperator = TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, 
+              skiplistOperator, op, NULL, shaper, NULL, 2, NULL);
+        } else {
+          skiplistOperator = op;
+        }
       }
     }
   }
 
   if(skiplistOperator == nullptr){      // only have equalities . . .
+    TRI_ASSERT(i != 0);
     skiplistOperator = TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, NULL,
         NULL, parameters.steal(), shaper, NULL, i, NULL);
   }
