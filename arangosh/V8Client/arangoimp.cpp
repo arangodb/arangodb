@@ -69,7 +69,7 @@ ArangoClient BaseClient;
 /// @brief the initial default connection
 ////////////////////////////////////////////////////////////////////////////////
 
-V8ClientConnection* ClientConnection = 0;
+V8ClientConnection* ClientConnection = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief max size body size (used for imports)
@@ -88,6 +88,12 @@ static string Quote = "\"";
 ////////////////////////////////////////////////////////////////////////////////
 
 static string Separator = ",";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not backslashes can be used to escape quotes
+////////////////////////////////////////////////////////////////////////////////
+
+static bool UseBackslash = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief file-name
@@ -144,13 +150,14 @@ static void ParseProgramOptions (int argc, char* argv[]) {
 
   description
     ("file", &FileName, "file name (\"-\" for STDIN)")
+    ("backslash-escape", &UseBackslash, "use backslash as the escape character for quotes, used for csv")
     ("batch-size", &ChunkSize, "size for individual data batches (in bytes)")
     ("collection", &CollectionName, "collection name")
     ("create-collection", &CreateCollection, "create collection if it does not yet exist")
     ("type", &TypeImport, "type of file (\"csv\", \"tsv\", or \"json\")")
     ("overwrite", &Overwrite, "overwrite collection if it exist (WARNING: this will remove any data from the collection)")
-    ("quote", &Quote, "quote character(s)")
-    ("separator", &Separator, "separator")
+    ("quote", &Quote, "quote character(s), used for csv")
+    ("separator", &Separator, "field separator, used for csv")
     ("progress", &Progress, "show progress")
     (deprecatedOptions, true)
   ;
@@ -322,6 +329,7 @@ int main (int argc, char* argv[]) {
   }
 
   ih.setOverwrite(Overwrite);
+  ih.useBackslash(UseBackslash);
 
   // quote
   if (Quote.length() <= 1) {

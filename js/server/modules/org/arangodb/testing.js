@@ -598,6 +598,14 @@ function runArangoImp (options, instanceInfo, what) {
     args.push("--create-collection");
     args.push(what.create);
   }
+  if (what.backslash !== undefined) {
+    args.push("--backslash-escape");
+    args.push(what.backslash);
+  }
+  if (what.separator !== undefined) {
+    args.push("--separator");
+    args.push(what.separator);
+  }
   var arangoimp = fs.join("bin","arangoimp");
   return executeAndWait(arangoimp, args);
 }
@@ -648,6 +656,8 @@ var impTodo = [
    coll: "UnitTestsImportCsv2", type: "csv", create: "true"},
   {id: "csv3", data: makePath("UnitTests/import-3.csv"),
    coll: "UnitTestsImportCsv3", type: "csv", create: "true"},
+  {id: "csv4", data: makePath("UnitTests/import-4.csv"),
+   coll: "UnitTestsImportCsv4", type: "csv", create: "true", separator: ";", backslash: true},
   {id: "tsv1", data: makePath("UnitTests/import-1.tsv"),
    coll: "UnitTestsImportTsv1", type: "tsv", create: "true"},
   {id: "tsv2", data: makePath("UnitTests/import-2.tsv"),

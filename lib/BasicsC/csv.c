@@ -48,6 +48,7 @@ void TRI_InitCsvParser (TRI_csv_parser_t* parser,
 
   TRI_SetQuoteCsvParser(parser, '"', true);
   TRI_SetSeparatorCsvParser(parser, ';');
+  TRI_UseBackslashCsvParser(parser, false);
 
   length = 1024;
 
@@ -115,6 +116,15 @@ void TRI_SetQuoteCsvParser (TRI_csv_parser_t* parser,
                             bool useQuote) {
   parser->_quote = quote;
   parser->_useQuote = useQuote;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a backslash is used to escape quotes
+////////////////////////////////////////////////////////////////////////////////
+  
+void TRI_UseBackslashCsvParser (TRI_csv_parser_t* parser,
+                                bool value) {
+  parser->_useBackslash = value;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -342,16 +352,29 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
 
         case TRI_CSV_PARSER_WITHIN_QUOTED_FIELD:
           TRI_ASSERT(parser->_useQuote);
-          while (ptr < parser->_stop && *ptr != parser->_quote) {
+
+          while (ptr < parser->_stop && 
+                 *ptr != parser->_quote && 
+                 (! parser->_useBackslash || *ptr != '\\')) {
             *qtr++ = *ptr++;
           }
 
-          // found quote, need at least another quote, a separator, or an eol
+          // found quote or a backslash, need at least another quote, a separator, or an eol
           if (ptr + 1 < parser->_stop) {
+            bool foundBackslash = (parser->_useBackslash && *ptr == '\\');
+
             ++ptr;
 
-            // a real quote
-            if (*ptr == parser->_quote) {
+            if (foundBackslash) {
+              if (*ptr == parser->_quote || *ptr == '\\') {
+                // backslash-escaped quote or literal backslash
+                *qtr++ = *ptr;
+                ptr++;
+                break;
+              }
+            }
+            else if (*ptr == parser->_quote) {
+              // a real quote
               *qtr++ = parser->_quote;
               ptr++;
               break;

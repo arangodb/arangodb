@@ -1,6 +1,8 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
 
+* added option `--backslash-escape` for arangoimp when running CSV file imports
+
 * front-end: added download feature for (filtered) documents
 
 * front-end: added download feature for the results of a user query
