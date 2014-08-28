@@ -9,7 +9,7 @@ A lot of the following functions accept a vertex (or edge) example as parameter.
 * {}                : Returns all possible vertices for this graph
 * *idString*        : Returns the vertex/edge with the id *idString*
 * {*key1* : *value1*, *key2* : *value2*} : Returns the vertices/edges that match this example, which means that both have *key1* and *key2* with the corresponding attributes
-* {*key1.key2* : *value1*, *key3* : *value2*} : It is possible to chain keys, which means that a document *{ key1 : {key2 : value1}, key3 : value2}* would be a match
+* {*key1.key2* : *value1*, *key3* : *value2*} : It is possible to chain keys, which means that a document *{key1 : {key2 : value1}, key3 : value2}* would be a match
 * [{*key1* : *value1*}, {*key2* : *value2*}] : Returns the vertices/edges that match one of the examples, which means that either *key1* or *key2* are set with the corresponding value
 
 !SUBSECTION The complexity of the shortest path algorithms
