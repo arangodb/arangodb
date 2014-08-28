@@ -464,23 +464,20 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                 auto idx = idxs.at(i);
                 if (idx->_type == TRI_IDX_TYPE_HASH_INDEX && equality) {
                   for (size_t j = 0; j < idx->_fields._length; j++) {
-                    auto range = map->find(std::string(idx->_fields._buffer[j]))->second;
-                    rangeInfo.at(0).push_back(range);
-                    //TODO should copy rangeInfo here
+                    auto range = map->find(std::string(idx->_fields._buffer[j]));
+                    rangeInfo.at(0).push_back(range->second);
                   }
                 }
                 
                 if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
                   size_t j = 0;
-                  auto range = map->find(std::string(idx->_fields._buffer[0]))->second;
-                  //TODO should copy rangeInfo here
-                  rangeInfo.at(0).push_back(range);
-                  equality = range->is1ValueRangeInfo();
+                  auto range = map->find(std::string(idx->_fields._buffer[0]));
+                  rangeInfo.at(0).push_back(range->second);
+                  equality = range->second->is1ValueRangeInfo();
                   while (++j < prefixes.at(i) && equality){
-                    range = map->find(std::string(idx->_fields._buffer[j]))->second;
-                    //TODO should copy rangeInfo here
-                    rangeInfo.at(0).push_back(range);
-                    equality = equality && range->is1ValueRangeInfo();
+                    range = map->find(std::string(idx->_fields._buffer[j]));
+                    rangeInfo.at(0).push_back(range->second);
+                    equality = equality && range->second->is1ValueRangeInfo();
                   }
                 }
                 
@@ -535,6 +532,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           attr.append(attributeName);
           attr.push_back('.');
         }
+        return;
       }
       
       if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
@@ -561,6 +559,9 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                 new RangeInfoBound(val, true), new RangeInfoBound(val, true));
           }
         }
+        attr = "";
+        enumCollVar = "";
+        return;
       }
 
       if(node->type == NODE_TYPE_OPERATOR_BINARY_LT || 
@@ -615,11 +616,12 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       }
       
       if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-        attr = "";
         buildRangeInfo(node->getMember(0), enumCollVar, attr);
-        attr = "";
         buildRangeInfo(node->getMember(1), enumCollVar, attr);
       }
+      attr = "";
+      enumCollVar = "";
+      return;
     }
 };
 

@@ -55,8 +55,8 @@ namespace triagens {
         _bound = Json(TRI_UNKNOWN_MEM_ZONE, bound->toJson(TRI_UNKNOWN_MEM_ZONE, true));
       }
       
-      RangeInfoBound (basics::Json const& json) : 
-        _bound(Json(TRI_UNKNOWN_MEM_ZONE,
+      RangeInfoBound (basics::Json const& json) 
+          :   _bound(Json(TRI_UNKNOWN_MEM_ZONE,
               basics::JsonHelper::checkAndGetArrayValue(json.json(), "bound"), 
               basics::Json::NOFREE).copy()),
         _include(basics::JsonHelper::checkAndGetBooleanValue(json.json(), "include")) {
@@ -64,7 +64,10 @@ namespace triagens {
 
       ~RangeInfoBound(){}
       
-      RangeInfoBound ( RangeInfoBound const& copy ) = delete;
+      RangeInfoBound ( RangeInfoBound const& copy ) 
+          : _bound(copy._bound.copy()), _include(copy._include){
+      } 
+          
       RangeInfoBound& operator= ( RangeInfoBound const& copy ) = delete;
 
       Json toJson () const {
@@ -119,7 +122,7 @@ namespace triagens {
                     RangeInfoBound const* high )
           : _var(var), _attr(attr), _low(low), _high(high), _valid(true) {
         }
-       
+        
         RangeInfo (basics::Json const& json) :
           _var(basics::JsonHelper::checkAndGetStringValue(json.json(), "var")),
           _attr(basics::JsonHelper::checkAndGetStringValue(json.json(), "attr")),
@@ -138,10 +141,12 @@ namespace triagens {
           else {
             _high = nullptr;
           }
-
         }
 
-        RangeInfo( const RangeInfo& copy ) = delete;
+        RangeInfo( RangeInfo const& copy ) 
+            : _var(copy._var), _attr(copy._attr), _low(copy._low),
+              _high(copy._high), _valid(copy._valid){}
+        
         RangeInfo& operator= ( RangeInfo const& copy ) = delete;
 
         ~RangeInfo(){
@@ -177,36 +182,6 @@ namespace triagens {
                   && _low->_include && _high->_include;
         }
         
-        /*TRI_index_operator_t* toIndexOperator (TRI_shaper_t* shaper) {
-
-          // lower bound 
-          TRI_index_operator_t* left = nullptr;
-          if(_low != nullptr){
-            left = _low->toIndexOperator(false, shaper);
-          } 
-          
-          // upper bound
-          TRI_index_operator_t* right = nullptr;
-          if(_high != nullptr){
-            right = _high->toIndexOperator(true, shaper);
-          } 
-        
-          TRI_index_operator_t* out = nullptr;
-          if (left != nullptr) {
-            if (right != nullptr) {
-              out = TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, left, right,
-                  NULL, shaper, NULL, 2, NULL);
-            } 
-            else {
-              out = left;
-            }
-          }
-          else if (right != nullptr) {
-            out = right;
-          }
-          return out;
-        }*/
-
         std::string _var;
         std::string _attr;
         RangeInfoBound const* _low;
@@ -228,7 +203,13 @@ namespace triagens {
         
         RangesInfo () : _ranges(){}
 
-        ~RangesInfo(){}
+        ~RangesInfo(){
+          for (auto x: _ranges) {
+            for (auto y: x.second) {
+              delete y.second;
+            }
+          }
+        }
         
         // find the range info for variable <var> and attributes <name>
         RangeInfo* find (std::string var, std::string name) const {
@@ -286,7 +267,6 @@ namespace triagens {
         std::unordered_map<std::string, std::unordered_map<std::string, RangeInfo*>> _ranges; 
         
     };
-
 
     typedef std::vector<std::vector<RangeInfo*>> RangeInfoVec;
   }
