@@ -224,6 +224,9 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (AQL_TRANSACTION_V8* trx,
   auto engine = new ExecutionEngine(trx);
 
   try {
+    if (! plan->varUsageComputed()) {
+      plan->findVarUsage();
+    }
     auto inst = new Instanciator(engine);
     plan->root()->walk(inst);
     auto root = inst->root;
