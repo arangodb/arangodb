@@ -839,6 +839,61 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief selects documents from a collection, hashing the document key and
+/// only returning these documents which fall into a specific partition
+////////////////////////////////////////////////////////////////////////////////
+
+        int readNth (TRI_transaction_collection_t* trxCollection,
+                     std::vector<TRI_doc_mptr_copy_t>& docs,
+                     uint64_t partitionId,
+                     uint64_t numberOfPartitions,
+                     uint32_t* total) {
+
+          TRI_document_collection_t* document = documentCollection(trxCollection);
+
+          // READ-LOCK START
+          int res = this->lock(trxCollection, TRI_TRANSACTION_READ);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            return res;
+          }
+
+          if (document->_primaryIndex._nrUsed == 0) {
+            // nothing to do
+            this->unlock(trxCollection, TRI_TRANSACTION_READ);
+
+            // READ-LOCK END
+            return TRI_ERROR_NO_ERROR;
+          }
+
+          if (orderBarrier(trxCollection) == nullptr) {
+            return TRI_ERROR_OUT_OF_MEMORY;
+          }
+
+          void** beg = document->_primaryIndex._table;
+          void** end = beg + document->_primaryIndex._nrAlloc;
+          void** ptr = beg;
+          *total = (uint32_t) document->_primaryIndex._nrUsed;
+
+          // fetch documents, taking partition into account
+          for (; ptr < end; ++ptr) {
+            if (*ptr) {
+              TRI_doc_mptr_t* d = (TRI_doc_mptr_t*) *ptr;
+
+              if (d->_hash % numberOfPartitions == partitionId) {
+                // correct partition
+                docs.emplace_back(*d);
+              }
+            }
+          }
+
+          this->unlock(trxCollection, TRI_TRANSACTION_READ);
+          // READ-LOCK END
+
+          return TRI_ERROR_NO_ERROR;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create a single document, using JSON
 ////////////////////////////////////////////////////////////////////////////////
 
