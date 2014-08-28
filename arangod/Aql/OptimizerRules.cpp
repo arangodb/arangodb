@@ -495,6 +495,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                     delete newPlan;
                     throw;
                   }
+                  // FIXME: the following two could throw as well?
                   newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
                   _out->push_back(newPlan, 0);
                 }
@@ -624,7 +625,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief relaxRule, do not do anything
+/// @brief useIndexRange, try to use an index for filtering
 ////////////////////////////////////////////////////////////////////////////////
 
 int triagens::aql::useIndexRange (Optimizer* opt, 
