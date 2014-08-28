@@ -249,10 +249,10 @@ void Optimizer::setupRules () {
   //////////////////////////////////////////////////////////////////////////////
 
   // try to find a filter after an enumerate collection and find an index . . . 
-  registerRule("use-index-range", useIndexRange, 710);
+  //registerRule("use-index-range", useIndexRange, 710);
 
   // try to find sort blocks which are superseeded by indexes
-  registerRule("use-index-for-sort", useIndexForSort, 720);
+  //registerRule("use-index-for-sort", useIndexForSort, 720);
 
   //////////////////////////////////////////////////////////////////////////////
   /// END OF OPTIMISATIONS
