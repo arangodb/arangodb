@@ -951,7 +951,9 @@ SortInformation SortNode::getSortInformation (ExecutionPlan* plan) const {
       result.criteria.emplace_back(std::make_tuple(setter, expression->stringify(), (*it).second));
     }
     else {
-      result.criteria.emplace_back(std::make_tuple(setter, variable->name, (*it).second));
+      // use variable only. note that we cannot use the variable's name as it is not
+      // necessarily unique in one query (yes, COLLECT, you are to blame!)
+      result.criteria.emplace_back(std::make_tuple(setter, std::to_string(variable->id), (*it).second));
     }
   }
 
