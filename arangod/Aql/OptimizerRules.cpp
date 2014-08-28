@@ -59,21 +59,53 @@ int triagens::aql::removeRedundantSorts (Optimizer* opt,
                                          ExecutionPlan* plan, 
                                          int level, 
                                          Optimizer::PlanList& out) {
-  // should we enter subqueries??
   std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::SORT, true);
+  std::unordered_set<ExecutionNode*> toUnlink;
   
   for (auto n : nodes) {
     auto sortInfo = static_cast<SortNode*>(n)->getSortInformation(plan);
 
-    if (sortInfo.isValid) {
-      /*
-      TODO: finalize
-      std::cout << "FOUND SORT:\n";
-      for (auto it = sortInfo.criteria.begin(); it != sortInfo.criteria.end(); ++it) {
-        std::cout << "- " << std::get<1>(*it) << ", " << std::get<2>(*it) << "\n";
+    if (sortInfo.isValid && ! sortInfo.criteria.empty()) {
+      // we found a sort that we can understand
+    
+      std::vector<ExecutionNode*> stack;
+      for (auto dep : n->getDependencies()) {
+        stack.push_back(dep);
       }
-      */
+
+      while (! stack.empty()) {
+        auto current = stack.back();
+        stack.pop_back();
+
+        if (current->getType() == triagens::aql::ExecutionNode::SORT) {
+          // we found another sort. now check if they are compatible!
+          auto other = static_cast<SortNode*>(current)->getSortInformation(plan);
+
+          if (sortInfo.isCoveredBy(other)) {
+            // the sort at the start of the pipeline makes the sort at the end
+            // superfluous, so we'll remove it
+            toUnlink.insert(n);
+            break;
+          }
+        }
+
+        auto deps = current->getDependencies();
+        if (deps.size() != 1) {
+          // node either has no or more than one dependency. we don't know what to do and must abort
+          // note: this will also handle Singleton nodes
+          break;
+        }
+      
+        for (auto dep : deps) {
+          stack.push_back(dep);
+        }
+      }
     }
+  }
+            
+  if (! toUnlink.empty()) {
+    plan->unlinkNodes(toUnlink);
+    plan->findVarUsage();
   }
   
   out.push_back(plan, level);
