@@ -132,11 +132,12 @@ int Optimizer::createPlans (ExecutionPlan* plan) {
   sortPlans();
   std::cout << "Optimisation ends with " << _plans.size() << " plans."
             << std::endl;
-  std::cout << "Costs:" << std::endl;
   for (auto p : _plans.list) {
-    std::cout << p->getCost() << std::endl;
+    p->show();
+    std::cout << "costing: " << p->getCost() << std::endl;
+    std::cout << std::endl;
   }
-                
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -171,27 +172,52 @@ void Optimizer::setupRules () {
 
   // List all the rules in the system here:
 
-  // try to find sort blocks which are superseeded by indexes
-  registerRule("use-index-for-sort", useIndexForSort, 2000);
+  //////////////////////////////////////////////////////////////////////////////
+  // "Pass 1": moving nodes "up" (potentially outside loops):
+  //           please use levels between 1 and 99 here
+  //////////////////////////////////////////////////////////////////////////////
 
+  // move calculations up the dependency chain (to pull them out of
+  // inner loops etc.)
+  registerRule("move-calculations-up", moveCalculationsUpRule, 10);
 
-  // try to find a filter after an enumerate collection and find an index . . . 
-  registerRule("use-index-range", useIndexRange, 999);
+  // move filters up the dependency chain (to make result sets as small
+  // as possible as early as possible)
+  registerRule("move-filters-up", moveFiltersUpRule, 20);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// "Pass 2": interchange EnumerateCollection nodes in all possible ways
+  ///           this is level 100, please never let new plans from higher
+  ///           levels go back to this or lower levels!
+  //////////////////////////////////////////////////////////////////////////////
+
+  registerRule("interchangeAdjacentEnumerations", 
+               interchangeAdjacentEnumerations, 100);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// "Pass 3": try to remove redundant or unnecessary nodes
+  ///           use levels between 101 and 199 for this
+  //////////////////////////////////////////////////////////////////////////////
 
   // remove filters from the query that are not necessary at all
   // filters that are always true will be removed entirely
   // filters that are always false will be replaced with a NoResults node
-  registerRule("remove-unnecessary-filters", removeUnnecessaryFiltersRule, 100);
+  registerRule("remove-unnecessary-filters", removeUnnecessaryFiltersRule, 110);
   
-  // move calculations up the dependency chain (to pull them out of inner loops etc.)
-  registerRule("move-calculations-up", moveCalculationsUpRule, 1000);
-
-  // move filters up the dependency chain (to make result sets as small as possible
-  // as early as possible)
-  registerRule("move-filters-up", moveFiltersUpRule, 1010);
-
   // remove calculations that are never necessary
-  registerRule("remove-unnecessary-calculations", removeUnnecessaryCalculationsRule, 1020);
+  registerRule("remove-unnecessary-calculations", 
+               removeUnnecessaryCalculationsRule, 120);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// "Pass 4": use indexes if possible for FILTER and/or SORT nodes
+  ///           use levels between 200 and 299 for this
+  //////////////////////////////////////////////////////////////////////////////
+
+  // try to find a filter after an enumerate collection and find an index . . . 
+  registerRule("use-index-range", useIndexRange, 210);
+
+  // try to find sort blocks which are superseeded by indexes
+  registerRule("use-index-for-sort", useIndexForSort, 220);
 
   // Now sort them by level:
   std::stable_sort(_rules.begin(), _rules.end());

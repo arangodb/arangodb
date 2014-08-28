@@ -826,6 +826,40 @@ int triagens::aql::useIndexForSort (Optimizer* opt,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief helper to compute lots of permutation tuples
+/// a permutation tuple is represented as a single vector together with
+/// another vector describing the boundaries of the tuples.
+/// Example:
+/// data:   0,1,2, 3,4, 5,6
+/// starts: 0,     3,   5,      (indices of starts of sections)
+/// means a tuple of 3 permutations of 3, 2 and 2 points respectively
+/// This function computes the next permutation tuple among the 
+/// lexicographically sorted list of all such tuples. It returns true
+/// if it has successfully computed this and false if the tuple is already
+/// the lexicographically largest one. If false is returned, the permutation
+/// tuple is back to the beginning.
+////////////////////////////////////////////////////////////////////////////////
+
+static bool nextPermutationTuple (std::vector<size_t>& data,
+                                  std::vector<size_t>& starts) {
+  auto begin = data.begin();  // a random access iterator
+  for (size_t i = starts.size(); i-- != 0; ) {
+    std::vector<size_t>::iterator from = begin + starts[i];
+    std::vector<size_t>::iterator to;
+    if (i == starts.size()-1) {
+      to = data.end();
+    }
+    else {
+      to = begin + starts[i+1];
+    }
+    if (std::next_permutation(from, to)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief interchange adjacent EnumerateCollectionNodes in all possible ways
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -837,31 +871,110 @@ int triagens::aql::interchangeAdjacentEnumerations (Optimizer* opt,
   std::vector<ExecutionNode*> nodes
     = plan->findNodesOfType(triagens::aql::ExecutionNode::ENUMERATE_COLLECTION, 
                             true);
- 
+  std::unordered_set<ExecutionNode*> nodesSet;
+  for (auto n : nodes) {
+    TRI_ASSERT(nodesSet.find(n) == nodesSet.end());
+    nodesSet.insert(n);
+  }
+
+  std::vector<ExecutionNode*> nodesToPermute;
+  std::vector<size_t> permTuple;
+  std::vector<size_t> starts;
+
   // We use that the order of the nodes is such that a node B that is among the
   // recursive dependencies of a node A is later in the vector.
-  for (size_t i = 0; i < nodes.size(); i++) {
-    ExecutionNode* n = nodes[i];
-    std::vector<ExecutionNode*> nn;
-    nn.push_back(n);
-    // Now follow the dependencies as long as we see further such nodes:
-    while (true) {
-      auto deps = n->getDependencies();
-      if (deps.size() == 0) {
-        break;
-      }
-      if (deps[0]->getType() != triagens::aql::ExecutionNode::ENUMERATE_COLLECTION) {
-        break;
-      }
-      n = deps[0];
+  for (auto n : nodes) {
+
+    if (nodesSet.find(n) != nodesSet.end()) {
+      std::vector<ExecutionNode*> nn;
       nn.push_back(n);
-    }
-    if (nn.size() > 1) {
-      // Now we want to compute all permutations of nn
+      nodesSet.erase(n);
+
+      // Now follow the dependencies as long as we see further such nodes:
+      auto nwalker = n;
+      while (true) {
+        auto deps = nwalker->getDependencies();
+        if (deps.size() == 0) {
+          break;
+        }
+        if (deps[0]->getType() != 
+            triagens::aql::ExecutionNode::ENUMERATE_COLLECTION) {
+          break;
+        }
+        nwalker = deps[0];
+        nn.push_back(nwalker);
+        nodesSet.erase(nwalker);
+      }
+      if (nn.size() > 1) {
+        // Move it into the permutation tuple:
+        starts.push_back(permTuple.size());
+        for (auto nnn : nn) {
+          nodesToPermute.push_back(nnn);
+          permTuple.push_back(permTuple.size());
+        }
+      }
     }
   }
 
+  // Now we have collected all the runs of EnumerateCollectionNodes in the
+  // plan, we need to compute all possible permutations of all of them,
+  // independently. This is why we need to compute all permutation tuples.
+
   out.push_back(plan, level);
+  if (! starts.empty()) {
+    nextPermutationTuple(permTuple, starts);  // will never return false
+    do {
+      // Clone the plan:
+      auto newPlan = plan->clone();
+
+      try {   // get rid of plan if any of this fails
+        // Find the nodes in the new plan corresponding to the ones in the
+        // old plan that we want to permute:
+        std::vector<ExecutionNode*> newNodes;
+        for (size_t j = 0; j < nodesToPermute.size(); j++) {
+          newNodes.push_back(newPlan->getNodeById(nodesToPermute[j]->id()));
+        }
+
+        // Now get going with the permutations:
+        for (size_t i = 0; i < starts.size(); i++) {
+          size_t lowBound = starts[i];
+          size_t highBound = (i < starts.size()-1) 
+                           ? starts[i+1]
+                           : permTuple.size();
+          // We need to remove the nodes 
+          // newNodes[lowBound..highBound-1] in newPlan and replace
+          // them by the same ones in a different order, given by
+          // permTuple[lowBound..highBound-1].
+          auto parents = newNodes[lowBound]->getParents();
+          TRI_ASSERT(parents.size() == 1);
+          auto parent = parents[0];  // needed for insertion later
+
+          // Unlink all those nodes:
+          for (size_t j = lowBound; j < highBound; j++) {
+            newPlan->unlinkNode(newNodes[j]);
+          }
+
+          // And insert them in the new order:
+          for (size_t j = highBound; j-- != lowBound; ) {
+            newPlan->insertDependency(parent, newNodes[permTuple[j]]);
+          }
+        }
+
+        // OK, the new plan is ready, let's report it:
+        out.push_back(newPlan, level);
+
+        // Stop if this gets out of hand:
+        if (out.size() > opt->maxNumberOfPlans) {
+          break;
+        }
+      }
+      catch (...) {
+        delete newPlan;
+        throw;
+      }
+
+    } while(nextPermutationTuple(permTuple, starts));
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
