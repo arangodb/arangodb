@@ -349,7 +349,7 @@ function post_api_database (req, res) {
 
   var users = json.users;
 
-  if (users === undefined) {
+  if (users === undefined || users === null) {
     users = [ ];
   }
   else if (! Array.isArray(users)) {
