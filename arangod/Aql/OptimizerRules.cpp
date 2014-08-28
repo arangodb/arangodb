@@ -622,7 +622,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief relaxRule, do not do anything
+/// @brief useIndexRange, try to use an index for filtering
 ////////////////////////////////////////////////////////////////////////////////
 
 int triagens::aql::useIndexRange (Optimizer* opt, 
