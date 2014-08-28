@@ -1010,10 +1010,9 @@ void IndexRangeBlock::readSkiplistIndex () {
   TRI_index_operator_t* skiplistOperator = nullptr; 
 
   Json parameters(Json::List); 
-  size_t i; 
-  for (i = 0; i < idx->_fields._length && i < ranges.at(0).size(); i++) {
-    // TODO doing 1 dim case at the moment . . .
-    // FIXME assume that ranges.at(0) is of the correct type!
+  size_t i = 0;
+  for (; i < idx->_fields._length && i < ranges.at(0).size(); i++) {
+    // TODO only doing 1 dim case at the moment . . .
     for (auto x: ranges.at(0)) {
       if (std::string(idx->_fields._buffer[i]) == x->_attr) {
         if (x->is1ValueRangeInfo()) {   // it's an equality . . . 
