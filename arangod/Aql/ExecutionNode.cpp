@@ -258,6 +258,7 @@ ExecutionNode::CompareIndex (TRI_index_t* idx,
   match.index = nullptr; // while null, this is a non-match.
 
   if (idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX) {
+    match.fullmatch = false;
     return match;
   }
 

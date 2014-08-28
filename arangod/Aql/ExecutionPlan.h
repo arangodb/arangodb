@@ -208,8 +208,11 @@ namespace triagens {
                           ExecutionNode* newNode); 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief insert <newNode> before <oldNode>. <newNode> must be registered with 
-/// the plan before this method is called
+/// @brief insert <newNode> as a new (the first!) dependency of
+/// <oldNode> and make the former first dependency of <oldNode> a
+/// dependency of <newNode> (and no longer a direct dependency of
+/// <oldNode>).
+/// <newNode> must be registered with the plan before this method is called.
 ////////////////////////////////////////////////////////////////////////////////
 
         void insertDependency (ExecutionNode* oldNode, 
