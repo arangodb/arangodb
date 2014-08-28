@@ -171,6 +171,8 @@ void Optimizer::setupRules () {
   TRI_ASSERT(_rules.empty());
 
   // List all the rules in the system here:
+  // lower level values mean earlier rule execution
+  // if two rules have the same level value, they will be executed in declaration order
 
   //////////////////////////////////////////////////////////////////////////////
   // "Pass 1": moving nodes "up" (potentially outside loops):
@@ -207,6 +209,9 @@ void Optimizer::setupRules () {
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations", 
                removeUnnecessaryCalculationsRule, 120);
+
+  // remove redundant sort blocks
+  registerRule("remove-redundant-sorts", removeRedundantSorts, 130);
 
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 4": use indexes if possible for FILTER and/or SORT nodes

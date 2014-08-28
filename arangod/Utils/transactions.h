@@ -51,7 +51,6 @@
 
 #define RestImportTransaction triagens::arango::SingleCollectionWriteTransaction<triagens::arango::RestTransactionContext, UINT64_MAX>
 
-
 #endif
 
 // -----------------------------------------------------------------------------
