@@ -1329,13 +1329,12 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testUnsetInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNSET()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNSET({ })"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET({ }, 1)"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET({ }, { })"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET({ }, 'foo', { })"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN UNSET('foo', 'foo')"); 
-
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNSET()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN UNSET({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2134,14 +2133,14 @@ function ahuacatlFunctionsTestSuite () {
     testFlattenInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN FLATTEN()");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN FLATTEN([ ], 1, 1)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FLATTEN(1)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FLATTEN(null)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FLATTEN(false)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FLATTEN(1)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FLATTEN('foo')");
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN FLATTEN(1)");
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN FLATTEN(null)");
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN FLATTEN(false)");
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN FLATTEN(1)");
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN FLATTEN('foo')");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FLATTEN([ ], 'foo')");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FLATTEN([ ], [ ])");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN FLATTEN({ })");
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN FLATTEN({ })");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2633,11 +2632,11 @@ function ahuacatlFunctionsTestSuite () {
     testMinInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN MIN()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN MIN([ ], 2)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MIN(null)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MIN(false)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MIN(3)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MIN(\"yes\")"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MIN({ })"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN MIN(null)"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN MIN(false)"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN MIN(3)"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN MIN(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN MIN({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2677,11 +2676,11 @@ function ahuacatlFunctionsTestSuite () {
     testMaxInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN MAX()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN MAX([ ], 2)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MAX(null)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MAX(false)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MAX(3)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MAX(\"yes\")"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MAX({ })"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN MAX(null)"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN MAX(false)"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN MAX(3)"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN MAX(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN MAX({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2718,11 +2717,11 @@ function ahuacatlFunctionsTestSuite () {
     testSumInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SUM()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SUM([ ], 2)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SUM(null)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SUM(false)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SUM(3)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SUM(\"yes\")"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN SUM({ })"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN SUM(null)"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN SUM(false)"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN SUM(3)"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN SUM(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN SUM({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2765,11 +2764,11 @@ function ahuacatlFunctionsTestSuite () {
     testAverageInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN AVERAGE()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN AVERAGE([ ], 2)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN AVERAGE(null)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN AVERAGE(false)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN AVERAGE(3)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN AVERAGE(\"yes\")"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN AVERAGE({ })"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN AVERAGE(null)"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN AVERAGE(false)"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN AVERAGE(3)"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN AVERAGE(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN AVERAGE({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2823,11 +2822,11 @@ function ahuacatlFunctionsTestSuite () {
     testMedianInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN MEDIAN()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN MEDIAN([ ], 2)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MEDIAN(null)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MEDIAN(false)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MEDIAN(3)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MEDIAN(\"yes\")"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MEDIAN({ })"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN MEDIAN(null)"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN MEDIAN(false)"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN MEDIAN(3)"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN MEDIAN(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN MEDIAN({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3870,11 +3869,11 @@ function ahuacatlFunctionsTestSuite () {
     testVariancePopulationInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN VARIANCE_POPULATION()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN VARIANCE_POPULATION([ ], 2)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN VARIANCE_POPULATION(null)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN VARIANCE_POPULATION(false)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN VARIANCE_POPULATION(3)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN VARIANCE_POPULATION(\"yes\")"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN VARIANCE_POPULATION({ })"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN VARIANCE_POPULATION(null)"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN VARIANCE_POPULATION(false)"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN VARIANCE_POPULATION(3)"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN VARIANCE_POPULATION(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN VARIANCE_POPULATION({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3927,11 +3926,11 @@ function ahuacatlFunctionsTestSuite () {
     testVarianceSampleInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN VARIANCE_SAMPLE()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN VARIANCE_SAMPLE([ ], 2)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN VARIANCE_SAMPLE(null)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN VARIANCE_SAMPLE(false)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN VARIANCE_SAMPLE(3)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN VARIANCE_SAMPLE(\"yes\")"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN VARIANCE_SAMPLE({ })"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN VARIANCE_SAMPLE(null)"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN VARIANCE_SAMPLE(false)"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN VARIANCE_SAMPLE(3)"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN VARIANCE_SAMPLE(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN VARIANCE_SAMPLE({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3989,11 +3988,11 @@ function ahuacatlFunctionsTestSuite () {
     testStddevPopulationInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN STDDEV_POPULATION()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN STDDEV_POPULATION([ ], 2)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN STDDEV_POPULATION(null)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN STDDEV_POPULATION(false)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN STDDEV_POPULATION(3)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN STDDEV_POPULATION(\"yes\")"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN STDDEV_POPULATION({ })"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN STDDEV_POPULATION(null)"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN STDDEV_POPULATION(false)"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN STDDEV_POPULATION(3)"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN STDDEV_POPULATION(\"yes\")"); 
+      assertQueryError(errors.ERROR_QUERY_LIST_EXPECTED.code, "RETURN STDDEV_POPULATION({ })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
