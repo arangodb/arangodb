@@ -148,7 +148,7 @@ The cell values can have different data types though. If a cell does not have
 any value, it can be left empty in the file. These values will not be imported
 so the attributes will not "be there" in document created. Values enclosed in
 quotes will be imported as strings, so to import numeric values, boolean values
-or the null value, don't enclose the value into the quotes in your file.
+or the null value, don't enclose the value in quotes in your file.
 
 We'll be using the following import for the CSV import:
 
@@ -157,15 +157,33 @@ We'll be using the following import for the CSV import:
 "John","Connor",25,true,
 "Jim","O'Brady",19,,
 "Lisa","Jones",,,"1981-04-09"
+Wayne,Brewer,,false,
 ```
 
-The command line to execute the import then is:
+The command line to execute the import is:
 
     unix> arangoimp --file "data.csv" --type csv --collection "users"
 
+The above data will be imported into 4 documents which will look as follows:
+
+```js
+{ "first" : "John", "last" : "Connor", "active" : true, "age" : 25 } 
+{ "first" : "Jim", "last" : "O'Brady", "age" : 19 }
+{ "first" : "Lisa", "last" : "Jones", "dob" : "1981-04-09" } 
+{ "first" : "Wayne", "last" : "Brewer", "active" : false } 
+```
+
+As can be seen, values left completely empty in the input file will be treated
+as absent. Numeric values not enclosed in quotes will be treated as numbers.
+The literals *true* and *false* will be treated as booleans if they are not
+enclosed in quotes. Other values not enclosed in quotes will be treated as
+strings.
+Any values enclosed in quotes will be treated as strings, too.
+
 String values containing the quote character or the separator must be enclosed
 with quote characters. Within a string, the quote character itself must be
-escaped with another quote character.
+escaped with another quote character (or with a backslash if the *--backslash-escape*
+option is used).
 
 Note that the quote and separator characters can be adjusted via the
 *--quote* and *--separator* arguments when invoking _arangoimp_. The quote
