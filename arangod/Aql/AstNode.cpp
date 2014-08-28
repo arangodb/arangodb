@@ -814,6 +814,31 @@ void AstNode::append (triagens::basics::StringBuffer* buffer) const {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stringify a node
+/// note that currently stringification is only supported for certain node types
+////////////////////////////////////////////////////////////////////////////////
+
+std::string AstNode::stringify () const {
+  switch (type) {
+    case NODE_TYPE_ATTRIBUTE_ACCESS: {
+      auto member = getMember(0);
+      return member->stringify() + std::string(".") + getStringValue();
+    }
+
+    case NODE_TYPE_REFERENCE: {
+      auto variable = static_cast<Variable*>(getData());
+      TRI_ASSERT(variable != nullptr);
+      return variable->name;
+    }
+
+    default: {
+    }
+  }
+
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "stringification not supported for node type");
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------

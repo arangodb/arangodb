@@ -32,6 +32,7 @@
 
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
+using EN   = triagens::aql::ExecutionNode;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           rules for the optimizer
@@ -49,6 +50,38 @@ int triagens::aql::dummyRule (Optimizer*,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief remove redundant sorts
+/// this rule modifies the plan in place:
+/// - sorts that are covered by earlier sorts will be removed
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::removeRedundantSorts (Optimizer* opt, 
+                                         ExecutionPlan* plan, 
+                                         int level, 
+                                         Optimizer::PlanList& out) {
+  // should we enter subqueries??
+  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::SORT, true);
+  
+  for (auto n : nodes) {
+    auto sortInfo = static_cast<SortNode*>(n)->getSortInformation(plan);
+
+    if (sortInfo.isValid) {
+      /*
+      TODO: finalize
+      std::cout << "FOUND SORT:\n";
+      for (auto it = sortInfo.criteria.begin(); it != sortInfo.criteria.end(); ++it) {
+        std::cout << "- " << std::get<1>(*it) << ", " << std::get<2>(*it) << "\n";
+      }
+      */
+    }
+  }
+  
+  out.push_back(plan, level);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief remove all unnecessary filters
 /// this rule modifies the plan in place:
 /// - filters that are always true are removed completely
@@ -60,6 +93,7 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
                                                  int level,
                                                  Optimizer::PlanList& out) {
   std::unordered_set<ExecutionNode*> toUnlink;
+  // should we enter subqueries??
   std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::FILTER, true);
   
   for (auto n : nodes) {
@@ -590,14 +624,18 @@ public:
 
     for (size_t n = 0; n < sortParams.size(); n++) {
       auto d = new sortNodeData;
-      auto oneSortExpression = sortParams[n].first->expression();
       d->ASC = sortParams[n].second;
       d->calculationNodeID = sortParams[n].first->id();
 
-      if (oneSortExpression->isMultipleAttributeAccess()) {
-        auto simpleExpression = oneSortExpression->getMultipleAttributes();
-        d->variableName = simpleExpression.first;
-        d->attributevec = simpleExpression.second;
+      if (sortParams[n].first->getType() == EN::CALCULATION) {
+        auto cn = static_cast<triagens::aql::CalculationNode*>(sortParams[n].first);
+        auto oneSortExpression = cn->expression();
+        
+        if (oneSortExpression->isAttributeAccess()) {
+          auto simpleExpression = oneSortExpression->getMultipleAttributes();
+          d->variableName = simpleExpression.first;
+          d->attributevec = simpleExpression.second;
+        }
       }
       _sortNodeData.push_back(d);
     }
@@ -682,7 +720,6 @@ public:
 };
 
 class sortToIndexNode : public WalkerWorker<ExecutionNode> {
-  using EN  = triagens::aql::ExecutionNode;
   using ECN = triagens::aql::EnumerateCollectionNode;
 
   ExecutionPlan*       _plan;

@@ -27,6 +27,7 @@
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/Ast.h"
 
@@ -70,7 +71,7 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
 /// @brief returns the type name of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::string& ExecutionNode::getTypeString () const {
+std::string const& ExecutionNode::getTypeString () const {
   auto it = TypeNames.find(static_cast<int>(getType()));
   if (it != TypeNames.end()) {
     return (*it).second;
@@ -882,7 +883,7 @@ class SortNodeFindMyExpressions : public WalkerWorker<ExecutionNode> {
 public:
   size_t _foundCalcNodes;
   std::vector<std::pair<Variable const*, bool>> _elms;
-  std::vector<std::pair<CalculationNode*, bool>> _myVars;
+  std::vector<std::pair<ExecutionNode*, bool>> _myVars;
 
   SortNodeFindMyExpressions(SortNode* me)
     : _foundCalcNodes(0),
@@ -892,11 +893,12 @@ public:
   }
 
   bool before (ExecutionNode* en) {
-    if (en->getType() == triagens::aql::ExecutionNode::CALCULATION) {
-      auto cn = static_cast<triagens::aql::CalculationNode*>(en);
+
+    auto vars = en->getVariablesSetHere();
+    for (auto v : vars) {
       for (size_t n = 0; n < _elms.size(); n++) {
-        if (_elms[n].first->id == cn->outVariable()->id) {
-          _myVars[n] = std::make_pair(cn, _elms[n].second);
+        if (_elms[n].first->id == v->id) {
+          _myVars[n] = std::make_pair(en, _elms[n].second);
           _foundCalcNodes ++;
           break;
         }
@@ -906,7 +908,7 @@ public:
   }
 };
 
-std::vector<std::pair<CalculationNode*, bool>> SortNode::getCalcNodePairs ()
+std::vector<std::pair<ExecutionNode*, bool>> SortNode::getCalcNodePairs ()
 {
   SortNodeFindMyExpressions findExp(this);
   _dependencies[0]->walk(&findExp);
@@ -915,6 +917,44 @@ std::vector<std::pair<CalculationNode*, bool>> SortNode::getCalcNodePairs ()
                                    "SortNode wasn't able to locate all its CalculationNodes");
   }
   return findExp._myVars;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns all sort information 
+////////////////////////////////////////////////////////////////////////////////
+
+SortInformation SortNode::getSortInformation (ExecutionPlan* plan) const {
+  SortInformation result;
+
+  auto elements = getElements();
+  for (auto it = elements.begin(); it != elements.end(); ++it) {
+    auto variable = (*it).first;
+    TRI_ASSERT(variable != nullptr);
+    auto setter = plan->getVarSetBy(variable->id);
+
+    if (setter == nullptr) {
+      result.isValid = false;
+      break;
+    }
+
+    if (setter->getType() == ExecutionNode::CALCULATION) {
+      // variable introduced by a calculation
+      auto expression = static_cast<CalculationNode*>(setter)->expression();
+
+      if (! expression->isAttributeAccess() &&
+          ! expression->isReference()) {
+        result.isComplex = true;
+        break;
+      }
+
+      result.criteria.emplace_back(std::make_tuple(setter, expression->stringify(), (*it).second));
+    }
+    else {
+      result.criteria.emplace_back(std::make_tuple(setter, variable->name, (*it).second));
+    }
+  }
+
+  return result;
 }
 
 // -----------------------------------------------------------------------------

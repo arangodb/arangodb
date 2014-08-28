@@ -149,6 +149,28 @@ describe ArangoDB do
       response["errorNum"].should eq(1207)
     end
     
+    it "creates a database with users = null" do
+      body = "{\"name\" : \"#{name}\", \"users\" : null }"
+      doc = ArangoDB.log_post("#{prefix}-create-no-users1", api, :body => body)
+     
+      doc.code.should eq(201)
+      doc.headers['content-type'].should eq("application/json; charset=utf-8")
+      response = doc.parsed_response
+      response["result"].should eq(true)
+      response["error"].should eq(false)
+    end
+    
+    it "creates a database with users = [ ]" do
+      body = "{\"name\" : \"#{name}\", \"users\" : [ ] }"
+      doc = ArangoDB.log_post("#{prefix}-create-no-users2", api, :body => body)
+     
+      doc.code.should eq(201)
+      doc.headers['content-type'].should eq("application/json; charset=utf-8")
+      response = doc.parsed_response
+      response["result"].should eq(true)
+      response["error"].should eq(false)
+    end
+    
     it "drops an existing database" do
       cmd = api + "/#{name}"
       body = "{\"name\" : \"#{name}\" }"

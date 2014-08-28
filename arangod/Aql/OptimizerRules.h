@@ -47,6 +47,14 @@ namespace triagens {
     int dummyRule (Optimizer*, ExecutionPlan*, int level, Optimizer::PlanList&);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief remove redundant sorts
+/// this rule modifies the plan in place:
+/// - sorts that are covered by earlier sorts will be removed
+////////////////////////////////////////////////////////////////////////////////
+
+    int removeRedundantSorts (Optimizer*, ExecutionPlan*, int level, Optimizer::PlanList&);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief remove all unnecessary filters
 /// this rule modifies the plan in place:
 /// - filters that are always true are removed completely
