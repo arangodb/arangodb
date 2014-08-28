@@ -360,19 +360,20 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         
         if (map != nullptr) {
           // check the first components of <map> against indexes of <node> . . .
-          std::vector<std::string> attrs;
-          std::vector<std::vector<RangeInfo*>> rangeInfo;
-          rangeInfo.push_back(std::vector<RangeInfo*>());
-          bool valid = true;
-          bool eq = true;
-          for (auto x : *map) {
-            attrs.push_back(x.first);
-            rangeInfo.at(0).push_back(x.second);
-            valid = valid && x.second->_valid; // check the ranges are all valid
-            eq = eq && x.second->is1ValueRangeInfo(); 
-            // check if the condition is equality (i.e. the ranges only contain
-            // 1 value)
+          std::unordered_set<std::string> attrs;
+          
+          bool valid = true;     // are all the range infos valid
+          bool equality = true;  // are all the range infos equalities
+
+          for(auto x: *map) {
+            valid &= x.second->_valid; 
+            if (!valid) {
+              break;
+            }
+            equality &= x.second->is1ValueRangeInfo();
+            attrs.insert(x.first);
           }
+
           if (! _canThrow) {
             if (! valid){ // ranges are not valid . . . 
             std::cout << "INVALID RANGE!\n";
@@ -387,15 +388,47 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
               }
             }
             else {
-              std::vector<TRI_index_t*> idxs = node->getIndicesUnordered(attrs);
+              std::vector<TRI_index_t*> idxs;
+              std::vector<size_t> prefixes;
+              // {idxs.at(i)->_fields[0]..idxs.at(i)->_fields[prefixes.at(i)]}
+              // is a subset of <attrs>
+
+              node->getIndexesForIndexRangeNode(attrs, idxs, prefixes);
+
               // make one new plan for every index in <idxs> that replaces the
               // enumerate collection node with a RangeIndexNode . . . 
-              for (auto idx: idxs) {
-                if ( idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX || 
-                   (idx->_type == TRI_IDX_TYPE_HASH_INDEX && eq)) {
-                  //can only use the index if it is a skip list or (a hash and we
-                  //are checking equality)
-                  std::cout << "FOUND INDEX!\n";
+              
+              for (size_t i = 0; i < idxs.size(); i++) {
+                std::vector<std::vector<RangeInfo*>> rangeInfo;
+                rangeInfo.push_back(std::vector<RangeInfo*>());
+                
+                // ranges must be valid and all comparisons == if hash index or ==
+                // followed by a single <, >, >=, or <= if a skip index in the
+                // order of the fields of the index.
+                auto idx = idxs.at(i);
+                if (idx->_type == TRI_IDX_TYPE_HASH_INDEX && equality) {
+                  for (size_t j = 0; j < idx->_fields._length; j++) {
+                    auto range = map->find(std::string(idx->_fields._buffer[j]))->second;
+                    rangeInfo.at(0).push_back(range);
+                    //TODO should copy rangeInfo here
+                  }
+                }
+                
+                if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+                  size_t j = 0;
+                  auto range = map->find(std::string(idx->_fields._buffer[0]))->second;
+                  //TODO should copy rangeInfo here
+                  rangeInfo.at(0).push_back(range);
+                  equality = range->is1ValueRangeInfo();
+                  while (++j < prefixes.at(i) && equality){
+                    range = map->find(std::string(idx->_fields._buffer[j]))->second;
+                    //TODO should copy rangeInfo here
+                    rangeInfo.at(0).push_back(range);
+                    equality = equality && range->is1ValueRangeInfo();
+                  }
+                }
+                
+                if (rangeInfo.at(0).size() != 0) {
                   auto newPlan = _plan->clone();
                   ExecutionNode* newNode = nullptr;
                   try{

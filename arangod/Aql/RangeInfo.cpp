@@ -94,8 +94,6 @@ static int CompareRangeInfoBound (RangeInfoBound const* left,
 /// and attribute <name>, and otherwise intersection with existing range
 ////////////////////////////////////////////////////////////////////////////////
 
-// remove var and name from here, they are inside newRange anyway ! TODO
-
 void RangesInfo::insert (RangeInfo* newRange) { 
 
   auto oldMap = find(newRange->_var);
