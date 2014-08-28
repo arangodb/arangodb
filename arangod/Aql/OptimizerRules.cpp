@@ -50,6 +50,38 @@ int triagens::aql::dummyRule (Optimizer*,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief remove redundant sorts
+/// this rule modifies the plan in place:
+/// - sorts that are covered by earlier sorts will be removed
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::removeRedundantSorts (Optimizer* opt, 
+                                         ExecutionPlan* plan, 
+                                         int level, 
+                                         Optimizer::PlanList& out) {
+  // should we enter subqueries??
+  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::SORT, true);
+  
+  for (auto n : nodes) {
+    auto sortInfo = static_cast<SortNode*>(n)->getSortInformation(plan);
+
+    if (sortInfo.isValid) {
+      /*
+      TODO: finalize
+      std::cout << "FOUND SORT:\n";
+      for (auto it = sortInfo.criteria.begin(); it != sortInfo.criteria.end(); ++it) {
+        std::cout << "- " << std::get<1>(*it) << ", " << std::get<2>(*it) << "\n";
+      }
+      */
+    }
+  }
+  
+  out.push_back(plan, level);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief remove all unnecessary filters
 /// this rule modifies the plan in place:
 /// - filters that are always true are removed completely
@@ -61,6 +93,7 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
                                                  int level,
                                                  Optimizer::PlanList& out) {
   std::unordered_set<ExecutionNode*> toUnlink;
+  // should we enter subqueries??
   std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::FILTER, true);
   
   for (auto n : nodes) {
@@ -594,11 +627,11 @@ public:
       d->ASC = sortParams[n].second;
       d->calculationNodeID = sortParams[n].first->id();
 
-      if (sortParams[n].first->getType() ==  EN::CALCULATION) {
+      if (sortParams[n].first->getType() == EN::CALCULATION) {
         auto cn = static_cast<triagens::aql::CalculationNode*>(sortParams[n].first);
         auto oneSortExpression = cn->expression();
         
-        if (oneSortExpression->isMultipleAttributeAccess()) {
+        if (oneSortExpression->isAttributeAccess()) {
           auto simpleExpression = oneSortExpression->getMultipleAttributes();
           d->variableName = simpleExpression.first;
           d->attributevec = simpleExpression.second;
@@ -813,7 +846,6 @@ int triagens::aql::useIndexForSort (Optimizer* opt,
                                     ExecutionPlan* plan,
                                     int level,
                                     Optimizer::PlanList& out) {
-  std::cout << plan->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString() << "\n";
   std::vector<ExecutionNode*> nodes
     = plan->findNodesOfType(triagens::aql::ExecutionNode::SORT, true);
   for (auto n : nodes) {

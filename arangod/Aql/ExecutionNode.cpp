@@ -27,6 +27,7 @@
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/Ast.h"
 
@@ -70,7 +71,7 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
 /// @brief returns the type name of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::string& ExecutionNode::getTypeString () const {
+std::string const& ExecutionNode::getTypeString () const {
   auto it = TypeNames.find(static_cast<int>(getType()));
   if (it != TypeNames.end()) {
     return (*it).second;
@@ -916,6 +917,44 @@ std::vector<std::pair<ExecutionNode*, bool>> SortNode::getCalcNodePairs ()
                                    "SortNode wasn't able to locate all its CalculationNodes");
   }
   return findExp._myVars;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns all sort information 
+////////////////////////////////////////////////////////////////////////////////
+
+SortInformation SortNode::getSortInformation (ExecutionPlan* plan) const {
+  SortInformation result;
+
+  auto elements = getElements();
+  for (auto it = elements.begin(); it != elements.end(); ++it) {
+    auto variable = (*it).first;
+    TRI_ASSERT(variable != nullptr);
+    auto setter = plan->getVarSetBy(variable->id);
+
+    if (setter == nullptr) {
+      result.isValid = false;
+      break;
+    }
+
+    if (setter->getType() == ExecutionNode::CALCULATION) {
+      // variable introduced by a calculation
+      auto expression = static_cast<CalculationNode*>(setter)->expression();
+
+      if (! expression->isAttributeAccess() &&
+          ! expression->isReference()) {
+        result.isComplex = true;
+        break;
+      }
+
+      result.criteria.emplace_back(std::make_tuple(setter, expression->stringify(), (*it).second));
+    }
+    else {
+      result.criteria.emplace_back(std::make_tuple(setter, variable->name, (*it).second));
+    }
+  }
+
+  return result;
 }
 
 // -----------------------------------------------------------------------------

@@ -170,10 +170,14 @@ void Optimizer::setupRules () {
   TRI_ASSERT(_rules.empty());
 
   // List all the rules in the system here:
+  // lower level values mean earlier rule execution
+  // if two rules have the same level value, they will be executed in declaration order
 
   // try to find sort blocks which are superseeded by indexes
   registerRule("use-index-for-sort", useIndexForSort, 2000);
-
+  
+  // remove redundant sort blocks
+  registerRule("remove-redundant-sorts", removeRedundantSorts, 1000);
 
   // try to find a filter after an enumerate collection and find an index . . . 
   registerRule("use-index-range", useIndexRange, 999);
