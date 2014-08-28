@@ -829,7 +829,9 @@ std::string AstNode::stringify () const {
     case NODE_TYPE_REFERENCE: {
       auto variable = static_cast<Variable*>(getData());
       TRI_ASSERT(variable != nullptr);
-      return variable->name;
+      // we're intentionally not using the variable name as it is not necessarily
+      // unique within a query (hey COLLECT, I am looking at you!)
+      return std::to_string(variable->id);
     }
 
     default: {
