@@ -73,7 +73,8 @@ def replaceCode(pathOfFile):
   lines = re.sub(r"@RESTRETURNCODE{(.*)}", r"* *\g<1>*:", lines)
   lines = re.sub(r"@RESTBODYPARAMS{(.*)}", r"*(\g<1>)*", lines)
   lines = lines.replace("@EXAMPLES","**Examples**")
-  lines = lines.replace("@RESTPARAMETERS","")  
+  lines = lines.replace("@RESTPARAMETERS","")
+  lines = lines.replace("@RESTPARAMS","")
   # Error codes replace
   lines = re.sub(r"- (\w+):\s*@LIT{(.+)}", r"\n*\g<1>* - **\g<2>**:", lines)
   f.write(lines)
