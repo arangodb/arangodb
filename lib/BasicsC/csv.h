@@ -66,6 +66,7 @@ typedef struct TRI_csv_parser_s {
   char _quote;
   char _separator;
   bool _useQuote;
+  bool _useBackslash;
 
   char* _begin;       // beginning of the input buffer
   char* _start;       // start of the unproccessed part
@@ -131,6 +132,13 @@ void TRI_SetSeparatorCsvParser (TRI_csv_parser_t* parser,
 void TRI_SetQuoteCsvParser (TRI_csv_parser_t* parser,
                             char quote,
                             bool useQuote);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a backslash is used to escape quotes
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_UseBackslashCsvParser (TRI_csv_parser_t* parser,
+                                bool value);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a CSV line

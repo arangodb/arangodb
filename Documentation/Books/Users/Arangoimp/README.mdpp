@@ -170,8 +170,9 @@ escaped with another quote character.
 Note that the quote and separator characters can be adjusted via the
 *--quote* and *--separator* arguments when invoking _arangoimp_. The quote
 character defaults to the double quote (*"*). To use a literal quote in a 
-string, you can use two quote characters. Using a backslash to escape a quote
-character is currently not supported by arangoimp.
+string, you can use two quote characters. 
+To use backslash for escaping quote characters, please set the option 
+*--backslash-escape* to *true*.
 
 The importer supports Windows (CRLF) and Unix (LF) line breaks. Line breaks might
 also occur inside values that are enclosed with the quote character.
