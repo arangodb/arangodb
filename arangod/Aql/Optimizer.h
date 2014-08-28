@@ -274,7 +274,7 @@ namespace triagens {
           _plans.list.clear();
           _plans.levelDone.clear();
 
-          std::cout << res->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString() << "\n";
+          // std::cout << res->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString() << "\n";
           return res;
         }
 

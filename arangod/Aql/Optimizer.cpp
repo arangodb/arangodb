@@ -61,9 +61,10 @@ int Optimizer::createPlans (ExecutionPlan* plan) {
 
   int pass = 1;
   while (leastDoneLevel < maxRuleLevel) {
+    /*
     std::cout << "Entering pass " << pass << " of query optimization..." 
               << std::endl;
-    
+    */
     // This vector holds the plans we have created in this pass:
     PlanList newPlans;
 
@@ -74,12 +75,13 @@ int Optimizer::createPlans (ExecutionPlan* plan) {
       }
     }
 
-    std::cout << "Have " << _plans.size() << " plans:" << std::endl;
-
+    // std::cout << "Have " << _plans.size() << " plans:" << std::endl;
+    /*
     for (auto p : _plans.list) {
       p->show();
       std::cout << std::endl;
     }
+    */
 
     int count = 0;
 
@@ -94,9 +96,11 @@ int Optimizer::createPlans (ExecutionPlan* plan) {
         Rule r("dummy", dummyRule, level);
         auto it = std::upper_bound(_rules.begin(), _rules.end(), r);
         TRI_ASSERT(it != _rules.end());
+        /*
         std::cout << "Trying rule " << it->name << " (" << &(it->func) << ") with level "
                   << it->level << " on plan " << count++
                   << std::endl;
+        */
         try {
           res = it->func(this, p, it->level, newPlans);
         }
@@ -120,7 +124,7 @@ int Optimizer::createPlans (ExecutionPlan* plan) {
         leastDoneLevel = l;
       }
     }
-    std::cout << "Least done level is " << leastDoneLevel << std::endl;
+    // std::cout << "Least done level is " << leastDoneLevel << std::endl;
 
     // Stop if the result gets out of hand:
     if (_plans.size() >= maxNumberOfPlans) {
@@ -130,6 +134,7 @@ int Optimizer::createPlans (ExecutionPlan* plan) {
 
   estimatePlans();
   sortPlans();
+  /*
   std::cout << "Optimisation ends with " << _plans.size() << " plans."
             << std::endl;
   for (auto p : _plans.list) {
@@ -137,6 +142,7 @@ int Optimizer::createPlans (ExecutionPlan* plan) {
     std::cout << "costing: " << p->getCost() << std::endl;
     std::cout << std::endl;
   }
+  */
 
   return TRI_ERROR_NO_ERROR;
 }
