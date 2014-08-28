@@ -32,6 +32,7 @@
 
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
+using EN   = triagens::aql::ExecutionNode;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           rules for the optimizer
@@ -590,14 +591,18 @@ public:
 
     for (size_t n = 0; n < sortParams.size(); n++) {
       auto d = new sortNodeData;
-      auto oneSortExpression = sortParams[n].first->expression();
       d->ASC = sortParams[n].second;
       d->calculationNodeID = sortParams[n].first->id();
 
-      if (oneSortExpression->isMultipleAttributeAccess()) {
-        auto simpleExpression = oneSortExpression->getMultipleAttributes();
-        d->variableName = simpleExpression.first;
-        d->attributevec = simpleExpression.second;
+      if (sortParams[n].first->getType() ==  EN::CALCULATION) {
+        auto cn = static_cast<triagens::aql::CalculationNode*>(sortParams[n].first);
+        auto oneSortExpression = cn->expression();
+        
+        if (oneSortExpression->isMultipleAttributeAccess()) {
+          auto simpleExpression = oneSortExpression->getMultipleAttributes();
+          d->variableName = simpleExpression.first;
+          d->attributevec = simpleExpression.second;
+        }
       }
       _sortNodeData.push_back(d);
     }
@@ -682,7 +687,6 @@ public:
 };
 
 class sortToIndexNode : public WalkerWorker<ExecutionNode> {
-  using EN  = triagens::aql::ExecutionNode;
   using ECN = triagens::aql::EnumerateCollectionNode;
 
   ExecutionPlan*       _plan;
@@ -809,6 +813,7 @@ int triagens::aql::useIndexForSort (Optimizer* opt,
                                     ExecutionPlan* plan,
                                     int level,
                                     Optimizer::PlanList& out) {
+  std::cout << plan->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString() << "\n";
   std::vector<ExecutionNode*> nodes
     = plan->findNodesOfType(triagens::aql::ExecutionNode::SORT, true);
   for (auto n : nodes) {

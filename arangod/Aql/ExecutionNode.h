@@ -1497,8 +1497,7 @@ namespace triagens {
           return _elements;
         }
 
-
-        std::vector<std::pair<CalculationNode*, bool>> getCalcNodePairs ();
+        std::vector<std::pair<ExecutionNode*, bool>> getCalcNodePairs ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

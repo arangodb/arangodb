@@ -882,7 +882,7 @@ class SortNodeFindMyExpressions : public WalkerWorker<ExecutionNode> {
 public:
   size_t _foundCalcNodes;
   std::vector<std::pair<Variable const*, bool>> _elms;
-  std::vector<std::pair<CalculationNode*, bool>> _myVars;
+  std::vector<std::pair<ExecutionNode*, bool>> _myVars;
 
   SortNodeFindMyExpressions(SortNode* me)
     : _foundCalcNodes(0),
@@ -892,11 +892,12 @@ public:
   }
 
   bool before (ExecutionNode* en) {
-    if (en->getType() == triagens::aql::ExecutionNode::CALCULATION) {
-      auto cn = static_cast<triagens::aql::CalculationNode*>(en);
+
+    auto vars = en->getVariablesSetHere();
+    for (auto v : vars) {
       for (size_t n = 0; n < _elms.size(); n++) {
-        if (_elms[n].first->id == cn->outVariable()->id) {
-          _myVars[n] = std::make_pair(cn, _elms[n].second);
+        if (_elms[n].first->id == v->id) {
+          _myVars[n] = std::make_pair(en, _elms[n].second);
           _foundCalcNodes ++;
           break;
         }
@@ -906,7 +907,7 @@ public:
   }
 };
 
-std::vector<std::pair<CalculationNode*, bool>> SortNode::getCalcNodePairs ()
+std::vector<std::pair<ExecutionNode*, bool>> SortNode::getCalcNodePairs ()
 {
   SortNodeFindMyExpressions findExp(this);
   _dependencies[0]->walk(&findExp);
