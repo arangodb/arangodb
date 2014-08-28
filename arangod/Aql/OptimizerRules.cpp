@@ -39,17 +39,6 @@ using EN   = triagens::aql::ExecutionNode;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dummyrule
-////////////////////////////////////////////////////////////////////////////////
-
-int triagens::aql::dummyRule (Optimizer*,
-                              ExecutionPlan*,
-                              int level,
-                              Optimizer::PlanList&) {
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief remove redundant sorts
 /// this rule modifies the plan in place:
 /// - sorts that are covered by earlier sorts will be removed
