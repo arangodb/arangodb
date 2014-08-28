@@ -192,8 +192,8 @@ ExecutionNode* ExecutionNode::fromJsonFactory (Ast* ast,
 ////////////////////////////////////////////////////////////////////////////////
 
 ExecutionNode::ExecutionNode (triagens::basics::Json const& json) 
-  : ExecutionNode(JsonHelper::checkAndGetNumericValue<size_t>(json.json(), "id"),
-                  JsonHelper::getNumericValue<double>(json.json(), "estimatedCost", 0.0)) { 
+  : ExecutionNode(JsonHelper::checkAndGetNumericValue<size_t>(json.json(), "id")) {
+  // TODO: decide whether it should be allowed to create an abstract ExecutionNode at all
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -811,7 +811,7 @@ struct CanThrowFinder : public WalkerWorker<ExecutionNode> {
 
 bool SubqueryNode::canThrow () {
   CanThrowFinder finder;
-  walk(&finder);
+  _subquery->walk(&finder);
   return finder._canThrow;
 }
 
