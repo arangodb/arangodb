@@ -683,7 +683,8 @@ namespace triagens {
 /// @brief get vector of indices that has any match in its fields with <attrs> 
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<TRI_index_t*> getIndicesUnordered (vector<std::string> attrs) const;
+        void getIndexesForIndexRangeNode (std::unordered_set<std::string> attrs, 
+           std::vector<TRI_index_t*>& idxs, std::vector<size_t>& prefixes) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get vector of skiplist indices which match attrs in sequence.
@@ -852,6 +853,9 @@ namespace triagens {
 /// @brief constructor with a vocbase and a collection name
 ////////////////////////////////////////////////////////////////////////////////
 
+// _ranges must correspond to a prefix of the fields of the index <index>, i.e.
+// _ranges.at(i) is a range of values for idx->_fields._buffer[i]. 
+
       public:
 
         IndexRangeNode (size_t id,
@@ -909,6 +913,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () { 
+          // the cost of the enumerate collection node we are replacing . . .
+          /* cost = static_cast<double>(_collection->count()) * 
+            _dependencies.at(0)->getCost();
+
+          if (_index->_type == TRI_IDX_TYPE_HASH_INDEX) {
+
+
+          }*/
+          
           // TODO: take into accout that we might have the range -inf ... +inf
           // if we use the index only for sorting 
           return 1;
