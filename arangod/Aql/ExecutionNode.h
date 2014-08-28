@@ -909,6 +909,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost () { 
+          // the cost of the enumerate collection node we are replacing . . .
+          /* cost = static_cast<double>(_collection->count()) * 
+            _dependencies.at(0)->getCost();
+
+          if (_index->_type == TRI_IDX_TYPE_HASH_INDEX) {
+
+
+          }*/
+          
           return 1;
           //FIXME improve this estimate . . .
         }
