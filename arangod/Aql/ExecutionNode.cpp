@@ -811,7 +811,7 @@ struct CanThrowFinder : public WalkerWorker<ExecutionNode> {
 
 bool SubqueryNode::canThrow () {
   CanThrowFinder finder;
-  walk(&finder);
+  _subquery->walk(&finder);
   return finder._canThrow;
 }
 
