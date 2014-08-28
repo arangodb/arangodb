@@ -725,14 +725,17 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
   ExecutionPlan*       _plan;
   Optimizer::PlanList& _out;
   sortAnalysis*        _sortNode;
+  int                  _level;
 
   public:
   sortToIndexNode (ExecutionPlan* plan,
                    Optimizer::PlanList& out,
-                   sortAnalysis* Node)
+                   sortAnalysis* Node,
+                   int level)
     : _plan(plan),
       _out(out),
-      _sortNode(Node) {
+      _sortNode(Node),
+      _level(level) {
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -751,7 +754,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether we can sort via an index.
 ////////////////////////////////////////////////////////////////////////////////
-  bool handleEnumerateCollectionNode(EnumerateCollectionNode* node)
+  bool handleEnumerateCollectionNode(EnumerateCollectionNode* node, int level)
   {
     auto variableName = node->getVariablesSetHere()[0]->name;
     auto result = _sortNode->getAttrsForVariableName(variableName);
@@ -836,7 +839,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
       return handleIndexRangeNode(static_cast<IndexRangeNode*>(en));
 
     case EN::ENUMERATE_COLLECTION:
-      return handleEnumerateCollectionNode(static_cast<EnumerateCollectionNode*>(en));
+      return handleEnumerateCollectionNode(static_cast<EnumerateCollectionNode*>(en), _level);
     }
     return true;
   }
@@ -852,7 +855,7 @@ int triagens::aql::useIndexForSort (Optimizer* opt,
     auto thisSortNode = static_cast<SortNode*>(n);
     sortAnalysis node(thisSortNode);
     if (node.isAnalyzeable()) {
-      sortToIndexNode finder(plan, out, &node);
+      sortToIndexNode finder(plan, out, &node, level);
       thisSortNode->walk(&finder);/// todo auf der dependency anfangen
     }
   }
