@@ -120,7 +120,7 @@ For string processing, AQL offers the following functions:
   *separator* string. *null* values are ignored
 
 - *CHAR_LENGTH(value)*: Return the number of characters in *value*. This is
-  a synonym for LENGTH(value)*
+  a synonym for *LENGTH(value)*
 
 - *LOWER(value)*: Lower-case *value*
 
