@@ -757,7 +757,7 @@ public:
                                               _sortNodeData[j]->attributevec,
                                               nullptr, nullptr));
     }
-    return std::make_pair(v, rangeInfo);;
+    return std::make_pair(v, rangeInfo);
   }
 
 ////////////////////////////////////////////////////////////////////////////////
