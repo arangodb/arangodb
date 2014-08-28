@@ -135,9 +135,9 @@ The operator precedence in AQL is similar as in other familiar languages (lowest
 - *<*, *<=*, *>=*, *>* less than, less equal,
   greater equal, greater than
 - *+*, *-* addition, subtraction
-- \*, */*, *%* multiplication, division, modulus
+- *\**, */*, *%* multiplication, division, modulus
 - *!*, *+*, *-* logical negation, unary plus, unary minus
-- *[\]* expansion
+- *\[\*\]* expansion
 - *()* function call
 - *.* member access
 - *[]* indexed value access

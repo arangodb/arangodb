@@ -120,7 +120,7 @@ For string processing, AQL offers the following functions:
   *separator* string. *null* values are ignored
 
 - *CHAR_LENGTH(value)*: Return the number of characters in *value*. This is
-  a synonym for LENGTH(value)*
+  a synonym for *LENGTH(value)*
 
 - *LOWER(value)*: Lower-case *value*
 
@@ -503,7 +503,7 @@ AQL supports the following functions to operate on document values:
   This will return *2*, because the third example matches, and because the 
   *return-index* flag is set to *true*.
 
-- *MERGE(document1, document2, ... *documentn)*: Merges the documents
+- *MERGE(document1, document2, ... documentn)*: Merges the documents
   in *document1* to *documentn* into a single document. If document attribute
   keys are ambiguous, the merged result will contain the values of the documents 
   contained later in the argument list.
