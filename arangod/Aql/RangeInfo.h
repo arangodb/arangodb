@@ -282,8 +282,9 @@ namespace triagens {
           return list;
         }
         
-          private: 
+      private: 
         std::unordered_map<std::string, std::unordered_map<std::string, RangeInfo*>> _ranges; 
+        
     };
 
 

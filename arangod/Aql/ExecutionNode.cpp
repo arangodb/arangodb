@@ -471,38 +471,35 @@ void EnumerateCollectionNode::toJsonHelper (triagens::basics::Json& nodes,
 /// @brief get vector of indices with fields <attrs> 
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<TRI_index_t*> EnumerateCollectionNode::getIndicesUnordered (vector<std::string> attrs) const {
-  std::vector<TRI_index_t*> out;
-  TRI_document_collection_t* document = _collection->documentCollection();
-  size_t const n = document->_allIndexes._length;
-  
-  for (size_t i = 0; i < n; ++i) {
-    TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
+// checks if a subset of <attrs> is a prefix of <idx->_fields> for every index
+// of the collection of this node, modifies its arguments <idxs>, and <prefixes>
+// so that . . . 
 
-    size_t seen = 0;
+void EnumerateCollectionNode::getIndexesForIndexRangeNode
+  (std::unordered_set<std::string> attrs, std::vector<TRI_index_t*>& idxs, 
+   std::vector<size_t>& prefixes) const {
+
+  TRI_document_collection_t* document = _collection->documentCollection();
+
+  for (size_t i = 0; i < document->_allIndexes._length; ++i) {
+    size_t prefix = 0;
+    TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
     for (size_t j = 0; j < idx->_fields._length; j++) {
-      bool found = false;
-      for (size_t k = 0; k < attrs.size(); k++){
-        if(std::string(idx->_fields._buffer[j]) == attrs[k]) {
-          found = true;
-          break;
-        }
+      if (attrs.find(std::string(idx->_fields._buffer[j])) != attrs.end()) {
+        prefix++;
       }
-      if (found) {
-        seen++;
-      }
-      else {
+      else { 
         break;
       }
     }
-
-    if (((idx->_type == TRI_IDX_TYPE_HASH_INDEX) && seen == idx->_fields._length ) 
-        || ((idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) && seen > 0 )) {
+  
+    if (((idx->_type == TRI_IDX_TYPE_HASH_INDEX) && prefix == idx->_fields._length ) 
+        || ((idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) && prefix > 0 )) {
       // all fields equal 
-      out.push_back(idx);
+      idxs.push_back(idx);
+      prefixes.push_back(prefix);
     }
   }
-  return out;
 }
 
 std::vector<EnumerateCollectionNode::IndexMatch> EnumerateCollectionNode::getIndicesOrdered (IndexMatchVec &attrs) const {
