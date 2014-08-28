@@ -154,7 +154,7 @@ namespace triagens {
 /// @brief return the type name of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::string &getTypeString () const;
+        std::string const& getTypeString () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether we know a type of this kind; throws exception if not.
@@ -1414,6 +1414,20 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                            struct SortInformation
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief this is an auxilliary struct for processed sort criteria information
+////////////////////////////////////////////////////////////////////////////////
+    
+    struct SortInformation {
+      std::vector<std::tuple<ExecutionNode const*, std::string, bool>> criteria;
+      bool isValid   = true;
+      bool isComplex = false;
+    };
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    class SortNode
 // -----------------------------------------------------------------------------
 
@@ -1493,9 +1507,15 @@ namespace triagens {
 /// @brief get Variables Used Here including ASC/DESC
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<std::pair<Variable const*, bool>> getElements () {
+        std::vector<std::pair<Variable const*, bool>> getElements () const {
           return _elements;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns all sort information 
+////////////////////////////////////////////////////////////////////////////////
+
+        SortInformation getSortInformation (ExecutionPlan*) const;
 
         std::vector<std::pair<ExecutionNode*, bool>> getCalcNodePairs ();
 

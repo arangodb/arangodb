@@ -493,6 +493,13 @@ namespace triagens {
 
         void append (triagens::basics::StringBuffer*) const;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stringify a node
+/// note that currently stringification is only supported for certain node types
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string stringify () const;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
