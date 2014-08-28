@@ -386,8 +386,6 @@ bool TRI_InsertInitialAuthInfo (TRI_vocbase_t* vocbase) {
 
   TRI_PopulateAuthInfo(vocbase, json);
 
-std::cout << triagens::basics::JsonHelper::toString(json) << "\n";
-
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   return true;

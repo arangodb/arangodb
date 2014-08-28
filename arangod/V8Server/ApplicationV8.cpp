@@ -487,7 +487,6 @@ void ApplicationV8::exitContext (V8Context* context) {
     _busyContexts[name].erase(context);
 
     if (performGarbageCollection) {
-      cout << "STARTING GC\n";
       guard.unlock();
 
       context->_isolate->Enter();

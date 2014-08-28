@@ -154,7 +154,7 @@ namespace triagens {
 /// @brief return the type name of the node
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::string &getTypeString () const;
+        std::string const& getTypeString () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether we know a type of this kind; throws exception if not.
@@ -1427,6 +1427,52 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                            struct SortInformation
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief this is an auxilliary struct for processed sort criteria information
+////////////////////////////////////////////////////////////////////////////////
+    
+    struct SortInformation {
+      std::vector<std::tuple<ExecutionNode const*, std::string, bool>> criteria;
+      bool isValid   = true;
+      bool isComplex = false;
+          
+      bool isCoveredBy (SortInformation const& other) {
+        if (! isValid || ! other.isValid) {
+          return false;
+        }
+
+        if (isComplex) {
+          return false;
+        }
+
+        size_t const n = criteria.size();
+        for (size_t i = 0; i < n; ++i) {
+          if (other.criteria.size() < i) {
+            return false;
+          }
+
+          auto ours = criteria[i];
+          auto theirs = other.criteria[i];
+
+          if (std::get<2>(ours) != std::get<2>(theirs)) {
+            // sort order is different
+            return false;
+          }
+
+          if (std::get<1>(ours) != std::get<1>(theirs)) {
+            // sort criterion is different
+            return false;
+          }
+        }
+
+        return true;
+      }
+    };
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    class SortNode
 // -----------------------------------------------------------------------------
 
@@ -1506,12 +1552,17 @@ namespace triagens {
 /// @brief get Variables Used Here including ASC/DESC
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<std::pair<Variable const*, bool>> getElements () {
+        std::vector<std::pair<Variable const*, bool>> getElements () const {
           return _elements;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns all sort information 
+////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<std::pair<CalculationNode*, bool>> getCalcNodePairs ();
+        SortInformation getSortInformation (ExecutionPlan*) const;
+
+        std::vector<std::pair<ExecutionNode*, bool>> getCalcNodePairs ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
