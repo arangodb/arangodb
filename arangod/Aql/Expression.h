@@ -151,17 +151,31 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether this is a simple access to a variable with n attributes.
+/// @brief check whether this is an attribute access of any degree (e.g. a.b, 
+/// a.b.c, ...)
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isMultipleAttributeAccess () const;
+        bool isAttributeAccess () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether this is only a reference access
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isReference () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this gives you ("variable.access", "Reference")
-/// call isSimpleAccessReference in advance to enshure no exceptions.
+/// call isSimpleAccessReference in advance to ensure no exceptions.
 ////////////////////////////////////////////////////////////////////////////////
 
         std::pair<std::string, std::string> getMultipleAttributes() const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stringify an expression
+/// note that currently stringification is only supported for certain node types
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string stringify () const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions

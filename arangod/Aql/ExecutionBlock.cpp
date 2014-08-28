@@ -364,7 +364,6 @@ void ExecutionBlock::clearRegisters (AqlItemBlock* result) {
 }
 
 size_t ExecutionBlock::skipSome (size_t atLeast, size_t atMost) {
-  std::cout << "ExecutionBlock::skipSome\n";
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
@@ -379,7 +378,6 @@ size_t ExecutionBlock::skipSome (size_t atLeast, size_t atMost) {
 // skip exactly <number> outputs, returns <true> if _done after
 // skipping, and <false> otherwise . . .
 bool ExecutionBlock::skip (size_t number) {
-  std::cout << "ExecutionBlock::skip\n";
   size_t skipped = skipSome(number, number);
   size_t nr = skipped;
   while ( nr != 0 && skipped < number ){
@@ -421,7 +419,6 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
                                    AqlItemBlock*& result,
                                    size_t& skipped) {
   
-  std::cout << "ExecutionBlock::getOrSkipSome\n";
   TRI_ASSERT(result == nullptr && skipped == 0);
   if (_done) {
     return TRI_ERROR_NO_ERROR;
@@ -855,7 +852,6 @@ int IndexRangeBlock::initCursor (AqlItemBlock* items, size_t pos) {
 
 AqlItemBlock* IndexRangeBlock::getSome (size_t atLeast,
                                         size_t atMost) {
-  std::cout << "IndexRangeBlock::getSome\n";
   if (_done) {
     return nullptr;
   }
@@ -928,8 +924,6 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t atLeast,
 
 size_t IndexRangeBlock::skipSome (size_t atLeast,
                                   size_t atMost) {
-  
-  std::cout << "IndexRangeBlock::skipSome\n";
   
   if (_done) {
     return 0;
