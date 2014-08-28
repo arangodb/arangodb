@@ -786,10 +786,10 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
   : ExecutionBlock(engine, ep),
     _collection(ep->_collection),
     _posInDocs(0) {
-  
+  /*
    std::cout << "USING INDEX: " << ep->_index->_iid << ", " <<
      TRI_TypeNameIndex(ep->_index->_type) << "\n";
-
+  */
 }
 
 IndexRangeBlock::~IndexRangeBlock () {
