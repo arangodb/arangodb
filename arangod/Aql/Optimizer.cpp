@@ -59,7 +59,7 @@ int Optimizer::createPlans (ExecutionPlan* plan) {
   _plans.clear();
   _plans.push_back(plan, 0);
 
-  int pass = 1;
+  // int pass = 1;
   while (leastDoneLevel < maxRuleLevel) {
     /*
     std::cout << "Entering pass " << pass << " of query optimization..." 
@@ -83,7 +83,7 @@ int Optimizer::createPlans (ExecutionPlan* plan) {
     }
     */
 
-    int count = 0;
+    // int count = 0;
 
     // For all current plans:
     while (_plans.size() > 0) {
