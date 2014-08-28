@@ -646,6 +646,8 @@ var impTodo = [
    coll: "UnitTestsImportCsv1", type: "csv", create: "true"},
   {id: "csv2", data: makePath("UnitTests/import-2.csv"),
    coll: "UnitTestsImportCsv2", type: "csv", create: "true"},
+  {id: "csv3", data: makePath("UnitTests/import-3.csv"),
+   coll: "UnitTestsImportCsv3", type: "csv", create: "true"},
   {id: "tsv1", data: makePath("UnitTests/import-1.tsv"),
    coll: "UnitTestsImportTsv1", type: "tsv", create: "true"},
   {id: "tsv2", data: makePath("UnitTests/import-2.tsv"),
