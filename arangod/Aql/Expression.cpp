@@ -347,14 +347,11 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether this is a simple access to a variable with n attributes.
+/// @brief check whether this is an attribute access of any degree (e.g. a.b, 
+/// a.b.c, ...)
 ////////////////////////////////////////////////////////////////////////////////
 
-bool Expression::isMultipleAttributeAccess () const {
-  if (!isSimple()) {
-    return false;
-  }
-
+bool Expression::isAttributeAccess () const {
   auto expNode = _node;
 
   if (expNode->type != triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
@@ -362,15 +359,23 @@ bool Expression::isMultipleAttributeAccess () const {
   }
 
   while (expNode->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-    expNode = expNode->getMember (0);
+    expNode = expNode->getMember(0);
   }
   
   return (expNode->type == triagens::aql::NODE_TYPE_REFERENCE);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether this is a reference access
+////////////////////////////////////////////////////////////////////////////////
+
+bool Expression::isReference () const {
+  return (_node->type == triagens::aql::NODE_TYPE_REFERENCE);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief this gives you ("variable.access", "Reference")
-/// call isSimpleAccessReference in advance to enshure no exceptions.
+/// call isSimpleAccessReference in advance to ensure no exceptions.
 ////////////////////////////////////////////////////////////////////////////////
 std::pair<std::string, std::string> Expression::getMultipleAttributes() const {
   if (!isSimple()) {
@@ -411,6 +416,14 @@ std::pair<std::string, std::string> Expression::getMultipleAttributes() const {
 
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stringify an expression
+/// note that currently stringification is only supported for certain node types
+////////////////////////////////////////////////////////////////////////////////
+
+std::string Expression::stringify () const {
+  return _node->stringify();
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

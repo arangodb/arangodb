@@ -152,8 +152,8 @@ or the null value, don't enclose the value into the quotes in your file.
 
 We'll be using the following import for the CSV import:
 
-```js
-"first","name","age","active","dob"
+```
+"first","last","age","active","dob"
 "John","Connor",25,true,
 "Jim","O'Brady",19,,
 "Lisa","Jones",,,"1981-04-09"
@@ -163,9 +163,30 @@ The command line to execute the import then is:
 
     unix> arangoimp --file "data.csv" --type csv --collection "users"
 
+String values containing the quote character or the separator must be enclosed
+with quote characters. Within a string, the quote character itself must be
+escaped with another quote character.
+
 Note that the quote and separator characters can be adjusted via the
-*--quote* and *--separator* arguments when invoking _arangoimp_.  The importer
-supports Windows (CRLF) and Unix (LF) line breaks.
+*--quote* and *--separator* arguments when invoking _arangoimp_. The quote
+character defaults to the double quote (*"*). To use a literal quote in a 
+string, you can use two quote characters. Using a backslash to escape a quote
+character is currently not supported by arangoimp.
+
+The importer supports Windows (CRLF) and Unix (LF) line breaks. Line breaks might
+also occur inside values that are enclosed with the quote character.
+
+Here's an example for using literal quotes and newlines inside values:
+
+```
+"name","password"
+"Foo","r4ndom""123!"
+"Bar","wow!
+this is a
+multine password!"
+"Bartholomew ""Bart"" Simpson","Milhouse"
+```
+
 
 !SUBSECTION Importing TSV Data
 

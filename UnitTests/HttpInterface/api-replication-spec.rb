@@ -161,25 +161,34 @@ describe ArangoDB do
 ################################################################################
       
       it "fetches the empty follow log" do
-        sleep 1
+        while 1
+          cmd = api + "/logger-state"
+          doc = ArangoDB.log_get("#{prefix}-follow-empty", cmd, :body => "")
+          doc.code.should eq(200)
+          doc.parsed_response["state"]["running"].should eq(true)
+          fromTick = doc.parsed_response["state"]["lastLogTick"]
 
-        cmd = api + "/logger-state"
-        doc = ArangoDB.log_get("#{prefix}-follow-empty", cmd, :body => "")
-        doc.code.should eq(200)
-        doc.parsed_response["state"]["running"].should eq(true)
-        fromTick = doc.parsed_response["state"]["lastLogTick"]
+          cmd = api + "/logger-follow?from=" + fromTick
+          doc = ArangoDB.log_get("#{prefix}-follow-empty", cmd, :body => "", :format => :plain)
 
-        cmd = api + "/logger-follow?from=" + fromTick
-        doc = ArangoDB.log_get("#{prefix}-follow-empty", cmd, :body => "", :format => :plain)
-        doc.code.should eq(204)
+          if doc.code != 204
+            # someone else did something else
+            doc.code.should eq(200)
+            # sleep for a second and try again
+            sleep 1
+          else
+            doc.code.should eq(204)
 
-        doc.headers["x-arango-replication-checkmore"].should eq("false")
-        doc.headers["x-arango-replication-lastincluded"].should match(/^\d+$/)
-        doc.headers["x-arango-replication-lastincluded"].should eq("0")
-        doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
+            doc.headers["x-arango-replication-checkmore"].should eq("false")
+            doc.headers["x-arango-replication-lastincluded"].should match(/^\d+$/)
+            doc.headers["x-arango-replication-lastincluded"].should eq("0")
+            doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
          
-        body = doc.response.body
-        body.should eq(nil)
+            body = doc.response.body
+            body.should eq(nil)
+            break
+          end
+        end
       end
       
       it "fetches a create collection action from the follow log" do
