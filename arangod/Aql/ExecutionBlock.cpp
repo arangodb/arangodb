@@ -786,7 +786,7 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
   : ExecutionBlock(engine, ep),
     _collection(ep->_collection),
     _posInDocs(0) {
-  /*
+ /* 
    std::cout << "USING INDEX: " << ep->_index->_iid << ", " <<
      TRI_TypeNameIndex(ep->_index->_type) << "\n";
   */
@@ -1020,15 +1020,16 @@ void IndexRangeBlock::readSkiplistIndex () {
     } 
     else {                          // it's not an equality and so the final comparison 
       if (parameters.size() != 0) {
-        skiplistOperator = TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, NULL,
-            NULL, parameters.copy().steal(), shaper, NULL, i, NULL);
+        skiplistOperator = TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, nullptr,
+            nullptr, parameters.copy().steal(), shaper, nullptr, i, nullptr);
       }
       if (range->_low != nullptr) {
         auto op = range->_low->toIndexOperator(false, parameters.copy(), shaper);
         if (skiplistOperator != nullptr) {
           skiplistOperator = TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, 
-              skiplistOperator, op, NULL, shaper, NULL, 2, NULL);
-        } else {
+              skiplistOperator, op, nullptr, shaper, nullptr, 2, nullptr);
+        } 
+        else {
           skiplistOperator = op;
         }
       }
@@ -1036,18 +1037,26 @@ void IndexRangeBlock::readSkiplistIndex () {
         auto op = range->_high->toIndexOperator(true, parameters.copy(), shaper);
         if (skiplistOperator != nullptr) {
           skiplistOperator = TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, 
-              skiplistOperator, op, NULL, shaper, NULL, 2, NULL);
-        } else {
+              skiplistOperator, op, nullptr, shaper, nullptr, 2, nullptr);
+        } 
+        else {
           skiplistOperator = op;
         }
       }
     }
   }
 
-  if(skiplistOperator == nullptr){      // only have equalities . . .
-    TRI_ASSERT(i != 0);
-    skiplistOperator = TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, NULL,
-        NULL, parameters.steal(), shaper, NULL, i, NULL);
+  if (skiplistOperator == nullptr) {      // only have equalities . . .
+    if (parameters.size() == 0) {
+      // this creates the infinite range (i.e. >= null)
+      Json hass(Json::List);
+      hass.add(Json(Json::Null));
+      skiplistOperator = TRI_CreateIndexOperator(TRI_GE_INDEX_OPERATOR, nullptr, nullptr, hass.steal(), shaper, nullptr, 1, nullptr);
+    }
+    else {
+      skiplistOperator = TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, nullptr,
+          nullptr, parameters.steal(), shaper, nullptr, i, nullptr);
+    }
   }
 
   TRI_skiplist_iterator_t* skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator);
