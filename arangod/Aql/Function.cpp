@@ -44,13 +44,15 @@ Function::Function (std::string const& externalName,
                     std::string const& internalName,
                     std::string const& arguments,
                     bool isDeterministic,
-                    bool canThrow)
+                    bool canThrow,
+                    FunctionImplementation implementation)
   : internalName(internalName),
     externalName(externalName),
     arguments(arguments),
     isDeterministic(isDeterministic),
     canThrow(canThrow),
-    containsCollectionParameter(false) {
+    containsCollectionParameter(false),
+    implementation(implementation) {
 
   initArguments();
 }

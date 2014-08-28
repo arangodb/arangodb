@@ -135,10 +135,7 @@ int triagens::aql::moveCalculationsUpRule (Optimizer* opt,
       continue;
     }
 
-    auto neededVars = n->getVariablesUsedHere();
-    // sort the list of variables that the expression needs as its input
-    // (sorting is needed for intersection later)
-    std::sort(neededVars.begin(), neededVars.end(), &Variable::Comparator);
+    auto const neededVars = n->getVariablesUsedHere();
 
     std::vector<ExecutionNode*> stack;
     for (auto dep : n->getDependencies()) {
@@ -260,7 +257,7 @@ int triagens::aql::moveFiltersUpRule (Optimizer* opt,
 
       // first, unlink the filter from the plan
       plan->unlinkNode(n);
-      // and re-insert into before the current node
+      // and re-insert into plan in front of the current node
       plan->insertDependency(current, n);
       modified = true;
     }
@@ -689,8 +686,8 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
   using ECN = triagens::aql::EnumerateCollectionNode;
 
   ExecutionPlan*       _plan;
-  Optimizer::PlanList  _out;
-  sortAnalysis *       _sortNode;
+  Optimizer::PlanList& _out;
+  sortAnalysis*        _sortNode;
 
   public:
   sortToIndexNode (ExecutionPlan* plan,
@@ -755,6 +752,11 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
         _sortNode->removeSortNodeFromPlan(newPlan);
       }
       _out.push_back(newPlan, 0);
+    }
+    for (auto x : result.second) {
+      for (auto y : x) {
+        delete y;
+      }
     }
     return true;
   }

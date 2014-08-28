@@ -42,6 +42,7 @@ namespace triagens {
     class Optimizer {
 
       public:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the following struct keeps a list (deque) of ExecutionPlan*
 /// and has some automatic convenience functions.
@@ -187,11 +188,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         struct Rule {
+          std::string name;
           RuleFunction func;
           int level;
 
-          Rule (RuleFunction f, int l)
-            : func(f), level(l) {
+          Rule (std::string const& name, RuleFunction f, int l)
+            : name(name), func(f), level(l) {
           }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -295,14 +297,6 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief registerRule
-////////////////////////////////////////////////////////////////////////////////
-
-        void registerRule (RuleFunction f, int level) {
-          _rules.emplace_back(f, level);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief estimatePlans
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -314,6 +308,22 @@ namespace triagens {
 
         void sortPlans ();
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief registerRule
+////////////////////////////////////////////////////////////////////////////////
+
+        static void registerRule (std::string const& name, 
+                                  RuleFunction f, 
+                                  int level) {
+          _rules.emplace_back(name, f, level);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up the optimizer rules once and forever
+////////////////////////////////////////////////////////////////////////////////
+
+        static void setupRules ();
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private members
 // -----------------------------------------------------------------------------
@@ -324,7 +334,7 @@ namespace triagens {
 /// @brief the rules database
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<Rule> _rules;
+        static std::vector<Rule> _rules;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the current set of plans to be optimised

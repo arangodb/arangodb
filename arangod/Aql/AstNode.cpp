@@ -568,6 +568,14 @@ bool AstNode::isSimple () const {
   if (type == NODE_TYPE_VALUE) {
     return true;
   }
+  
+  if (type == NODE_TYPE_FCALL) {
+    // some functions have C++ handlers
+    auto func = static_cast<Function*>(getData());
+    TRI_ASSERT(func != nullptr);
+
+    return func->implementation != nullptr;
+  }
 
   return false;
 }

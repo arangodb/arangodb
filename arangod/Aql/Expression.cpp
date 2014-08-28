@@ -330,14 +330,26 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
 
     return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j)); 
   }
+ 
+  else if (node->type == NODE_TYPE_FCALL) {
+    // some functions have C++ handlers
+    auto func = static_cast<Function*>(node->getData());
+    TRI_ASSERT(func->implementation != nullptr);
 
+    TRI_document_collection_t const* myCollection = nullptr;
+    auto member = node->getMember(0);
+    AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
+
+    return func->implementation(trx, myCollection, result);
+  }
+  
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unhandled type in simple expression");
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether this is a simple access to a variable with n attributes.
 ////////////////////////////////////////////////////////////////////////////////
+
 bool Expression::isMultipleAttributeAccess () const {
   if (!isSimple()) {
     return false;

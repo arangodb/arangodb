@@ -29,6 +29,7 @@
 
 #include "Aql/V8Executor.h"
 #include "Aql/AstNode.h"
+#include "Aql/Functions.h"
 #include "Aql/V8Expression.h"
 #include "Aql/Variable.h"
 #include "Basics/StringBuffer.h"
@@ -88,12 +89,12 @@ std::unordered_map<std::string, Function const> const V8Executor::FunctionNames{
   // r = regex (a string with a special format). note: the regex type is mutually exclusive with all other types
 
   // type check functions
-  { "IS_NULL",                     Function("IS_NULL",                     "IS_NULL", ".", true, false) },
-  { "IS_BOOL",                     Function("IS_BOOL",                     "IS_BOOL", ".", true, false) },
-  { "IS_NUMBER",                   Function("IS_NUMBER",                   "IS_NUMBER", ".", true, false) },
-  { "IS_STRING",                   Function("IS_STRING",                   "IS_STRING", ".", true, false) },
-  { "IS_LIST",                     Function("IS_LIST",                     "IS_LIST", ".", true, false) },
-  { "IS_DOCUMENT",                 Function("IS_DOCUMENT",                 "IS_DOCUMENT", ".", true, false) },
+  { "IS_NULL",                     Function("IS_NULL",                     "IS_NULL", ".", true, false, &Functions::IsNull) },
+  { "IS_BOOL",                     Function("IS_BOOL",                     "IS_BOOL", ".", true, false, &Functions::IsBool) },
+  { "IS_NUMBER",                   Function("IS_NUMBER",                   "IS_NUMBER", ".", true, false, &Functions::IsNumber) },
+  { "IS_STRING",                   Function("IS_STRING",                   "IS_STRING", ".", true, false, &Functions::IsString) },
+  { "IS_LIST",                     Function("IS_LIST",                     "IS_LIST", ".", true, false, &Functions::IsList) },
+  { "IS_DOCUMENT",                 Function("IS_DOCUMENT",                 "IS_DOCUMENT", ".", true, false, &Functions::IsDocument) },
   
   // type cast functions
   { "TO_NUMBER",                   Function("TO_NUMBER",                   "CAST_NUMBER", ".", true, false) },
