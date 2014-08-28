@@ -360,6 +360,7 @@ exports.getModifyQueryResults = getModifyQueryResults;
 exports.getRawQueryResults    = getRawQueryResults;
 exports.getQueryResults       = getQueryResults;
 exports.getQueryResults2      = getQueryResults2;
+exports.getQueryResultsAQL2   = getQueryResultsAQL2;
 exports.assertQueryError      = assertQueryError;
 exports.assertQueryError2     = assertQueryError2;
 

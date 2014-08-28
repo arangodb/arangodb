@@ -30,6 +30,7 @@ var errors = internal.errors;
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults2;
+var getQueryResultsAQL2 = helper.getQueryResultsAQL2;
 var assertQueryError = helper.assertQueryError2;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4020,7 +4021,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testSleep : function () {
       var start = require("internal").time();
-      var actual = getQueryResults("LET a = SLEEP(2) RETURN 1");
+      var actual = getQueryResultsAQL2("LET a = SLEEP(2) RETURN 1");
 
       var diff = Math.round(require("internal").time() - start, 1);
 
@@ -4029,7 +4030,7 @@ function ahuacatlFunctionsTestSuite () {
       // allow some tolerance for the time diff
       // TODO: we're currently sleeping twice because we're testing
       // old AQL against new AQL. when we're done comparing, remove the 2 *
-      assertTrue(diff >= 2 * 1.5 && diff <= 2 * 2.5);
+      assertTrue(diff >= 1.8 && diff <= 2.5);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4046,11 +4047,9 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDateNow : function () {
-      var time = require("internal").time() * 1000;
-      var actual = getQueryResults("RETURN DATE_NOW()")[0];
+      var actual = getQueryResults("RETURN IS_NUMBER(DATE_NOW())")[0];
 
-      // allow for some small tolerance
-      assertTrue(Math.abs(time - actual) <= 1500);
+      assertEqual(true, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4060,10 +4059,10 @@ function ahuacatlFunctionsTestSuite () {
     testDateDayOfWeekInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DAYOFWEEK()");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DAYOFWEEK(1, 1)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYOFWEEK(null)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYOFWEEK(false)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYOFWEEK([])");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYOFWEEK({})");
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_DAYOFWEEK(null)"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_DAYOFWEEK(false)");
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_DAYOFWEEK([])");
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_DAYOFWEEK({})");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4133,10 +4132,10 @@ function ahuacatlFunctionsTestSuite () {
     testDateDayOfWeekInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_YEAR()");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_YEAR(1, 1)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_YEAR(null)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_YEAR(false)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_YEAR([])");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_YEAR({})");
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_YEAR(null)"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_YEAR(false)");
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_YEAR([])");
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_YEAR({})");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4200,10 +4199,10 @@ function ahuacatlFunctionsTestSuite () {
     testDateMonthInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_MONTH()");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_MONTH(1, 1)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MONTH(null)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MONTH(false)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MONTH([])");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MONTH({})");
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_MONTH(null)"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_MONTH(false)");
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_MONTH([])");
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_MONTH({})");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4268,10 +4267,10 @@ function ahuacatlFunctionsTestSuite () {
     testDateDayInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DAY()");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DAY(1, 1)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAY(null)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAY(false)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAY([])");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAY({})");
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_DAY(null)"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_DAY(false)");
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_DAY([])");
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_DAY({})");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4338,10 +4337,10 @@ function ahuacatlFunctionsTestSuite () {
     testDateHourInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_HOUR()");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_HOUR(1, 1)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_HOUR(null)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_HOUR(false)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_HOUR([])");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_HOUR({})");
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_HOUR(null)"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_HOUR(false)");
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_HOUR([])");
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_HOUR({})");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4419,10 +4418,10 @@ function ahuacatlFunctionsTestSuite () {
     testDateMinuteInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_MINUTE()");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_MINUTE(1, 1)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MINUTE(null)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MINUTE(false)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MINUTE([])");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MINUTE({})");
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_MINUTE(null)"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_MINUTE(false)");
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_MINUTE([])");
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_MINUTE({})");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4494,10 +4493,10 @@ function ahuacatlFunctionsTestSuite () {
     testDateSecondInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_SECOND()");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_SECOND(1, 1)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SECOND(null)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SECOND(false)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SECOND([])");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SECOND({})");
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_SECOND(null)"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_SECOND(false)");
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_SECOND([])");
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_SECOND({})");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4573,10 +4572,10 @@ function ahuacatlFunctionsTestSuite () {
     testDateMillisecondInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_MILLISECOND()");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_MILLISECOND(1, 1)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MILLISECOND(null)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MILLISECOND(false)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MILLISECOND([])");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MILLISECOND({})");
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_MILLISECOND(null)"); 
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_MILLISECOND(false)");
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_MILLISECOND([])");
+      assertQueryError(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_MILLISECOND({})");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4656,11 +4655,6 @@ function ahuacatlFunctionsTestSuite () {
     testDateTimestampInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_TIMESTAMP()");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_TIMESTAMP(1, 1, 1, 1, 1, 1, 1, 1)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_TIMESTAMP(null)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_TIMESTAMP(1, null)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_TIMESTAMP(false)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_TIMESTAMP([])");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_TIMESTAMP({})");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4744,11 +4738,6 @@ function ahuacatlFunctionsTestSuite () {
     testDateIso8601Invalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ISO8601()");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ISO8601(1, 1, 1, 1, 1, 1, 1, 1)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ISO8601(1, null)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ISO8601(null)"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ISO8601(false)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ISO8601([])");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ISO8601({})");
 
       var values = [ 
         "foobar", 
