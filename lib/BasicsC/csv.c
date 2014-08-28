@@ -346,7 +346,7 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
             *qtr++ = *ptr++;
           }
 
-          // found quote, need at least another quote, a separator, or a eol
+          // found quote, need at least another quote, a separator, or an eol
           if (ptr + 1 < parser->_stop) {
             ++ptr;
 
