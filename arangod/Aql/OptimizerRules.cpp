@@ -751,7 +751,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
       if (idx.fullmatch) { // if the index superseedes the sort, remove it.
         _sortNode->removeSortNodeFromPlan(newPlan);
       }
-      _out.push_back(newPlan, 0);
+      _out.push_back(newPlan, level);
     }
     for (auto x : result.second) {
       for (auto y : x) {
