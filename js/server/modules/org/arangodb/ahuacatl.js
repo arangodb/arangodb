@@ -3420,6 +3420,14 @@ function GEO_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
     // use default value
     limit = 100;
   }
+  else if (TYPEWEIGHT(limit) !== TYPEWEIGHT_NUMBER) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+  }
+
+  var weight = TYPEWEIGHT(distanceAttribute);
+  if (weight !== TYPEWEIGHT_NULL && weight !== TYPEWEIGHT_STRING) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
+  }
 
   if (isCoordinator) {
     var query = COLLECTION(collection).near(latitude, longitude);
@@ -3461,6 +3469,11 @@ function GEO_WITHIN (collection, latitude, longitude, radius, distanceAttribute)
     var query = COLLECTION(collection).within(latitude, longitude, radius);
     query._distance = distanceAttribute;
     return query.toArray();
+  }
+  
+  var weight = TYPEWEIGHT(distanceAttribute);
+  if (weight !== TYPEWEIGHT_NULL && weight !== TYPEWEIGHT_STRING) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NEAR");
   }
     
   var idx = INDEX(COLLECTION(collection), [ "geo1", "geo2" ]); 

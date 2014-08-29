@@ -187,7 +187,9 @@ namespace triagens {
         void unlinkNode (ExecutionNode*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief add a node to the plan, will delete node if addition fails
+/// @brief add a node to the plan, will delete node if addition fails and
+/// throw an exception, in addition, the pointer is set to nullptr such
+/// that another delete does not hurt
 ////////////////////////////////////////////////////////////////////////////////
 
         ExecutionNode* registerNode (ExecutionNode*);
