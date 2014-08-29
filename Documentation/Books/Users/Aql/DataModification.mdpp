@@ -12,44 +12,55 @@ Data-modification operations are normally combined with *FOR* loops to
 iterate over a given list of documents. They can optionally be combined with
 *FILTER* statements and the like.
 
+Let's start with an example that modifies existing documents in a collection
+*users* that match some condition:
+
     FOR u IN users
       FILTER u.status == 'not active'
       UPDATE u WITH { status: 'inactive' } IN users
 
-Though there is no need to combine a data-modification query with other
+Note there is no need to combine a data-modification query with other
 AQL operations such as *FOR* and *FILTER*. For example, the following 
 stripped-down *update* query will work, too. It will *update* one document
 (with key *foo*) in collection *users*:
 
     UPDATE "foo" WITH { status: 'inactive' } IN users
 
-Data-modification queries are restricted to modifying data in a single 
-collection per query. That means a data-modification query cannot modify 
-data in multiple collections with a single query, though it is possible
-to read from one collection and modify data in another with one query.
-
-For example, to copy the contents of the collection "users" into the collection
-"backup":
+Now, let's copy the contents of the collection *users* into the collection
+*backup*:
 
     FOR u IN users
       INSERT u IN backup
 
-To remove documents in the collection "backup" that have the same key as some
-matching documents in collection "users":
+As a final example, let's find some documents in collection *users* and
+remove them from collection *backup*. The link between the documents in both
+collections is establish via the documents' keys:
 
     FOR u IN users
-      FILTER u.status == 'inactive'
+      FILTER u.status == 'deleted'
       REMOVE u._key IN backup
 
-The name of the modified collection ("backup" in the above cases) must be 
-known to the AQL executor at query-compile time and cannot change at 
+
+!SUBSECTION Restrictions
+
+The name of the modified collection (*users* and *backup* in the above cases) 
+must be known to the AQL executor at query-compile time and cannot change at 
 runtime. Using a bind parameter to specify the [collection name](../Glossary/README.html#collection_name) is allowed.
+
+Data-modification queries are restricted to modifying data in a single 
+collection per query. That means a data-modification query cannot modify 
+data in multiple collections with a single query. It is still possible (and
+was shown above) to read from one or many collections and modify data in another
+with one query.
+
+
+!SUBSECTION Transactional Execution
   
 On a single server, data-modification operations are executed transactionally.
-If a data-modification operation fails, it will be rolled back automatically
-as if it never happened.
+If a data-modification operation fails, any changes made by it will be rolled 
+back automatically as if they never happened.
 
-In a cluster, AQL data-modification queries are not executed transactionally.
+In a cluster, AQL data-modification queries are currently not executed transactionally.
 Additionally, *update*, *replace* and *remove* AQL queries currently require the 
 *_key* attribute to be specified for all documents that should be modified or 
 removed, even if a shared key attribute other than *_key* was chosen for the

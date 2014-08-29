@@ -65,10 +65,10 @@ the *COLLECT* statement.
 
 
 The *usersByAge* variable contains the full documents found, and as we're only 
-interested in user names, we'll use the expansion operator `[*]` to extract just the 
+interested in user names, we'll use the expansion operator <i>[\*]</i> to extract just the 
 *name* attribute of all user documents in each group.
 
-The `[*]` expansion operator is just a handy short-cut. Instead of `usersByAge[*].u.name`
+The <i>[\*]</i> expansion operator is just a handy short-cut. Instead of <i>usersByAge[\*].u.name</i>
 we could also write:
 
 ```js
@@ -173,7 +173,7 @@ FOR u IN users
 ]
 ```
 
-We have used the function *LENGTH* (returns the length of a list) here. This is the
+We have used the function *LENGTH* here (it returns the length of a list). This is the
 equivalent to SQL's `SELECT g, COUNT(*) FROM ... GROUP BY g`.
 In addition to *LENGTH* AQL also provides *MAX*, *MIN*, *SUM* and *AVERAGE* as 
 basic aggregation functions.

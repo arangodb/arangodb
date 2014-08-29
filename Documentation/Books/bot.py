@@ -8,6 +8,8 @@ def walk_on_files(dirpath):
       if file.endswith(".md"):
         if file == "SUMMARY.md":
           pass
+        elif file == "Index.md":
+          pass
         else:  
           full_path= os.path.join(root, file)
           f=open(full_path,"rU")
@@ -54,32 +56,42 @@ def replaceCode(pathOfFile):
   #HTTP API changing code
   lines = re.sub(r"@brief(.+)",r"\g<1>", lines)
   lines = re.sub(r"@RESTHEADER{([\s\w\/\_{}-]*),([\s\w-]*)}", r"###\g<2>\n`\g<1>`", lines)
-  lines = lines.replace("@RESTDESCRIPTION","")
-  lines = lines.replace("@RESTURLPARAMETERS","**URL Parameters**\n")
-  lines = lines.replace("@RESTURLPARAMS","**URL Parameters**\n")
-  lines = lines.replace("@RESTQUERYPARAMS","**Query Parameters**\n")
-  lines = lines.replace("@RESTQUERYPARAMETERS","**Query Parameters**\n")
-  lines = lines.replace("@RESTHEADERPARAMS","**Header Parameters**\n")
-  lines = lines.replace("@RESTHEADERPARAMETERS","**Header Parameters**\n")
-  lines = lines.replace("@RESTBODYPARAMS","**Body Parameters**\n")
-  lines = lines.replace("@RESTBODYPARAMETERS","**Body Parameters**\n")
-  lines = lines.replace("@RESTRETURNCODES","**Return Codes**\n")
-  lines = lines.replace("@RESTURLPARAM", "@RESTPARAM")
-  lines = lines.replace("@PARAMS", "**Parameters**\n")
-  lines = lines.replace("@PARAM", "@RESTPARAM")
-  lines = lines.replace("@RESTHEADERPARAM", "@RESTPARAM")
-  lines = lines.replace("@RESTQUERYPARAM", "@RESTPARAM")
-  lines = lines.replace("@RESTBODYPARAM", "@RESTPARAM")
+  lines = re.sub(r"@RESTDESCRIPTION","", lines)
+  lines = re.sub(r"@RESTURLPARAM(\s+)","**URL Parameters**\n", lines)
+  lines = re.sub(r"@RESTQUERYPARAM(\s+)","**Query Parameters**\n", lines)
+  lines = re.sub(r"@RESTHEADERPARAM(\s+)","**Header Parameters**\n", lines)
+  lines = re.sub(r"@RESTBODYPARAM(\s+)","**Body Parameters**\n", lines)
+  lines = re.sub(r"@RESTRETURNCODES","**Return Codes**\n", lines)
+  lines = re.sub(r"@RESTURLPARAM", "@RESTPARAM", lines)
+  lines = re.sub(r"@PARAMS", "**Parameters**\n", lines)
+  lines = re.sub(r"@PARAM", "@RESTPARAM", lines)
+  lines = re.sub(r"@RESTHEADERPARAM", "@RESTPARAM", lines)
+  lines = re.sub(r"@RESTQUERYPARAM", "@RESTPARAM", lines)
+  lines = re.sub(r"@RESTBODYPARAM", "@RESTPARAM", lines)
   lines = re.sub(r"@RESTPARAM{([\s\w\-]*),([\s\w\_\|-]*),\s[optional]}", r"* *\g<1>* (\g<3>):", lines)
   lines = re.sub(r"@RESTPARAM{([\s\w-]*),([\s\w\_\|-]*),\s*(\w+)}", r"* *\g<1>*:", lines)
   lines = re.sub(r"@RESTRETURNCODE{(.*)}", r"* *\g<1>*:", lines)
   lines = re.sub(r"@RESTBODYPARAMS{(.*)}", r"*(\g<1>)*", lines)
   lines = lines.replace("@EXAMPLES","**Examples**")
+  lines = lines.replace("@RESTPARAMETERS","")
+  lines = lines.replace("@RESTPARAMS","")
   # Error codes replace
   lines = re.sub(r"- (\w+):\s*@LIT{(.+)}", r"\n*\g<1>* - **\g<2>**:", lines)
   f.write(lines)
   f.close()
 
+def replaceCodeIndex(pathOfFile):
+  f=open(pathOfFile,"rU")
+  if f:
+    s=f.read()
+  f.close()
+  f=open(pathOfFile,'w')
+  lines = re.sub(r"<!--(\s*.+\s)-->","",s)
+  #HTTP API changing code
+  lines = re.sub(r"@brief(.+)",r"\g<1>", lines)
+  lines = re.sub(r"@RESTHEADER{([\s\w\/\_{}-]*),([\s\w-]*)}", r"###\g<2>\n`\g<1>`", lines)
+  f.write(lines)
+  f.close()
 
 
 if __name__ == '__main__':

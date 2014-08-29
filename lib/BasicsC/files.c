@@ -607,7 +607,7 @@ int TRI_RemoveDirectory (char const* filename) {
     return TRI_UnlinkFile(filename);
   }
   else {
-    LOG_TRACE("removing non-existing file '%s'", filename);
+    LOG_TRACE("attempt to remove non-existing file/directory '%s'", filename);
 
     return TRI_ERROR_NO_ERROR;
   }
