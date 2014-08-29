@@ -101,12 +101,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
 
   _newPlans.clear();
 
-  // int pass = 1;
   while (leastDoneLevel < maxRuleLevel) {
-    /*
-    std::cout << "Entering pass " << pass << " of query optimization..." 
-              << std::endl;
-    */
     // Find variable usage for all old plans now:
     for (auto p : _plans.list) {
       if (! p->varUsageComputed()) {

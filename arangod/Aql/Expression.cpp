@@ -30,8 +30,8 @@
 #include "Aql/Expression.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
+#include "Aql/Executor.h"
 #include "Aql/Types.h"
-#include "Aql/V8Executor.h"
 #include "Aql/V8Expression.h"
 #include "Aql/Variable.h"
 #include "Basics/JsonHelper.h"
@@ -52,7 +52,7 @@ using JsonHelper = triagens::basics::JsonHelper;
 /// @brief create the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-Expression::Expression (V8Executor* executor,
+Expression::Expression (Executor* executor,
                         AstNode const* node)
   : _executor(executor),
     _node(node),
