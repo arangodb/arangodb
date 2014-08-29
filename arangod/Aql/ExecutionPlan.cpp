@@ -1102,12 +1102,21 @@ class CloneNodeAdder : public WalkerWorker<ExecutionNode> {
   
   public:
 
-    CloneNodeAdder (ExecutionPlan* plan) : _plan(plan){}
+    bool success;
+
+    CloneNodeAdder (ExecutionPlan* plan) : _plan(plan), success(true) {}
     
     ~CloneNodeAdder (){}
 
     bool before (ExecutionNode* node){
-      _plan->registerNode(node);
+      // We need to catch exceptions because the walk has to finish
+      // and either register the nodes or delete them.
+      try {
+        _plan->registerNode(node);
+      }
+      catch (...) {
+        success = false;
+      }
       return false;
     }
 };
@@ -1119,6 +1128,10 @@ ExecutionPlan* ExecutionPlan::clone (){
     plan->_nextId = _nextId;
     CloneNodeAdder adder(plan);
     plan->_root->walk(&adder);
+    if (! adder.success) {
+      delete plan;
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Could not clone plan.");
+    }
     // plan->findVarUsage();
     // Let's not do it here, because supposedly the plan is modified as
     // the very next thing anyway!
