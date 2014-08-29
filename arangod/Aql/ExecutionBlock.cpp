@@ -1002,7 +1002,7 @@ void IndexRangeBlock::readSkiplistIndex () {
   TRI_index_t* idx = en->_index;
   TRI_ASSERT(idx != nullptr);
   
-  std::vector<std::vector<RangeInfo*>> ranges = en->_ranges;
+  std::vector<std::vector<RangeInfo>> ranges = en->_ranges;
 
   TRI_shaper_t* shaper = _collection->documentCollection()->getShaper(); 
   TRI_ASSERT(shaper != nullptr);
@@ -1015,16 +1015,16 @@ void IndexRangeBlock::readSkiplistIndex () {
     // ranges.at(0) corresponds to a prefix of idx->_fields . . .
     // TODO only doing 1 dim case at the moment . . .
     auto range = ranges.at(0).at(i);
-    if (range->is1ValueRangeInfo()) {   // it's an equality . . . 
-      parameters(range->_low->_bound.get("value").copy());
+    if (range.is1ValueRangeInfo()) {   // it's an equality . . . 
+      parameters(range._low._bound.get("value").copy());
     } 
     else {                          // it's not an equality and so the final comparison 
       if (parameters.size() != 0) {
         skiplistOperator = TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, nullptr,
             nullptr, parameters.copy().steal(), shaper, nullptr, i, nullptr);
       }
-      if (range->_low != nullptr) {
-        auto op = range->_low->toIndexOperator(false, parameters.copy(), shaper);
+      if (range._low._undefined) {
+        auto op = range._low.toIndexOperator(false, parameters.copy(), shaper);
         if (skiplistOperator != nullptr) {
           skiplistOperator = TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, 
               skiplistOperator, op, nullptr, shaper, nullptr, 2, nullptr);
@@ -1033,8 +1033,8 @@ void IndexRangeBlock::readSkiplistIndex () {
           skiplistOperator = op;
         }
       }
-      if (range->_high != nullptr) {
-        auto op = range->_high->toIndexOperator(true, parameters.copy(), shaper);
+      if (range._high._undefined) {
+        auto op = range._high.toIndexOperator(true, parameters.copy(), shaper);
         if (skiplistOperator != nullptr) {
           skiplistOperator = TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, 
               skiplistOperator, op, nullptr, shaper, nullptr, 2, nullptr);
@@ -1123,9 +1123,9 @@ void IndexRangeBlock::readHashIndex () {
       char const* name = TRI_AttributeNameShapePid(shaper, pid);
 
       for (auto x: en->_ranges.at(0)) {
-        if (x->_attr == std::string(name)){//found attribute
+        if (x._attr == std::string(name)){//found attribute
           auto shaped = TRI_ShapedJsonJson(shaper, 
-              JsonHelper::getArrayElement(x->_low->_bound.json(), "value"), false); 
+              JsonHelper::getArrayElement(x._low._bound.json(), "value"), false); 
           // here x->_low->_bound = x->_high->_bound 
           searchValue._values[i] = *shaped;
           
