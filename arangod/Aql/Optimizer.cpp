@@ -57,6 +57,29 @@ Optimizer::Optimizer () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// @brief add a plan to the optimizer
+////////////////////////////////////////////////////////////////////////////////
+
+bool Optimizer::addPlan (ExecutionPlan* plan,
+                         int level,
+                         bool wasModified) {
+  TRI_ASSERT(plan != nullptr);
+
+  _context.plans->push_back(plan, level);
+
+  if (wasModified) {
+    // register which rules modified / created the plan
+    plan->addAppliedRule(_context.level);
+  }
+
+  if (_context.plans->size() > maxNumberOfPlans) {
+    return false;
+  }
+  
+  return true; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // @brief the actual optimization
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -127,8 +150,10 @@ int Optimizer::createPlans (ExecutionPlan* plan,
           continue;
         }
 
+        setupContext(&newPlans, it->second.level);
+
         try {
-          res = it->second.func(this, p, it->first, newPlans);
+          res = it->second.func(this, p, &(it->second));
         }
         catch (...) {
           delete p;
@@ -159,6 +184,8 @@ int Optimizer::createPlans (ExecutionPlan* plan,
     }
   }
 
+  TRI_ASSERT(_plans.size() >= 1);
+
   estimatePlans();
   sortPlans();
   /*
@@ -172,6 +199,38 @@ int Optimizer::createPlans (ExecutionPlan* plan,
   */
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief translate a list of rule ids into rule name
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<std::string> Optimizer::translateRules (std::vector<int> const& rules) {
+  std::vector<std::string> names;
+
+  for (auto r : rules) {
+    auto it = _rules.find(r);
+    if (it != _rules.end()) {
+      names.emplace_back((*it).second.name);
+    }
+  }
+  return names;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+// @brief the actual optimization
+////////////////////////////////////////////////////////////////////////////////
+
+void Optimizer::setupContext (PlanList* plans,
+                              int level) {
+  TRI_ASSERT(plans != nullptr);
+
+  _context.plans = plans;
+  _context.level = level;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
