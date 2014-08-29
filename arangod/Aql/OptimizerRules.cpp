@@ -378,7 +378,7 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
 class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
   RangesInfo* _ranges; 
   ExecutionPlan* _plan;
-  Variable const* _var;
+  std::unordered_set<VariableId> _varIds;
   Optimizer::PlanList* _out;
   bool _canThrow; 
   int _level;
@@ -387,11 +387,11 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 
     FilterToEnumCollFinder (ExecutionPlan* plan, Variable const * var, Optimizer::PlanList* out, int level) 
       : _plan(plan), 
-        _var(var), 
         _out(out), 
         _canThrow(false),
         _level(level) {
       _ranges = new RangesInfo();
+      _varIds.insert(var->id);
     };
 
     ~FilterToEnumCollFinder () {
@@ -404,7 +404,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       if (en->getType() == triagens::aql::ExecutionNode::CALCULATION) {
         auto outvar = en->getVariablesSetHere();
         TRI_ASSERT(outvar.size() == 1);
-        if (outvar[0]->id == _var->id) {
+        if (_varIds.find(outvar[0]->id) != _varIds.end()) {
           auto node = static_cast<CalculationNode*>(en);
           std::string attr;
           std::string enumCollVar;
