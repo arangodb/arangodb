@@ -2734,7 +2734,7 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   v8g->VocbaseTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, ArangoNS);
   TRI_AddGlobalFunctionVocbase(context, "ArangoDatabase", ft->GetFunction());
 
-  TRI_InitV8shaped_json(context, server, vocbase, loader, threadNumber, v8g);
+  TRI_InitV8ShapedJson(context, server, vocbase, loader, threadNumber, v8g);
 
   TRI_InitV8cursor(context, server, vocbase, loader, threadNumber, v8g);
 

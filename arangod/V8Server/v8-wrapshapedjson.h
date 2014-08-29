@@ -33,6 +33,7 @@
 #include "Basics/Common.h"
 #include "v8-vocbase.h"
 #include "VocBase/server.h"
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a TRI_shaped_json_t
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,10 +63,14 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (T& trx,
   return TRI_WrapShapedJson(resolver, barrier, cid, collection, data);
 }
 
-void TRI_InitV8shaped_json (v8::Handle<v8::Context> context,
-                            TRI_server_t* server,
-                            TRI_vocbase_t* vocbase,
-                            triagens::arango::JSLoader* loader,
-                            const size_t threadNumber,
-                            TRI_v8_global_t* v8g);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate the TRI_shaped_json_t template
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InitV8ShapedJson (v8::Handle<v8::Context> context,
+                           TRI_server_t* server,
+                           TRI_vocbase_t* vocbase,
+                           triagens::arango::JSLoader* loader,
+                           size_t threadNumber,
+                           TRI_v8_global_t* v8g);
 #endif

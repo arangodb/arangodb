@@ -146,7 +146,7 @@ namespace triagens {
 /// translate the local collection ID into a cluster wide collection name.
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string getCollectionName (const TRI_voc_cid_t cid) const {
+        std::string getCollectionName (TRI_voc_cid_t cid) const {
           if (! _resolvedIds.empty()) {
             auto it = _resolvedIds.find(cid);
 
@@ -194,11 +194,39 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief look up a collection name for a collection id, this implements
+/// some magic in the cluster case: a DBserver in a cluster will automatically
+/// translate the local collection ID into a cluster wide collection name.
+///
+/// the name is copied into <buffer>. the caller is responsible for allocating
+/// a big-enough buffer (that is, at least 64 bytes). no NUL byte is appended
+/// to the buffer. the length of the collection name is returned.
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t getCollectionName (char* buffer, 
+                                  TRI_voc_cid_t cid) const {
+          if (! _resolvedIds.empty()) {
+            auto it = _resolvedIds.find(cid);
+
+            if (it != _resolvedIds.end()) {
+              memcpy(buffer, (*it).second.c_str(), (*it).second.size()); 
+              return (*it).second.size();
+            }
+          }
+
+          std::string&& name(getCollectionName(cid));
+
+          memcpy(buffer, name.c_str(), name.size());
+          return name.size();
+        }
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief look up a cluster-wide collection name for a cluster-wide
 /// collection id
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string getCollectionNameCluster (const TRI_voc_cid_t cid) const {
+        std::string getCollectionNameCluster (TRI_voc_cid_t cid) const {
           if (! ServerState::instance()->isRunningInCluster()) {
             return getCollectionName(cid);
           }
@@ -219,6 +247,41 @@ namespace triagens {
           }
 
           return "_unknown";
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief look up a cluster-wide collection name for a cluster-wide
+/// collection id
+///
+/// the name is copied into <buffer>. the caller is responsible for allocating
+/// a big-enough buffer (that is, at least 64 bytes). no NUL byte is appended
+/// to the buffer. the length of the collection name is returned.
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t getCollectionNameCluster (char* buffer,
+                                         TRI_voc_cid_t cid) const {
+          if (! ServerState::instance()->isRunningInCluster()) {
+            return getCollectionName(buffer, cid);
+          }
+
+          int tries = 0;
+
+          while (tries++ < 2) {
+            shared_ptr<CollectionInfo> ci
+              = ClusterInfo::instance()->getCollection(_vocbase->_name,
+                             triagens::basics::StringUtils::itoa(cid));
+            std::string name = ci->name();
+
+            if (name.empty()) {
+              ClusterInfo::instance()->flush();
+              continue;
+            }
+            memcpy(buffer, name.c_str(), name.size());
+            return name.size();
+          }
+
+          memcpy(buffer, "_unknown", strlen("_unknown"));
+          return strlen("_unknown");
         }
 
 // -----------------------------------------------------------------------------
