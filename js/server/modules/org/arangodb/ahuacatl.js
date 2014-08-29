@@ -3130,6 +3130,10 @@ function FLATTEN (values, maxDepth, depth) {
   if (TYPEWEIGHT(maxDepth) === TYPEWEIGHT_NULL) {
     maxDepth = 1;
   }
+  else if (TYPEWEIGHT(maxDepth) !== TYPEWEIGHT_NUMBER) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FLATTEN");
+  }
+
   if (TYPEWEIGHT(depth) === TYPEWEIGHT_NULL) {
     depth = 0;
   }
@@ -3668,6 +3672,10 @@ function SKIPLIST_QUERY (collection, condition, skip, limit) {
 
 function HAS (element, name) {
   "use strict";
+  
+  if (TYPEWEIGHT(name) !== TYPEWEIGHT_STRING) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "HAS");
+  }
 
   if (TYPEWEIGHT(element) === TYPEWEIGHT_NULL) {
     return false;

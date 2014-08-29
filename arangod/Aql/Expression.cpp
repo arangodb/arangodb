@@ -57,7 +57,8 @@ Expression::Expression (V8Executor* executor,
   : _executor(executor),
     _node(node),
     _type(UNPROCESSED),
-    _canThrow(true) {
+    _canThrow(true),
+    _isDeterministic(false) {
 
   TRI_ASSERT(_executor != nullptr);
   TRI_ASSERT(_node != nullptr);
@@ -155,7 +156,7 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
 
 void Expression::analyzeExpression () {
   TRI_ASSERT(_type == UNPROCESSED);
-
+  
   if (_node->isConstant()) {
     // generate a constant value
     _data = _node->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
@@ -166,16 +167,19 @@ void Expression::analyzeExpression () {
 
     _type = JSON;
     _canThrow = false;
+    _isDeterministic = true;
   }
   else if (_node->isSimple()) {
     _type = SIMPLE;
     _canThrow = _node->canThrow();
+    _isDeterministic = _node->isDeterministic();
   }
   else {
     // generate a V8 expression
     _func = _executor->generateExpression(_node);
     _type = V8;
     _canThrow = _node->canThrow();
+    _isDeterministic = _node->isDeterministic();
   }
 }
 
@@ -377,8 +381,9 @@ bool Expression::isReference () const {
 /// @brief this gives you ("variable.access", "Reference")
 /// call isSimpleAccessReference in advance to ensure no exceptions.
 ////////////////////////////////////////////////////////////////////////////////
+
 std::pair<std::string, std::string> Expression::getMultipleAttributes() const {
-  if (!isSimple()) {
+  if (! isSimple()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "getAccessNRef works only on simple expressions!");
   }
