@@ -16,9 +16,9 @@ The following comparison operators are supported:
 - *<=* less or equal
 - *>*  greater than
 - *>=* greater or equal
-- *in* test if a value is contained in a list
+- *IN* test if a value is contained in a list
 
-The *in* operator expects the second operand to be of type list. All other
+The *IN* operator expects the second operand to be of type list. All other
 operators accept any data types for the first and second operands.
 
 Each of the comparison operators returns a boolean value if the comparison can
@@ -73,7 +73,7 @@ AQL supports the following arithmetic operators:
 
 - *+* addition
 - *-* subtraction
-- *** multiplication
+- <i>\*</i> multiplication
 - */* division
 - *%* modulus
 
@@ -131,13 +131,13 @@ The operator precedence in AQL is similar as in other familiar languages (lowest
 - *||* logical or
 - *&&* logical and
 - *==*, *!=* equality and inequality
-- *in* in operator
+- *IN* in operator
 - *<*, *<=*, *>=*, *>* less than, less equal,
   greater equal, greater than
 - *+*, *-* addition, subtraction
-- *\**, */*, *%* multiplication, division, modulus
+- <i>\*</i>, */*, *%* multiplication, division, modulus
 - *!*, *+*, *-* logical negation, unary plus, unary minus
-- *\[\*\]* expansion
+- <i>[\*]</i> expansion
 - *()* function call
 - *.* member access
 - *[]* indexed value access
