@@ -1582,10 +1582,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_document_collection_t* document,
 
   skiplistIndex->_skiplistIndex = SkiplistIndex_new(document,
                                                     paths->_length,
-                                                    unique,
-                                                    false);
-  // Note that the last argument is the "sparse" flag. This will be
-  // implemented soon but has no consequences as of now.
+                                                    unique);
 
   if (skiplistIndex->_skiplistIndex == nullptr) {
     TRI_DestroyVector(&skiplistIndex->_paths);
