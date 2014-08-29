@@ -398,7 +398,12 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
     bool before (ExecutionNode* en) {
       _canThrow = (_canThrow || en->canThrow()); // can any node walked over throw?
 
-      if (en->getType() == triagens::aql::ExecutionNode::CALCULATION) {
+      if (en->getType() == triagens::aql::ExecutionNode::FILTER) {
+        std::vector<Variable const*> inVar = en->getVariablesUsedHere();
+        TRI_ASSERT(inVar.size() == 1);
+        _varIds.insert(inVar[0]->id);
+      }
+      else if (en->getType() == triagens::aql::ExecutionNode::CALCULATION) {
         auto outvar = en->getVariablesSetHere();
         TRI_ASSERT(outvar.size() == 1);
         if (_varIds.find(outvar[0]->id) != _varIds.end()) {
