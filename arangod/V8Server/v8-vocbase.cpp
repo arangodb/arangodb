@@ -1068,6 +1068,8 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
   // ttl for cursor  
   double ttl = 0.0;
   
+  // options
+  TRI_json_t* options = nullptr;
   // extra return values
   TRI_json_t* extra = nullptr;
 
@@ -1076,44 +1078,46 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
       TRI_V8_TYPE_ERROR(scope, "expecting object for <bindvalues>");
     }
     parameters = TRI_ObjectToJson(argv[1]);
+  }
     
-    if (argv.Length() > 2) {
-      // we have options! yikes!
-      if (! argv[2]->IsObject()) {
-        TRI_V8_TYPE_ERROR(scope, "expecting object for <options>");
-      }
+  if (argv.Length() > 2) {
+    // we have options! yikes!
+    if (! argv[2]->IsObject()) {
+      TRI_V8_TYPE_ERROR(scope, "expecting object for <options>");
+    }
 
-      v8::Handle<v8::Object> argValue = v8::Handle<v8::Object>::Cast(argv[2]);
+    v8::Handle<v8::Object> argValue = v8::Handle<v8::Object>::Cast(argv[2]);
       
-      v8::Handle<v8::String> optionName = v8::String::New("batchSize");
-      if (argValue->Has(optionName)) {
-        batchSize = static_cast<decltype(batchSize)>(TRI_ObjectToInt64(argValue->Get(optionName)));
-        if (batchSize == 0) {
-          TRI_V8_TYPE_ERROR(scope, "expecting non-zero value for <batchSize>");
-          // well, this makes no sense
-        }
-      }
-      
-      optionName = v8::String::New("count");
-      if (argValue->Has(optionName)) {
-        doCount = TRI_ObjectToBoolean(argValue->Get(optionName));
-      }
-      
-      optionName = v8::String::New("ttl");
-      if (argValue->Has(optionName)) {
-        ttl = TRI_ObjectToBoolean(argValue->Get(optionName));
-        ttl = (ttl <= 0.0 ? 30.0 : ttl);
-      }
-      
-      optionName = v8::String::New("extra");
-      if (argValue->Has(optionName)) {
-        extra = TRI_ObjectToJson(argValue->Get(optionName));
+    v8::Handle<v8::String> optionName = v8::String::New("batchSize");
+    if (argValue->Has(optionName)) {
+      batchSize = static_cast<decltype(batchSize)>(TRI_ObjectToInt64(argValue->Get(optionName)));
+      if (batchSize == 0) {
+        TRI_V8_TYPE_ERROR(scope, "expecting non-zero value for <batchSize>");
+        // well, this makes no sense
       }
     }
+      
+    optionName = v8::String::New("count");
+    if (argValue->Has(optionName)) {
+      doCount = TRI_ObjectToBoolean(argValue->Get(optionName));
+    }
+      
+    optionName = v8::String::New("ttl");
+    if (argValue->Has(optionName)) {
+      ttl = TRI_ObjectToBoolean(argValue->Get(optionName));
+      ttl = (ttl <= 0.0 ? 30.0 : ttl);
+    }
+      
+    optionName = v8::String::New("extra");
+    if (argValue->Has(optionName)) {
+      extra = TRI_ObjectToJson(argValue->Get(optionName));
+    }
+
+    options = TRI_ObjectToJson(argv[2]);
   }
 
   // bind parameters will be freed by the query later
-  triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), parameters, nullptr);
+  triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), parameters, options);
   
   auto queryResult = query.execute();
   

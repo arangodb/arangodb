@@ -246,10 +246,14 @@ QueryResult Query::execute () {
         return QueryResult(res, TRI_errno_string(res));
       }
     }
+    
+    // get enabled/disabled rules
+    std::vector<std::string> rules(getRulesFromOptions());
 
     // Run the query optimiser:
     triagens::aql::Optimizer opt;
-    opt.createPlans(plan, std::vector<std::string>());  
+    opt.createPlans(plan, rules);  
+
     // Now plan and all derived plans belong to the optimizer
     plan = opt.stealBest(); // Now we own the best one again
     TRI_ASSERT(plan != nullptr);
