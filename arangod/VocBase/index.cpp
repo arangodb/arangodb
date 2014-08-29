@@ -1279,7 +1279,7 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
     if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
       // OK, the document does not contain the attributed needed by 
       // the index, so let's fake a JSON null:
-      skiplistElement->_subObjects[j]._sid = TRI_SHAPE_NULL;
+      skiplistElement->_subObjects[j]._sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NULL);
       skiplistElement->_subObjects[j]._length = 0;
       skiplistElement->_subObjects[j]._offset = 0;
       continue;
