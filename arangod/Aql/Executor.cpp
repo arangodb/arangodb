@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Aql, v8 context executor
+/// @brief Aql, expression executor
 ///
 /// @file
 ///
@@ -27,7 +27,7 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/V8Executor.h"
+#include "Aql/Executor.h"
 #include "Aql/AstNode.h"
 #include "Aql/Functions.h"
 #include "Aql/V8Expression.h"
@@ -47,7 +47,7 @@ using namespace triagens::aql;
 /// @brief internal functions used in execution
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_map<int, std::string const> const V8Executor::InternalFunctionNames{ 
+std::unordered_map<int, std::string const> const Executor::InternalFunctionNames{ 
   { static_cast<int>(NODE_TYPE_OPERATOR_UNARY_PLUS),   "UNARY_PLUS" },
   { static_cast<int>(NODE_TYPE_OPERATOR_UNARY_MINUS),  "UNARY_MINUS" },
   { static_cast<int>(NODE_TYPE_OPERATOR_UNARY_NOT),    "LOGICAL_NOT" },
@@ -72,7 +72,7 @@ std::unordered_map<int, std::string const> const V8Executor::InternalFunctionNam
 /// @brief user-accessible functions
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unordered_map<std::string, Function const> const V8Executor::FunctionNames{ 
+std::unordered_map<std::string, Function const> const Executor::FunctionNames{ 
   // meanings of the symbols in the function arguments list
   // ------------------------------------------------------
   //
@@ -227,7 +227,7 @@ std::unordered_map<std::string, Function const> const V8Executor::FunctionNames{
 /// @brief creates an executor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8Executor::V8Executor () :
+Executor::Executor () :
   _buffer(nullptr) {
 }
 
@@ -235,7 +235,7 @@ V8Executor::V8Executor () :
 /// @brief destroys an executor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8Executor::~V8Executor () {
+Executor::~Executor () {
   if (_buffer != nullptr) {
     delete _buffer;
     _buffer = nullptr;
@@ -250,7 +250,7 @@ V8Executor::~V8Executor () {
 /// @brief generates an expression execution object
 ////////////////////////////////////////////////////////////////////////////////
 
-V8Expression* V8Executor::generateExpression (AstNode const* node) {
+V8Expression* Executor::generateExpression (AstNode const* node) {
   generateCodeExpression(node);
   
   // std::cout << "Executor::generateExpression: " << _buffer->c_str() << "\n";
@@ -270,7 +270,7 @@ V8Expression* V8Executor::generateExpression (AstNode const* node) {
 /// @brief executes an expression directly
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* V8Executor::executeExpression (AstNode const* node) {
+TRI_json_t* Executor::executeExpression (AstNode const* node) {
   generateCodeExpression(node);
 
   // std::cout << "Executor::ExecuteExpression: " << _buffer->c_str() << "\n";
@@ -299,7 +299,7 @@ TRI_json_t* V8Executor::executeExpression (AstNode const* node) {
 /// @brief returns a reference to a built-in function
 ////////////////////////////////////////////////////////////////////////////////
 
-Function const* V8Executor::getFunctionByName (std::string const& name) {
+Function const* Executor::getFunctionByName (std::string const& name) {
   auto it = FunctionNames.find(name);
 
   if (it == FunctionNames.end()) {
@@ -319,8 +319,8 @@ Function const* V8Executor::getFunctionByName (std::string const& name) {
 /// exception from it if so
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Executor::HandleV8Error (v8::TryCatch& tryCatch,
-                                v8::Handle<v8::Value>& result) {
+void Executor::HandleV8Error (v8::TryCatch& tryCatch,
+                              v8::Handle<v8::Value>& result) {
   if (tryCatch.HasCaught()) {
     // caught a V8 exception
     if (! tryCatch.CanContinue()) {
@@ -375,7 +375,7 @@ void V8Executor::HandleV8Error (v8::TryCatch& tryCatch,
 /// @brief compile a V8 function from the code contained in the buffer
 ////////////////////////////////////////////////////////////////////////////////
   
-v8::Handle<v8::Value> V8Executor::compileExpression () {
+v8::Handle<v8::Value> Executor::compileExpression () {
   TRI_ASSERT(_buffer != nullptr);
 
   v8::Handle<v8::Script> compiled = v8::Script::Compile(v8::String::New(_buffer->c_str(), (int) _buffer->length()),
@@ -392,7 +392,7 @@ v8::Handle<v8::Value> V8Executor::compileExpression () {
 /// @brief generate JavaScript code for an arbitrary expression
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Executor::generateCodeExpression (AstNode const* node) {  
+void Executor::generateCodeExpression (AstNode const* node) {  
   // initialise and/or clear the buffer
   initBuffer();
   TRI_ASSERT(_buffer != nullptr);
@@ -410,7 +410,7 @@ void V8Executor::generateCodeExpression (AstNode const* node) {
 /// @brief generates code for a string value
 ////////////////////////////////////////////////////////////////////////////////
         
-void V8Executor::generateCodeString (char const* value) {
+void Executor::generateCodeString (char const* value) {
   TRI_ASSERT(value != nullptr);
 
   _buffer->appendChar('"');
@@ -422,7 +422,7 @@ void V8Executor::generateCodeString (char const* value) {
 /// @brief generate JavaScript code for a list
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Executor::generateCodeList (AstNode const* node) {
+void Executor::generateCodeList (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
   size_t const n = node->numMembers();
@@ -442,7 +442,7 @@ void V8Executor::generateCodeList (AstNode const* node) {
 /// @brief generate JavaScript code for an array
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Executor::generateCodeArray (AstNode const* node) {
+void Executor::generateCodeArray (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
   size_t const n = node->numMembers();
@@ -468,7 +468,7 @@ void V8Executor::generateCodeArray (AstNode const* node) {
 /// @brief generate JavaScript code for a unary operator
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Executor::generateCodeUnaryOperator (AstNode const* node) {
+void Executor::generateCodeUnaryOperator (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 1);
 
@@ -491,7 +491,7 @@ void V8Executor::generateCodeUnaryOperator (AstNode const* node) {
 /// @brief generate JavaScript code for a binary operator
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Executor::generateCodeBinaryOperator (AstNode const* node) {
+void Executor::generateCodeBinaryOperator (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
@@ -529,7 +529,7 @@ void V8Executor::generateCodeBinaryOperator (AstNode const* node) {
 /// @brief generate JavaScript code for the ternary operator
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Executor::generateCodeTernaryOperator (AstNode const* node) {
+void Executor::generateCodeTernaryOperator (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 3);
 
@@ -556,7 +556,7 @@ void V8Executor::generateCodeTernaryOperator (AstNode const* node) {
 /// @brief generate JavaScript code for a variable (read) access
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Executor::generateCodeReference (AstNode const* node) {
+void Executor::generateCodeReference (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 0);
   
@@ -571,7 +571,7 @@ void V8Executor::generateCodeReference (AstNode const* node) {
 /// @brief generate JavaScript code for a variable
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Executor::generateCodeVariable (AstNode const* node) {
+void Executor::generateCodeVariable (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 0);
   
@@ -586,7 +586,7 @@ void V8Executor::generateCodeVariable (AstNode const* node) {
 /// @brief generate JavaScript code for a full collection access
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Executor::generateCodeCollection (AstNode const* node) {
+void Executor::generateCodeCollection (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 0);
   
@@ -601,7 +601,7 @@ void V8Executor::generateCodeCollection (AstNode const* node) {
 /// @brief generate JavaScript code for a call to a built-in function
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Executor::generateCodeFunctionCall (AstNode const* node) {
+void Executor::generateCodeFunctionCall (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 1);
   
@@ -652,7 +652,7 @@ void V8Executor::generateCodeFunctionCall (AstNode const* node) {
 /// @brief generate JavaScript code for a call to a user-defined function
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Executor::generateCodeUserFunctionCall (AstNode const* node) {
+void Executor::generateCodeUserFunctionCall (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 1);
   
@@ -682,7 +682,7 @@ void V8Executor::generateCodeUserFunctionCall (AstNode const* node) {
 /// @brief generate JavaScript code for an expansion (i.e. [*] operator)
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Executor::generateCodeExpand (AstNode const* node) {
+void Executor::generateCodeExpand (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
@@ -704,7 +704,7 @@ void V8Executor::generateCodeExpand (AstNode const* node) {
 /// @brief generate JavaScript code for an expansion iterator
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Executor::generateCodeExpandIterator (AstNode const* node) {
+void Executor::generateCodeExpandIterator (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
@@ -716,7 +716,7 @@ void V8Executor::generateCodeExpandIterator (AstNode const* node) {
 /// @brief generate JavaScript code for a range (i.e. 1..10)
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Executor::generateCodeRange (AstNode const* node) {
+void Executor::generateCodeRange (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
   
@@ -731,7 +731,7 @@ void V8Executor::generateCodeRange (AstNode const* node) {
 /// @brief generate JavaScript code for a named attribute access
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Executor::generateCodeNamedAccess (AstNode const* node) {
+void Executor::generateCodeNamedAccess (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 1);
 
@@ -746,7 +746,7 @@ void V8Executor::generateCodeNamedAccess (AstNode const* node) {
 /// @brief generate JavaScript code for a bound attribute access
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Executor::generateCodeBoundAccess (AstNode const* node) {
+void Executor::generateCodeBoundAccess (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
@@ -761,7 +761,7 @@ void V8Executor::generateCodeBoundAccess (AstNode const* node) {
 /// @brief generate JavaScript code for an indexed attribute access
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Executor::generateCodeIndexedAccess (AstNode const* node) {
+void Executor::generateCodeIndexedAccess (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
@@ -776,7 +776,7 @@ void V8Executor::generateCodeIndexedAccess (AstNode const* node) {
 /// @brief generate JavaScript code for a node
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Executor::generateCodeNode (AstNode const* node) {
+void Executor::generateCodeNode (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
   switch (node->type) {
@@ -873,7 +873,7 @@ void V8Executor::generateCodeNode (AstNode const* node) {
 /// @brief create the string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::StringBuffer* V8Executor::initBuffer () {
+triagens::basics::StringBuffer* Executor::initBuffer () {
   if (_buffer == nullptr) {
     _buffer = new triagens::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE);
 

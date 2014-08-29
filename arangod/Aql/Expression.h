@@ -48,7 +48,7 @@ namespace triagens {
     struct AqlValue;
     class Ast;
     struct Variable;
-    class V8Executor;
+    class Executor;
     struct V8Expression;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,7 +74,7 @@ namespace triagens {
 /// @brief constructor, using an AST start node
 ////////////////////////////////////////////////////////////////////////////////
 
-        Expression (V8Executor*,
+        Expression (Executor*,
                     AstNode const*);
 
         Expression (Ast*,
@@ -149,7 +149,6 @@ namespace triagens {
                           std::vector<Variable*> const&,
                           std::vector<RegisterId> const&);
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether this is a simple expression.
 ////////////////////////////////////////////////////////////////////////////////
@@ -220,7 +219,7 @@ namespace triagens {
 /// @brief the V8 executor
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8Executor*               _executor;
+        Executor*                 _executor;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the AST node that contains the expression to execute

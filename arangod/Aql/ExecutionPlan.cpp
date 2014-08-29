@@ -32,6 +32,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
+#include "Aql/Optimizer.h"
 #include "Aql/Query.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
@@ -114,6 +115,33 @@ ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast* ast,
     delete plan;
     throw;
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON, returns an AUTOFREE Json object
+////////////////////////////////////////////////////////////////////////////////
+
+triagens::basics::Json ExecutionPlan::toJson (TRI_memory_zone_t* zone,
+                                              bool verbose) const {
+  triagens::basics::Json result = _root->toJson(zone, verbose); 
+ 
+  // set up rules 
+  triagens::basics::Json rules(Json::List);
+  auto const&& appliedRules = Optimizer::translateRules(_appliedRules);
+  for (auto r : appliedRules) {
+    rules.add(Json(r));
+  }
+  result.set("rules", rules);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a list of all applied rules
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<std::string> ExecutionPlan::getAppliedRules () const {
+  return Optimizer::translateRules(_appliedRules);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1122,11 +1150,12 @@ class CloneNodeAdder : public WalkerWorker<ExecutionNode> {
     }
 };
 
-ExecutionPlan* ExecutionPlan::clone (){
+ExecutionPlan* ExecutionPlan::clone () {
   auto plan = new ExecutionPlan();
   try {
     plan->_root = _root->clone();
     plan->_nextId = _nextId;
+    plan->_appliedRules = _appliedRules;
     CloneNodeAdder adder(plan);
     plan->_root->walk(&adder);
     if (! adder.success) {

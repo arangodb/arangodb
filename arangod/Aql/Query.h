@@ -42,7 +42,7 @@ struct TRI_vocbase_s;
 namespace triagens {
   namespace aql {
 
-    class V8Executor;
+    class Executor;
     class Expression;
     struct Variable;
     struct AstNode;
@@ -82,6 +82,7 @@ namespace triagens {
         Query (struct TRI_vocbase_s*,
                char const*,
                size_t,
+               struct TRI_json_s*,
                struct TRI_json_s*);
 
         Query (struct TRI_vocbase_s*,
@@ -188,7 +189,7 @@ namespace triagens {
 /// @brief get v8 executor
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8Executor* executor ();
+        Executor* executor ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register a string
@@ -208,6 +209,16 @@ namespace triagens {
                               bool);
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read the "optimizer.rules" section from the options
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<std::string> getRulesFromOptions () const;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
@@ -223,7 +234,7 @@ namespace triagens {
 /// @brief V8 code executor
 ////////////////////////////////////////////////////////////////////////////////
         
-        V8Executor*                _executor;
+        Executor*                  _executor;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the actual query string
@@ -243,7 +254,6 @@ namespace triagens {
 
         triagens::basics::Json const _queryJson;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of the query
 ////////////////////////////////////////////////////////////////////////////////
@@ -255,6 +265,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         BindParameters             _bindParameters;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief query options
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_json_t*                _options;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collections used in the query
