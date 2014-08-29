@@ -57,11 +57,34 @@ Optimizer::Optimizer () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// @brief add a plan to the optimizer
+////////////////////////////////////////////////////////////////////////////////
+
+bool Optimizer::addPlan (ExecutionPlan* plan,
+                         int level,
+                         bool wasModified) {
+  TRI_ASSERT(plan != nullptr);
+
+  _newPlans.push_back(plan, level);
+
+  if (wasModified) {
+    // register which rules modified / created the plan
+    plan->addAppliedRule(_currentRule);
+  }
+
+  if (_newPlans.size() > maxNumberOfPlans) {
+    return false;
+  }
+  
+  return true; 
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // @brief the actual optimization
 ////////////////////////////////////////////////////////////////////////////////
 
 int Optimizer::createPlans (ExecutionPlan* plan,
-                            std::vector<std::string> const& disabledRules) {
+                            std::vector<std::string> const& rulesSpecification) {
   int res;
   int leastDoneLevel = 0;
 
@@ -69,21 +92,16 @@ int Optimizer::createPlans (ExecutionPlan* plan,
   int maxRuleLevel = _rules.rbegin()->first;
 
   // which optimizer rules are disabled?
-  std::unordered_set<int> const&& disabledIds = getDisabledRuleIds(disabledRules);
+  std::unordered_set<int> const&& disabledIds = getDisabledRuleIds(rulesSpecification);
+
 
   // _plans contains the previous optimisation result
   _plans.clear();
   _plans.push_back(plan, 0);
 
-  // int pass = 1;
-  while (leastDoneLevel < maxRuleLevel) {
-    /*
-    std::cout << "Entering pass " << pass << " of query optimization..." 
-              << std::endl;
-    */
-    // This vector holds the plans we have created in this pass:
-    PlanList newPlans;
+  _newPlans.clear();
 
+  while (leastDoneLevel < maxRuleLevel) {
     // Find variable usage for all old plans now:
     for (auto p : _plans.list) {
       if (! p->varUsageComputed()) {
@@ -105,8 +123,9 @@ int Optimizer::createPlans (ExecutionPlan* plan,
     while (_plans.size() > 0) {
       int level;
       auto p = _plans.pop_front(level);
+
       if (level == maxRuleLevel) {
-        newPlans.push_back(p, level);  // nothing to do, just keep it
+        _newPlans.push_back(p, level);  // nothing to do, just keep it
       }
       else {   // find next rule
         auto it = _rules.upper_bound(level);
@@ -118,17 +137,20 @@ int Optimizer::createPlans (ExecutionPlan* plan,
                   << std::endl;
         */
 
+        level = (*it).first;
         if (disabledIds.find(level) != disabledIds.end()) {
           // we picked a disabled rule
           level = it->first;
 
-          newPlans.push_back(p, level);  // nothing to do, just keep it
+          _newPlans.push_back(p, level);  // nothing to do, just keep it
           // now try next
           continue;
         }
 
+        _currentRule = level;
+
         try {
-          res = it->second.func(this, p, it->first, newPlans);
+          res = it->second.func(this, p, &(it->second));
         }
         catch (...) {
           delete p;
@@ -144,7 +166,8 @@ int Optimizer::createPlans (ExecutionPlan* plan,
       // a good-enough plan is probably every plan with costs below some
       // defined threshold. this requires plan costs to be calculated here
     }
-    _plans.steal(newPlans);
+
+    _plans.steal(_newPlans);
     leastDoneLevel = maxRuleLevel;
     for (auto l : _plans.levelDone) {
       if (l < leastDoneLevel) {
@@ -158,6 +181,8 @@ int Optimizer::createPlans (ExecutionPlan* plan,
       break;
     }
   }
+
+  TRI_ASSERT(_plans.size() >= 1);
 
   estimatePlans();
   sortPlans();
@@ -173,6 +198,26 @@ int Optimizer::createPlans (ExecutionPlan* plan,
 
   return TRI_ERROR_NO_ERROR;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief translate a list of rule ids into rule name
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<std::string> Optimizer::translateRules (std::vector<int> const& rules) {
+  std::vector<std::string> names;
+
+  for (auto r : rules) {
+    auto it = _rules.find(r);
+    if (it != _rules.end()) {
+      names.emplace_back((*it).second.name);
+    }
+  }
+  return names;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief estimatePlans
@@ -203,22 +248,35 @@ void Optimizer::sortPlans () {
 std::unordered_set<int> Optimizer::getDisabledRuleIds (std::vector<std::string> const& names) const {
   std::unordered_set<int> disabled;
 
-  disabled.reserve(names.size());
-
   // lookup ids of all disabled rules
   for (auto name : names) {
-    if (name == "all") {
-      // disable all rules
-      for (auto it : _rules) {
-        disabled.insert(it.first);
+    if (name[0] == '-') {
+      // disable rule
+      if (name == "-all") {
+        // disable all rules
+        for (auto it : _rules) {
+          disabled.insert(it.first);
+        }
       }
-      break;
+      else {
+        // disable a specific rule
+        auto it = _ruleLookup.find(std::string(name.c_str() + 1));
+        if (it != _ruleLookup.end()) {
+          disabled.insert((*it).second);
+        }
+      }
     }
-    else {
-      // disable a specific rule
-      auto it = _ruleLookup.find(name);
-      if (it != _ruleLookup.end()) {
-        disabled.insert((*it).second);
+    else if (name[0] == '+') {
+      // enable rule
+      if (name == "+all") {
+        // enable all rules
+        disabled.clear();
+      }
+      else {
+        auto it = _ruleLookup.find(std::string(name.c_str() + 1));
+        if (it != _ruleLookup.end()) {
+          disabled.erase((*it).second);
+        }
       }
     }
   }
@@ -316,8 +374,8 @@ void Optimizer::setupRules () {
   registerRule("use-index-range", useIndexRange, 710);
 
   // try to find sort blocks which are superseeded by indexes
-  //registerRule("use-index-for-sort", useIndexForSort, 720);
-
+  registerRule("use-index-for-sort", useIndexForSort, 720);
+  
   //////////////////////////////////////////////////////////////////////////////
   /// END OF OPTIMISATIONS
   //////////////////////////////////////////////////////////////////////////////

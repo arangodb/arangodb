@@ -31,8 +31,8 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Executor.h"
 #include "Aql/Parser.h"
-#include "Aql/V8Executor.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Optimizer.h"
 #include "Basics/JsonHelper.h"
@@ -56,7 +56,8 @@ using namespace triagens::aql;
 Query::Query (TRI_vocbase_t* vocbase,
               char const* queryString,
               size_t queryLength,
-              TRI_json_t* bindParameters)
+              TRI_json_t* bindParameters,
+              TRI_json_t* options)
   : _vocbase(vocbase),
     _executor(nullptr),
     _queryString(queryString),
@@ -64,6 +65,7 @@ Query::Query (TRI_vocbase_t* vocbase,
     _queryJson(),
     _type(AQL_QUERY_READ),
     _bindParameters(bindParameters),
+    _options(options),
     _collections(vocbase),
     _strings() {
 
@@ -95,6 +97,10 @@ Query::Query (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 Query::~Query () {
+  if (_options != nullptr) {
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _options);
+  }
+
   if (_executor != nullptr) {
     delete _executor;
     _executor = nullptr;
@@ -369,16 +375,20 @@ QueryResult Query::explain () {
 
     // Run the query optimiser:
     triagens::aql::Optimizer opt;
-    opt.createPlans(plan, std::vector<std::string>());  
+
+    // get enabled/disabled rules
+    std::vector<std::string> rules(getRulesFromOptions());
+
+    opt.createPlans(plan, rules);
     // Now plan and all derived plans belong to the optimizer
     plan = opt.stealBest(); // Now we own the best one again
     TRI_ASSERT(plan != nullptr);
 
     trx.commit();
-    //triagens::basic::Json json(triagens::basic::Json::Array);
 
     QueryResult result(TRI_ERROR_NO_ERROR);
     result.json = plan->toJson(TRI_UNKNOWN_MEM_ZONE, false).steal(); //json();
+
     delete plan;
     
     return result;
@@ -401,10 +411,10 @@ QueryResult Query::explain () {
 /// @brief get v8 executor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8Executor* Query::executor () {
+Executor* Query::executor () {
   if (_executor == nullptr) {
     // the executor is a singleton per query
-    _executor = new V8Executor;
+    _executor = new Executor;
   }
 
   TRI_ASSERT(_executor != nullptr);
@@ -462,6 +472,40 @@ char* Query::registerString (std::string const& p,
                              bool mustUnescape) {
 
   return registerString(p.c_str(), p.length(), mustUnescape);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read the "optimizer.rules" section from the options
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<std::string> Query::getRulesFromOptions () const {
+  std::vector<std::string> rules;
+
+  if (TRI_IsArrayJson(_options)) {
+    TRI_json_t const* optJson = TRI_LookupArrayJson(_options, "optimizer");
+
+    if (TRI_IsArrayJson(optJson)) {
+      TRI_json_t const* rulesJson = TRI_LookupArrayJson(optJson, "rules");
+
+      if (TRI_IsListJson(rulesJson)) {
+        size_t const n = TRI_LengthListJson(rulesJson);
+
+        for (size_t i = 0; i < n; ++i) {
+          TRI_json_t const* rule = static_cast<TRI_json_t const*>(TRI_AtVector(&rulesJson->_value._objects, i));
+
+          if (TRI_IsStringJson(rule)) {
+            rules.emplace_back(rule->_value._string.data, rule->_value._string.length - 1);
+          }
+        }
+      }
+    }
+  }
+
+  return rules;
 }
 
 // -----------------------------------------------------------------------------

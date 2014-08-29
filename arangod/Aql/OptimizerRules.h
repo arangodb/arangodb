@@ -46,7 +46,7 @@ namespace triagens {
 /// - sorts that are covered by earlier sorts will be removed
 ////////////////////////////////////////////////////////////////////////////////
 
-    int removeRedundantSorts (Optimizer*, ExecutionPlan*, int level, Optimizer::PlanList&);
+    int removeRedundantSorts (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove all unnecessary filters
@@ -55,7 +55,7 @@ namespace triagens {
 /// - filters that are always false will be replaced by a NoResults node
 ////////////////////////////////////////////////////////////////////////////////
 
-    int removeUnnecessaryFiltersRule (Optimizer*, ExecutionPlan*, int level, Optimizer::PlanList&);
+    int removeUnnecessaryFiltersRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief move calculations up in the plan
@@ -64,7 +64,7 @@ namespace triagens {
 /// avoid redundant calculations in inner loops
 ////////////////////////////////////////////////////////////////////////////////
 
-    int moveCalculationsUpRule (Optimizer*, ExecutionPlan*, int level, Optimizer::PlanList&);
+    int moveCalculationsUpRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief move filters up in the plan
@@ -74,34 +74,31 @@ namespace triagens {
 /// filters are not pushed beyond limits
 ////////////////////////////////////////////////////////////////////////////////
 
-    int moveFiltersUpRule (Optimizer*, ExecutionPlan*, int level, Optimizer::PlanList&);
+    int moveFiltersUpRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove a CalculationNode that is never needed
 ////////////////////////////////////////////////////////////////////////////////
 
-    int removeUnnecessaryCalculationsRule (Optimizer*, ExecutionPlan*, int level, Optimizer::PlanList&);
+    int removeUnnecessaryCalculationsRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prefer IndexRange nodes over EnumerateCollection nodes
 ////////////////////////////////////////////////////////////////////////////////
 
-    int useIndexRange (Optimizer*, ExecutionPlan*, int level, Optimizer::PlanList&);
+    int useIndexRange (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief try to use the index for sorting
 ////////////////////////////////////////////////////////////////////////////////
 
-    int useIndexForSort (Optimizer*, ExecutionPlan*, int level, Optimizer::PlanList&);
+    int useIndexForSort (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief interchange adjacent EnumerateCollectionNodes in all possible ways
 ////////////////////////////////////////////////////////////////////////////////
 
-    int interchangeAdjacentEnumerations ( Optimizer* opt,
-                                          ExecutionPlan* plan,
-                                          int level,
-                                          Optimizer::PlanList& out);
+    int interchangeAdjacentEnumerations (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
   }  // namespace aql
 }  // namespace triagens

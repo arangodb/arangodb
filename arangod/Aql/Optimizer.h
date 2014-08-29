@@ -40,8 +40,40 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     class Optimizer {
-
+    
       public:
+      
+        struct Rule;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief type of an optimizer rule function, the function gets an
+/// optimiser, an ExecutionPlan, and the current rule. it has
+/// to append one or more plans to the resulting deque. This must
+/// include the original plan if it ought to be kept. The rule has to
+/// set the level of the appended plan to the largest level of rule
+/// that ought to be considered as done to indicate which rule is to be
+/// applied next.
+////////////////////////////////////////////////////////////////////////////////
+          
+        typedef std::function<int(Optimizer*, ExecutionPlan*, Rule const*)> RuleFunction;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief type of an optimizer rule
+////////////////////////////////////////////////////////////////////////////////
+
+        struct Rule {
+          std::string name;
+          RuleFunction func;
+          int level;
+
+          Rule () = delete;
+
+          Rule (std::string const& name, RuleFunction func, int level)
+            : name(name), 
+              func(func), 
+              level(level) {
+          }
+        };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the following struct keeps a list (deque) of ExecutionPlan*
@@ -168,38 +200,6 @@ namespace triagens {
         };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief type of an optimizer rule function, the function gets an
-/// optimiser, an ExecutionPlan, the current level of this rule and
-/// has to append one or more plans to the resulting deque. This must
-/// include the original plan if it ought to be kept. The rule has to
-/// set the level of the appended plan to the largest level of rule
-/// that ought to be considered as done to indicate which rule is to be
-/// applied next.
-////////////////////////////////////////////////////////////////////////////////
-
-        typedef std::function<int(Optimizer* opt, 
-                                  ExecutionPlan* plan,
-                                  int level,
-                                  PlanList& out)>
-                RuleFunction;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief type of an optimizer rule
-////////////////////////////////////////////////////////////////////////////////
-
-        struct Rule {
-          std::string name;
-          RuleFunction func;
-          int level;
-
-          Rule (std::string const& name, RuleFunction f, int l)
-            : name(name), 
-              func(f), 
-              level(l) {
-          }
-        };
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief maximal number of plans to produce:
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -232,6 +232,15 @@ namespace triagens {
 
         int createPlans (ExecutionPlan* p,
                          std::vector<std::string> const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add a plan to the optimizer
+/// returns false if there are already enough plans, true otherwise
+////////////////////////////////////////////////////////////////////////////////
+
+        bool addPlan (ExecutionPlan*,
+                      int,
+                      bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getBest, ownership of the plan remains with the optimizer
@@ -268,7 +277,6 @@ namespace triagens {
           _plans.list.clear();
           _plans.levelDone.clear();
 
-          // std::cout << res->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString() << "\n";
           return res;
         }
 
@@ -283,6 +291,12 @@ namespace triagens {
           _plans.levelDone.clear();
           return res;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief translate a list of rule ids into rule name
+////////////////////////////////////////////////////////////////////////////////
+
+        static std::vector<std::string> translateRules (std::vector<int> const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -313,7 +327,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static void registerRule (std::string const& name, 
-                                  RuleFunction f, 
+                                  RuleFunction func, 
                                   int level) {
           if (_ruleLookup.find(name) != _ruleLookup.end()) {
             // duplicate rule names are not allowed
@@ -326,7 +340,7 @@ namespace triagens {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "duplicate optimizer rule level");
           }
 
-          _rules.insert(std::make_pair(level, Rule(name, f, level)));
+          _rules.insert(std::make_pair(level, Rule(name, func, level)));
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -358,6 +372,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         PlanList _plans;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief current list of plans (while applying optimizer rules)
+////////////////////////////////////////////////////////////////////////////////
+
+        PlanList _newPlans;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief currently active rule (during optimization)
+////////////////////////////////////////////////////////////////////////////////
+
+        int _currentRule;
 
     };
 

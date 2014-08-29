@@ -31,9 +31,10 @@
 #define ARANGODB_AQL_EXECUTION_PLAN_H 1
 
 #include "Basics/Common.h"
-#include "arangod/Aql/ExecutionNode.h"
-#include "arangod/Aql/ModificationOptions.h"
-#include "arangod/Aql/Query.h"
+#include "Aql/ExecutionNode.h"
+#include "Aql/ModificationOptions.h"
+#include "Aql/Query.h"
+#include "BasicsC/json.h"
 
 namespace triagens {
   namespace aql {
@@ -93,9 +94,21 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         triagens::basics::Json toJson (TRI_memory_zone_t* zone,
-                                       bool verbose) const {
-          return _root->toJson(zone, verbose); 
+                                       bool verbose) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief note that an optimizer rule was applied
+////////////////////////////////////////////////////////////////////////////////
+
+        inline void addAppliedRule (int level) {
+          _appliedRules.push_back(level);
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a list of all applied rules
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<std::string> getAppliedRules () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the next value for a node id
@@ -374,6 +387,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::unordered_map<VariableId, ExecutionNode*> _varSetBy;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief which optimizer rules were applied for a plan
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<int> _appliedRules;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flag to indicate whether the variable usage is computed
