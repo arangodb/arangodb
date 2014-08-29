@@ -749,9 +749,6 @@ public:
       v.push_back(std::make_pair(_sortNodeData[j]->attributevec,
                                  _sortNodeData[j]->ASC));
       rangeInfo.push_back(std::vector<RangeInfo>());
-
-      rangeInfo.at(j).push_back(RangeInfo(variableName,
-                                              _sortNodeData[j]->attributevec));
     }
     return std::make_pair(v, rangeInfo);
   }
@@ -799,6 +796,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
 
     if (node->MatchesIndex(result.first)) {
       _sortNode->removeSortNodeFromPlan(_plan);
+      std::cout << "aoeuaoeuao\n";
     }
     return true;
   }
@@ -810,6 +808,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
   bool handleEnumerateCollectionNode(EnumerateCollectionNode* node, int level) {
     auto variableName = node->getVariablesSetHere()[0]->name;
     auto result = _sortNode->getAttrsForVariableName(variableName);
+      std::cout << "1aoeuaoeuao\n";
 
     if (result.first.size() == 0) {
       return false; // we didn't find anything replaceable by indice
@@ -833,8 +832,10 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
         newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
 
         if (idx.fullmatch) { // if the index superseedes the sort, remove it.
+          std::cout << "aoeuaoeuaoeuaoueaoeuaoeuao\n";
           _sortNode->removeSortNodeFromPlan(newPlan);
         }
+        std::cout << newPlan->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString()<< "\n";
         _opt->addPlan(newPlan, level, true);
       }
       catch (...) {
