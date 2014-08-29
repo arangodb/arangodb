@@ -902,7 +902,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new IndexRangeNode(_id, _vocbase, _collection, _outVariable, _index, _ranges);
+          std::vector<std::vector<RangeInfo*>> ranges;
+          for (auto i = 0; i < _ranges.size(); i++){
+            for (auto x: _ranges.at(i)){
+              ranges.at(i).push_back(x);
+            }
+          }
+          auto c = new IndexRangeNode(_id, _vocbase, _collection, _outVariable,
+              _index, ranges);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
