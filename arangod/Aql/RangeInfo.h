@@ -51,7 +51,8 @@ namespace triagens {
 
     struct RangeInfoBound {
 
-      RangeInfoBound (AstNode const* bound, bool include) : _include(include) {
+      RangeInfoBound (AstNode const* bound, bool include) 
+        : _include(include), _undefined(false){
         _bound = Json(TRI_UNKNOWN_MEM_ZONE, bound->toJson(TRI_UNKNOWN_MEM_ZONE, true));
       }
       
@@ -59,16 +60,36 @@ namespace triagens {
           :   _bound(Json(TRI_UNKNOWN_MEM_ZONE,
               basics::JsonHelper::checkAndGetArrayValue(json.json(), "bound"), 
               basics::Json::NOFREE).copy()),
-        _include(basics::JsonHelper::checkAndGetBooleanValue(json.json(), "include")) {
-      }
+        _include(basics::JsonHelper::checkAndGetBooleanValue(json.json(), "include")),
+              _undefined(false) {}
+      
+      RangeInfoBound () : _include(false), _undefined(true) {}
 
       ~RangeInfoBound(){}
       
       RangeInfoBound ( RangeInfoBound const& copy ) 
-          : _bound(copy._bound.copy()), _include(copy._include){
-      } 
+          : _bound(copy._bound.copy()), _include(copy._include),
+          _undefined(copy._undefined) {} 
           
       RangeInfoBound& operator= ( RangeInfoBound const& copy ) = delete;
+
+      void assign ( basics::Json const& json ) {
+        _bound = Json(TRI_UNKNOWN_MEM_ZONE,
+              basics::JsonHelper::checkAndGetArrayValue(json.json(), "bound"), 
+              basics::Json::NOFREE).copy();
+        _include = basics::JsonHelper::checkAndGetBooleanValue(json.json(), "include");
+        _undefined = false;
+      }
+
+      void assign (AstNode const* bound, bool include) {
+        _include = include;
+        _bound = Json(TRI_UNKNOWN_MEM_ZONE, bound->toJson(TRI_UNKNOWN_MEM_ZONE, true));
+      }
+      
+      void assign (RangeInfoBound copy) {
+        _include = copy._include;
+        _bound = copy._bound; 
+      }
 
       Json toJson () const {
         Json item(basics::Json::Array);
@@ -102,10 +123,11 @@ namespace triagens {
         size_t nr = parameters.size();
         return TRI_CreateIndexOperator(op, NULL, NULL, parameters.steal(),
             shaper, NULL, nr, NULL);
-      }
+      } 
 
       Json _bound;
       bool _include;
+      bool _undefined;
 
     };
 
@@ -118,54 +140,49 @@ namespace triagens {
         
         RangeInfo ( std::string var,
                     std::string attr,
-                    RangeInfoBound const* low, 
-                    RangeInfoBound const* high )
-          : _var(var), _attr(attr), _low(low), _high(high), _valid(true) {
+                    RangeInfoBound low, 
+                    RangeInfoBound high )
+          : _var(var), _attr(attr), _low(low), _high(high), _valid(true), _undefined(false) {
         }
+
+        RangeInfo ( std::string var,
+                    std::string attr)
+          : _var(var), _attr(attr), _valid(true), _undefined(false) {
+        }
+
+        RangeInfo () :  _valid(false), _undefined(true) {}
         
         RangeInfo (basics::Json const& json) :
           _var(basics::JsonHelper::checkAndGetStringValue(json.json(), "var")),
           _attr(basics::JsonHelper::checkAndGetStringValue(json.json(), "attr")),
-          _valid(basics::JsonHelper::checkAndGetBooleanValue(json.json(), "valid")) {
+          _valid(basics::JsonHelper::checkAndGetBooleanValue(json.json(), "valid")),
+          _undefined(false) {
 
           if (! json.get("low").isEmpty()) {
-            _low = new RangeInfoBound(json.get("low"));
-          }
-          else {
-            _low = nullptr;
+            _low.assign(json.get("low"));
           }
           
           if (! json.get("high").isEmpty()) {
-            _high = new RangeInfoBound(json.get("high"));
-          }
-          else {
-            _high = nullptr;
+            _high.assign(json.get("high"));
           }
         }
 
-        RangeInfo( RangeInfo const& copy ) 
+        /* RangeInfo( RangeInfo const& copy ) 
             : _var(copy._var), _attr(copy._attr), _low(copy._low),
-              _high(copy._high), _valid(copy._valid){}
+              _high(copy._high), _valid(copy._valid){} */
         
         RangeInfo& operator= ( RangeInfo const& copy ) = delete;
 
-        ~RangeInfo(){
-          if(_low != nullptr){
-            delete _low;
-          }
-          if(_high != nullptr){
-            delete _high;
-          }
-        }
+        ~RangeInfo(){}
 
         Json toJson () {
           Json item(basics::Json::Array);
           item("var", Json(_var))("attr", Json(_attr));
-          if(_low != nullptr){
-            item("low", _low->toJson());
+          if(!_low._undefined){
+            item("low", _low.toJson());
           }
-          if(_high != nullptr){
-            item("high", _high->toJson());
+          if(!_high._undefined){
+            item("high", _high.toJson());
           }
           item("valid", Json(_valid));
           return item;
@@ -177,17 +194,17 @@ namespace triagens {
         
         // is the range a unique value (i.e. something like x<=1 and x>=1)
         bool is1ValueRangeInfo () { 
-          return _valid && _low != nullptr && _high != nullptr &&
-                  TRI_CheckSameValueJson(_low->_bound.json(), _high->_bound.json())
-                  && _low->_include && _high->_include;
+          return _valid && !_low._undefined  && !_high._undefined &&
+                  TRI_CheckSameValueJson(_low._bound.json(), _high._bound.json())
+                  && _low._include && _high._include;
         }
         
         std::string _var;
         std::string _attr;
-        RangeInfoBound const* _low;
-        RangeInfoBound const* _high;
+        RangeInfoBound _low;
+        RangeInfoBound _high;
         bool _valid;
-
+        bool _undefined;
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -203,42 +220,36 @@ namespace triagens {
         
         RangesInfo () : _ranges(){}
 
-        ~RangesInfo(){
-          for (auto x: _ranges) {
-            for (auto y: x.second) {
-              delete y.second;
-            }
-          }
-        }
+        ~RangesInfo(){}
         
         // find the range info for variable <var> and attributes <name>
-        RangeInfo* find (std::string var, std::string name) const {
+        RangeInfo find (std::string var, std::string name) const {
           auto it1 = _ranges.find(var);
           if (it1 == _ranges.end()) {
-            return nullptr;
+            return RangeInfo();
           }
           auto it2 = it1->second.find(name);
           if (it2 == it1->second.end()) {
-            return nullptr;
+            return RangeInfo();
           }
           return (*it2).second;
         }
         
         // find the all the range infos for variable <var>
-        std::unordered_map<std::string, RangeInfo*>* find (std::string var) {
+        std::unordered_map<std::string, RangeInfo> find (std::string var) {
           auto it = _ranges.find(var);
           if (it == _ranges.end()) {
-            return nullptr;
+            return unordered_map<std::string, RangeInfo>();
           }
-          return &((*it).second);
+          return (*it).second;
         }
         
         // insert if it's not already there and otherwise intersection with
         // existing range
-        void insert (RangeInfo* range);
+        void insert (RangeInfo range);
         
         void insert (std::string var, std::string name, 
-                     RangeInfoBound* low, RangeInfoBound* high);
+                     RangeInfoBound low, RangeInfoBound high);
 
         // the number of range infos stored
         size_t size () const {
@@ -256,7 +267,7 @@ namespace triagens {
               Json item(Json::Array);
               item("var", Json(x.first))
                   ("attribute name", Json(y.first))
-                  ("range info", y.second->toJson());
+                  ("range info", y.second.toJson());
               list(item);
             }
           }
@@ -264,11 +275,11 @@ namespace triagens {
         }
         
       private: 
-        std::unordered_map<std::string, std::unordered_map<std::string, RangeInfo*>> _ranges; 
+        std::unordered_map<std::string, std::unordered_map<std::string, RangeInfo>> _ranges; 
         
     };
 
-    typedef std::vector<std::vector<RangeInfo*>> RangeInfoVec;
+    typedef std::vector<std::vector<RangeInfo>> RangeInfoVec;
   }
 }
 

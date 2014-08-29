@@ -863,7 +863,7 @@ namespace triagens {
                         Collection* collection,
                         Variable const* outVariable,
                         TRI_index_t* index, 
-                        std::vector<std::vector<RangeInfo*>> const& ranges)
+                        std::vector<std::vector<RangeInfo>> const ranges)
           : ExecutionNode(id), 
             _vocbase(vocbase), 
             _collection(collection),
@@ -902,7 +902,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          std::vector<std::vector<RangeInfo*>> ranges;
+          std::vector<std::vector<RangeInfo>> ranges;
           for (size_t i = 0; i < _ranges.size(); i++){
             for (auto x: _ranges.at(i)){
               ranges.at(i).push_back(x);
@@ -985,7 +985,7 @@ namespace triagens {
 /// @brief the range info
 ////////////////////////////////////////////////////////////////////////////////
         
-        std::vector<std::vector<RangeInfo*>> _ranges;
+        std::vector<std::vector<RangeInfo>> _ranges;
     };
 
 // -----------------------------------------------------------------------------
