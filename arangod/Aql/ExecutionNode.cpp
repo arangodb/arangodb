@@ -625,6 +625,41 @@ bool IndexRangeNode::MatchesIndex (IndexMatchVec pattern) const {
   return match.fullmatch;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the cost of an index range node is a multiple of the cost of
+/// its unique dependency
+////////////////////////////////////////////////////////////////////////////////
+        
+double IndexRangeNode::estimateCost () { 
+  // the cost of the enumerate collection node we are replacing . . .
+  double oldCost = static_cast<double>(_collection->count()) * 
+    _dependencies.at(0)->getCost();
+
+  double cost = 1;
+  
+  if (_index->_type == TRI_IDX_TYPE_HASH_INDEX) {
+    return oldCost / 1000;
+  }
+  else if (_index->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+    for (auto x: _ranges.at(0)) { //only doing the 1-d case so far
+      if (!x._low._undefined && !x._high._undefined ) {
+        if (x.is1ValueRangeInfo()) {
+          if (!_index->_unique) {
+            cost *= oldCost / 100;
+          }
+        }
+        else {
+          cost *= oldCost / 10;
+        }
+      }
+      else if (!(x._low._undefined && x._high._undefined)){
+        cost *= oldCost / 2;
+      }
+    }
+  }
+  return cost;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              methods of LimitNode
 // -----------------------------------------------------------------------------

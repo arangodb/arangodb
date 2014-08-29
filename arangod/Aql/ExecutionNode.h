@@ -915,27 +915,6 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the cost of an index range node is a multiple of the cost of
-/// its unique dependency
-////////////////////////////////////////////////////////////////////////////////
-        
-        double estimateCost () { 
-          // the cost of the enumerate collection node we are replacing . . .
-          /* cost = static_cast<double>(_collection->count()) * 
-            _dependencies.at(0)->getCost();
-
-          if (_index->_type == TRI_IDX_TYPE_HASH_INDEX) {
-
-
-          }*/
-          
-          // TODO: take into accout that we might have the range -inf ... +inf
-          // if we use the index only for sorting 
-          return 1;
-          //FIXME improve this estimate . . .
-        }
-            
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesSetHere
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -944,6 +923,8 @@ namespace triagens {
           v.push_back(_outVariable);
           return v;
         }
+        
+        double estimateCost ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the pattern matches this nodes index
