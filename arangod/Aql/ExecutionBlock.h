@@ -1029,7 +1029,7 @@ public:
         SortBlock (ExecutionEngine* engine,
                    ExecutionNode const* ep)
           : ExecutionBlock(engine, ep),
-            _stable(false) {
+            _stable(static_cast<SortNode const*>(ep)->_stable) {
         }
 
         virtual ~SortBlock () {};
