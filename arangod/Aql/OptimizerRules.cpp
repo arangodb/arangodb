@@ -435,12 +435,18 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             std::cout << "INVALID RANGE!\n";
               
               auto newPlan = _plan->clone();
-              auto parents = node->getParents();
-              for(auto x: parents) {
-                auto noRes = new NoResultsNode(newPlan->nextId());
-                newPlan->registerNode(noRes);
-                newPlan->insertDependency(x, noRes);
-                _out->push_back(newPlan, 0);
+              try {
+                auto parents = newPlan->getNodeById(node->id())->getParents();
+                for (auto x: parents) {
+                  auto noRes = new NoResultsNode(newPlan->nextId());
+                  newPlan->registerNode(noRes);
+                  newPlan->insertDependency(x, noRes);
+                  _out->push_back(newPlan, 0);
+                }
+              }
+              catch (...) {
+                delete newPlan;
+                throw;
               }
             }
             else {
