@@ -245,7 +245,7 @@ TRI_index_t* TRI_CreateCapConstraint (TRI_document_collection_t* document,
 
   TRI_index_t* idx = &cap->base;
 
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_CAP_CONSTRAINT, document, false);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_CAP_CONSTRAINT, document, false, false);
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
   idx->memory      = MemoryCapConstraint;
