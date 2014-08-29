@@ -84,7 +84,7 @@ bool Optimizer::addPlan (ExecutionPlan* plan,
 ////////////////////////////////////////////////////////////////////////////////
 
 int Optimizer::createPlans (ExecutionPlan* plan,
-                            std::vector<std::string> const& disabledRules) {
+                            std::vector<std::string> const& rulesSpecification) {
   int res;
   int leastDoneLevel = 0;
 
@@ -92,7 +92,8 @@ int Optimizer::createPlans (ExecutionPlan* plan,
   int maxRuleLevel = _rules.rbegin()->first;
 
   // which optimizer rules are disabled?
-  std::unordered_set<int> const&& disabledIds = getDisabledRuleIds(disabledRules);
+  std::unordered_set<int> const&& disabledIds = getDisabledRuleIds(rulesSpecification);
+
 
   // _plans contains the previous optimisation result
   _plans.clear();
@@ -127,6 +128,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
     while (_plans.size() > 0) {
       int level;
       auto p = _plans.pop_front(level);
+
       if (level == maxRuleLevel) {
         _newPlans.push_back(p, level);  // nothing to do, just keep it
       }
@@ -140,6 +142,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
                   << std::endl;
         */
 
+        level = (*it).first;
         if (disabledIds.find(level) != disabledIds.end()) {
           // we picked a disabled rule
           level = it->first;
@@ -149,7 +152,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
           continue;
         }
 
-        _currentRule = it->second.level;
+        _currentRule = level;
 
         try {
           res = it->second.func(this, p, &(it->second));
@@ -168,6 +171,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
       // a good-enough plan is probably every plan with costs below some
       // defined threshold. this requires plan costs to be calculated here
     }
+
     _plans.steal(_newPlans);
     leastDoneLevel = maxRuleLevel;
     for (auto l : _plans.levelDone) {
@@ -249,22 +253,35 @@ void Optimizer::sortPlans () {
 std::unordered_set<int> Optimizer::getDisabledRuleIds (std::vector<std::string> const& names) const {
   std::unordered_set<int> disabled;
 
-  disabled.reserve(names.size());
-
   // lookup ids of all disabled rules
   for (auto name : names) {
-    if (name == "all") {
-      // disable all rules
-      for (auto it : _rules) {
-        disabled.insert(it.first);
+    if (name[0] == '-') {
+      // disable rule
+      if (name == "-all") {
+        // disable all rules
+        for (auto it : _rules) {
+          disabled.insert(it.first);
+        }
       }
-      break;
+      else {
+        // disable a specific rule
+        auto it = _ruleLookup.find(std::string(name.c_str() + 1));
+        if (it != _ruleLookup.end()) {
+          disabled.insert((*it).second);
+        }
+      }
     }
-    else {
-      // disable a specific rule
-      auto it = _ruleLookup.find(name);
-      if (it != _ruleLookup.end()) {
-        disabled.insert((*it).second);
+    else if (name[0] == '+') {
+      // enable rule
+      if (name == "+all") {
+        // enable all rules
+        disabled.clear();
+      }
+      else {
+        auto it = _ruleLookup.find(std::string(name.c_str() + 1));
+        if (it != _ruleLookup.end()) {
+          disabled.erase((*it).second);
+        }
       }
     }
   }
