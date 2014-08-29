@@ -1051,7 +1051,8 @@ void IndexRangeBlock::readSkiplistIndex () {
       // this creates the infinite range (i.e. >= null)
       Json hass(Json::List);
       hass.add(Json(Json::Null));
-      skiplistOperator = TRI_CreateIndexOperator(TRI_GE_INDEX_OPERATOR, nullptr, nullptr, hass.steal(), shaper, nullptr, 1, nullptr);
+      skiplistOperator = TRI_CreateIndexOperator(TRI_GE_INDEX_OPERATOR, nullptr,
+          nullptr, hass.steal(), shaper, nullptr, 1, nullptr);
     }
     else {
       skiplistOperator = TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, nullptr,

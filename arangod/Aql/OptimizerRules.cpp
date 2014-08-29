@@ -398,123 +398,152 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
     bool before (ExecutionNode* en) {
       _canThrow = (_canThrow || en->canThrow()); // can any node walked over throw?
 
-      if (en->getType() == triagens::aql::ExecutionNode::FILTER) {
-        std::vector<Variable const*> inVar = en->getVariablesUsedHere();
-        TRI_ASSERT(inVar.size() == 1);
-        _varIds.insert(inVar[0]->id);
-      }
-      else if (en->getType() == triagens::aql::ExecutionNode::CALCULATION) {
-        auto outvar = en->getVariablesSetHere();
-        TRI_ASSERT(outvar.size() == 1);
-        if (_varIds.find(outvar[0]->id) != _varIds.end()) {
-          auto node = static_cast<CalculationNode*>(en);
-          std::string attr;
-          std::string enumCollVar;
-          buildRangeInfo(node->expression()->node(), enumCollVar, attr);
-        }
-      }
-      else if (en->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION) {
-        auto node = static_cast<EnumerateCollectionNode*>(en);
-        auto var = node->getVariablesSetHere()[0];  // should only be 1
-        auto map = _ranges->find(var->name);        // check if we have any ranges with this var
-        
-        if (map != nullptr) {
-          // check the first components of <map> against indexes of <node> . . .
-          std::unordered_set<std::string> attrs;
-          
-          bool valid = true;     // are all the range infos valid
-          bool equality = true;  // are all the range infos equalities
-
-          for(auto x: *map) {
-            valid &= x.second._valid; 
-            if (!valid) {
-              break;
-            }
-            equality &= x.second.is1ValueRangeInfo();
-            attrs.insert(x.first);
+      switch (en->getType()) {
+        case EN::ENUMERATE_LIST:
+          break;
+        case EN::CALCULATION: {
+          auto outvar = en->getVariablesSetHere();
+          TRI_ASSERT(outvar.size() == 1);
+          if (_varIds.find(outvar[0]->id) != _varIds.end()) {
+            auto node = static_cast<CalculationNode*>(en);
+            std::string attr;
+            std::string enumCollVar;
+            buildRangeInfo(node->expression()->node(), enumCollVar, attr);
           }
+          break;
+        }
+        case EN::SUBQUERY:        
+          break;
+        case EN::FILTER:{
+          std::vector<Variable const*> inVar = en->getVariablesUsedHere();
+          TRI_ASSERT(inVar.size() == 1);
+          _varIds.insert(inVar[0]->id);
+          break;
+        }
+        case EN::INTERSECTION:
+        case EN::SINGLETON:
+        case EN::AGGREGATE:
+        case EN::LOOKUP_JOIN:
+        case EN::MERGE_JOIN:
+        case EN::LOOKUP_INDEX_UNIQUE:
+        case EN::LOOKUP_INDEX_RANGE:
+        case EN::LOOKUP_FULL_COLLECTION:
+        case EN::CONCATENATION:
+        case EN::MERGE:
+        case EN::REMOTE:
+        case EN::INSERT:
+        case EN::REMOVE:
+        case EN::REPLACE:
+        case EN::UPDATE:
+        case EN::RETURN:
+        case EN::NORESULTS:
+        case EN::ILLEGAL:
+          break;
+        case EN::LIMIT:           
+          // if we meet a limit node between a filter and an enumerate collection,
+          // we abort . . . 
+          return true;
+        case EN::SORT:
+        case EN::INDEX_RANGE:
+          break;
+        case EN::ENUMERATE_COLLECTION:{
+          auto node = static_cast<EnumerateCollectionNode*>(en);
+          auto var = node->getVariablesSetHere()[0];  // should only be 1
+          auto map = _ranges->find(var->name);        // check if we have any ranges with this var
+          
+          if (map != nullptr) {
+            // check the first components of <map> against indexes of <node> . . .
+            std::unordered_set<std::string> attrs;
+            
+            bool valid = true;     // are all the range infos valid
+            bool equality = true;  // are all the range infos equalities
 
-          if (! _canThrow) {
-            if (! valid) { // ranges are not valid . . . 
-              
-              auto newPlan = _plan->clone();
-              try {
-                auto parents = newPlan->getNodeById(node->id())->getParents();
-                for (auto x: parents) {
-                  auto noRes = new NoResultsNode(newPlan->nextId());
-                  newPlan->registerNode(noRes);
-                  newPlan->insertDependency(x, noRes);
-                  _opt->addPlan(newPlan, _level, true);
-                }
+            for(auto x: *map) {
+              valid &= x.second._valid; 
+              if (!valid) {
+                break;
               }
-              catch (...) {
-                delete newPlan;
-                throw;
-              }
+              equality &= x.second.is1ValueRangeInfo();
+              attrs.insert(x.first);
             }
-            else {
-              std::vector<TRI_index_t*> idxs;
-              std::vector<size_t> prefixes;
-              // {idxs.at(i)->_fields[0]..idxs.at(i)->_fields[prefixes.at(i)]}
-              // is a subset of <attrs>
 
-              node->getIndexesForIndexRangeNode(attrs, idxs, prefixes);
-
-              // make one new plan for every index in <idxs> that replaces the
-              // enumerate collection node with a RangeIndexNode . . . 
-              
-              for (size_t i = 0; i < idxs.size(); i++) {
-                std::vector<std::vector<RangeInfo>> rangeInfo;
-                rangeInfo.push_back(std::vector<RangeInfo>());
+            if (! _canThrow) {
+              if (! valid) { // ranges are not valid . . . 
                 
-                // ranges must be valid and all comparisons == if hash index or ==
-                // followed by a single <, >, >=, or <= if a skip index in the
-                // order of the fields of the index.
-                auto idx = idxs.at(i);
-                if (idx->_type == TRI_IDX_TYPE_HASH_INDEX && equality) {
-                  for (size_t j = 0; j < idx->_fields._length; j++) {
-                    auto range = map->find(std::string(idx->_fields._buffer[j]));
-                    rangeInfo.at(0).push_back(range->second);
-                  }
-                }
-                
-                if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
-                  size_t j = 0;
-                  auto range = map->find(std::string(idx->_fields._buffer[0]));
-                  rangeInfo.at(0).push_back(range->second);
-                  equality = range->second.is1ValueRangeInfo();
-                  while (++j < prefixes.at(i) && equality){
-                    range = map->find(std::string(idx->_fields._buffer[j]));
-                    rangeInfo.at(0).push_back(range->second);
-                    equality = equality && range->second.is1ValueRangeInfo();
-                  }
-                }
-                
-                if (rangeInfo.at(0).size() != 0) {
-                  auto newPlan = _plan->clone();
-                  try {
-                    ExecutionNode* newNode = new IndexRangeNode(newPlan->nextId(), node->vocbase(), 
-                      node->collection(), node->outVariable(), idx, rangeInfo);
-                    newPlan->registerNode(newNode);
-                    newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
+                auto newPlan = _plan->clone();
+                try {
+                  auto parents = newPlan->getNodeById(node->id())->getParents();
+                  for (auto x: parents) {
+                    auto noRes = new NoResultsNode(newPlan->nextId());
+                    newPlan->registerNode(noRes);
+                    newPlan->insertDependency(x, noRes);
                     _opt->addPlan(newPlan, _level, true);
                   }
-                  catch (...) {
-                    delete newPlan;
-                    throw;
+                }
+                catch (...) {
+                  delete newPlan;
+                  throw;
+                }
+              }
+              else {
+                std::vector<TRI_index_t*> idxs;
+                std::vector<size_t> prefixes;
+                // {idxs.at(i)->_fields[0]..idxs.at(i)->_fields[prefixes.at(i)]}
+                // is a subset of <attrs>
+
+                node->getIndexesForIndexRangeNode(attrs, idxs, prefixes);
+
+                // make one new plan for every index in <idxs> that replaces the
+                // enumerate collection node with a RangeIndexNode . . . 
+                
+                for (size_t i = 0; i < idxs.size(); i++) {
+                  std::vector<std::vector<RangeInfo>> rangeInfo;
+                  rangeInfo.push_back(std::vector<RangeInfo>());
+                  
+                  // ranges must be valid and all comparisons == if hash index or ==
+                  // followed by a single <, >, >=, or <= if a skip index in the
+                  // order of the fields of the index.
+                  auto idx = idxs.at(i);
+                  if (idx->_type == TRI_IDX_TYPE_HASH_INDEX && equality) {
+                    for (size_t j = 0; j < idx->_fields._length; j++) {
+                      auto range = map->find(std::string(idx->_fields._buffer[j]));
+                      rangeInfo.at(0).push_back(range->second);
+                    }
+                  }
+                  
+                  if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+                    size_t j = 0;
+                    auto range = map->find(std::string(idx->_fields._buffer[0]));
+                    rangeInfo.at(0).push_back(range->second);
+                    equality = range->second.is1ValueRangeInfo();
+                    while (++j < prefixes.at(i) && equality){
+                      range = map->find(std::string(idx->_fields._buffer[j]));
+                      rangeInfo.at(0).push_back(range->second);
+                      equality = equality && range->second.is1ValueRangeInfo();
+                    }
+                  }
+                  
+                  if (rangeInfo.at(0).size() != 0) {
+                    auto newPlan = _plan->clone();
+                    try {
+                      ExecutionNode* newNode = new IndexRangeNode(newPlan->nextId(), node->vocbase(), 
+                        node->collection(), node->outVariable(), idx, rangeInfo);
+                      newPlan->registerNode(newNode);
+                      newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
+                      _opt->addPlan(newPlan, _level, true);
+                    }
+                    catch (...) {
+                      delete newPlan;
+                      throw;
+                    }
                   }
                 }
               }
             }
           }
+          break;
         }
       }
-      else if (en->getType() == triagens::aql::ExecutionNode::LIMIT) {
-        // if we meet a limit node between a filter and an enumerate collection,
-        // we abort . . . 
-        return true;
-      }
-      
       return false;
     }
 
