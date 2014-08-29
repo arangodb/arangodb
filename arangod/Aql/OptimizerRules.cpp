@@ -416,14 +416,14 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         auto var = node->getVariablesSetHere()[0];  // should only be 1
         auto map = _ranges->find(var->name);        // check if we have any ranges with this var
         
-        if (!map.empty()) {
+        if (map != nullptr) {
           // check the first components of <map> against indexes of <node> . . .
           std::unordered_set<std::string> attrs;
           
           bool valid = true;     // are all the range infos valid
           bool equality = true;  // are all the range infos equalities
 
-          for(auto x: map) {
+          for(auto x: *map) {
             valid &= x.second._valid; 
             if (!valid) {
               break;
@@ -471,18 +471,18 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                 auto idx = idxs.at(i);
                 if (idx->_type == TRI_IDX_TYPE_HASH_INDEX && equality) {
                   for (size_t j = 0; j < idx->_fields._length; j++) {
-                    auto range = map.find(std::string(idx->_fields._buffer[j]));
+                    auto range = map->find(std::string(idx->_fields._buffer[j]));
                     rangeInfo.at(0).push_back(range->second);
                   }
                 }
                 
                 if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
                   size_t j = 0;
-                  auto range = map.find(std::string(idx->_fields._buffer[0]));
+                  auto range = map->find(std::string(idx->_fields._buffer[0]));
                   rangeInfo.at(0).push_back(range->second);
                   equality = range->second.is1ValueRangeInfo();
                   while (++j < prefixes.at(i) && equality){
-                    range = map.find(std::string(idx->_fields._buffer[j]));
+                    range = map->find(std::string(idx->_fields._buffer[j]));
                     rangeInfo.at(0).push_back(range->second);
                     equality = equality && range->second.is1ValueRangeInfo();
                   }
