@@ -383,10 +383,11 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
   
   public:
 
-    FilterToEnumCollFinder (Optimizer* opt, ExecutionPlan* plan, Variable const* var) 
+    FilterToEnumCollFinder (Optimizer* opt, ExecutionPlan* plan, Variable const* var, int level) 
       : _opt(opt),
         _plan(plan), 
-        _canThrow(false) {
+        _canThrow(false),
+        _level(level) {
       _ranges = new RangesInfo();
       _varIds.insert(var->id);
     };
@@ -666,7 +667,7 @@ int triagens::aql::useIndexRange (Optimizer* opt,
     auto nn = static_cast<FilterNode*>(n);
     auto invars = nn->getVariablesUsedHere();
     TRI_ASSERT(invars.size() == 1);
-    FilterToEnumCollFinder finder(opt, plan, invars[0]);
+    FilterToEnumCollFinder finder(opt, plan, invars[0], rule->level);
     nn->walk(&finder);
   }
 
