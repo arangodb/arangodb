@@ -13,7 +13,7 @@ iterate over a given list of documents. They can optionally be combined with
 *FILTER* statements and the like.
 
 Let's start with an example that modifies existing documents in a collection
-"users" that match some condition:
+*users* that match some condition:
 
     FOR u IN users
       FILTER u.status == 'not active'
@@ -26,14 +26,14 @@ stripped-down *update* query will work, too. It will *update* one document
 
     UPDATE "foo" WITH { status: 'inactive' } IN users
 
-Now, let's copy the contents of the collection "users" into the collection
-"backup":
+Now, let's copy the contents of the collection *users* into the collection
+*backup*:
 
     FOR u IN users
       INSERT u IN backup
 
-As a final example, let's find some documents in collection "users" and
-remove them from collection "backup". The link between the documents in both
+As a final example, let's find some documents in collection *users* and
+remove them from collection *backup*. The link between the documents in both
 collections is establish via the documents' keys:
 
     FOR u IN users
@@ -43,7 +43,7 @@ collections is establish via the documents' keys:
 
 !SUBSECTION Restrictions
 
-The name of the modified collection ("users" and "backup" in the above cases) 
+The name of the modified collection (*users* and *backup* in the above cases) 
 must be known to the AQL executor at query-compile time and cannot change at 
 runtime. Using a bind parameter to specify the [collection name](../Glossary/README.html#collection_name) is allowed.
 
