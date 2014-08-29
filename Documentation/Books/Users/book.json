@@ -1,3 +1,14 @@
 {
-	"theme": "./localtheme"
+  "theme": "./localtheme",
+  "plugins":["-mathjax"],
+  "pdf": {
+    "fontSize": 12,
+    "toc": true,
+    "margin": {
+      "right": 60,
+      "left": 60,
+      "top": 35,
+      "bottom": 35
+    }
+  }
 }

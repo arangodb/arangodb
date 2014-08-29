@@ -2157,6 +2157,16 @@ static v8::Handle<v8::Value> CreateDatabaseCoordinator (v8::Arguments const& arg
 /// with an empty string password. This ensures that the new database will be
 /// accessible via HTTP after it is created.
 ///
+/// You can create users in a database if no initial user is specified. Switch 
+/// into the new database (username and password must be identical to the current
+/// session) and add or modify users with the following commands.
+///
+/// ```js
+///   require("org/arangodb/users").save(username, password, true);
+///   require("org/arangodb/users").update(username, password, true);
+///   require("org/arangodb/users").remove(username);
+/// ```
+///
 /// This method can only be used from within the *_system* database.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
