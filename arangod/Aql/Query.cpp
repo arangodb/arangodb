@@ -375,10 +375,10 @@ QueryResult Query::explain () {
     TRI_ASSERT(plan != nullptr);
 
     trx.commit();
-    //triagens::basic::Json json(triagens::basic::Json::Array);
 
     QueryResult result(TRI_ERROR_NO_ERROR);
     result.json = plan->toJson(TRI_UNKNOWN_MEM_ZONE, false).steal(); //json();
+
     delete plan;
     
     return result;
