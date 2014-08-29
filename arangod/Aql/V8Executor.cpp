@@ -623,28 +623,28 @@ void V8Executor::generateCodeFunctionCall (AstNode const* node) {
 
     auto member = args->getMember(i);
 
-    if (member != nullptr) {
-      if (func->containsCollectionParameter && 
-          member->type == NODE_TYPE_COLLECTION &&
-          func->mustConvertArgument(i)) {
-        // the parameter at this position is a collection name that is converted to a string
-        // do a parameter conversion from a collection parameter to a collection name parameter
-        char const* name = member->getStringValue();
-        generateCodeString(name);
-      }
-      /*
-        else {
-          // the parameter at the position is not a collection name... fail
-          THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func->internalName.c_str());
-        }
-      }
-      */
-      else {
-        // generate regular code for the node
-        generateCodeNode(args->getMember(i));
-      }
+    if (member == nullptr) {
+      continue;
+    }
+
+    auto conversion = func->getArgumentConversion(i);
+
+    if (member->type == NODE_TYPE_COLLECTION &&
+        (conversion == Function::CONVERSION_REQUIRED || conversion == Function::CONVERSION_OPTIONAL)) {
+      // the parameter at this position is a collection name that is converted to a string
+      // do a parameter conversion from a collection parameter to a collection name parameter
+      char const* name = member->getStringValue();
+      generateCodeString(name);
+    }
+    else if (conversion == Function::CONVERSION_REQUIRED) {
+      // the parameter at the position is not a collection name... fail
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func->internalName.c_str());
+    }
+    else {
+      generateCodeNode(args->getMember(i));
     }
   }
+
   _buffer->appendText(")");
 }
 
