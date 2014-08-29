@@ -434,7 +434,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 
           if (! _canThrow) {
             if (! valid){ // ranges are not valid . . . 
-            std::cout << "INVALID RANGE!\n";
               
               auto newPlan = _plan->clone();
               try {
@@ -628,9 +627,11 @@ int triagens::aql::useIndexRange (Optimizer* opt,
                                   ExecutionPlan* plan, 
                                   int level,
                                   Optimizer::PlanList& out) {
+  out.push_back(plan, level);
+  
   std::vector<ExecutionNode*> nodes
     = plan->findNodesOfType(triagens::aql::ExecutionNode::FILTER, true);
- 
+  
   for (auto n : nodes) {
     auto nn = static_cast<FilterNode*>(n);
     auto invars = nn->getVariablesUsedHere();
@@ -638,8 +639,6 @@ int triagens::aql::useIndexRange (Optimizer* opt,
     FilterToEnumCollFinder finder(plan, invars[0], &out, level);
     nn->walk(&finder);
   }
-
-  out.push_back(plan, level);
 
   return TRI_ERROR_NO_ERROR;
 }
