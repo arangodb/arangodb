@@ -65,14 +65,14 @@ bool Optimizer::addPlan (ExecutionPlan* plan,
                          bool wasModified) {
   TRI_ASSERT(plan != nullptr);
 
-  _context.plans->push_back(plan, level);
+  _newPlans.push_back(plan, level);
 
   if (wasModified) {
     // register which rules modified / created the plan
-    plan->addAppliedRule(_context.level);
+    plan->addAppliedRule(_currentRule);
   }
 
-  if (_context.plans->size() > maxNumberOfPlans) {
+  if (_newPlans.size() > maxNumberOfPlans) {
     return false;
   }
   
@@ -98,15 +98,14 @@ int Optimizer::createPlans (ExecutionPlan* plan,
   _plans.clear();
   _plans.push_back(plan, 0);
 
+  _newPlans.clear();
+
   // int pass = 1;
   while (leastDoneLevel < maxRuleLevel) {
     /*
     std::cout << "Entering pass " << pass << " of query optimization..." 
               << std::endl;
     */
-    // This vector holds the plans we have created in this pass:
-    PlanList newPlans;
-
     // Find variable usage for all old plans now:
     for (auto p : _plans.list) {
       if (! p->varUsageComputed()) {
@@ -129,7 +128,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
       int level;
       auto p = _plans.pop_front(level);
       if (level == maxRuleLevel) {
-        newPlans.push_back(p, level);  // nothing to do, just keep it
+        _newPlans.push_back(p, level);  // nothing to do, just keep it
       }
       else {   // find next rule
         auto it = _rules.upper_bound(level);
@@ -145,12 +144,12 @@ int Optimizer::createPlans (ExecutionPlan* plan,
           // we picked a disabled rule
           level = it->first;
 
-          newPlans.push_back(p, level);  // nothing to do, just keep it
+          _newPlans.push_back(p, level);  // nothing to do, just keep it
           // now try next
           continue;
         }
 
-        setupContext(&newPlans, it->second.level);
+        _currentRule = it->second.level;
 
         try {
           res = it->second.func(this, p, &(it->second));
@@ -169,7 +168,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
       // a good-enough plan is probably every plan with costs below some
       // defined threshold. this requires plan costs to be calculated here
     }
-    _plans.steal(newPlans);
+    _plans.steal(_newPlans);
     leastDoneLevel = maxRuleLevel;
     for (auto l : _plans.levelDone) {
       if (l < leastDoneLevel) {
@@ -220,18 +219,6 @@ std::vector<std::string> Optimizer::translateRules (std::vector<int> const& rule
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-// @brief the actual optimization
-////////////////////////////////////////////////////////////////////////////////
-
-void Optimizer::setupContext (PlanList* plans,
-                              int level) {
-  TRI_ASSERT(plans != nullptr);
-
-  _context.plans = plans;
-  _context.level = level;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief estimatePlans
@@ -375,7 +362,7 @@ void Optimizer::setupRules () {
   registerRule("use-index-range", useIndexRange, 710);
 
   // try to find sort blocks which are superseeded by indexes
-  registerRule("use-index-for-sort", useIndexForSort, 720);
+  //registerRule("use-index-for-sort", useIndexForSort, 720);
 
   //////////////////////////////////////////////////////////////////////////////
   /// END OF OPTIMISATIONS
