@@ -408,13 +408,21 @@ static bool DropCollectionCallback (TRI_collection_t* col,
       TRI_FreeString(TRI_CORE_MEM_ZONE, tmp1);
       TRI_FreeString(TRI_CORE_MEM_ZONE, tmp3);
 
+      // check if target directory already exists
+      if (TRI_IsDirectory(newFilename)) {
+        // no need to rename
+        TRI_RemoveDirectory(newFilename);
+      }
+        
+      // perform the rename
       res = TRI_RenameFile(collection->_path, newFilename);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_ERROR("cannot rename dropped collection '%s' from '%s' to '%s'",
+        LOG_ERROR("cannot rename dropped collection '%s' from '%s' to '%s': %s",
                   collection->_name,
                   collection->_path,
-                  newFilename);
+                  newFilename,
+                  TRI_errno_string(res));
       }
       else {
         LOG_DEBUG("wiping dropped collection '%s' from disk",
@@ -425,7 +433,7 @@ static bool DropCollectionCallback (TRI_collection_t* col,
         if (res != TRI_ERROR_NO_ERROR) {
           LOG_ERROR("cannot wipe dropped collection '%s' from disk: %s",
                     collection->_name,
-                    TRI_last_error());
+                    TRI_errno_string(res));
         }
       }
 
