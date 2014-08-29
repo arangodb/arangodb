@@ -291,14 +291,18 @@ namespace triagens {
         JsonException () : _msg("Json exception") {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
-          _backtrace();
+          _msg += std::string("\n\n");
+          _getBacktrace(_msg);
+          _msg += std::string("\n\n");
 #endif
 #endif
         }
         JsonException (string msg) : _msg(msg) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
-          _backtrace();
+          _msg += std::string("\n\n");
+          _getBacktrace(_msg);
+          _msg += std::string("\n\n");
 #endif
 #endif
         }

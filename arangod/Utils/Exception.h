@@ -102,7 +102,7 @@ namespace triagens {
         static std::string FillExceptionString (int, ...);
 
       protected:
-        std::string const _errorMessage;
+        std::string       _errorMessage;
         char const*       _file;
         int const         _line;
         int const         _code;

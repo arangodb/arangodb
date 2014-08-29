@@ -54,7 +54,7 @@ TriagensError::TriagensError (string const& type, string const& details, char co
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
-  _backtrace();
+  _getBacktrace(_message);
 #endif
 #endif
 
