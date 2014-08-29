@@ -521,8 +521,7 @@ void SkiplistIndex_free (SkiplistIndex* slIndex) {
 
 SkiplistIndex* SkiplistIndex_new (TRI_document_collection_t* document,
                                   size_t numFields,
-                                  bool unique,
-                                  bool sparse) {
+                                  bool unique) {
   SkiplistIndex* skiplistIndex = static_cast<SkiplistIndex*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(SkiplistIndex), true));
 
   if (skiplistIndex == nullptr) {
@@ -532,7 +531,6 @@ SkiplistIndex* SkiplistIndex_new (TRI_document_collection_t* document,
   skiplistIndex->_collection = document;
   skiplistIndex->_numFields = numFields;
   skiplistIndex->unique = unique;
-  skiplistIndex->sparse = sparse;
   skiplistIndex->skiplist = TRI_InitSkipList(CmpElmElm, CmpKeyElm, skiplistIndex,
                                              FreeElm, unique);
   if (skiplistIndex->skiplist == nullptr) {

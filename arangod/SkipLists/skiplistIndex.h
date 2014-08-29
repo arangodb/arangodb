@@ -52,7 +52,6 @@ struct TRI_document_collection_t;
 typedef struct {
   TRI_skiplist_t* skiplist;
   bool unique;
-  bool sparse;
   struct TRI_document_collection_t* _collection;
   size_t _numFields;
 }
@@ -138,7 +137,7 @@ int SkiplistIndex_assignMethod (void*, TRI_index_method_assignment_type_e);
 //------------------------------------------------------------------------------
 
 SkiplistIndex* SkiplistIndex_new (struct TRI_document_collection_t*,
-                                  size_t, bool, bool);
+                                  size_t, bool);
 
 TRI_skiplist_iterator_t* SkiplistIndex_find (SkiplistIndex*, TRI_vector_t*,
                                              TRI_index_operator_t*);
