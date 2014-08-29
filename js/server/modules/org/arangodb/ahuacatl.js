@@ -774,6 +774,9 @@ function EXTRACT_KEYS (args, startArgument, functionName) {
     if (typeof key === 'string') {
       keys[key] = true;
     }
+    else if (typeof key === 'number') {
+      keys[String(key)] = true;
+    }
     else if (Array.isArray(key)) {
       for (j = 0; j < key.length; ++j) {
         key2 = key[j];
