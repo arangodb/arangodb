@@ -9,7 +9,7 @@ parser will return an error if it detects more than one data-modification
 operation in the same query or if it cannot figure out if the query is meant
 to be a data retrieval or a modification operation.
 
-AQL only allows *one* query in a single query string; Thus semicolons to
+AQL only allows *one* query in a single query string; thus semicolons to
 indicate the end of one query and separate multiple queries (as seen in SQL) are
 not allowed.
 
@@ -24,8 +24,9 @@ in quotes in order to be preserved.
 
 Comments can be embedded at any position in a query. The text contained in the
 comment is ignored by the AQL parser.
-Multi-line Comments cannot be nested. -> Subsequent comment starts within
-comments are ignored, ends will end the comment.
+
+Multi-line comments cannot be nested, which means subsequent comment starts within
+comments are ignored, comment ends will end the comment.
 
 AQL supports two types of comments:
 - Single line comments: These start with a double forward slash and end at
