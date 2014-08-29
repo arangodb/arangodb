@@ -193,17 +193,10 @@ namespace triagens {
           int level;
 
           Rule (std::string const& name, RuleFunction f, int l)
-            : name(name), func(f), level(l) {
+            : name(name), 
+              func(f), 
+              level(l) {
           }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief operator< for two rules, used to stable_sort by pass 
-////////////////////////////////////////////////////////////////////////////////
-
-          bool operator< (Rule const& b) const {
-            return level < b.level;
-          }
-
         };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -237,7 +230,8 @@ namespace triagens {
 /// stealPlans.
 ////////////////////////////////////////////////////////////////////////////////
 
-        int createPlans (ExecutionPlan* p);
+        int createPlans (ExecutionPlan* p,
+                         std::vector<std::string> const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getBest, ownership of the plan remains with the optimizer
@@ -309,13 +303,30 @@ namespace triagens {
         void sortPlans ();
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief look up the ids of all disabled rules
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_set<int> getDisabledRuleIds (std::vector<std::string> const&) const;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief registerRule
 ////////////////////////////////////////////////////////////////////////////////
 
         static void registerRule (std::string const& name, 
                                   RuleFunction f, 
                                   int level) {
-          _rules.emplace_back(name, f, level);
+          if (_ruleLookup.find(name) != _ruleLookup.end()) {
+            // duplicate rule names are not allowed
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "duplicate optimizer rule name");
+          }
+
+          _ruleLookup.insert(std::make_pair(name, level));
+
+          if (_rules.find(level) != _rules.end()) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "duplicate optimizer rule level");
+          }
+
+          _rules.insert(std::make_pair(level, Rule(name, f, level)));
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -334,7 +345,13 @@ namespace triagens {
 /// @brief the rules database
 ////////////////////////////////////////////////////////////////////////////////
 
-        static std::vector<Rule> _rules;
+        static std::map<int, Rule> _rules;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief map to look up rule id by name
+////////////////////////////////////////////////////////////////////////////////
+
+        static std::unordered_map<std::string, int> _ruleLookup;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the current set of plans to be optimised

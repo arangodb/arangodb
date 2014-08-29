@@ -2824,6 +2824,11 @@ function NTH (value, position) {
   "use strict";
 
   LIST(value);
+  var weight = TYPEWEIGHT(position);
+  if (weight !== TYPEWEIGHT_NUMBER) {
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "NTH");
+  }
+  
   if (position < 0 || position >= value.length) {
     return null;
   }
