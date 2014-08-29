@@ -1278,13 +1278,15 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
 
     if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
       // OK, the document does not contain the attributed needed by 
-      // the index, so let's fake a JSON null:
-      skiplistElement->_subObjects[j]._sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NULL);
-      skiplistElement->_subObjects[j]._length = 0;
-      skiplistElement->_subObjects[j]._offset = 0;
-      continue;
-      // This used to be:
-      // return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
+      // the index, are we sparse?
+      if (! skiplistIndex->base._sparse) {
+        // No, so let's fake a JSON null:
+        skiplistElement->_subObjects[j]._sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NULL);
+        skiplistElement->_subObjects[j]._length = 0;
+        skiplistElement->_subObjects[j]._offset = 0;
+        continue;
+      }
+      return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
     }
 
 
@@ -1345,13 +1347,13 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
 
   res = SkiplistIndexHelper(skiplistIndex, &skiplistElement, doc);
   // ...........................................................................
-  // most likely the cause of this error is that the 'shape' of the document
-  // does not match the 'shape' of the index structure -- so the document
-  // is ignored. So not really an error at all.
-  // Changed: empty attributes are currently always treated as if they
-  // were bound to null, so TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING
-  // cannot happen at all. When we have a sparse skiplist index, this
-  // can reappear, therefore we leave the case distinction below in.
+  // most likely the cause of this error is that the index is sparse
+  // and not all attributes the index needs are set -- so the document
+  // is ignored. So not really an error at all. Note that this does
+  // not happen in a non-sparse skiplist index, in which empty
+  // attributes are always treated as if they were bound to null, so
+  // TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING cannot happen at
+  // all.
   // ...........................................................................
 
   if (res != TRI_ERROR_NO_ERROR) {
