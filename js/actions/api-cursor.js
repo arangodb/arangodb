@@ -493,9 +493,7 @@ function put_api_cursor (req, res) {
   catch (e) {
   }
 
-  // force garbage-collection
   cursor = null;
-  internal.wait(0.0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

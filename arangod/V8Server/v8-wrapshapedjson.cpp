@@ -32,15 +32,14 @@
 
 #include "BasicsC/conversions.h"
 #include "V8/v8-conv.h"
+#include "VocBase/key-generator.h"
 #include "Utils/transactions.h"
 #include "Utils/V8TransactionContext.h"
-
 
 using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace triagens::rest;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapped class for TRI_shaped_json_t
@@ -59,7 +58,6 @@ static int32_t const WRP_SHAPED_JSON_TYPE = 4;
 
 static int const SLOT_BARRIER = 2;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add basic attributes (_key, _rev, _from, _to) to a document object
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,15 +69,27 @@ static v8::Handle<v8::Object> AddBasicDocumentAttributes (CollectionNameResolver
                                                           v8::Handle<v8::Object> result) {
   TRI_ASSERT(marker != nullptr);
 
-  TRI_voc_rid_t rid = TRI_EXTRACT_MARKER_RID(marker);
-  TRI_ASSERT(rid > 0);
-  
+  // buffer that we'll use for generating _id, _key, _rev, _from and _to values
+  // using a single buffer will avoid several memory allocation
+  char buffer[TRI_COL_NAME_LENGTH + TRI_VOC_KEY_MAX_LENGTH + 2];
+
+  // _id
+  size_t len = resolver->getCollectionName(buffer, cid);
   char const* docKey = TRI_EXTRACT_MARKER_KEY(marker);
   TRI_ASSERT(docKey != nullptr);
+  size_t keyLength = strlen(docKey);
+  buffer[len] = '/';
+  memcpy(buffer + len + 1, docKey, keyLength);
+  result->Set(v8g->_IdKey, v8::String::New(buffer, (int) (len + keyLength + 1)), v8::ReadOnly);
 
-  result->Set(v8g->_IdKey, V8DocumentId(resolver->getCollectionName(cid), docKey), v8::ReadOnly);
-  result->Set(v8g->_RevKey, V8RevisionId(rid), v8::ReadOnly);
-  result->Set(v8g->_KeyKey, v8::String::New(docKey), v8::ReadOnly);
+  // _key
+  result->Set(v8g->_KeyKey, v8::String::New(buffer + len + 1, (int) keyLength), v8::ReadOnly);
+
+  // _rev
+  TRI_voc_rid_t rid = TRI_EXTRACT_MARKER_RID(marker);
+  TRI_ASSERT(rid > 0);
+  len = TRI_StringUInt64InPlace((uint64_t) rid, (char*) &buffer);
+  result->Set(v8g->_RevKey, v8::String::New((char const*) buffer, (int) len), v8::ReadOnly);
 
   TRI_df_marker_type_t type = marker->_type;
   char const* base = reinterpret_cast<char const*>(marker);
@@ -87,19 +97,46 @@ static v8::Handle<v8::Object> AddBasicDocumentAttributes (CollectionNameResolver
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
     TRI_doc_edge_key_marker_t const* m = reinterpret_cast<TRI_doc_edge_key_marker_t const*>(marker); 
 
-    result->Set(v8g->_FromKey, V8DocumentId(resolver->getCollectionNameCluster(m->_fromCid), base + m->_offsetFromKey));
-    result->Set(v8g->_ToKey, V8DocumentId(resolver->getCollectionNameCluster(m->_toCid), base + m->_offsetToKey));
+    // _from
+    len = resolver->getCollectionNameCluster(buffer, m->_fromCid);
+    keyLength = strlen(base + m->_offsetFromKey);
+    buffer[len] = '/';
+    memcpy(buffer + len + 1, base + m->_offsetFromKey, keyLength);
+    result->Set(v8g->_FromKey, v8::String::New(buffer, (int) (len + keyLength + 1)));
+
+    // _to
+    if (m->_fromCid != m->_toCid) {
+      // only lookup collection name if we haven't done it yet
+      len = resolver->getCollectionNameCluster(buffer, m->_toCid);
+    }
+    keyLength = strlen(base + m->_offsetToKey);
+    buffer[len] = '/';
+    memcpy(buffer + len + 1, base + m->_offsetToKey, keyLength);
+    result->Set(v8g->_ToKey, v8::String::New(buffer, (int) (len + keyLength + 1)));
   }
   else if (type == TRI_WAL_MARKER_EDGE) {
     triagens::wal::edge_marker_t const* m = reinterpret_cast<triagens::wal::edge_marker_t const*>(marker);
 
-    result->Set(v8g->_FromKey, V8DocumentId(resolver->getCollectionNameCluster(m->_fromCid), base + m->_offsetFromKey));
-    result->Set(v8g->_ToKey, V8DocumentId(resolver->getCollectionNameCluster(m->_toCid), base + m->_offsetToKey));
+    // _from
+    len = resolver->getCollectionNameCluster(buffer, m->_fromCid);
+    keyLength = strlen(base + m->_offsetFromKey);
+    buffer[len] = '/';
+    memcpy(buffer + len + 1, base + m->_offsetFromKey, keyLength);
+    result->Set(v8g->_FromKey, v8::String::New(buffer, (int) (len + keyLength + 1)));
+
+    // _to
+    if (m->_fromCid != m->_toCid) {
+      // only lookup collection name if we haven't done it yet
+      len = resolver->getCollectionNameCluster(buffer, m->_toCid);
+    }
+    keyLength = strlen(base + m->_offsetToKey);
+    buffer[len] = '/';
+    memcpy(buffer + len + 1, base + m->_offsetToKey, keyLength);
+    result->Set(v8g->_ToKey, v8::String::New(buffer, (int) (len + keyLength + 1)));
   }
 
   return result;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief weak reference callback for a barrier
@@ -219,7 +256,6 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (triagens::arango::CollectionNameResolv
 
   return AddBasicDocumentAttributes(resolver, v8g, cid, marker, result);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief selects the keys from the shaped json
@@ -453,12 +489,12 @@ static v8::Handle<v8::Value> MapGetIndexedShapedJson (uint32_t idx,
 /// @brief generate the TRI_shaped_json_t template
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8shaped_json (v8::Handle<v8::Context> context,
-                            TRI_server_t* server,
-                            TRI_vocbase_t* vocbase,
-                            triagens::arango::JSLoader* loader,
-                            const size_t threadNumber,
-                            TRI_v8_global_t* v8g) {
+void TRI_InitV8ShapedJson (v8::Handle<v8::Context> context,
+                           TRI_server_t* server,
+                           TRI_vocbase_t* vocbase,
+                           triagens::arango::JSLoader* loader,
+                           size_t threadNumber,
+                           TRI_v8_global_t* v8g) {
   v8::Handle<v8::ObjectTemplate> rt;
   v8::Handle<v8::FunctionTemplate> ft;
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
@@ -489,5 +525,5 @@ void TRI_InitV8shaped_json (v8::Handle<v8::Context> context,
 
   v8g->ShapedJsonTempl = v8::Persistent<v8::ObjectTemplate>::New(isolate, rt);
   TRI_AddGlobalFunctionVocbase(context, "ShapedJson", ft->GetFunction());
-
 }
+
