@@ -820,7 +820,7 @@ static v8::Handle<v8::Value> JS_ParseAql (v8::Arguments const& argv) {
 
   string const&& queryString = TRI_ObjectToString(argv[0]);
 
-  triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), nullptr);
+  triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), nullptr, nullptr);
 
   auto parseResult = query.parse();
 
@@ -866,8 +866,8 @@ static v8::Handle<v8::Value> JS_ExplainAql (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
   
-  if (argv.Length() < 1 || argv.Length() > 2) {
-    TRI_V8_EXCEPTION_USAGE(scope, "AQL_EXPLAIN(<querystring>, <bindvalues>)");
+  if (argv.Length() < 1 || argv.Length() > 3) {
+    TRI_V8_EXCEPTION_USAGE(scope, "AQL_EXPLAIN(<querystring>, <bindvalues>, <options>)");
   }
 
   // get the query string
@@ -889,8 +889,20 @@ static v8::Handle<v8::Value> JS_ExplainAql (v8::Arguments const& argv) {
     }
   }
 
+  TRI_json_t* options = nullptr;
+  if (argv.Length() > 2) {
+    // handle options
+    if (! argv[2]->IsObject()) {
+      if (parameters != nullptr) {
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, parameters);
+      }
+      TRI_V8_TYPE_ERROR(scope, "expecting object for <options>");
+    }
+    options = TRI_ObjectToJson(argv[2]);
+  }
+
   // bind parameters will be freed by the query later
-  triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), parameters);
+  triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), parameters, options);
   
   auto queryResult = query.explain();
   
@@ -1101,7 +1113,7 @@ static v8::Handle<v8::Value> JS_ExecuteAql (v8::Arguments const& argv) {
   }
 
   // bind parameters will be freed by the query later
-  triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), parameters);
+  triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), parameters, nullptr);
   
   auto queryResult = query.execute();
   
