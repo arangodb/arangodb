@@ -574,7 +574,7 @@ bool AstNode::isSimple () const {
     auto func = static_cast<Function*>(getData());
     TRI_ASSERT(func != nullptr);
 
-    return func->implementation != nullptr;
+    return (func->implementation != nullptr && getMember(0)->isSimple());
   }
 
   return false;
@@ -736,6 +736,36 @@ bool AstNode::canThrow () const {
   }
 
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a node (and its subnodes) is deterministic
+////////////////////////////////////////////////////////////////////////////////
+
+bool AstNode::isDeterministic () const {
+  // check sub-nodes first
+  size_t const n = numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    auto member = getMember(i);
+    if (! member->isDeterministic()) {
+      // if any sub-node is non-deterministic, we are neither
+      return false;
+    }
+  }
+
+  if (type == NODE_TYPE_FCALL) {
+    // built-in functions may or may not be deterministic
+    auto func = static_cast<Function*>(getData());
+    return func->isDeterministic;
+  }
+  
+  if (type == NODE_TYPE_FCALL_USER) {
+    // user functions are always non-deterministic
+    return false;
+  }
+
+  // everything else is deterministic
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

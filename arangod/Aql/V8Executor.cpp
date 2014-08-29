@@ -153,7 +153,7 @@ std::unordered_map<std::string, Function const> const V8Executor::FunctionNames{
   { "ATTRIBUTES",                  Function("ATTRIBUTES",                  "ATTRIBUTES", "a|b,b", true, true) },
   { "MERGE",                       Function("MERGE",                       "MERGE", "a,a|+", true, true) },
   { "MERGE_RECURSIVE",             Function("MERGE_RECURSIVE",             "MERGE_RECURSIVE", "a,a|+", true, true) },
-  { "DOCUMENT",                    Function("DOCUMENT",                    "DOCUMENT", "h.|.", true, true) },
+  { "DOCUMENT",                    Function("DOCUMENT",                    "DOCUMENT", "h.|.", false, true) },
   { "MATCHES",                     Function("MATCHES",                     "MATCHES", ".,l|b", true, true) },
   { "UNSET",                       Function("UNSET",                       "UNSET", "a,sl|+", true, true) },
   { "KEEP",                        Function("KEEP",                        "KEEP", "a,sl|+", true, true) },
@@ -625,18 +625,20 @@ void V8Executor::generateCodeFunctionCall (AstNode const* node) {
 
     if (member != nullptr) {
       if (func->containsCollectionParameter && 
+          member->type == NODE_TYPE_COLLECTION &&
           func->mustConvertArgument(i)) {
-        // the parameter at this position must be a collection name that is converted to a string
-        if (member->type == NODE_TYPE_COLLECTION) {
-          // do a parameter conversion from a collection parameter to a collection name parameter
-          char const* name = member->getStringValue();
-          generateCodeString(name);
-        }
+        // the parameter at this position is a collection name that is converted to a string
+        // do a parameter conversion from a collection parameter to a collection name parameter
+        char const* name = member->getStringValue();
+        generateCodeString(name);
+      }
+      /*
         else {
           // the parameter at the position is not a collection name... fail
           THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func->internalName.c_str());
         }
       }
+      */
       else {
         // generate regular code for the node
         generateCodeNode(args->getMember(i));

@@ -343,8 +343,9 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
   for (auto n : nodes) {
     auto nn = static_cast<CalculationNode*>(n);
 
-    if (nn->expression()->canThrow()) {
-      // If this node can throw, we must not optimize it away!
+    if (nn->expression()->canThrow() ||
+        ! nn->expression()->isDeterministic()) {
+      // If this node can throw or is non-deterministic, we must not optimize it away!
       continue;
     }
 
@@ -759,7 +760,7 @@ public:
                                               _sortNodeData[j]->attributevec,
                                               nullptr, nullptr));
     }
-    return std::make_pair(v, rangeInfo);;
+    return std::make_pair(v, rangeInfo);
   }
 
 ////////////////////////////////////////////////////////////////////////////////
