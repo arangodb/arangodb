@@ -37,7 +37,7 @@ using namespace triagens::aql;
 /// <left>, and 0 if the bounds are the same. The argument <lowhigh> should be
 /// -1 if we are comparing lower bounds and 1 if we are comparing upper bounds. 
 ///
-/// If <left> or <right> is a nullptr, this indicates no bound. 
+/// If <left> or <right> is a undefined, this indicates no bound. 
 ///
 /// If ~ is the comparison and (x,y), (z,t) are RangeInfoBounds (i.e. x,z are
 /// Json values, y,t are booleans) that we are comparing as lower bounds, then
@@ -59,92 +59,80 @@ using namespace triagens::aql;
 /// (2, true)=(x<=2). 
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CompareRangeInfoBound (RangeInfoBound const* left, 
-    RangeInfoBound const* right, int lowhigh) {
-  if (left == nullptr) {
-    return (right == nullptr ? 0 : 1);
+static int CompareRangeInfoBound (RangeInfoBound left, RangeInfoBound right, 
+        int lowhigh) {
+  if (left._undefined) {
+    return (right._undefined ? 0 : 1);
   } 
-  if (right == nullptr) {
+  if (right._undefined) {
     return -1;
   }
 
-  int cmp = TRI_CompareValuesJson(left->_bound.json(), right->_bound.json());
-  if (cmp == 0 && (left->_include != right->_include)) {
-    return (left->_include?1:-1);
+  int cmp = TRI_CompareValuesJson(left._bound.json(), right._bound.json());
+  if (cmp == 0 && (left._include != right._include)) {
+    return (left._include?1:-1);
   }
   return cmp * lowhigh;
 };
-
-// the following isn't used for anything . . . 
-
-/* RangesInfo* RangesInfofromJson (Json base) {
-  RangesInfo* out = new RangesInfo();
-
-  for(size_t i = 0; i < base.size(); i++){ //loop over the ranges . . .
-    std::string var = JsonHelper::getStringValue(base.at(i).json(), "var");
-    std::string attr = 
-          JsonHelper::getStringValue(base.at(i).json(), "attr");
-    out->insert(new RangeInfo(base.at(i)));
-  }
-  return out;
-}; */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief  insert if there is no range corresponding to variable name <var>,
 /// and attribute <name>, and otherwise intersection with existing range
 ////////////////////////////////////////////////////////////////////////////////
 
-void RangesInfo::insert (RangeInfo* newRange) { 
+void RangesInfo::insert (RangeInfo newRange) { 
+  
+  TRI_ASSERT(!newRange._undefined);
 
-  auto oldMap = find(newRange->_var);
+  auto oldMap = find(newRange._var);
 
-  if (oldMap == nullptr) {
+  if (!oldMap.empty()) {
     // TODO add exception . . .
-    auto newMap = std::unordered_map<std::string, RangeInfo*>();
-    newMap.insert(make_pair(newRange->_attr, newRange));
-    _ranges.insert(std::make_pair(newRange->_var, newMap));
+    auto newMap = std::unordered_map<std::string, RangeInfo>();
+    newMap.insert(make_pair(newRange._attr, newRange));
+    _ranges.insert(std::make_pair(newRange._var, newMap));
     return;
   }
   
-  auto it = oldMap->find(newRange->_attr); 
+  auto it = oldMap.find(newRange._attr); 
   
-  if (it == oldMap->end()) {
+  if (it == oldMap.end()) {
     // TODO add exception . . .
-    oldMap->insert(make_pair(newRange->_attr, newRange));
+    oldMap.insert(make_pair(newRange._attr, newRange));
     return;
   }
 
   auto oldRange = (*it).second;
 
-  if (!oldRange->_valid) { // intersection of the empty set with any set is empty!
+  if (!oldRange._valid) { // intersection of the empty set with any set is empty!
     return;
   }
   
   //this case is not covered by those below . . .
-  if (oldRange->is1ValueRangeInfo() && newRange->is1ValueRangeInfo()) {
-    if (!TRI_CheckSameValueJson(oldRange->_low->_bound.json(), 
-        newRange->_low->_bound.json())) {
-      oldRange->_valid = false;
+  if (oldRange.is1ValueRangeInfo() && newRange.is1ValueRangeInfo()) {
+    if (!TRI_CheckSameValueJson(oldRange._low._bound.json(), 
+        newRange._low._bound.json())) {
+      oldRange._valid = false;
       return;
     }
   }
 
-  if (CompareRangeInfoBound(newRange->_low, oldRange->_low, -1) == -1) {
-    oldRange->_low = newRange->_low;
+  if (CompareRangeInfoBound(newRange._low, oldRange._low, -1) == -1) {
+    oldRange._low.assign(newRange._low);
   }
   
-  if (CompareRangeInfoBound(newRange->_high, oldRange->_high, 1) == -1) {
-    oldRange->_high = newRange->_high;
+  if (CompareRangeInfoBound(newRange._high, oldRange._high, 1) == -1) {
+    oldRange._high.assign(newRange._high);
   }
 
   // check the new range bounds are valid
-  if (oldRange->_low != nullptr && oldRange->_high != nullptr) {
-    int cmp = TRI_CompareValuesJson(oldRange->_low->_bound.json(), 
-            oldRange->_high->_bound.json());
+  if (!oldRange._low._undefined && !oldRange._high._undefined) {
+    int cmp = TRI_CompareValuesJson(oldRange._low._bound.json(), 
+            oldRange._high._bound.json());
     if (cmp == 1 || (cmp == 0 && 
-          !(oldRange->_low->_include == true && oldRange->_high->_include == true ))) {
+          !(oldRange._low._include == true && oldRange._high._include == true ))) {
       // range invalid
-      oldRange->_valid = false;
+      oldRange._valid = false;
     }
   }
 };
@@ -155,6 +143,7 @@ void RangesInfo::insert (RangeInfo* newRange) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RangesInfo::insert (std::string var, std::string name, 
-                         RangeInfoBound* low, RangeInfoBound* high) { 
-  insert(new RangeInfo(var, name, low, high));
+                         RangeInfoBound low, RangeInfoBound high) { 
+  insert(RangeInfo(var, name, low, high));
 };
+
