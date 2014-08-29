@@ -1132,7 +1132,7 @@ void IndexRangeBlock::readHashIndex () {
         }
       }
 
-      std::cout << "PID: " << pid << ", NAME: " << name << "\n";
+      //std::cout << "PID: " << pid << ", NAME: " << name << "\n";
     }
   };
  
