@@ -84,25 +84,23 @@ void RangesInfo::insert (RangeInfo newRange) {
   
   TRI_ASSERT(!newRange._undefined);
 
-  auto oldMap = find(newRange._var);
+  std::unordered_map<std::string, RangeInfo>* oldMap = find(newRange._var);
 
-  if (!oldMap.empty()) {
-    // TODO add exception . . .
-    auto newMap = std::unordered_map<std::string, RangeInfo>();
+  if (oldMap == nullptr) {
+    std::unordered_map<std::string, RangeInfo> newMap;
     newMap.insert(make_pair(newRange._attr, newRange));
     _ranges.insert(std::make_pair(newRange._var, newMap));
     return;
   }
   
-  auto it = oldMap.find(newRange._attr); 
+  auto it = oldMap->find(newRange._attr); 
   
-  if (it == oldMap.end()) {
-    // TODO add exception . . .
-    oldMap.insert(make_pair(newRange._attr, newRange));
+  if (it == oldMap->end()) {
+    oldMap->insert(make_pair(newRange._attr, newRange));
     return;
   }
 
-  auto oldRange = (*it).second;
+  RangeInfo& oldRange((*it).second);
 
   if (!oldRange._valid) { // intersection of the empty set with any set is empty!
     return;

@@ -98,7 +98,8 @@ namespace triagens {
               ("include", Json(_include));
         return item;
       }
-      
+
+      // doesn't work with unbounded above and below RangeInfos
       TRI_index_operator_t* toIndexOperator (bool high, Json parameters,
           TRI_shaper_t* shaper) const {
         TRI_index_operator_type_e op;
@@ -193,7 +194,7 @@ namespace triagens {
         }
         
         // is the range a unique value (i.e. something like x<=1 and x>=1)
-        bool is1ValueRangeInfo () { 
+        bool is1ValueRangeInfo () const { 
           return _valid && !_low._undefined  && !_high._undefined &&
                   TRI_CheckSameValueJson(_low._bound.json(), _high._bound.json())
                   && _low._include && _high._include;
@@ -222,26 +223,14 @@ namespace triagens {
 
         ~RangesInfo(){}
         
-        // find the range info for variable <var> and attributes <name>
-        RangeInfo find (std::string var, std::string name) const {
-          auto it1 = _ranges.find(var);
-          if (it1 == _ranges.end()) {
-            return RangeInfo();
-          }
-          auto it2 = it1->second.find(name);
-          if (it2 == it1->second.end()) {
-            return RangeInfo();
-          }
-          return (*it2).second;
-        }
-        
-        // find the all the range infos for variable <var>
-        std::unordered_map<std::string, RangeInfo> find (std::string var) {
+        // find the all the range infos for variable <var>, ownership is not
+        // transferred
+        std::unordered_map<std::string, RangeInfo>* find (std::string var) {
           auto it = _ranges.find(var);
           if (it == _ranges.end()) {
-            return unordered_map<std::string, RangeInfo>();
+            return nullptr;
           }
-          return (*it).second;
+          return &((*it).second);
         }
         
         // insert if it's not already there and otherwise intersection with
