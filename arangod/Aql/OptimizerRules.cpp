@@ -377,7 +377,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
   RangesInfo* _ranges;
   Optimizer* _opt;
   ExecutionPlan* _plan;
-  Variable const* _var;
+  std::unordered_set<VariableId> _varIds;
   bool _canThrow; 
   int _level;
   
@@ -386,9 +386,9 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
     FilterToEnumCollFinder (Optimizer* opt, ExecutionPlan* plan, Variable const* var) 
       : _opt(opt),
         _plan(plan), 
-        _var(var), 
         _canThrow(false) {
       _ranges = new RangesInfo();
+      _varIds.insert(var->id);
     };
 
     ~FilterToEnumCollFinder () {
@@ -398,10 +398,15 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
     bool before (ExecutionNode* en) {
       _canThrow = (_canThrow || en->canThrow()); // can any node walked over throw?
 
-      if (en->getType() == triagens::aql::ExecutionNode::CALCULATION) {
+      if (en->getType() == triagens::aql::ExecutionNode::FILTER) {
+        std::vector<Variable const*> inVar = en->getVariablesUsedHere();
+        TRI_ASSERT(inVar.size() == 1);
+        _varIds.insert(inVar[0]->id);
+      }
+      else if (en->getType() == triagens::aql::ExecutionNode::CALCULATION) {
         auto outvar = en->getVariablesSetHere();
         TRI_ASSERT(outvar.size() == 1);
-        if (outvar[0]->id == _var->id) {
+        if (_varIds.find(outvar[0]->id) != _varIds.end()) {
           auto node = static_cast<CalculationNode*>(en);
           std::string attr;
           std::string enumCollVar;
