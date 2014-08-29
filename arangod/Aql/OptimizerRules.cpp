@@ -381,16 +381,14 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
   Variable const* _var;
   Optimizer::PlanList* _out;
   bool _canThrow; 
-  int _level;
   
   public:
 
-    FilterToEnumCollFinder (ExecutionPlan* plan, Variable const * var, Optimizer::PlanList* out, int level) 
+    FilterToEnumCollFinder (ExecutionPlan* plan, Variable const * var, Optimizer::PlanList* out) 
       : _plan(plan), 
         _var(var), 
         _out(out), 
-        _canThrow(false),
-        _level(level) {
+        _canThrow(false) {
       _ranges = new RangesInfo();
     };
 
@@ -437,18 +435,12 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             std::cout << "INVALID RANGE!\n";
               
               auto newPlan = _plan->clone();
-              try {
-                auto parents = newPlan->getNodeById(node->id())->getParents();
-                for (auto x: parents) {
-                  auto noRes = new NoResultsNode(newPlan->nextId());
-                  newPlan->registerNode(noRes);
-                  newPlan->insertDependency(x, noRes);
-                  _out->push_back(newPlan, 0);
-                }
-              }
-              catch (...) {
-                delete newPlan;
-                throw;
+              auto parents = node->getParents();
+              for(auto x: parents) {
+                auto noRes = new NoResultsNode(newPlan->nextId());
+                newPlan->registerNode(noRes);
+                newPlan->insertDependency(x, noRes);
+                _out->push_back(newPlan, 0);
               }
             }
             else {
@@ -491,17 +483,22 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                 
                 if (rangeInfo.at(0).size() != 0) {
                   auto newPlan = _plan->clone();
-                  try {
-                    ExecutionNode* newNode = new IndexRangeNode(newPlan->nextId(), node->vocbase(), 
-                      node->collection(), node->outVariable(), idx, rangeInfo);
+                  ExecutionNode* newNode = nullptr;
+                  try{
+                    newNode = new IndexRangeNode(newPlan->nextId(), node->vocbase(), 
+                        node->collection(), node->outVariable(), idx, rangeInfo);
                     newPlan->registerNode(newNode);
-                    newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
-                    _out->push_back(newPlan, _level);
                   }
                   catch (...) {
+                    if (newNode != nullptr) {
+                      delete newNode;
+                    }
                     delete newPlan;
                     throw;
                   }
+                  // FIXME: the following two could throw as well?
+                  newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
+                  _out->push_back(newPlan, 0);
                 }
               }
             }
@@ -643,7 +640,7 @@ int triagens::aql::useIndexRange (Optimizer* opt,
     auto nn = static_cast<FilterNode*>(n);
     auto invars = nn->getVariablesUsedHere();
     TRI_ASSERT(invars.size() == 1);
-    FilterToEnumCollFinder finder(plan, invars[0], &out, level);
+    FilterToEnumCollFinder finder(plan, invars[0], &out);
     nn->walk(&finder);
   }
 
@@ -831,26 +828,30 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
       // can only use the index if it is a skip list or (a hash and we
       // are checking equality)
       auto newPlan = _plan->clone();
+      ExecutionNode* newNode = nullptr;
       try {
-        ExecutionNode* newNode = new IndexRangeNode( newPlan->nextId(),
+        newNode = new IndexRangeNode( newPlan->nextId(),
                                       node->vocbase(), 
                                       node->collection(),
                                       node->outVariable(),
                                       idx.index,/// TODO: estimate cost on match quality
                                       result.second);
         newPlan->registerNode(newNode);
-        newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
-
-        if (idx.fullmatch) { // if the index superseedes the sort, remove it.
-          _sortNode->removeSortNodeFromPlan(newPlan);
-        }
-        _out.push_back(newPlan, level);
       }
       catch (...) {
+        delete newNode;
         delete newPlan;
         throw;
       }
 
+      newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
+
+      if (idx.fullmatch) { // if the index superseedes the sort, remove it.
+        _sortNode->removeSortNodeFromPlan(newPlan);
+      }
+      std::cout << newPlan->toJson(TRI_UNKNOWN_MEM_ZONE, false).toString() << "\n";
+
+      _out.push_back(newPlan, level);
     }
     for (auto x : result.second) {
       for (auto y : x) {
