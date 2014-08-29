@@ -51,8 +51,8 @@ Function::Function (std::string const& externalName,
     arguments(arguments),
     isDeterministic(isDeterministic),
     canThrow(canThrow),
-    containsCollectionParameter(false),
-    implementation(implementation) {
+    implementation(implementation),
+    conversions() {
 
   initArguments();
 }
@@ -69,55 +69,15 @@ Function::~Function () {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a positional argument needs to be converted from a
-/// collection parameter to a collection name parameter
-////////////////////////////////////////////////////////////////////////////////
-      
-bool Function::mustConvertArgument (size_t position) const {
-  bool foundArg = false;
-  size_t i = 0;
-  char const* p = arguments.c_str();
-
-  while (true) {
-    char const c = *p++;
-
-    switch (c) {
-      case '\0':
-        return false;
-
-      case '|':
-      case ',':
-        if (foundArg) {
-          if (++i > position) {
-            return false;
-          }
-        }
-        foundArg = false;
-        break;
-
-      case 'h':
-        if (i == position) {
-          // found an argument to convert
-          return true;
-        }
-        foundArg = true;
-        break;
-
-      default:
-        foundArg = true;
-    }
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief parse the argument list and set the minimum and maximum number of
 /// arguments
 ////////////////////////////////////////////////////////////////////////////////
 
 void Function::initArguments () {
-  minRequiredArguments = maxRequiredArguments = 0;
+  minRequiredArguments = 0;
+  maxRequiredArguments = 0;
+
+  size_t position = 0;
 
   // setup some parsing state
   bool inOptional = false;
@@ -140,6 +100,7 @@ void Function::initArguments () {
 
       case '|':
         // beginning of optional arguments
+        ++position;
         TRI_ASSERT(! inOptional);
         if (foundArg) {
           ++minRequiredArguments;
@@ -151,6 +112,7 @@ void Function::initArguments () {
 
       case ',':
         // next argument
+        ++position;
         TRI_ASSERT(foundArg);
 
         if (! inOptional) {
@@ -166,12 +128,35 @@ void Function::initArguments () {
         maxRequiredArguments = MaxArguments;
         return;
 
-      default:
-        if (c == 'h') {
-          // note that we found a collection parameter
-          containsCollectionParameter = true;
+      case 'h':
+        // we found a collection parameter
+        
+        // set the conversion info for the position
+        if (conversions.size() <= position) {
+          // we don't yet have another parameter at this position
+          conversions.push_back(CONVERSION_REQUIRED);
+        }
+        else if (conversions[position] == CONVERSION_NONE) {
+          // we already had a parameter at this position
+          conversions[position] = CONVERSION_OPTIONAL;
         }
         foundArg = true;
+        break;
+
+      default:
+        // we found any other parameter
+
+        // set the conversion info for the position
+        if (conversions.size() <= position) {
+          // we don't yet have another parameter at this position
+          conversions.push_back(CONVERSION_NONE);
+        }
+        else if (conversions[position] == CONVERSION_REQUIRED) {
+          // we already had a parameter at this position
+          conversions[position] = CONVERSION_OPTIONAL;
+        }
+        foundArg = true;
+        break;
     }
   }
 }
