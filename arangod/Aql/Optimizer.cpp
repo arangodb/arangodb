@@ -34,7 +34,17 @@ using namespace triagens::aql;
 // --SECTION--                                               the optimizer class
 // -----------------------------------------------------------------------------
 
-std::vector<Optimizer::Rule> Optimizer::_rules;
+////////////////////////////////////////////////////////////////////////////////
+// @brief list of all rules
+////////////////////////////////////////////////////////////////////////////////
+
+std::map<int, Optimizer::Rule> Optimizer::_rules;
+
+////////////////////////////////////////////////////////////////////////////////
+// @brief lookup from rule name to rule level
+////////////////////////////////////////////////////////////////////////////////
+
+std::unordered_map<std::string, int> Optimizer::_ruleLookup;
 
 ////////////////////////////////////////////////////////////////////////////////
 // @brief constructor, this will initialize the rules database
@@ -47,24 +57,19 @@ Optimizer::Optimizer () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dummyrule
-////////////////////////////////////////////////////////////////////////////////
-
-static int dummyRule (Optimizer*,
-                      ExecutionPlan*,
-                      int level,
-                      Optimizer::PlanList&) {
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // @brief the actual optimization
 ////////////////////////////////////////////////////////////////////////////////
 
-int Optimizer::createPlans (ExecutionPlan* plan) {
+int Optimizer::createPlans (ExecutionPlan* plan,
+                            std::vector<std::string> const& disabledRules) {
   int res;
   int leastDoneLevel = 0;
-  int maxRuleLevel = _rules.back().level;
+
+  TRI_ASSERT(! _rules.empty());
+  int maxRuleLevel = _rules.rbegin()->first;
+
+  // which optimizer rules are disabled?
+  std::unordered_set<int> const&& disabledIds = getDisabledRuleIds(disabledRules);
 
   // _plans contains the previous optimisation result
   _plans.clear();
@@ -103,22 +108,33 @@ int Optimizer::createPlans (ExecutionPlan* plan) {
       if (level == maxRuleLevel) {
         newPlans.push_back(p, level);  // nothing to do, just keep it
       }
-      else {   // some rule needs applying
-        Rule r("dummy", dummyRule, level);
-        auto it = std::upper_bound(_rules.begin(), _rules.end(), r);
+      else {   // find next rule
+        auto it = _rules.upper_bound(level);
         TRI_ASSERT(it != _rules.end());
-        /*
-        std::cout << "Trying rule " << it->name << " (" << &(it->func) << ") with level "
-                  << it->level << " on plan " << count++
+       
+        /* 
+        std::cout << "Trying rule " << it->second.name << " with level "
+                  << it->first << " on plan " << count++
                   << std::endl;
         */
+
+        if (disabledIds.find(level) != disabledIds.end()) {
+          // we picked a disabled rule
+          level = it->first;
+
+          newPlans.push_back(p, level);  // nothing to do, just keep it
+          // now try next
+          continue;
+        }
+
         try {
-          res = it->func(this, p, it->level, newPlans);
+          res = it->second.func(this, p, it->first, newPlans);
         }
         catch (...) {
           delete p;
           throw;
         }
+
         if (res != TRI_ERROR_NO_ERROR) {
           return res;
         }
@@ -181,6 +197,36 @@ void Optimizer::sortPlans () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief look up the ids of all disabled rules
+////////////////////////////////////////////////////////////////////////////////
+
+std::unordered_set<int> Optimizer::getDisabledRuleIds (std::vector<std::string> const& names) const {
+  std::unordered_set<int> disabled;
+
+  disabled.reserve(names.size());
+
+  // lookup ids of all disabled rules
+  for (auto name : names) {
+    if (name == "all") {
+      // disable all rules
+      for (auto it : _rules) {
+        disabled.insert(it.first);
+      }
+      break;
+    }
+    else {
+      // disable a specific rule
+      auto it = _ruleLookup.find(name);
+      if (it != _ruleLookup.end()) {
+        disabled.insert((*it).second);
+      }
+    }
+  }
+
+  return disabled;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief set up the optimizer rules once and forever
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -189,7 +235,8 @@ void Optimizer::setupRules () {
 
   // List all the rules in the system here:
   // lower level values mean earlier rule execution
-  // if two rules have the same level value, they will be executed in declaration order
+  
+  // note that levels must be unique
 
   //////////////////////////////////////////////////////////////////////////////
   // "Pass 1": moving nodes "up" (potentially outside loops):
@@ -237,11 +284,11 @@ void Optimizer::setupRules () {
 
   // move calculations up the dependency chain (to pull them out of
   // inner loops etc.)
-  registerRule("move-calculations-up", moveCalculationsUpRule, 510);
+  registerRule("move-calculations-up-2", moveCalculationsUpRule, 510);
 
   // move filters up the dependency chain (to make result sets as small
   // as possible as early as possible)
-  registerRule("move-filters-up", moveFiltersUpRule, 520);
+  registerRule("move-filters-up-2", moveFiltersUpRule, 520);
 
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 5": try to remove redundant or unnecessary nodes (second try)
@@ -251,14 +298,14 @@ void Optimizer::setupRules () {
   // remove filters from the query that are not necessary at all
   // filters that are always true will be removed entirely
   // filters that are always false will be replaced with a NoResults node
-  registerRule("remove-unnecessary-filters", removeUnnecessaryFiltersRule, 610);
+  registerRule("remove-unnecessary-filters-2", removeUnnecessaryFiltersRule, 610);
   
   // remove calculations that are never necessary
-  registerRule("remove-unnecessary-calculations", 
+  registerRule("remove-unnecessary-calculations-2", 
                removeUnnecessaryCalculationsRule, 620);
 
   // remove redundant sort blocks
-  registerRule("remove-redundant-sorts", removeRedundantSorts, 630);
+  registerRule("remove-redundant-sorts-2", removeRedundantSorts, 630);
 
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
@@ -275,13 +322,10 @@ void Optimizer::setupRules () {
   /// END OF OPTIMISATIONS
   //////////////////////////////////////////////////////////////////////////////
 
-  // Now sort them by level:
-  std::stable_sort(_rules.begin(), _rules.end());
 }
 
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-
 

@@ -65,6 +65,7 @@ namespace triagens {
       _maxUploadSize(maxUploadSize),
       _separator(","),
       _quote("\""),
+      _useBackslash(false),
       _createCollection(false),
       _overwrite(false),
       _progress(false),
@@ -144,6 +145,7 @@ namespace triagens {
                         ProcessCsvEnd);
 
       TRI_SetSeparatorCsvParser(&parser, separator[0]);
+      TRI_UseBackslashCsvParser(&parser, _useBackslash);
 
       // in csv, we'll use the quote char if set
       // in tsv, we do not use the quote char
