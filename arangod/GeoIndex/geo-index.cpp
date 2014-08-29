@@ -478,7 +478,7 @@ TRI_index_t* TRI_CreateGeo1Index (TRI_document_collection_t* document,
 
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_GEO1_INDEX, document, unique);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_GEO1_INDEX, document, unique, false);
 
   idx->_ignoreNull = ignoreNull;
 
@@ -532,8 +532,7 @@ TRI_index_t* TRI_CreateGeo2Index (TRI_document_collection_t* document,
 
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_GEO2_INDEX, document, unique);
-
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_GEO2_INDEX, document, unique, false); 
   idx->_ignoreNull = ignoreNull;
 
   idx->memory   = MemoryGeoIndex;

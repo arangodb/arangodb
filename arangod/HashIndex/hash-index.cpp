@@ -569,7 +569,7 @@ TRI_index_t* TRI_CreateHashIndex (TRI_document_collection_t* document,
   TRI_hash_index_t* hashIndex = static_cast<TRI_hash_index_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_hash_index_t), false));
   TRI_index_t* idx = &hashIndex->base;
 
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_HASH_INDEX, document, unique);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_HASH_INDEX, document, unique, false);
 
   idx->memory   = MemoryHashIndex;
   idx->json     = JsonHashIndex;

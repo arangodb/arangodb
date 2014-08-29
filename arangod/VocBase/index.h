@@ -103,6 +103,7 @@ typedef struct TRI_index_s {
   TRI_vector_string_t _fields;
   bool _unique;
   bool _ignoreNull;
+  bool _sparse;
 
   size_t (*memory) (struct TRI_index_s const*);
   TRI_json_t* (*json) (struct TRI_index_s const*);
@@ -275,7 +276,8 @@ void TRI_InitIndex (TRI_index_t*,
                     TRI_idx_iid_t,
                     TRI_idx_type_e,
                     struct TRI_document_collection_t*,
-                    bool);
+                    bool,   // unique
+                    bool);  // sparse
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions

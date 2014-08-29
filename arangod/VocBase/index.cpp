@@ -72,7 +72,8 @@ void TRI_InitIndex (TRI_index_t* idx,
                     TRI_idx_iid_t iid,
                     TRI_idx_type_e type,
                     TRI_document_collection_t* document,
-                    bool unique) {
+                    bool unique,
+                    bool sparse) {
   TRI_ASSERT(idx != nullptr);
 
   if (iid > 0) {
@@ -90,6 +91,7 @@ void TRI_InitIndex (TRI_index_t* idx,
   idx->_type              = type;
   idx->_collection        = document;
   idx->_unique            = unique;
+  idx->_sparse            = sparse;
 
   // init common functions
   idx->memory            = nullptr;
@@ -611,7 +613,7 @@ TRI_index_t* TRI_CreatePrimaryIndex (TRI_document_collection_t* document) {
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
   TRI_PushBackVectorString(&idx->_fields, id);
 
-  TRI_InitIndex(idx, 0, TRI_IDX_TYPE_PRIMARY_INDEX, document, true);
+  TRI_InitIndex(idx, 0, TRI_IDX_TYPE_PRIMARY_INDEX, document, true, false);
 
   idx->memory   = MemoryPrimary;
   idx->json     = JsonPrimary;
@@ -1074,7 +1076,7 @@ TRI_index_t* TRI_CreateEdgeIndex (TRI_document_collection_t* document,
   id = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_FROM);
   TRI_PushBackVectorString(&idx->_fields, id);
 
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_EDGE_INDEX, document, false);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_EDGE_INDEX, document, false, false);
 
   idx->memory   = MemoryEdge;
   idx->json     = JsonEdge;
@@ -1549,7 +1551,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_document_collection_t* document,
 
   TRI_index_t* idx = &skiplistIndex->base;
 
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_SKIPLIST_INDEX, document, unique);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_SKIPLIST_INDEX, document, unique, false);
 
   idx->memory   = MemorySkiplistIndex;
   idx->json     = JsonSkiplistIndex;
@@ -1871,7 +1873,7 @@ TRI_index_t* TRI_CreateFulltextIndex (TRI_document_collection_t* document,
 
   idx = &fulltextIndex->base;
 
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_FULLTEXT_INDEX, document, false);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_FULLTEXT_INDEX, document, false, false);
 
   idx->memory   = MemoryFulltextIndex;
   idx->json     = JsonFulltextIndex;
@@ -2546,7 +2548,7 @@ TRI_index_t* TRI_CreateBitarrayIndex (TRI_document_collection_t* document,
   TRI_bitarray_index_t* baIndex = static_cast<TRI_bitarray_index_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_bitarray_index_t), false));
   idx = &baIndex->base;
 
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_BITARRAY_INDEX, document, false);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_BITARRAY_INDEX, document, false, false);
 
   idx->json     = JsonBitarrayIndex;
   idx->insert   = InsertBitarrayIndex;
