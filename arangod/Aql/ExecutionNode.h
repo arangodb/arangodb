@@ -863,7 +863,7 @@ namespace triagens {
                         Collection* collection,
                         Variable const* outVariable,
                         TRI_index_t* index, 
-                        std::vector<std::vector<RangeInfo*>> const& ranges)
+                        std::vector<std::vector<RangeInfo>> const ranges)
           : ExecutionNode(id), 
             _vocbase(vocbase), 
             _collection(collection),
@@ -902,7 +902,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          std::vector<std::vector<RangeInfo*>> ranges;
+          std::vector<std::vector<RangeInfo>> ranges;
           for (size_t i = 0; i < _ranges.size(); i++){
             for (auto x: _ranges.at(i)){
               ranges.at(i).push_back(x);
@@ -985,7 +985,7 @@ namespace triagens {
 /// @brief the range info
 ////////////////////////////////////////////////////////////////////////////////
         
-        std::vector<std::vector<RangeInfo*>> _ranges;
+        std::vector<std::vector<RangeInfo>> _ranges;
     };
 
 // -----------------------------------------------------------------------------
@@ -1499,14 +1499,17 @@ namespace triagens {
       public:
 
         SortNode (size_t id,
-                  std::vector<std::pair<Variable const*, bool>> elements)
-          : ExecutionNode(id), 
-            _elements(elements) {
+                  std::vector<std::pair<Variable const*, bool>> const& elements,
+                  bool stable) 
+          : ExecutionNode(id),
+            _elements(elements),
+            _stable(stable) {
         }
         
         SortNode (Ast*,
                   basics::Json const& base,
-                  std::vector<std::pair<Variable const*, bool>> elements);
+                  std::vector<std::pair<Variable const*, bool>> const& elements,
+                  bool stable);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -1529,7 +1532,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual ExecutionNode* clone () const {
-          auto c = new SortNode(_id, _elements);
+          auto c = new SortNode(_id, _elements, _stable);
           cloneDependencies(c);
           return static_cast<ExecutionNode*>(c);
         }
@@ -1584,6 +1587,11 @@ namespace triagens {
 
         std::vector<std::pair<Variable const*, bool>> _elements;
 
+////////////////////////////////////////////////////////////////////////////////
+/// whether or not the sort is stable
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _stable;
     };
 
 

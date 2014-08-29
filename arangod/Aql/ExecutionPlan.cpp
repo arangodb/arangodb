@@ -443,7 +443,7 @@ ExecutionNode* ExecutionPlan::fromNodeSort (Ast const* ast,
     previous = (*it);
   }
 
-  auto en = registerNode(new SortNode(nextId(), elements));
+  auto en = registerNode(new SortNode(nextId(), elements, false));
 
   return addDependency(previous, en);
 }
@@ -503,7 +503,8 @@ ExecutionNode* ExecutionPlan::fromNodeCollect (Ast const* ast,
   }
 
   // inject a sort node for all expressions / variables that we just picked up...
-  auto sort = registerNode(new SortNode(nextId(), sortElements));
+  // note that this sort is stable
+  auto sort = registerNode(new SortNode(nextId(), sortElements, true));
   sort->addDependency(previous);
   previous = sort;
 

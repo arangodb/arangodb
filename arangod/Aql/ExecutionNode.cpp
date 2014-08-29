@@ -125,7 +125,9 @@ ExecutionNode* ExecutionNode::fromJsonFactory (Ast* ast,
         elements.push_back(std::make_pair(v, ascending));
       }
 
-      return new SortNode(ast, oneNode, elements);
+      bool stable = JsonHelper::checkAndGetBooleanValue(oneNode.json(), "stable");
+
+      return new SortNode(ast, oneNode, elements, stable);
     }
     case AGGREGATE: {
 
@@ -567,7 +569,7 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
 
   for (auto x : _ranges) {
     for(auto y : x) {
-      ranges(y->toJson());
+      ranges(y.toJson());
     }
   }
       
@@ -605,7 +607,7 @@ IndexRangeNode::IndexRangeNode (Ast* ast, basics::Json const& json)
   Json ranges(TRI_UNKNOWN_MEM_ZONE, JsonHelper::checkAndGetListValue(json.json(), "ranges"));
   for(size_t i = 0; i < ranges.size(); i++){ //loop over the ranges . . .
     for(size_t j = 0; j < ranges.at(i).size(); j++){
-      _ranges.at(i).push_back(new RangeInfo(ranges.at(i).at(j)));
+      _ranges.at(i).push_back(RangeInfo(ranges.at(i).at(j)));
     }
   }
   
@@ -847,9 +849,11 @@ void FilterNode::toJsonHelper (triagens::basics::Json& nodes,
 
 SortNode::SortNode (Ast* ast,
                     basics::Json const& base,
-                    std::vector<std::pair<Variable const*, bool>> elements)
+                    std::vector<std::pair<Variable const*, bool>> const& elements,
+                    bool stable)
   : ExecutionNode(base),
-    _elements(elements) {
+    _elements(elements),
+    _stable(stable) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -860,6 +864,7 @@ void SortNode::toJsonHelper (triagens::basics::Json& nodes,
                              TRI_memory_zone_t* zone,
                              bool verbose) const {
   Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+
   if (json.isEmpty()) {
     return;
   }
@@ -871,6 +876,7 @@ void SortNode::toJsonHelper (triagens::basics::Json& nodes,
     values(element);
   }
   json("elements", values);
+  json("stable", Json(_stable));
 
   // And add it:
   nodes(json);
