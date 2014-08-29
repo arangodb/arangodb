@@ -10254,32 +10254,78 @@ static v8::Handle<v8::Object> AddBasicDocumentAttributes (T& trx,
                                                           TRI_doc_mptr_t const* mptr,
                                                           v8::Handle<v8::Object> result) {
   v8::HandleScope scope;
+   
+  void const* marker = mptr->getDataPtr();
+  TRI_ASSERT(marker != nullptr);
 
   TRI_ASSERT(mptr != nullptr);
-
-  TRI_voc_rid_t rid = mptr->_rid;
-  char const* docKey = TRI_EXTRACT_MARKER_KEY(mptr);  // PROTECTED by trx from above
-  TRI_ASSERT(rid > 0);
-  TRI_ASSERT(docKey != nullptr);
-
   CollectionNameResolver const* resolver = trx.resolver();
-  result->Set(v8g->_IdKey, V8DocumentId(resolver->getCollectionName(cid), docKey), v8::ReadOnly);
-  result->Set(v8g->_RevKey, V8RevisionId(rid), v8::ReadOnly);
-  result->Set(v8g->_KeyKey, v8::String::New(docKey), v8::ReadOnly);
 
-  TRI_df_marker_type_t type = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr())->_type;  // PROTECTED by trx from above
+  // buffer that we'll use for generating _id, _key, _rev, _from and _to values
+  // using a single buffer will avoid several memory allocation
+  char buffer[TRI_COL_NAME_LENGTH + TRI_VOC_KEY_MAX_LENGTH + 2];
 
+  // _id
+  size_t len = resolver->getCollectionName(buffer, cid);
+  char const* docKey = TRI_EXTRACT_MARKER_KEY(mptr);
+  TRI_ASSERT(docKey != nullptr);
+  size_t keyLength = strlen(docKey);
+  buffer[len] = '/';
+  memcpy(buffer + len + 1, docKey, keyLength);
+  result->Set(v8g->_IdKey, v8::String::New(buffer, (int) (len + keyLength + 1)), v8::ReadOnly);
+
+  // _key (reuses _key part in _id)
+  result->Set(v8g->_KeyKey, v8::String::New(buffer + len + 1, (int) keyLength), v8::ReadOnly);
+
+  // _rev
+  TRI_voc_rid_t rid = mptr->_rid;
+  TRI_ASSERT(rid > 0);
+  len = TRI_StringUInt64InPlace((uint64_t) rid, (char*) &buffer);
+  result->Set(v8g->_RevKey, v8::String::New((char const*) buffer, (int) len), v8::ReadOnly);
+
+
+  TRI_df_marker_type_t type = static_cast<TRI_df_marker_t const*>(marker)->_type;  // PROTECTED by trx from above
+
+  // create _from and _to for edges
   if (type == TRI_DOC_MARKER_KEY_EDGE) {
-    TRI_doc_edge_key_marker_t const* marker = static_cast<TRI_doc_edge_key_marker_t const*>(mptr->getDataPtr());  // PROTECTED by trx from above
+    TRI_doc_edge_key_marker_t const* m = static_cast<TRI_doc_edge_key_marker_t const*>(marker);  // PROTECTED by trx from above
 
-    result->Set(v8g->_FromKey, V8DocumentId(resolver->getCollectionNameCluster(marker->_fromCid), ((char*) marker) + marker->_offsetFromKey));
-    result->Set(v8g->_ToKey, V8DocumentId(resolver->getCollectionNameCluster(marker->_toCid), ((char*) marker) + marker->_offsetToKey));
+    // _from
+    len = resolver->getCollectionNameCluster(buffer, m->_fromCid);
+    keyLength = strlen(((char*) marker) + m->_offsetFromKey);
+    buffer[len] = '/';
+    memcpy(buffer + len + 1, (char*) marker + m->_offsetFromKey, keyLength);
+    result->Set(v8g->_FromKey, v8::String::New(buffer, (int) (len + keyLength + 1)));
+
+    // _to
+    if (m->_fromCid != m->_toCid) {
+      // only lookup collection name if we haven't done it yet
+      len = resolver->getCollectionNameCluster(buffer, m->_toCid);
+    }
+    keyLength = strlen(((char*) marker) + m->_offsetToKey);
+    buffer[len] = '/';
+    memcpy(buffer + len + 1, (char*) marker + m->_offsetToKey, keyLength);
+    result->Set(v8g->_ToKey, v8::String::New(buffer, (int) (len + keyLength + 1)));
   }
   else if (type == TRI_WAL_MARKER_EDGE) {
-    triagens::wal::edge_marker_t const* marker = static_cast<triagens::wal::edge_marker_t const*>(mptr->getDataPtr());  // PROTECTED by trx from above
+    triagens::wal::edge_marker_t const* m = static_cast<triagens::wal::edge_marker_t const*>(marker);  // PROTECTED by trx from above
 
-    result->Set(v8g->_FromKey, V8DocumentId(resolver->getCollectionNameCluster(marker->_fromCid), ((char const*) marker) + marker->_offsetFromKey));
-    result->Set(v8g->_ToKey, V8DocumentId(resolver->getCollectionNameCluster(marker->_toCid), ((char const*) marker) + marker->_offsetToKey));
+    // _from
+    len = resolver->getCollectionNameCluster(buffer, m->_fromCid);
+    keyLength = strlen(((char*) marker) + m->_offsetFromKey);
+    buffer[len] = '/';
+    memcpy(buffer + len + 1, (char*) marker + m->_offsetFromKey, keyLength);
+    result->Set(v8g->_FromKey, v8::String::New(buffer, (int) (len + keyLength + 1)));
+
+    // _to
+    if (m->_fromCid != m->_toCid) {
+      // only lookup collection name if we haven't done it yet
+      len = resolver->getCollectionNameCluster(buffer, m->_toCid);
+    }
+    keyLength = strlen(((char*) marker) + m->_offsetToKey);
+    buffer[len] = '/';
+    memcpy(buffer + len + 1, (char*) marker + m->_offsetToKey, keyLength);
+    result->Set(v8g->_ToKey, v8::String::New(buffer, (int) (len + keyLength + 1)));
   }
 
   return scope.Close(result);
@@ -10287,7 +10333,6 @@ static v8::Handle<v8::Object> AddBasicDocumentAttributes (T& trx,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a TRI_shaped_json_t
-/// note: the function updates the usedBarrier variable if the barrier was used
 ////////////////////////////////////////////////////////////////////////////////
 
 template<class T>
