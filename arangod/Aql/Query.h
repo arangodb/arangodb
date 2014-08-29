@@ -42,7 +42,7 @@ struct TRI_vocbase_s;
 namespace triagens {
   namespace aql {
 
-    class V8Executor;
+    class Executor;
     class Expression;
     struct Variable;
     struct AstNode;
@@ -189,7 +189,7 @@ namespace triagens {
 /// @brief get v8 executor
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8Executor* executor ();
+        Executor* executor ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register a string
@@ -234,7 +234,7 @@ namespace triagens {
 /// @brief V8 code executor
 ////////////////////////////////////////////////////////////////////////////////
         
-        V8Executor*                _executor;
+        Executor*                  _executor;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the actual query string

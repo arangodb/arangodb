@@ -31,8 +31,8 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Executor.h"
 #include "Aql/Parser.h"
-#include "Aql/V8Executor.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Optimizer.h"
 #include "Basics/JsonHelper.h"
@@ -411,10 +411,10 @@ QueryResult Query::explain () {
 /// @brief get v8 executor
 ////////////////////////////////////////////////////////////////////////////////
 
-V8Executor* Query::executor () {
+Executor* Query::executor () {
   if (_executor == nullptr) {
     // the executor is a singleton per query
-    _executor = new V8Executor;
+    _executor = new Executor;
   }
 
   TRI_ASSERT(_executor != nullptr);

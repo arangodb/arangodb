@@ -28,7 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/V8Expression.h"
-#include "Aql/V8Executor.h"
+#include "Aql/Executor.h"
 #include "Aql/Variable.h"
 #include "BasicsC/json.h"
 #include "V8/v8-conv.h"
@@ -94,7 +94,7 @@ AqlValue V8Expression::execute (AQL_TRANSACTION_V8* trx,
   v8::TryCatch tryCatch;
   v8::Handle<v8::Value> result = func->Call(func, 1, args);
     
-  V8Executor::HandleV8Error(tryCatch, result);
+  Executor::HandleV8Error(tryCatch, result);
 
   // no exception was thrown if we get here
   TRI_json_t* json = nullptr;
