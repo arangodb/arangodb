@@ -194,6 +194,7 @@ add_library(
     STATIC
     V8/JSLoader.cpp
     V8/V8LineEditor.cpp
+    V8/V8StringConverter.cpp
     V8/v8-buffer.cpp
     V8/v8-conv.cpp
     V8/v8-execution.cpp
