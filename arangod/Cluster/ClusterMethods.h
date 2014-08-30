@@ -158,6 +158,7 @@ namespace triagens {
     int getAllDocumentsOnCoordinator (
                  string const& dbname,
                  string const& collname,
+                 string const& returnType,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
                  string& contentType,
                  string& resultBody);
