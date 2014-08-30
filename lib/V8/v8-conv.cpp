@@ -1662,6 +1662,12 @@ static bool ShapedJsonToJson (TRI_json_t* dst,
     TRI_InitBooleanJson(dst, booleanParameter->Value());
     return true;
   }
+
+  if (parameter->IsBooleanObject()) {
+    v8::Handle<v8::BooleanObject> bo = v8::Handle<v8::BooleanObject>::Cast(parameter);
+    TRI_InitBooleanJson(dst, bo->BooleanValue());
+    return true;
+  }
   
   if (parameter->IsNull()) {
     TRI_InitNullJson(dst);
@@ -1673,8 +1679,14 @@ static bool ShapedJsonToJson (TRI_json_t* dst,
     TRI_InitNumberJson(dst, numberParameter->Value());
     return true;
   }
+
+  if (parameter->IsNumberObject()) {
+    v8::Handle<v8::NumberObject> no = v8::Handle<v8::NumberObject>::Cast(parameter);
+    TRI_InitNumberJson(dst, no->NumberValue());
+    return true;
+  }
   
-  if (parameter->IsString()) {
+  if (parameter->IsString() || parameter->IsStringObject()) {
     v8::Handle<v8::String> stringParameter = parameter->ToString();
     if (converter.assign(stringParameter)) {
       TRI_InitString2Json(dst, converter.steal(), converter.length());
@@ -1872,9 +1884,9 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
 
     v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
     v8::Handle<v8::Array> names = arrayParameter->GetOwnPropertyNames();
-    const uint32_t n = names->Length();
+    uint32_t const n = names->Length();
 
-    TRI_json_t* arrayJson = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, (const size_t) n);
+    TRI_json_t* arrayJson = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, static_cast<size_t const>(n));
 
     if (arrayJson != nullptr && n > 0) {
       for (uint32_t j = 0; j < n; ++j) {
