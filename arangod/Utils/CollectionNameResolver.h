@@ -98,7 +98,7 @@ namespace triagens {
 /// @brief look up a collection struct for a collection name
 ////////////////////////////////////////////////////////////////////////////////
 
-        const TRI_vocbase_col_t* getCollectionStruct (std::string const& name) const {
+        TRI_vocbase_col_t const* getCollectionStruct (std::string const& name) const {
           if (! _resolvedNames.empty()) {
             auto it = _resolvedNames.find(name);
 

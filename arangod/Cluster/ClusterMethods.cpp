@@ -963,6 +963,7 @@ int getDocumentOnCoordinator (
 int getAllDocumentsOnCoordinator (
                  string const& dbname,
                  string const& collname,
+                 string const& returnType,
                  triagens::rest::HttpResponse::HttpResponseCode& responseCode,
                  string& contentType,
                  string& resultBody ) {
@@ -988,7 +989,7 @@ int getAllDocumentsOnCoordinator (
     res = cc->asyncRequest("", coordTransactionID, "shard:" + it->first,
                            triagens::rest::HttpRequest::HTTP_REQUEST_GET,
                            "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document?collection="+
-                           it->first, 0, false, headers, NULL, 3600.0);
+                           it->first + "&type=" + StringUtils::urlEncode(returnType), 0, false, headers, NULL, 3600.0);
     delete res;
   }
   // Now listen to the results:

@@ -169,7 +169,8 @@ namespace triagens {
 /// @brief read all documents, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool getAllDocumentsCoordinator (string const& collname);
+      bool getAllDocumentsCoordinator (string const& collname,
+                                       string const& returnType);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read a single document, coordinator case in a cluster
