@@ -36,6 +36,7 @@
 #include "BasicsC/tri-strings.h"
 #include "ShapedJson/shaped-json.h"
 
+#include "V8/V8StringConverter.h"
 #include "V8/v8-json.h"
 #include "V8/v8-utils.h"
 
@@ -53,7 +54,7 @@ static int FillShapeValueJson (TRI_shaper_t* shaper,
                                v8::Handle<v8::Value> const json,
                                size_t level,
                                set<int>& seenHashes,
-                               vector< v8::Handle<v8::Object>>& seenObjects,
+                               vector<v8::Handle<v8::Object>>& seenObjects,
                                bool create);
 
 static v8::Handle<v8::Value> JsonShapeData (v8::Handle<v8::Value>&,
@@ -270,7 +271,7 @@ static int FillShapeValueList (TRI_shaper_t* shaper,
                                v8::Handle<v8::Array> const json,
                                size_t level,
                                set<int>& seenHashes,
-                               vector< v8::Handle<v8::Object>>& seenObjects,
+                               vector<v8::Handle<v8::Object>>& seenObjects,
                                bool create) {
   size_t total;
 
@@ -583,7 +584,7 @@ static int FillShapeValueArray (TRI_shaper_t* shaper,
                                 v8::Handle<v8::Object> const json,
                                 size_t level,
                                 set<int>& seenHashes,
-                                vector< v8::Handle<v8::Object>>& seenObjects,
+                                vector<v8::Handle<v8::Object>>& seenObjects,
                                 bool create) {
   TRI_shape_value_t* values;
   TRI_shape_value_t* p;
@@ -838,7 +839,7 @@ static int FillShapeValueJson (TRI_shaper_t* shaper,
                                v8::Handle<v8::Value> const json,
                                size_t level,
                                set<int>& seenHashes,
-                               vector< v8::Handle<v8::Object>>& seenObjects,
+                               vector<v8::Handle<v8::Object>>& seenObjects,
                                bool create) {
   if (json->IsRegExp() || json->IsFunction() || json->IsExternal()) {
     LOG_TRACE("shaper failed because regexp/function/external/date object cannot be converted");
@@ -1594,7 +1595,7 @@ TRI_shaped_json_t* TRI_ShapedJsonV8Object (v8::Handle<v8::Value> const object,
                                            bool create) {
   TRI_shape_value_t dst;
   set<int> seenHashes;
-  vector< v8::Handle<v8::Object>> seenObjects;
+  vector<v8::Handle<v8::Object>> seenObjects;
 
   int res = FillShapeValueJson(shaper, &dst, object, 0, seenHashes, seenObjects, create);
 
@@ -1631,7 +1632,7 @@ int TRI_FillShapedJsonV8Object (v8::Handle<v8::Value> const object,
                                 bool create) {
   TRI_shape_value_t dst;
   set<int> seenHashes;
-  vector< v8::Handle<v8::Object>> seenObjects;
+  vector<v8::Handle<v8::Object>> seenObjects;
 
   int res = FillShapeValueJson(shaper, &dst, object, 0, seenHashes, seenObjects, create);
 
@@ -1647,6 +1648,104 @@ int TRI_FillShapedJsonV8Object (v8::Handle<v8::Value> const object,
   result->_data.data = dst._value;
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a V8 value to a json_t value,
+////////////////////////////////////////////////////////////////////////////////
+
+static bool ShapedJsonToJson (TRI_json_t* dst,
+                              triagens::utils::V8StringConverter& converter,
+                              v8::Handle<v8::Value> const parameter) {
+  if (parameter->IsBoolean()) {
+    v8::Handle<v8::Boolean> booleanParameter = parameter->ToBoolean();
+    TRI_InitBooleanJson(dst, booleanParameter->Value());
+    return true;
+  }
+  
+  if (parameter->IsNull()) {
+    TRI_InitNullJson(dst);
+    return true;
+  }
+
+  if (parameter->IsNumber()) {
+    v8::Handle<v8::Number> numberParameter = parameter->ToNumber();
+    TRI_InitNumberJson(dst, numberParameter->Value());
+    return true;
+  }
+  
+  if (parameter->IsString()) {
+    v8::Handle<v8::String> stringParameter = parameter->ToString();
+    if (converter.assign(stringParameter)) {
+      TRI_InitString2Json(dst, converter.steal(), converter.length());
+      // this passes ownership for the utf8 string to the JSON object
+      // so the converter dtor won't free the string now
+      return true;
+    }
+
+    // failed
+    TRI_InitNullJson(dst);
+    return false;
+  }
+  
+  if (parameter->IsArray()) {
+    v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
+    uint32_t const n = arrayParameter->Length();
+
+    TRI_InitList2Json(TRI_UNKNOWN_MEM_ZONE, dst, static_cast<size_t const>(n));
+    if (n > 0) {
+      if (dst->_value._objects._capacity < n) {
+        // initialisation failed
+        return false;
+      }
+    
+      TRI_json_t listElement;
+      for (uint32_t j = 0; j < n; ++j) {
+        if (! ShapedJsonToJson(&listElement, converter, arrayParameter->Get(j))) {
+          return false;
+        }
+        TRI_PushBack2ListJson(dst, &listElement);
+      }
+    }
+    return true;
+  }
+  
+  if (parameter->IsObject()) {
+    v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
+    v8::Handle<v8::Array> names = arrayParameter->GetOwnPropertyNames();
+    uint32_t const n = names->Length();
+
+    if (n > 0) {
+      TRI_InitArray2Json(TRI_UNKNOWN_MEM_ZONE, dst, static_cast<size_t const>(n));
+      if (dst->_value._objects._capacity < n * 2) {
+        // initialisation failed
+        return false;
+      }
+
+      TRI_json_t keyElement;
+      TRI_json_t valueElement;
+
+      for (uint32_t j = 0; j < n; ++j) {
+        v8::Handle<v8::Value> key = names->Get(j);
+        if (! ShapedJsonToJson(&valueElement, converter, arrayParameter->Get(key))) {
+          return false;
+        }
+
+        if (converter.assign(key)) {
+          // move the string pointer into the JSON object
+          TRI_InitString2Json(&keyElement, converter.steal(), converter.length());
+
+          TRI_PushBackVector(&dst->_value._objects, &keyElement);
+          TRI_PushBackVector(&dst->_value._objects, &valueElement);
+          // this passes ownership for the utf8 string to the JSON object
+        }
+      }
+    }
+
+    return true;
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1698,9 +1797,9 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
   
   if (parameter->IsArray()) {
     v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
-    const uint32_t n = arrayParameter->Length();
+    uint32_t const n = arrayParameter->Length();
 
-    TRI_json_t* listJson = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, (const size_t) n);
+    TRI_json_t* listJson = TRI_CreateList2Json(TRI_UNKNOWN_MEM_ZONE, static_cast<size_t const>(n));
 
     if (listJson != nullptr) {
       for (uint32_t j = 0; j < n; ++j) {
@@ -1811,9 +1910,35 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
 
 TRI_json_t* TRI_ObjectToJson (v8::Handle<v8::Value> const parameter) {
   set<int> seenHashes;
-  vector< v8::Handle<v8::Object>> seenObjects;
+  vector<v8::Handle<v8::Object>> seenObjects;
 
   return ObjectToJson(parameter, seenHashes, seenObjects);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a V8 object to a json_t value
+/// this function makes some assumption about the v8 object to achieve
+/// substantial speedups (in comparison to TRI_ObjectToJson)
+/// use for ShapedJson v8 objects only or for lists of ShapedJson v8 objects!
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_ShapedJsonToJson (v8::Handle<v8::Value> const parameter) {
+  triagens::utils::V8StringConverter converter(TRI_UNKNOWN_MEM_ZONE);
+
+  TRI_json_t* result = TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE);
+
+  if (result == nullptr) {
+    // OOM
+    return nullptr;
+  }
+
+  if (! ShapedJsonToJson(result, converter, parameter)) {
+    // something went wrong during JSON buildup
+    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, result);
+    return nullptr;
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
