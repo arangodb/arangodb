@@ -30,6 +30,15 @@ v2.2.3 (2014-XX-XX)
       ]
 
 
+* properly capitalize HTTP response header field names in case the `x-arango-async`
+  HTTP header was used in a request.
+
+* fixed several documentation issues
+
+* speedup for several general-graph functions, AQL functions starting with `GRAPH_`
+  and traversals
+
+
 v2.2.2 (2014-08-08)
 -------------------
 
