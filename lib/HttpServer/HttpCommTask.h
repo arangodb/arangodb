@@ -192,7 +192,7 @@ namespace triagens {
               // and create a request context for that request
               this->_request = this->_server->getHandlerFactory()->createRequest(this->_connectionInfo, this->_readBuffer->c_str(), this->_readPosition);
 
-              if (this->_request == 0) {
+              if (this->_request == nullptr) {
                 LOG_ERROR("cannot generate request");
                 // internal server error
                 HttpResponse response(HttpResponse::SERVER_ERROR, getCompatibility());
@@ -201,6 +201,8 @@ namespace triagens {
 
                 return true;
               }
+
+              TRI_ASSERT(this->_request != nullptr);
 
               // check HTTP protocol version
               _httpVersion = this->_request->httpVersion();
@@ -302,7 +304,7 @@ namespace triagens {
 
               Scheduler const* scheduler = this->_server->getScheduler();
 
-              if (scheduler != 0 && ! scheduler->isActive()) {
+              if (scheduler != nullptr && ! scheduler->isActive()) {
                 // server is inactive and will intentionally respond with HTTP 503
                 LOG_TRACE("cannot serve request - server is inactive");
                 HttpResponse response(HttpResponse::SERVICE_UNAVAILABLE, getCompatibility());
@@ -440,6 +442,8 @@ namespace triagens {
             this->_bodyPosition = 0;
             this->_bodyLength = 0;
 
+            auto const compatibility = this->_request->compatibility();
+
             // .............................................................................
             // authenticate
             // .............................................................................
@@ -454,7 +458,7 @@ namespace triagens {
               if (this->_requestType == HttpRequest::HTTP_REQUEST_OPTIONS) {
                 const string allowedMethods = "DELETE, GET, HEAD, PATCH, POST, PUT";
 
-                HttpResponse response(HttpResponse::OK, getCompatibility());
+                HttpResponse response(HttpResponse::OK, compatibility);
 
                 response.setHeader("allow", strlen("allow"), allowedMethods);
 
@@ -492,9 +496,9 @@ namespace triagens {
               HttpHandler* handler = this->_server->getHandlerFactory()->createHandler(this->_request);
               bool ok = false;
 
-              if (handler == 0) {
+              if (handler == nullptr) {
                 LOG_TRACE("no handler is known, giving up");
-                HttpResponse response(HttpResponse::NOT_FOUND, getCompatibility());
+                HttpResponse response(HttpResponse::NOT_FOUND, compatibility);
                 this->handleResponse(&response);
 
                 this->resetState();
@@ -514,6 +518,7 @@ namespace triagens {
                 if (found && (asyncExecution == "true" || asyncExecution == "store")) {
                   // we have an async request
 
+
 #ifdef TRI_ENABLE_FIGURES
 
                   RequestStatisticsAgentSetAsync(this);
@@ -521,7 +526,7 @@ namespace triagens {
 
                   this->RequestStatisticsAgent::transfer(handler);
 
-                  this->_request = 0;
+                  this->_request = nullptr;
 
                   uint64_t jobId = 0;
                   if (asyncExecution == "store") {
@@ -534,7 +539,7 @@ namespace triagens {
                   }
 
                   if (ok) {
-                    HttpResponse response(HttpResponse::ACCEPTED, getCompatibility());
+                    HttpResponse response(HttpResponse::ACCEPTED, compatibility);
 
                     if (jobId > 0) {
                       // return the job id we just created
@@ -550,13 +555,13 @@ namespace triagens {
                   // synchronous request
                   this->RequestStatisticsAgent::transfer(handler);
 
-                  this->_request = 0;
+                  this->_request = nullptr;
 
                   ok = this->_server->handleRequest(this, handler);
                 }
 
                 if (! ok) {
-                  HttpResponse response(HttpResponse::SERVER_ERROR, getCompatibility());
+                  HttpResponse response(HttpResponse::SERVER_ERROR, compatibility);
                   this->handleResponse(&response);
                 }
               }
@@ -564,7 +569,7 @@ namespace triagens {
 
             // not found
             else if (authResult == HttpResponse::NOT_FOUND) {
-              HttpResponse response(authResult, getCompatibility());
+              HttpResponse response(authResult, compatibility);
               response.setContentType("application/json; charset=utf-8");
 
               response.body().appendText("{\"error\":true,\"errorMessage\":\"")
@@ -581,7 +586,7 @@ namespace triagens {
 
             // forbidden
             else if (authResult == HttpResponse::FORBIDDEN) {
-              HttpResponse response(authResult, getCompatibility());
+              HttpResponse response(authResult, compatibility);
               response.setContentType("application/json; charset=utf-8");
 
               response.body().appendText("{\"error\":true,\"errorMessage\":\"change password\",\"code\":")
@@ -596,7 +601,7 @@ namespace triagens {
 
             // not authenticated
             else {
-              HttpResponse response(HttpResponse::UNAUTHORIZED, getCompatibility());
+              HttpResponse response(HttpResponse::UNAUTHORIZED, compatibility);
               const string realm = "basic realm=\"" + this->_server->getHandlerFactory()->authenticationRealm(this->_request) + "\"";
 
               if (sendWwwAuthenticateHeader()) {
@@ -763,7 +768,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int32_t getCompatibility () const {
-          if (this->_request != 0) {
+          if (this->_request != nullptr) {
             return this->_request->compatibility();
           }
 
