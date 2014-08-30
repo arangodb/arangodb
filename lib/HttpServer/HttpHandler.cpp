@@ -146,12 +146,11 @@ void HttpHandler::removePreviousResponse () {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpResponse* HttpHandler::createResponse (HttpResponse::HttpResponseCode code) {
-
   // avoid having multiple responses. this would be a memleak
   removePreviousResponse();
 
   int32_t apiCompatibility;
-  if (this->_request != 0) {
+  if (this->_request != nullptr) {
     apiCompatibility = this->_request->compatibility();
   }
   else {
