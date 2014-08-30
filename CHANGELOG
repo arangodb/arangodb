@@ -58,7 +58,7 @@ v2.3.0 (XXXX-XX-XX)
 * front-end: fetching and filtering of documents, statistics, and query operations are now
   handled with asynchronous ajax calls.
 
-* front-end: added process indicator if the front-end is waiting for a server operation.
+* front-end: added progress indicator if the front-end is waiting for a server operation.
 
 * front-end: fixed wrong count of documents in the documents view of a collection.
 
@@ -71,6 +71,47 @@ v2.3.0 (XXXX-XX-XX)
 * automatically call `toJSON` function of JavaScript objects (if present)
   when serializing them into database documents. This change allows
   storing JavaScript date objects in the database in a sensible manner.
+
+
+v2.2.3 (2014-XX-XX)
+-------------------
+
+* added `type` option for HTTP API `GET /_api/document?collection=...`
+
+  This allows controlling the type of results to be returned. By default, paths to
+  documents will be returned, e.g. 
+
+      [
+        `/_api/document/test/mykey1`,
+        `/_api/document/test/mykey2`,
+        ...
+      ]
+
+  To return a list of document ids instead of paths, the `type` URL parameter can be 
+  set to `id`:
+
+      [
+        `test/mykey1`,
+        `test/mykey2`,
+        ...
+      ]
+
+  To return a list of document keys only, the `type` URL parameter can be set to `key`:
+
+      [
+        `mykey1`,
+        `mykey2`,
+        ...
+      ]
+
+
+* propery capitalize HTTP response header field names in case the `x-arango-async`
+  HTTP header was used in a request.
+
+* fixed several documentation issues
+
+* speed up for several general-graph functions, AQL functions starting with `GRAPH_`
+  and traversals
 
 
 v2.2.2 (2014-08-08)

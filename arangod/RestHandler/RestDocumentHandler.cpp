@@ -682,9 +682,20 @@ bool RestDocumentHandler::getDocumentCoordinator (
 /// @RESTQUERYPARAM{collection,string,required}
 /// The name of the collection.
 ///
+/// @RESTQUERYPARAM{type,string,optional}
+/// The type of the result. The following values are allowed:
+///
+/// - *id*: returns a list of document ids (*_id* attributes)
+/// - *key*: returns a list of document keys (*_key* attributes)
+/// - *path*: returns a list of document URI paths. This is the default.
+///
 /// @RESTDESCRIPTION
-/// Returns a list of all URI for all documents from the collection identified
-/// by *collection*.
+/// Returns a list of all keys, ids, or URI paths for all documents in the 
+/// collection identified by *collection*. The type of the result list is
+/// determined by the *type* attribute.
+///
+/// Note that the results have no defined order and thus the order should
+/// not be relied on.
 ///
 /// @RESTRETURNCODES
 ///
@@ -696,9 +707,9 @@ bool RestDocumentHandler::getDocumentCoordinator (
 ///
 /// @EXAMPLES
 ///
-/// Returns a all ids.
+/// Returns all document paths
 ///
-/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerReadDocumentAll}
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerReadDocumentAllPath}
 ///     var cn = "products";
 ///     db._drop(cn);
 ///     db._create(cn);
@@ -707,6 +718,25 @@ bool RestDocumentHandler::getDocumentCoordinator (
 ///     db.products.save({"hello2":"world1"});
 ///     db.products.save({"hello3":"world1"});
 ///     var url = "/_api/document/?collection=" + cn;
+///
+///     var response = logCurlRequest('GET', url);
+///
+///     assert(response.code === 200);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Returns all document keys
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerReadDocumentAllKey}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+///
+///     db.products.save({"hello1":"world1"});
+///     db.products.save({"hello2":"world1"});
+///     db.products.save({"hello3":"world1"});
+///     var url = "/_api/document/?collection=" + cn + "&type=key";
 ///
 ///     var response = logCurlRequest('GET', url);
 ///
@@ -734,9 +764,14 @@ bool RestDocumentHandler::getDocumentCoordinator (
 bool RestDocumentHandler::readAllDocuments () {
   bool found;
   string collection = _request->value("collection", found);
+  string returnType = _request->value("type", found);
+
+  if (returnType.empty()) {
+    returnType = "path";
+  }
 
   if (ServerState::instance()->isCoordinator()) {
-    return getAllDocumentsCoordinator(collection);
+    return getAllDocumentsCoordinator(collection, returnType);
   }
 
   // find and load collection given by name or identifier
@@ -758,7 +793,7 @@ bool RestDocumentHandler::readAllDocuments () {
 
   res = trx.read(ids);
 
-  TRI_col_type_e typ = trx.documentCollection()->_info._type;
+  TRI_col_type_e type = trx.documentCollection()->_info._type;
 
   res = trx.finish(res);
 
@@ -776,17 +811,27 @@ bool RestDocumentHandler::readAllDocuments () {
 
   bool first = true;
   string prefix;
-  if (typ == TRI_COL_TYPE_EDGE) {
-    prefix = '"' + EDGE_PATH + '/' + trx.resolver()->getCollectionName(cid) + '/';
+
+  if (returnType == "key") {
+    prefix = '"';
+  }
+  else if (returnType == "id") {
+    prefix = '"' + trx.resolver()->getCollectionName(cid) + "\\/";
   }
   else {
-    prefix = '"' + DOCUMENT_PATH + '/' + trx.resolver()->getCollectionName(cid) + '/';
+    // default return type: paths to documents
+    if (type == TRI_COL_TYPE_EDGE) {
+      prefix = '"' + EDGE_PATH + '/' + trx.resolver()->getCollectionName(cid) + '/';
+    }
+    else {
+      prefix = '"' + DOCUMENT_PATH + '/' + trx.resolver()->getCollectionName(cid) + '/';
+    }
   }
 
-  for (vector<string>::const_iterator i = ids.begin();  i != ids.end();  ++i) {
+  for (auto id : ids) {
     // collection names do not need to be JSON-escaped
     // keys do not need to be JSON-escaped
-    result += prefix + (*i) + '"';
+    result += prefix + id + '"';
 
     if (first) {
       prefix = ",\n" + prefix;
@@ -809,8 +854,8 @@ bool RestDocumentHandler::readAllDocuments () {
 /// @brief reads a single a document, coordinator case in a cluster
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::getAllDocumentsCoordinator (
-                              string const& collname ) {
+bool RestDocumentHandler::getAllDocumentsCoordinator (string const& collname,
+                                                      string const& returnType) {
   string const& dbname = _request->databaseName();
 
   triagens::rest::HttpResponse::HttpResponseCode responseCode;
@@ -818,7 +863,7 @@ bool RestDocumentHandler::getAllDocumentsCoordinator (
   string resultBody;
 
   int error = triagens::arango::getAllDocumentsOnCoordinator(
-            dbname, collname, responseCode, contentType, resultBody);
+            dbname, collname, returnType, responseCode, contentType, resultBody);
 
   if (error != TRI_ERROR_NO_ERROR) {
     generateTransactionError(collname, error);
