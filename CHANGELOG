@@ -1,3 +1,35 @@
+v2.2.3 (2014-XX-XX)
+-------------------
+
+* added `type` option for HTTP API `GET /_api/document?collection=...`
+
+  This allows controlling the type of results to be returned. By default, paths to
+  documents will be returned, e.g. 
+
+      [
+        `/_api/document/test/mykey1`,
+        `/_api/document/test/mykey2`,
+        ...
+      ]
+
+  To return a list of document ids instead of paths, the `type` URL parameter can be 
+  set to `id`:
+
+      [
+        `test/mykey1`,
+        `test/mykey2`,
+        ...
+      ]
+
+  To return a list of document keys only, the `type` URL parameter can be set to `key`:
+
+      [
+        `mykey1`,
+        `mykey2`,
+        ...
+      ]
+
+
 v2.2.2 (2014-08-08)
 -------------------
 

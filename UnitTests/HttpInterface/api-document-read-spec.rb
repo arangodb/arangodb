@@ -325,11 +325,24 @@ describe ArangoDB do
       end
 
       it "get all documents of an empty collection" do
-        cmd = "/_api/document?collection=#{@cid}"
-
         # get documents
         cmd = "/_api/document?collection=#{@cid}"
         doc = ArangoDB.log_get("#{prefix}-all-0", cmd)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        documents = doc.parsed_response['documents']
+        documents.should be_kind_of(Array)
+        documents.length.should eq(0)
+
+        ArangoDB.size_collection(@cid).should eq(0)
+      end
+
+      it "get all documents of an empty collection, using type=id" do
+        # get documents
+        cmd = "/_api/document?collection=#{@cid}&type=id"
+        doc = ArangoDB.log_get("#{prefix}-all-type-id", cmd)
 
         doc.code.should eq(200)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
@@ -413,6 +426,68 @@ describe ArangoDB do
         end
 
         ArangoDB.size_collection(@cid).should eq(0)
+      end
+
+      it "create three documents and read them using the collection name, type=id" do
+        cmd = "/_api/document?collection=#{@cn}"
+
+        location = []
+
+        for i in [ 1, 2, 3 ]
+          body = "{ \"Hallo\" : \"World-#{i}\" }"
+          doc = ArangoDB.post(cmd, :body => body)
+
+          doc.code.should eq(201)
+
+          location.push(doc.headers['location'])
+        end
+
+        # get documents
+        cmd = "/_api/document?collection=#{@cn}&type=id"
+        doc = ArangoDB.log_get("#{prefix}-all-name", cmd)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        documents = doc.parsed_response['documents']
+        documents.should be_kind_of(Array)
+        documents.length.should eq(3)
+        
+        regex = Regexp.new('^' + @cn + '/\d+$');  
+        documents.each { |document|
+          document.should match(regex)
+        }
+      end
+
+      it "create three documents and read them using the collection name, type=key" do
+        cmd = "/_api/document?collection=#{@cn}"
+
+        location = []
+
+        for i in [ 1, 2, 3 ]
+          body = "{ \"Hallo\" : \"World-#{i}\" }"
+          doc = ArangoDB.post(cmd, :body => body)
+
+          doc.code.should eq(201)
+
+          location.push(doc.headers['location'])
+        end
+
+        # get documents
+        cmd = "/_api/document?collection=#{@cn}&type=key"
+        doc = ArangoDB.log_get("#{prefix}-all-name", cmd)
+
+        doc.code.should eq(200)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        documents = doc.parsed_response['documents']
+        documents.should be_kind_of(Array)
+        documents.length.should eq(3)
+        
+        regex = Regexp.new('^\d+$');  
+        documents.each { |document|
+          document.should match(regex)
+        }
       end
     end
 
