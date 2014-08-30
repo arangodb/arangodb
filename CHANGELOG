@@ -105,12 +105,12 @@ v2.2.3 (2014-XX-XX)
       ]
 
 
-* propery capitalize HTTP response header field names in case the `x-arango-async`
+* properly capitalize HTTP response header field names in case the `x-arango-async`
   HTTP header was used in a request.
 
 * fixed several documentation issues
 
-* speed up for several general-graph functions, AQL functions starting with `GRAPH_`
+* speedup for several general-graph functions, AQL functions starting with `GRAPH_`
   and traversals
 
 
