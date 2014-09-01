@@ -658,7 +658,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 int triagens::aql::useIndexRange (Optimizer* opt, 
                                   ExecutionPlan* plan, 
                                   Optimizer::Rule const* rule) {
-  opt->addPlan(plan, rule->level, false);
   
   std::vector<ExecutionNode*> nodes
     = plan->findNodesOfType(triagens::aql::ExecutionNode::FILTER, true);
@@ -670,6 +669,7 @@ int triagens::aql::useIndexRange (Optimizer* opt,
     FilterToEnumCollFinder finder(opt, plan, invars[0], rule->level);
     nn->walk(&finder);
   }
+  opt->addPlan(plan, rule->level, false);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -806,6 +806,9 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
   int                  _level;
 
   public:
+  bool                 planModified;
+
+
   sortToIndexNode (Optimizer* opt,
                    ExecutionPlan* plan,
                    sortAnalysis* Node,
@@ -814,6 +817,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
       _plan(plan),
       _sortNode(Node),
       _level(level) {
+    planModified = true;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -826,6 +830,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
 
     if (node->MatchesIndex(result.first)) {
       _sortNode->removeSortNodeFromPlan(_plan);
+      planModified = true;
     }
     return true;
   }
@@ -839,7 +844,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
     auto result = _sortNode->getAttrsForVariableName(variableName);
 
     if (result.first.size() == 0) {
-      return false; // we didn't find anything replaceable by indice
+      return true; // we didn't find anything replaceable by indice
     }
 
     for (auto idx: node->getIndicesOrdered(result.first)) {
@@ -921,6 +926,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
 int triagens::aql::useIndexForSort (Optimizer* opt, 
                                     ExecutionPlan* plan,
                                     Optimizer::Rule const* rule) {
+  bool planModified = false;
   std::vector<ExecutionNode*> nodes
     = plan->findNodesOfType(triagens::aql::ExecutionNode::SORT, true);
   for (auto n : nodes) {
@@ -929,10 +935,13 @@ int triagens::aql::useIndexForSort (Optimizer* opt,
     if (node.isAnalyzeable()) {
       sortToIndexNode finder(opt, plan, &node, rule->level);
       thisSortNode->walk(&finder);/// todo auf der dependency anfangen
+      if (finder.planModified) {
+        planModified = true;
+      }
     }
   }
  
-  opt->addPlan(plan, rule->level, false);
+  opt->addPlan(plan, rule->level, planModified);
 
   return TRI_ERROR_NO_ERROR;
 }
