@@ -150,7 +150,8 @@ exports.HELP = exports.createHelpHeadline("Help") +
   '                                                                   ' + "\n" +
   'Please note that all variables defined with the var keyword will   ' + "\n" +
   'disapper when the command is finished. To introduce variables that ' + "\n" +
-  'are persisting until the next command, omit the var keyword.       ' + "\n" : 
+  'are persisting until the next command, omit the var keyword.       ' + "\n\n" +
+  'Type \'tutorial\' for a tutorial or \'help\' to see common examples' :
   'To cancel the current prompt, press CTRL + d.                      ' + "\n");
 
 ////////////////////////////////////////////////////////////////////////////////

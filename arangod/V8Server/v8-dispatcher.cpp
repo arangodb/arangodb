@@ -357,7 +357,7 @@ static v8::Handle<v8::Value> JS_CreateNamedQueue (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "<options>.threads is missing");
   }
 
-  int nrThreads = TRI_ObjectToDouble(obj->Get(TRI_V8_SYMBOL("threads")));
+  int nrThreads = static_cast<int>(TRI_ObjectToInt64(obj->Get(TRI_V8_SYMBOL("threads"))));
 
   if (nrThreads < 1) {
     TRI_V8_EXCEPTION_PARAMETER(scope, "<options>.threads must be at least 1");
@@ -368,7 +368,7 @@ static v8::Handle<v8::Value> JS_CreateNamedQueue (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION_USAGE(scope, "<options>.size is missing");
   }
 
-  int size = TRI_ObjectToDouble(obj->Get(TRI_V8_SYMBOL("size")));
+  int size = static_cast<int>(TRI_ObjectToInt64(obj->Get(TRI_V8_SYMBOL("size"))));
 
   if (size < nrThreads) {
     TRI_V8_EXCEPTION_PARAMETER(scope, "<options>.size must be at least <options>.threads");
