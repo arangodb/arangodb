@@ -1,6 +1,6 @@
 {
     "swaggerVersion": "1.1", 
-    "apiVersion": "2.2.3-rc1", 
+    "apiVersion": "2.2.3", 
     "apis": [
         {
             "path": "api-docs/aqlfunction.{format}", 
