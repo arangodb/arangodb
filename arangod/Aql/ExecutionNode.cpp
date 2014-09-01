@@ -256,13 +256,14 @@ ExecutionNode::CompareIndex (TRI_index_t* idx,
                              ExecutionNode::IndexMatchVec& attrs)
 {
   IndexMatch match;
-  match.fullmatch = true;
   match.index = nullptr; // while null, this is a non-match.
 
-  if (idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX) {
+  if ((idx->_type != TRI_IDX_TYPE_SKIPLIST_INDEX) || (attrs.size() == 0)) {
     match.fullmatch = false;
     return match;
   }
+
+  match.fullmatch = idx->_fields._length == attrs.size();
 
   size_t interestingCount = 0;
   size_t j = 0;
