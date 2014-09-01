@@ -120,6 +120,12 @@ var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
 
 var Buffer = require("buffer").Buffer;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shell tutorial
+////////////////////////////////////////////////////////////////////////////////
+
+var tutorial = require("org/arangodb/tutorial");
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        initialise
 // -----------------------------------------------------------------------------
@@ -152,7 +158,7 @@ var Buffer = require("buffer").Buffer;
   if (internal.quiet !== true && ! special) {
     if (typeof internal.arango !== "undefined") {
       if (typeof internal.arango.isConnected !== "undefined" && internal.arango.isConnected()) {
-        internal.print("use 'help' to see common examples");
+        internal.print("Type 'tutorial' for a tutorial or 'help' to see common examples");
       }
     }
   }
