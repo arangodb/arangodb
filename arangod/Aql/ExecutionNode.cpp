@@ -263,7 +263,7 @@ ExecutionNode::CompareIndex (TRI_index_t* idx,
     return match;
   }
 
-  match.fullmatch = idx->_fields._length == attrs.size();
+  match.fullmatch = idx->_fields._length >= attrs.size();
 
   size_t interestingCount = 0;
   size_t j = 0;
