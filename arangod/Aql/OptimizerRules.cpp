@@ -787,13 +787,13 @@ public:
 /// @brief removes the sortNode and its referenced Calculationnodes from the plan.
 ////////////////////////////////////////////////////////////////////////////////
   void removeSortNodeFromPlan (ExecutionPlan *newPlan) {
-    newPlan->unlinkNode(newPlan->getNodeById(sortNodeID));
-
     for (auto idToRemove = _sortNodeData.begin();
          idToRemove != _sortNodeData.end();
          ++idToRemove) {
       newPlan->unlinkNode(newPlan->getNodeById((*idToRemove)->calculationNodeID));
     }
+
+    newPlan->unlinkNode(newPlan->getNodeById(sortNodeID));
   }
 };
 
