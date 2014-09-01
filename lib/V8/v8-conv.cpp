@@ -846,7 +846,7 @@ static int FillShapeValueJson (TRI_shaper_t* shaper,
     return TRI_ERROR_BAD_PARAMETER;
   }
   
-  if (json->IsObject()) {
+  if (json->IsObject() && ! json->IsArray()) {
     v8::Handle<v8::Object> o = json->ToObject();
     v8::Handle<v8::String> toJsonString = v8::String::New("toJSON");
     if (o->Has(toJsonString)) {
@@ -920,6 +920,8 @@ static int FillShapeValueJson (TRI_shaper_t* shaper,
   else if (json->IsObject()) {
     int res = FillShapeValueArray(shaper, dst, json->ToObject(), level, seenHashes, seenObjects, create);
     seenObjects.pop_back();
+    // cannot remove hash value from seenHashes because multiple objects might have the same
+    // hash values (collisions)
     return res;
   }
 
@@ -1761,7 +1763,7 @@ static bool ShapedJsonToJson (TRI_json_t* dst,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a V8 value to a json_t value
+/// @brief convert a V8 value to a TRI_json_t value
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
@@ -1831,7 +1833,7 @@ static TRI_json_t* ObjectToJson (v8::Handle<v8::Value> const parameter,
     return nullptr;
   }
 
-  if (parameter->IsObject()) {
+  if (parameter->IsObject() && ! parameter->IsArray()) {
     v8::Handle<v8::Object> o = parameter->ToObject();
 
     // first check if the object has a "toJSON" function
