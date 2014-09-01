@@ -355,6 +355,7 @@ namespace triagens {
         double getCost () {
           if (_estimatedCost == 0.0) {
             _estimatedCost = estimateCost();
+            TRI_ASSERT(_estimatedCost >= 0.0);
           }
           return _estimatedCost;
         };
