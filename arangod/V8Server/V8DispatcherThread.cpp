@@ -38,7 +38,7 @@ using namespace triagens::arango;
 /// @brief constructs a dispatcher thread
 ////////////////////////////////////////////////////////////////////////////////
 
-V8DispatcherThread::V8DispatcherThread (rest::DispatcherQueue* queue, const char* data)
+V8DispatcherThread::V8DispatcherThread (triagens::rest::DispatcherQueue* queue, const char* data)
   : DispatcherThread(queue) {
 }
 
