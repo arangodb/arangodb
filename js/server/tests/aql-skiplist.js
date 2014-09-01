@@ -55,6 +55,7 @@ function ahuacatlSkiplistTestSuite () {
       }
 
       skiplist.ensureSkiplist("a", "b");
+//      skiplist.ensureSkiplist("a");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -151,6 +152,50 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test the first skiplist index - optimizer should remove sort.
+////////////////////////////////////////////////////////////////////////////////
+
+    testEqSingle5 : function () {
+      var query = "FOR v IN " + skiplist.name() + " FILTER v.a == 1 SORT v.a, v.b RETURN [ v.a, v.b ]";
+      var expected = [ [ 1, 1 ], [ 1, 2 ], [ 1, 3 ], [ 1, 4 ], [ 1, 5 ] ];
+      var actual = getQueryResults(query);
+
+      assertEqual(expected, actual);
+      
+      var explain = getQueryExplanation(query);
+      assertEqual("for", explain[0].type);
+      assertEqual("all", explain[0].expression.extra.accessType);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test the first skiplist index - optimizer should remove sort.
+////////////////////////////////////////////////////////////////////////////////
+/* todo: this does not trigger use-index-range!
+    testEqSingle6 : function () {
+      var query = "FOR v IN " + skiplist.name() + " FILTER v.a >= 4 SORT v.a RETURN [ v.a ]";
+      var expected = [ [ 1 ], [ 1 ], [ 1 ], [ 1 ], [ 1 ] ];
+      var actual = getQueryResults(query);
+
+      assertEqual(expected, actual);
+      
+      var explain = getQueryExplanation(query);
+      assertEqual("for", explain[0].type);
+      assertEqual("all", explain[0].expression.extra.accessType);
+    },
+    testEqSingle7: function () {
+      var query = "FOR v IN " + skiplist.name() + " FILTER v.a >= 4 && v.a < 10 SORT v.a RETURN [ v.a ]";
+      var expected = [ [ 1 ], [ 1 ], [ 1 ], [ 1 ], [ 1 ] ];
+      var actual = getQueryResults(query);
+
+      assertEqual(expected, actual);
+      
+      var explain = getQueryExplanation(query);
+      assertEqual("for", explain[0].type);
+      assertEqual("all", explain[0].expression.extra.accessType);
+    },
+//*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the first skiplist index field with greater than 
