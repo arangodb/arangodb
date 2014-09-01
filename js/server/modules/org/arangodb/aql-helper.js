@@ -349,6 +349,82 @@ function assertQueryError2 (errorCode, query, bindVars) {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a linearized version of an execution plan
+////////////////////////////////////////////////////////////////////////////////
+
+function getLinearizedPlan (explainResult) {
+  var nodes = explainResult.plan.nodes, i;
+  var lookup = { }, deps = { };
+
+  for (i = 0; i < nodes.length; ++i) {
+    var node = nodes[i];
+    lookup[node.id] = node;
+    var dependency = -1;
+    if (node.dependencies.length > 0) {
+      dependency = node.dependencies[0];
+    }
+    deps[dependency] = node.id;
+  }
+
+  var current = -1;
+  var out = [ ];
+  while (true) {
+    if (! deps.hasOwnProperty(current)) {
+      break;
+    }
+
+    var n = lookup[deps[current]];
+    current = n.id;
+    out.push(n);
+  }
+
+  return out;
+}
+
+function getCompactPlan (explainResult) {
+  var out = [ ];
+
+  function buildExpression (node) {
+    var out = node.type;
+    if (node.hasOwnProperty("name")) {
+      out += "[" + node.name + "]";
+    }
+    if (node.hasOwnProperty("value")) {
+      out += "[" + node.value + "]";
+    }
+
+    if (Array.isArray(node.subNodes)) {
+      out += "(";
+      node.subNodes.forEach(function (node, i) {
+        if (i > 0) {
+          out += ", ";
+        }
+
+        out += buildExpression(node);
+      });
+
+      out += ")";
+    }
+    return out;
+  }
+
+  getLinearizedPlan(explainResult).forEach(function (node) {
+    var data = { type: node.type };
+
+    if (node.expression) {
+      data.expression = buildExpression(node.expression);
+    }
+    if (node.outVariable) {
+      data.outVariable = node.outVariable.name;
+    }
+
+    out.push(data);
+  });
+
+  return out;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    module exports
 // -----------------------------------------------------------------------------
@@ -363,6 +439,8 @@ exports.getQueryResults2      = getQueryResults2;
 exports.getQueryResultsAQL2   = getQueryResultsAQL2;
 exports.assertQueryError      = assertQueryError;
 exports.assertQueryError2     = assertQueryError2;
+exports.getLinearizedPlan     = getLinearizedPlan;
+exports.getCompactPlan        = getCompactPlan;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
