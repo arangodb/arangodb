@@ -650,7 +650,10 @@
       database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
 
       task: function () {
-        return createSystemCollection("_users", { waitForSync : true, shardKeys: [ "user" ] });
+        return createSystemCollection("_users", { 
+          waitForSync : true, 
+          shardKeys: [ "user" ] 
+        });
       }
     });
 
@@ -1237,7 +1240,7 @@
       task: function () {
         var name = "_configuration";
         var result = createSystemCollection(name, {
-          waitForSync: true,
+          waitForSync: false,
           journalSize: 1024 * 1024
         });
 
