@@ -133,6 +133,7 @@ void AqlItemBlock::clearRegisters (std::unordered_set<RegisterId>& toClear) {
           if (--it->second == 0) {
             try {
               _valueCount.erase(it);
+              a.destroy();
             }
             catch (...) {
               it->second++;
