@@ -117,19 +117,18 @@ function optimizerRuleTestSuite() {
 /// @brief test that rule has no effect
 ////////////////////////////////////////////////////////////////////////////////
     testRuleNoEffect : function () {
-/*          
+/*
       var queries = [ 
-          "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a RETURN v.a"
-        "FOR i IN 1..10 FILTER i == 1 RETURN i",
-        "FOR i IN 1..10 LET a = 25 + i RETURN i",
-        "LET values = 1..10 FOR i IN values LET a = i + 1 FOR j IN values LET b = j + 2 RETURN i",
-        "FOR i IN 1..10 FILTER i == 7 COLLECT x = i LET y = x RETURN y"
+          "FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]",
+          "FOR v IN " + colName + " SORT v.b DESC RETURN [v.a, v.b]",
+          "FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]"
       ];
 
       queries.forEach(function(query) {
-        require("internal").print(query);
-        var result = AQL_EXPLAIN(query, { }, { optimizer: { rules: [ "-all", "+" + ruleName ] } });
-        assertEqual([ ], result.plan.rules, query);
+//          require("internal").print(query);
+          var result = AQL_EXPLAIN(query, { }, paramIFS);
+//          require("internal").print(result);
+          assertEqual([ ], result.plan.rules, query);
       });
 */
     },
@@ -156,6 +155,58 @@ function optimizerRuleTestSuite() {
 */
     },
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test generated plans
+////////////////////////////////////////////////////////////////////////////////
+
+    testPlans : function () {
+/*
+      var plans = [ 
+        [ "FOR i IN 1..10 LET a = 1 RETURN i", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "ReturnNode" ] ],
+        [ "FOR i IN 1..10 FILTER i == 1 LET a = 1 RETURN i", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "ReturnNode"  ] ]
+      ];
+
+      plans.forEach(function(plan) {
+        var result = AQL_EXPLAIN(plan[0], { }, { optimizer: { rules: [ "-all", "+" + ruleName ] } });
+        assertEqual([ ruleName ], result.plan.rules, plan[0]);
+        assertEqual(plan[1], helper.getCompactPlan(result).map(function(node) { return node.type; }), plan[0]);
+      });
+*/
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test results
+////////////////////////////////////////////////////////////////////////////////
+
+    testResults : function () {
+/*
+      var queries = [ 
+        [ "FOR i IN 1..10 LET a = 1 RETURN i", [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
+        [ "FOR i IN 1..10 LET a = 1 RETURN a", [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ] ],
+        [ "FOR i IN 1..10 FILTER i == 1 LET a = 1 RETURN i", [ 1 ] ],
+        [ "FOR i IN 1..10 FILTER i == 1 LET a = 1 RETURN a", [ 1 ] ],
+      ];
+
+      queries.forEach(function(query) {
+        var planDisabled   = AQL_EXPLAIN(query[0], { }, { optimizer: { rules: [ "+all", "-" + ruleName ] } });
+        var planEnabled    = AQL_EXPLAIN(query[0], { }, { optimizer: { rules: [ "-all", "+" + ruleName ] } });
+
+        var resultDisabled = AQL_EXECUTE(query[0], { }, { optimizer: { rules: [ "+all", "-" + ruleName ] } });
+        var resultEnabled  = AQL_EXECUTE(query[0], { }, { optimizer: { rules: [ "-all", "+" + ruleName ] } });
+
+        assertTrue(planDisabled.plan.rules.indexOf(ruleName) === -1, query[0]);
+        assertTrue(planEnabled.plan.rules.indexOf(ruleName) !== -1, query[0]);
+
+        assertEqual(resultDisabled.json, query[1], query[0]);
+        assertEqual(resultEnabled.json, query[1], query[0]);
+      });
+*/
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief this sort is replaceable by an index.
+////////////////////////////////////////////////////////////////////////////////
       testSortIndexable: function () {
 
           var query = "FOR v IN " + colName + " SORT v.a RETURN [v.a, v.b]";
@@ -184,6 +235,9 @@ function optimizerRuleTestSuite() {
 
       },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief todo - weg.
+////////////////////////////////////////////////////////////////////////////////
       testSortNonIndexable1: function () {
 
           var query = "FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]";
@@ -393,56 +447,7 @@ function optimizerRuleTestSuite() {
               assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + "is Equal?");
           }
 
-      },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test generated plans
-////////////////////////////////////////////////////////////////////////////////
-
-    testPlans : function () {
-/*
-      var plans = [ 
-        [ "FOR i IN 1..10 LET a = 1 RETURN i", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "ReturnNode" ] ],
-        [ "FOR i IN 1..10 FILTER i == 1 LET a = 1 RETURN i", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "ReturnNode"  ] ]
-      ];
-
-      plans.forEach(function(plan) {
-        var result = AQL_EXPLAIN(plan[0], { }, { optimizer: { rules: [ "-all", "+" + ruleName ] } });
-        assertEqual([ ruleName ], result.plan.rules, plan[0]);
-        assertEqual(plan[1], helper.getCompactPlan(result).map(function(node) { return node.type; }), plan[0]);
-      });
-*/
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test results
-////////////////////////////////////////////////////////////////////////////////
-
-    testResults : function () {
-/*
-      var queries = [ 
-        [ "FOR i IN 1..10 LET a = 1 RETURN i", [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
-        [ "FOR i IN 1..10 LET a = 1 RETURN a", [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ] ],
-        [ "FOR i IN 1..10 FILTER i == 1 LET a = 1 RETURN i", [ 1 ] ],
-        [ "FOR i IN 1..10 FILTER i == 1 LET a = 1 RETURN a", [ 1 ] ],
-      ];
-
-      queries.forEach(function(query) {
-        var planDisabled   = AQL_EXPLAIN(query[0], { }, { optimizer: { rules: [ "+all", "-" + ruleName ] } });
-        var planEnabled    = AQL_EXPLAIN(query[0], { }, { optimizer: { rules: [ "-all", "+" + ruleName ] } });
-
-        var resultDisabled = AQL_EXECUTE(query[0], { }, { optimizer: { rules: [ "+all", "-" + ruleName ] } });
-        var resultEnabled  = AQL_EXECUTE(query[0], { }, { optimizer: { rules: [ "-all", "+" + ruleName ] } });
-
-        assertTrue(planDisabled.plan.rules.indexOf(ruleName) === -1, query[0]);
-        assertTrue(planEnabled.plan.rules.indexOf(ruleName) !== -1, query[0]);
-
-        assertEqual(resultDisabled.json, query[1], query[0]);
-        assertEqual(resultEnabled.json, query[1], query[0]);
-      });
-*/
-    }
-
+      }
 
   };
 }
