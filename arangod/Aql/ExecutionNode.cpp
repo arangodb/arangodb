@@ -583,11 +583,12 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
   TRI_json_t* idxJson = _index->json(_index);
   if (idxJson != nullptr) {
     try {
-      json.set("index", Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson)));
+      TRI_json_t* copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, idxJson);
+      json.set("index", Json(TRI_UNKNOWN_MEM_ZONE, copy));
     }
     catch (...) {
     }
-    TRI_Free(TRI_CORE_MEM_ZONE, idxJson);
+    TRI_FreeJson(TRI_CORE_MEM_ZONE, idxJson);
   }
 
   // And add it:
