@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require, exports, Graph, ArangoClusterComm, arguments */
+/*global require, exports, ArangoClusterComm */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
