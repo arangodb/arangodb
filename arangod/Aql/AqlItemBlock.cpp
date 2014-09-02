@@ -110,7 +110,21 @@ void AqlItemBlock::shrink (size_t nrItems) {
   // erase all stored values in the region that we freed
   for (size_t i = nrItems; i < _nrItems; ++i) {
     for (RegisterId j = 0; j < _nrRegs; ++j) {
-      eraseValue(i, j);
+      AqlValue& a(_data[_nrRegs * i + j]);
+      if (! a.isEmpty()) {
+        auto it = _valueCount.find(a);
+        if (it != _valueCount.end()) {
+          if (--it->second == 0) {
+            a.destroy();
+            try {
+              _valueCount.erase(it);
+            }
+            catch (...) {
+            }
+          }
+        }
+        a.erase();
+      }
     }
   }
 
@@ -131,13 +145,11 @@ void AqlItemBlock::clearRegisters (std::unordered_set<RegisterId>& toClear) {
         auto it = _valueCount.find(a);
         if (it != _valueCount.end()) {
           if (--it->second == 0) {
+            a.destroy();
             try {
               _valueCount.erase(it);
-              a.destroy();
             }
             catch (...) {
-              it->second++;
-              throw;
             }
           }
         }

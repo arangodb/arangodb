@@ -184,7 +184,8 @@ void Expression::analyzeExpression () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief execute an expression of type SIMPLE
+/// @brief execute an expression of type SIMPLE, the convention is that
+/// the resulting AqlValue will be destroyed outside eventually
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::executeSimpleExpression (AstNode const* node,
@@ -207,6 +208,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
 
     auto j = result.extractArrayMember(trx, myCollection, name);
+    result.destroy();
     return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
   }
   
@@ -228,6 +230,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     if (result.isList()) {
       if (index->isNumericValue()) {
         auto j = result.extractListMember(trx, myCollection, index->getIntValue());
+        result.destroy();
         return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
       }
       else if (index->isStringValue()) {
@@ -238,6 +241,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
           // stoll() might throw an exception if the string is not a number
           int64_t position = static_cast<int64_t>(std::stoll(p));
           auto j = result.extractListMember(trx, myCollection, position);
+          result.destroy();
           return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
         }
         catch (...) {
@@ -250,6 +254,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
       if (index->isNumericValue()) {
         std::string const indexString = std::to_string(index->getIntValue());
         auto j = result.extractArrayMember(trx, myCollection, indexString.c_str());
+        result.destroy();
         return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
       }
       else if (index->isStringValue()) {
@@ -257,10 +262,12 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         TRI_ASSERT(p != nullptr);
 
         auto j = result.extractArrayMember(trx, myCollection, p);
+        result.destroy();
         return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
       }
       // fall-through to returning null
     }
+    result.destroy();
       
     return AqlValue(new Json(Json::Null));
   }
@@ -276,6 +283,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
 
         AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
         list->add(result.toJson(trx, myCollection));
+        result.destroy();
       }
       return AqlValue(list);
     }
@@ -300,6 +308,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
 
         AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
         resultArray->set(key, result.toJson(trx, myCollection));
+        result.destroy();
       }
       return AqlValue(resultArray);
     }
@@ -344,7 +353,9 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     auto member = node->getMember(0);
     AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
 
-    return func->implementation(trx, myCollection, result);
+    auto res2 = func->implementation(trx, myCollection, result);
+    result.destroy();
+    return res2;
   }
   
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unhandled type in simple expression");
