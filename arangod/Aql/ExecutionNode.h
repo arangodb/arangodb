@@ -107,6 +107,7 @@ namespace triagens {
         ExecutionNode (size_t id)
           : _id(id), 
             _estimatedCost(0.0), 
+            _estimatedCostSet(false),
             _varUsageValid(false) {
         }
 
@@ -353,8 +354,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double getCost () {
-          if (_estimatedCost == 0.0) {
+          if (! _estimatedCostSet) {
             _estimatedCost = estimateCost();
+            _estimatedCostSet = true;
             TRI_ASSERT(_estimatedCost >= 0.0);
           }
           return _estimatedCost;
@@ -517,10 +519,12 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _estimatedCost = 0 if uninitialised and otherwise stores the result
-/// of estimateCost()
+/// of estimateCost(), the bool indicates if the cost has been set, it starts
+/// out as false
 ////////////////////////////////////////////////////////////////////////////////
 
         double _estimatedCost;
+        bool _estimatedCostSet;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _varsUsedLater and _varsValid, the former contains those
@@ -1525,7 +1529,12 @@ namespace triagens {
         
         double estimateCost () {
           double depCost = _dependencies.at(0)->getCost();
-          return log(depCost) * depCost;
+          if (depCost <= 2.0) {
+            return depCost;
+          }
+          else {
+            return log(depCost) * depCost;
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
