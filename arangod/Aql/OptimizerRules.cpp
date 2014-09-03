@@ -817,7 +817,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
       _plan(plan),
       _sortNode(Node),
       _level(level) {
-    planModified = true;
+    planModified = false;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
