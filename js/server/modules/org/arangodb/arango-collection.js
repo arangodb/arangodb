@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
+/*jshint strict: false */
 /*global ArangoClusterComm, ArangoClusterInfo, require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,14 +117,14 @@ ArangoCollection.prototype.truncate = function () {
     var shards = cluster.shardList(dbName, this.name());
     var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
-      
+
     shards.forEach(function (shard) {
-      ArangoClusterComm.asyncRequest("put", 
-                                     "shard:" + shard, 
-                                     dbName, 
+      ArangoClusterComm.asyncRequest("put",
+                                     "shard:" + shard,
+                                     dbName,
                                      "/_api/collection/" + encodeURIComponent(shard) + "/truncate",
-                                     "", 
-                                     { }, 
+                                     "",
+                                     { },
                                      options);
     });
 
@@ -159,7 +159,7 @@ ArangoCollection.prototype.truncate = function () {
 ArangoCollection.prototype.index = function (id) {
   var indexes = this.getIndexes();
   var i;
-  
+
   if (typeof id === "object" && id.hasOwnProperty("id")) {
     id = id.id;
   }
@@ -183,7 +183,7 @@ ArangoCollection.prototype.index = function (id) {
       return index;
     }
   }
-  
+
   var err = new ArangoError();
   err.errorNum = internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code;
   err.errorMessage = internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.message;
@@ -207,24 +207,24 @@ function getEdges (collection, vertex, direction) {
     var shards = cluster.shardList(dbName, collection.name());
     var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
-     
+
     if (vertex !== null &&
-        typeof vertex === "object" && 
+        typeof vertex === "object" &&
         vertex.hasOwnProperty("_id")) {
       vertex = vertex._id;
     }
- 
+
     shards.forEach(function (shard) {
       var url = "/_api/edges/" + encodeURIComponent(shard) +
-                "?direction=" + encodeURIComponent(direction) + 
+                "?direction=" + encodeURIComponent(direction) +
                 "&vertex=" + encodeURIComponent(vertex);
 
-      ArangoClusterComm.asyncRequest("get", 
-                                     "shard:" + shard, 
-                                     dbName, 
+      ArangoClusterComm.asyncRequest("get",
+                                     "shard:" + shard,
+                                     dbName,
                                      url,
                                      "",
-                                     { }, 
+                                     { },
                                      options);
     });
 
@@ -233,7 +233,7 @@ function getEdges (collection, vertex, direction) {
 
     for (i = 0; i < results.length; ++i) {
       var body = JSON.parse(results[i].body);
-     
+
       edges = edges.concat(body.edges);
     }
 
@@ -246,7 +246,7 @@ function getEdges (collection, vertex, direction) {
   if (direction === "out") {
     return collection.OUTEDGES(vertex);
   }
-  
+
   return collection.EDGES(vertex);
 }
 
@@ -310,16 +310,16 @@ ArangoCollection.prototype.any = function () {
     var shards = cluster.shardList(dbName, this.name());
     var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
-      
+
     shards.forEach(function (shard) {
-      ArangoClusterComm.asyncRequest("put", 
-                                     "shard:" + shard, 
-                                     dbName, 
-                                     "/_api/simple/any", 
-                                     JSON.stringify({ 
-                                       collection: shard 
-                                     }), 
-                                     { }, 
+      ArangoClusterComm.asyncRequest("put",
+                                     "shard:" + shard,
+                                     dbName,
+                                     "/_api/simple/any",
+                                     JSON.stringify({
+                                       collection: shard
+                                     }),
+                                     { },
                                      options);
     });
 
@@ -343,18 +343,18 @@ ArangoCollection.prototype.any = function () {
 /// @startDocuBlock documentsCollectionFirst
 /// `collection.first(count)`
 ///
-/// The *first* method returns the n first documents from the collection, in 
-/// order of document insertion/update time. 
+/// The *first* method returns the n first documents from the collection, in
+/// order of document insertion/update time.
 ///
 /// If called with the *count* argument, the result is a list of up to
 /// *count* documents. If *count* is bigger than the number of documents
 /// in the collection, then the result will contain as many documents as there
 /// are in the collection.
-/// The result list is ordered, with the "oldest" documents being positioned at 
+/// The result list is ordered, with the "oldest" documents being positioned at
 /// the beginning of the result list.
 ///
 /// When called without an argument, the result is the first document from the
-/// collection. If the collection does not contain any documents, the result 
+/// collection. If the collection does not contain any documents, the result
 /// returned is *null*.
 ///
 /// **Note**: this method is not supported in sharded collections with more than
@@ -398,15 +398,15 @@ ArangoCollection.prototype.first = function (count) {
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
     var shard = shards[0];
 
-    ArangoClusterComm.asyncRequest("put", 
-                                   "shard:" + shard, 
-                                   dbName, 
-                                   "/_api/simple/first", 
-                                   JSON.stringify({ 
+    ArangoClusterComm.asyncRequest("put",
+                                   "shard:" + shard,
+                                   dbName,
+                                   "/_api/simple/first",
+                                   JSON.stringify({
                                      collection: shard,
-                                     count: count 
-                                   }), 
-                                   { }, 
+                                     count: count
+                                   }),
+                                   { },
                                    options);
 
     var results = cluster.wait(coord, shards);
@@ -418,7 +418,7 @@ ArangoCollection.prototype.first = function (count) {
   }
   else {
     return this.FIRST(count);
-  } 
+  }
 
   return null;
 };
@@ -430,18 +430,18 @@ ArangoCollection.prototype.first = function (count) {
 /// @startDocuBlock documentsCollectionLast
 /// `collection.last(count)`
 ///
-/// The *last* method returns the n last documents from the collection, in 
-/// order of document insertion/update time. 
+/// The *last* method returns the n last documents from the collection, in
+/// order of document insertion/update time.
 ///
 /// If called with the *count* argument, the result is a list of up to
 /// *count* documents. If *count* is bigger than the number of documents
 /// in the collection, then the result will contain as many documents as there
 /// are in the collection.
-/// The result list is ordered, with the "latest" documents being positioned at 
+/// The result list is ordered, with the "latest" documents being positioned at
 /// the beginning of the result list.
 ///
 /// When called without an argument, the result is the last document from the
-/// collection. If the collection does not contain any documents, the result 
+/// collection. If the collection does not contain any documents, the result
 /// returned is *null*.
 ///
 /// **Note**: this method is not supported in sharded collections with more than
@@ -486,15 +486,15 @@ ArangoCollection.prototype.last = function (count) {
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
     var shard = shards[0];
 
-    ArangoClusterComm.asyncRequest("put", 
-                                   "shard:" + shard, 
-                                   dbName, 
-                                   "/_api/simple/last", 
-                                   JSON.stringify({ 
+    ArangoClusterComm.asyncRequest("put",
+                                   "shard:" + shard,
+                                   dbName,
+                                   "/_api/simple/last",
+                                   JSON.stringify({
                                      collection: shard,
-                                     count: count 
-                                   }), 
-                                   { }, 
+                                     count: count
+                                   }),
+                                   { },
                                    options);
 
     var results = cluster.wait(coord, shards);
@@ -508,7 +508,7 @@ ArangoCollection.prototype.last = function (count) {
     return this.LAST(count);
   }
 
-  return null; 
+  return null;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -517,8 +517,8 @@ ArangoCollection.prototype.last = function (count) {
 /// @startDocuBlock collectionFirstExample
 /// `collection.firstExample(example)`
 ///
-/// Returns the first document of a collection that matches the specified 
-/// example or *null*. The example must be specified as paths and values. 
+/// Returns the first document of a collection that matches the specified
+/// example or *null*. The example must be specified as paths and values.
 /// See *byExample* for details.
 ///
 /// `collection.firstExample(path1, value1, ...)`
@@ -569,7 +569,7 @@ ArangoCollection.prototype.firstExample = function (example) {
 /// @brief removes documents matching an example
 /// @param example a json object which is used as sample for finding docs that
 ///        this example matches
-/// @param waitForSync (optional) a boolean value or a json object 
+/// @param waitForSync (optional) a boolean value or a json object
 /// @param limit (optional) an integer value, the max number of to deleting docs
 /// @example remove("{a : 1 }")
 /// @example remove("{a : 1 }", true)
@@ -579,8 +579,8 @@ ArangoCollection.prototype.firstExample = function (example) {
 ///         is given
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.removeByExample = function (example, 
-                                                       waitForSync, 
+ArangoCollection.prototype.removeByExample = function (example,
+                                                       waitForSync,
                                                        limit) {
   if (limit === 0) {
     return 0;
@@ -592,8 +592,7 @@ ArangoCollection.prototype.removeByExample = function (example,
     var tmp_options = waitForSync === null ? {} : waitForSync;
     // avoiding jslint error
     // see: http://jslinterrors.com/unexpected-sync-method-a/
-    /*jslint node: true, stupid: true */
-    waitForSync = tmp_options.waitForSync;
+        waitForSync = tmp_options.waitForSync;
     limit = tmp_options.limit;
   }
   var cluster = require("org/arangodb/cluster");
@@ -603,7 +602,7 @@ ArangoCollection.prototype.removeByExample = function (example,
     var shards = cluster.shardList(dbName, this.name());
     var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
-    
+
     if (limit > 0 && shards.length > 1) {
       var err = new ArangoError();
       err.errorNum = internal.errors.ERROR_CLUSTER_UNSUPPORTED.code;
@@ -611,19 +610,19 @@ ArangoCollection.prototype.removeByExample = function (example,
 
       throw err;
     }
-      
+
     shards.forEach(function (shard) {
-      ArangoClusterComm.asyncRequest("put", 
-                                     "shard:" + shard, 
-                                     dbName, 
-                                     "/_api/simple/remove-by-example", 
-                                     JSON.stringify({ 
+      ArangoClusterComm.asyncRequest("put",
+                                     "shard:" + shard,
+                                     dbName,
+                                     "/_api/simple/remove-by-example",
+                                     JSON.stringify({
                                        collection: shard,
                                        example: example,
                                        waitForSync: waitForSync,
                                        limit: limit || undefined
-                                     }), 
-                                     { }, 
+                                     }),
+                                     { },
                                      options);
     });
 
@@ -637,7 +636,7 @@ ArangoCollection.prototype.removeByExample = function (example,
 
     return deleted;
   }
-    
+
   return require("internal").db._executeTransaction({
     collections: {
       write: this.name()
@@ -670,19 +669,19 @@ ArangoCollection.prototype.removeByExample = function (example,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces documents matching an example
-/// @param example the json object for finding documents which matches this 
+/// @param example the json object for finding documents which matches this
 ///        example
 /// @param newValue the json object which replaces the matched documents
-/// @param waitForSync (optional) a boolean value or a json object which 
+/// @param waitForSync (optional) a boolean value or a json object which
 ///        contains the options
 /// @param limit (optional) an integer value, the max number of to deleting docs
-/// @throws "too many parameters" when waitForSync is a json object and limit 
+/// @throws "too many parameters" when waitForSync is a json object and limit
 ///        was given
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.replaceByExample = function (example, 
-                                                        newValue, 
-                                                        waitForSync, 
+ArangoCollection.prototype.replaceByExample = function (example,
+                                                        newValue,
+                                                        waitForSync,
                                                         limit) {
   if (limit === 0) {
     return 0;
@@ -703,8 +702,7 @@ ArangoCollection.prototype.replaceByExample = function (example,
     var tmp_options = waitForSync === null ? {} : waitForSync;
     // avoiding jslint error
     // see: http://jslinterrors.com/unexpected-sync-method-a/
-    /*jslint node: true, stupid: true */
-    waitForSync = tmp_options.waitForSync;
+        waitForSync = tmp_options.waitForSync;
     limit = tmp_options.limit;
   }
 
@@ -715,28 +713,28 @@ ArangoCollection.prototype.replaceByExample = function (example,
     var shards = cluster.shardList(dbName, this.name());
     var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
-    
+
     if (limit > 0 && shards.length > 1) {
       var err2 = new ArangoError();
       err2.errorNum = internal.errors.ERROR_CLUSTER_UNSUPPORTED.code;
-      err2.errorMessage = "limit is not supported in sharded collections"; 
+      err2.errorMessage = "limit is not supported in sharded collections";
 
       throw err2;
     }
 
     shards.forEach(function (shard) {
-      ArangoClusterComm.asyncRequest("put", 
-                                     "shard:" + shard, 
-                                     dbName, 
-                                     "/_api/simple/replace-by-example", 
-                                     JSON.stringify({ 
+      ArangoClusterComm.asyncRequest("put",
+                                     "shard:" + shard,
+                                     dbName,
+                                     "/_api/simple/replace-by-example",
+                                     JSON.stringify({
                                        collection: shard,
                                        example: example,
                                        newValue: newValue,
                                        waitForSync: waitForSync,
                                        limit: limit || undefined
-                                     }), 
-                                     { }, 
+                                     }),
+                                     { },
                                      options);
     });
 
@@ -750,7 +748,7 @@ ArangoCollection.prototype.replaceByExample = function (example,
 
     return replaced;
   }
-    
+
   return require("internal").db._executeTransaction({
     collections: {
       write: this.name()
@@ -784,27 +782,27 @@ ArangoCollection.prototype.replaceByExample = function (example,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief partially updates documents matching an example
-/// @param example the json object for finding documents which matches this 
+/// @param example the json object for finding documents which matches this
 ///        example
 /// @param newValue the json object which replaces the matched documents
-/// @param keepNull (optional) true or a json object which 
+/// @param keepNull (optional) true or a json object which
 ///        contains the options
-/// @param waitForSync (optional) a boolean value 
+/// @param waitForSync (optional) a boolean value
 /// @param limit (optional) an integer value, the max number of to deleting docs
-/// @throws "too many parameters" when keepNull is  a json object and limit 
+/// @throws "too many parameters" when keepNull is  a json object and limit
 ///        was given
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.updateByExample = function (example, 
-                                                       newValue, 
-                                                       keepNull, 
-                                                       waitForSync, 
+ArangoCollection.prototype.updateByExample = function (example,
+                                                       newValue,
+                                                       keepNull,
+                                                       waitForSync,
                                                        limit) {
-  
+
   if (limit === 0) {
     return 0;
   }
-  
+
   if (typeof newValue !== "object" || Array.isArray(newValue)) {
     var err1 = new ArangoError();
     err1.errorNum = internal.errors.ERROR_BAD_PARAMETER.code;
@@ -821,12 +819,11 @@ ArangoCollection.prototype.updateByExample = function (example,
 
     // avoiding jslint error
     // see: http://jslinterrors.com/unexpected-sync-method-a/
-    /*jslint node: true, stupid: true */
-    keepNull = tmp_options.keepNull;
+        keepNull = tmp_options.keepNull;
     waitForSync = tmp_options.waitForSync;
     limit = tmp_options.limit;
   }
-  
+
   var cluster = require("org/arangodb/cluster");
 
   if (cluster.isCoordinator()) {
@@ -834,7 +831,7 @@ ArangoCollection.prototype.updateByExample = function (example,
     var shards = cluster.shardList(dbName, this.name());
     var coord = { coordTransactionID: ArangoClusterInfo.uniqid() };
     var options = { coordTransactionID: coord.coordTransactionID, timeout: 360 };
-    
+
     if (limit > 0 && shards.length > 1) {
       var err2 = new ArangoError();
       err2.errorNum = internal.errors.ERROR_CLUSTER_UNSUPPORTED.code;
@@ -844,19 +841,19 @@ ArangoCollection.prototype.updateByExample = function (example,
     }
 
     shards.forEach(function (shard) {
-      ArangoClusterComm.asyncRequest("put", 
-                                     "shard:" + shard, 
-                                     dbName, 
-                                     "/_api/simple/update-by-example", 
-                                     JSON.stringify({ 
+      ArangoClusterComm.asyncRequest("put",
+                                     "shard:" + shard,
+                                     dbName,
+                                     "/_api/simple/update-by-example",
+                                     JSON.stringify({
                                        collection: shard,
                                        example: example,
                                        newValue: newValue,
                                        waitForSync: waitForSync,
                                        keepNull: keepNull,
                                        limit: limit || undefined
-                                     }), 
-                                     { }, 
+                                     }),
+                                     { },
                                      options);
     });
 
@@ -886,7 +883,7 @@ ArangoCollection.prototype.updateByExample = function (example,
       while (documents.hasNext()) {
         var document = documents.next();
 
-        if (collection.update(document, params.newValue, 
+        if (collection.update(document, params.newValue,
             {overwrite: true, keepNull: params.keepNull, waitForSync: params.wfs})) {
           updated++;
         }
@@ -1015,9 +1012,9 @@ ArangoCollection.prototype.ensureBitarray = function () {
     var pair = [ arguments[i], arguments[i + 1] ];
     fields.push(pair);
   }
-  
-  return this.ensureIndex({ 
-    type: "bitarray", 
+
+  return this.ensureIndex({
+    type: "bitarray",
     fields : fields
   });
 };
@@ -1049,8 +1046,8 @@ ArangoCollection.prototype.ensureUndefBitarray = function () {
     fields.push(pair);
   }
 
-  return this.ensureIndex({ 
-    type: "bitarray", 
+  return this.ensureIndex({
+    type: "bitarray",
     fields: fields,
     "undefined": true
   });
@@ -1062,10 +1059,10 @@ ArangoCollection.prototype.ensureUndefBitarray = function () {
 /// `collection.ensureCapConstraint(size, byteSize)`
 ///
 /// Creates a size restriction aka cap for the collection of *size*
-/// documents and/or *byteSize* data size. If the restriction is in place 
+/// documents and/or *byteSize* data size. If the restriction is in place
 /// and the (*size* plus one) document is added to the collection, or the
-/// total active data size in the collection exceeds *byteSize*, then the 
-/// least recently created or updated documents are removed until all 
+/// total active data size in the collection exceeds *byteSize*, then the
+/// least recently created or updated documents are removed until all
 /// constraints are satisfied.
 ///
 /// It is allowed to specify either *size* or *byteSize*, or both at
@@ -1074,7 +1071,7 @@ ArangoCollection.prototype.ensureUndefBitarray = function () {
 ///
 /// Note that at most one cap constraint is allowed per collection. Trying
 /// to create additional cap constraints will result in an error. Creating
-/// cap constraints is also not supported in sharded collections with more 
+/// cap constraints is also not supported in sharded collections with more
 /// than one shard.
 ///
 /// Note that this does not imply any restriction of the number of revisions
@@ -1091,10 +1088,10 @@ ArangoCollection.prototype.ensureUndefBitarray = function () {
 ArangoCollection.prototype.ensureCapConstraint = function (size, byteSize) {
   "use strict";
 
-  return this.ensureIndex({ 
-    type: "cap", 
-    size: size || undefined, 
-    byteSize: byteSize || undefined 
+  return this.ensureIndex({
+    type: "cap",
+    size: size || undefined,
+    byteSize: byteSize || undefined
   });
 };
 
@@ -1118,9 +1115,9 @@ ArangoCollection.prototype.ensureCapConstraint = function (size, byteSize) {
 ArangoCollection.prototype.ensureUniqueSkiplist = function () {
   "use strict";
 
-  return this.ensureIndex({ 
-    type: "skiplist", 
-    fields: Array.prototype.slice.call(arguments), 
+  return this.ensureIndex({
+    type: "skiplist",
+    fields: Array.prototype.slice.call(arguments),
     unique: true
   });
 };
@@ -1145,8 +1142,8 @@ ArangoCollection.prototype.ensureUniqueSkiplist = function () {
 ArangoCollection.prototype.ensureSkiplist = function () {
   "use strict";
 
-  return this.ensureIndex({ 
-    type: "skiplist", 
+  return this.ensureIndex({
+    type: "skiplist",
     fields: Array.prototype.slice.call(arguments)
   });
 };
@@ -1175,13 +1172,13 @@ ArangoCollection.prototype.ensureSkiplist = function () {
 
 ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
   "use strict";
-  
+
   if (! Array.isArray(field)) {
     field = [ field ];
   }
 
-  return this.ensureIndex({ 
-    type: "fulltext", 
+  return this.ensureIndex({
+    type: "fulltext",
     minLength: minLength || undefined,
     fields: field
   });
@@ -1216,8 +1213,8 @@ ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
 ArangoCollection.prototype.ensureUniqueConstraint = function () {
   "use strict";
 
-  return this.ensureIndex({ 
-    type: "hash", 
+  return this.ensureIndex({
+    type: "hash",
     fields: Array.prototype.slice.call(arguments),
     unique: true
   });
@@ -1246,8 +1243,8 @@ ArangoCollection.prototype.ensureUniqueConstraint = function () {
 ArangoCollection.prototype.ensureHashIndex = function () {
   "use strict";
 
-  return this.ensureIndex({ 
-    type: "hash", 
+  return this.ensureIndex({
+    type: "hash",
     fields: Array.prototype.slice.call(arguments)
   });
 };
@@ -1303,18 +1300,18 @@ ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
   }
 
   if (typeof lon === "boolean") {
-    return this.ensureIndex({ 
-      type : "geo1", 
-      fields : [ lat ], 
+    return this.ensureIndex({
+      type : "geo1",
+      fields : [ lat ],
       geoJson : lon
     });
   }
 
   if (lon === undefined) {
     return this.ensureIndex({
-      type : "geo1", 
+      type : "geo1",
       fields : [ lat ],
-      geoJson : false 
+      geoJson : false
     });
   }
 
@@ -1355,9 +1352,9 @@ ArangoCollection.prototype.ensureGeoConstraint = function (lat, lon, ignoreNull)
     return this.ensureIndex({
       type : "geo1",
       fields : [ lat ],
-      geoJson : false, 
+      geoJson : false,
       unique : true,
-      ignoreNull : ignoreNull 
+      ignoreNull : ignoreNull
     });
   }
 

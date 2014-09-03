@@ -1,5 +1,4 @@
 module.define("org/arangodb-common", function(exports, module) {
-/*jslint indent: 2, maxlen: 100, nomen: true, vars: true, white: true, plusplus: true */
 /*global require, module, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -396,14 +395,14 @@ exports.printTable = function  (list, columns, options) {
     }
     return result;
   };
-  
+
   if (! Array.isArray(list)) {
-    // not an array 
+    // not an array
     return;
   }
 
   if (list.length === 0) {
-    exports.print(options.emptyString || "no document(s)"); 
+    exports.print(options.emptyString || "no document(s)");
   }
   else {
     exports.print(compose());
@@ -426,11 +425,11 @@ exports.stringPadding = function (str, len, pad, dir) {
     return result;
   }
 
-  if (typeof(len) === "undefined") { 
-    len = 0; 
+  if (typeof(len) === "undefined") {
+    len = 0;
   }
-  if (typeof(pad) === "undefined") { 
-    pad = ' '; 
+  if (typeof(pad) === "undefined") {
+    pad = ' ';
   }
 
   if (len + 1 >= str.length) {

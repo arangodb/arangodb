@@ -1,5 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, es5: true */
-/*global require, exports */
+/*global exports */
 (function () {
   'use strict';
   function UserNotFound(uid) {

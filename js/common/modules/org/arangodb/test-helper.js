@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*jshint strict: false */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,7 +57,7 @@ exports.Helper = {
     internal.wal.flush(true, waitForCollector || false);
 
     var iterations = 0;
-   
+
     while (collection.status() !== arangodb.ArangoCollection.STATUS_UNLOADED) {
       collection.unload();
       internal.wait(0.25);
@@ -86,7 +86,7 @@ exports.Helper = {
     collection.rotate();
 
     while (internal.time() < end) {
-      // wait until the figures change 
+      // wait until the figures change
       fig = collection.figures();
       if (fig.datafiles.count + fig.journals.count !== files) {
         break;

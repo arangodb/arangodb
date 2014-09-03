@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 80, sloppy: true */
 /*global require, assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -118,7 +117,7 @@ function GraphCreationSuite() {
       assertTrue(arangodb.db._collection("UnitTestsCollectionVertex") !== null);
       other_graph.drop();
     },
-    
+
     testDropStatic : function () {
       // clean up
       arangodb.db._drop("UnitTestsCollectionGraphVertices");
@@ -135,14 +134,14 @@ function GraphCreationSuite() {
       assertNotNull(arangodb.db._collection("UnitTestsCollectionGraphEdges"));
       // create the graph
       graph = new Graph(graph_name, vertex, edge);
-       
+
       // clean up the collections
       arangodb.db._drop("UnitTestsCollectionGraphVertices");
       arangodb.db._drop("UnitTestsCollectionGraphEdges");
-      
+
       assertNull(arangodb.db._collection("UnitTestsCollectionGraphVertices"));
       assertNull(arangodb.db._collection("UnitTestsCollectionGraphEdges"));
-      
+
       // statically remove the graph
       try {
         Graph.drop(graph_name);
@@ -567,7 +566,7 @@ function VertexSuite() {
       v2 = graph.addVertex();
 
       edge = graph.addEdge(v1, v2);
-      
+
       assertEqual(edge.getId(), v1.getOutEdges()[0].getId());
       assertEqual(edge.getId(), v2.getInEdges()[0].getId());
       assertEqual(0, v1.getInEdges().length);

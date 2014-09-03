@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
+/*jshint browser: true */
+/*jshint unused: false */
 /*global describe, beforeEach, afterEach, it, spyOn, expect*/
 /*global $, jasmine, _*/
 
@@ -6,7 +7,7 @@
   "use strict";
 
   describe("The router", function() {
-  
+
     describe("navigation", function () {
 
           var r,

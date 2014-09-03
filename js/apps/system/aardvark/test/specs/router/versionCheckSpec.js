@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true*/
+/*jshint browser: true */
+/*jshint unused: false */
 /*global describe, beforeEach, arangoHelper, afterEach, it, spyOn, expect*/
 /*global $, jasmine, _, window, document*/
 
@@ -37,7 +38,7 @@
           successCallback = opts.success;
         };
         spyOn($, "ajax").andCallFake(function(opts) {
-          fakeRequest(opts); 
+          fakeRequest(opts);
           fakeRequest = function() {
             return;
           };

@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global document, $, _ */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -32,7 +31,7 @@ var uiComponentsHelper = uiComponentsHelper || {};
 
 (function componentsHelper() {
   "use strict";
-  
+
   uiComponentsHelper.createButton = function(list, title, prefix, callback) {
     var li = document.createElement("li"),
       button = document.createElement("button");
@@ -66,5 +65,5 @@ var uiComponentsHelper = uiComponentsHelper || {};
     label.appendChild(document.createTextNode(iconInfo.title));
     return button;
   };
-  
+
 }());

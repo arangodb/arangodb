@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
+/*jshint unused: false */
 /*global beforeEach, afterEach */
 /*global describe, it, expect*/
 /*global runs, waitsFor, spyOn */
@@ -66,75 +66,75 @@
         var e = new EdgeShaperControls(list);
       }).toThrow("The EdgeShaper has to be given.");
     });
-    
+
     it('should be able to add a shape none control to the list', function() {
       runs(function() {
         shaperUI.addControlOpticShapeNone();
-      
+
         expect($("#control_edge_list #control_edge_none").length).toEqual(1);
         expect($("#control_edge_list #control_edge_none")[0]).toConformToListCSS();
-      
+
         helper.simulateMouseEvent("click", "control_edge_none_button");
-      
+
         expect(shaper.changeTo).toHaveBeenCalledWith({
           shape: {
             type: EdgeShaper.shapes.NONE
           }
         });
-      });      
+      });
     });
-    
+
     it('should be able to add a shape arrow control to the list', function() {
       runs(function() {
         shaperUI.addControlOpticShapeArrow();
-      
+
         expect($("#control_edge_list #control_edge_arrow").length).toEqual(1);
         expect($("#control_edge_list #control_edge_arrow")[0]).toConformToListCSS();
-      
+
         helper.simulateMouseEvent("click", "control_edge_arrow_button");
-      
+
         expect(shaper.changeTo).toHaveBeenCalledWith({
           shape: {
             type: EdgeShaper.shapes.ARROW
           }
         });
       });
-            
+
     });
-    
+
     it('should be able to add a switch label control to the list', function() {
       runs(function() {
         shaperUI.addControlOpticLabel();
-      
+
         expect($("#control_edge_list #control_edge_label").length).toEqual(1);
         expect($("#control_edge_list #control_edge_label")[0]).toConformToListCSS();
-      
+
         helper.simulateMouseEvent("click", "control_edge_label_button");
         $("#control_edge_label_key").attr("value", "theAnswer");
         helper.simulateMouseEvent("click", "control_edge_label_submit");
-      
+
         expect(shaper.changeTo).toHaveBeenCalledWith({
           label: "theAnswer"
         });
       });
-      
+
       waitsFor(function() {
         return $("#control_edge_label_modal").length === 0;
       }, 2000, "The modal dialog should disappear.");
-      
+
     });
-    
+
     it('should be able to add a switch single colour control to the list', function() {
       runs(function() {
         shaperUI.addControlOpticSingleColour();
-      
+
         expect($("#control_edge_list #control_edge_singlecolour").length).toEqual(1);
         expect($("#control_edge_list #control_edge_singlecolour")[0]).toConformToListCSS();
-      
+
         helper.simulateMouseEvent("click", "control_edge_singlecolour_button");
         $("#control_edge_singlecolour_stroke").attr("value", "#123456");
         helper.simulateMouseEvent("click", "control_edge_singlecolour_submit");
-      
+
         expect(shaper.changeTo).toHaveBeenCalledWith({
           color: {
             type: "single",
@@ -142,24 +142,24 @@
           }
         });
       });
-      
+
       waitsFor(function() {
         return $("#control_edge_singlecolour_modal").length === 0;
       }, 2000, "The modal dialog should disappear.");
-      
+
     });
-    
+
     it('should be able to add a switch colour on attribute control to the list', function() {
       runs(function() {
         shaperUI.addControlOpticAttributeColour();
-      
+
         expect($("#control_edge_list #control_edge_attributecolour").length).toEqual(1);
         expect($("#control_edge_list #control_edge_attributecolour")[0]).toConformToListCSS();
-      
+
         helper.simulateMouseEvent("click", "control_edge_attributecolour_button");
         $("#control_edge_attributecolour_key").attr("value", "label");
         helper.simulateMouseEvent("click", "control_edge_attributecolour_submit");
-      
+
         expect(shaper.changeTo).toHaveBeenCalledWith({
           color: {
             type: "attribute",
@@ -167,25 +167,25 @@
           }
         });
       });
-      
+
       waitsFor(function() {
         return $("#control_edge_attributecolour_modal").length === 0;
       }, 2000, "The modal dialog should disappear.");
-      
+
     });
-    
+
     it('should be able to add a switch colour to gradient control to the list', function() {
       runs(function() {
         shaperUI.addControlOpticGradientColour();
-      
+
         expect($("#control_edge_list #control_edge_gradientcolour").length).toEqual(1);
         expect($("#control_edge_list #control_edge_gradientcolour")[0]).toConformToListCSS();
-      
+
         helper.simulateMouseEvent("click", "control_edge_gradientcolour_button");
         $("#control_edge_gradientcolour_source").attr("value", "#123456");
         $("#control_edge_gradientcolour_target").attr("value", "#654321");
         helper.simulateMouseEvent("click", "control_edge_gradientcolour_submit");
-      
+
         expect(shaper.changeTo).toHaveBeenCalledWith({
           color: {
             type: "gradient",
@@ -194,40 +194,40 @@
           }
         });
       });
-      
+
       waitsFor(function() {
         return $("#control_edge_gradientcolour_modal").length === 0;
       }, 2000, "The modal dialog should disappear.");
-      
+
     });
-    
+
     it('should be able to add all optic controls to the list', function () {
       shaperUI.addAllOptics();
-      
+
       expect($("#control_edge_list #control_edge_none").length).toEqual(1);
       expect($("#control_edge_list #control_edge_arrow").length).toEqual(1);
       expect($("#control_edge_list #control_edge_label").length).toEqual(1);
       expect($("#control_edge_list #control_edge_singlecolour").length).toEqual(1);
       expect($("#control_edge_list #control_edge_attributecolour").length).toEqual(1);
       expect($("#control_edge_list #control_edge_gradientcolour").length).toEqual(1);
-      
+
     });
-    
+
     it('should be able to add all action controls to the list', function () {
       shaperUI.addAllActions();
-      
+
     });
-    
+
     it('should be able to add all controls to the list', function () {
       shaperUI.addAll();
-      
+
       expect($("#control_edge_list #control_edge_none").length).toEqual(1);
       expect($("#control_edge_list #control_edge_arrow").length).toEqual(1);
       expect($("#control_edge_list #control_edge_label").length).toEqual(1);
       expect($("#control_edge_list #control_edge_singlecolour").length).toEqual(1);
       expect($("#control_edge_list #control_edge_attributecolour").length).toEqual(1);
       expect($("#control_edge_list #control_edge_gradientcolour").length).toEqual(1);
-      
+
     });
   });
 

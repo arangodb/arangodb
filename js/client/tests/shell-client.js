@@ -1,6 +1,5 @@
-/*jslint indent: 2, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, nomen: true, sloppy: true */
 /*global require, assertEqual, assertNotEqual,
-  print, print_plain, COMPARE_STRING, NORMALIZE_STRING, 
+  print, print_plain, COMPARE_STRING, NORMALIZE_STRING,
   help, start_pager, stop_pager, start_pretty_print, stop_pretty_print, start_color_print, stop_color_print */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,9 +159,9 @@ function clientTestSuite () {
     testICU_Compare : function () {
       var nfc = "Gr\u00FC\u00DF Gott.";
       var nfd = "Gru\u0308\u00DF Gott.";
-      
+
       assertNotEqual(nfc, nfd);
-      assertNotEqual(COMPARE_STRING(nfc, nfd), true);        
+      assertNotEqual(COMPARE_STRING(nfc, nfd), true);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -172,7 +171,7 @@ function clientTestSuite () {
     testICU_Normalize : function () {
       var nfc = "Gr\u00FC\u00DF Gott.";
       var nfd = "Gru\u0308\u00DF Gott.";
-      
+
       assertNotEqual(nfc, nfd);
       assertEqual(NORMALIZE_STRING(nfd), nfc);
       assertEqual(NORMALIZE_STRING(nfd), "Grüß Gott.");
@@ -192,9 +191,9 @@ function clientTestSuite () {
       db.ICU_SORTED.save({ test : "äaa" });
       db.ICU_SORTED.save({ test : "äää" });
       db.ICU_SORTED.save({ test : "Aaa" });
-        
-      var y = db.ICU_SORTED.range("test", "A", "z") ; 
-        
+
+      var y = db.ICU_SORTED.range("test", "A", "z") ;
+
       assertEqual(y.next().test, "Aaa");
       assertEqual(y.next().test, "aaa");
       assertEqual(y.next().test, "äaa");

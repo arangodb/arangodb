@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*jshint strict: false */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -107,7 +107,7 @@ GraphArray.prototype.map = function (fun, thisp) {
   if (typeof fun !== "function") {
     throw new TypeError();
   }
-  
+
   var res = new GraphArray(len);
 
   for (i = 0;  i < len;  i++) {
@@ -318,7 +318,7 @@ Edge.prototype.getProperty = function (name) {
 /// @EXAMPLES
 ///
 /// @verbinclude graph-edge-get-property-keys
-/// @endDocuBlock 
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Edge.prototype.getPropertyKeys = function () {

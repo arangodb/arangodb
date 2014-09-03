@@ -1,4 +1,4 @@
-/*jslint indent: 2, maxlen: 120, vars: true, white: true, plusplus: true, regexp: true, nonpropdel: true, sloppy: true */
+/*jslint indent: 2, maxlen: 120, vars: true, white: true, plusplus: true, regexp: true, -W051: true, sloppy: true */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////

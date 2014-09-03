@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true */
+/*jshint -W051: true */
 /*global require, UPGRADE_ARGS: true, UPGRADE_STARTED: true, ArangoServerState */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -37,6 +37,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
+  /*jshint strict: false */
   return function () {
     var internal = require("internal");
     var console = require("console");

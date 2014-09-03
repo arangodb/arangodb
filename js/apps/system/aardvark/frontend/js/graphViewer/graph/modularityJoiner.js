@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global _*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -29,8 +28,8 @@
 
 function ModularityJoiner() {
   "use strict";
-  
-  var 
+
+  var
   // Copy of underscore.js. importScripts doesn't work
     breaker = {},
     nativeForEach = Array.prototype.forEach,
@@ -206,11 +205,11 @@ function ModularityJoiner() {
     heap = null,
     isRunning = false,
     comms = {},
- 
+
     ////////////////////////////////////
     // Private functions              //
-    //////////////////////////////////// 
-    
+    ////////////////////////////////////
+
     setHeapToMax = function(id) {
       var maxT,
         maxV = Number.NEGATIVE_INFINITY;
@@ -226,18 +225,18 @@ function ModularityJoiner() {
       }
       heap[id] = maxT;
     },
-  
+
     setHeapToMaxInList = function(l, id) {
       setHeapToMax(id);
     },
-    
+
     isSetDQVal = function(i, j) {
       if (i < j) {
         return dQ[i] && dQ[i][j];
       }
       return dQ[j] && dQ[j][i];
     },
-    
+
     // This does not check if everything exists,
     // do it before!
     getDQVal = function(i, j) {
@@ -246,7 +245,7 @@ function ModularityJoiner() {
       }
       return dQ[j][i];
     },
-    
+
     setDQVal = function(i, j, v) {
       if (i < j) {
         dQ[i] = dQ[i] || {};
@@ -256,7 +255,7 @@ function ModularityJoiner() {
       dQ[j] = dQ[j] || {};
       dQ[j][i] = v;
     },
-    
+
     delDQVal = function(i, j) {
       if (i < j) {
         if (!dQ[i]) {
@@ -273,7 +272,7 @@ function ModularityJoiner() {
       }
       delDQVal(j, i);
     },
-    
+
     updateHeap = function(i, j) {
       var hv, val;
       if (i < j) {
@@ -301,26 +300,26 @@ function ModularityJoiner() {
       }
       updateHeap(j, i);
     },
-    
+
     updateDegrees = function(low, high) {
       a[low]._in += a[high]._in;
       a[low]._out += a[high]._out;
       delete a[high];
-    }, 
+    },
 
     insertEdge = function(s, t) {
       matrix[s] = matrix[s] || {};
       matrix[s][t] = (matrix[s][t] || 0) + 1;
       backwardMatrix[t] = backwardMatrix[t] || {};
       backwardMatrix[t][s] = (backwardMatrix[t][s] || 0) + 1;
-      degrees[s] = degrees[s] || {_in: 0, _out:0}; 
+      degrees[s] = degrees[s] || {_in: 0, _out:0};
       degrees[t] = degrees[t] || {_in: 0, _out:0};
       degrees[s]._out++;
       degrees[t]._in++;
       m++;
       revM = Math.pow(m, -1);
     },
-  
+
     deleteEdge = function(s, t) {
       if (matrix[s]) {
         matrix[s][t]--;
@@ -353,7 +352,7 @@ function ModularityJoiner() {
         }
       }
     },
-  
+
     makeInitialDegrees = function() {
       a = {};
       _.each(degrees, function (n, id) {
@@ -364,17 +363,17 @@ function ModularityJoiner() {
       });
       return a;
     },
-    
+
     notConnectedPenalty = function(s, t) {
       return a[s]._out * a[t]._in + a[s]._in * a[t]._out;
     },
-    
+
     neighbors = function(sID) {
       var outbound = _.keys(matrix[sID] || {}),
         inbound = _.keys(backwardMatrix[sID] || {});
       return _.union(outbound, inbound);
     },
-    
+
     makeInitialDQ = function() {
       dQ = {};
       _.each(matrix, function(tars, s) {
@@ -391,15 +390,15 @@ function ModularityJoiner() {
           return;
         });
       });
-  
+
     },
-    
+
     makeInitialHeap = function() {
       heap = {};
       _.each(dQ, setHeapToMaxInList);
       return heap;
     },
-    
+
     // i < j && i != j != k
     updateDQAndHeapValue = function (i, j, k) {
       var val;
@@ -421,7 +420,7 @@ function ModularityJoiner() {
         return;
       }
       if (isSetDQVal(k, j)) {
-        val = getDQVal(k, j);        
+        val = getDQVal(k, j);
         val -= notConnectedPenalty(k, i);
         if (val > 0) {
           setDQVal(k, i, val);
@@ -431,7 +430,7 @@ function ModularityJoiner() {
         updateHeap(k, j);
       }
     },
-    
+
     updateDQAndHeap = function (low, high) {
       _.each(dQ, function (list, s) {
         if (s === low || s === high) {
@@ -452,27 +451,27 @@ function ModularityJoiner() {
   ////////////////////////////////////
   // getters                        //
   ////////////////////////////////////
-  
+
   getAdjacencyMatrix = function() {
     return matrix;
   },
-  
+
   getHeap = function() {
     return heap;
   },
-  
+
   getDQ = function() {
     return dQ;
   },
-  
+
   getDegrees = function() {
     return a;
   },
-  
+
   getCommunities = function() {
     return comms;
   },
-  
+
   getBest = function() {
     var bestL, bestS, bestV = Number.NEGATIVE_INFINITY;
     _.each(heap, function(lID, sID) {
@@ -491,7 +490,7 @@ function ModularityJoiner() {
       val: bestV
     };
   },
-  
+
   getBestCommunity = function (communities) {
     var bestQ = Number.NEGATIVE_INFINITY,
       bestC;
@@ -503,28 +502,28 @@ function ModularityJoiner() {
     });
     return bestC;
   },
-  
+
   ////////////////////////////////////
   // setup                          //
   ////////////////////////////////////
-  
+
   setup = function() {
     makeInitialDegrees();
     makeInitialDQ();
     makeInitialHeap();
     comms = {};
   },
-  
-  
+
+
   ////////////////////////////////////
   // computation                    //
   ////////////////////////////////////
-    
+
   joinCommunity = function(comm) {
     var s = comm.sID,
       l = comm.lID,
       q = comm.val;
-    
+
     comms[s] = comms[s] || {nodes: [s], q: 0};
     if (comms[l]) {
       comms[s].nodes = comms[s].nodes.concat(comms[l].nodes);
@@ -537,11 +536,11 @@ function ModularityJoiner() {
     updateDQAndHeap(s, l);
     updateDegrees(s, l);
   },
-  
+
   //////////////////////////////////////////////
   // Evaluate value of community by distance  //
   //////////////////////////////////////////////
-  
+
   floatDistStep = function(dist, depth, todo) {
     if (todo.length === 0) {
       return true;
@@ -556,7 +555,7 @@ function ModularityJoiner() {
     });
     return floatDistStep(dist, depth+1, nextTodo);
   },
- 
+
   floatDist = function(sID) {
     var dist = {};
     _.each(matrix, function(u, n) {
@@ -568,17 +567,17 @@ function ModularityJoiner() {
     }
     throw "FAIL!";
   },
-  
+
   minDist = function(dist) {
     return function(a) {
       return dist[a];
     };
   },
-  
+
   ////////////////////////////////////
   // Get only the Best Community    //
   ////////////////////////////////////
-   
+
   getCommunity = function(limit, focus) {
     var coms = {},
       res = [],
@@ -606,7 +605,7 @@ function ModularityJoiner() {
           delete coms[key];
         }
       });
-    
+
       res = _.pluck(_.values(coms), "nodes");
       dist = floatDist(focus);
       res.sort(sortByDistance);
@@ -614,30 +613,30 @@ function ModularityJoiner() {
     }
     return getBestCommunity(coms);
   };
-  
+
   ////////////////////////////////////
   // Public functions               //
   ////////////////////////////////////
-  
+
   this.insertEdge = insertEdge;
-  
+
   this.deleteEdge = deleteEdge;
-  
+
   this.getAdjacencyMatrix = getAdjacencyMatrix;
- 
+
   this.getHeap = getHeap;
- 
+
   this.getDQ = getDQ;
- 
+
   this.getDegrees = getDegrees;
- 
+
   this.getCommunities = getCommunities;
- 
+
   this.getBest = getBest;
-  
+
   this.setup = setup;
-  
+
   this.joinCommunity = joinCommunity;
-  
-  this.getCommunity = getCommunity;  
+
+  this.getCommunity = getCommunity;
 }

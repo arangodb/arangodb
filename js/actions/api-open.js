@@ -1,5 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, evil: true */
-/*global require, exports, module, ArangoServerState */
+/*jshint strict: false */
+/*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief open actions
@@ -31,7 +31,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var actions = require("org/arangodb/actions");
-var console = require("console");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions

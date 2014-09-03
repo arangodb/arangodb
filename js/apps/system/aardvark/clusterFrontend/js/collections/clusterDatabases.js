@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true */
 /*global window, Backbone */
 (function() {
 
@@ -7,7 +6,7 @@
   window.ClusterDatabases = window.AutomaticRetryCollection.extend({
 
     model: window.ClusterDatabase,
-    
+
     url: "/_admin/aardvark/cluster/Databases",
 
     updateUrl: function() {

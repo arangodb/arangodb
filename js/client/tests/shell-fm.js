@@ -1,4 +1,3 @@
-/*jslint indent: 2, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, nomen: true, sloppy: true */
 /*global require, fail, assertTrue, assertFalse, assertEqual, assertMatch, assertNotNull */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -55,7 +54,7 @@ function FoxxManagerSuite () {
         return true;
       }
     }
-    
+
     return false;
   }
 
@@ -238,12 +237,12 @@ function FoxxManagerSuite () {
 
       fm.install("itzpapalotl", "/itz");
       assertTrue(inList(fm.listJson(), "itzpapalotl"));
- 
+
       var url = '/itz/random';
       var fetched = arango.GET(url);
 
       assertTrue(fetched.hasOwnProperty("name"));
-      
+
       fm.uninstall("/itz");
     },
 
@@ -263,13 +262,13 @@ function FoxxManagerSuite () {
 
       fm.install("itzpapalotl", "/itz1");
       fm.install("itzpapalotl", "/itz2");
- 
+
       var url, fetched;
 
       url  = '/itz1/random';
       fetched = arango.GET(url);
       assertTrue(fetched.hasOwnProperty("name"));
-      
+
       url  = '/itz2/random';
       fetched = arango.GET(url);
 
@@ -329,7 +328,7 @@ function FoxxManagerSuite () {
       fm.update();
 
       var doc = db._collection('_aal').firstExample({ type: "mount", name: "aardvark" });
-      
+
       assertNotNull(doc);
 
       try {
@@ -388,7 +387,7 @@ function FoxxManagerSuite () {
       fm.update();
 
       var doc = db._collection('_aal').firstExample({ type: "mount", name: "aardvark" });
-      
+
       assertNotNull(doc);
 
       try {

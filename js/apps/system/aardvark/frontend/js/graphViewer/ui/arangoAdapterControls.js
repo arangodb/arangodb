@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _, d3*/
 /*global document*/
 /*global modalDialogHelper, uiComponentsHelper*/
@@ -30,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 function ArangoAdapterControls(list, adapter) {
   "use strict";
-  
+
   if (list === undefined) {
     throw "A list element has to be given.";
   }
@@ -40,7 +39,7 @@ function ArangoAdapterControls(list, adapter) {
   this.addControlChangeCollections = function(callback) {
     var prefix = "control_adapter_collections",
       idprefix = prefix + "_";
-      
+
     adapter.getCollections(function(nodeCols, edgeCols) {
       adapter.getGraphs(function(graphs) {
         uiComponentsHelper.createButton(list, "Collections", prefix, function() {
@@ -123,7 +122,7 @@ function ArangoAdapterControls(list, adapter) {
       });
     });
   };
-  
+
   this.addControlChangePriority = function() {
     var prefix = "control_adapter_priority",
       idprefix = prefix + "_",
@@ -178,7 +177,7 @@ function ArangoAdapterControls(list, adapter) {
     });
     */
   };
-  
+
   this.addAll = function() {
     this.addControlChangeCollections();
     this.addControlChangePriority();

@@ -1,6 +1,6 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
-/*global describe, beforeEach, afterEach, it, spyOn, expect*/
-/*global $*/
+/*jshint browser: true */
+/*jshint unused: false */
+/*global describe, beforeEach, afterEach, it, spyOn, expect, window, $ */
 
 (function() {
   "use strict";
