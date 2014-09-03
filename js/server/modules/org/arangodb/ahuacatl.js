@@ -4800,8 +4800,16 @@ function DOCUMENTS_BY_EXAMPLE (collectionList, example) {
   if (!Array.isArray(example)) {
     example = [example];
   }
+  var tmp = [];
+  example.forEach(function (e) {
+    if (typeof e === "string") {
+      tmp.push({_id : e});
+    } else {
+      tmp.push(e);
+    }
+  });
   collectionList.forEach(function (c) {
-    example.forEach(function (e) {
+    tmp.forEach(function (e) {
       res = res.concat(COLLECTION(c).byExample(e).toArray());
     });
   });
@@ -5185,6 +5193,14 @@ function CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL (graphData, options) {
           , paths : [{edges : [e], vertices : [e._from, e._to]}]};
       }
     }
+    if (options.noPaths) {
+      try {
+        delete paths[e._to][e._from].paths;
+        delete paths[e._from][e._to].paths;
+      } catch (ignore) {
+
+      }
+    }
     vertices[e._to] = 1;
     vertices[e._from] = 1;
   });
@@ -5222,15 +5238,18 @@ function CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL (graphData, options) {
             paths[i][j].distance = paths[i][k].distance+paths[k][j].distance;
             paths[i][j].paths = [];
           }
-
-          paths[i][k].paths.forEach(function (p1) {
-            paths[k][j].paths.forEach(function (p2) {
-              paths[i][j].paths.push({
-                edges : p1.edges.concat(p2.edges),
-                vertices:  p1.vertices.concat(p2.vertices).filter(removeDuplicates)
+          if (!options.noPaths) {
+            paths[i][k].paths.forEach(function (p1) {
+              paths[k][j].paths.forEach(function (p2) {
+                paths[i][j].paths.push({
+                  edges : p1.edges.concat(p2.edges),
+                  vertices:  p1.vertices.concat(p2.vertices).filter(removeDuplicates)
+                });
               });
             });
-          });
+          } else {
+            delete paths[i][j].paths;
+          }
         }
 
       });
@@ -5249,7 +5268,7 @@ function CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL (graphData, options) {
         result.push({
           startVertex : from,
           vertex : graph.toVerticesIDs[to],
-          paths : [{edges : [], vertices : []}],
+          paths : options.noPaths ? null :[{edges : [], vertices : []}],
           distance : 0
         });
         return;
@@ -5257,7 +5276,7 @@ function CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL (graphData, options) {
       result.push({
         startVertex : from,
         vertex : graph.toVerticesIDs[to],
-        paths : paths[from][to].paths,
+        paths : options.noPaths ? null : paths[from][to].paths,
         distance : paths[from][to].distance
       });
     });
@@ -5695,6 +5714,7 @@ function GENERAL_GRAPH_DISTANCE_TO (graphName,
   if (! options) {
     options = {};
   }
+  options.noPaths = true;
   var res = GENERAL_GRAPH_SHORTEST_PATH(
     graphName, startVertexExample, endVertexExample, options
   ), result = [];
@@ -5944,7 +5964,6 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
                                   vertexExample,
                                   options) {
   "use strict";
-
   if (! options) {
     options = {  };
   }
