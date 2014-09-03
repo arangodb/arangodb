@@ -550,8 +550,10 @@ function require (path) {
       }
 
       script += "delete __myenv__;"
-             + content
-             + "\n});";
+             +  "(function () {\n"
+             +  content
+             +  "\n}());"
+             +  "\n});";
 
       var fun = internal.executeScript(script, undefined, filename);
 
@@ -1717,7 +1719,9 @@ function require (path) {
     }
 
     content += "delete __myenv__;"
+             + "(function () {\n"
              + fileContent
+             + "\n}());"
              + "\n});";
 
     var fun = internal.executeScript(content, undefined, full);
