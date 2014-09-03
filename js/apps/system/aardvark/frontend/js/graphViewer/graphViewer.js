@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global _, $*/
 /*global ArangoAdapter, JSONAdapter, FoxxAdapter, PreviewAdapter, GharialAdapter*/
 /*global ForceLayouter, EdgeShaper, NodeShaper, ZoomManager */
@@ -31,23 +30,23 @@
 
 function GraphViewer(svg, width, height, adapterConfig, config) {
   "use strict";
-  
+
   // Make the html aware of xmlns:xlink
   $("html").attr("xmlns:xlink", "http://www.w3.org/1999/xlink");
-  
+
   // Check if all required inputs are given
   if (svg === undefined || svg.append === undefined) {
     throw "SVG has to be given and has to be selected using d3.select";
   }
-  
+
   if (width === undefined || width <= 0) {
     throw "A width greater 0 has to be given";
   }
-  
+
   if (height === undefined || height <= 0) {
     throw "A height greater 0 has to be given";
   }
-  
+
   if (adapterConfig === undefined || adapterConfig.type === undefined) {
     throw "An adapter configuration has to be given";
   }
@@ -94,11 +93,11 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
         throw "Sorry unknown layout type.";
     }
   },
-  
+
   nodeLimitCallBack = function(limit) {
     adapter.setNodeLimit(limit, self.start);
-  }, 
-  
+  },
+
   parseZoomConfig = function(config) {
     if (config) {
       zoomManager = new ZoomManager(width, height, svg,
@@ -106,7 +105,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
         {}, nodeLimitCallBack);
     }
   },
-  
+
   parseConfig = function(config) {
     var esConf = config.edgeShaper || {},
       nsConf = config.nodeShaper || {},
@@ -123,7 +122,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
     layouter.setCombinedUpdateFunction(nodeShaper, edgeShaper);
     parseZoomConfig(zConf);
   };
-  
+
   switch (adapterConfig.type.toLowerCase()) {
     case "arango":
       adapterConfig.width = width;
@@ -180,19 +179,19 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       break;
     default:
       throw "Sorry unknown adapter type.";
-  }    
-  
+  }
+
   graphContainer = svg.append("g");
-  
+
   parseConfig(config || {});
-    
+
   this.start = function() {
     layouter.stop();
     nodeShaper.drawNodes(nodes);
     edgeShaper.drawEdges(edges);
     layouter.start();
   };
-  
+
   this.loadGraph = function(nodeId, callback) {
 //    loadNode
 //  loadInitialNode
@@ -222,7 +221,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
       }
     });
   };
-  
+
   this.loadGraphWithAttributeValue = function(attribute, value, callback) {
     adapter.loadInitialNodeByAttributeValue(attribute, value, function (node) {
       if (node.errorCode) {
@@ -241,7 +240,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
     nodeShaper.resetColourMap();
     edgeShaper.resetColourMap();
   };
-  
+
   this.changeWidth = function(w) {
     layouter.changeWidth(w);
     zoomManager.changeWidth(w);
@@ -266,7 +265,7 @@ function GraphViewer(svg, width, height, adapterConfig, config) {
     edgeEditor: {
       edges: edges,
       adapter: adapter
-    }  
+    }
   };
   this.adapter = adapter;
   this.nodeShaper = nodeShaper;

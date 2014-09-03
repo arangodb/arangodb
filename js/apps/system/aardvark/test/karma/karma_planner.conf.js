@@ -16,7 +16,7 @@ module.exports = function(karma) {
     // list of files / patterns to load in the browser
     files: [
       'test/lib/jasmine-1.3.1/jasmine-html.js',
-      'test/lib/jslint.js',
+      'test/lib/jshint.js',
 
       'frontend/js/lib/jquery-1.8.3.js',
       'frontend/js/lib/jquery-ui-1.9.2.custom.js',
@@ -46,7 +46,7 @@ module.exports = function(karma) {
       'frontend/js/lib/swagger.js',
       'frontend/js/lib/swagger-ui.js',
       'frontend/js/lib/highlight.7.3.pack.js',
-      
+
       // arangodb
       'frontend/js/arango/arango.js',
       'frontend/js/arango/templateEngine.js',
@@ -209,7 +209,7 @@ module.exports = function(karma) {
 
     // list of files to exclude
     exclude: [
-      
+
     ],
 
     // test results reporter to use

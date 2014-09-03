@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
+/*jshint unused: false */
 /*global document, window, $*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -32,7 +32,7 @@ var helper = helper || {};
 
 (function eventHelper() {
   "use strict";
-  
+
   helper.simulateMouseMoveEvent = function(objectId, x, y) {
     var evt = document.createEvent("MouseEvents"),
       testee = document.getElementById(objectId);
@@ -40,7 +40,7 @@ var helper = helper || {};
       0, 0, 0, x, y, false, false, false, false, 0, null);
     testee.dispatchEvent(evt);
   };
-  
+
   helper.simulateDragEvent = function (objectId) {
     helper.simulateMouseEvent("mousedown", objectId);
     var e1 = document.createEvent("MouseEvents"),
@@ -52,7 +52,7 @@ var helper = helper || {};
     window.dispatchEvent(e1);
     window.dispatchEvent(e2);
   };
-  
+
   helper.simulateMouseEvent = function (type, objectId) {
     var evt = document.createEvent("MouseEvents"),
       testee = document.getElementById(objectId);
@@ -60,7 +60,7 @@ var helper = helper || {};
       0, 0, 0, 0, 0, false, false, false, false, 0, null);
     testee.dispatchEvent(evt);
   };
-  
+
   helper.simulateScrollUpMouseEvent = function (objectId) {
     var evt = document.createEvent("MouseEvents"),
       testee = document.getElementById(objectId);
@@ -68,7 +68,7 @@ var helper = helper || {};
       -10, 0, 0, 0, 0, false, false, false, false, 0, null);
     testee.dispatchEvent(evt);
   };
-  
+
   helper.simulateScrollDownMouseEvent = function (objectId) {
     var evt = document.createEvent("MouseEvents"),
       testee = document.getElementById(objectId);
@@ -76,12 +76,12 @@ var helper = helper || {};
       10, 0, 0, 0, 0, false, false, false, false, 0, null);
     testee.dispatchEvent(evt);
   };
-  
+
   helper.simulateReturnEvent = function() {
     var press = $.Event("keypress");
     press.ctrlKey = false;
     press.which = 13;
     $("body").trigger(press);
   };
-  
+
 }());

@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global _, $, d3*/
 /*global ColourMapper, ContextMenu*/
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,7 +44,7 @@
 
 function EdgeShaper(parent, config, idfunc) {
   "use strict";
-  
+
   var self = this,
     edges = [],
     communityNodes = {},
@@ -93,7 +92,7 @@ function EdgeShaper(parent, config, idfunc) {
       return d._id;
     },
     noop = function (line, g) {
-    
+
     },
     colourMapper = new ColourMapper(),
     resetColourMap = function() {
@@ -104,7 +103,7 @@ function EdgeShaper(parent, config, idfunc) {
     addShape = noop,
     addLabel = noop,
     addColor = noop,
-    
+
     unbindEvents = function() {
      events = {
        click: noop,
@@ -117,12 +116,12 @@ function EdgeShaper(parent, config, idfunc) {
      };
      addUpdate = noop;
     },
-    
-    
+
+
     getCorner = function(s, t) {
       return Math.atan2(t.y - s.y, t.x - s.x) * 180 / Math.PI;
     },
-    
+
     getDistance = function(s, t) {
       var res = Math.sqrt(
         (t.y - s.y)
@@ -141,15 +140,15 @@ function EdgeShaper(parent, config, idfunc) {
           res -= Math.abs((res * t.z * 18) / (t.y - s.y));
         }
       }
-      return res; 
+      return res;
     },
-    
+
     addEvents = function (line, g) {
       _.each(events, function (func, type) {
         g.on(type, func);
       });
     },
-    
+
     bindEvent = function (type, func) {
       if (type === "update") {
         addUpdate = func;
@@ -159,7 +158,7 @@ function EdgeShaper(parent, config, idfunc) {
         events[type] = func;
       }
     },
-    
+
     calculateNodePositions = function (e) {
       var sp, tp, s, t;
       s = e.source;
@@ -181,7 +180,7 @@ function EdgeShaper(parent, config, idfunc) {
         t: tp
       };
     },
-    
+
     addPosition = function (line, g) {
       communityNodes = {};
       g.attr("transform", function(d) {
@@ -198,7 +197,7 @@ function EdgeShaper(parent, config, idfunc) {
         return getDistance(p.s, p.t);
       });
     },
-    
+
     addQue = function (line, g) {
       addShape(line, g);
       if (visibleLabels) {
@@ -208,7 +207,7 @@ function EdgeShaper(parent, config, idfunc) {
       addEvents(line, g);
       addPosition(line, g);
     },
-    
+
     shapeEdges = function (newEdges) {
       if (newEdges !== undefined) {
         edges = newEdges;
@@ -217,7 +216,7 @@ function EdgeShaper(parent, config, idfunc) {
         g = self.parent
           .selectAll(".link")
           .data(edges, idFunction);
-      // Append the group and class to all new    
+      // Append the group and class to all new
       g.enter()
         .append("g")
         .attr("class", "link") // link is CSS class that might be edited
@@ -230,10 +229,10 @@ function EdgeShaper(parent, config, idfunc) {
       addQue(line, g);
       _.each(communityNodes, function(c) {
         c.shapeInnerEdges(d3.select(this), addQue);
-      }); 
+      });
       contextMenu.bindMenu($(".link"));
     },
-    
+
     updateEdges = function () {
       var g = self.parent.selectAll(".link"),
         line = g.select("line");
@@ -243,7 +242,7 @@ function EdgeShaper(parent, config, idfunc) {
         c.updateInnerEdges(d3.select(this), addPosition, addUpdate);
       });
     },
-    
+
     parseShapeFlag = function (shape) {
       $("svg defs marker#arrow").remove();
       switch (shape.type) {
@@ -268,13 +267,13 @@ function EdgeShaper(parent, config, idfunc) {
             .attr("markerWidth", "10")
             .attr("orient", "auto")
             .append("path")
-              .attr("d", "M 0 0 L 10 5 L 0 10 z");         
+              .attr("d", "M 0 0 L 10 5 L 0 10 z");
           break;
         default:
           throw "Sorry given Shape not known!";
       }
     },
-    
+
     parseLabelFlag = function (label) {
       if (_.isFunction(label)) {
         addLabel = function (line, g) {
@@ -286,7 +285,7 @@ function EdgeShaper(parent, config, idfunc) {
         addLabel = function (line, g) {
           g.append("text") // Append a label for the edge
             .attr("text-anchor", "middle") // Define text-anchor
-            .text(function(d) { 
+            .text(function(d) {
               // Which value should be used as label
               var chunks = splitLabel(findFirstValue(label, d._data));
               return chunks[0] || "";
@@ -303,7 +302,7 @@ function EdgeShaper(parent, config, idfunc) {
           });
       };
     },
-    
+
     parseActionFlag = function (actions) {
       if (actions.reset !== undefined && actions.reset) {
         unbindEvents();
@@ -314,7 +313,7 @@ function EdgeShaper(parent, config, idfunc) {
         }
       });
     },
-    
+
     parseColorFlag = function (color) {
       $("svg defs #gradientEdgeColor").remove();
       resetColourMap();
@@ -355,12 +354,12 @@ function EdgeShaper(parent, config, idfunc) {
                return colourMapper.getColour(e._data[color.key]);
              });
           };
-          break; 
+          break;
         default:
           throw "Sorry given colour-scheme not known";
       }
     },
-    
+
     parseConfig = function(config) {
       if (config.shape !== undefined) {
         parseShapeFlag(config.shape);
@@ -376,16 +375,16 @@ function EdgeShaper(parent, config, idfunc) {
         parseColorFlag(config.color);
       }
     };
-    
-  self.parent = parent;  
-   
+
+  self.parent = parent;
+
   unbindEvents();
-  
+
   toplevelSVG = parent;
   while (toplevelSVG[0][0] && toplevelSVG[0][0].ownerSVGElement) {
     toplevelSVG = d3.select(toplevelSVG[0][0].ownerSVGElement);
   }
-  
+
   if (config === undefined) {
     config = {
       color: {
@@ -394,7 +393,7 @@ function EdgeShaper(parent, config, idfunc) {
       }
     };
   }
-  
+
   if (config.color === undefined) {
     config.color = {
       type: "single",
@@ -407,33 +406,33 @@ function EdgeShaper(parent, config, idfunc) {
   if (_.isFunction(idfunc)) {
     idFunction = idfunc;
   }
-  
+
   followEdgeG = toplevelSVG.append("g");
-  
-  
+
+
   /////////////////////////////////////////////////////////
   /// Public functions
   /////////////////////////////////////////////////////////
-  
+
   self.changeTo = function(config) {
     parseConfig(config);
     shapeEdges();
     updateEdges();
   };
-  
+
   self.drawEdges = function (edges) {
     shapeEdges(edges);
     updateEdges();
   };
-  
+
   self.updateEdges = function () {
     updateEdges();
   };
-  
+
   self.reshapeEdges = function() {
     shapeEdges();
   };
-  
+
   self.activateLabel = function(toogle) {
     if (toogle) {
       visibleLabels = true;
@@ -442,7 +441,7 @@ function EdgeShaper(parent, config, idfunc) {
     }
     shapeEdges();
   };
-  
+
   self.addAnEdgeFollowingTheCursor = function(x, y) {
     followEdge = followEdgeG.append("line");
     followEdge.attr("stroke", "black")
@@ -455,7 +454,7 @@ function EdgeShaper(parent, config, idfunc) {
       followEdge.attr("x2", x).attr("y2", y);
     };
   };
-  
+
   self.removeCursorFollowingEdge = function() {
     if (followEdge.remove) {
       followEdge.remove();

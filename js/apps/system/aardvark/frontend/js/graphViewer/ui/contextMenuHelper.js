@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _, d3*/
 /*global document*/
 /*global EdgeShaper, modalDialogHelper, uiComponentsHelper*/
@@ -64,7 +63,7 @@ function ContextMenu(id) {
         });
       });
     },
-    
+
     divFactory = function() {
       div = document.getElementById(id);
       if (div) {

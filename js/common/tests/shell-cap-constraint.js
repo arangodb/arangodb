@@ -1,10 +1,4 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 80 */
-/*global require,
-    db,
-    assertEqual, assertTrue,
-    ArangoCollection */
+/*global require, db, assertEqual, assertTrue, ArangoCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the cap constraint
@@ -267,7 +261,7 @@ function CapConstraintSuite() {
         catch (err) {
         }
       }
-      
+
       assertEqual(0, collection.count());
       assertEqual([ ], collection.toArray());
 
@@ -282,10 +276,10 @@ function CapConstraintSuite() {
       for (var i = 0; i < 10; ++i) {
         collection.save({ n : i });
       }
-      
+
       assertEqual(5, collection.count());
       assertEqual([ 5, 6, 7, 8, 9 ], collection.toArray().map(fun).sort(nsort));
-      
+
       collection.truncate();
       assertEqual(0, collection.count());
       assertEqual([ ], collection.toArray());
@@ -293,10 +287,10 @@ function CapConstraintSuite() {
       for (var i = 25; i < 35; ++i) {
         collection.save({ n : i });
       }
-      
+
       assertEqual(5, collection.count());
       assertEqual([ 30, 31, 32, 33, 34 ], collection.toArray().map(fun).sort(nsort));
-      
+
       collection.truncate();
       assertEqual(0, collection.count());
 
@@ -325,7 +319,7 @@ function CapConstraintSuite() {
       for (var i = 0;  i < 6;  ++i) {
         docs[i] = collection.save({ n : i });
       }
-      
+
       assertEqual(5, collection.count());
       assertEqual([1, 2, 3, 4, 5], collection.toArray().map(fun).sort(nsort));
 
@@ -340,11 +334,11 @@ function CapConstraintSuite() {
       collection.remove(docs[3]);
       assertEqual(4, collection.count());
       assertEqual([4, 5, 99, 100], collection.toArray().map(fun).sort(nsort));
-      
+
       collection.save({ n: 98 });
       assertEqual(5, collection.count());
       assertEqual([4, 5, 98, 99, 100], collection.toArray().map(fun).sort(nsort));
-      
+
       collection.save({ n: 97 });
       assertEqual(5, collection.count());
       assertEqual([5, 97, 98, 99, 100], collection.toArray().map(fun).sort(nsort));
@@ -373,32 +367,32 @@ function CapConstraintSuite() {
       collection.replace("foo", { a : 1 }); // bar, baz, foo
       assertEqual(3, collection.count());
       assertEqual([ "bar", "baz", "foo" ], collection.toArray().map(fun).sort());
-      
+
       collection.save({ _key: "bad" });     // baz, foo, bad
       assertEqual(3, collection.count());
       assertEqual([ "bad", "baz", "foo" ], collection.toArray().map(fun).sort());
-      
+
       collection.replace("baz", { a : 1 }); // foo, bad, baz
       assertEqual(3, collection.count());
       assertEqual([ "bad", "baz", "foo" ], collection.toArray().map(fun).sort());
-      
+
       collection.save({ _key: "bam" });     // bad, baz, bam
       assertEqual(3, collection.count());
       assertEqual([ "bad", "bam", "baz" ], collection.toArray().map(fun).sort());
-      
+
       collection.save({ _key: "abc" });     // baz, bam, abc
       assertEqual(3, collection.count());
       assertEqual([ "abc", "bam", "baz" ], collection.toArray().map(fun).sort());
 
       testHelper.waitUnload(collection);
-      
+
       assertEqual(3, collection.count());
       assertEqual([ "abc", "bam", "baz" ], collection.toArray().map(fun).sort());
 
       collection.save({ _key: "def" });     // bam, abc, def
       assertEqual(3, collection.count());
       assertEqual([ "abc", "bam", "def" ], collection.toArray().map(fun).sort());
-      
+
       collection.save({ _key: "ghi" });     // abc, def, ghi
       assertEqual(3, collection.count());
       assertEqual([ "abc", "def", "ghi" ], collection.toArray().map(fun).sort());
@@ -434,20 +428,20 @@ function CapConstraintSuite() {
       collection.save({ n : 10 });
       assertEqual(5, collection.count());
       assertEqual([6, 7, 8, 9, 10], collection.toArray().map(fun).sort(nsort));
-      
+
       collection.save({ n : 11 });
       assertEqual(5, collection.count());
       assertEqual([7, 8, 9, 10, 11], collection.toArray().map(fun).sort(nsort));
-     
+
       testHelper.waitUnload(collection);
 
       assertEqual(5, collection.count());
       assertEqual([7, 8, 9, 10, 11], collection.toArray().map(fun).sort(nsort));
-      
+
       for (var i = 15;  i < 20;  ++i) {
         collection.save({ n : i });
       }
-      
+
       assertEqual(5, collection.count());
       assertEqual([15, 16, 17, 18, 19], collection.toArray().map(fun).sort(nsort));
     },
@@ -474,16 +468,16 @@ function CapConstraintSuite() {
       for (var i = 0; i < 10; ++i) {
         collection.save({ n : i });
       }
-     
+
       testHelper.waitUnload(collection, true);
-      
+
       assertEqual(5, collection.count());
       assertEqual([5, 6, 7, 8, 9], collection.toArray().map(fun).sort(nsort));
-      
+
       collection.save({ n : 10 });
 
       testHelper.waitUnload(collection);
-      
+
       assertEqual(5, collection.count());
       assertEqual([6, 7, 8, 9, 10], collection.toArray().map(fun).sort(nsort));
 
@@ -629,10 +623,10 @@ function CapConstraintSuite() {
     testSizeModificationSimple : function () {
       collection.ensureCapConstraint(1000, 16384);
 
-      var doc = collection.save({ a : 1 }); 
+      var doc = collection.save({ a : 1 });
 
       // cap should not be triggered here, but we want to see whether assertions fail
-      doc = collection.replace(doc, { a : 2, b : 2 }); 
+      doc = collection.replace(doc, { a : 2, b : 2 });
       assertEqual(1, collection.count());
       collection.truncate();
       assertEqual(0, collection.count());
@@ -645,9 +639,9 @@ function CapConstraintSuite() {
     testSizeModificationsMulti : function () {
       collection.ensureCapConstraint(1000, 16384);
 
-      var doc = collection.save({ }); 
+      var doc = collection.save({ });
       var data = { };
-              
+
       for (var i = 0; i < 100; ++i) {
         data["a" + i] = i;
 
@@ -655,13 +649,13 @@ function CapConstraintSuite() {
         doc = collection.replace(doc, data);
       }
 
-      assertEqual(1, collection.count()); 
+      assertEqual(1, collection.count());
 
       collection.truncate();
       doc = null;
       testHelper.waitUnload(collection);
 
-      assertEqual(0, collection.count()); 
+      assertEqual(0, collection.count());
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -681,7 +675,7 @@ function CapConstraintSuite() {
       }
 
       try {
-        collection.update(doc, data); 
+        collection.update(doc, data);
         fail();
       }
       catch (err) {
@@ -706,16 +700,16 @@ function CapConstraintSuite() {
     testSizeModificationsViolations : function () {
       collection.ensureCapConstraint(1, 16384);
 
-      var doc = collection.save({ }); 
+      var doc = collection.save({ });
       var data = { };
-              
+
       for (var i = 0; i < 10; ++i) {
         data["a" + i] = i;
 
         doc = collection.replace(doc, data);
       }
-      
-      assertEqual(1, collection.count()); 
+
+      assertEqual(1, collection.count());
       assertEqual(collection.toArray()[0].a9, 9);
 
       for (i = 0; i < 1000; ++i) {
@@ -733,15 +727,15 @@ function CapConstraintSuite() {
 
       assertEqual(collection.toArray()[0].a9, 9);
       assertEqual(1, collection.count());
-      
+
       doc = null;
       testHelper.waitUnload(collection);
-      
+
       assertEqual(collection.toArray()[0].a9, 9);
       assertEqual(1, collection.count());
 
       collection.truncate();
-      assertEqual(0, collection.count()); 
+      assertEqual(0, collection.count());
     }
 
   };

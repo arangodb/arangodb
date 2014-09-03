@@ -1,9 +1,8 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
 /*global window, $, Backbone, templateEngine, alert */
 
 (function() {
   "use strict";
-  
+
   window.PlanTestView = Backbone.View.extend({
 
     el: "#content",
@@ -87,7 +86,7 @@
         param.dbs = 3;
         param.coords = 2;
         param.hostname = window.location.hostname;
-        param.port = window.location.port; 
+        param.port = window.location.port;
       }
       $(this.el).html(this.template.render(param));
       $(this.el).append(this.modal.render({}));

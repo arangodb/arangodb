@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _, d3*/
 /*global document*/
 /*global EdgeShaper, modalDialogHelper, uiComponentsHelper*/
@@ -30,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 function LayouterControls(list, layouter) {
   "use strict";
-  
+
   if (list === undefined) {
     throw "A list element has to be given.";
   }
@@ -38,7 +37,7 @@ function LayouterControls(list, layouter) {
     throw "The Layouter has to be given.";
   }
   var self = this;
-  
+
   this.addControlGravity = function() {
     var prefix = "control_layout_gravity",
       idprefix = prefix + "_";
@@ -56,7 +55,7 @@ function LayouterControls(list, layouter) {
       );
     });
   };
-  
+
   this.addControlCharge = function() {
     var prefix = "control_layout_charge",
       idprefix = prefix + "_";
@@ -74,7 +73,7 @@ function LayouterControls(list, layouter) {
       );
     });
   };
-  
+
   this.addControlDistance = function() {
     var prefix = "control_layout_distance",
       idprefix = prefix + "_";
@@ -92,12 +91,12 @@ function LayouterControls(list, layouter) {
       );
     });
   };
-  
-  
+
+
   this.addAll = function () {
     self.addControlDistance();
     self.addControlGravity();
     self.addControlCharge();
   };
-  
+
 }

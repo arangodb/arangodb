@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _, d3*/
 /*global document*/
 /*global EdgeShaper, modalDialogHelper, uiComponentsHelper*/
@@ -30,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 function EdgeShaperControls(list, shaper) {
   "use strict";
-  
+
   if (list === undefined) {
     throw "A list element has to be given.";
   }
@@ -38,7 +37,7 @@ function EdgeShaperControls(list, shaper) {
     throw "The EdgeShaper has to be given.";
   }
   var self = this;
-  
+
   this.addControlOpticShapeNone = function() {
     var prefix = "control_edge_none",
     idprefix = prefix + "_";
@@ -50,7 +49,7 @@ function EdgeShaperControls(list, shaper) {
       });
     });
   };
-  
+
   this.addControlOpticShapeArrow = function() {
     var prefix = "control_edge_arrow",
       idprefix = prefix + "_";
@@ -62,9 +61,9 @@ function EdgeShaperControls(list, shaper) {
       });
     });
   };
-  
 
-    
+
+
   this.addControlOpticLabel = function() {
     var prefix = "control_edge_label",
       idprefix = prefix + "_";
@@ -84,7 +83,7 @@ function EdgeShaperControls(list, shaper) {
       );
     });
   };
-  
+
   this.addControlOpticLabelList = function() {
     var prefix = "control_edge_label",
       idprefix = prefix + "_";
@@ -111,10 +110,10 @@ function EdgeShaperControls(list, shaper) {
       );
     });
   };
-  
-  
-  
-  
+
+
+
+
   this.addControlOpticSingleColour = function() {
     var prefix = "control_edge_singlecolour",
       idprefix = prefix + "_";
@@ -135,7 +134,7 @@ function EdgeShaperControls(list, shaper) {
       );
     });
   };
-  
+
   this.addControlOpticAttributeColour = function() {
     var prefix = "control_edge_attributecolour",
       idprefix = prefix + "_";
@@ -156,7 +155,7 @@ function EdgeShaperControls(list, shaper) {
       );
     });
   };
-  
+
   this.addControlOpticGradientColour = function() {
     var prefix = "control_edge_gradientcolour",
       idprefix = prefix + "_";
@@ -182,7 +181,7 @@ function EdgeShaperControls(list, shaper) {
       );
     });
   };
-  
+
   this.addAllOptics = function () {
     self.addControlOpticShapeNone();
     self.addControlOpticShapeArrow();
@@ -191,14 +190,14 @@ function EdgeShaperControls(list, shaper) {
     self.addControlOpticAttributeColour();
     self.addControlOpticGradientColour();
   };
-  
+
   this.addAllActions = function () {
-  
+
   };
-  
+
   this.addAll = function () {
     self.addAllOptics();
     self.addAllActions();
   };
-  
+
 }

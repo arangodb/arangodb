@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
+/*jshint strict: false */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -28,7 +28,7 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal"); 
+var internal = require("internal");
 var arangodb = require("org/arangodb");
 
 var db = arangodb.db;
@@ -78,7 +78,7 @@ var getFiltered = function (group) {
     if (group.length > 1 && group.substr(group.length - 2, 2) !== '::') {
       prefix += '::';
     }
-   
+
     getStorage().toArray().forEach(function (f) {
       if (f.name.toUpperCase().substr(0, prefix.length) === prefix) {
         result.push(f);
@@ -97,7 +97,7 @@ var getFiltered = function (group) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var validateName = function (name) {
-  if (typeof name !== 'string' || 
+  if (typeof name !== 'string' ||
       ! name.match(/^[a-zA-Z0-9_]+(::[a-zA-Z0-9_]+)+$/) ||
       name.substr(0, 1) === "_") {
     var err = new ArangoError();
@@ -116,7 +116,7 @@ var stringifyFunction = function (code, name) {
   if (typeof code === 'function') {
     code = String(code);
   }
-  
+
   if (typeof code === 'string') {
     code = "(" + code + ")";
 
@@ -124,8 +124,8 @@ var stringifyFunction = function (code, name) {
       // no parsing possible. assume always valid
       return code;
     }
- 
-    try { 
+
+    try {
       if (internal.parse(code, name)) {
         // parsing successful
         return code;
@@ -140,7 +140,7 @@ var stringifyFunction = function (code, name) {
   var err = new ArangoError();
   err.errorNum = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.code;
   err.errorMessage = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.message;
-    
+
   throw err;
 };
 
@@ -166,7 +166,7 @@ var stringifyFunction = function (code, name) {
 /// Unregisters an existing AQL user function, identified by the fully qualified
 /// function name.
 ///
-/// Trying to unregister a function that does not exist will result in an 
+/// Trying to unregister a function that does not exist will result in an
 /// exception.
 ///
 /// @EXAMPLES
@@ -176,12 +176,12 @@ var stringifyFunction = function (code, name) {
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 var unregisterFunction = function (name) {
   var func = null;
 
   validateName(name);
-  
+
   try {
     func = getStorage().document(name.toUpperCase());
   }
@@ -195,7 +195,7 @@ var unregisterFunction = function (name) {
 
     throw err;
   }
-  
+
   getStorage().remove(func._id);
   internal.reloadAqlFunctions();
 
@@ -208,7 +208,7 @@ var unregisterFunction = function (name) {
 /// @startDocuBlock aqlFunctionsUnregisterGroup
 /// `aqlfunctions.unregisterGroup(prefix)`
 ///
-/// Unregisters a group of AQL user function, identified by a common function 
+/// Unregisters a group of AQL user function, identified by a common function
 /// group prefix.
 ///
 /// This will return the number of functions unregistered.
@@ -222,7 +222,7 @@ var unregisterFunction = function (name) {
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 var unregisterFunctionsGroup = function (group) {
   if (group.length === 0) {
     var err = new ArangoError();
@@ -233,12 +233,12 @@ var unregisterFunctionsGroup = function (group) {
   }
 
   var deleted = 0;
-  
+
   getFiltered(group).forEach(function (f) {
     getStorage().remove(f._id);
     deleted++;
   });
-  
+
   if (deleted > 0) {
     internal.reloadAqlFunctions();
   }
@@ -252,29 +252,29 @@ var unregisterFunctionsGroup = function (group) {
 /// @startDocuBlock aqlFunctionsRegister
 /// `aqlfunctions.register(name, code, isDeterministic)`
 ///
-/// Registers an AQL user function, identified by a fully qualified function 
+/// Registers an AQL user function, identified by a fully qualified function
 /// name. The function code in *code* must be specified as a Javascript
-/// function or a string representation of a Javascript function. 
+/// function or a string representation of a Javascript function.
 ///
 /// If a function identified by *name* already exists, the previous function
 /// definition will be updated.
 ///
-/// The *isDeterministic* attribute can be used to specify whether the 
-/// function results are fully deterministic (i.e. depend solely on the input 
+/// The *isDeterministic* attribute can be used to specify whether the
+/// function results are fully deterministic (i.e. depend solely on the input
 /// and are the same for repeated calls with the same input values). It is not
 /// used at the moment but may be used for optimizations later.
 ///
 /// @EXAMPLES
 ///
 /// ```js
-///   require("org/arangodb/aql/functions").register("myfunctions::temperature::celsiustofahrenheit", 
+///   require("org/arangodb/aql/functions").register("myfunctions::temperature::celsiustofahrenheit",
 ///   function (celsius) {
-///     return celsius * 1.8 + 32; 
+///     return celsius * 1.8 + 32;
 ///   });
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 var registerFunction = function (name, code, isDeterministic) {
   // validate input
   validateName(name);
@@ -282,15 +282,15 @@ var registerFunction = function (name, code, isDeterministic) {
   code = stringifyFunction(code, name);
 
   var testCode = "(function() { var callback = " + code + "; return callback; })()";
-    
+
   try {
-    internal.executeScript(testCode, undefined, "(user function " + name + ")"); 
+    internal.executeScript(testCode, undefined, "(user function " + name + ")");
   }
   catch (err1) {
     var err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.code;
     err.errorMessage = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.message;
-    
+
     throw err;
   }
 
@@ -312,14 +312,14 @@ var registerFunction = function (name, code, isDeterministic) {
       }
       catch (err2) {
       }
-  
+
       var data = {
         _key: name.toUpperCase(),
         name: name,
         code: params.code,
         isDeterministic: params.isDeterministic || false
       };
-    
+
       collection.save(data);
       return exists;
     },
@@ -327,7 +327,7 @@ var registerFunction = function (name, code, isDeterministic) {
       name: name,
       code: code,
       isDeterministic: isDeterministic,
-      collection: getStorage().name() 
+      collection: getStorage().name()
     }
   });
 
@@ -342,9 +342,9 @@ var registerFunction = function (name, code, isDeterministic) {
 /// @startDocuBlock aqlFunctionsToArray
 /// `aqlfunctions.toArray()`
 ///
-/// Returns all previously registered AQL user functions, with their fully 
+/// Returns all previously registered AQL user functions, with their fully
 /// qualified names and function code.
-/// 
+///
 /// The result may optionally be restricted to a specified group of functions
 /// by specifying a group prefix:
 ///
@@ -371,7 +371,7 @@ var registerFunction = function (name, code, isDeterministic) {
 /// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 var toArrayFunctions = function (group) {
   var result = [ ];
 

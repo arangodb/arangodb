@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, white: true, plusplus: true, unparam: true, vars: true, continue: true */
 /*global require, applicationContext, ArangoServerState, ArangoClusterInfo, ArangoClusterComm*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,7 +135,7 @@ function computeStatisticsRaw (result, start, clusterId) {
       + "  SORT s.time "
       + "  return s",
     { start: start - 2 * STATISTICS_INTERVAL, clusterId: clusterId });
-  
+
   result.times = [];
 
   var key;
@@ -268,7 +267,7 @@ function computeStatisticsRaw15M (result, start, clusterId) {
       + "  SORT s.time "
       + "  return s",
     { start: start - 2 * STATISTICS_HISTORY_INTERVAL, clusterId: clusterId });
-  
+
   var lastRaw = null;
   var lastRaw2 = null;
 
@@ -404,7 +403,7 @@ function computeStatisticsLong (attrs, clusterId) {
     + "  SORT s.time "
     + "  return s",
     { end: end, clusterId: clusterId });
-  
+
   var long = { times: [] };
 
   computeStatisticsValues(long, values, attrs);
@@ -534,7 +533,7 @@ controller.get("cluster", function (req, res) {
     url += sep + "start=" + encodeURIComponent(req.params("start"));
     sep = "&";
   }
-  
+
   if (req.parameters.hasOwnProperty("filter")) {
     url += sep + "filter=" + encodeURIComponent(req.params("filter"));
     sep = "&";

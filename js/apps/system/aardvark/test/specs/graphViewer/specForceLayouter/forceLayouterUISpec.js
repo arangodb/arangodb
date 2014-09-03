@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
+/*jshint unused: false */
 /*global beforeEach, afterEach */
 /*global describe, it, expect*/
 /*global runs, waitsFor, spyOn */
@@ -67,89 +67,89 @@
         var e = new LayouterControls(list);
       }).toThrow("The Layouter has to be given.");
     });
-    
+
     it('should be able to add a change gravity control to the list', function() {
       runs(function() {
         layouterUI.addControlGravity();
-      
+
         expect($("#control_layout_list #control_layout_gravity").length).toEqual(1);
         expect($("#control_layout_list #control_layout_gravity")[0]).toConformToListCSS();
-      
+
         helper.simulateMouseEvent("click", "control_layout_gravity_button");
-        
+
         expect($("#control_layout_gravity_modal").length).toEqual(1);
-        
+
         $("#control_layout_gravity_value").attr("value", 42);
         helper.simulateMouseEvent("click", "control_layout_gravity_submit");
-      
+
         expect(layouter.changeTo).toHaveBeenCalledWith({
           gravity: "42"
         });
-        
+
       });
-      
+
       waitsFor(function() {
         return $("#control_layout_gravity_modal").length === 0;
-      }, 2000, "The modal dialog should disappear.");    
+      }, 2000, "The modal dialog should disappear.");
     });
-    
+
     it('should be able to add a change distance control to the list', function() {
       runs(function() {
         layouterUI.addControlDistance();
-      
+
         expect($("#control_layout_list #control_layout_distance").length).toEqual(1);
         expect($("#control_layout_list #control_layout_distance")[0]).toConformToListCSS();
-      
+
         helper.simulateMouseEvent("click", "control_layout_distance_button");
-        
+
         expect($("#control_layout_distance_modal").length).toEqual(1);
-        
+
         $("#control_layout_distance_value").attr("value", 42);
         helper.simulateMouseEvent("click", "control_layout_distance_submit");
-      
+
         expect(layouter.changeTo).toHaveBeenCalledWith({
           distance: "42"
         });
-        
+
       });
-      
+
       waitsFor(function() {
         return $("#control_layout_distance_modal").length === 0;
-      }, 2000, "The modal dialog should disappear.");    
+      }, 2000, "The modal dialog should disappear.");
     });
-    
+
     it('should be able to add a change charge control to the list', function() {
       runs(function() {
         layouterUI.addControlCharge();
-      
+
         expect($("#control_layout_list #control_layout_charge").length).toEqual(1);
         expect($("#control_layout_list #control_layout_charge")[0]).toConformToListCSS();
-      
+
         helper.simulateMouseEvent("click", "control_layout_charge_button");
-        
+
         expect($("#control_layout_charge_modal").length).toEqual(1);
-        
+
         $("#control_layout_charge_value").attr("value", 42);
         helper.simulateMouseEvent("click", "control_layout_charge_submit");
-      
+
         expect(layouter.changeTo).toHaveBeenCalledWith({
           charge: "42"
         });
-        
+
       });
-      
+
       waitsFor(function() {
         return $("#control_layout_charge_modal").length === 0;
-      }, 2000, "The modal dialog should disappear.");    
+      }, 2000, "The modal dialog should disappear.");
     });
-    
+
     it('should be able to add all controls to the list', function () {
       layouterUI.addAll();
-      
+
       expect($("#control_layout_list #control_layout_gravity").length).toEqual(1);
       expect($("#control_layout_list #control_layout_distance").length).toEqual(1);
       expect($("#control_layout_list #control_layout_charge").length).toEqual(1);
-      
+
     });
   });
 
