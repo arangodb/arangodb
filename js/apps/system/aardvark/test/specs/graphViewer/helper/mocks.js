@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
+/*jshint unused: false */
 /*global document, window*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -32,14 +32,14 @@ var mocks = mocks || {};
 
 (function mocksCreator() {
   "use strict";
-  
+
   mocks.layouter = {
     drag: function(){},
     setCombinedUpdateFunction: function() {},
     stop: function(){},
     start: function(){}
   };
-  
+
   mocks.adapter = {
     createNode: function(){},
     deleteNode: function(){},
@@ -51,5 +51,5 @@ var mocks = mocks || {};
     expandCommunity: function(){},
     explore: function(){}
   };
-    
+
 }());

@@ -1,0 +1,73 @@
+{
+  "name": "date-now",
+  "version": "0.1.4",
+  "description": "A requirable version of Date.now()",
+  "keywords": [],
+  "author": {
+    "name": "Raynos",
+    "email": "raynos2@gmail.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/Colingo/date-now.git"
+  },
+  "main": "index",
+  "homepage": "https://github.com/Colingo/date-now",
+  "contributors": [
+    {
+      "name": "Artem Shoobovych"
+    }
+  ],
+  "bugs": {
+    "url": "https://github.com/Colingo/date-now/issues",
+    "email": "raynos2@gmail.com"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "tape": "~0.2.2",
+    "browserify": "https://github.com/raynos/node-browserify/tarball/master",
+    "testem": "~0.2.52"
+  },
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "http://github.com/Colingo/date-now/raw/master/LICENSE"
+    }
+  ],
+  "scripts": {
+    "test": "node ./test",
+    "build": "browserify test/index.js -o test/static/bundle.js",
+    "testem": "testem"
+  },
+  "testling": {
+    "files": "test/*.js",
+    "browsers": {
+      "ie": [
+        "8",
+        "9",
+        "10"
+      ],
+      "firefox": [
+        "16",
+        "17",
+        "nightly"
+      ],
+      "chrome": [
+        "22",
+        "23",
+        "canary"
+      ],
+      "opera": [
+        "12",
+        "next"
+      ],
+      "safari": [
+        "5.1"
+      ]
+    }
+  },
+  "readme": "# date-now\n\n[![build status][1]][2]\n\n[![browser support][3]][4]\n\nA requirable version of Date.now()\n\nUse-case is to be able to mock out Date.now() using require interception.\n\n## Example\n\n```js\nvar now = require(\"date-now\")\n\nvar ts = now()\nvar ts2 = Date.now()\nassert.equal(ts, ts2)\n```\n\n## example of seed\n\n```\nvar now = require(\"date-now/seed\")(timeStampFromServer)\n\n// ts is in \"sync\" with the seed value from the server\n// useful if your users have their local time being a few minutes\n// out of your server time.\nvar ts = now()\n```\n\n## Installation\n\n`npm install date-now`\n\n## Contributors\n\n - Raynos\n\n## MIT Licenced\n\n  [1]: https://secure.travis-ci.org/Colingo/date-now.png\n  [2]: http://travis-ci.org/Colingo/date-now\n  [3]: http://ci.testling.com/Colingo/date-now.png\n  [4]: http://ci.testling.com/Colingo/date-now\n",
+  "readmeFilename": "README.md",
+  "_id": "date-now@0.1.4",
+  "_from": "date-now@^0.1.4"
+}

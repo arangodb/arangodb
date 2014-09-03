@@ -1,11 +1,11 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, stupid: true, continue: true, regexp: true nonpropdel: true*/
-/*global require, exports, module */
+/*jshint strict: false */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief database version check
 ///
 /// @file
-/// 
+///
 /// Checks if the database needs to be upgraded.
 ///
 /// DISCLAIMER
@@ -163,10 +163,10 @@ exports.databaseVersion = function () {
   else {
     return { result: exports.NO_VERSION_FILE };
   }
-    
+
   // extract server version
   var currentVersion = exports.CURRENT_VERSION;
-  
+
   // version match!
   if (Math.floor(lastVersion / 100) === Math.floor(currentVersion / 100)) {
     return {

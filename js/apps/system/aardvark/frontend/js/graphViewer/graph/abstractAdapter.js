@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _ */
 /*global console */
 /*global NodeReducer, ModularityJoiner, WebWorkerWrapper, CommunityNode*/
@@ -32,7 +31,7 @@
 
 function AbstractAdapter(nodes, edges, descendant, viewer, config) {
   "use strict";
-  
+
   if (nodes === undefined) {
     throw "The nodes have to be given.";
   }
@@ -46,7 +45,7 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
     throw "A reference to the graph viewer has to be given.";
   }
   config = config || {};
-  
+
   var self = this,
     isRunning = false,
     initialX = {},
@@ -71,7 +70,7 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
         return this.start + Math.random() * this.range;
       };
     },
-    
+
     setHeight = function(h) {
       initialY.range = h / 2;
       initialY.start = h / 4;
@@ -79,7 +78,7 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
         return this.start + Math.random() * this.range;
       };
     },
-  
+
     findNode = function(id) {
       var intId = joinedInCommunities[id] || id,
         res = $.grep(nodes, function(e){
@@ -87,26 +86,26 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
         });
       if (res.length === 0) {
         return false;
-      } 
+      }
       if (res.length === 1) {
         return res[0];
       }
       throw "Too many nodes with the same ID, should never happen";
     },
-  
+
     findEdge = function(id) {
       var res = $.grep(edges, function(e){
         return e._id === id;
       });
       if (res.length === 0) {
         return false;
-      } 
+      }
       if (res.length === 1) {
         return res[0];
       }
       throw "Too many edges with the same ID, should never happen";
     },
-    
+
     insertNode = function(data, x, y) {
       var node = {
         _data: data,
@@ -124,7 +123,7 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
       node._inboundCounter = 0;
       return node;
     },
-    
+
     insertInitialNode = function(data) {
       var n = insertNode(data);
       n.x = initialX.start * 2;
@@ -132,7 +131,7 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
       n.fixed = true;
       return n;
     },
-    
+
     cleanUp = function() {
       nodes.length = 0;
       edges.length = 0;
@@ -140,7 +139,7 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
       cachedCommunities = {};
       viewer.cleanUp();
     },
-    
+
     insertEdge = function(data) {
       var source,
         target,
@@ -187,8 +186,8 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
       if (informJoiner) {
         joiner.call("insertEdge", source._id, target._id);
       }
-      
-      
+
+
       /* Archive
       if (cachedCommunities[source._id] !== undefined) {
         edgeToPush = {};
@@ -222,7 +221,7 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
       */
       return edge;
     },
-    
+
     removeNode = function (node) {
       var i;
       for ( i = 0; i < nodes.length; i++ ) {
@@ -232,7 +231,7 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
         }
       }
     },
-    
+
     removeEdgeWithIndex = function (index, notInformJoiner) {
       var e = edges[index],
         s = e.source._id,
@@ -242,7 +241,7 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
         joiner.call("deleteEdge",s , t);
       }
     },
-  
+
     removeEdge = function (edge, notInformJoiner) {
       var i;
       for ( i = 0; i < edges.length; i++ ) {
@@ -252,7 +251,7 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
         }
       }
     },
-  
+
     removeEdgesForNode = function (node) {
       var i;
       for (i = 0; i < edges.length; i++ ) {
@@ -294,10 +293,10 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
             edgeToPush.type = "s";
             edgeToPush._id = edges[i]._id;
             edgeToPush.source = s;
-            
+
             if (!/^\*community/.test(t._id)) {
               joiner.call("deleteEdge", s._id, t._id);
-            }            
+            }
           }
           if (t === nodes[j]) {
             if (edgeToPush.type !== undefined) {
@@ -315,7 +314,7 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
             edgeToPush.target = t;
             if (!/^\*community/.test(s._id)) {
               joiner.call("deleteEdge", s._id, t._id);
-            }            
+            }
           }
         }
         if (edgeToPush.type !== undefined) {
@@ -336,15 +335,15 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
             shouldRemove = commNode.insertOutboundEdge(edges[i]);
             if (!t._isCommunity) {
               joiner.call("deleteEdge", s._id, t._id);
-            } 
-            s = edges[i].source;           
+            }
+            s = edges[i].source;
           }
           if (t === nodes[j]) {
             shouldRemove = commNode.insertInboundEdge(edges[i]);
             if (!s._isCommunity) {
               joiner.call("deleteEdge", s._id, t._id);
             }
-            t = edges[i].target;          
+            t = edges[i].target;
           }
           if (shouldRemove) {
             edges.splice(i, 1);
@@ -353,7 +352,7 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
         }
       }
     },
-    
+
     // Helper function to easily remove all outbound edges for one node
     removeOutboundEdgesFromNode = function ( node ) {
       if (node._outboundCounter > 0) {
@@ -395,7 +394,7 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
       cachedCommunities[commId] = {};
       cachedCommunities[commId].nodes = nodesToRemove;
       cachedCommunities[commId].edges = [];
-      
+
       combineCommunityEdges(nodesToRemove, commNode);
       _.each(nodesToRemove, function(n) {
         joinedInCommunities[n._id] = commId;
@@ -405,12 +404,12 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
       isRunning = false;
     },
     */
-    
+
     collapseCommunity = function (community, reason) {
       if (!community || community.length === 0) {
         return;
       }
-      var 
+      var
         nodesToRemove = _.map(community, function(id) {
           return findNode(id);
         }),
@@ -420,7 +419,7 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
         commNode._reason = reason;
       }
       cachedCommunities[commId] = commNode;
-      
+
       combineCommunityEdges(nodesToRemove, commNode);
       _.each(nodesToRemove, function(n) {
         joinedInCommunities[n._id] = commId;
@@ -429,7 +428,7 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
       nodes.push(commNode);
       isRunning = false;
     },
-    
+
     joinerCb = function (d) {
       var data = d.data;
       if (data.error) {
@@ -438,7 +437,7 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
         return;
       }
       switch (data.cmd) {
-        case "debug": 
+        case "debug":
           //console.log(data.result);
           break;
         case "getCommunity":
@@ -447,7 +446,7 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
         default:
       }
     },
-    
+
     requestCollapse = function (focus) {
       if (isRunning) {
         return;
@@ -459,7 +458,7 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
         joiner.call("getCommunity", limit);
       }
     },
-  
+
     checkNodeLimit = function (focus) {
       var curRendered = nodes.length,
         commToColapse,
@@ -517,12 +516,12 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
             joiner.call("insertEdge", e.edge.source._id, e.edge.target._id);
             break;
         }
-        
+
       });
-      delete cachedCommunities[commId];      
+      delete cachedCommunities[commId];
     },
     */
-    
+
     dissolveCommunity = function (commNode) {
       var dissolveInfo = commNode.getDissolveInfo(),
         nodesToAdd = dissolveInfo.nodes,
@@ -559,14 +558,14 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
         edges.push(edge);
         joiner.call("insertEdge", edge.source._id, edge.target._id);
       });
-      delete cachedCommunities[commNode._id];      
+      delete cachedCommunities[commNode._id];
     },
-    
+
     expandCommunity = function(commNode) {
       commNode.expand();
       checkNodeLimit(commNode);
     },
-    
+
     checkSizeOfInserted = function (inserted) {
       if (_.size(inserted) > childLimit) {
         var buckets = reducer.bucketNodes(_.values(inserted), childLimit);
@@ -580,7 +579,7 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
         });
       }
     },
-    
+
     setNodeLimit = function (pLimit, callback) {
       limit = pLimit;
       checkNodeLimit();
@@ -588,13 +587,13 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
         callback();
       }
     },
-    
+
     setChildLimit = function (pLimit) {
       childLimit = pLimit;
     },
-        
+
     handleRemovedEdge,
-    
+
     collapseNodeInCommunity = function(node, commNode) {
       node._expanded = false;
       var removedEdges = commNode.removeOutboundEdgesFromNode(node);
@@ -603,7 +602,7 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
         removeEdge(e, true);
       });
     },
-    
+
     collapseNode = function(node) {
       node._expanded = false;
       if (joinedInCommunities[node._id]) {
@@ -612,7 +611,7 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
       var removedEdges = removeOutboundEdgesFromNode(node);
       _.each(removedEdges, handleRemovedEdge);
     },
-    
+
     collapseExploreCommunity = function(commNode) {
       var disInfo = commNode.getDissolveInfo();
       removeNode(commNode);
@@ -625,7 +624,7 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
       });
       delete cachedCommunities[commNode._id];
     },
-    
+
     expandNode = function(n, startCallback) {
       if (n._isCommunity) {
         self.expandCommunity(n, startCallback);
@@ -634,16 +633,16 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
         descendant.loadNode(n._id, startCallback);
       }
     },
-    
+
     explore = function (node, startCallback) {
       if (!node._expanded) {
         expandNode(node, startCallback);
       } else {
         collapseNode(node);
       }
-      
+
     };
-  
+
   handleRemovedEdge = function (e) {
     var n = e.target, t;
     if (n._isCommunity) {
@@ -666,21 +665,21 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
       removeNode(n);
     }
   };
-  
+
   childLimit = Number.POSITIVE_INFINITY;
-  
+
   if (config.prioList) {
     reducer = new NodeReducer(config.prioList);
   } else {
     reducer = new NodeReducer();
   }
   joiner = new WebWorkerWrapper(ModularityJoiner, joinerCb);
-  
+
   initialX.getStart = function() {return 0;};
   initialY.getStart = function() {return 0;};
-  
+
   this.cleanUp = cleanUp;
-  
+
   this.setWidth = setWidth;
   this.setHeight = setHeight;
   this.insertNode = insertNode;
@@ -689,21 +688,21 @@ function AbstractAdapter(nodes, edges, descendant, viewer, config) {
 
   this.removeNode = removeNode;
   this.removeEdge = removeEdge;
-  this.removeEdgesForNode = removeEdgesForNode;  
-  
+  this.removeEdgesForNode = removeEdgesForNode;
+
   this.expandCommunity = expandCommunity;
-  
+
   this.setNodeLimit = setNodeLimit;
   this.setChildLimit = setChildLimit;
-  
+
   this.checkSizeOfInserted = checkSizeOfInserted;
   this.checkNodeLimit = checkNodeLimit;
-  
+
   this.explore = explore;
-  
+
   this.changeTo = changeTo;
-  
+
   this.getPrioList = reducer.getPrioList;
-  
+
   this.dissolveCommunity = dissolveCommunity;
 }

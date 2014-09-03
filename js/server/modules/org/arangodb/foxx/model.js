@@ -1,5 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120 */
-/*global module, require, exports */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx Model

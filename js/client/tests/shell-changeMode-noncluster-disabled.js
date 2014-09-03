@@ -1,4 +1,3 @@
-/*jslint indent: 2, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, nomen: true, sloppy: true */
 /*global require, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,15 +52,15 @@ function changeOperationModePositiveCaseTestSuite () {
     tearDown : function () {
       // reset server-mode after executing this test
       db._executeTransaction({
-        collections: { }, 
+        collections: { },
         action: function () {
-          var db = require('internal').db; 
+          var db = require('internal').db;
           try {
             db._changeMode('Normal');
           }
           catch (err) {
           }
-        } 
+        }
       });
     },
 
@@ -77,9 +76,9 @@ function changeOperationModePositiveCaseTestSuite () {
       // server and executed there) to execute the changeMode function call on
       // the server...
       var result = db._executeTransaction({
-        collections: { }, 
+        collections: { },
         action: function () {
-          var db = require('internal').db; 
+          var db = require('internal').db;
           var result;
           try {
             result = db._changeMode('NoCreate');
@@ -88,9 +87,9 @@ function changeOperationModePositiveCaseTestSuite () {
             result = false;
           }
           return result;
-        } 
+        }
       });
-      assertTrue(result);    
+      assertTrue(result);
     }
 
   };

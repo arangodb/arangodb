@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
+/*jshint browser: true */
+/*jshint unused: false */
 /*global require, window, exports, Backbone, EJS, $, templateEngine, arangoHelper, Joi*/
 
 (function() {
@@ -219,11 +220,8 @@
 
       if(collectionIsLoaded) {
         // prevent "unexpected sync method error"
-        /*jslint stupid: true */
-        var wfs = this.model.getProperties().waitForSync;
-        /*jslint stupid: false */
-
-        tableContent.push(
+                var wfs = this.model.getProperties().waitForSync;
+                tableContent.push(
           window.modalView.createSelectEntry(
             "change-collection-sync",
             "Wait for sync",

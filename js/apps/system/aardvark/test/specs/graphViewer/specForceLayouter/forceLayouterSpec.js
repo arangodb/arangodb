@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
+/*jshint unused: false */
 /*global beforeEach, afterEach */
 /*global describe, it, expect, jasmine */
 /*global runs, spyOn, waitsFor */
@@ -48,7 +48,7 @@
     gravity,
     standardConfig,
     edgeShaper,
-    
+
     createNodeList = function(amount) {
       var i,
       nodes = [];
@@ -59,17 +59,17 @@
     },
     timeOutTest = function() {
       var startTime;
-      
+
       runs(function() {
         spyOn(layouter, 'stop').andCallThrough();
         startTime = (new Date()).getTime();
         layouter.start();
       });
-        
+
       waitsFor(function() {
         return layouter.stop.calls.length > 0;
       }, "layouter should have been stopped", 2000);
-        
+
       runs(function() {
         // List test if not time-outed
         var endTime = (new Date()).getTime(),
@@ -82,16 +82,16 @@
         spyOn(layouter, 'stop').andCallThrough();
         layouter.start();
       });
-        
+
       waitsFor(function() {
         return layouter.stop.calls.length > 0;
       }, "layouter should have been stopped", 2000);
-        
+
       runs(function() {
         expect(nodes).toNotBeOffScreen();
       });
     },
-    
+
     dummyNodeShaper = {
       updateNodes: function() {
         var changeDist = 0;
@@ -101,15 +101,15 @@
         return changeDist;
       }
     };
-    
-    
+
+
     beforeEach(function() {
       width = 940;
       height = 640;
       offset = 10;
       linkDistance = 100;
       gravity = 0.5;
-      
+
       standardConfig = {
         "nodes": [],
         "links": [],
@@ -118,7 +118,7 @@
         "gravity": gravity,
         "distance": linkDistance
       };
-      
+
       this.addMatchers({
         toBeInATimeCategory: function() {
           var duration = this.actual;
@@ -143,7 +143,7 @@
           };
           return duration < 10000;
         },
-        
+
         toBeCloseToNode: function (n2, threshold) {
           var n1 = this.actual,
             xdis = n1.x - n2.x,
@@ -157,7 +157,7 @@
           threshold = threshold || 150;
           return Math.abs(distance) < threshold;
         },
-        
+
         toBeDistantToNode: function (n2, threshold) {
           var n1 = this.actual,
             xdis = n1.x - n2.x,
@@ -172,12 +172,12 @@
             return "Node " + n1.id
               + " should be distant from Node " + n2.id
               + " but distance is to long (" + distance + ")";
-            
+
           };
           threshold = threshold || 100;
           return Math.abs(distance - linkDistance) < threshold;
         },
-        
+
         toNotBeOffScreen: function () {
           var minx = Number.MAX_VALUE,
           miny = Number.MAX_VALUE,
@@ -212,11 +212,11 @@
            && maxy < height - offset;
         }
       });
-      
+
     });
     /*
     it('should position the first node in the centre', function() {
-      runs(function() {    
+      runs(function() {
         standardConfig.nodes = createNodeList(1);
         nodes = standardConfig.nodes;
         edgeShaper = {updateEdges: function(){}};
@@ -225,11 +225,11 @@
         spyOn(layouter, 'stop').andCallThrough();
         layouter.start();
       });
-      
+
       waitsFor(function() {
         return layouter.stop.calls.length > 0;
       }, "force should have been stopped", 10000);
-        
+
       runs(function() {
         var center = {
           "id": "center",
@@ -250,11 +250,11 @@
         spyOn(layouter, 'stop').andCallThrough();
         layouter.start();
       });
-      
+
       waitsFor(function() {
         return layouter.stop.calls.length > 0;
       }, "force should have been stopped", 10000);
-        
+
       runs(function() {
         expect(nodes[0]).toBeCloseToNode(nodes[1]);
         expect(nodes[0]).toBeCloseToNode(nodes[2]);
@@ -263,11 +263,11 @@
         expect(nodes[1]).toBeCloseToNode(nodes[3]);
         expect(nodes[2]).toBeCloseToNode(nodes[3]);
       });
-      
+
     });
-    
+
     it('should keep distance between linked nodes', function() {
-      runs(function() {    
+      runs(function() {
         nodes = createNodeList(4);
         standardConfig.nodes = nodes;
         standardConfig.links = [
@@ -283,11 +283,11 @@
         spyOn(layouter, 'stop').andCallThrough();
         layouter.start();
       });
-      
+
       waitsFor(function() {
         return layouter.stop.calls.length > 0;
       }, "force should have been stopped", 10000);
-        
+
       runs(function() {
         expect(nodes[0]).toBeDistantToNode(nodes[1]);
         expect(nodes[0]).toBeDistantToNode(nodes[2]);
@@ -295,9 +295,9 @@
         expect(nodes[1]).toBeDistantToNode(nodes[3]);
         expect(nodes[2]).toBeDistantToNode(nodes[3]);
       });
-      
+
     });
-    
+
     it('should throw an error if nodes are not defined', function() {
       expect(function() {
         var tmp = new ForceLayouter({"links": []});
@@ -306,7 +306,7 @@
         var tmp = new ForceLayouter({"nodes": [],"links": []});
       }).not.toThrow("No nodes defined");
     });
-    
+
     it('should throw an error if links are not defined', function() {
       expect(function() {
         var tmp = new ForceLayouter({"nodes": []});
@@ -315,7 +315,7 @@
         var tmp = new ForceLayouter({"nodes": [],"links": []});
       }).not.toThrow("No links defined");
     });
-    
+
     describe('testing for parameters', function() {
       // Mock the force!
       var mock = {
@@ -328,8 +328,8 @@
         on: function() {}
       },
       config;
-      
-      
+
+
       beforeEach(function() {
         spyOn(d3.layout, "force").andCallFake(function() {
           return mock;
@@ -339,21 +339,21 @@
           links: []
         };
       });
-      
+
       it('should set the nodes', function() {
         spyOn(mock, "nodes");
         config.nodes = [{_id: 1}];
         var tmp = new ForceLayouter(config);
         expect(mock.nodes).wasCalledWith([{_id: 1}]);
       });
-      
+
       it('should set the edges', function() {
         spyOn(mock, "links");
         config.links = [{_id: 1}];
         var tmp = new ForceLayouter(config);
         expect(mock.links).wasCalledWith([{_id: 1}]);
       });
-      
+
       it('should set the size', function() {
         spyOn(mock, "size");
         config.width = 100;
@@ -361,7 +361,7 @@
         var tmp = new ForceLayouter(config);
         expect(mock.size).wasCalledWith([100, 80]);
       });
-      
+
       it('should set the distance', function() {
         var func, tmp;
         spyOn(mock, "linkDistance").andCallFake(function(f) {
@@ -375,14 +375,14 @@
           target: {}
         })).toEqual(2 * config.distance);
       });
-      
+
       it('should set the gravity', function() {
         spyOn(mock, "gravity");
         config.gravity = 100;
         var tmp = new ForceLayouter(config);
         expect(mock.gravity).wasCalledWith(100);
       });
-      
+
       it('should set the charge', function() {
         var func, tmp;
         spyOn(mock, "charge").andCallFake(function(f) {
@@ -393,10 +393,10 @@
         expect(mock.charge).wasCalledWith(jasmine.any(Function));
         expect(func({})).toEqual(config.charge);
       });
-      
+
       it('should set default values', function() {
         var fd, fc, tmp;
-        
+
         spyOn(mock, "size");
         spyOn(mock, "linkDistance").andCallFake(function(f) {
           fd = f;
@@ -405,23 +405,23 @@
         spyOn(mock, "charge").andCallFake(function(f) {
           fc = f;
         });
-        
+
         tmp = new ForceLayouter(config);
-        
+
         expect(mock.size).wasCalledWith([880, 680]);
         expect(mock.linkDistance).wasCalledWith(jasmine.any(Function));
         expect(mock.gravity).wasCalledWith(0.01);
         expect(mock.charge).wasCalledWith(jasmine.any(Function));
-        
+
         expect(fd({
           source: {},
           target: {}
         })).toEqual(160);
-        
+
         expect(fc({})).toEqual(-600);
-        
+
       });
-      
+
       it('should be able to switch the distance', function() {
         var func, tmp;
         spyOn(mock, "linkDistance").andCallFake(function(f) {
@@ -441,7 +441,7 @@
           target: {}
         })).toEqual(2 * 200);
       });
-      
+
       it('should be able to switch the gravity', function() {
         var tmp = new ForceLayouter(config);
         spyOn(mock, "gravity");
@@ -450,7 +450,7 @@
         });
         expect(mock.gravity).wasCalledWith(200);
       });
-      
+
       it('should be able to switch the charge', function() {
         var func, tmp;
         spyOn(mock, "charge").andCallFake(function(f) {
@@ -464,7 +464,7 @@
         expect(func({})).toEqual(200);
       });
     });
-    
+
     /*
     describe('tested under normal conditions (50 nodes)', function() {
       beforeEach(function() {
@@ -473,91 +473,91 @@
         edgeShaper = {"updateEdges": function(){}};
         layouter = new ForceLayouter(standardConfig);
         layouter.setCombinedUpdateFunction(dummyNodeShaper, edgeShaper);
-        
+
       });
-      
-      
+
+
       it('should not position a node offscreen', function() {
         positioningTest();
       });
-      
+
       it('should terminate', function() {
         timeOutTest();
       });
 
     });
-    
+
     describe('tested under heavy weight conditions (500 nodes)', function() {
-      
+
       beforeEach(function() {
         nodes = createNodeList(500);
         standardConfig.nodes = nodes;
         edgeShaper = {"updateEdges": function(){}};
         layouter = new ForceLayouter(standardConfig);
         layouter.setCombinedUpdateFunction(dummyNodeShaper, edgeShaper);
-        
+
       });
-      
-      
+
+
       it('should not position a node offscreen', function() {
         positioningTest();
       });
-      
-      
+
+
       it('should terminate', function() {
         timeOutTest();
-      }); 
-      
+      });
+
     });
     */
     /*
     describe('tested under evil stress (5000 nodes)', function() {
-      
+
       beforeEach(function() {
         nodes = createNodeList(5000);
         standardConfig.nodes = nodes;
         edgeShaper = {"updateEdges": function(){}};
         layouter = new ForceLayouter(standardConfig);
         layouter.setCombinedUpdateFunction(dummyNodeShaper, edgeShaper);
-        
+
       });
-      
-      
+
+
       it('should not position a node offscreen', function() {
         positioningTest();
       });
-      
-      
+
+
       it('should terminate', function() {
         timeOutTest();
       });
 
-      
+
     });
-    
+
     */
     /*
     describe('tested by the devil himself (50000 nodes)', function() {
-      
+
       beforeEach(function() {
         nodes = createNodeList(50000);
         standardConfig.nodes = nodes;
         edgeShaper = {"updateEdges": function(){}};
         layouter = new ForceLayouter(standardConfig);
         layouter.setCombinedUpdateFunction(dummyNodeShaper, edgeShaper);
-        
+
       });
-      
-      
+
+
       it('should not position a node offscreen', function() {
         positioningTest();
       });
-      
-      
+
+
       it('should terminate', function() {
         timeOutTest();
       });
-      
+
     });
     */
   });

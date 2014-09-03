@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
+/*jshint strict: false */
 /*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -28,7 +28,6 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
 var configuration = require("org/arangodb/configuration");
 

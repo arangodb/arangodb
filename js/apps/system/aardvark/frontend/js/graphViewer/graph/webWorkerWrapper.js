@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global window, _*/
 // These values are injected
 /*global w:true, Construct, self*/
@@ -32,11 +31,11 @@
 
 function WebWorkerWrapper(Class, callback) {
   "use strict";
-  
+
   if (Class === undefined) {
     throw "A class has to be given.";
-  } 
- 
+  }
+
   if (callback === undefined) {
     throw "A callback has to be given.";
   }
@@ -91,12 +90,12 @@ function WebWorkerWrapper(Class, callback) {
             }
         }
       },
-      
+
       BlobObject = function(c) {
         var code = "var w, Construct = "
           + c.toString()
           + ";self.onmessage = "
-          + onmessage.toString();     
+          + onmessage.toString();
         return new window.Blob(code.split());
       },
       worker,
@@ -111,7 +110,7 @@ function WebWorkerWrapper(Class, callback) {
   },
   worker;
 
-  try { 
+  try {
     worker = createInBlobContext();
     exports.call = function(cmd) {
       var args = Array.prototype.slice.call(arguments);

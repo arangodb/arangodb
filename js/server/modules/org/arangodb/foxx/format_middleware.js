@@ -1,5 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120 */
-/*global module, require, exports */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx Format Middleware
@@ -35,7 +34,7 @@ var FormatMiddleware;
 ////////////////////////////////////////////////////////////////////////////////
 
 FormatMiddleware = function (allowedFormats, defaultFormat) {
-  'use strict';
+  "use strict";
   var stringRepresentation, middleware = function (request, response, options, next) {
     var parsed, determinePathAndFormat;
 

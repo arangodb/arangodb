@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*jshint strict: false */
 /*global require, module */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -155,7 +155,7 @@ actions.defineHttp({
 
   callback: easyPostCallback({
     body: true,
-    callback: function (body) {
+    callback: function () {
       foxxManager.scanAppDirectory();
       return true;
     }

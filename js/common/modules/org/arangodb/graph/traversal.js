@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, continue: true */
+/*jshint strict: false, unused: false */
 /*global require, exports, ArangoClusterComm */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -38,7 +38,7 @@ var ArangoError = arangodb.ArangoError;
 var db = arangodb.db;
 
 var ArangoTraverser;
-  
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
 // -----------------------------------------------------------------------------
@@ -46,7 +46,7 @@ var ArangoTraverser;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone any object
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 function clone (obj) {
   if (obj === null || typeof obj !== "object") {
     return obj;
@@ -168,14 +168,14 @@ function collectionDatasourceFactory (edgeCollection) {
       }
       return this.edgeCollection.edges(vertex._id);
     },
-    
+
     getInEdges: function (vertex) {
       if (this.useBuiltIn) {
         return this.edgeCollection.INEDGES(vertex._id);
       }
       return this.edgeCollection.inEdges(vertex._id);
     },
-    
+
     getOutEdges: function (vertex) {
       if (this.useBuiltIn) {
         return this.edgeCollection.OUTEDGES(vertex._id);
@@ -229,11 +229,11 @@ function generalGraphDatasourceFactory (graph) {
     getEdgeId: function (edge) {
       return edge._id;
     },
-    
+
     getEdgeFrom: function (edge) {
       return edge._from;
     },
-    
+
     getEdgeTo: function (edge) {
       return edge._to;
     },
@@ -245,11 +245,11 @@ function generalGraphDatasourceFactory (graph) {
     getAllEdges: function (vertex) {
       return this.graph._EDGES(vertex._id);
     },
-    
+
     getInEdges: function (vertex) {
       return this.graph._INEDGES(vertex._id);
     },
-    
+
     getOutEdges: function (vertex) {
       return this.graph._OUTEDGES(vertex._id);
     }
@@ -286,11 +286,11 @@ function graphDatasourceFactory (name) {
     getEdgeId: function (edge) {
       return edge.getId();
     },
-    
+
     getEdgeFrom: function (edge) {
       return edge._properties._from;
     },
-    
+
     getEdgeTo: function (edge) {
       return edge._properties._to;
     },
@@ -302,11 +302,11 @@ function graphDatasourceFactory (name) {
     getAllEdges: function (vertex) {
       return vertex.edges();
     },
-    
+
     getInEdges: function (vertex) {
       return vertex.inbound();
     },
-    
+
     getOutEdges: function (vertex) {
       return vertex.outbound();
     }
@@ -334,7 +334,7 @@ function outboundExpander (config, vertex, path) {
   var datasource = config.datasource;
   var connections = [ ];
   var outEdges = datasource.getOutEdges(vertex);
-      
+
   if (outEdges.length > 1 && config.sort) {
     outEdges.sort(config.sort);
   }
@@ -352,7 +352,7 @@ function outboundExpander (config, vertex, path) {
       }
 
       if (! config.expandFilter || config.expandFilter(config, v, edge, path)) {
-        connections.push({ edge: edge, vertex: v });    
+        connections.push({ edge: edge, vertex: v });
       }
     }
     catch (e) {
@@ -364,15 +364,15 @@ function outboundExpander (config, vertex, path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief default inbound expander function 
+/// @brief default inbound expander function
 ////////////////////////////////////////////////////////////////////////////////
 
 function inboundExpander (config, vertex, path) {
   var datasource = config.datasource;
   var connections = [ ];
- 
+
   var inEdges = datasource.getInEdges(vertex);
-      
+
   if (inEdges.length > 1 && config.sort) {
     inEdges.sort(config.sort);
   }
@@ -388,9 +388,9 @@ function inboundExpander (config, vertex, path) {
         v = { _id: datasource.getEdgeFrom(edge) };
         v._key = v._id.split("/")[1];
       }
-      
+
       if (! config.expandFilter || config.expandFilter(config, v, edge, path)) {
-        connections.push({ edge: edge, vertex: v });    
+        connections.push({ edge: edge, vertex: v });
       }
     }
     catch (e) {
@@ -402,14 +402,14 @@ function inboundExpander (config, vertex, path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief default "any" expander function 
+/// @brief default "any" expander function
 ////////////////////////////////////////////////////////////////////////////////
 
 function anyExpander (config, vertex, path) {
   var datasource = config.datasource;
   var connections = [ ];
   var edges = datasource.getAllEdges(vertex);
-      
+
   if (edges.length > 1 && config.sort) {
     edges.sort(config.sort);
   }
@@ -434,19 +434,19 @@ function anyExpander (config, vertex, path) {
       }
 
       if (! config.expandFilter || config.expandFilter(config, v, edge, path)) {
-        connections.push({ edge: edge, vertex: v });    
+        connections.push({ edge: edge, vertex: v });
       }
     }
     catch (e) {
       // continue even in the face of non-existing documents
     }
   });
-      
+
   return connections;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
-/// @brief expands all outbound edges labeled with at least one label in config.labels 
+/// @brief expands all outbound edges labeled with at least one label in config.labels
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 function expandOutEdgesWithLabels (config, vertex, path) {
@@ -475,9 +475,9 @@ function expandOutEdgesWithLabels (config, vertex, path) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
-/// @brief expands all inbound edges labeled with at least one label in config.labels 
+/// @brief expands all inbound edges labeled with at least one label in config.labels
 ///////////////////////////////////////////////////////////////////////////////////////////
-  
+
 function expandInEdgesWithLabels (config, vertex, path) {
   var datasource = config.datasource;
   var result = [ ];
@@ -504,9 +504,9 @@ function expandInEdgesWithLabels (config, vertex, path) {
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
-/// @brief expands all edges labeled with at least one label in config.labels 
-///////////////////////////////////////////////////////////////////////////////////////////  
-  
+/// @brief expands all edges labeled with at least one label in config.labels
+///////////////////////////////////////////////////////////////////////////////////////////
+
 function expandEdgesWithLabels (config, vertex, path) {
   var datasource = config.datasource;
   var result = [ ];
@@ -651,7 +651,7 @@ function includeMatchingAttributesFilter (config, vertex, path) {
 
   if (! include) {
     result = "exclude";
-  } 
+  }
 
   return result;
 }
@@ -702,8 +702,8 @@ function parseFilterResult (args) {
   function processArgument (arg) {
     if (arg === undefined || arg === null) {
       return;
-    } 
-    
+    }
+
     var finish = false;
 
     if (typeof(arg) === 'string') {
@@ -789,13 +789,13 @@ function checkReverse (config) {
   }
   else if (config.order === ArangoTraverser.PRE_ORDER) {
     // pre order
-    if (config.itemOrder === ArangoTraverser.BACKWARD && 
+    if (config.itemOrder === ArangoTraverser.BACKWARD &&
         config.strategy === ArangoTraverser.BREADTH_FIRST) {
       result = true;
     }
-    else if (config.itemOrder === ArangoTraverser.FORWARD && 
+    else if (config.itemOrder === ArangoTraverser.FORWARD &&
              config.strategy === ArangoTraverser.DEPTH_FIRST) {
-      result = true; 
+      result = true;
     }
   }
 
@@ -815,7 +815,7 @@ function breadthFirstSearch () {
     getPathItems: function (id, items) {
       var visited = { };
       var ignore = items.length - 1;
-      
+
       items.forEach(function (item, i) {
         if (i !== ignore) {
           visited[id(item)] = true;
@@ -828,7 +828,7 @@ function breadthFirstSearch () {
     createPath: function (items, idx) {
       var path = { edges: [ ], vertices: [ ] };
       var pathItem = items[idx];
-      
+
       while (true) {
         if (pathItem.edge !== null) {
           path.edges.unshift(pathItem.edge);
@@ -859,7 +859,7 @@ function breadthFirstSearch () {
         var vertex  = current.vertex;
         var edge    = current.edge;
         var path;
-        
+
         if (visitCounter++ > maxIterations) {
           var err = new ArangoError();
           err.errorNum = arangodb.errors.ERROR_GRAPH_TOO_MANY_ITERATIONS.code;
@@ -869,9 +869,9 @@ function breadthFirstSearch () {
 
         if (current.visit === null || current.visit === undefined) {
           current.visit = false;
-          
+
           path = this.createPath(toVisit, index);
-          
+
           // first apply uniqueness check
           if (config.uniqueness.vertices === ArangoTraverser.UNIQUE_PATH) {
             visited.vertices = this.getPathItems(config.datasource.getVertexId, path.vertices);
@@ -913,7 +913,7 @@ function breadthFirstSearch () {
               }
             }
           }
-            
+
           if (config.order === ArangoTraverser.POST_ORDER) {
             if (index < toVisit.length - 1) {
               index += step;
@@ -1091,15 +1091,15 @@ function dijkstraSearch () {
 
     run: function (config, result, startVertex, endVertex) {
       var maxIterations = config.maxIterations, visitCounter = 0;
-        
-      var heap = new BinaryHeap(function (node) { 
-        return node.dist; 
+
+      var heap = new BinaryHeap(function (node) {
+        return node.dist;
       });
 
       var startNode = this.makeNode(startVertex);
       startNode.dist = 0;
       heap.push(startNode);
-        
+
       while (heap.size() > 0) {
         if (visitCounter++ > maxIterations) {
           var err = new ArangoError();
@@ -1107,13 +1107,13 @@ function dijkstraSearch () {
           err.errorMessage = arangodb.errors.ERROR_GRAPH_TOO_MANY_ITERATIONS.message;
           throw err;
         }
-            
+
         var currentNode = heap.pop();
         var i, n;
 
         if (currentNode.vertex._id === endVertex._id) {
           var vertices = this.vertexList(currentNode).reverse();
-          
+
           n = vertices.length;
           for (i = 0; i < n; ++i) {
             if (! vertices[i].hide) {
@@ -1132,10 +1132,10 @@ function dijkstraSearch () {
         }
 
         currentNode.visited = true;
-        
+
         var path = this.buildPath(currentNode);
         var filterResult = parseFilterResult(config.filter(config, currentNode.vertex, path));
- 
+
         if (! filterResult.visit) {
           currentNode.hide = true;
         }
@@ -1145,7 +1145,7 @@ function dijkstraSearch () {
         }
 
         var dist = currentNode.dist;
-        var connected = config.expander(config, currentNode.vertex, path); 
+        var connected = config.expander(config, currentNode.vertex, path);
         n = connected.length;
 
         for (i = 0; i < n; ++i) {
@@ -1159,14 +1159,14 @@ function dijkstraSearch () {
           var weight = 1;
           if (config.distance) {
             weight = config.distance(config, currentNode.vertex, neighbor.vertex, edge);
-          } 
+          }
           else if (config.weight) {
             if (typeof edge[config.weight] === "number") {
               weight = edge[config.weight];
-            } 
+            }
             else if (config.defaultWeight) {
               weight = config.defaultWeight;
-            } 
+            }
             else {
               weight = Infinity;
             }
@@ -1229,14 +1229,14 @@ function astarSearch () {
 
     run: function (config, result, startVertex, endVertex) {
       var maxIterations = config.maxIterations, visitCounter = 0;
-        
-      var heap = new BinaryHeap(function (node) { 
-        return node.f; 
+
+      var heap = new BinaryHeap(function (node) {
+        return node.f;
       });
 
       heap.push(this.makeNode(startVertex));
 
-        
+
       while (heap.size() > 0) {
         if (visitCounter++ > maxIterations) {
           var err = new ArangoError();
@@ -1244,7 +1244,7 @@ function astarSearch () {
           err.errorMessage = arangodb.errors.ERROR_GRAPH_TOO_MANY_ITERATIONS.message;
           throw err;
         }
-            
+
         var currentNode = heap.pop();
         var i, n;
 
@@ -1264,7 +1264,7 @@ function astarSearch () {
         currentNode.closed = true;
 
         var path = this.buildPath(currentNode);
-        var connected = config.expander(config, currentNode.vertex, path); 
+        var connected = config.expander(config, currentNode.vertex, path);
         n = connected.length;
 
         for (i = 0; i < n; ++i) {
@@ -1276,7 +1276,7 @@ function astarSearch () {
 
           var gScore = currentNode.g + 1;// + neighbor.cost;
           var beenVisited = neighbor.visited;
-                
+
           if (! beenVisited || gScore < neighbor.g) {
             var edge = connected[i].edge;
             neighbor.visited = true;
@@ -1391,7 +1391,7 @@ ArangoTraverser = function (config) {
     err.errorMessage = "invalid value for " + param;
     throw err;
   }
-    
+
   config.uniqueness = {
     vertices: validate(config.uniqueness && config.uniqueness.vertices, {
       none:   ArangoTraverser.UNIQUE_NONE,
@@ -1404,12 +1404,12 @@ ArangoTraverser = function (config) {
       global: ArangoTraverser.UNIQUE_GLOBAL
     }, "uniqueness.edges")
   };
- 
+
   config.strategy = validate(config.strategy, {
     depthfirst: ArangoTraverser.DEPTH_FIRST,
     breadthfirst: ArangoTraverser.BREADTH_FIRST,
     astar: ArangoTraverser.ASTAR_SEARCH,
-    dijkstra: ArangoTraverser.DIJKSTRA_SEARCH 
+    dijkstra: ArangoTraverser.DIJKSTRA_SEARCH
   }, "strategy");
 
   config.order = validate(config.order, {
@@ -1429,7 +1429,7 @@ ArangoTraverser = function (config) {
     err.errorMessage = "invalid visitor function";
     throw err;
   }
-  
+
   // prepare an array of filters
   var filters = [ ];
   if (config.minDepth !== undefined &&
@@ -1437,7 +1437,7 @@ ArangoTraverser = function (config) {
       config.minDepth > 0) {
     filters.push(minDepthFilter);
   }
-  if (config.maxDepth !== undefined && 
+  if (config.maxDepth !== undefined &&
       config.maxDepth !== null &&
       config.maxDepth > 0) {
     filters.push(maxDepthFilter);
@@ -1462,7 +1462,7 @@ ArangoTraverser = function (config) {
 
     filters.push(f);
   });
-  
+
   if (filters.length > 1) {
     // more than one filter. combine their results
     config.filter = function (config, vertex, path) {
@@ -1519,7 +1519,7 @@ ArangoTraverser = function (config) {
 /// @brief execute the traversal
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoTraverser.prototype.traverse = function (result, startVertex, endVertex) { 
+ArangoTraverser.prototype.traverse = function (result, startVertex, endVertex) {
   // get the traversal strategy
   var strategy;
 
@@ -1537,27 +1537,27 @@ ArangoTraverser.prototype.traverse = function (result, startVertex, endVertex) {
   }
 
   // check the start vertex
-  if (startVertex === undefined || 
+  if (startVertex === undefined ||
       startVertex === null ||
       typeof startVertex !== 'object') {
     var err1 = new ArangoError();
     err1.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
-    err1.errorMessage = arangodb.errors.ERROR_BAD_PARAMETER.message + 
+    err1.errorMessage = arangodb.errors.ERROR_BAD_PARAMETER.message +
                        ": invalid startVertex specified for traversal";
     throw err1;
   }
 
   if (strategy.requiresEndVertex() &&
-      (endVertex === undefined || 
+      (endVertex === undefined ||
        endVertex === null ||
        typeof endVertex !== 'object')) {
     var err2 = new ArangoError();
     err2.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
-    err2.errorMessage = arangodb.errors.ERROR_BAD_PARAMETER.message + 
+    err2.errorMessage = arangodb.errors.ERROR_BAD_PARAMETER.message +
                        ": invalid endVertex specified for traversal";
     throw err2;
   }
- 
+
   // run the traversal
   try {
     strategy.run(this.config, result, startVertex, endVertex);
@@ -1585,7 +1585,7 @@ ArangoTraverser.prototype.traverse = function (result, startVertex, endVertex) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief every element can be revisited
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 ArangoTraverser.UNIQUE_NONE          = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1603,7 +1603,7 @@ ArangoTraverser.UNIQUE_GLOBAL        = 2;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visitation strategy breadth first
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 ArangoTraverser.BREADTH_FIRST        = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
