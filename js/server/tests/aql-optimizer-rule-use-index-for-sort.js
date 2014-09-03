@@ -46,6 +46,7 @@ function optimizerRuleTestSuite() {
     var ruleName = "use-index-for-sort";
     var secondRuleName = "use-index-range";
     var colName = "UnitTestsAqlOptimizer" + ruleName.replace(/-/g, "_");
+    var colNameOther = colName + "_XX";
 
     // various choices to control the optimizer: 
     var paramNone = { optimizer: { rules: [ "-all" ] } };
@@ -54,6 +55,7 @@ function optimizerRuleTestSuite() {
     var paramBoth = { optimizer: { rules: [ "-all", "+" + ruleName, "+" + secondRuleName ] } };
 
     var skiplist;
+    var skiplist2;
     var sortArray = function (l, r) {
               if (l[0] !== r[0]) {
                   return l[0] < r[0] ? -1 : 1;
@@ -78,7 +80,7 @@ function optimizerRuleTestSuite() {
         assertEqual(findExecutionNodes(plan, "CalculationNode").length, 0, "Has NO CalculationNode");
     };
     var hasIndexRangeNode_WithRanges = function (plan, haveRanges) {
-        rn = findExecutionNodes(plan, "IndexRangeNode")
+        var rn = findExecutionNodes(plan, "IndexRangeNode");
         assertEqual(rn.length, 1, "Has IndexRangeNode");
         if (haveRanges) {
             assertTrue(rn[0].ranges.length > 0, "Have IndexRangeNode with ranges");
@@ -95,21 +97,47 @@ function optimizerRuleTestSuite() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set up
+// Datastructure: 
+//  - double index on (a,b)/(f,g) for tests with these
+//  - single column index on d/j to test sort behaviour without sub-columns
+//  - non-indexed columns c/h to sort without indices.
+//  - non-skiplist indexed columns e/j to check whether its not selecting them.
+//  - join column 'joinme' to intersect both tables.
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      internal.db._drop(colName);
-      skiplist = internal.db._create(colName);
-      var i, j;
-      for (j = 1; j <= 5; ++j) {
-        for (i = 1; i <= 5; ++i) {
-            skiplist.save({ "a" : i, "b": j , "c": j});
+        if (typeof loopmax === 'undefined') {
+            loopto = 5;
         }
-        skiplist.save({ "a" : i, "c": j});
-        skiplist.save({ "c": j});
-      }
+        else {
+            loopto = loopmax;
+        }
+        /// require("internal").print("loopto: " + loopto + "\n");
+ 
+        internal.db._drop(colName);
+        skiplist = internal.db._create(colName);
+        var i, j;
+        for (j = 1; j <= loopto; ++j) {
+            for (i = 1; i <= loopto; ++i) {
+                skiplist.save({ "a" : i, "b": j , "c": j, "d": i, "e": i, "joinme" : "aoeu " + j});
+            }
+            skiplist.save(    { "a" : i,          "c": j, "d": i, "e": i, "joinme" : "aoeu " + j});
+            skiplist.save(    {                   "c": j,                 "joinme" : "aoeu " + j});
+        }
 
-      skiplist.ensureSkiplist("a", "b");
+        skiplist.ensureSkiplist("a", "b");
+        skiplist.ensureSkiplist("d");
+        
+        skiplist2 = internal.db._create(colNameOther);
+        for (j = 1; j <= loopto; ++j) {
+            for (i = 1; i <= loopto; ++i) {
+                skiplist2.save({ "f" : i, "g": j , "h": j, "i": i, "j": i, "joinme" : "aoeu " + j});
+            }
+            skiplist2.save(    { "f" : i, "g": j,          "i": i, "j": i, "joinme" : "aoeu " + j});
+            skiplist2.save(    {                   "h": j,                 "joinme" : "aoeu " + j});
+        }
+        skiplist2.ensureSkiplist("f", "g");
+        skiplist2.ensureSkiplist("i");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,8 +145,9 @@ function optimizerRuleTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      internal.db._drop(colName);
-      skiplist = null;
+        internal.db._drop(colName);
+        internal.db._drop(colNameOther);
+        skiplist = null;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -143,72 +172,110 @@ function optimizerRuleTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test that rule has no effect
 ////////////////////////////////////////////////////////////////////////////////
-    testRuleNoEffect : function () {
 
+    testRuleNoEffect : function () {
+/*
       var queries = [ 
+
           "FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]",
 // todo: we use an index anyways right now.          "FOR v IN " + colName + " SORT v.a DESC RETURN [v.a, v.b]",// currently only ASC supported.
+          "FOR v IN " + colName + " SORT v.b, v.a  RETURN [v.a, v.b]",
           "FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]",
-          "FOR v IN " + colName + " SORT v.a + 1 RETURN [v.a, v.b]"
+          "FOR v IN " + colName + " SORT v.a + 1 RETURN [v.a, v.b]",
+          "FOR v IN " + colName + " SORT CONCAT(TO_STRING(v.a), \"lol\") RETURN [v.a, v.b]",
+          "FOR v IN " + colName + " FILTER v.a > 2 LIMIT 3 SORT v.a RETURN [v.a, v.b]  ", // TODO: limit blocks sort atm.
+          "FOR v IN " + colName + " FOR w IN " + colNameOther + " SORT v.a RETURN [v.a, v.b]"
       ];
 
       queries.forEach(function(query) {
-          //require("internal").print(query);
+          
+//          require("internal").print(query);
           var result = AQL_EXPLAIN(query, { }, paramIFS);
-          //require("internal").print(result);
-          assertEqual([ ], result.plan.rules, query);
+//          require("internal").print(result);
+          assertEqual([], result.plan.rules, query);
       });
-
+*/
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test that rule has an effect
 ////////////////////////////////////////////////////////////////////////////////
+    testRuleHasEffect : function () {
+
+        var queries = [ 
+            
+            "FOR v IN " + colName + " SORT v.d DESC RETURN [v.d]",// currently only ASC supported, but we use the index range anyways. todo: this may change.
+            "FOR v IN " + colName + " SORT v.d FILTER v.a > 2 LIMIT 3 RETURN [v.d]  ",
+            "FOR v IN " + colName + " FOR w IN 1..10 SORT v.d RETURN [v.d]",
+            
+            "FOR v IN " + colName + " LET x = (FOR w IN " + colNameOther + " RETURN w.f ) SORT v.a RETURN [v.a]"
+        ];
+        var QResults = [];
+        var i = 0;
+        queries.forEach(function(query) {
+          
+            //require("internal").print(query);
+            var result = AQL_EXPLAIN(query, { }, paramIFS);
+            assertEqual([ ruleName ], result.plan.rules, query);
+            QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
+            QResults[1] = AQL_EXECUTE(query, { }, paramIFS ).json;
+            //          require("internal").print(result);
+            
+            assertTrue(isEqual(QResults[0], QResults[1]), "Result " + i + "is Equal?");
+            i++;
+        });
+
+    },
+
 
     testRuleHasEffectButSortsStill : function () {
-/*
-      var queries = [ 
-        "FOR i IN 1..10 LET a = 1 FILTER i == 1 RETURN i",
-        "FOR i IN 1..10 LET a = 1 FILTER i == 1 RETURN a",
-        "FOR i IN 1..10 FILTER i == 1 LET a = 1 RETURN i",
-        "FOR i IN 1..10 LET a = 25 + 7 RETURN i",
-        "FOR i IN 1..10 FOR j IN 1..10 LET a = i + 2 RETURN i",
-        "FOR i IN 1..10 FILTER i == 7 LET a = i COLLECT x = i RETURN x"
-      ];
 
-      queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { }, { optimizer: { rules: [ "-all", "+" + ruleName ] } });
-        assertEqual([ ruleName ], result.plan.rules);
-      });
-*/
+        var queries = [ 
+            "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a, v.c RETURN [v.a, v.b, v.c]",
+            "FOR v IN " + colName + " LET x = (FOR w IN " + colNameOther + " SORT w.j, w.h RETURN  w.f ) SORT v.a RETURN [v.a]"
+        ];
+        var QResults = [];
+        var i = 0;
+        queries.forEach(function(query) {
+//          require("internal").print(query);
+            var result = AQL_EXPLAIN(query, { }, paramIFS} });
+//          require("internal").print(result);
+            assertEqual([ ruleName ], result.plan.rules);
+            hasIndexRangeNode_WithRanges(result, false);
+            hasSortNode(result);
+            QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
+            QResults[1] = AQL_EXECUTE(query, { }, paramIFS ).json;
+            assertTrue(isEqual(QResults[0], QResults[1]), "Result " + i + "is Equal?");
+            i++;
+        });
+
     },
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test generated plans
 ////////////////////////////////////////////////////////////////////////////////
-
-    testPlans : function () {
 /*
+    testPlans : function () {
       var plans = [ 
+
         [ "FOR i IN 1..10 LET a = 1 RETURN i", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "ReturnNode" ] ],
         [ "FOR i IN 1..10 FILTER i == 1 LET a = 1 RETURN i", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "ReturnNode"  ] ]
       ];
 
       plans.forEach(function(plan) {
-        var result = AQL_EXPLAIN(plan[0], { }, { optimizer: { rules: [ "-all", "+" + ruleName ] } });
+        var result = AQL_EXPLAIN(plan[0], { }, paramIFS);
         assertEqual([ ruleName ], result.plan.rules, plan[0]);
         assertEqual(plan[1], helper.getCompactPlan(result).map(function(node) { return node.type; }), plan[0]);
       });
-*/
     },
-
+*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test results
 ////////////////////////////////////////////////////////////////////////////////
 
-    testResults : function () {
 /*
+    testResults : function () {
       var queries = [ 
         [ "FOR i IN 1..10 LET a = 1 RETURN i", [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
         [ "FOR i IN 1..10 LET a = 1 RETURN a", [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ] ],
@@ -218,10 +285,10 @@ function optimizerRuleTestSuite() {
 
       queries.forEach(function(query) {
         var planDisabled   = AQL_EXPLAIN(query[0], { }, { optimizer: { rules: [ "+all", "-" + ruleName ] } });
-        var planEnabled    = AQL_EXPLAIN(query[0], { }, { optimizer: { rules: [ "-all", "+" + ruleName ] } });
+        var planEnabled    = AQL_EXPLAIN(query[0], { }, paramIFS);
 
         var resultDisabled = AQL_EXECUTE(query[0], { }, { optimizer: { rules: [ "+all", "-" + ruleName ] } });
-        var resultEnabled  = AQL_EXECUTE(query[0], { }, { optimizer: { rules: [ "-all", "+" + ruleName ] } });
+        var resultEnabled  = AQL_EXECUTE(query[0], { }, paramIFS);
 
         assertTrue(planDisabled.plan.rules.indexOf(ruleName) === -1, query[0]);
         assertTrue(planEnabled.plan.rules.indexOf(ruleName) !== -1, query[0]);
@@ -229,8 +296,8 @@ function optimizerRuleTestSuite() {
         assertEqual(resultDisabled.json, query[1], query[0]);
         assertEqual(resultEnabled.json, query[1], query[0]);
       });
-*/
     },
+*/
 //*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this sort is replaceable by an index.
@@ -311,9 +378,9 @@ function optimizerRuleTestSuite() {
           hasCalculationNodes(XPresult,4);
           // we should be able to find exactly one sortnode property - its a Calculation node.
           var sortProperty = findReferencedNodes(XPresult, findExecutionNodes(XPresult, "SortNode")[0]);
-          assertTrue(sortProperty.length === 2);
-          assertTrue(sortProperty[0].type === "CalculationNode");
-          assertTrue(sortProperty[1].type === "CalculationNode");
+          assertEqual(sortProperty.length, 2);
+          assertEqual(sortProperty[0].type, "CalculationNode");
+          assertEqual(sortProperty[1].type, "CalculationNode");
           // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
           hasIndexRangeNode_WithRanges(XPresult, true);
 
