@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 200, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, assertTrue, assertEqual, AQL_EXECUTE, AQL_EXPLAIN, fail */
+/*global require, exports, assertTrue, assertEqual, AQL_EXECUTE, AQL_EXPLAIN, fail, loopmax */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -106,6 +106,7 @@ function optimizerRuleTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+        var loopto;
         if (typeof loopmax === 'undefined') {
             loopto = 5;
         }
@@ -230,7 +231,7 @@ function optimizerRuleTestSuite() {
 
     testRuleHasEffectButSortsStill : function () {
 
-        var queries = [ 
+        var queries = [
             "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a, v.c RETURN [v.a, v.b, v.c]",
             "FOR v IN " + colName + " LET x = (FOR w IN " + colNameOther + " SORT w.j, w.h RETURN  w.f ) SORT v.a RETURN [v.a]"
         ];
@@ -238,7 +239,7 @@ function optimizerRuleTestSuite() {
         var i = 0;
         queries.forEach(function(query) {
 //          require("internal").print(query);
-            var result = AQL_EXPLAIN(query, { }, paramIFS} });
+            var result = AQL_EXPLAIN(query, { }, paramIFS);
 //          require("internal").print(result);
             assertEqual([ ruleName ], result.plan.rules);
             hasIndexRangeNode_WithRanges(result, false);
