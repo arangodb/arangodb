@@ -432,6 +432,10 @@ function findExecutionNodes(plan, nodetype) {
 
             matches.push(node);
         }
+        else if (node.type === "SubqueryNode") {
+            var subPlan = {"plan" : node.subquery};
+            matches = matches.concat(findExecutionNodes(subPlan, nodetype));
+        }
     });
     return matches;
 }
