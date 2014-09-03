@@ -190,7 +190,7 @@ ArangoStatement.prototype.setOptions = function (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.setQuery = function (query) {
-  this._query = typeof query.toAQL === 'function' ? query.toAQL() : query;
+  this._query = (query && typeof query.toAQL === 'function') ? query.toAQL() : query;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
