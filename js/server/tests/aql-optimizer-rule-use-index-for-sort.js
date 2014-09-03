@@ -63,6 +63,18 @@ function optimizerRuleTestSuite() {
               }
               return 0;
           };
+    var hasSortNode = function (plan) {
+        assertEqual(findExecutionNodes(plan, "SortNode").length, 1, "Has SortNode");
+    };
+    var hasNoSortNode = function (plan) {
+        assertEqual(findExecutionNodes(plan, "SortNode").length, 0, "Has NO SortNode");
+    };
+    var hasCalculationNode = function (plan) {
+        assertEqual(findExecutionNodes(plan, "CalculationNode").length, 1, "Has CalculationNode");
+    };
+    var hasNoCalculationNode = function (plan) {
+        assertEqual(findExecutionNodes(plan, "CalculationNode").length, 0, "Has NO CalculationNode");
+    };
 
   return {
 
@@ -117,27 +129,28 @@ function optimizerRuleTestSuite() {
 /// @brief test that rule has no effect
 ////////////////////////////////////////////////////////////////////////////////
     testRuleNoEffect : function () {
-/*
+
       var queries = [ 
           "FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]",
-          "FOR v IN " + colName + " SORT v.b DESC RETURN [v.a, v.b]",
-          "FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]"
+// todo: we use an index anyways right now.          "FOR v IN " + colName + " SORT v.a DESC RETURN [v.a, v.b]",// currently only ASC supported.
+          "FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]",
+          "FOR v IN " + colName + " SORT v.a + 1 RETURN [v.a, v.b]"
       ];
 
       queries.forEach(function(query) {
-//          require("internal").print(query);
+          //require("internal").print(query);
           var result = AQL_EXPLAIN(query, { }, paramIFS);
-//          require("internal").print(result);
+          //require("internal").print(result);
           assertEqual([ ], result.plan.rules, query);
       });
-*/
+
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test that rule has an effect
 ////////////////////////////////////////////////////////////////////////////////
 
-    testRuleHasEffect : function () {
+    testRuleHasEffectButSortsStill : function () {
 /*
       var queries = [ 
         "FOR i IN 1..10 LET a = 1 FILTER i == 1 RETURN i",
@@ -203,7 +216,7 @@ function optimizerRuleTestSuite() {
       });
 */
     },
-
+//*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this sort is replaceable by an index.
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,7 +238,7 @@ function optimizerRuleTestSuite() {
           // our rule should have been applied.
           assertEqual([ ruleName ], XPresult.plan.rules);
           // The sortnode and its calculation node should have been removed.
-          assertEqual(findExecutionNodes(XPresult, "SortNode").length, 0);
+          hasNoSortNode(XPresult);
           assertEqual(findExecutionNodes(XPresult, "CalculationNode").length, 1);
           // The IndexRangeNode created by this rule is simple; it shouldn't have ranges.
           assertEqual(findExecutionNodes(XPresult, "IndexRangeNode").length, 1);
@@ -235,96 +248,6 @@ function optimizerRuleTestSuite() {
 
       },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief todo - weg.
-////////////////////////////////////////////////////////////////////////////////
-      testSortNonIndexable1: function () {
-
-          var query = "FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]";
-
-          var XPresult;
-          var QResults=[];
-
-          // we have to re-sort here, because of the index has one more sort criteria.
-          QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
-
-          // -> use-index-for-sort - it shouldn't do anything.
-          XPresult    = AQL_EXPLAIN(query, { }, paramNone);
-          
-          XPresult    = AQL_EXPLAIN(query, { }, paramIFS);
-          QResults[1] = AQL_EXECUTE(query, { }, paramIFS).json;
-//          require("internal").print(XPresult);
-          // our rule should have been applied.
-          assertEqual([ ruleName ], XPresult.plan.rules);
-          // Nothing to optimize, everything should still be there.
-          assertEqual(findExecutionNodes(XPresult, "SortNode").length, 1);
-          assertTrue(findExecutionNodes(XPresult, "CalculationNode").length, 2);
-          // There shouldn't be an IndexRangeNode
-          assertEqual(findExecutionNodes(XPresult, "IndexRangeNode").length, 0);
-/*
-          require("internal").print("equalz?");
-          require("internal").print(          QResults[0]);
-          require("internal").print(QResults[1].length);
-          require("internal").print(          QResults[0].length);
-          require("internal").print(QResults[1]);
-*/
-          assertTrue(isEqual(QResults[0], QResults[1]), "Query results are equal?");
-
-      },
-
-      testSortNonIndexable2: function () {
-
-          var query = "FOR v IN " + colName + " SORT v.b DESC RETURN [v.a, v.b]";
-
-          var XPresult;
-          var QResults=[];
-
-          // we have to re-sort here, because of the index has one more sort criteria.
-          QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
-
-          // -> use-index-for-sort - it shouldn't do anything.
-          XPresult    = AQL_EXPLAIN(query, { }, paramIFS);
-          QResults[1] = AQL_EXECUTE(query, { }, paramIFS).json;
-
-          // our rule should have been applied.
-          assertEqual([ ruleName ], XPresult.plan.rules);
-          // Nothing to optimize, everything should still be there.
-          assertEqual(findExecutionNodes(XPresult, "SortNode").length, 1);
-          assertEqual(findExecutionNodes(XPresult, "CalculationNode").length, 2);
-          // There shouldn't be an IndexRangeNode
-          assertEqual(findExecutionNodes(XPresult, "IndexRangeNode").length, 0);
-
-          assertTrue(isEqual(QResults[0], QResults[1]), "Query results are equal?");
-
-      },
-
-      testSortNonIndexable3: function () {
-
-          var query = "FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]";
-
-          var XPresult;
-          var QResults=[];
-
-          // we have to re-sort here, because of the index has one more sort criteria.
-          QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
-
-          // -> use-index-for-sort - it shouldn't do anything.
-          XPresult    = AQL_EXPLAIN(query, { }, paramNone);
-
-          XPresult    = AQL_EXPLAIN(query, { }, paramIFS);
-          QResults[1] = AQL_EXECUTE(query, { }, paramIFS).json;
-//          require("internal").print(XPresult);
-          // our rule should have been applied.
-          assertEqual([ ruleName ], XPresult.plan.rules);
-          // Nothing to optimize, everything should still be there.
-          assertEqual(findExecutionNodes(XPresult, "SortNode").length, 1);
-          assertEqual(findExecutionNodes(XPresult, "CalculationNode").length, 2);
-          // There shouldn't be an IndexRangeNode
-          assertEqual(findExecutionNodes(XPresult, "IndexRangeNode").length, 0);
-
-          assertTrue(isEqual(QResults[0], QResults[1]), "Query results are equal?");
-
-      },
 
 
       testSortMoreThanIndexed: function () {
@@ -347,18 +270,20 @@ function optimizerRuleTestSuite() {
           // The sortnode and its calculation node should have been removed.
 //          require("internal").print(XPresult);
           
-          assertEqual(findExecutionNodes(XPresult, "SortNode").length, 1, "is it still there?");
+          hasSortNode(XPresult);
           assertEqual(findExecutionNodes(XPresult, "CalculationNode").length, 4, "still got all of them?");
           // The IndexRangeNode created by this rule is simple; it shouldn't have ranges.
           assertEqual(findExecutionNodes(XPresult, "IndexRangeNode").length, 1, "got rangenode?");
           assertEqual(findExecutionNodes(XPresult, "IndexRangeNode")[0].ranges.length, 0, "have ranges");
 
           // -> combined use-index-for-sort and use-index-range
+          //    use-index-range superseedes use-index-for-sort
           QResults[2] = AQL_EXECUTE(query, { }, paramBoth).json;
           XPresult    = AQL_EXPLAIN(query, { }, paramBoth);
-          assertEqual([ secondRuleName, ruleName ].sort(), XPresult.plan.rules.sort());
-          // The sortnode and its calculation node should have been removed.
-          assertEqual(findExecutionNodes(XPresult, "SortNode").length, 1);
+
+          assertEqual([ secondRuleName ], XPresult.plan.rules.sort());
+          // The sortnode and its calculation node should not have been removed.
+          hasSortNode(XPresult);
           assertEqual(findExecutionNodes(XPresult, "CalculationNode").length, 4);
           // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
           assertEqual(findExecutionNodes(XPresult, "IndexRangeNode").length, 1);
@@ -370,7 +295,7 @@ function optimizerRuleTestSuite() {
           assertEqual([ secondRuleName ], XPresult.plan.rules);
           // the sortnode and its calculation node should be there. 
 
-          assertTrue(findExecutionNodes(XPresult, "SortNode").length === 1);
+          hasSortNode(XPresult);
           assertTrue(findExecutionNodes(XPresult, "CalculationNode").length === 4);
           // we should be able to find exactly one sortnode property - its a Calculation node.
           var sortProperty = findReferencedNodes(XPresult, findExecutionNodes(XPresult, "SortNode")[0]);
@@ -388,8 +313,8 @@ function optimizerRuleTestSuite() {
           for (i = 1; i < 4; i++) {
               assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + "is Equal?");
           }
-
       },
+
       testRangeSuperseedsSort: function () {
 
           var query = "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a RETURN [v.a, v.b, v.c]";
@@ -407,7 +332,7 @@ function optimizerRuleTestSuite() {
           // our rule should be there.
           assertEqual([ ruleName ], XPresult.plan.rules);
           // The sortnode and its calculation node should have been removed.
-          assertEqual(findExecutionNodes(XPresult, "SortNode").length, 0);
+          hasNoSortNode(XPresult);
           assertEqual(findExecutionNodes(XPresult, "CalculationNode").length, 2);
           // The IndexRangeNode created by this rule is simple; it shouldn't have ranges.
           assertEqual(findExecutionNodes(XPresult, "IndexRangeNode").length, 1);
@@ -418,7 +343,7 @@ function optimizerRuleTestSuite() {
           XPresult    = AQL_EXPLAIN(query, { }, paramBoth);
           assertEqual([ secondRuleName, ruleName ].sort(), XPresult.plan.rules.sort());
           // The sortnode and its calculation node should have been removed.
-          assertEqual(findExecutionNodes(XPresult, "SortNode").length, 0);
+          hasNoSortNode(XPresult);
           assertEqual(findExecutionNodes(XPresult, "CalculationNode").length, 2);
           // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
           assertEqual(findExecutionNodes(XPresult, "IndexRangeNode").length, 1);
@@ -429,7 +354,7 @@ function optimizerRuleTestSuite() {
           XPresult    = AQL_EXPLAIN(query, { }, paramIR);
           assertEqual([ secondRuleName ], XPresult.plan.rules);
           // the sortnode and its calculation node should be there.
-          assertEqual(findExecutionNodes(XPresult, "SortNode").length, 1);
+          hasSortNode(XPresult);
           assertEqual(findExecutionNodes(XPresult, "CalculationNode").length, 3);
           // we should be able to find exactly one sortnode property - its a Calculation node.
           var sortProperty = findReferencedNodes(XPresult, findExecutionNodes(XPresult, "SortNode")[0]);
@@ -448,7 +373,7 @@ function optimizerRuleTestSuite() {
           }
 
       }
-
+//*/
   };
 }
 
