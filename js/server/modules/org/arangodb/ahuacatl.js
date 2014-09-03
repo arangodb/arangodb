@@ -1,8 +1,8 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, continue: true */
+/*jshint strict: false, unused: false */
 /*global require, exports, COMPARE_STRING, MATCHES */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Ahuacatl, internal query functions 
+/// @brief Ahuacatl, internal query functions
 ///
 /// @file
 ///
@@ -128,20 +128,20 @@ function reloadUserFunctions () {
     var key = f._key.replace(/:{1,}/g, '::');
 
     try {
-      var res = INTERNAL.executeScript(code, undefined, "(user function " + key + ")"); 
+      var res = INTERNAL.executeScript(code, undefined, "(user function " + key + ")");
 
       UserFunctions[prefix][key.toUpperCase()] = {
         name: key,
         func: res,
         isDeterministic: f.isDeterministic || false
-      }; 
-  
+      };
+
     }
     catch (err) {
       foundError = true;
     }
   });
-      
+
   if (foundError) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_INVALID_CODE);
   }
@@ -259,7 +259,7 @@ function INDEX (collection, indexTypes) {
 
   return null;
 }
- 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get access to a collection
 ////////////////////////////////////////////////////////////////////////////////
@@ -290,8 +290,8 @@ function CLONE (obj) {
   if (obj === null || typeof(obj) !== "object") {
     return obj;
   }
- 
-  var copy; 
+
+  var copy;
   if (Array.isArray(obj)) {
     copy = [ ];
     obj.forEach(function (i) {
@@ -314,19 +314,19 @@ function CLONE (obj) {
 
 function FIX_VALUE (value) {
   "use strict";
-  
+
   if (value instanceof ShapedJson) {
     return value;
   }
 
   var type = typeof(value);
 
-  if (value === undefined || 
-      value === null || 
+  if (value === undefined ||
+      value === null ||
       (type === 'number' && (isNaN(value) || ! isFinite(value)))) {
     return null;
   }
-  
+
   if (type === 'boolean' || type === 'string' || type === 'number') {
     return value;
   }
@@ -373,8 +373,8 @@ function TYPEWEIGHT (value) {
       case 'number':
         if (isNaN(value) || ! isFinite(value)) {
           // not a number => undefined
-          return TYPEWEIGHT_NULL; 
-        } 
+          return TYPEWEIGHT_NULL;
+        }
         return TYPEWEIGHT_NUMBER;
       case 'string':
         return TYPEWEIGHT_STRING;
@@ -394,7 +394,7 @@ function ARG_CHECK (actualValue, expectedType, functionName) {
   "use strict";
 
   if (TYPEWEIGHT(actualValue) !== expectedType) {
-    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, 
+    THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
           NORMALIZE_FNAME(functionName));
   }
 }
@@ -410,7 +410,7 @@ function COMPILE_REGEX (regex, modifiers) {
   var escaped = false;
   var pattern = '';
   var specialChar = /^([.*+?\^=!:${}()|\[\]\/\\])$/;
-  
+
   ARG_CHECK(regex, TYPEWEIGHT_STRING, "LIKE");
 
   for (i = 0; i < n; ++i) {
@@ -461,7 +461,7 @@ function COMPILE_REGEX (regex, modifiers) {
       escaped = false;
     }
   }
-        
+
   return new RegExp('^' + pattern + '$', modifiers);
 }
 
@@ -477,7 +477,7 @@ function REMOVE_DOCUMENT (ops, document) {
     ops.push(document);
     return;
   }
-  if (weight !== TYPEWEIGHT_DOCUMENT) { 
+  if (weight !== TYPEWEIGHT_DOCUMENT) {
     THROW(INTERNAL.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
@@ -565,7 +565,7 @@ function EXECUTE_REMOVE (ops, collection, options) {
       }
     }
   }
-  else { 
+  else {
     for (i = 0; i < n; ++i) {
       c.remove(ops[i], options);
       ++count;
@@ -595,7 +595,7 @@ function EXECUTE_INSERT (ops, collection, options) {
         }
       }
     }
-    else { 
+    else {
       for (i = 0; i < n; ++i) {
         c.save(ops[i]._from, ops[i]._to, ops[i], options);
         ++count;
@@ -614,7 +614,7 @@ function EXECUTE_INSERT (ops, collection, options) {
         }
       }
     }
-    else { 
+    else {
       for (i = 0; i < n; ++i) {
         c.save(ops[i], options);
         ++count;
@@ -643,7 +643,7 @@ function EXECUTE_UPDATE (ops, collection, options) {
       }
     }
   }
-  else { 
+  else {
     for (i = 0; i < n; ++i) {
       c.update(ops[i]._key, ops[i], options);
       ++count;
@@ -660,7 +660,7 @@ function EXECUTE_UPDATE (ops, collection, options) {
 function EXECUTE_REPLACE (ops, collection, options) {
   var count = 0, i, n = ops.length, c = COLLECTION(collection);
   options.silent = true;
-    
+
   if (options.ignoreErrors) {
     for (i = 0; i < n; ++i) {
       try {
@@ -671,7 +671,7 @@ function EXECUTE_REPLACE (ops, collection, options) {
       }
     }
   }
-  else { 
+  else {
     for (i = 0; i < n; ++i) {
       c.replace(ops[i]._key, ops[i], options);
       ++count;
@@ -752,7 +752,7 @@ function VALUES (value) {
   "use strict";
 
   var values = [ ];
- 
+
   Object.keys(value).forEach(function(k) {
     values.push(value[k]);
   });
@@ -781,7 +781,7 @@ function EXTRACT_KEYS (args, startArgument, functionName) {
           keys[key2] = true;
         }
         else {
-          THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, 
+          THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
                 NORMALIZE_FNAME(functionName));
         }
       }
@@ -799,7 +799,7 @@ function KEYS (value, doSort) {
   "use strict";
 
   var keys;
-  
+
   if (Array.isArray(value)) {
     var n = value.length, i;
     keys = [ ];
@@ -831,7 +831,7 @@ function KEYLIST (lhs, rhs) {
     // lhs & rhs are lists
     return KEYS(lhs.length > rhs.length ? lhs : rhs);
   }
-  
+
   // lhs & rhs are arrays
   var a, keys = KEYS(lhs);
   for (a in rhs) {
@@ -856,7 +856,7 @@ function GET_INDEX (value, index) {
   if (TYPEWEIGHT(value) === TYPEWEIGHT_NULL) {
     return null;
   }
-  
+
   var result = null;
   if (TYPEWEIGHT(value) === TYPEWEIGHT_DOCUMENT) {
     result = value[String(index)];
@@ -905,7 +905,7 @@ function NORMALIZE (value) {
     value.forEach(function (v) {
       result.push(NORMALIZE(v));
     });
-  } 
+  }
   else {
     result = { };
     KEYS(value, true).forEach(function (a) {
@@ -1063,14 +1063,14 @@ function GET_DOCUMENTS_INCREMENTAL_INIT (collection, offset, limit) {
   state.length     = state.total - offset;
 
   if (state.limit !== null && state.limit < state.length) {
-    state.length = state.limit; 
+    state.length = state.limit;
   }
-  
+
   state.remain = state.length - state.documents.length;
   if (state.remain < 0) {
     state.remain = 0;
   }
- 
+
   return state;
 }
 
@@ -1089,7 +1089,7 @@ function GET_DOCUMENTS_INCREMENTAL_CONT (oldState) {
   state.limit = oldState.limit;
   state.length = oldState.length;
   state.remain = oldState.remain;
-  
+
   if (state.documents.length > state.remain) {
     state.documents = state.documents.slice(0, state.remain);
   }
@@ -1161,7 +1161,7 @@ function GET_DOCUMENTS_HASH_LIST (collection, idx, attribute, values) {
   "use strict";
 
   var result = [ ], c;
-  
+
   c = COLLECTION(collection);
 
   values.forEach(function (value) {
@@ -1346,11 +1346,11 @@ function COLLECTIONS () {
   "use strict";
 
   var result = [ ];
-  
+
   INTERNAL.db._collections().forEach(function (c) {
-    result.push({ 
-      _id : c._id, 
-      name : c.name() 
+    result.push({
+      _id : c._id,
+      name : c.name()
     });
   });
 
@@ -1365,7 +1365,7 @@ function COLLECTIONS () {
 /// @brief execute ternary operator
 ///
 /// the condition operand must be a boolean value, returns either the truepart
-/// or the falsepart 
+/// or the falsepart
 ////////////////////////////////////////////////////////////////////////////////
 
 function TERNARY_OPERATOR (condition, truePart, falsePart) {
@@ -1385,7 +1385,7 @@ function TERNARY_OPERATOR (condition, truePart, falsePart) {
 /// @brief execute ternary operator
 ///
 /// the condition operand must be a boolean value, returns either the truepart
-/// or the falsepart 
+/// or the falsepart
 ////////////////////////////////////////////////////////////////////////////////
 
 function TERNARY_OPERATOR_FN (condition, truePart, falsePart) {
@@ -1437,7 +1437,7 @@ function LOGICAL_OR (lhs, rhs) {
       TYPEWEIGHT(rhs) !== TYPEWEIGHT_BOOL) {
     THROW(INTERNAL.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
   }
-  
+
   if (lhs) {
     return true;
   }
@@ -1495,7 +1495,7 @@ function LOGICAL_OR_FN (lhs, rhs) {
   if (TYPEWEIGHT(r) !== TYPEWEIGHT_BOOL) {
     THROW(INTERNAL.errors.ERROR_QUERY_INVALID_LOGICAL_VALUE);
   }
-  
+
   return r;
 }
 
@@ -1520,7 +1520,7 @@ function LOGICAL_NOT (lhs) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief perform equality check 
+/// @brief perform equality check
 ///
 /// returns true if the operands are equal, false otherwise
 ////////////////////////////////////////////////////////////////////////////////
@@ -1539,7 +1539,7 @@ function RELATIONAL_EQUAL (lhs, rhs) {
 
   if (leftWeight >= TYPEWEIGHT_LIST) {
     // arrays and objects
-    var keys = KEYLIST(lhs, rhs), i, n = keys.length; 
+    var keys = KEYLIST(lhs, rhs), i, n = keys.length;
     for (i = 0; i < n; ++i) {
       var key = keys[i];
       if (RELATIONAL_EQUAL(lhs[key], rhs[key]) === false) {
@@ -1562,7 +1562,7 @@ function RELATIONAL_EQUAL (lhs, rhs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief perform inequality check 
+/// @brief perform inequality check
 ///
 /// returns true if the operands are unequal, false otherwise
 ////////////////////////////////////////////////////////////////////////////////
@@ -1572,7 +1572,7 @@ function RELATIONAL_UNEQUAL (lhs, rhs) {
 
   var leftWeight = TYPEWEIGHT(lhs);
   var rightWeight = TYPEWEIGHT(rhs);
-  
+
   if (leftWeight !== rightWeight) {
     return true;
   }
@@ -1613,7 +1613,7 @@ function RELATIONAL_GREATER_REC (lhs, rhs) {
 
   var leftWeight = TYPEWEIGHT(lhs);
   var rightWeight = TYPEWEIGHT(rhs);
-  
+
   if (leftWeight > rightWeight) {
     return true;
   }
@@ -1632,7 +1632,7 @@ function RELATIONAL_GREATER_REC (lhs, rhs) {
         return result;
       }
     }
-    
+
     return null;
   }
 
@@ -1653,7 +1653,7 @@ function RELATIONAL_GREATER_REC (lhs, rhs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief perform greater than check 
+/// @brief perform greater than check
 ///
 /// returns true if the left operand is greater than the right operand
 ////////////////////////////////////////////////////////////////////////////////
@@ -1679,7 +1679,7 @@ function RELATIONAL_GREATEREQUAL_REC (lhs, rhs) {
 
   var leftWeight = TYPEWEIGHT(lhs);
   var rightWeight = TYPEWEIGHT(rhs);
-  
+
   if (leftWeight > rightWeight) {
     return true;
   }
@@ -1698,7 +1698,7 @@ function RELATIONAL_GREATEREQUAL_REC (lhs, rhs) {
         return result;
       }
     }
-    
+
     return null;
   }
 
@@ -1719,7 +1719,7 @@ function RELATIONAL_GREATEREQUAL_REC (lhs, rhs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief perform greater equal check 
+/// @brief perform greater equal check
 ///
 /// returns true if the left operand is greater or equal to the right operand
 ////////////////////////////////////////////////////////////////////////////////
@@ -1742,10 +1742,10 @@ function RELATIONAL_GREATEREQUAL (lhs, rhs) {
 
 function RELATIONAL_LESS_REC (lhs, rhs) {
   "use strict";
-  
+
   var leftWeight = TYPEWEIGHT(lhs);
   var rightWeight = TYPEWEIGHT(rhs);
-  
+
   if (leftWeight < rightWeight) {
     return true;
   }
@@ -1764,7 +1764,7 @@ function RELATIONAL_LESS_REC (lhs, rhs) {
         return result;
       }
     }
-    
+
     return null;
   }
 
@@ -1785,7 +1785,7 @@ function RELATIONAL_LESS_REC (lhs, rhs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief perform less than check 
+/// @brief perform less than check
 ///
 /// returns true if the left operand is less than the right operand
 ////////////////////////////////////////////////////////////////////////////////
@@ -1811,7 +1811,7 @@ function RELATIONAL_LESSEQUAL_REC (lhs, rhs) {
 
   var leftWeight = TYPEWEIGHT(lhs);
   var rightWeight = TYPEWEIGHT(rhs);
-  
+
   if (leftWeight < rightWeight) {
     return true;
   }
@@ -1833,16 +1833,16 @@ function RELATIONAL_LESSEQUAL_REC (lhs, rhs) {
 
     return null;
   }
-  
+
   // primitive type
   if (leftWeight === TYPEWEIGHT_NULL) {
     return null;
   }
-  
+
   if (leftWeight === TYPEWEIGHT_STRING) {
     return COMPARE_STRING(lhs, rhs) <= 0;
   }
-  
+
   if (lhs === rhs) {
     return null;
   }
@@ -1851,7 +1851,7 @@ function RELATIONAL_LESSEQUAL_REC (lhs, rhs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief perform less equal check 
+/// @brief perform less equal check
 ///
 /// returns true if the left operand is less or equal to the right operand
 ////////////////////////////////////////////////////////////////////////////////
@@ -1880,7 +1880,7 @@ function RELATIONAL_CMP (lhs, rhs) {
 
   var leftWeight = TYPEWEIGHT(lhs);
   var rightWeight = TYPEWEIGHT(rhs);
-  
+
   if (leftWeight < rightWeight) {
     return -1;
   }
@@ -1899,7 +1899,7 @@ function RELATIONAL_CMP (lhs, rhs) {
         return result;
       }
     }
-    
+
     return 0;
   }
 
@@ -1915,7 +1915,7 @@ function RELATIONAL_CMP (lhs, rhs) {
   if (lhs < rhs) {
     return -1;
   }
-   
+
   if (lhs > rhs) {
     return 1;
   }
@@ -1924,7 +1924,7 @@ function RELATIONAL_CMP (lhs, rhs) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief perform in list check 
+/// @brief perform in list check
 ///
 /// returns true if the left operand is contained in the right operand
 ////////////////////////////////////////////////////////////////////////////////
@@ -1933,7 +1933,7 @@ function RELATIONAL_IN (lhs, rhs) {
   "use strict";
 
   var rightWeight = TYPEWEIGHT(rhs);
-  
+
   if (rightWeight !== TYPEWEIGHT_LIST) {
     THROW(INTERNAL.errors.ERROR_QUERY_LIST_EXPECTED);
   }
@@ -2000,7 +2000,7 @@ function UNARY_MINUS (value) {
 /// both operands must be numeric or this function will fail
 ////////////////////////////////////////////////////////////////////////////////
 
-function ARITHMETIC_PLUS (lhs, rhs) { 
+function ARITHMETIC_PLUS (lhs, rhs) {
   "use strict";
 
   if (TYPEWEIGHT(lhs) !== TYPEWEIGHT_NUMBER ||
@@ -2073,7 +2073,7 @@ function ARITHMETIC_DIVIDE (lhs, rhs) {
       TYPEWEIGHT(rhs) !== TYPEWEIGHT_NUMBER) {
     THROW(INTERNAL.errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
   }
-  
+
   if (rhs === 0) {
     THROW(INTERNAL.errors.ERROR_QUERY_DIVISION_BY_ZERO);
   }
@@ -2138,7 +2138,7 @@ function STRING_CONCAT () {
     }
   }
 
-  return result; 
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2175,7 +2175,7 @@ function STRING_CONCAT_SEPARATOR () {
     }
   }
 
-  return result; 
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2254,7 +2254,7 @@ function STRING_CONTAINS (value, search, returnIndex) {
   if (returnIndex !== undefined) {
     ARG_CHECK(returnIndex, TYPEWEIGHT_BOOL, "CONTAINS");
   }
-    
+
 
   var result;
   if (search.length === 0) {
@@ -2290,7 +2290,7 @@ function STRING_LIKE (value, regex, caseInsensitive) {
   if (RegexCache[modifiers][regex] === undefined) {
     RegexCache[modifiers][regex] = COMPILE_REGEX(regex, modifiers);
   }
-        
+
   try {
     return RegexCache[modifiers][regex].test(value);
   }
@@ -2330,7 +2330,7 @@ function STRING_RIGHT (value, length) {
 
   ARG_CHECK(value, TYPEWEIGHT_STRING, "RIGHT");
   ARG_CHECK(length, TYPEWEIGHT_NUMBER, "RIGHT");
-  
+
   if (length < 0) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "RIGHT");
     ARG_CHECK(length, TYPEWEIGHT_NUMBER, "RIGHT");
@@ -2404,7 +2404,7 @@ function CAST_BOOL (value) {
       return value;
     case TYPEWEIGHT_NUMBER:
       return (value !== 0);
-    case TYPEWEIGHT_STRING: 
+    case TYPEWEIGHT_STRING:
       return (value !== '');
     case TYPEWEIGHT_LIST:
       return (value.length > 0);
@@ -2573,7 +2573,7 @@ function NUMBER_FLOOR (value) {
   if (! IS_NUMBER(value)) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FLOOR");
   }
-  
+
   return NUMERIC_VALUE(Math.floor(value));
 }
 
@@ -2587,12 +2587,12 @@ function NUMBER_CEIL (value) {
   if (! IS_NUMBER(value)) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "CEIL");
   }
-  
+
   return NUMERIC_VALUE(Math.ceil(value));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief integer closest to value 
+/// @brief integer closest to value
 ////////////////////////////////////////////////////////////////////////////////
 
 function NUMBER_ROUND (value) {
@@ -2601,7 +2601,7 @@ function NUMBER_ROUND (value) {
   if (! IS_NUMBER(value)) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ROUND");
   }
-  
+
   return NUMERIC_VALUE(Math.round(value));
 }
 
@@ -2615,7 +2615,7 @@ function NUMBER_ABS (value) {
   if (! IS_NUMBER(value)) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ABS");
   }
-  
+
   return NUMERIC_VALUE(Math.abs(value));
 }
 
@@ -2639,7 +2639,7 @@ function NUMBER_SQRT (value) {
   if (! IS_NUMBER(value)) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SQRT");
   }
-  
+
   return NUMERIC_VALUE(Math.sqrt(value));
 }
 
@@ -2655,7 +2655,7 @@ function SORT (value, sortFunction) {
   "use strict";
 
   LIST(value);
- 
+
   if (value.length > 0) {
     value.sort(sortFunction);
   }
@@ -2683,7 +2683,7 @@ function GROUP (value, sortFunction, groupFunction, into) {
   SORT(augmented, sortFunction);
 
   var result = [ ], currentGroup, oldGroup;
-  
+
   for (i = 0; i < n; ++i) {
     var row = augmented[i][1];
     var groupValue = groupFunction(row);
@@ -2694,7 +2694,7 @@ function GROUP (value, sortFunction, groupFunction, into) {
       if (currentGroup) {
         result.push(CLONE(currentGroup));
       }
-      
+
       currentGroup = groupValue;
       if (into) {
         currentGroup[into] = [ ];
@@ -2747,7 +2747,7 @@ function LENGTH (value) {
   "use strict";
 
   var result, typeWeight = TYPEWEIGHT(value);
-  
+
   if (typeWeight === TYPEWEIGHT_LIST || typeWeight === TYPEWEIGHT_STRING) {
     result = value.length;
   }
@@ -2839,7 +2839,7 @@ function REVERSE (value) {
   "use strict";
 
   if (TYPEWEIGHT(value) === TYPEWEIGHT_STRING) {
-    return value.split("").reverse().join(""); 
+    return value.split("").reverse().join("");
   }
 
   LIST(value);
@@ -2862,8 +2862,8 @@ function RANGE (from, to, step) {
       step = -1;
     }
   }
- 
-  // check from, to and step values 
+
+  // check from, to and step values
   ARG_CHECK(from, TYPEWEIGHT_NUMBER, "RANGE");
   ARG_CHECK(to, TYPEWEIGHT_NUMBER, "RANGE");
   ARG_CHECK(step, TYPEWEIGHT_NUMBER, "RANGE");
@@ -2946,7 +2946,7 @@ function UNION () {
     }
   }
 
-  return result; 
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2965,7 +2965,7 @@ function UNION_DISTINCT () {
       if (TYPEWEIGHT(element) !== TYPEWEIGHT_LIST) {
         THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "UNION_DISTINCT");
       }
-      
+
       var n = element.length, j;
 
       for (j = 0; j < n; ++j) {
@@ -2984,7 +2984,7 @@ function UNION_DISTINCT () {
     result.push(keys[k]);
   });
 
-  return result; 
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2993,7 +2993,7 @@ function UNION_DISTINCT () {
 
 function SLICE (value, from, to) {
   "use strict";
-      
+
   if (TYPEWEIGHT(value) !== TYPEWEIGHT_LIST) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "SLICE");
   }
@@ -3033,7 +3033,7 @@ function MINUS () {
       if (TYPEWEIGHT(element) !== TYPEWEIGHT_LIST) {
         THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "MINUS");
       }
-      
+
       var n = element.length, j;
 
       for (j = 0; j < n; ++j) {
@@ -3060,7 +3060,7 @@ function MINUS () {
     result.push(keys[k]);
   });
 
-  return result; 
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3071,7 +3071,7 @@ function INTERSECTION () {
   "use strict";
 
   var result = [ ], i, first = true, keys = { };
-        
+
   var func = function (value) {
     var normalized = NORMALIZE(value);
     keys[JSON.stringify(normalized)] = normalized;
@@ -3084,7 +3084,7 @@ function INTERSECTION () {
       if (TYPEWEIGHT(element) !== TYPEWEIGHT_LIST) {
         THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "INTERSECTION");
       }
- 
+
       if (first) {
         element.forEach(func);
         first = false;
@@ -3110,7 +3110,7 @@ function INTERSECTION () {
     result.push(keys[k]);
   });
 
-  return result; 
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3134,7 +3134,7 @@ function FLATTEN (values, maxDepth, depth) {
   var p = function(v) {
     result.push(v);
   };
-  
+
   for (i = 0, n = values.length; i < n; ++i) {
     value = values[i];
     if (depth < maxDepth && TYPEWEIGHT(value) === TYPEWEIGHT_LIST) {
@@ -3159,10 +3159,10 @@ function MAX (values) {
 
   var value, result = null;
   var i, n;
-  
+
   for (i = 0, n = values.length; i < n; ++i) {
     value = values[i];
-    if (TYPEWEIGHT(value) !== TYPEWEIGHT_NULL) { 
+    if (TYPEWEIGHT(value) !== TYPEWEIGHT_NULL) {
       if (result === null || RELATIONAL_GREATER(value, result)) {
         result = value;
       }
@@ -3183,10 +3183,10 @@ function MIN (values) {
 
   var value, result = null;
   var i, n;
-  
+
   for (i = 0, n = values.length; i < n; ++i) {
     value = values[i];
-    if (TYPEWEIGHT(value) !== TYPEWEIGHT_NULL) { 
+    if (TYPEWEIGHT(value) !== TYPEWEIGHT_NULL) {
       if (result === null || RELATIONAL_LESS(value, result)) {
         result = value;
       }
@@ -3265,7 +3265,7 @@ function MEDIAN (values) {
   "use strict";
 
   LIST(values);
-  
+
   var copy = [ ], current, typeWeight;
   var i, n;
 
@@ -3414,8 +3414,8 @@ function GEO_NEAR (collection, latitude, longitude, limit, distanceAttribute) {
     query._distance = distanceAttribute;
     return query.limit(limit).toArray();
   }
-    
-  var idx = INDEX(COLLECTION(collection), [ "geo1", "geo2" ]); 
+
+  var idx = INDEX(COLLECTION(collection), [ "geo1", "geo2" ]);
 
   if (idx === null) {
     THROW(INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
@@ -3450,8 +3450,8 @@ function GEO_WITHIN (collection, latitude, longitude, radius, distanceAttribute)
     query._distance = distanceAttribute;
     return query.toArray();
   }
-    
-  var idx = INDEX(COLLECTION(collection), [ "geo1", "geo2" ]); 
+
+  var idx = INDEX(COLLECTION(collection), [ "geo1", "geo2" ]);
 
   if (idx === null) {
     THROW(INTERNAL.errors.ERROR_QUERY_GEO_INDEX_MISSING, collection);
@@ -3462,7 +3462,7 @@ function GEO_WITHIN (collection, latitude, longitude, radius, distanceAttribute)
   if (distanceAttribute === null || distanceAttribute === undefined) {
     return result.documents;
   }
-  
+
   // inject distances
   var documents = result.documents;
   var distances = result.distances;
@@ -3494,7 +3494,7 @@ function FULLTEXT (collection, attribute, query) {
   if (isCoordinator) {
     return COLLECTION(collection).fulltext(attribute, query, idx).toArray();
   }
-  
+
   return COLLECTION(collection).FULLTEXT(idx, query).documents;
 }
 
@@ -3503,8 +3503,8 @@ function FULLTEXT (collection, attribute, query) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the first alternative that's not null until there are no more 
-/// alternatives. if neither of the alternatives is a value other than null, 
+/// @brief return the first alternative that's not null until there are no more
+/// alternatives. if neither of the alternatives is a value other than null,
 /// then null will be returned
 ///
 /// the operands can have any type
@@ -3517,7 +3517,7 @@ function NOT_NULL () {
   for (i in arguments) {
     if (arguments.hasOwnProperty(i)) {
       var element = arguments[i];
-  
+
       if (TYPEWEIGHT(element) !== TYPEWEIGHT_NULL) {
         return element;
       }
@@ -3553,8 +3553,8 @@ function FIRST_LIST () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the first alternative that's a document until there are no 
-/// more alternatives. if neither of the alternatives is a document, then null 
+/// @brief return the first alternative that's a document until there are no
+/// more alternatives. if neither of the alternatives is a document, then null
 /// will be returned
 ///
 /// the operands can have any type
@@ -3567,7 +3567,7 @@ function FIRST_DOCUMENT () {
   for (i in arguments) {
     if (arguments.hasOwnProperty(i)) {
       var element = arguments[i];
-  
+
       if (TYPEWEIGHT(element) === TYPEWEIGHT_DOCUMENT) {
         return element;
       }
@@ -3590,7 +3590,7 @@ function PARSE_IDENTIFIER (value) {
   if (TYPEWEIGHT(value) === TYPEWEIGHT_STRING) {
     var parts = value.split('/');
     if (parts.length === 2) {
-      return { 
+      return {
         collection: parts[0],
         key: parts[1]
       };
@@ -3603,7 +3603,7 @@ function PARSE_IDENTIFIER (value) {
     }
     // fall through intentional
   }
-  
+
   THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "PARSE_IDENTIFIER");
 }
 
@@ -3624,7 +3624,7 @@ function SKIPLIST_QUERY (collection, condition, skip, limit) {
       keys.push(key);
     }
   }
-    
+
   var c = COLLECTION(collection);
 
   if (c === null) {
@@ -3644,13 +3644,13 @@ function SKIPLIST_QUERY (collection, condition, skip, limit) {
   if (limit === undefined || limit === null) {
     limit = null;
   }
- 
+
   try {
     if (isCoordinator) {
       return c.byConditionSkiplist(idx.id, condition).skip(skip).limit(limit).toArray();
     }
-      
-    return c.BY_CONDITION_SKIPLIST(idx.id, condition, skip, limit).documents; 
+
+    return c.BY_CONDITION_SKIPLIST(idx.id, condition, skip, limit).documents;
   }
   catch (err) {
     THROW(INTERNAL.errors.ERROR_ARANGO_NO_INDEX);
@@ -3686,22 +3686,22 @@ function ATTRIBUTES (element, removeInternal, sort) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "ATTRIBUTES");
   }
 
-  if (removeInternal) {  
+  if (removeInternal) {
     var result = [ ];
-    
+
     Object.keys(element).forEach(function(k) {
       if (k.substring(0, 1) !== '_') {
         result.push(k);
       }
     });
-  
+
     if (sort) {
       result.sort();
     }
 
     return result;
   }
-  
+
   return KEYS(element, sort);
 }
 
@@ -3718,7 +3718,7 @@ function UNSET (value) {
 
   var result = { }, keys = EXTRACT_KEYS(arguments, 1, "UNSET");
   // copy over all that is left
-    
+
   Object.keys(value).forEach(function(k) {
     if (keys[k] !== true) {
       result[k] = CLONE(value[k]);
@@ -3760,7 +3760,7 @@ function MERGE () {
 
   var result = { }, i;
 
-  var add = function (element) {      
+  var add = function (element) {
     Object.keys(element).forEach(function(k) {
       result[k] = element[k];
     });
@@ -3779,7 +3779,7 @@ function MERGE () {
     }
   }
 
-  return result; 
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3790,7 +3790,7 @@ function MERGE_RECURSIVE () {
   "use strict";
 
   var result = { }, i, recurse;
-      
+
   recurse = function (old, element) {
     var r = CLONE(old);
 
@@ -3818,7 +3818,7 @@ function MERGE_RECURSIVE () {
     }
   }
 
-  return result; 
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3955,7 +3955,7 @@ function CURRENT_DATABASE () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief always fail
 ///
-/// this function is non-deterministic so it is not executed at query 
+/// this function is non-deterministic so it is not executed at query
 /// optimisation time. this function can be used for testing
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3979,7 +3979,7 @@ function FAIL (message) {
 
 function MAKE_DATE (args, func) {
   "use strict";
-   
+
   var weight;
   var i, n = args.length;
 
@@ -4027,7 +4027,7 @@ function MAKE_DATE (args, func) {
       if (args[i] < 0) {
         THROW(INTERNAL.errors.ERROR_QUERY_INVALID_DATE_VALUE, func);
       }
-    
+
       if (i === 1) {
         // an exception for handling months: months are 0-based in JavaScript,
         // but 1-based in AQL
@@ -4072,7 +4072,7 @@ function DATE_TIMESTAMP () {
 
 function DATE_ISO8601 () {
   "use strict";
-  
+
   try {
     return MAKE_DATE(arguments, "DATE_ISO8601").toISOString();
   }
@@ -4102,7 +4102,7 @@ function DATE_DAYOFWEEK (value) {
 
 function DATE_YEAR (value) {
   "use strict";
-  
+
   try {
     return MAKE_DATE([ value ], "DATE_YEAR").getUTCFullYear();
   }
@@ -4117,7 +4117,7 @@ function DATE_YEAR (value) {
 
 function DATE_MONTH (value) {
   "use strict";
-  
+
   try {
     return MAKE_DATE([ value ], "DATE_MONTH").getUTCMonth() + 1;
   }
@@ -4132,7 +4132,7 @@ function DATE_MONTH (value) {
 
 function DATE_DAY (value) {
   "use strict";
-  
+
   try {
     return MAKE_DATE([ value ], "DATE_DAY").getUTCDate();
   }
@@ -4240,8 +4240,8 @@ function GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, vertices, l
   var result = [ ];
 
   if (level >= searchAttributes.minLength) {
-    result.push({ 
-      vertices : vertices, 
+    result.push({
+      vertices : vertices,
       edges : edges,
       source : vertices[0],
       destination : vertices[vertices.length - 1]
@@ -4251,7 +4251,7 @@ function GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, vertices, l
   if (level + 1 > searchAttributes.maxLength) {
     return result;
   }
-        
+
   var subEdges = GET_SUB_EDGES(
     searchAttributes.edgeCollection, searchAttributes.direction, vertexId
   );
@@ -4261,18 +4261,18 @@ function GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, vertices, l
     var subEdge = subEdges[i];
     var targets = [ ];
 
-    if ((searchAttributes.direction === 1 || searchAttributes.direction === 3) && 
+    if ((searchAttributes.direction === 1 || searchAttributes.direction === 3) &&
         (subEdge._to !== vertexId)) {
       targets.push(subEdge._to);
     }
-    if ((searchAttributes.direction === 2 || searchAttributes.direction === 3) && 
+    if ((searchAttributes.direction === 2 || searchAttributes.direction === 3) &&
         (subEdge._from !== vertexId)) {
       targets.push(subEdge._from);
     }
 
     for (j = 0; j < targets.length; ++j) {
       var targetId = targets[j];
-      
+
       if (! searchAttributes.followCycles) {
         if (visited[targetId]) {
           continue;
@@ -4282,19 +4282,19 @@ function GRAPH_SUBNODES (searchAttributes, vertexId, visited, edges, vertices, l
 
       var clonedEdges = CLONE(edges);
       var clonedVertices = CLONE(vertices);
-      try { 
+      try {
         clonedVertices.push(INTERNAL.db._document(targetId));
         clonedEdges.push(subEdge);
       }
       catch (e) {
         // avoid "document not found error" in case referenced vertices were deleted
       }
-      
-      var connected = GRAPH_SUBNODES(searchAttributes, 
-                                     targetId, 
-                                     CLONE(visited), 
-                                     clonedEdges, 
-                                     clonedVertices, 
+
+      var connected = GRAPH_SUBNODES(searchAttributes,
+                                     targetId,
+                                     CLONE(visited),
+                                     clonedEdges,
+                                     clonedVertices,
                                      level + 1);
       for (k = 0; k < connected.length; ++k) {
         result.push(connected[k]);
@@ -4317,12 +4317,12 @@ function GRAPH_PATHS (vertices, edgeCollection, direction, followCycles, minLeng
   "use strict";
 
   var searchDirection;
-  
+
   direction      = direction || "outbound";
   followCycles   = followCycles || false;
   minLength      = minLength || 0;
   maxLength      = maxLength !== undefined ? maxLength : 10;
-  
+
   LIST(vertices);
 
   // validate arguments
@@ -4343,10 +4343,10 @@ function GRAPH_PATHS (vertices, edgeCollection, direction, followCycles, minLeng
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "PATHS");
   }
 
-  var searchAttributes = { 
+  var searchAttributes = {
     edgeCollection : COLLECTION(edgeCollection),
-    minLength : minLength, 
-    maxLength : maxLength, 
+    minLength : minLength,
+    maxLength : maxLength,
     direction : searchDirection,
     followCycles : followCycles
   };
@@ -4542,9 +4542,9 @@ function TRAVERSAL_TREE_VISITOR (config, result, vertex, path) {
   "use strict";
 
   if (result.length === 0) {
-    result.push({ }); 
+    result.push({ });
   }
-  
+
   var current = result[0], connector = config.connect, i;
 
   for (i = 0; i < path.vertices.length; ++i) {
@@ -4594,7 +4594,7 @@ function TRAVERSAL_EDGE_EXAMPLE_FILTER (config, vertex, edge, path) {
 
 function TRAVERSAL_VERTEX_FILTER (config, vertex, path) {
   "use strict";
-  
+
   if (! MATCHES(vertex, config.filterVertexExamples)) {
     return config.vertexFilterMethod;
   }
@@ -4611,7 +4611,7 @@ function TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS (examples, func) {
     // a callback function was supplied. this is considered valid
     return;
   }
-  
+
   if (TYPEWEIGHT(examples) !== TYPEWEIGHT_LIST) {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func);
   }
@@ -4647,18 +4647,18 @@ function TO_ID (vertex, collection) {
 /// @brief traverse a graph
 ////////////////////////////////////////////////////////////////////////////////
 
-function TRAVERSAL_FUNC (func, 
+function TRAVERSAL_FUNC (func,
                          datasource,
-                         startVertex, 
-                         endVertex, 
-                         direction, 
+                         startVertex,
+                         endVertex,
+                         direction,
                          params) {
   "use strict";
 
   if (params === undefined) {
     params = { };
   }
-  
+
   // check followEdges property
   if (params.followEdges) {
     TRAVERSAL_CHECK_EXAMPLES_TYPEWEIGHTS(params.followEdges, func);
@@ -4678,7 +4678,7 @@ function TRAVERSAL_FUNC (func,
   }
 
   var config = {
-    distance: params.distance, 
+    distance: params.distance,
     connect: params.connect,
     datasource: datasource,
     trackPaths: params.paths || false,
@@ -4706,10 +4706,10 @@ function TRAVERSAL_FUNC (func,
       config.expandFilter = function (config, vertex, edge, path) {
         return FCALL_USER(f1, [ config, vertex, edge, path ]);
       };
-    } 
+    }
     else {
       config.expandFilter = TRAVERSAL_EDGE_EXAMPLE_FILTER;
-      config.expandEdgeExamples = params.followEdges;  
+      config.expandEdgeExamples = params.followEdges;
     }
   }
   if (params.edgeCollectionRestriction) {
@@ -4723,7 +4723,7 @@ function TRAVERSAL_FUNC (func,
       config.filter = function (config, vertex, edge, path) {
         return FCALL_USER(f2, [ config, vertex, path ]);
       };
-    } 
+    }
     else {
       config.filter = TRAVERSAL_VERTEX_FILTER;
       config.filterVertexExamples = params.filterVertices;
@@ -4742,7 +4742,7 @@ function TRAVERSAL_FUNC (func,
   }
   catch (err1) {
   }
-  
+
   // end vertex
   var e;
   if (endVertex !== undefined) {
@@ -5089,7 +5089,7 @@ function SHORTEST_PATH_PARAMS (params) {
 
     params.distance = function (config, vertex1, vertex2, edge) {
       return FCALL_USER(name, [ config, vertex1, vertex2, edge ]);
-    }; 
+    };
   }
   else {
     params.distance = undefined;
@@ -5102,21 +5102,21 @@ function SHORTEST_PATH_PARAMS (params) {
 /// @brief shortest path algorithm
 ////////////////////////////////////////////////////////////////////////////////
 
-function GRAPH_SHORTEST_PATH (vertexCollection, 
-                              edgeCollection, 
-                              startVertex, 
+function GRAPH_SHORTEST_PATH (vertexCollection,
+                              edgeCollection,
+                              startVertex,
                               endVertex,
-                              direction, 
+                              direction,
                               params) {
   "use strict";
-  
+
   params = SHORTEST_PATH_PARAMS(params);
 
   return TRAVERSAL_FUNC("SHORTEST_PATH",
                         TRAVERSAL.collectionDatasourceFactory(COLLECTION(edgeCollection)),
                         TO_ID(startVertex, vertexCollection),
                         TO_ID(endVertex, vertexCollection),
-                        direction, 
+                        direction,
                         params);
 }
 
@@ -5149,15 +5149,13 @@ function CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL (graphData, options) {
         paths[e._from] = {};
       }
       paths[e._from][e._to] =  {distance : DETERMINE_WEIGHT(e, options.weight,
-        options.defaultWeight)
-        , paths : [{edges : [e], vertices : [e._from, e._to]}]};
+        options.defaultWeight), paths : [{edges : [e], vertices : [e._from, e._to]}]};
     } else if (options.direction === "inbound") {
       if (!paths[e._to]) {
         paths[e._to] = {};
       }
       paths[e._to][e._from] =  {distance : DETERMINE_WEIGHT(e, options.weight,
-        options.defaultWeight)
-        , paths : [{edges : [e], vertices : [e._from, e._to]}]};
+        options.defaultWeight), paths : [{edges : [e], vertices : [e._from, e._to]}]};
     } else {
       if (!paths[e._from]) {
         paths[e._from] = {};
@@ -5172,8 +5170,7 @@ function CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL (graphData, options) {
             options.defaultWeight));
       } else {
         paths[e._from][e._to] = {distance : DETERMINE_WEIGHT(e, options.weight,
-          options.defaultWeight)
-          , paths : [{edges : [e], vertices : [e._from, e._to]}]};
+          options.defaultWeight), paths : [{edges : [e], vertices : [e._from, e._to]}]};
       }
       if (paths[e._to][e._from]) {
         paths[e._to][e._from].distance =
@@ -5181,8 +5178,7 @@ function CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL (graphData, options) {
           options.defaultWeight));
       } else {
         paths[e._to][e._from] = {distance : DETERMINE_WEIGHT(e, options.weight,
-          options.defaultWeight)
-          , paths : [{edges : [e], vertices : [e._from, e._to]}]};
+          options.defaultWeight), paths : [{edges : [e], vertices : [e._from, e._to]}]};
       }
     }
     vertices[e._to] = 1;
@@ -5504,20 +5500,20 @@ function GENERAL_GRAPH_SHORTEST_PATH (graphName,
 /// @brief traverse a graph
 ////////////////////////////////////////////////////////////////////////////////
 
-function GRAPH_TRAVERSAL (vertexCollection, 
-                          edgeCollection, 
-                          startVertex, 
-                          direction, 
+function GRAPH_TRAVERSAL (vertexCollection,
+                          edgeCollection,
+                          startVertex,
+                          direction,
                           params) {
   "use strict";
 
-  params = TRAVERSAL_PARAMS(params);  
+  params = TRAVERSAL_PARAMS(params);
 
   return TRAVERSAL_FUNC("TRAVERSAL",
                         TRAVERSAL.collectionDatasourceFactory(COLLECTION(edgeCollection)),
                         TO_ID(startVertex, vertexCollection),
                         undefined,
-                        direction, 
+                        direction,
                         params);
 }
 
@@ -5601,14 +5597,14 @@ function GENERAL_GRAPH_TRAVERSAL (graphName,
 
 function TRAVERSAL_TREE_PARAMS (params, connectName, funcName) {
   "use strict";
-  
+
   if (params === undefined) {
     params = { };
   }
 
   params.visitor  = TRAVERSAL_TREE_VISITOR;
   params.connect  = connectName;
-  
+
   if (params.connect === "") {
     THROW(INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, funcName);
   }
@@ -5622,11 +5618,11 @@ function TRAVERSAL_TREE_PARAMS (params, connectName, funcName) {
 /// a different visitor to create the result
 ////////////////////////////////////////////////////////////////////////////////
 
-function GRAPH_TRAVERSAL_TREE (vertexCollection, 
-                               edgeCollection, 
-                               startVertex, 
-                               direction, 
-                               connectName, 
+function GRAPH_TRAVERSAL_TREE (vertexCollection,
+                               edgeCollection,
+                               startVertex,
+                               direction,
+                               connectName,
                                params) {
   "use strict";
 
@@ -5636,7 +5632,7 @@ function GRAPH_TRAVERSAL_TREE (vertexCollection,
                               TRAVERSAL.collectionDatasourceFactory(COLLECTION(edgeCollection)),
                               TO_ID(startVertex, vertexCollection),
                               undefined,
-                              direction, 
+                              direction,
                               params);
 
   if (result.length === 0) {
@@ -5795,9 +5791,9 @@ function GENERAL_GRAPH_TRAVERSAL_TREE (graphName,
 /// @brief return connected edges
 ////////////////////////////////////////////////////////////////////////////////
 
-function GRAPH_EDGES (edgeCollection, 
-                      vertex, 
-                      direction, 
+function GRAPH_EDGES (edgeCollection,
+                      vertex,
+                      direction,
                       examples) {
   "use strict";
 
@@ -5865,8 +5861,8 @@ function FILTERED_EDGES (edges, vertex, direction, examples) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GRAPH_NEIGHBORS (vertexCollection,
-                          edgeCollection, 
-                          vertex, 
+                          edgeCollection,
+                          vertex,
                           direction,
                           examples) {
   "use strict";
@@ -5962,7 +5958,7 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
     }
   }
   var neighbors = [],
-    params = TRAVERSAL_PARAMS(), 
+    params = TRAVERSAL_PARAMS(),
     factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
   params.minDepth = options.minDepth === undefined ? 1 : options.minDepth;
   params.maxDepth = options.maxDepth === undefined ? 1 : options.maxDepth;
@@ -6004,7 +6000,7 @@ function GENERAL_GRAPH_NEIGHBORS (graphName,
 ///
 /// The GRAPH\_EDGES function returns all edges of the graph connected to the vertices
 /// defined by the example.
-/// 
+///
 /// The complexity of this method is **O(n\*m^x)** with *n* being the vertices defined by the
 /// parameter vertexExamplex, *m* the average amount of edges of a vertex and *x* the maximal
 /// depths.
@@ -6088,7 +6084,7 @@ function GENERAL_GRAPH_EDGES (
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_ahuacatl_general_graph_vertices
-/// The GRAPH\_VERTICES function returns all vertices. 
+/// The GRAPH\_VERTICES function returns all vertices.
 ///
 /// `GRAPH_VERTICES (graphName, vertexExample, options)`
 ///
@@ -6286,7 +6282,7 @@ function GENERAL_GRAPH_COMMON_NEIGHBORS (
 /// @startDocuBlock JSF_ahuacatl_general_graph_common_properties
 ///
 /// `GRAPH_COMMON_PROPERTIES (graphName, vertex1Example, vertex2Examples, options)`
-/// 
+///
 /// The GRAPH\_COMMON\_PROPERTIES function returns a list of objects which have the id of
 /// the vertices defined by *vertex1Example* as keys and a list of vertices defined by
 /// *vertex21Example*, that share common properties as value. Notice that only the
@@ -6806,7 +6802,7 @@ function GENERAL_GRAPH_CLOSENESS (graphName, options) {
 /// @startDocuBlock JSF_ahuacatl_general_graph_absolute_betweenness
 ///
 /// `GRAPH_ABSOLUTE_BETWEENNESS (graphName, vertexExample, options)`
-/// 
+///
 /// The GRAPH\_ABSOLUTE\_BETWEENNESS function returns the
 /// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
 /// of all vertices in the graph.
@@ -6913,7 +6909,7 @@ function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 /// @startDocuBlock JSF_ahuacatl_general_graph_betweenness
 ///
 /// `GRAPH_BETWEENNESS (graphName, options)`
-/// 
+///
 /// The GRAPH\_BETWEENNESS function returns the
 /// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
 /// of graphs vertices.
@@ -6996,7 +6992,7 @@ function GENERAL_GRAPH_BETWEENNESS (graphName, options) {
 /// @startDocuBlock JSF_ahuacatl_general_graph_radius
 ///
 /// `GRAPH_RADIUS (graphName, options)`
-/// 
+///
 /// *The GRAPH\_RADIUS function returns the
 /// [radius](http://en.wikipedia.org/wiki/Eccentricity_%28graph_theory%29)
 /// of a graph.*

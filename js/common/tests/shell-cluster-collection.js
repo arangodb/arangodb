@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 80 */
 /*global require, assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,7 +73,7 @@ function ClusterCollectionSuite () {
       assertEqual(2, c.type());
       assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
-      
+
       assertEqual(c.name(), db._collection("UnitTestsClusterCrud").name());
     },
 
@@ -88,7 +87,7 @@ function ClusterCollectionSuite () {
       assertEqual(3, c.type());
       assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
-      
+
       assertEqual(c.name(), db._collection("UnitTestsClusterCrud").name());
     },
 
@@ -229,7 +228,7 @@ function ClusterCollectionSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test recreate 
+/// @brief test recreate
 ////////////////////////////////////////////////////////////////////////////////
 
     testRecreate : function () {
@@ -246,7 +245,7 @@ function ClusterCollectionSuite () {
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DUPLICATE_NAME.code, err.errorNum);
       }
-      
+
       assertEqual(c.name(), db._collection("UnitTestsClusterCrud").name());
     },
 
@@ -262,7 +261,7 @@ function ClusterCollectionSuite () {
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
-      
+
       assertNull(db._collection("1234"));
     },
 
@@ -298,7 +297,7 @@ function ClusterCollectionSuite () {
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
-      
+
       assertNull(db._collection("_foo"));
     },
 

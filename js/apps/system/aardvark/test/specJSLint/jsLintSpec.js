@@ -1,14 +1,31 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global beforeEach, afterEach */
 /*global describe, it, expect, jasmine, spyOn*/
 /*global waitsFor, runs, waits */
-/*global _, JSLINT*/
+/*global _, JSHINT*/
 /*global document*/
 
 (function () {
   "use strict";
   describe('JSLint', function () {
-    var options = {},
+    var options = {
+          unused: false, // should be `true`
+          strict: false, // should be `true`
+          bitwise: true,
+          curly: true,
+          eqeqeq: true,
+          forin: true,
+          freeze: true,
+          immed: true,
+          laxbreak: true,
+          newcap: true,
+          noarg: true,
+          noempty: true,
+          nonbsp: true,
+          nonew: true,
+          undef: true,
+          indent: 2,
+          maxlen: 120
+        },
         lint = /^\/specJSLint|[\w\W]jsLintSpec\.js$/;
 
     function get(path) {
@@ -33,7 +50,7 @@
      var files = /^([\w\W]*lib\/[\w\W]*)|([\w\W]*Spec\.js)$/,
        generated = /(\/bootstrap\/)|(\/client\/)|(\/modules\/)|(\/shell\/)/,
        ace = /ace\.js/;
-    
+
       _.each(document.getElementsByTagName('script'), function (element) {
         var script = element.getAttribute('src');
         if (script === null || files.test(script) || generated.test(script) || ace.test(script)) {
@@ -42,8 +59,8 @@
         it(script, function () {
           var self = this,
             source = get(script),
-            result = JSLINT(source, options);
-          _.each(JSLINT.errors, function (error) {
+            result = JSHINT(source, options);
+          _.each(JSHINT.errors, function (error) {
             self.addMatcherResult(new jasmine.ExpectationResult({
               passed: false,
               message: "line " + error.line + ' - ' + error.reason + ' - ' + error.evidence
@@ -56,7 +73,7 @@
 
     describe('checking specFiles', function() {
       var files = /^\/spec*|[\w\W]*Spec\.js$/;
-    
+
       _.each(document.getElementsByTagName('script'), function (element) {
         var script = element.getAttribute('src');
         if (!files.test(script) || lint.test(script)) {
@@ -65,8 +82,8 @@
         it(script, function () {
           var self = this,
             source = get(script),
-            result = JSLINT(source, options);
-          _.each(JSLINT.errors, function (error) {
+            result = JSHINT(source, options);
+          _.each(JSHINT.errors, function (error) {
             self.addMatcherResult(new jasmine.ExpectationResult({
               passed: false,
               message: "line " + error.line + ' - ' + error.reason + ' - ' + error.evidence

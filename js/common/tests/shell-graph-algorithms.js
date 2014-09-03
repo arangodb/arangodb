@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 80, sloppy: true */
 /*global require, assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -289,7 +288,7 @@ function dijkstraSuite() {
         e2 = graph.addEdge(v2, v3),
         e3,
         pathes = v1.pathTo(v3, {cached: true});
-      
+
       e3 = graph.addEdge(v1, v3);
 
       pathes = v1.pathTo(v3, {cached: true});

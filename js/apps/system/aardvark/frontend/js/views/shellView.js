@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true, evil: true, es5:true  */
+/*jshint browser: true, evil: true */
+/*jshint unused: false */
 /*global require, exports, Backbone, EJS, $, window, ace, jqconsole, handler, help, location*/
 /*global templateEngine*/
 

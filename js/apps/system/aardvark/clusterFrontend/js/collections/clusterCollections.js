@@ -1,10 +1,9 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true */
 /*global window, Backbone */
 (function() {
   "use strict";
   window.ClusterCollections = window.AutomaticRetryCollection.extend({
     model: window.ClusterCollection,
-    
+
     updateUrl: function() {
       this.url = window.App.getNewRoute(this.dbname + "/Collections");
     },

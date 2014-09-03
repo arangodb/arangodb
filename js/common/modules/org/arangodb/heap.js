@@ -1,8 +1,8 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, continue: true */
+/*jshint strict: false */
 /*global exports */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief binary min heap 
+/// @brief binary min heap
 ///
 /// @file
 ///
@@ -38,7 +38,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor  
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
 function BinaryHeap (scoreFunction) {
@@ -49,7 +49,7 @@ function BinaryHeap (scoreFunction) {
 BinaryHeap.prototype = {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief push an element into the heap 
+/// @brief push an element into the heap
 ////////////////////////////////////////////////////////////////////////////////
 
   push: function (element) {
@@ -81,7 +81,7 @@ BinaryHeap.prototype = {
 
     if (i !== this.values.length - 1) {
       this.values[i] = end;
-            
+
       if (this.scoreFunction(end) < this.scoreFunction(node)) {
         this._sinkDown(i);
       }
@@ -137,7 +137,7 @@ BinaryHeap.prototype = {
     var length = this.values.length,
         element = this.values[n],
         elemScore = this.scoreFunction(element);
-        
+
     while (true) {
       var child2n = (n + 1) * 2;
       var child1n = child2n - 1;

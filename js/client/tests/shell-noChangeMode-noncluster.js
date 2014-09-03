@@ -1,4 +1,3 @@
-/*jslint indent: 2, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, nomen: true, sloppy: true */
 /*global require, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -64,16 +63,16 @@ function changeOperationModeNegativeCaseTestSuite () {
     testTryChangeMode : function () {
       try {
         db._executeTransaction({
-          collections: {}, 
+          collections: {},
           action: function () {
-            var db = require('internal').db; 
+            var db = require('internal').db;
             var result = db._changeMode('NoCreate');
             return result;
-          } 
+          }
         });
 
         fail();
-      } 
+      }
       catch (e) {
         assertEqual(arangodb.errors.ERROR_FORBIDDEN.code, e.errorNum);
       }

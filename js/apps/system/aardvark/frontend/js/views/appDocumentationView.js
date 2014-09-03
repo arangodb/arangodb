@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
+/*jshint browser: true */
+/*jshint unused: false */
 /*global require, exports, Backbone, EJS, window, SwaggerUi, hljs, document, $, arango */
 /*global templateEngine*/
 
@@ -9,7 +10,7 @@
 
     el: '#content',
     template: templateEngine.createTemplate("appDocumentationView.ejs"),
-    
+
     initialize: function() {
       var internal = require("internal");
       var url = internal.arango.databasePrefix("/_admin/aardvark/docu/" + this.options.key);
@@ -36,7 +37,7 @@
           docExpansion: "none"
       });
     },
-    
+
     render: function(){
       $(this.el).html(this.template.render({}));
       this.swaggerUi.load();

@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 80 */
 /*global require, assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,8 +90,8 @@ function ClusterCrudSaveSuite () {
     assertEqual(3, c.document(doc).a);
     assertEqual("4", c.document(doc).b);
     assertNull(c.document(doc).c);
-    
-    // use an invalid key 
+
+    // use an invalid key
     try {
       doc = c.save({ _key : "  foo  .kmnh" });
       fail();
@@ -135,7 +134,7 @@ function ClusterCrudSaveSuite () {
     assertEqual(3, c.document(doc).a);
     assertEqual("4", c.document(doc).b);
     assertNull(c.document(doc).c);
-    
+
     // shard key values defined only partially
     doc = c.save({ "b" : "this-is-a-test", "c" : "test" });
     assertEqual(doc._id, c.document(doc._id)._id);
@@ -144,7 +143,7 @@ function ClusterCrudSaveSuite () {
     assertEqual(doc._key, c.document(doc._key)._key);
     assertEqual("this-is-a-test", c.document(doc).b);
     assertEqual("test", c.document(doc).c);
-    
+
     // no shard key values defined!!
     doc = c.save({ "c" : "test" });
     assertEqual(doc._id, c.document(doc._id)._id);
@@ -152,7 +151,7 @@ function ClusterCrudSaveSuite () {
     assertEqual(doc._key, c.document(doc._id)._key);
     assertEqual(doc._key, c.document(doc._key)._key);
     assertEqual("test", c.document(doc).c);
-    
+
     // use a value for _key. this is disallowed
     try {
       doc = c.save({ _key : "test" });
@@ -220,7 +219,7 @@ function ClusterCrudSaveSuite () {
     testSaveShardKeysMultipleShards : function () {
       var c = createCollection({ numberOfShards: 7, shardKeys: [ "a", "b" ] });
       executeSaveShardKeys(c);
-    }   
+    }
 
   };
 }
@@ -249,7 +248,7 @@ function ClusterCrudReplaceSuite () {
     assertEqual("5", c.document(doc._key).b);
     assertEqual(true, c.document(doc._key).c);
     assertUndefined(c.document(doc._key).d);
-    
+
     doc = c.replace(doc._key, { "b": null, "c": "foo" });
     assertEqual(old._id, doc._id);
     assertEqual(old._key, doc._key);
@@ -260,7 +259,7 @@ function ClusterCrudReplaceSuite () {
     assertEqual("foo", c.document(doc._key).c);
     assertUndefined(c.document(doc._key).d);
 
-    // use document object to replace 
+    // use document object to replace
     doc = c.replace(doc, { "a" : true, "c" : null, "d" : [ 1 ] });
     assertEqual(old._id, doc._id);
     assertEqual(old._key, doc._key);
@@ -288,7 +287,7 @@ function ClusterCrudReplaceSuite () {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief helper function for replace 
+/// @brief helper function for replace
 ////////////////////////////////////////////////////////////////////////////////
 
   var executeReplaceShardKeys = function (c) {
@@ -304,7 +303,7 @@ function ClusterCrudReplaceSuite () {
     assertEqual("2", c.document(doc._key).b);
     assertEqual(false, c.document(doc._key).c);
     assertUndefined(c.document(doc._key).d);
-    
+
     doc = c.replace(doc, { "a" : 1, "c" : null, "d" : [ 1 ], "b" : "2" });
     assertEqual(old._id, doc._id);
     assertEqual(old._key, doc._key);
@@ -339,11 +338,11 @@ function ClusterCrudReplaceSuite () {
 
     assertEqual(2, c.document(doc._key).foo);
     assertUndefined(c.document(doc._key).value);
-    
+
     doc = c.replace(doc, { "a" : null, "b" : null, "foo" : 3 });
     assertEqual(3, c.document(doc._key).foo);
     assertUndefined(c.document(doc._key).value);
-    
+
     // specify null values for shard keys, but update later
     old = c.save({ "a" : null, "b" : null, "value" : 1 });
     doc = c.replace(old, { "foo" : 2 });
@@ -351,7 +350,7 @@ function ClusterCrudReplaceSuite () {
     assertUndefined(c.document(doc._key).b);
     assertEqual(2, c.document(doc._key).foo);
     assertUndefined(c.document(doc._key).value);
-    
+
     // change shard keys
     try {
       doc = c.replace(doc._key, { "a" : 2, "b" : "2", "c" : false });
@@ -360,7 +359,7 @@ function ClusterCrudReplaceSuite () {
     catch (err3) {
       assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err3.errorNum);
     }
-    
+
     try {
       doc = c.replace("foobar", { "value" : 1 });
       fail();
@@ -369,7 +368,7 @@ function ClusterCrudReplaceSuite () {
       assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err4.errorNum);
     }
   };
-  
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -454,7 +453,7 @@ function ClusterCrudUpdateSuite () {
     assertEqual(false, c.document(doc._key).c);
     assertEqual("test", c.document(doc._key).d);
     assertEqual("foo", c.document(doc._key).e);
-    
+
     doc = c.update(doc._key, { "b" : null, "c" : "foo" });
     assertEqual(old._id, doc._id);
     assertEqual(old._key, doc._key);
@@ -475,7 +474,7 @@ function ClusterCrudUpdateSuite () {
     assertNull(c.document(doc._key).c);
     assertEqual([ 1 ], c.document(doc._key).d);
     assertEqual("foo", c.document(doc._key).e);
-    
+
     // use keepNull = false
     doc = c.update(doc._key, { "b" : null, "c" : "foo", e : null }, false, false);
     assertEqual(old._id, doc._id);
@@ -486,7 +485,7 @@ function ClusterCrudUpdateSuite () {
     assertEqual("foo", c.document(doc._key).c);
     assertEqual([ 1 ], c.document(doc._key).d);
     assertUndefined(c.document(doc._key).e);
-    
+
     // use keepNull = true
     doc = c.update(doc._key, { "b" : null, "c" : "foo", e : null }, false, true);
     assertEqual(old._id, doc._id);
@@ -497,7 +496,7 @@ function ClusterCrudUpdateSuite () {
     assertEqual("foo", c.document(doc._key).c);
     assertEqual([ 1 ], c.document(doc._key).d);
     assertNull(c.document(doc._key).e);
-    
+
     try {
       doc = c.update(old, { "b" : null, "c" : "foo" });
       fail();
@@ -518,7 +517,7 @@ function ClusterCrudUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function for update
 ////////////////////////////////////////////////////////////////////////////////
-    
+
   var executeUpdateShardKeys = function (c) {
     var old, doc;
 
@@ -533,7 +532,7 @@ function ClusterCrudUpdateSuite () {
     assertEqual(false, c.document(doc._key).c);
     assertEqual("test", c.document(doc._key).d);
     assertEqual("foo", c.document(doc._key).e);
-    
+
     doc = c.update(doc._key, { "b" : "2", "c" : "foo" });
     assertEqual(old._id, doc._id);
     assertEqual(old._key, doc._key);
@@ -554,7 +553,7 @@ function ClusterCrudUpdateSuite () {
     assertNull(c.document(doc._key).c);
     assertEqual([ 1 ], c.document(doc._key).d);
     assertEqual("foo", c.document(doc._key).e);
-    
+
     // use keepNull = false
     doc = c.update(doc._key, { "c" : "foo", e : null }, false, false);
     assertEqual(old._id, doc._id);
@@ -565,7 +564,7 @@ function ClusterCrudUpdateSuite () {
     assertEqual("foo", c.document(doc._key).c);
     assertEqual([ 1 ], c.document(doc._key).d);
     assertUndefined(c.document(doc._key).e);
-    
+
     // use keepNull = true
     doc = c.update(doc._key, { "c" : "foo", e : null }, false, true);
     assertEqual(old._id, doc._id);
@@ -576,7 +575,7 @@ function ClusterCrudUpdateSuite () {
     assertEqual("foo", c.document(doc._key).c);
     assertEqual([ 1 ], c.document(doc._key).d);
     assertNull(c.document(doc._key).e);
-    
+
     try {
       doc = c.update(old, { "c" : "food" });
       fail();
@@ -592,7 +591,7 @@ function ClusterCrudUpdateSuite () {
     catch (err2) {
       assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err2.errorNum);
     }
-    
+
     // change shard keys
     try {
       doc = c.update(doc._key, { "a" : 2, "b" : "2", "c" : false });
@@ -601,7 +600,7 @@ function ClusterCrudUpdateSuite () {
     catch (err2) {
       assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err2.errorNum);
     }
-    
+
     try {
       doc = c.update(doc._key, { "b" : "1", "c" : false });
       fail();
@@ -617,11 +616,11 @@ function ClusterCrudUpdateSuite () {
 
     assertEqual(2, c.document(doc._key).foo);
     assertEqual(1, c.document(doc._key).value);
-    
+
     doc = c.update(doc, { "a" : null, "b" : null, "foo" : 3 });
     assertEqual(3, c.document(doc._key).foo);
     assertEqual(1, c.document(doc._key).value);
-    
+
     // specify null values for shard keys, but update later
     old = c.save({ "a" : null, "b" : null, "value" : 1 });
     doc = c.update(old, { "foo" : 2 });
@@ -669,7 +668,7 @@ function ClusterCrudUpdateSuite () {
       var c = createCollection({ numberOfShards: 7 });
       executeUpdate(c);
     },
- 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test update
 ////////////////////////////////////////////////////////////////////////////////
@@ -711,11 +710,11 @@ function ClusterCrudDeleteSuite () {
     // remove by key
     old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
     assertTrue(c.remove(old._key));
-    
+
     // remove by document
     old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
     assertTrue(c.remove(old));
-    
+
     // remove by document, non-existing
     try {
       c.remove(old);
@@ -736,7 +735,7 @@ function ClusterCrudDeleteSuite () {
     catch (err2) {
       assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err2.errorNum);
     }
-    
+
     // remove non-existing
     try {
       c.document("foobarbaz");
@@ -760,11 +759,11 @@ function ClusterCrudDeleteSuite () {
     // remove by key
     old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
     assertTrue(c.remove(old._key));
-    
+
     // remove by document
     old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
     assertTrue(c.remove(old));
-    
+
     // remove by document, non-existing
     try {
       c.remove(old);
@@ -785,7 +784,7 @@ function ClusterCrudDeleteSuite () {
     catch (err2) {
       assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err2.errorNum);
     }
-    
+
     // remove non-existing
     try {
       c.document("foobarbaz");
@@ -867,7 +866,7 @@ function ClusterCrudDocumentSuite () {
 
   var executeDocument = function (c) {
     var old, doc;
-    
+
     try {
       c.document(c.name() + "/foobar");
       fail();
@@ -875,7 +874,7 @@ function ClusterCrudDocumentSuite () {
     catch (err1) {
       assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err1.errorNum);
     }
-    
+
     try {
       c.document("foobar");
       fail();
@@ -883,7 +882,7 @@ function ClusterCrudDocumentSuite () {
     catch (err2) {
       assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err2.errorNum);
     }
-    
+
     old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
 
     // fetch by id
@@ -905,7 +904,7 @@ function ClusterCrudDocumentSuite () {
     assertEqual("2", doc.b);
     assertEqual(true, doc.c);
     assertEqual("test", doc.d);
-    
+
     // fetch by doc
     doc = c.document(old);
     assertEqual(old._id, doc._id);
@@ -915,7 +914,7 @@ function ClusterCrudDocumentSuite () {
     assertEqual("2", doc.b);
     assertEqual(true, doc.c);
     assertEqual("test", doc.d);
-    
+
     // fetch by doc, wrong revision
     doc = c.update(doc._key, { "a" : 1, "b" : "2", "c" : false });
 
@@ -986,7 +985,7 @@ function ClusterCrudDocumentSuite () {
     testDocumentMultipleShards : function () {
       var c = createCollection({ numberOfShards: 5 });
       executeDocument(c);
-      
+
       // use a user-defined key
       var doc, old;
       old = c.save({ "_key" : "meow", "a" : 1, "b" : "2", "c" : false });
@@ -1032,17 +1031,17 @@ function ClusterCrudExistsSuite () {
 
   var executeExists = function (c) {
     var old, doc;
-    
+
     assertFalse(c.exists(c.name() + "/foobar"));
     assertFalse(c.exists("foobar"));
-    
+
     old = c.save({ "a" : 1, "b" : "2", "c" : true, "d" : "test" });
 
     // fetch by id
     assertTrue(c.exists(old._id));
     assertTrue(c.exists(old._key));
     assertTrue(c.exists(old));
-    
+
     // fetch by doc, wrong revision
     doc = c.update(old._key, { "a" : 1, "b" : "2", "c" : false });
     assertTrue(c.exists(old._id));

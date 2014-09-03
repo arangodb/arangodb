@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true */
+/*jshint browser: true */
+/*jshint unused: false */
 /*global window, Backbone, alert, $ */
 (function() {
   "use strict";

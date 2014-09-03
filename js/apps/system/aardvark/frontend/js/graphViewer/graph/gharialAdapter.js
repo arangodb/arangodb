@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, d3, _, console, document*/
 /*global AbstractAdapter*/
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,7 +88,7 @@ function GharialAdapter(nodes, edges, viewer, config) {
       getCollectionsFromGraph(name);
       api.edges = api.graph + "/" + graphName + "/edge/";
       api.vertices = api.graph + "/" + graphName + "/vertex/";
-      api.any = api.base + "simple/any";     
+      api.any = api.base + "simple/any";
     },
 
     parseConfig = function(config) {
@@ -118,7 +117,7 @@ function GharialAdapter(nodes, edges, viewer, config) {
         setGraphName(config.graphName);
       }
     },
-  
+
     sendQuery = function(query, bindVars, onSuccess) {
       if (query !== queries.getAllGraphs) {
         bindVars.graph = graphName;
@@ -153,7 +152,7 @@ function GharialAdapter(nodes, edges, viewer, config) {
         }
       });
     },
-  
+
     getNRandom = function(n, callback) {
       sendQuery(queries.randomVertices, {
         limit: n
@@ -161,7 +160,7 @@ function GharialAdapter(nodes, edges, viewer, config) {
         callback(res);
       });
     },
-    
+
     parseResultOfTraversal = function (result, callback) {
       if (result.length === 0
         || result[0].length === 0
@@ -177,7 +176,7 @@ function GharialAdapter(nodes, edges, viewer, config) {
       var inserted = {},
         n = absAdapter.insertNode(result[0].vertex),
         oldLength = nodes.length;
-        
+
       _.each(result, function(visited) {
         var node = absAdapter.insertNode(visited.vertex),
           path = visited.path;
@@ -195,7 +194,7 @@ function GharialAdapter(nodes, edges, viewer, config) {
         _.each(path.edges, function(edge) {
           absAdapter.insertEdge(edge);
         });
-      });      
+      });
       delete inserted[n._id];
       absAdapter.checkSizeOfInserted(inserted);
       absAdapter.checkNodeLimit(n);
@@ -214,14 +213,14 @@ function GharialAdapter(nodes, edges, viewer, config) {
       };
     };
 
-   
+
   if (config.prioList) {
     absConfig.prioList = config.prioList;
   }
   absAdapter = new AbstractAdapter(nodes, edges, this, viewer, absConfig);
-  
+
   parseConfig(config);
-  
+
   queries.getAllGraphs = "FOR g IN _graphs"
     + " return g._key";
   queries.traversal = "RETURN GRAPH_TRAVERSAL("
@@ -235,9 +234,9 @@ function GharialAdapter(nodes, edges, viewer, config) {
   queries.childrenCentrality = "RETURN LENGTH(GRAPH_EDGES(@graph, @id, {direction: any}))";
   queries.connectedEdges = "RETURN GRAPH_EDGES(@graph, @id)";
   queries.randomVertices = "FOR x IN GRAPH_VERTICES(@graph, {}) SORT RAND() LIMIT @limit RETURN x";
-  
+
   self.explore = absAdapter.explore;
-  
+
   self.loadNode = function(nodeId, callback) {
     self.loadNodeFromTreeById(nodeId, callback);
   };
@@ -245,18 +244,18 @@ function GharialAdapter(nodes, edges, viewer, config) {
   self.loadRandomNode = function(callback) {
     getNRandom(1, function(list) {
       if (list.length === 0) {
-        callback({errorCode: 404}); 
+        callback({errorCode: 404});
         return;
       }
       self.loadInitialNode(list[0]._id, callback);
     });
   };
-  
+
   self.loadInitialNode = function(nodeId, callback) {
     absAdapter.cleanUp();
     self.loadNode(nodeId, insertInitialCallback(callback));
   };
-  
+
   self.loadNodeFromTreeById = function(nodeId, callback) {
     sendQuery(queries.traversal, {
       example: nodeId
@@ -264,7 +263,7 @@ function GharialAdapter(nodes, edges, viewer, config) {
       parseResultOfTraversal(res, callback);
     });
   };
-  
+
   self.loadNodeFromTreeByAttributeValue = function(attribute, value, callback) {
     var example = {};
     example[attribute] = value;
@@ -273,13 +272,13 @@ function GharialAdapter(nodes, edges, viewer, config) {
     }, function(res) {
       parseResultOfTraversal(res, callback);
     });
-  };  
-  
+  };
+
   self.loadInitialNodeByAttributeValue = function(attribute, value, callback) {
     absAdapter.cleanUp();
     self.loadNodeFromTreeByAttributeValue(attribute, value, insertInitialCallback(callback));
   };
-  
+
   self.requestCentralityChildren = function(nodeId, callback) {
     sendQuery(queries.childrenCentrality,{
       id: nodeId
@@ -287,8 +286,8 @@ function GharialAdapter(nodes, edges, viewer, config) {
       callback(res[0]);
     });
   };
-  
-  self.createEdge = function (info, callback) { 
+
+  self.createEdge = function (info, callback) {
     var edgeToAdd = {};
     edgeToAdd._from = info.source._id;
     edgeToAdd._to = info.target._id;
@@ -314,7 +313,7 @@ function GharialAdapter(nodes, edges, viewer, config) {
       }
     });
   };
-  
+
   self.deleteEdge = function (edgeToRemove, callback) {
     $.ajax({
       cache: false,
@@ -333,9 +332,9 @@ function GharialAdapter(nodes, edges, viewer, config) {
         throw data.statusText;
       }
     });
-    
+
   };
-  
+
   self.patchEdge = function (edgeToPatch, patchData, callback) {
     $.ajax({
       cache: false,
@@ -354,7 +353,7 @@ function GharialAdapter(nodes, edges, viewer, config) {
       }
     });
   };
-  
+
   self.createNode = function (nodeToAdd, callback) {
     $.ajax({
       cache: false,
@@ -378,7 +377,7 @@ function GharialAdapter(nodes, edges, viewer, config) {
       }
     });
   };
-  
+
   self.deleteNode = function (nodeToRemove, callback) {
     $.ajax({
       cache: false,
@@ -399,7 +398,7 @@ function GharialAdapter(nodes, edges, viewer, config) {
       }
     });
   };
-  
+
   self.patchNode = function (nodeToPatch, patchData, callback) {
     $.ajax({
       cache: false,
@@ -418,7 +417,7 @@ function GharialAdapter(nodes, edges, viewer, config) {
       }
     });
   };
-  
+
   self.changeToGraph = function (name, dir) {
     absAdapter.cleanUp();
     setGraphName(name);
@@ -430,32 +429,32 @@ function GharialAdapter(nodes, edges, viewer, config) {
       }
     }
   };
-  
+
   self.setNodeLimit = function (pLimit, callback) {
     absAdapter.setNodeLimit(pLimit, callback);
   };
-  
+
   self.setChildLimit = function (pLimit) {
     absAdapter.setChildLimit(pLimit);
   };
-  
+
   self.expandCommunity = function (commNode, callback) {
     absAdapter.expandCommunity(commNode);
     if (callback !== undefined) {
       callback();
     }
   };
-  
+
   self.getGraphs = function(callback) {
-    if (callback && callback.length >= 1) {      
+    if (callback && callback.length >= 1) {
       sendQuery(
         queries.getAllGraphs,
-        {}, 
+        {},
         callback
       );
     }
   };
-  
+
   self.getAttributeExamples = function(callback) {
     if (callback && callback.length >= 1) {
       getNRandom(10, function(l) {
@@ -513,7 +512,7 @@ function GharialAdapter(nodes, edges, viewer, config) {
   self.getGraphName = function () {
     return graphName;
   };
-  
+
   self.setWidth = absAdapter.setWidth;
   self.changeTo = absAdapter.changeTo;
   self.getPrioList = absAdapter.getPrioList;

@@ -1,5 +1,4 @@
 module.define("org/arangodb/is", function(exports, module) {
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true, eqeq: true */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////

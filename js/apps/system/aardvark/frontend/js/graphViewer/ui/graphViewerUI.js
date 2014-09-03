@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global document, $, _ */
 /*global EventDispatcherControls, NodeShaperControls, EdgeShaperControls */
 /*global LayouterControls, GharialAdapterControls*/
@@ -32,7 +31,7 @@
 
 function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConfig, startNode) {
   "use strict";
-  
+
   if (container === undefined) {
     throw "A parent element has to be given.";
   }
@@ -41,8 +40,8 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
   }
   if (adapterConfig === undefined) {
     throw "An adapter configuration has to be given";
-  } 
-  
+  }
+
   var graphViewer,
     width = (optWidth || container.offsetWidth - 81),
     height = optHeight || container.offsetHeight,
@@ -57,9 +56,9 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
     searchAttrExampleList,
     //mousePointerBox = document.createElement("div"),
     svg,
-    
+
     makeFilterDiv = function() {
-      var 
+      var
         div = document.createElement("div"),
         innerDiv = document.createElement("div"),
         queryLine = document.createElement("div"),
@@ -73,7 +72,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         showSpinner = function() {
           $(background).css("cursor", "progress");
         },
-        
+
         hideSpinner = function() {
           $(background).css("cursor", "");
         },
@@ -81,7 +80,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         alertError = function(msg) {
           window.alert(msg);
         },
-        
+
         resultCB = function(res) {
           hideSpinner();
           if (res && res.errorCode && res.errorCode === 404) {
@@ -90,7 +89,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
           }
           return;
         },
-        
+
         searchFunction = function() {
           showSpinner();
           if (searchAttrField.value === ""
@@ -153,7 +152,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
           return false;
         }
       });
-      
+
       searchAttrExampleToggle.onclick = function() {
         $(searchAttrExampleList).slideToggle(200);
       };
@@ -226,7 +225,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       spanFilter = document.createElement("span");
       spanFilter.className = "icon_arangodb_filter";
       $(spanFilter).attr("title", "Filter");
-      
+
       ul.appendChild(liFilter);
       liFilter.appendChild(aFilter);
       aFilter.appendChild(spanFilter);
@@ -259,7 +258,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         .style("width", width + "px")
         .style("height", height + "px");
     },
-    
+
     createZoomUIWidget = function() {
       var zoomUI = document.createElement("div"),
         zoomButtons = document.createElement("div"),
@@ -269,7 +268,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         btnBottom = document.createElement("button");
       zoomUI.className = "gv_zoom_widget";
       zoomButtons.className = "gv_zoom_buttons_bg";
-      
+
       btnTop.className = "btn btn-icon btn-zoom btn-zoom-top gv-zoom-btn pan-top";
       btnLeft.className = "btn btn-icon btn-zoom btn-zoom-left gv-zoom-btn pan-left";
       btnRight.className = "btn btn-icon btn-zoom btn-zoom-right gv-zoom-btn pan-right";
@@ -286,19 +285,19 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       btnBottom.onclick = function() {
         graphViewer.zoomManager.triggerTranslation(0, 10);
       };
-      
+
       zoomButtons.appendChild(btnTop);
       zoomButtons.appendChild(btnLeft);
       zoomButtons.appendChild(btnRight);
       zoomButtons.appendChild(btnBottom);
-      
+
       slider = document.createElement("div");
       slider.id = "gv_zoom_slider";
       slider.className = "gv_zoom_slider";
-       
+
       background.appendChild(zoomUI);
       background.insertBefore(zoomUI, svg[0][0]);
-      
+
       zoomUI.appendChild(zoomButtons);
       zoomUI.appendChild(slider);
       $( "#gv_zoom_slider" ).slider({
@@ -313,7 +312,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       });
       graphViewer.zoomManager.registerSlider($("#gv_zoom_slider"));
     },
-    
+
     createToolbox = function() {
       var toolbox = document.createElement("div"),
         dispatcherUI = new EventDispatcherControls(
@@ -330,7 +329,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       // Default selection
       $("#control_event_expand").click();
     },
-    
+
     updateAttributeExamples = function() {
       searchAttrExampleList.innerHTML = "";
       var throbber = document.createElement("li"),
@@ -356,7 +355,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         });
       });
     },
-    
+
     createMenu = function() {
       var transparentHeader = document.createElement("div"),
         buttons = document.createElement("div"),
@@ -366,7 +365,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
           "configuredropdown",
           "filterdropdown"
         );
-        
+
       nodeShaperUI = new NodeShaperControls(
         configureLists.nodes,
         graphViewer.nodeShaper
@@ -379,29 +378,29 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
         configureLists.col,
         graphViewer.adapter
       );
-      
+
       menubar.id = "menubar";
 
       transparentHeader.className = "headerBar";
-      
+
       buttons.id = "modifiers";
 
       title.appendChild(document.createTextNode("Graph Viewer"));
       title.className = "arangoHeader";
-      
+
       /*
       nodeShaperDropDown.id = "nodeshapermenu";
       edgeShaperDropDown.id = "edgeshapermenu";
       layouterDropDown.id = "layoutermenu";
       adapterDropDown.id = "adaptermenu";
       */
-      
+
       menubar.appendChild(transparentHeader);
       menubar.appendChild(configureLists.configure);
       menubar.appendChild(configureLists.filter);
       transparentHeader.appendChild(buttons);
       transparentHeader.appendChild(title);
-      
+
       adapterUI.addControlChangeGraph(function() {
         updateAttributeExamples();
         graphViewer.start();
@@ -410,13 +409,13 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       // nodeShaperUI.addControlOpticLabelAndColour(graphViewer.adapter);
       nodeShaperUI.addControlOpticLabelAndColourList(graphViewer.adapter);
       edgeShaperUI.addControlOpticLabelList();
-      
+
       /*
       buttons.appendChild(nodeShaperDropDown);
       buttons.appendChild(edgeShaperDropDown);
       buttons.appendChild(layouterDropDown);
       buttons.appendChild(adapterDropDown);
-      
+
       nodeShaperUI.addAll();
       edgeShaperUI.addAll();
       layouterUI.addAll();
@@ -424,7 +423,7 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
       */
       updateAttributeExamples();
     },
-    
+
     createColourList = function() {
       colourList = nodeShaperUI.createColourMappingList();
       colourList.className = "gv-colour-list";
@@ -434,11 +433,11 @@ function GraphViewerUI(container, adapterConfig, optWidth, optHeight, viewerConf
   container.appendChild(background);
   background.className = "contentDiv gv-background ";
   background.id = "background";
-  
+
   viewerConfig = viewerConfig || {};
   viewerConfig.zoom = true;
 
-  
+
   svg = createSVG();
   graphViewer = new GraphViewer(svg, width, height, adapterConfig, viewerConfig);
 

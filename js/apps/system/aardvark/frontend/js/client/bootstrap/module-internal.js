@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true */
 /*global require, ArangoConnection, print, SYS_ARANGO, window */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,10 +77,10 @@
         if (value !== undefined) {
           return internal.arango.PUT("/_admin/wal/properties", JSON.stringify(value));
         }
-          
+
         return internal.arango.GET("/_admin/wal/properties", "");
       }
-      
+
       throw "not connected";
     }
   };
@@ -132,7 +131,7 @@
   internal.routingCache = function () {
     if (typeof internal.arango !== 'undefined') {
       return internal.arango.GET("/_admin/routing/routes", "");
-      
+
     }
 
     throw "not connected";
@@ -296,9 +295,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sprintf wrapper
 ////////////////////////////////////////////////////////////////////////////////
-  
+
   try {
-    if (window) { 
+    if (window) {
       internal.sprintf = function (format) {
         var n = arguments.length;
         if (n === 0) {

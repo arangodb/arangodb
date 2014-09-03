@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
+/*jshint browser: true */
+/*jshint unused: false */
 /*global Backbone, templateEngine, $, window*/
 (function () {
     "use strict";
@@ -20,7 +21,7 @@
             $(this.el).html(this.template.render({
               isSystem: this.currentDB.get("isSystem")
             }));
-            
+
             $('img.svg').each(function(){
                         var $img = $(this);
                         var imgID = $img.attr('id');
@@ -48,7 +49,7 @@
 
                         }, 'xml');
 
-                    });            
+                    });
             return this;
         },
 

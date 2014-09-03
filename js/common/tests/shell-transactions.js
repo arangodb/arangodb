@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 80 */
 /*global require, assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,9 +65,9 @@ function TransactionsInvocationsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvokeActionString : function () {
-      var result = db._executeTransaction({ 
-        collections: { }, 
-        action: "function () { return 23; }" 
+      var result = db._executeTransaction({
+        collections: { },
+        action: "function () { return 23; }"
       });
 
       assertEqual(23, result);
@@ -79,9 +78,9 @@ function TransactionsInvocationsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvokeActionStringFunction : function () {
-      var result = db._executeTransaction({ 
-        collections: { }, 
-        action: "function () { return function () { return 11; }(); }" 
+      var result = db._executeTransaction({
+        collections: { },
+        action: "function () { return function () { return 11; }(); }"
       });
 
       assertEqual(11, result);
@@ -92,9 +91,9 @@ function TransactionsInvocationsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvokeActionFunction : function () {
-      var result = db._executeTransaction({ 
-        collections: { }, 
-        action: function () { return 42; } 
+      var result = db._executeTransaction({
+        collections: { },
+        action: function () { return 42; }
       });
 
       assertEqual(42, result);
@@ -106,8 +105,8 @@ function TransactionsInvocationsSuite () {
 
     testInvokeActionInvalid1 : function () {
       try {
-        db._executeTransaction({ 
-          collections: { }, 
+        db._executeTransaction({
+          collections: { },
           action: null,
         });
         fail();
@@ -123,8 +122,8 @@ function TransactionsInvocationsSuite () {
 
     testInvokeActionInvalid2 : function () {
       try {
-        db._executeTransaction({ 
-          collections: { }, 
+        db._executeTransaction({
+          collections: { },
           action: [ ],
         });
         fail();
@@ -140,8 +139,8 @@ function TransactionsInvocationsSuite () {
 
     testInvokeNoAction : function () {
       try {
-        db._executeTransaction({ 
-          collections: { } 
+        db._executeTransaction({
+          collections: { }
         });
         fail();
       }
@@ -156,9 +155,9 @@ function TransactionsInvocationsSuite () {
 
     testInvokeActionBroken1 : function () {
       try {
-        db._executeTransaction({ 
+        db._executeTransaction({
           collections: { },
-          action: "return 11;" 
+          action: "return 11;"
         });
         fail();
       }
@@ -173,9 +172,9 @@ function TransactionsInvocationsSuite () {
 
     testInvokeActionBroken2 : function () {
       try {
-        db._executeTransaction({ 
+        db._executeTransaction({
           collections: { },
-          action: "function () { " 
+          action: "function () { "
         });
         fail();
       }
@@ -190,8 +189,8 @@ function TransactionsInvocationsSuite () {
 
     testInvokeActionInvalid1 : function () {
       try {
-        db._executeTransaction({ 
-          collections: { }, 
+        db._executeTransaction({
+          collections: { },
           action: null,
         });
         fail();
@@ -206,8 +205,8 @@ function TransactionsInvocationsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testParametersString : function () {
-      var result = db._executeTransaction({ 
-        collections: { }, 
+      var result = db._executeTransaction({
+        collections: { },
         action: "function (params) { return [ params[1], params[4] ]; }",
         params: [ 1, 2, 3, 4, 5 ]
       });
@@ -220,8 +219,8 @@ function TransactionsInvocationsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testParametersFunction : function () {
-      var result = db._executeTransaction({ 
-        collections: { }, 
+      var result = db._executeTransaction({
+        collections: { },
         action: function (params) {
           return [ params[1], params[4] ];
         },

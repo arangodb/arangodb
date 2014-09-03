@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
+/*jshint unused: false */
 /*global beforeEach, afterEach */
 /*global describe, it, expect, jasmine */
 /*global runs, spyOn, waitsFor, waits */
@@ -39,7 +39,7 @@
   "use strict";
 
   describe('Preview Adapter', function () {
-    
+
     describeInterface(new PreviewAdapter([], [], {}));
     /*
     describeIntegeration(function() {
@@ -47,7 +47,7 @@
         var node1 = {_id: 1},
           node2 = {_id: 2},
           edge = {_id: "1-2", _from: 1, _to: 2};
-          
+
         switch(req.type) {
           case "DELETE":
             req.success();
@@ -75,20 +75,20 @@
             req.success();
         }
       });
-      
+
       return new FoxxAdapter([], [], "foxx/route");
     });
     */
-    
+
     var adapter,
       nodes,
       edges;
-    
+
       beforeEach(function() {
         nodes = [];
         edges = [];
       });
-            
+
       it('should throw an error if no nodes are given', function() {
         expect(
           function() {
@@ -96,7 +96,7 @@
           }
         ).toThrow("The nodes have to be given.");
       });
-      
+
       it('should throw an error if no edges are given', function() {
         expect(
           function() {
@@ -104,14 +104,14 @@
           }
         ).toThrow("The edges have to be given.");
       });
-      
+
       it('should not throw an error if necessary info is given', function() {
         expect(
           function() {
             var t = new PreviewAdapter([], []);
           }
         ).toThrow("A reference to the graph viewer has to be given.");
-      }); 
+      });
 
       it('should not throw an error if necessary info is given', function() {
         expect(
@@ -119,7 +119,7 @@
             var t = new PreviewAdapter([], [], {});
           }
         ).not.toThrow();
-      }); 
+      });
 
       it('should create a nodeReducer instance', function() {
         spyOn(window, "NodeReducer");
@@ -130,12 +130,12 @@
         );
         expect(window.NodeReducer).wasCalledWith();
       });
-    
+
       describe('setup correctly', function() {
-        
+
         var viewer;
 
-        beforeEach(function() {  
+        beforeEach(function() {
           var self = this;
           viewer = {
             cleanUp: function(){}
@@ -161,11 +161,11 @@
             viewer
           );
         });
-        
+
         it('should be load a graph of 5 nodes and 5 edges', function() {
-          
+
           var called, id;
-          
+
           runs(function() {
             called = false;
             id = 1;
@@ -174,11 +174,11 @@
             };
             adapter.loadNode(id, callback);
           });
-          
+
           waitsFor(function() {
             return called;
           }, 1000);
-          
+
           runs(function() {
             expect(nodes.length).toEqual(5);
             expect(edges.length).toEqual(5);
@@ -186,9 +186,9 @@
         });
 
         it('nodes should offer a label', function() {
-          
+
           var called, id;
-          
+
           runs(function() {
             called = false;
             id = 1;
@@ -197,22 +197,22 @@
             };
             adapter.loadNode(id, callback);
           });
-          
+
           waitsFor(function() {
             return called;
           }, 1000);
-          
+
           runs(function() {
             _.each(nodes, function(n) {
               expect(n._data.label).toBeDefined();
             });
           });
         });
-        
+
         it('node one should offer an image', function() {
-          
+
           var called, id;
-          
+
           runs(function() {
             called = false;
             id = 1;
@@ -221,11 +221,11 @@
             };
             adapter.loadNode(id, callback);
           });
-          
+
           waitsFor(function() {
             return called;
           }, 1000);
-          
+
           runs(function() {
             _.each(nodes, function(n) {
               if (n._id === 1) {
@@ -237,11 +237,11 @@
             });
           });
         });
-        
+
         it('edges should offer a label', function() {
-          
+
           var called, id;
-          
+
           runs(function() {
             called = false;
             id = 1;
@@ -250,11 +250,11 @@
             };
             adapter.loadNode(id, callback);
           });
-          
+
           waitsFor(function() {
             return called;
           }, 1000);
-          
+
           runs(function() {
             _.each(edges, function(e) {
               expect(e._data.label).toBeDefined();
@@ -268,7 +268,7 @@
           adapter.createNode(node);
           expect(window.alert).wasCalledWith("Server-side: createNode was triggered.");
         });
-        
+
         it('should alert change of a node', function() {
           spyOn(window, "alert");
           var toPatch = {_id: 1},
@@ -276,7 +276,7 @@
           adapter.patchNode(toPatch, data);
           expect(window.alert).wasCalledWith("Server-side: patchNode was triggered.");
         });
-        
+
         it('should alert deletion of a node', function() {
           spyOn(window, "alert");
           var node = {_id: 1};
@@ -284,7 +284,7 @@
           expect(window.alert).wasCalledWith("Server-side: deleteNode was triggered.");
           expect(window.alert).wasCalledWith("Server-side: onNodeDelete was triggered.");
         });
-        
+
         it('should be able to insert an edge', function() {
           spyOn(window, "alert");
           var source = {_id: 1},
@@ -297,7 +297,7 @@
           adapter.createEdge(edge);
           expect(window.alert).wasCalledWith("Server-side: createEdge was triggered.");
         });
-        
+
         it('should be able to change an edge', function() {
           spyOn(window, "alert");
           var source = {_id: 1},
@@ -313,7 +313,7 @@
           adapter.patchEdge(edge, patch);
           expect(window.alert).wasCalledWith("Server-side: patchEdge was triggered.");
         });
-        
+
         it('should be able to delete an edge', function() {
           spyOn(window, "alert");
           var source = {_id: 1},
@@ -326,9 +326,9 @@
           adapter.deleteEdge(edge);
           expect(window.alert).wasCalledWith("Server-side: deleteEdge was triggered.");
         });
-                        
+
       });
-      
+
   });
-  
+
 }());

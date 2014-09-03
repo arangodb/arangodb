@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _, d3*/
 /*global document, window, prompt*/
 /*global modalDialogHelper, uiComponentsHelper */
@@ -32,7 +31,7 @@
 
 function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcherConfig) {
   "use strict";
-  
+
   if (list === undefined) {
     throw "A list element has to be given.";
   }
@@ -45,7 +44,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
   if (start === undefined) {
     throw "The Start callback has to be given.";
   }
-  
+
   var self = this,
     /*
     icons = {
@@ -93,8 +92,8 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
     askForCollection = (!!adapter
       && _.isFunction(adapter.useNodeCollection)
       && _.isFunction(adapter.useEdgeCollection)),
-      
-    
+
+
     appendToList = function(button) {
       list.appendChild(button);
     },
@@ -173,7 +172,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
             }
           );
         };
-      callbacks.nodes.newNode = createCallback; 
+      callbacks.nodes.newNode = createCallback;
     },
     createViewCBs = function() {
       var prefix = "control_event_view",
@@ -336,7 +335,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
       }
     };
   };
-  
+
   this.newNodeRebinds = function() {
     return {
       svg: {
@@ -344,7 +343,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
       }
     };
   };
-  
+
   this.viewRebinds = function() {
       return {
         nodes: {
@@ -355,7 +354,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
         }
       };
   };
-  
+
   this.connectNodesRebinds = function() {
     return {
       nodes: {
@@ -367,7 +366,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
       }
     };
   };
-  
+
   this.editRebinds = function() {
       return {
         nodes: {
@@ -378,7 +377,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
         }
       };
   };
-  
+
   this.expandRebinds = function() {
     return {
       nodes: {
@@ -386,7 +385,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
       }
     };
   };
-  
+
   this.deleteRebinds = function() {
     return {
       nodes: {
@@ -397,18 +396,18 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
       }
     };
   };
-  
+
   this.rebindAll = function(obj) {
     rebindNodes(obj.nodes);
     rebindEdges(obj.edges);
     rebindSVG(obj.svg);
   };
-  
+
   /*******************************************
   * Inject controls into right-click menus
   *
   *******************************************/
-  
+
   nodeShaper.addMenuEntry("View", callbacks.nodes.view);
   nodeShaper.addMenuEntry("Edit", callbacks.nodes.edit);
   nodeShaper.addMenuEntry("Spot", callbacks.nodes.spot);
@@ -423,8 +422,8 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
   * Functions to add controls
   *
   *******************************************/
-  
-  
+
+
   this.addControlNewNode = function() {
     var icon = icons.add,
       idprefix = "select_node_collection",
@@ -451,7 +450,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
       };
     createIcon(icon, "new_node", callback);
   };
-  
+
   this.addControlView = function() {
     var icon = icons.view,
       callback = function() {
@@ -459,7 +458,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
       };
     createIcon(icon, "view", callback);
   };
-  
+
   this.addControlDrag = function() {
     var icon = icons.drag,
       callback = function() {
@@ -467,7 +466,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
       };
     createIcon(icon, "drag", callback);
   };
-  
+
   this.addControlEdit = function() {
     var icon = icons.edit,
       callback = function() {
@@ -475,7 +474,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
       };
     createIcon(icon, "edit", callback);
   };
-  
+
   this.addControlExpand = function() {
     var icon = icons.expand,
       callback = function() {
@@ -483,7 +482,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
       };
     createIcon(icon, "expand", callback);
   };
-  
+
   this.addControlDelete = function() {
     var icon = icons.trash,
       callback = function() {
@@ -491,7 +490,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
       };
     createIcon(icon, "delete", callback);
   };
-  
+
   this.addControlConnect = function() {
     var icon = icons.edge,
       idprefix = "select_edge_collection",
@@ -518,7 +517,7 @@ function EventDispatcherControls(list, nodeShaper, edgeShaper, start, dispatcher
       };
     createIcon(icon, "connect", callback);
   };
-  
+
   this.addAll = function () {
     self.addControlDrag();
     self.addControlView();

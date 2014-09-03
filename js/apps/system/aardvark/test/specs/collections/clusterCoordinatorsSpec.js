@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
+/*jshint browser: true */
+/*jshint unused: false */
 /*global describe, beforeEach, afterEach, it, spyOn, jasmine, expect*/
 /*global $*/
 
@@ -21,9 +22,9 @@
               throw "This should be a spy";
             }
           };
-          spyOn(window.App, "addAuth"); 
-          spyOn(window.App, "getNewRoute"); 
-          spyOn(window.App, "registerForUpdate"); 
+          spyOn(window.App, "addAuth");
+          spyOn(window.App, "getNewRoute");
+          spyOn(window.App, "registerForUpdate");
           col = new window.ClusterCoordinators();
         });
 

@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
+/*jshint unused: false */
 /*global beforeEach, afterEach */
 /*global describe, it, expect, jasmine */
 /*global document */
@@ -34,56 +34,56 @@
 
 (function () {
   "use strict";
- 
+
   describe('Colour Mapper', function() {
-    
+
     var mapper;
-    
+
     beforeEach(function () {
       mapper = new ColourMapper();
     });
-    
+
     it('should return a colour', function() {
       var colourRef = mapper.getColour("42");
-      
+
       expect(colourRef).toBeDefined();
     });
-    
+
     it('should return a different colour for different values', function() {
       var c1 = mapper.getColour("42"),
       c2 = mapper.getColour("23");
-      
+
       expect(c1).not.toEqual(c2);
     });
-    
+
     it('should return the same colour for equal values', function() {
       var c1 = mapper.getColour("42"),
       c2 = mapper.getColour("42");
-      
+
       expect(c1).toEqual(c2);
     });
-    
+
     it('should return colours for non string values', function() {
       var c1 = mapper.getColour(42),
       c2 = mapper.getColour(true);
-      
-      expect(c1).toBeDefined();      
+
+      expect(c1).toBeDefined();
       expect(c2).toBeDefined();
       expect(c1).not.toEqual(c2);
     });
-    
+
     it('should be able to manually reset the returned colours', function() {
       var c1 = mapper.getColour("1"),
       c2 = mapper.getColour("2"),
       c3;
-      
+
       mapper.reset();
-      
+
       c3 = mapper.getColour("3");
-      
+
       expect(c1).toEqual(c3);
     });
-    
+
     it('should return 20 different colours and than restart', function() {
       var colours = [],
       i, j, cNew;
@@ -115,35 +115,35 @@
       }
       expect(colours[0]).toEqual(cNew);
     });
-    
+
     it('should be able to return the colour mapping list', function() {
       mapper.getColour("1");
       mapper.getColour("2");
       mapper.getColour("3");
-      
+
       var colorList = mapper.getList();
-      
+
       expect(_.keys(colorList).length).toEqual(3);
       _.each(_.values(colorList), function(v) {
         expect(v.list).toEqual(jasmine.any(Array));
         expect(v.list.length).toEqual(1);
       });
-      
+
     });
-    
+
     it('should be possible to add a change listener', function() {
       var res = {},
         correct = {},
         listener = function(mapping) {
           res = mapping;
         };
-        
+
       mapper.setChangeListener(listener);
       mapper.getColour("1");
       correct = mapper.getList();
-      
+
       expect(res).toEqual(correct);
     });
   });
-  
+
 }());

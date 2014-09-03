@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
+/*jshint unused: false */
 /*global beforeEach, afterEach */
 /*global describe, it, expect, jasmine*/
 /*global runs, waitsFor, spyOn */
@@ -44,7 +44,7 @@
       nodes, edges, adapter,
       start,
     //mousePointerbox,
-    
+
     addSpies = function() {
       spyOn(layouter, "drag");
       spyOn(adapter, "createNode");
@@ -105,7 +105,7 @@
             to: "2"
           }
         }
-        
+
       }];
       adapter = mocks.adapter;
       layouter = mocks.layouter;
@@ -118,28 +118,28 @@
           adapter: adapter,
           reshapeNodes: function() {}
         },
-      
+
         dragConfig = {
           layouter: layouter
         },
-        
+
         nodeEditorConfig = {
           nodes: nodes,
           adapter: adapter
         },
-      
+
         edgeEditorConfig = {
           edges: edges,
           adapter: adapter
         },
-      
+
         completeConfig = {
           expand: expandConfig,
           drag: dragConfig,
           nodeEditor: nodeEditorConfig,
           edgeEditor: edgeEditorConfig
         };
-      
+
       svg = document.createElement("svg");
       svg.id = "graphViewerSVG";
       document.body.appendChild(svg);
@@ -149,31 +149,31 @@
       document.body.appendChild(list);
       list.id = "control_event_list";
       $list = $(list);
-      
+
       nodeShaper.drawNodes(nodes);
       edgeShaper.drawEdges(edges);
-      
+
       /* Archive
       mousePointerbox = document.createElement("div");
       mousePointerbox.id = "mousepointer";
       mousePointerbox.className = "mousepointer";
-      
+
       document.body.appendChild(mousePointerbox);
-      
-      
-      
+
+
+
       dispatcherUI = new EventDispatcherControls(
         list, mousePointerbox, nodeShaper, edgeShaper, completeConfig
       );
       */
-      
+
       dispatcherUI = new EventDispatcherControls(
         list, nodeShaper, edgeShaper, start.cb, completeConfig
       );
-      
+
       spyOn(nodeShaper, "changeTo").andCallThrough();
       spyOn(edgeShaper, "changeTo").andCallThrough();
-      
+
       uiMatchers.define(this);
 
       this.addMatchers({
@@ -199,11 +199,11 @@
               }
             }
           });
-          this.message = "Did find more than one active button.";        
+          this.message = "Did find more than one active button.";
           return !failed;
         }
       });
-      
+
     });
 
     afterEach(function () {
@@ -217,143 +217,143 @@
       expect(function() {
         var e = new EventDispatcherControls();
       }).toThrow("A list element has to be given.");
-            
+
       expect(function() {
         var e = new EventDispatcherControls(list);
       }).toThrow("The NodeShaper has to be given.");
-      
+
       expect(function() {
         var e = new EventDispatcherControls(list, nodeShaper);
       }).toThrow("The EdgeShaper has to be given.");
-      
+
       expect(function() {
         var e = new EventDispatcherControls(list, nodeShaper, edgeShaper);
       }).toThrow("The Start callback has to be given.");
-      
+
     });
-    
+
     it('should be able to add a new node control to the list', function() {
       runs(function() {
         dispatcherUI.addControlNewNode();
-      
+
         expect($("#control_event_new_node", $list).length).toEqual(1);
-      
+
         helper.simulateMouseEvent("click", "control_event_new_node");
-      
+
         expect(nodeShaper.changeTo).toHaveBeenCalledWith({
           actions: {
             reset: true
           }
         });
-        
+
         expect(edgeShaper.changeTo).toHaveBeenCalledWith({
           actions: {
             reset: true
           }
         });
-        
+
         //expect(mousePointerbox.className).toEqual("mousepointer icon-plus-sign");
-      
+
         helper.simulateMouseEvent("click", svg.id);
-      
+
         expect($("#control_event_new_node_modal").length).toEqual(1);
-      
+
         //$("#control_event_node_edit_name_value").val("Bob");
-        
+
         expect($("#control_event_new_node_submit").text()).toEqual("Create");
-        
+
         helper.simulateMouseEvent("click", "control_event_new_node_submit");
-        
+
         expect(adapter.createNode).toHaveBeenCalledWith(
           {},
           jasmine.any(Function),
           jasmine.any(Number), // Number not yet correctly tested
-          jasmine.any(Number) 
+          jasmine.any(Number)
         );
       });
-      
-        
+
+
       waitsFor(function() {
         return $("#control_event_node_edit_modal").length === 0;
       }, 2000, "The modal dialog should disappear.");
-      
+
     });
-    
+
     it('should be able to add a drag control to the list', function() {
       runs(function() {
         dispatcherUI.addControlDrag();
-      
+
         expect($("#control_event_list #control_event_drag").length).toEqual(1);
-        
+
         helper.simulateMouseEvent("click", "control_event_drag");
-      
+
         expect(nodeShaper.changeTo).toHaveBeenCalledWith({
           actions: {
             reset: true,
             drag: jasmine.any(Function)
           }
         });
-        
+
         expect(edgeShaper.changeTo).toHaveBeenCalledWith({
           actions: {
             reset: true
           }
         });
-        
+
         //expect(mousePointerbox.className).toEqual("mousepointer icon-move");
-        
+
         helper.simulateDragEvent("1");
-        
+
         expect(layouter.drag).toHaveBeenCalled();
       });
 
     });
-    
+
     describe('the edit control', function() {
-      
+
       var id = "control_event_edit",
         nodeId = "control_event_node_edit",
         edgeId = "control_event_edge_edit";
-      
+
       beforeEach(function() {
         dispatcherUI.addControlEdit();
       });
-      
+
       it('should be added', function() {
         expect($("#control_event_list #"+ id).length).toEqual(1);
       });
-      
+
       it('should activate actions on nodes and edges if clicked', function() {
         helper.simulateMouseEvent("click", id);
-      
+
         expect(nodeShaper.changeTo).toHaveBeenCalledWith({
           actions: {
             reset: true,
             click: jasmine.any(Function)
           }
         });
-        
+
         expect(edgeShaper.changeTo).toHaveBeenCalledWith({
           actions: {
             reset: true,
             click: jasmine.any(Function)
           }
         });
-      
+
         //expect(mousePointerbox.className).toEqual("mousepointer icon-pencil");
       });
-      
+
       it('should be possible to edit nodes', function() {
-        
+
         runs(function() {
           helper.simulateMouseEvent("click", id);
-          
+
           helper.simulateMouseEvent("click", "1");
-        
+
           expect($("#" + nodeId + "_modal").length).toEqual(1);
-        
+
           $("#" + nodeId + "_name_value").val("Bob");
-        
+
           helper.simulateMouseEvent("click", nodeId + "_submit");
           expect(adapter.patchNode).toHaveBeenCalledWith(
             nodes[0],
@@ -363,40 +363,40 @@
             jasmine.any(Function)
           );
         });
-      
+
         waitsFor(function() {
           return $("#" + nodeId + "_modal").length === 0;
         }, 2000, "The modal dialog should disappear.");
-        
+
       });
-      
+
       it('should be possible to add new attributes to nodes', function() {
-        
+
         runs(function() {
           helper.simulateMouseEvent("click", id);
           helper.simulateMouseEvent("click", "1");
-      
+
           helper.simulateMouseEvent("click", nodeId + "_new");
-          
+
           expect($("#" + nodeId + "_new_1_delete").length).toEqual(1);
           expect($("#" + nodeId + "_new_1_key").length).toEqual(1);
           expect($("#" + nodeId + "_new_1_value").length).toEqual(1);
-          
+
           helper.simulateMouseEvent("click", nodeId + "_new");
-          
+
           expect($("#" + nodeId + "_new_2_delete").length).toEqual(1);
           expect($("#" + nodeId + "_new_2_key").length).toEqual(1);
           expect($("#" + nodeId + "_new_2_value").length).toEqual(1);
-          
+
           helper.simulateMouseEvent("click", nodeId + "_new_2_delete");
-          
+
           expect($("#" + nodeId + "_new_2_delete").length).toEqual(0);
           expect($("#" + nodeId + "_new_2_key").length).toEqual(0);
           expect($("#" + nodeId + "_new_2_value").length).toEqual(0);
-          
+
           $("#" + nodeId + "_new_1_key").val("newKey");
           $("#" + nodeId + "_new_1_value").val("newVal");
-          
+
           helper.simulateMouseEvent("click", nodeId + "_submit");
 
           expect(adapter.patchNode).toHaveBeenCalledWith(
@@ -407,26 +407,26 @@
             },
             jasmine.any(Function)
           );
-          
+
         });
-        
+
         waitsFor(function() {
           return $("#" + nodeId + "_modal").length === 0;
         }, 2000, "The modal dialog should disappear.");
-        
+
       });
-      
+
       it('should be possible to delete values from nodes', function() {
-        
+
         runs(function() {
           helper.simulateMouseEvent("click", id);
-          
+
           helper.simulateMouseEvent("click", "1");
-        
+
           expect($("#" + nodeId + "_name_delete").length).toEqual(1);
-        
+
           helper.simulateMouseEvent("click", nodeId + "_name_delete");
-        
+
           expect($("#" + nodeId + "_name_delete").length).toEqual(0);
 
           helper.simulateMouseEvent("click", nodeId + "_submit");
@@ -436,49 +436,49 @@
             jasmine.any(Function)
           );
         });
-      
+
         waitsFor(function() {
           return $("#" + nodeId + "_modal").length === 0;
         }, 2000, "The modal dialog should disappear.");
-        
+
       });
-      
+
       it('should display nested attributes', function() {
-        
+
         runs(function() {
           helper.simulateMouseEvent("click", id);
-        
+
           helper.simulateMouseEvent("click", "2");
-      
+
           expect($("#" + nodeId + "_modal").length).toEqual(1);
-        
+
           expect($("#" + nodeId + "_name_value").val()).toEqual(
             JSON.stringify(nodes[1]._data.name
           ));
 
           helper.simulateMouseEvent("click", nodeId + "_modal_dismiss");
         });
-        
+
         waitsFor(function() {
           return $("#" + nodeId + "_modal").length === 0;
         }, 2000, "The modal dialog should disappear.");
 
 
       });
-      
+
       it('should be possible to edit edges', function() {
-        
+
         runs(function() {
           var nested = JSON.stringify(edges[0]._data.nested);
           helper.simulateMouseEvent("click", id);
           helper.simulateMouseEvent("click", "1-2");
-      
+
           expect($("#" + edgeId + "_modal").length).toEqual(1);
-      
+
           expect($("#" + edgeId + "_nested_value").val()).toEqual(nested);
-      
+
           $("#" + edgeId + "_label_value").val("newLabel");
-          
+
           helper.simulateMouseEvent("click", edgeId + "_submit");
 
           expect(adapter.patchEdge).toHaveBeenCalledWith(
@@ -490,41 +490,41 @@
             jasmine.any(Function)
           );
         });
-        
+
         waitsFor(function() {
           return $("#" + edgeId + "_modal").length === 0;
         }, 2000, "The modal dialog should disappear.");
-        
+
       });
-      
+
       it('should be possible to add new attributes to edges', function() {
-        
+
         runs(function() {
           var nested = JSON.stringify(edges[0]._data.nested);
           helper.simulateMouseEvent("click", id);
           helper.simulateMouseEvent("click", "1-2");
-      
+
           helper.simulateMouseEvent("click", edgeId + "_new");
-          
+
           expect($("#" + edgeId + "_new_1_delete").length).toEqual(1);
           expect($("#" + edgeId + "_new_1_key").length).toEqual(1);
           expect($("#" + edgeId + "_new_1_value").length).toEqual(1);
-          
+
           helper.simulateMouseEvent("click", edgeId + "_new");
-          
+
           expect($("#" + edgeId + "_new_2_delete").length).toEqual(1);
           expect($("#" + edgeId + "_new_2_key").length).toEqual(1);
           expect($("#" + edgeId + "_new_2_value").length).toEqual(1);
-          
+
           helper.simulateMouseEvent("click", edgeId + "_new_2_delete");
-          
+
           expect($("#" + edgeId + "_new_2_delete").length).toEqual(0);
           expect($("#" + edgeId + "_new_2_key").length).toEqual(0);
           expect($("#" + edgeId + "_new_2_value").length).toEqual(0);
-          
+
           $("#" + edgeId + "_new_1_key").val("newKey");
           $("#" + edgeId + "_new_1_value").val("newVal");
-          
+
           helper.simulateMouseEvent("click", edgeId + "_submit");
 
           expect(adapter.patchEdge).toHaveBeenCalledWith(
@@ -537,26 +537,26 @@
             jasmine.any(Function)
           );
         });
-        
+
         waitsFor(function() {
           return $("#" + edgeId + "_modal").length === 0;
         }, 2000, "The modal dialog should disappear.");
-        
+
       });
-      
+
       it('should be possible to remove attributes from edges', function() {
-        
+
         runs(function() {
           var nested = JSON.stringify(edges[0]._data.nested);
           helper.simulateMouseEvent("click", id);
           helper.simulateMouseEvent("click", "1-2");
-            
+
           expect($("#" + edgeId + "_label_delete").length).toEqual(1);
-        
+
           helper.simulateMouseEvent("click", edgeId + "_label_delete");
-        
+
           expect($("#" + edgeId + "_label_delete").length).toEqual(0);
-          
+
           helper.simulateMouseEvent("click", edgeId + "_submit");
 
           expect(adapter.patchEdge).toHaveBeenCalledWith(
@@ -567,30 +567,30 @@
             jasmine.any(Function)
           );
         });
-        
+
         waitsFor(function() {
           return $("#" + edgeId + "_modal").length === 0;
         }, 2000, "The modal dialog should disappear.");
-        
+
       });
-      
+
     });
-    
+
     it('should be able to add an expand control to the list', function() {
       runs(function() {
         dispatcherUI.addControlExpand();
-      
+
         expect($("#control_event_list #control_event_expand").length).toEqual(1);
-      
+
         helper.simulateMouseEvent("click", "control_event_expand");
-      
+
         expect(nodeShaper.changeTo).toHaveBeenCalledWith({
           actions: {
             reset: true,
             click: jasmine.any(Function)
           }
         });
-      
+
         expect(edgeShaper.changeTo).toHaveBeenCalledWith({
           actions: {
             reset: true
@@ -600,12 +600,12 @@
         //expect(mousePointerbox.className).toEqual("mousepointer icon-plus");
 
         helper.simulateMouseEvent("click", "1");
-        
+
         expect(adapter.explore).toHaveBeenCalledWith(nodes[0], jasmine.any(Function));
-        
-      });      
+
+      });
     });
-    
+
     describe("delete control", function() {
 
       beforeEach(function() {
@@ -621,7 +621,7 @@
             click: jasmine.any(Function)
           }
         });
-      
+
         expect(edgeShaper.changeTo).toHaveBeenCalledWith({
           actions: {
             reset: true,
@@ -650,17 +650,17 @@
         );
       });
     });
-    
+
     describe('the connect control', function() {
-      
+
       it('should be added to the list', function() {
         runs(function() {
           dispatcherUI.addControlConnect();
-      
+
           expect($("#control_event_list #control_event_connect").length).toEqual(1);
-      
+
           helper.simulateMouseEvent("click", "control_event_connect");
-      
+
           expect(nodeShaper.changeTo).toHaveBeenCalledWith({
             actions: {
               reset: true,
@@ -668,50 +668,50 @@
               mouseup: jasmine.any(Function)
             }
           });
-        
+
           expect(edgeShaper.changeTo).toHaveBeenCalledWith({
             actions: {
               reset: true
             }
           });
-        
+
           //expect(mousePointerbox.className).toEqual("mousepointer icon-resize-horizontal");
-        
+
           helper.simulateMouseEvent("mousedown", "2");
-        
+
           helper.simulateMouseEvent("mouseup", "1");
-        
+
           expect(adapter.createEdge).toHaveBeenCalledWith(
             {source: nodes[1], target: nodes[0]},
             jasmine.any(Function)
           );
-        
-        });      
+
+        });
       });
-      
+
       it('should draw a line from startNode following the cursor', function() {
         spyOn(edgeShaper, "addAnEdgeFollowingTheCursor");
-        
+
         dispatcherUI.addControlConnect();
         helper.simulateMouseEvent("click", "control_event_connect");
         helper.simulateMouseEvent("mousedown", "2");
-        
+
         expect(edgeShaper.addAnEdgeFollowingTheCursor).toHaveBeenCalledWith(
           -$("svg").offset().left, -$("svg").offset().top
         );
       });
-      
-      it('the cursor-line should follow the cursor on mousemove over svg', function() {        
+
+      it('the cursor-line should follow the cursor on mousemove over svg', function() {
         dispatcherUI.addControlConnect();
         var x = 40,
           y= 50,
           line;
-        
+
         helper.simulateMouseEvent("click", "control_event_connect");
         helper.simulateMouseEvent("mousedown", "2");
-        
+
         helper.simulateMouseMoveEvent(svg.id, x, y);
-        
+
         line = $("#connectionLine");
         //The Helper event triggers at (0,0) no matter where the node is.
         expect(line.attr("x1")).toEqual(String(- $("svg").offset().left));
@@ -719,7 +719,7 @@
         expect(line.attr("x2")).toEqual(String(x - $("svg").offset().left));
         expect(line.attr("y2")).toEqual(String(y - $("svg").offset().top));
       });
-      
+
       it('the cursor-line should disappear on mouseup on svg', function() {
         spyOn(edgeShaper, "removeCursorFollowingEdge");
         dispatcherUI.addControlConnect();
@@ -728,21 +728,21 @@
         helper.simulateMouseEvent("mouseup", "1-2");
         expect(edgeShaper.removeCursorFollowingEdge).toHaveBeenCalled();
       });
-      
+
       it('the cursor-line should disappear on mouseup on svg', function() {
-        spyOn(edgeShaper, "removeCursorFollowingEdge");  
+        spyOn(edgeShaper, "removeCursorFollowingEdge");
         dispatcherUI.addControlConnect();
         helper.simulateMouseEvent("click", "control_event_connect");
         helper.simulateMouseEvent("mousedown", "2");
         helper.simulateMouseEvent("mouseup", "1");
         expect(edgeShaper.removeCursorFollowingEdge).toHaveBeenCalled();
       });
-      
+
     });
-          
+
     it('should be able to add all controls to the list', function () {
       dispatcherUI.addAll();
-      
+
       expect($("#control_event_list #control_event_drag").length).toEqual(1);
       expect($("#control_event_list #control_event_edit").length).toEqual(1);
       expect($("#control_event_list #control_event_expand").length).toEqual(1);
@@ -750,9 +750,9 @@
       expect($("#control_event_list #control_event_connect").length).toEqual(1);
       expect($("#control_event_list #control_event_new_node").length).toEqual(1);
     });
-    
+
     describe('checking the raw functions', function() {
-      
+
       it('should offer drag rebinds', function() {
         expect(dispatcherUI.dragRebinds()).toEqual({
           nodes: {
@@ -760,7 +760,7 @@
           }
         });
       });
-      
+
       it('should offer new node rebinds', function() {
         expect(dispatcherUI.newNodeRebinds()).toEqual({
           svg: {
@@ -768,7 +768,7 @@
           }
         });
       });
-      
+
       it('should offer connect nodes rebinds', function() {
         expect(dispatcherUI.connectNodesRebinds()).toEqual({
           nodes: {
@@ -780,7 +780,7 @@
           }
         });
       });
-      
+
       it('should offer edit rebinds', function() {
         expect(dispatcherUI.editRebinds()).toEqual({
           nodes: {
@@ -791,7 +791,7 @@
           }
         });
       });
-      
+
       it('should offer expand rebinds', function() {
         expect(dispatcherUI.expandRebinds()).toEqual({
           nodes: {
@@ -799,7 +799,7 @@
           }
         });
       });
-      
+
     });
   });
 

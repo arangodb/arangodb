@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true, unparam: true */
 /*global require, applicationContext*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -427,7 +426,7 @@ controller.get("/query/result/download/:query", function(req, res) {
     }
 
     return string;
-  } 
+  }
 
   var decodeFunction = function (input) {
     var keyStr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
