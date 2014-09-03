@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
+/*jshint browser: true */
+/*jshint unused: false */
 /*global describe, beforeEach, afterEach, it, spyOn, expect, jasmine*/
 /*global $, _*/
 
@@ -82,7 +83,7 @@
             filter1 = " FILTER x.`test` == @param0";
             filter2 = " && x.`second` < @param1";
             queryEnd = " LIMIT @offset, @count RETURN x";
-            $.ajax.reset(); 
+            $.ajax.reset();
           });
 
           it("should start using first page", function() {

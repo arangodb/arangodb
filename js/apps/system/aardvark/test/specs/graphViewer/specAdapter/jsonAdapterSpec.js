@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
+/*jshint unused: false */
 /*global beforeEach, afterEach */
 /*global describe, it, expect */
 /*global runs, spyOn, waitsFor */
@@ -38,35 +38,35 @@
 (function () {
   "use strict";
 
-  
-  
+
+
   describe('JSON Adapter', function () {
-    
+
     describeInterface(new JSONAdapter("", [], [], {}));
-    
+
     var adapter,
       nodes,
       edges,
       jsonPath,
       startNode,
       viewer,
-      
+
       nodeWithID = function(id) {
         return $.grep(nodes, function(e){
           return e._id === id;
         })[0];
       },
-      
+
       existNode = function(id) {
         var node = nodeWithID(id);
         expect(node).toBeDefined();
         expect(node._id).toEqual(id);
       },
-      
+
       existNodes = function(ids) {
         _.each(ids, existNode);
       };
-      
+
     beforeEach(function() {
       window.communicationMock(spyOn);
       jsonPath = "../test_data/";
@@ -84,31 +84,31 @@
       startNode = 0;
       adapter = new JSONAdapter(jsonPath, nodes, edges, viewer);
     });
-    
+
     it('should be able to load a tree node from a json file', function() {
       var callbackCheck;
-      
+
       runs(function() {
         callbackCheck = false;
         adapter.loadNodeFromTreeById(startNode, function() {
           callbackCheck = true;
         });
       });
-      
+
       waitsFor(function() {
         return callbackCheck;
       });
-      
+
       runs(function() {
         existNodes([0, 1, 2, 3, 4]);
         expect(nodes.length).toEqual(5);
       });
     });
-    
+
     it('should be able to request the number of children centrality', function() {
       var callbackCheck,
       children;
-      
+
       runs(function() {
         callbackCheck = false;
         adapter.requestCentralityChildren(startNode, function(count) {
@@ -116,29 +116,29 @@
           children = count;
         });
       });
-      
+
       waitsFor(function() {
         return callbackCheck;
       });
-      
+
       runs(function() {
         expect(children).toEqual(4);
       });
     });
-    
+
     it('should encapsulate all attributes of nodes in _data', function() {
       var callbackCheck;
-      
+
       runs(function() {
         adapter.loadNodeFromTreeById(1337, function() {
           callbackCheck = true;
         });
       });
-      
+
       waitsFor(function() {
         return callbackCheck;
       });
-      
+
       runs(function() {
         expect(nodes[0]._data).toEqual({
           _id: 1337,
@@ -146,99 +146,99 @@
           age: 42
         });
       });
-      
+
     });
-    
+
     describe('that has already loaded one file', function() {
-      
+
       beforeEach(function() {
         var callbackCheck;
-      
+
         runs(function() {
           callbackCheck = false;
           adapter.loadNodeFromTreeById(startNode, function() {
             callbackCheck = true;
           });
         });
-      
+
         waitsFor(function() {
           return callbackCheck;
-        });        
+        });
       });
-      
+
       it('should be able to add nodes from another file', function() {
         var callbackCheck;
-        
+
         runs(function() {
           callbackCheck = false;
           adapter.loadNodeFromTreeById(1, function() {
             callbackCheck = true;
           });
         });
-      
+
         waitsFor(function() {
           return callbackCheck;
         });
-      
+
         runs(function() {
           existNodes([0, 1, 2, 3, 4, 5, 6, 7]);
           expect(nodes.length).toEqual(8);
         });
       });
-      
+
     });
-    
+
     describe('that has loaded several files', function() {
       beforeEach(function() {
         var callbackCheck;
-      
+
         runs(function() {
           callbackCheck = false;
           adapter.loadNodeFromTreeById(startNode, function() {
             callbackCheck = true;
           });
         });
-      
+
         waitsFor(function() {
           return callbackCheck;
         });
-      
+
         runs(function() {
           callbackCheck = false;
           adapter.loadNodeFromTreeById(1, function() {
             callbackCheck = true;
           });
         });
-      
+
         waitsFor(function() {
           return callbackCheck;
         });
-      
+
         runs(function() {
           callbackCheck = false;
           adapter.loadNodeFromTreeById(2, function() {
             callbackCheck = true;
           });
         });
-      
+
         waitsFor(function() {
           return callbackCheck;
         });
-        
+
         it('should not add a node to the list twice', function() {
           var callbackCheck;
-      
+
           runs(function() {
             callbackCheck = false;
             adapter.loadNodeFromTreeById(3, function() {
               callbackCheck = true;
             });
           });
-      
+
           waitsFor(function() {
             return callbackCheck;
-          });  
-          
+          });
+
           runs(function() {
             existNodes([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
             expect(nodes.length).toEqual(10);
@@ -247,5 +247,5 @@
       });
     });
   });
-  
+
 }());

@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
+/*jshint unused: false */
 /*global beforeEach, afterEach */
 /*global describe, it, expect*/
 /*global runs, waitsFor, spyOn */
@@ -66,7 +66,7 @@
 
         },
         loadRandomNode: function() {
-                        
+
         }
       };
       list = document.createElement("ul");
@@ -94,9 +94,9 @@
         var e = new ArangoAdapterControls(list);
       }).toThrow("The ArangoAdapter has to be given.");
     });
-    
+
     describe('change collections control', function() {
-      
+
       var idPrefix = "#control_adapter_collections";
 
       beforeEach(function() {
@@ -108,13 +108,13 @@
           expect($(idPrefix + "_modal").length).toEqual(1);
         });
       });
-      
+
       afterEach(function() {
         waitsFor(function() {
           return $(idPrefix + "_modal").length === 0;
         }, 2000, "The modal dialog should disappear.");
       });
-      
+
       it('should be added to the list', function() {
         runs(function() {
           $(idPrefix + "_node_collection").prop("selectedIndex", 0);
@@ -127,33 +127,33 @@
           );
         });
       });
-      
+
       it('should change collections and traversal direction to directed', function() {
         runs(function() {
 
           $(idPrefix + "_node_collection").prop("selectedIndex", 0);
           $(idPrefix + "_edge_collection").prop("selectedIndex", 1);
           $(idPrefix + "_undirected").attr("checked", false);
-        
+
           helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
-      
+
           expect(adapter.changeToCollections).toHaveBeenCalledWith(
             "newNodes",
             "newEdges",
             false
           );
         });
-      
+
       });
-      
+
       it('should change collections and traversal direction to undirected', function() {
         runs(function() {
           $(idPrefix + "_node_collection").prop("selectedIndex", 0);
           $(idPrefix + "_edge_collection").prop("selectedIndex", 1);
           $(idPrefix + "_undirected").attr("checked", true);
-        
+
           helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
-      
+
           expect(adapter.changeToCollections).toHaveBeenCalledWith(
             "newNodes",
             "newEdges",
@@ -161,31 +161,31 @@
           );
         });
       });
-      
+
       it('should offer the available collections as sorted lists', function() {
         runs(function() {
           var docList = document.getElementById(idPrefix.substr(1) + "_node_collection"),
             edgeList = document.getElementById(idPrefix.substr(1) + "_edge_collection"),
             docCollectionOptions = docList.children,
             edgeCollectionOptions = edgeList.children;
-           
+
           expect(adapter.getCollections).toHaveBeenCalled();
-        
+
           expect(docList).toBeTag("select");
           expect(docCollectionOptions.length).toEqual(2);
           expect(docCollectionOptions[0]).toBeTag("option");
           expect(docCollectionOptions[1]).toBeTag("option");
-          
+
           expect(docCollectionOptions[0].value).toEqual("newNodes");
           expect(docCollectionOptions[1].value).toEqual("nodes");
-        
+
           expect(edgeList).toBeTag("select");
           expect(edgeCollectionOptions.length).toEqual(2);
           expect(edgeCollectionOptions[0]).toBeTag("option");
           expect(edgeCollectionOptions[1]).toBeTag("option");
           expect(edgeCollectionOptions[0].value).toEqual("edges");
           expect(edgeCollectionOptions[1].value).toEqual("newEdges");
-        
+
           helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
         });
       });
@@ -198,19 +198,19 @@
       beforeEach(function() {
         idPrefix = "#control_adapter_priority";
         adapterUI.addControlChangePriority();
-        
+
         expect($("#control_adapter_list " + idPrefix).length).toEqual(1);
         expect($("#control_adapter_list " + idPrefix)[0]).toConformToListCSS();
         helper.simulateMouseEvent("click", idPrefix.substr(1) + "_button");
         expect($(idPrefix + "_modal").length).toEqual(1);
       });
-      
+
       afterEach(function() {
         waitsFor(function() {
           return $(idPrefix + "_modal").length === 0;
         }, 2000, "The modal dialog should disappear.");
       });
-      
+
       it('should be added to the list', function() {
         runs(function() {
           $(idPrefix + "_attribute_1").attr("value", "foo");
@@ -220,7 +220,7 @@
           });
         });
       });
-      
+
       it('should not add empty attributes to priority', function() {
         runs(function() {
           $(idPrefix + "_attribute_1").attr("value", "");
@@ -230,7 +230,7 @@
           });
         });
       });
-      
+
       it('should add a new line to priority on demand', function() {
         runs(function() {
           helper.simulateMouseEvent("click", idPrefix.substr(1) + "_attribute_addLine");
@@ -245,7 +245,7 @@
           });
         });
       });
-      
+
       it('should add many new lines to priority on demand', function() {
         runs(function() {
           var idPrefix = "control_adapter_priority_attribute_";
@@ -258,13 +258,13 @@
           expect($("#" + idPrefix + "3").length).toEqual(1);
           expect($("#" + idPrefix + "4").length).toEqual(1);
           expect($("#" + idPrefix + "5").length).toEqual(1);
-          
+
           expect($("#" + idPrefix + "1").val()).toEqual("");
           expect($("#" + idPrefix + "2").val()).toEqual("");
           expect($("#" + idPrefix + "3").val()).toEqual("");
           expect($("#" + idPrefix + "4").val()).toEqual("");
           expect($("#" + idPrefix + "5").val()).toEqual("");
-          
+
           expect($("#" + idPrefix + "addLine").length).toEqual(1);
           $("#" + idPrefix + "1").val("foo");
           $("#" + idPrefix + "2").val("bar");
@@ -277,18 +277,18 @@
           });
         });
       });
-      
+
       it('should remove all but the first line', function() {
         runs(function() {
           helper.simulateMouseEvent("click", "control_adapter_priority_attribute_addLine");
           expect($("#control_adapter_priority_attribute_1_remove").length).toEqual(0);
           expect($("#control_adapter_priority_attribute_2_remove").length).toEqual(1);
           helper.simulateMouseEvent("click", "control_adapter_priority_attribute_2_remove");
-          
+
           expect($("#control_adapter_priority_attribute_addLine").length).toEqual(1);
           expect($("#control_adapter_priority_attribute_2_remove").length).toEqual(0);
           expect($("#control_adapter_priority_attribute_2").length).toEqual(0);
-          
+
           $("#control_adapter_priority_attribute_1").attr("value", "foo");
           helper.simulateMouseEvent("click", "control_adapter_priority_submit");
           expect(adapter.changeTo).toHaveBeenCalledWith({
@@ -298,17 +298,17 @@
       });
 
       /* TO_DO
-      
+
       it('should load the current prioList from the adapter', function() {
-        
+
         runs(function() {
           helper.simulateMouseEvent("click", "control_adapter_priority_cancel");
         });
-        
+
         waitsFor(function() {
           return $("#control_adapter_priority_modal").length === 0;
         }, 2000, "The modal dialog should disappear.");
-        
+
         runs(function() {
           expect($("#control_adapter_priority_cancel").length).toEqual(0);
           prioList.push("foo");
@@ -335,7 +335,7 @@
       });
       */
     });
-    
+
     it('should be able to add all controls to the list', function() {
       adapterUI.addAll();
       expect($("#control_adapter_list #control_adapter_collections").length).toEqual(1);

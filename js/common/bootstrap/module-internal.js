@@ -1,5 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
-/*jslint sloppy: true, regexp: true */
+/*jshint strict: false, unused: false, -W051: true */
 /*global require, module, Module, ArangoError, SleepAndRequeue,
   CONFIGURE_ENDPOINT, REMOVE_ENDPOINT, LIST_ENDPOINTS, STARTUP_PATH,
   SYS_BASE64DECODE, SYS_BASE64ENCODE, SYS_DEBUG_SEGFAULT,
@@ -49,7 +48,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  // cannot use strict here as we are going to delete globals
+  /*jshint strict: false */
 
   var exports = require("internal");
 
@@ -1115,7 +1114,7 @@
       context.output += context.names[p];
     }
     else {
-      if (value && (value instanceof Object || value.__proto__ === null)) {
+      if (value && (value instanceof Object || Object.getPrototypeOf(value) === null)) {
         context.seen.push(value);
         context.names.push(context.path);
         if (customInspect && typeof value._PRINT === "function") {
@@ -1129,7 +1128,7 @@
         else if (value instanceof Array) {
           printArray(value, context);
         }
-        else if (value.toString === Object.prototype.toString || value.__proto__ === null) {
+        else if (value.toString === Object.prototype.toString || Object.getPrototypeOf(value) === null) {
           printObject(value, context);
 
           if (context.emit && context.output.length >= context.emit) {

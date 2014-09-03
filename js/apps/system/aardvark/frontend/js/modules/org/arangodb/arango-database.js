@@ -1,5 +1,4 @@
 module.define("org/arangodb/arango-database", function(exports, module) {
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, stupid: true */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -115,7 +114,7 @@ ArangoDatabase.prototype._appendSyncParameter = function (url, waitForSync) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the base url for collection usage
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 ArangoDatabase.prototype._collectionurl = function (id) {
   if (id === undefined) {
     return "/_api/collection";
@@ -163,7 +162,7 @@ ArangoDatabase.prototype._documenturl = function (id, expectedName) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the base url for index usage
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 ArangoDatabase.prototype._indexurl = function (id, expectedName) {
   if (typeof id === "string") {
     var pa = ArangoDatabase.indexRegex.exec(id);
@@ -198,7 +197,7 @@ ArangoDatabase.prototype._indexurl = function (id, expectedName) {
     });
   }
 
-  return "/_api/index/" + encodeURIComponent(s[0]) + "/" + encodeURIComponent(s[1]); 
+  return "/_api/index/" + encodeURIComponent(s[0]) + "/" + encodeURIComponent(s[1]);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -238,7 +237,7 @@ var helpArangoDatabase = arangosh.createHelpHeadline("ArangoDatabase (db) help")
   '  _query(<query>)                       execute AQL query                 ' + "\n" +
   '  _createStatement(<data>)              create and return AQL query       ';
 
-ArangoDatabase.prototype._help = function () {  
+ArangoDatabase.prototype._help = function () {
   internal.print(helpArangoDatabase);
 };
 
@@ -246,7 +245,7 @@ ArangoDatabase.prototype._help = function () {
 /// @brief return a string representation of the database object
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype.toString = function () {  
+ArangoDatabase.prototype.toString = function () {
   return "[object ArangoDatabase \"" + this._name() + "\"]";
 };
 
@@ -308,7 +307,7 @@ ArangoDatabase.prototype._collection = function (id) {
 
   // return null in case of not found
   if (requestResult !== null
-      && requestResult.error === true 
+      && requestResult.error === true
       && requestResult.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
     return null;
   }
@@ -337,7 +336,7 @@ ArangoDatabase.prototype._create = function (name, properties, type) {
   };
 
   if (properties !== undefined) {
-    [ "waitForSync", "journalSize", "isSystem", "isVolatile", 
+    [ "waitForSync", "journalSize", "isSystem", "isVolatile",
       "doCompact", "keyOptions", "shardKeys", "numberOfShards",
       "distributeShardsLike" ].forEach(function(p) {
       if (properties.hasOwnProperty(p)) {
@@ -391,7 +390,7 @@ ArangoDatabase.prototype._truncate = function (id) {
   if (typeof id !== "string") {
     id = id._id;
   }
-  
+
   for (name in this) {
     if (this.hasOwnProperty(name)) {
       var collection = this[name];
@@ -435,12 +434,12 @@ ArangoDatabase.prototype._drop = function (id) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush the local cache
-/// this is called by connection.reconnect() 
+/// this is called by connection.reconnect()
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._flushCache = function () {
   var name;
- 
+
   for (name in this) {
     if (this.hasOwnProperty(name)) {
       var collection = this[name];
@@ -459,7 +458,7 @@ ArangoDatabase.prototype._flushCache = function () {
   }
   catch (err) {
   }
-  
+
   this._properties = null;
 };
 
@@ -539,7 +538,7 @@ ArangoDatabase.prototype._dropIndex = function (id) {
   var requestResult = this._connection.DELETE(this._indexurl(id));
 
   if (requestResult !== null
-      && requestResult.error === true 
+      && requestResult.error === true
       && requestResult.errorNum === internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code) {
     return false;
   }
@@ -599,7 +598,7 @@ ArangoDatabase.prototype._document = function (id) {
   }
 
   if (requestResult !== null
-      && requestResult.error === true 
+      && requestResult.error === true
       && requestResult.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
     throw new ArangoError(requestResult);
   }
@@ -633,7 +632,7 @@ ArangoDatabase.prototype._exists = function (id) {
       {'if-match' : JSON.stringify(rev) });
   }
 
-  if (requestResult !== null && 
+  if (requestResult !== null &&
       requestResult.error === true &&
       (requestResult.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code ||
        requestResult.errorNum === internal.errors.ERROR_HTTP_NOT_FOUND.code ||
@@ -689,7 +688,7 @@ ArangoDatabase.prototype._remove = function (id, overwrite, waitForSync) {
     requestResult = this._connection.DELETE(url);
   }
   else {
-    requestResult = this._connection.DELETE(url, 
+    requestResult = this._connection.DELETE(url,
       {'if-match' : JSON.stringify(rev) });
   }
 
@@ -712,7 +711,7 @@ ArangoDatabase.prototype._remove = function (id, overwrite, waitForSync) {
 /// @brief replace a document in the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._replace = function (id, data, overwrite, waitForSync) { 
+ArangoDatabase.prototype._replace = function (id, data, overwrite, waitForSync) {
   var rev = null;
   var requestResult;
 
@@ -731,7 +730,7 @@ ArangoDatabase.prototype._replace = function (id, data, overwrite, waitForSync) 
       throw "too many arguments";
     }
     // we assume the caller uses new signature (id, data, options)
-    var options = overwrite; 
+    var options = overwrite;
     if (options.hasOwnProperty("overwrite") && options.overwrite) {
       params += "?policy=last";
     }
@@ -767,7 +766,7 @@ ArangoDatabase.prototype._replace = function (id, data, overwrite, waitForSync) 
 /// @brief update a document in the collection, identified by its id
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, waitForSync) { 
+ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, waitForSync) {
   var rev = null;
   var requestResult;
 
@@ -780,15 +779,15 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
   }
 
   var params = "";
-  if (typeof overwrite === "object") { 
+  if (typeof overwrite === "object") {
     if (typeof keepNull !== "undefined") {
       throw "too many arguments";
     }
     // we assume the caller uses new signature (id, data, options)
-    var options = overwrite; 
+    var options = overwrite;
     if (! options.hasOwnProperty("keepNull")) {
       options.keepNull = true;
-    } 
+    }
     params = "?keepNull=" + options.keepNull;
 
     if (options.hasOwnProperty("overwrite") && options.overwrite) {
@@ -840,7 +839,7 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
 /// @brief factory method to create a new statement
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._createStatement = function (data) {  
+ArangoDatabase.prototype._createStatement = function (data) {
   return new ArangoStatement(this, data);
 };
 
@@ -848,15 +847,15 @@ ArangoDatabase.prototype._createStatement = function (data) {
 /// @brief factory method to create and execute a new statement
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, options) {  
+ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, options) {
   var data = {
     query: query,
     bindVars: bindVars || undefined,
     count: (cursorOptions && cursorOptions.count) || false,
     batchSize: (cursorOptions && cursorOptions.batchSize) || undefined,
-    options: options || undefined 
+    options: options || undefined
   };
-  
+
   return new ArangoStatement(this, data).execute();
 };
 
@@ -877,13 +876,13 @@ ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, opti
 /// @brief create a new database
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._createDatabase = function (name, options, users) {  
+ArangoDatabase.prototype._createDatabase = function (name, options, users) {
   var data = {
     name: name,
     options: options || { },
-    users: users || [ ] 
+    users: users || [ ]
   };
-  
+
   var requestResult = this._connection.POST("/_api/database", JSON.stringify(data));
 
   if (requestResult !== null && requestResult.error === true) {
@@ -891,7 +890,7 @@ ArangoDatabase.prototype._createDatabase = function (name, options, users) {
   }
 
   arangosh.checkRequestResult(requestResult);
-  
+
   return requestResult.result;
 };
 
@@ -907,7 +906,7 @@ ArangoDatabase.prototype._dropDatabase = function (name) {
   }
 
   arangosh.checkRequestResult(requestResult);
-  
+
   return requestResult.result;
 };
 
@@ -915,7 +914,7 @@ ArangoDatabase.prototype._dropDatabase = function (name) {
 /// @brief list all existing databases
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._listDatabases = function () {  
+ArangoDatabase.prototype._listDatabases = function () {
   var requestResult = this._connection.GET("/_api/database");
 
   if (requestResult !== null && requestResult.error === true) {
@@ -923,7 +922,7 @@ ArangoDatabase.prototype._listDatabases = function () {
   }
 
   arangosh.checkRequestResult(requestResult);
-  
+
   return requestResult.result;
 };
 
@@ -957,7 +956,7 @@ ArangoDatabase.prototype._useDatabase = function (name) {
   }
   catch (err) {
     this._connection.setDatabaseName(old);
-   
+
     if (err.hasOwnProperty("errorNum")) {
       throw err;
     }
@@ -998,7 +997,7 @@ ArangoDatabase.prototype._listEndpoints = function () {
   }
 
   arangosh.checkRequestResult(requestResult);
-  
+
   return requestResult;
 };
 
@@ -1015,7 +1014,7 @@ ArangoDatabase.prototype._configureEndpoint = function (endpoint, databases) {
   }
 
   arangosh.checkRequestResult(requestResult);
-  
+
   return requestResult.result;
 };
 
@@ -1031,7 +1030,7 @@ ArangoDatabase.prototype._removeEndpoint = function (endpoint) {
   }
 
   arangosh.checkRequestResult(requestResult);
-  
+
   return requestResult.result;
 };
 
@@ -1052,7 +1051,7 @@ ArangoDatabase.prototype._removeEndpoint = function (endpoint) {
 /// @brief execute a transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._executeTransaction = function (data) { 
+ArangoDatabase.prototype._executeTransaction = function (data) {
   if (! data || typeof(data) !== 'object') {
     throw new ArangoError({
       error: true,
@@ -1062,7 +1061,7 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
     });
   }
 
-  if (! data.collections || typeof(data.collections) !== 'object') { 
+  if (! data.collections || typeof(data.collections) !== 'object') {
     throw new ArangoError({
       error: true,
       code: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
@@ -1071,7 +1070,7 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
     });
   }
 
-  if (! data.action || 
+  if (! data.action ||
       (typeof(data.action) !== 'string' && typeof(data.action) !== 'function')) {
     throw new ArangoError({
       error: true,
@@ -1085,7 +1084,7 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
     data.action = String(data.action);
   }
 
-  var requestResult = this._connection.POST("/_api/transaction", 
+  var requestResult = this._connection.POST("/_api/transaction",
     JSON.stringify(data));
 
   if (requestResult !== null && requestResult.error === true) {

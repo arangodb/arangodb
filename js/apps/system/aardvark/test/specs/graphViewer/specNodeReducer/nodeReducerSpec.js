@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
+/*jshint unused: false */
 /*global beforeEach, afterEach, jasmine */
 /*global runs, waits, waitsFor */
 /*global describe, it, expect, spyOn */
@@ -39,9 +39,9 @@
   "use strict";
 
   describe('Node Reducer', function () {
-    
+
     describe('setup process', function() {
-      
+
       it('should not throw an error if mandatory information is given', function() {
         expect(function() {
           var s = new NodeReducer();
@@ -49,43 +49,43 @@
       });
 
     });
-    
+
     describe('setup correctly', function() {
-      
+
       var reducer;
 
       beforeEach(function () {
         reducer = new NodeReducer();
       });
-      
+
       describe('checking the interface', function() {
-        
+
         it('should offer a function for bucket sort of nodes', function() {
           expect(reducer.bucketNodes).toBeDefined();
           expect(reducer.bucketNodes).toEqual(jasmine.any(Function));
           expect(reducer.bucketNodes.length).toEqual(2);
         });
-        
+
         it('should offer a function to change the prioList', function() {
           expect(reducer.changePrioList).toBeDefined();
           expect(reducer.changePrioList).toEqual(jasmine.any(Function));
           expect(reducer.changePrioList.length).toEqual(1);
         });
-        
+
         it('should offer a function to get the current prioList', function() {
           expect(reducer.getPrioList).toBeDefined();
           expect(reducer.getPrioList).toEqual(jasmine.any(Function));
           expect(reducer.getPrioList.length).toEqual(0);
         });
-        
+
       });
-      
+
       describe('checking bucket sort of nodes', function() {
         var allNodes, buckets;
-        
+
         beforeEach(function() {
           allNodes = [];
-          
+
           this.addMatchers({
             toContainAll: function(objs) {
               var bucket = this.actual,
@@ -108,7 +108,7 @@
             }
           });
         });
-        
+
         it('should not bucket anything if #nodes <= #buckets', function() {
           buckets = 5;
           allNodes.push({
@@ -136,7 +136,7 @@
             expect(obj.nodes.length).toEqual(1);
           });
         });
-        
+
         it('should create at most the given amount of buckets', function() {
           buckets = 3;
           allNodes.push({
@@ -157,11 +157,11 @@
           allNodes.push({
             _data: {f: 6}
           });
-          
+
           var res = reducer.bucketNodes(allNodes, buckets);
           expect(res.length).toEqual(3);
         });
-        
+
         it('should uniformly distribute dissimilar nodes', function() {
           buckets = 3;
           allNodes.push({
@@ -191,7 +191,7 @@
           allNodes.push({
             _data:{i: 9}
           });
-          
+
           var res = reducer.bucketNodes(allNodes, buckets);
           _.each(res, function(obj) {
             expect(obj.reason).toEqual({
@@ -202,7 +202,7 @@
             expect(obj.nodes.length).toEqual(3);
           });
         });
-        
+
         it('should bucket clearly similar nodes together', function() {
           buckets = 3;
           var a1, a2 ,a3,
@@ -212,7 +212,7 @@
             res1,
             res2,
             res3;
-            
+
           a1 = {
             _data: {a: 1}
           };
@@ -222,7 +222,7 @@
           a3 = {
             _data: {a: 1}
           };
-          
+
           b1 = {
             _data: {b: 2}
           };
@@ -232,7 +232,7 @@
           b3 = {
             _data: {b: 2}
           };
-          
+
           c1 = {
             _data: {c: 3}
           };
@@ -242,7 +242,7 @@
           c3 = {
             _data: {c: 3}
           };
-          
+
           allNodes.push(a1);
           allNodes.push(a2);
           allNodes.push(a3);
@@ -252,7 +252,7 @@
           allNodes.push(c1);
           allNodes.push(c2);
           allNodes.push(c3);
-          
+
           resArray = reducer.bucketNodes(allNodes, buckets);
           _.each(resArray, function(entry) {
             expect(entry.reason).toEqual({
@@ -275,13 +275,13 @@
           expect(res2.nodes).toContainAll([b1, b2, b3]);
           expect(res3.nodes).toContainAll([c1, c2, c3]);
         });
-        
+
       });
-      
+
     });
-    
+
     describe('setup with a priority list', function() {
-      
+
       var reducer,
       nodes,
       buckets,
@@ -313,11 +313,11 @@
           }
         });
       });
-      
+
       it('should be able to get the list', function() {
         expect(reducer.getPrioList()).toEqual(prios);
       });
-      
+
       it('should bucket nodes according to the list', function() {
         buckets = 3;
         var a1, a2 ,a3,
@@ -328,7 +328,7 @@
           res1,
           res2,
           res3;
-          
+
         a1 = {
           _data: {
             age: 1,
@@ -350,7 +350,7 @@
             foo: "bar"
           }
         };
-        
+
         b1 = {
           _data: {
             age: 2,
@@ -372,7 +372,7 @@
             foo: "bar"
           }
         };
-        
+
         c1 = {
           _data: {
             age: 3,
@@ -409,20 +409,20 @@
           value: "3",
           text: "age: 3"
         };
-        
-        
+
+
         nodes.push(a1);
         nodes.push(b1);
         nodes.push(c1);
-        
+
         nodes.push(a2);
         nodes.push(b2);
         nodes.push(c2);
-        
+
         nodes.push(a3);
         nodes.push(b3);
         nodes.push(c3);
-        
+
         resArray = reducer.bucketNodes(nodes, buckets);
         _.each(resArray, function(entry) {
           if (_.isEqual(entry.reason, r1)) {
@@ -439,7 +439,7 @@
         expect(res2.nodes).toContainAll([b1, b2, b3]);
         expect(res3.nodes).toContainAll([c1, c2, c3]);
       });
-       
+
       it('should bucket following the priorities of the list', function() {
         buckets = 3;
         var a1, a2 ,a3,
@@ -450,7 +450,7 @@
           res1,
           res2,
           res3;
-          
+
         a1 = {
           _data: {
             age: 1,
@@ -472,7 +472,7 @@
             foo: "bar"
           }
         };
-        
+
         b1 = {
           _data: {
             type: "person",
@@ -494,7 +494,7 @@
             foo: "bar"
           }
         };
-        
+
         c1 = {
           _data: {
             age: 1,
@@ -533,19 +533,19 @@
           value: "3",
           text: "age: 3"
         };
-        
+
         nodes.push(a1);
         nodes.push(b1);
         nodes.push(c1);
-        
+
         nodes.push(a2);
         nodes.push(b2);
         nodes.push(c2);
-        
+
         nodes.push(a3);
         nodes.push(b3);
         nodes.push(c3);
-        
+
         resArray = reducer.bucketNodes(nodes, buckets);
         _.each(resArray, function(entry) {
           if (_.isEqual(entry.reason, r1)) {
@@ -561,9 +561,9 @@
         expect(res1.nodes).toContainAll([a1, a2, a3, c1]);
         expect(res2.nodes).toContainAll([b1, b2, b3]);
         expect(res3.nodes).toContainAll([c2, c3]);
-        
+
       });
-      
+
       it('should be possible to delete the list', function() {
         buckets = 3;
         var a1, a2 ,a3,
@@ -574,7 +574,7 @@
           res1,
           res2,
           res3;
-          
+
         a1 = {
           _data: {
             age: 1,
@@ -596,7 +596,7 @@
             foo: "tango"
           }
         };
-        
+
         b1 = {
           _data: {
             age: 2,
@@ -618,7 +618,7 @@
             foo: "tango"
           }
         };
-        
+
         c1 = {
           _data: {
             age: 3,
@@ -655,21 +655,21 @@
           example: a3,
           text: "Similar Nodes"
         };
-        
+
         nodes.push(a1);
         nodes.push(b1);
         nodes.push(c1);
-        
+
         nodes.push(a2);
         nodes.push(b2);
         nodes.push(c2);
-        
+
         nodes.push(a3);
         nodes.push(b3);
         nodes.push(c3);
-        
+
         reducer.changePrioList([]);
-        
+
         resArray = reducer.bucketNodes(nodes, buckets);
         _.each(resArray, function(entry) {
           if (_.isEqual(entry.reason, r1)) {
@@ -686,7 +686,7 @@
         expect(res2.nodes).toContainAll([a2, b2, c2]);
         expect(res3.nodes).toContainAll([a3, b3, c3]);
       });
-      
+
       it('should be possible to change the list', function() {
         buckets = 3;
         var a1, a2 ,a3,
@@ -697,7 +697,7 @@
           res1,
           res2,
           res3;
-          
+
         a1 = {
           _data: {
             age: 1,
@@ -719,7 +719,7 @@
             foo: "tango"
           }
         };
-        
+
         b1 = {
           _data: {
             age: 2,
@@ -741,7 +741,7 @@
             foo: "tango"
           }
         };
-        
+
         c1 = {
           _data: {
             age: 3,
@@ -778,21 +778,21 @@
           value: "tango",
           text: "foo: tango"
         };
-        
+
         nodes.push(a1);
         nodes.push(b1);
         nodes.push(c1);
-        
+
         nodes.push(a2);
         nodes.push(b2);
         nodes.push(c2);
-        
+
         nodes.push(a3);
         nodes.push(b3);
         nodes.push(c3);
-        
+
         reducer.changePrioList(["foo"]);
-        
+
         resArray = reducer.bucketNodes(nodes, buckets);
         _.each(resArray, function(entry) {
           if (_.isEqual(entry.reason, r1)) {
@@ -809,9 +809,9 @@
         expect(res2.nodes).toContainAll([a2, b2, c2]);
         expect(res3.nodes).toContainAll([a3, b3, c3]);
       });
-      
+
     });
-    
+
   });
-  
+
 }());

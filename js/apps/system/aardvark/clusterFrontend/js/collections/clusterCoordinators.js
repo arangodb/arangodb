@@ -1,10 +1,9 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true */
 /*global window, Backbone, console */
 (function() {
   "use strict";
   window.ClusterCoordinators = window.AutomaticRetryCollection.extend({
     model: window.ClusterCoordinator,
-    
+
     url: "/_admin/aardvark/cluster/Coordinators",
 
     updateUrl: function() {
@@ -19,13 +18,13 @@
       switch (s) {
         case "ok":
           return "success";
-        case "warning": 
+        case "warning":
           return "warning";
         case "critical":
           return "danger";
         case "missing":
           return "inactive";
-        default: 
+        default:
           return "danger";
       }
     },
@@ -115,7 +114,7 @@
         res.status = to;
       };
       this.each(function(m) {
-        res.plan++; 
+        res.plan++;
         switch (m.get("status")) {
           case "ok":
             res.having++;

@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 80 */
 /*global require, assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,7 +66,7 @@ function ClusterCrudSimpleSuite () {
       cb(result[0]);
     }
   };
-  
+
   var queryToCursor = function (q, n, cb) {
     var result = q, count = 0;
 
@@ -99,7 +98,7 @@ function ClusterCrudSimpleSuite () {
     for (i = 0; i < n; ++i) {
       c.save({ _key: "test" + i, value1 : i, value2 : "test" + i });
     }
-    
+
     checkQuery(c.all().limit(20), 20, function (r0) {
       assertTrue(r0.hasOwnProperty("_id"));
       assertTrue(r0.hasOwnProperty("_key"));
@@ -122,13 +121,13 @@ function ClusterCrudSimpleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function for byExample
 ////////////////////////////////////////////////////////////////////////////////
-    
+
   var executeByExample = function (c) {
     var i, n = 6000;
     for (i = 0; i < n; ++i) {
       c.save({ _key: "test" + i, value1 : (i % 10), value2 : "test" + i, value3 : 1 });
     }
-   
+
     checkQuery(c.byExample({ }).limit(20), 20, function (r0) {
       assertTrue(r0.hasOwnProperty("_id"));
       assertTrue(r0.hasOwnProperty("_key"));
@@ -139,7 +138,7 @@ function ClusterCrudSimpleSuite () {
       assertEqual(r0._key, r0.value2);
       assertEqual(1, r0.value3);
     });
-    
+
     checkQuery(c.byExample({ value3 : 1 }).limit(20), 20, function (r0) {
       assertTrue(r0.hasOwnProperty("_id"));
       assertTrue(r0.hasOwnProperty("_key"));
@@ -150,7 +149,7 @@ function ClusterCrudSimpleSuite () {
       assertEqual(r0._key, r0.value2);
       assertEqual(1, r0.value3);
     });
-   
+
     checkQuery(c.byExample({ value1 : 5 }), n / 10, function (r0) {
       assertTrue(r0.hasOwnProperty("_id"));
       assertTrue(r0.hasOwnProperty("_key"));
@@ -162,7 +161,7 @@ function ClusterCrudSimpleSuite () {
       assertEqual(r0._key, r0.value2);
       assertEqual(1, r0.value3);
     });
-    
+
     checkQuery(c.byExample({ value1 : 5 }).limit(4), 4, function (r0) {
       assertTrue(r0.hasOwnProperty("_id"));
       assertTrue(r0.hasOwnProperty("_key"));
@@ -174,7 +173,7 @@ function ClusterCrudSimpleSuite () {
       assertEqual(r0._key, r0.value2);
       assertEqual(1, r0.value3);
     });
-    
+
     checkQuery(c.byExample({ value2 : "test999" }), 1, function (r0) {
       assertTrue(r0.hasOwnProperty("_id"));
       assertTrue(r0.hasOwnProperty("_key"));
@@ -186,7 +185,7 @@ function ClusterCrudSimpleSuite () {
       assertEqual("test999", r0.value2);
       assertEqual(1, r0.value3);
     });
-    
+
     checkQuery(c.byExample({ value1 : 9, value2 : "test999", value3 : 1 }), 1);
     checkQuery(c.byExample({ _key : "test999" }), 1);
     checkQuery(c.byExample({ value2: "test999" }).skip(1), 0);
@@ -199,13 +198,13 @@ function ClusterCrudSimpleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function for firstExample
 ////////////////////////////////////////////////////////////////////////////////
-    
+
   var executeFirstExample = function (c) {
     var i, n = 1000;
     for (i = 0; i < n; ++i) {
       c.save({ _key: "test" + i, value1 : (i % 10), value2 : "test" + i, value3 : 1 });
     }
-   
+
     var r0 = c.firstExample({ _key : "test35" });
     assertTrue(r0.hasOwnProperty("_id"));
     assertTrue(r0.hasOwnProperty("_key"));
@@ -217,7 +216,7 @@ function ClusterCrudSimpleSuite () {
     assertEqual(5, r0.value1);
     assertEqual("test35", r0.value2);
     assertEqual(1, r0.value3);
-    
+
     r0 = c.firstExample({ _key : "test35", value1 : 5, value2 : "test35", value3 : 1 });
     assertTrue(r0.hasOwnProperty("_id"));
     assertTrue(r0.hasOwnProperty("_key"));
@@ -232,16 +231,16 @@ function ClusterCrudSimpleSuite () {
 
     r0 = c.firstExample({ _key : "test35", value1: 6 });
     assertNull(r0);
-    
+
     r0 = c.firstExample({ _key : "test2000" });
     assertNull(r0);
-    
+
     r0 = c.firstExample({ value2 : "test2000" });
     assertNull(r0);
-    
+
     r0 = c.firstExample({ _key : "test2000", foobar : "baz" })
     assertNull(r0);
-    
+
     r0 = c.firstExample({ foobar : "baz" })
     assertNull(r0);
   };
@@ -249,7 +248,7 @@ function ClusterCrudSimpleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function for count
 ////////////////////////////////////////////////////////////////////////////////
-    
+
   var executeCount = function (c) {
     var i, n = 1000;
     for (i = 0; i < n; ++i) {
@@ -257,13 +256,13 @@ function ClusterCrudSimpleSuite () {
     }
 
     assertEqual(n, c.count());
-   
+
     c.removeByExample({ value1 : 7 });
     assertEqual(n - (n / 10), c.count());
-    
+
     c.removeByExample({ value1 : 6 });
     assertEqual(n - 2 * (n / 10), c.count());
-    
+
     // this shouldn't remove anything
     c.removeByExample({ value1 : 6 });
     assertEqual(n - 2 * (n / 10), c.count());
@@ -280,7 +279,7 @@ function ClusterCrudSimpleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function for any
 ////////////////////////////////////////////////////////////////////////////////
-    
+
   var executeAny = function (c) {
     var i, n = 1000;
 
@@ -307,7 +306,7 @@ function ClusterCrudSimpleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function for truncate
 ////////////////////////////////////////////////////////////////////////////////
-    
+
   var executeTruncate = function (c) {
     var i, n = 1000;
 
@@ -316,16 +315,16 @@ function ClusterCrudSimpleSuite () {
     }
 
     assertEqual(n, c.count());
-    
+
     c.truncate();
     assertEqual(0, c.count());
-    
+
     c.truncate();
     assertEqual(0, c.count());
 
     c.save({ _key : "foo" });
     assertEqual(1, c.count());
-    
+
     c.truncate();
     assertEqual(0, c.count());
   };
@@ -333,7 +332,7 @@ function ClusterCrudSimpleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function for removeByExample
 ////////////////////////////////////////////////////////////////////////////////
-    
+
   var executeRemoveByExample = function (c) {
     var i, n = 1000;
 
@@ -342,27 +341,27 @@ function ClusterCrudSimpleSuite () {
     }
 
     assertEqual(n, c.count());
-    
+
     assertEqual(0, c.removeByExample({ value1 : 11 }));
     assertEqual(n, c.count());
-    
+
     assertEqual(0, c.removeByExample({ value1 : 4, value2 : "test37" }));
     assertEqual(n, c.count());
-    
+
     assertEqual(0, c.removeByExample({ foobar : "baz" }));
     assertEqual(n, c.count());
-    
+
     assertEqual(n / 10, c.removeByExample({ value1 : 1 }));
     assertEqual(n - (n / 10), c.count());
-    
+
     assertEqual(n / 10, c.removeByExample({ value1 : 2 }));
     assertEqual(n - 2 * (n / 10), c.count());
-    
+
     assertEqual(1, c.removeByExample({ _key : "test44" }));
     assertEqual(n - 2 * (n / 10) - 1, c.count());
-    
+
     assertEqual(0, c.removeByExample({ _key : "test44" }));
-    
+
     assertEqual(n - 2 * (n / 10) - 1, c.removeByExample({ value3 : 1 }));
     assertEqual(0, c.count());
 
@@ -372,7 +371,7 @@ function ClusterCrudSimpleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function for replaceByExample
 ////////////////////////////////////////////////////////////////////////////////
-    
+
   var executeReplaceByExample = function (c) {
     var i, n = 1000;
 
@@ -383,27 +382,27 @@ function ClusterCrudSimpleSuite () {
     }
 
     assertEqual(n, c.count());
-    
+
     assertEqual(0, c.replaceByExample({ value1 : 11 }, { value1 : 17 }));
     assertEqual(n, c.count());
-    
+
     assertEqual(0, c.replaceByExample({ value1 : 4, value2 : "test37" }, { value2 : "foxx" }));
     assertEqual(n, c.count());
-    
+
     assertEqual(0, c.replaceByExample({ foobar : "baz" }, { boom : "bar" }));
     assertEqual(n, c.count());
-    
+
     assertEqual(n / 10, c.replaceByExample({ value1 : 1 }, { value1 : 4 }));
     assertEqual(0, c.replaceByExample({ value1 : 1 }, { value1 : 4 }));
     assertEqual(n, c.count());
-    
+
     assertEqual(n / 10, c.replaceByExample({ value1 : 2 }, { value1 : 5 }));
     assertEqual(0, c.replaceByExample({ value1 : 2 }, { value1 : 5 }));
     assertEqual(n, c.count());
-    
+
     assertEqual(1, c.replaceByExample({ _key : "test44" }, { value3 : 2 }));
     assertEqual(1, c.replaceByExample({ _key : "test44" }, { value3 : 4 }));
-    
+
     assertEqual(n, c.replaceByExample({ }, { value3 : 99, value2 : 1 }));
     assertEqual(0, c.replaceByExample({ value3 : 99, value2 : 2 }, { }));
     assertEqual(n, c.replaceByExample({ value3 : 99, value2 : 1 }, { value2 : 2, value3 : "test" }));
@@ -412,7 +411,7 @@ function ClusterCrudSimpleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function for replaceByExample
 ////////////////////////////////////////////////////////////////////////////////
-    
+
   var executeReplaceByExampleShardKeys = function (c) {
     var i, n = 1000;
 
@@ -429,7 +428,7 @@ function ClusterCrudSimpleSuite () {
     catch (err1) {
       assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err1.errorNum);
     }
-    
+
     try {
       c.replaceByExample({ a : 2 }, { a : 2, b : 13, c : 1 });
       fail();
@@ -437,7 +436,7 @@ function ClusterCrudSimpleSuite () {
     catch (err2) {
       assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err2.errorNum);
     }
-    
+
     try {
       c.replaceByExample({ a : 2 }, { a : 2, c : 1 });
       fail();
@@ -445,7 +444,7 @@ function ClusterCrudSimpleSuite () {
     catch (err3) {
       assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err3.errorNum);
     }
-    
+
     assertEqual(n / 100, c.replaceByExample({ a : 7, b : 17 }, { a : 7, b : 17, c : 12 }));
     assertEqual(n / 100, c.replaceByExample({ a : 7, b : 17, c : 12 }, { a : 7, b : 17, d : 9 }));
     assertEqual(0, c.replaceByExample({ a : 7, b : 17, c : 12 }, { }));
@@ -454,7 +453,7 @@ function ClusterCrudSimpleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function for updateByExample
 ////////////////////////////////////////////////////////////////////////////////
-    
+
   var executeUpdateByExample = function (c) {
     var i, n = 1000;
 
@@ -465,20 +464,20 @@ function ClusterCrudSimpleSuite () {
     }
 
     assertEqual(0, c.updateByExample({ value1 : 11 }, { value1 : 17 }));
-    
+
     assertEqual(0, c.updateByExample({ value1 : 4, value2 : "test37" }, { value2 : "foxx" }));
-    
+
     assertEqual(0, c.updateByExample({ foobar : "baz" }, { boom : "bar" }));
-    
+
     assertEqual(n / 10, c.updateByExample({ value1 : 1 }, { value1 : 4 }));
     assertEqual(0, c.updateByExample({ value1 : 1 }, { value1 : 4 }));
-    
+
     assertEqual(n / 10, c.updateByExample({ value1 : 2 }, { value1 : 5 }));
     assertEqual(0, c.updateByExample({ value1 : 2 }, { value1 : 5 }));
-    
+
     assertEqual(1, c.updateByExample({ _key : "test44" }, { value3 : 2 }));
     assertEqual(1, c.updateByExample({ _key : "test44" }, { value3 : 4 }));
-    
+
     assertEqual(n - 1, c.updateByExample({ value3 : 1 }, { value3 : 99 }));
     assertEqual(1, c.updateByExample({ value3 : 4 }, { value3 : 99 }));
 
@@ -486,7 +485,7 @@ function ClusterCrudSimpleSuite () {
     assertEqual(n, c.updateByExample({ value3 : 99 }, { }));
     assertEqual(2 * (n / 10), c.updateByExample({ value3 : 99, value1 : 9 }, { value12 : 7 }));
     assertEqual(n, c.updateByExample({ }, { value12 : 7 }));
-    
+
     assertEqual(n, c.updateByExample({ value12 : 7 }, { value12 : null }, false));
     assertEqual(0, c.byExample({ value12: 7 }).toArray().length);
   };
@@ -494,7 +493,7 @@ function ClusterCrudSimpleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function for updateByExample
 ////////////////////////////////////////////////////////////////////////////////
-    
+
   var executeUpdateByExampleShardKeys = function (c) {
     var i, n = 1000;
 
@@ -504,9 +503,9 @@ function ClusterCrudSimpleSuite () {
 
     assertEqual(0, c.updateByExample({ a : 11 }, { a : 17 }));
     assertEqual(0, c.updateByExample({ foobar : "baz" }, { a : 17 }));
-      
+
     assertEqual(10, c.updateByExample({ a : 1, b : 1 }, { a : 1, b : 1, c : "test" }));
-    
+
     try {
       c.updateByExample({ a : 1, b : 1 }, { a : 2, b : 1 });
       fail();
@@ -514,9 +513,9 @@ function ClusterCrudSimpleSuite () {
     catch (err1) {
       assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err1.errorNum);
     }
-    
+
     assertEqual(10, c.updateByExample({ a : 2, b : 2 }, { d : "test" }));
-    
+
     try {
       c.updateByExample({ a : 1, b : 1 }, { a : 2, d : 4 });
       fail();
@@ -524,7 +523,7 @@ function ClusterCrudSimpleSuite () {
     catch (err2) {
       assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err2.errorNum);
     }
-    
+
     try {
       c.updateByExample({ a : 1, b : 1 }, { a : 2 });
       fail();
@@ -634,32 +633,32 @@ function ClusterCrudSimpleSuite () {
     testFirstOneShard : function () {
       var c = createCollection({ numberOfShards: 1 });
       var i;
-  
-      for (i = 0; i < 5; ++i) {  
+
+      for (i = 0; i < 5; ++i) {
         c.save({ _key : "test" + i, value1 : i });
       }
-   
+
       var doc = c.first();
-      assertEqual("test0", doc._key); 
+      assertEqual("test0", doc._key);
       doc = c.first(2);
-      assertEqual("test0", doc[0]._key); 
-      assertEqual("test1", doc[1]._key); 
-      
+      assertEqual("test0", doc[0]._key);
+      assertEqual("test1", doc[1]._key);
+
       c.remove("test0");
       doc = c.first();
-      assertEqual("test1", doc._key); 
+      assertEqual("test1", doc._key);
 
       doc = c.first(2);
       assertEqual(2, doc.length);
-      assertEqual("test1", doc[0]._key); 
-      assertEqual("test2", doc[1]._key); 
-      
+      assertEqual("test1", doc[0]._key);
+      assertEqual("test2", doc[1]._key);
+
       doc = c.first(17);
       assertEqual(4, doc.length);
-      assertEqual("test1", doc[0]._key); 
-      assertEqual("test2", doc[1]._key); 
-      assertEqual("test3", doc[2]._key); 
-      assertEqual("test4", doc[3]._key); 
+      assertEqual("test1", doc[0]._key);
+      assertEqual("test2", doc[1]._key);
+      assertEqual("test3", doc[2]._key);
+      assertEqual("test4", doc[3]._key);
 
       c.truncate();
       assertNull(c.first());
@@ -672,9 +671,9 @@ function ClusterCrudSimpleSuite () {
 
     testFirstMultipleShards : function () {
       var c = createCollection({ numberOfShards: 5 });
-    
+
       c.save({ _key: "test" });
-    
+
       try {
         c.first();
         fail();
@@ -682,7 +681,7 @@ function ClusterCrudSimpleSuite () {
       catch (err1) {
         assertEqual(ERRORS.ERROR_CLUSTER_UNSUPPORTED.code, err1.errorNum);
       }
-      
+
       try {
         c.first(4);
         fail();
@@ -699,32 +698,32 @@ function ClusterCrudSimpleSuite () {
     testLastOneShard : function () {
       var c = createCollection({ numberOfShards: 1 });
       var i;
-  
-      for (i = 0; i < 5; ++i) {  
+
+      for (i = 0; i < 5; ++i) {
         c.save({ _key : "test" + i, value1 : i });
       }
-   
+
       var doc = c.last();
-      assertEqual("test4", doc._key); 
+      assertEqual("test4", doc._key);
       doc = c.last(2);
-      assertEqual("test4", doc[0]._key); 
-      assertEqual("test3", doc[1]._key); 
-      
+      assertEqual("test4", doc[0]._key);
+      assertEqual("test3", doc[1]._key);
+
       c.remove("test4");
       doc = c.last();
-      assertEqual("test3", doc._key); 
+      assertEqual("test3", doc._key);
 
       doc = c.last(2);
       assertEqual(2, doc.length);
-      assertEqual("test3", doc[0]._key); 
-      assertEqual("test2", doc[1]._key); 
-      
+      assertEqual("test3", doc[0]._key);
+      assertEqual("test2", doc[1]._key);
+
       doc = c.last(17);
       assertEqual(4, doc.length);
-      assertEqual("test3", doc[0]._key); 
-      assertEqual("test2", doc[1]._key); 
-      assertEqual("test1", doc[2]._key); 
-      assertEqual("test0", doc[3]._key); 
+      assertEqual("test3", doc[0]._key);
+      assertEqual("test2", doc[1]._key);
+      assertEqual("test1", doc[2]._key);
+      assertEqual("test0", doc[3]._key);
 
       c.truncate();
       assertNull(c.last());
@@ -737,9 +736,9 @@ function ClusterCrudSimpleSuite () {
 
     testLastMultipleShards : function () {
       var c = createCollection({ numberOfShards: 5 });
-    
+
       c.save({ _key: "test" });
-    
+
       try {
         c.last();
         fail();
@@ -747,7 +746,7 @@ function ClusterCrudSimpleSuite () {
       catch (err1) {
         assertEqual(ERRORS.ERROR_CLUSTER_UNSUPPORTED.code, err1.errorNum);
       }
-      
+
       try {
         c.last(4);
         fail();

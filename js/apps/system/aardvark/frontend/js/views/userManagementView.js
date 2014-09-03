@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
+/*jshint browser: true */
+/*jshint unused: false */
 /*global window, document, Backbone, EJS, SwaggerUi, hljs, $, arangoHelper, templateEngine,
   CryptoJS, Joi */
 (function() {
@@ -294,7 +295,7 @@
     },
 
     setFilterValues: function () {
-      /*    
+      /*
       var searchOptions = this.collection.searchOptions;
       $('#checkLoaded').attr('checked', searchOptions.includeLoaded);
       $('#checkUnloaded').attr('checked', searchOptions.includeUnloaded);

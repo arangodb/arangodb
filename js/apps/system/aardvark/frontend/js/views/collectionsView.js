@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
+/*jshint browser: true */
+/*jshint unused: false */
 /*global _, Backbone, templateEngine, window, setTimeout, clearTimeout, arangoHelper, Joi, $*/
 
 (function() {
@@ -199,7 +200,7 @@
         clearTimeout(this.searchTimeout);
         this.searchTimeout = null;
       }
-      
+
       var searchOptions = this.collection.searchOptions;
       searchOptions.searchPhrase = null;
     },
@@ -207,7 +208,7 @@
     restrictToSearchPhraseKey: function (e) {
       // key pressed in search box
       var self = this;
-      
+
       // force a new a search
       this.resetSearch();
 
