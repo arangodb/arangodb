@@ -69,11 +69,26 @@ function optimizerRuleTestSuite() {
     var hasNoSortNode = function (plan) {
         assertEqual(findExecutionNodes(plan, "SortNode").length, 0, "Has NO SortNode");
     };
-    var hasCalculationNode = function (plan) {
-        assertEqual(findExecutionNodes(plan, "CalculationNode").length, 1, "Has CalculationNode");
+    var hasCalculationNodes = function (plan, countXPect) {
+        assertEqual(findExecutionNodes(plan, "CalculationNode").length,
+                    countXPect,
+                    "Has " + countXPect +  "CalculationNode");
     };
     var hasNoCalculationNode = function (plan) {
         assertEqual(findExecutionNodes(plan, "CalculationNode").length, 0, "Has NO CalculationNode");
+    };
+    var hasIndexRangeNode_WithRanges = function (plan, haveRanges) {
+        rn = findExecutionNodes(plan, "IndexRangeNode")
+        assertEqual(rn.length, 1, "Has IndexRangeNode");
+        if (haveRanges) {
+            assertTrue(rn[0].ranges.length > 0, "Have IndexRangeNode with ranges");
+        }
+        else {
+            assertEqual(rn[0].ranges.length, 0, "Have IndexRangeNode with NO ranges");
+        }
+    };
+    var IsNodeType = function(node, type) {
+        assertEqual(node.type, type, "check whether this node is of type "+type);
     };
 
   return {
@@ -239,10 +254,9 @@ function optimizerRuleTestSuite() {
           assertEqual([ ruleName ], XPresult.plan.rules);
           // The sortnode and its calculation node should have been removed.
           hasNoSortNode(XPresult);
-          assertEqual(findExecutionNodes(XPresult, "CalculationNode").length, 1);
+          hasCalculationNodes(XPresult, 1);
           // The IndexRangeNode created by this rule is simple; it shouldn't have ranges.
-          assertEqual(findExecutionNodes(XPresult, "IndexRangeNode").length, 1);
-          assertEqual(findExecutionNodes(XPresult, "IndexRangeNode")[0].ranges.length, 0);
+          hasIndexRangeNode_WithRanges(XPresult, false);
 
           assertTrue(isEqual(QResults[0], QResults[1]), "Query results are equal?");
 
@@ -271,10 +285,9 @@ function optimizerRuleTestSuite() {
 //          require("internal").print(XPresult);
           
           hasSortNode(XPresult);
-          assertEqual(findExecutionNodes(XPresult, "CalculationNode").length, 4, "still got all of them?");
+          hasCalculationNodes(XPresult, 4);
           // The IndexRangeNode created by this rule is simple; it shouldn't have ranges.
-          assertEqual(findExecutionNodes(XPresult, "IndexRangeNode").length, 1, "got rangenode?");
-          assertEqual(findExecutionNodes(XPresult, "IndexRangeNode")[0].ranges.length, 0, "have ranges");
+          hasIndexRangeNode_WithRanges(XPresult, false);
 
           // -> combined use-index-for-sort and use-index-range
           //    use-index-range superseedes use-index-for-sort
@@ -284,10 +297,9 @@ function optimizerRuleTestSuite() {
           assertEqual([ secondRuleName ], XPresult.plan.rules.sort());
           // The sortnode and its calculation node should not have been removed.
           hasSortNode(XPresult);
-          assertEqual(findExecutionNodes(XPresult, "CalculationNode").length, 4);
+          hasCalculationNodes(XPresult, 4);
           // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
-          assertEqual(findExecutionNodes(XPresult, "IndexRangeNode").length, 1);
-          assertTrue(findExecutionNodes(XPresult, "IndexRangeNode")[0].ranges.length > 0);
+          hasIndexRangeNode_WithRanges(XPresult, true);
 
           // -> use-index-range alone.
           QResults[3] = AQL_EXECUTE(query, { }, paramIR).json;
@@ -296,19 +308,14 @@ function optimizerRuleTestSuite() {
           // the sortnode and its calculation node should be there. 
 
           hasSortNode(XPresult);
-          assertTrue(findExecutionNodes(XPresult, "CalculationNode").length === 4);
+          hasCalculationNodes(XPresult,4);
           // we should be able to find exactly one sortnode property - its a Calculation node.
           var sortProperty = findReferencedNodes(XPresult, findExecutionNodes(XPresult, "SortNode")[0]);
           assertTrue(sortProperty.length === 2);
           assertTrue(sortProperty[0].type === "CalculationNode");
           assertTrue(sortProperty[1].type === "CalculationNode");
           // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
-//          require("internal").print(findExecutionNodes(XPresult, "IndexRangeNode"));
-//          require("internal").print(findExecutionNodes(XPresult, "IndexRangeNode").length);
-          assertEqual(1, findExecutionNodes(XPresult, "IndexRangeNode").length);
-
-//          require("internal").print(findExecutionNodes(XPresult, "IndexRangeNode")[0].ranges);
-          assertTrue(findExecutionNodes(XPresult, "IndexRangeNode")[0].ranges.length > 0);
+          hasIndexRangeNode_WithRanges(XPresult, true);
 
           for (i = 1; i < 4; i++) {
               assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + "is Equal?");
@@ -333,10 +340,9 @@ function optimizerRuleTestSuite() {
           assertEqual([ ruleName ], XPresult.plan.rules);
           // The sortnode and its calculation node should have been removed.
           hasNoSortNode(XPresult);
-          assertEqual(findExecutionNodes(XPresult, "CalculationNode").length, 2);
+          hasCalculationNodes(XPresult, 2);
           // The IndexRangeNode created by this rule is simple; it shouldn't have ranges.
-          assertEqual(findExecutionNodes(XPresult, "IndexRangeNode").length, 1);
-          assertEqual(findExecutionNodes(XPresult, "IndexRangeNode")[0].ranges.length, 0);
+          hasIndexRangeNode_WithRanges(XPresult, false);
 
           // -> combined use-index-for-sort and use-index-range
           QResults[2] = AQL_EXECUTE(query, { }, paramBoth).json;
@@ -344,10 +350,9 @@ function optimizerRuleTestSuite() {
           assertEqual([ secondRuleName, ruleName ].sort(), XPresult.plan.rules.sort());
           // The sortnode and its calculation node should have been removed.
           hasNoSortNode(XPresult);
-          assertEqual(findExecutionNodes(XPresult, "CalculationNode").length, 2);
+          hasCalculationNodes(XPresult, 2);
           // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
-          assertEqual(findExecutionNodes(XPresult, "IndexRangeNode").length, 1);
-          assertTrue(findExecutionNodes(XPresult, "IndexRangeNode")[0].ranges.length > 0);
+          hasIndexRangeNode_WithRanges(XPresult, true);
 
           // -> use-index-range alone.
           QResults[3] = AQL_EXECUTE(query, { }, paramIR).json;
@@ -355,18 +360,14 @@ function optimizerRuleTestSuite() {
           assertEqual([ secondRuleName ], XPresult.plan.rules);
           // the sortnode and its calculation node should be there.
           hasSortNode(XPresult);
-          assertEqual(findExecutionNodes(XPresult, "CalculationNode").length, 3);
+          hasCalculationNodes(XPresult, 3);
           // we should be able to find exactly one sortnode property - its a Calculation node.
           var sortProperty = findReferencedNodes(XPresult, findExecutionNodes(XPresult, "SortNode")[0]);
           assertEqual(sortProperty.length, 1);
-          assertEqual(sortProperty[0].type, "CalculationNode");
+          IsNodeType(sortProperty[0], "CalculationNode");
           // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
-//          require("internal").print(findExecutionNodes(XPresult, "IndexRangeNode"));
-//          require("internal").print(findExecutionNodes(XPresult, "IndexRangeNode").length);
-          assertEqual(1, findExecutionNodes(XPresult, "IndexRangeNode").length);
+          hasIndexRangeNode_WithRanges(XPresult, true);
 
-//          require("internal").print(findExecutionNodes(XPresult, "IndexRangeNode")[0].ranges);
-          assertTrue(findExecutionNodes(XPresult, "IndexRangeNode")[0].ranges.length > 0);
 
           for (i = 1; i < 4; i++) {
               assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + "is Equal?");
