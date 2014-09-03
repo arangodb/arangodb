@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 80 */
 /*global require, assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -144,7 +143,7 @@ function AqlFunctionsSuite () {
 
       actual = db._createStatement({ query: "RETURN UnitTests::tryme(3)" }).execute().toArray();
       assertEqual([ 9 ], actual);
-      
+
       aqlfunctions.register("UnitTests::tryme", function (what) { return what * 4; }, true);
       assertEqual("function (what) { return what * 4; }", aqlfunctions.toArray("UnitTests")[0].code);
       actual = db._createStatement({ query: "RETURN UnitTests::tryme(3)" }).execute().toArray();
@@ -169,7 +168,7 @@ function AqlFunctionsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toArray 
+/// @brief toArray
 ////////////////////////////////////////////////////////////////////////////////
 
     testToArray1 : function () {
@@ -183,7 +182,7 @@ function AqlFunctionsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief toArray 
+/// @brief toArray
 ////////////////////////////////////////////////////////////////////////////////
 
     testToArray2 : function () {
@@ -199,7 +198,7 @@ function AqlFunctionsSuite () {
       assertEqual([ "UnitTests58::tryme::bar", "UnitTests58::whyme::bar" ], aqlfunctions.toArray("UnitTests58::").map(function (f) { return f.name; }).sort());
       assertEqual([ "UnitTests58::tryme::bar" ], aqlfunctions.toArray("UnitTests58::tryme").map(function (f) { return f.name; }).sort());
       assertEqual([ "UnitTests58::tryme::bar" ], aqlfunctions.toArray("UnitTests58::tryme::").map(function (f) { return f.name; }).sort());
-      
+
       aqlfunctions.unregister("UnitTests58::tryme::bar", function (what) { return what * 2; }, true);
       aqlfunctions.unregister("UnitTests58::whyme::bar", function (what) { return what * 2; }, true);
     },
@@ -508,7 +507,7 @@ function AqlFunctionsSuite () {
 
       unregister("UnitTests::testFunc");
       var testFunc = function() {
-        var db = require("internal").db; 
+        var db = require("internal").db;
         var query = "FOR path IN UnitTestsFunc SORT path.value RETURN path.value";
         var bind = {};
         return db._query(query, bind).toArray()[0];
@@ -517,7 +516,7 @@ function AqlFunctionsSuite () {
 
       var actual = db._createStatement({ query: "RETURN UnitTests::testFunc()" }).execute().toArray();
       assertEqual([ 0 ], actual);
-      
+
       db._drop("UnitTestsFunc");
     },
 
@@ -533,7 +532,7 @@ function AqlFunctionsSuite () {
 
       unregister("UnitTests::testFunc");
       var testFunc = function() {
-        var db = require("internal").db; 
+        var db = require("internal").db;
         var query = "FOR path IN UnitTestsFunc RETURN path";
         var bind = {};
         return db._query(query, bind).toArray()[0];
@@ -545,7 +544,7 @@ function AqlFunctionsSuite () {
       assertEqual(123, actual[0].value2);
       assertEqual(null, actual[0].value3);
       assertEqual(false, actual[0].value4);
-      
+
       db._drop("UnitTestsFunc");
     }
 

@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true */
 /*global require, assertEqual, assertTrue, assertFalse, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -760,7 +759,7 @@ function GeneralGraphAQLQueriesSuite() {
 
   var findIdInResult = function(result, id) {
     return _.some(result, function(i) {
-      return i._id === id; 
+      return i._id === id;
     });
   };
 
@@ -859,7 +858,7 @@ function GeneralGraphAQLQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: filter construct on Edges
 ////////////////////////////////////////////////////////////////////////////////
-   
+
    test_filterOnEdges: function() {
       var query = g._edges().filter({val: true});
       assertEqual(query.printQuery(), "FOR edges_0 IN GRAPH_EDGES("
@@ -2674,7 +2673,7 @@ function OrphanCollectionSuite() {
 
     test_doNotDropOrphanCollectionsUsedInOtherEdgedefinitions: function() {
       assertTrue(db._collection(vC3) !== null);
-      g1._addVertexCollection(vC3, true); 
+      g1._addVertexCollection(vC3, true);
       assertTrue(db._collection(vC3) !== null);
       graph._drop(gN1, true);
       assertTrue(db._collection(vC3) !== null);
@@ -2684,7 +2683,7 @@ function OrphanCollectionSuite() {
 
     test_doNotDropCollectionsIfUsedAsOrphansInOtherGraphs: function() {
       assertTrue(db._collection(vC3) !== null);
-      g1._addVertexCollection(vC3, true); 
+      g1._addVertexCollection(vC3, true);
       assertTrue(db._collection(vC3) !== null);
       graph._drop(gN2, true);
       assertTrue(db._collection(vC3) !== null);
@@ -2694,8 +2693,8 @@ function OrphanCollectionSuite() {
 
     test_doNotDropOrphanCollectionsUsedAsOrphansInOtherGraphs: function() {
       assertTrue(db._collection(vC4) === null);
-      g1._addVertexCollection(vC4, true); 
-      g2._addVertexCollection(vC4, true); 
+      g1._addVertexCollection(vC4, true);
+      g2._addVertexCollection(vC4, true);
       assertTrue(db._collection(vC4) !== null);
       graph._drop(gN1, true);
       assertTrue(db._collection(vC4) !== null);
@@ -2704,9 +2703,9 @@ function OrphanCollectionSuite() {
     },
 
     test_doNotAddTheSameOrphanCollectionMultipleTimes: function() {
-      g1._addVertexCollection(vC4, true); 
+      g1._addVertexCollection(vC4, true);
       try {
-        g1._addVertexCollection(vC4, true); 
+        g1._addVertexCollection(vC4, true);
         fail();
       } catch(err) {
         assertEqual(err.errorNum, arangodb.errors.ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS.code);

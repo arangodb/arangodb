@@ -1,5 +1,4 @@
 module.define("org/arangodb/simple-query", function(exports, module) {
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -84,7 +83,7 @@ SimpleQueryAll.prototype.execute = function (batchSize) {
     if (this._batchSize !== null) {
       data.batchSize = this._batchSize;
     }
-  
+
     var requestResult = this._collection._database._connection.PUT(
       "/_api/simple/all", JSON.stringify(data));
 
@@ -123,7 +122,7 @@ SimpleQueryByExample.prototype.execute = function (batchSize) {
   if (this._execution === null) {
     if (batchSize !== undefined && batchSize > 0) {
       this._batchSize = batchSize;
-    }  
+    }
 
     var data = {
       collection: this._collection.name(),
@@ -137,7 +136,7 @@ SimpleQueryByExample.prototype.execute = function (batchSize) {
     if (this._skip !== null) {
       data.skip = this._skip;
     }
-    
+
     if (this._batchSize !== null) {
       data.batchSize = this._batchSize;
     }
@@ -198,7 +197,7 @@ SimpleQueryByCondition.prototype.execute = function (batchSize) {
   if (this._execution === null) {
     if (batchSize !== undefined && batchSize > 0) {
       this._batchSize = batchSize;
-    }  
+    }
 
     var data = {
       collection: this._collection.name(),
@@ -212,7 +211,7 @@ SimpleQueryByCondition.prototype.execute = function (batchSize) {
     if (this._skip !== null) {
       data.skip = this._skip;
     }
-    
+
     if (this._batchSize !== null) {
       data.batchSize = this._batchSize;
     }
@@ -287,11 +286,11 @@ SimpleQueryRange.prototype.execute = function (batchSize) {
     if (this._skip !== null) {
       data.skip = this._skip;
     }
-    
+
     if (this._batchSize !== null) {
       data.batchSize = this._batchSize;
     }
-  
+
     var requestResult = this._collection._database._connection.PUT(
       "/_api/simple/range", JSON.stringify(data));
 
@@ -349,15 +348,15 @@ SimpleQueryNear.prototype.execute = function (batchSize) {
     if (this._index !== null) {
       data.geo = this._index;
     }
-  
+
     if (this._distance !== null) {
       data.distance = this._distance;
     }
-    
+
     if (this._batchSize !== null) {
       data.batchSize = this._batchSize;
     }
-  
+
     var requestResult = this._collection._database._connection.PUT(
       "/_api/simple/near", JSON.stringify(data));
 
@@ -416,15 +415,15 @@ SimpleQueryWithin.prototype.execute = function (batchSize) {
     if (this._index !== null) {
       data.geo = this._index;
     }
-  
+
     if (this._distance !== null) {
       data.distance = this._distance;
     }
-    
+
     if (this._batchSize !== null) {
       data.batchSize = this._batchSize;
     }
-  
+
     var requestResult = this._collection._database._connection.PUT(
       "/_api/simple/within", JSON.stringify(data));
 
@@ -470,11 +469,11 @@ SimpleQueryFulltext.prototype.execute = function (batchSize) {
       attribute: this._attribute,
       query: this._query
     };
-    
+
     if (this._limit !== null) {
       data.limit = this._limit;
     }
-    
+
     if (this._index !== null) {
       data.index = this._index;
     }
@@ -486,7 +485,7 @@ SimpleQueryFulltext.prototype.execute = function (batchSize) {
     if (this._batchSize !== null) {
       data.batchSize = this._batchSize;
     }
-  
+
     var requestResult = this._collection._database._connection.PUT(
       "/_api/simple/fulltext", JSON.stringify(data));
 

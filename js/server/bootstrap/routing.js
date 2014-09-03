@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -37,6 +36,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
+  "use strict";
   return {
     startup: function () {
       var internal = require("internal");

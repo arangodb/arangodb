@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
+/*jshint strict: false */
 /*global require, exports, Buffer */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,7 +45,7 @@ var internal = require("internal");
 /// if random number generation fails, then undefined is returned
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.rand = function (value) {
+exports.rand = function () {
   return internal.rand();
 };
 

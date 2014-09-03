@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global _, document, ForceLayouter, DomObserverFactory*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -31,20 +30,20 @@
 
 function CommunityNode(parent, initial) {
   "use strict";
-  
+
   if (_.isUndefined(parent)
     || !_.isFunction(parent.dissolveCommunity)
     || !_.isFunction(parent.checkNodeLimit)) {
     throw "A parent element has to be given.";
   }
-  
+
   initial = initial || [];
-  
+
   var
 
   ////////////////////////////////////
   // Private variables              //
-  ////////////////////////////////////   
+  ////////////////////////////////////
     self = this,
     bBox,
     bBoxBorder,
@@ -60,22 +59,22 @@ function CommunityNode(parent, initial) {
     layouter,
   ////////////////////////////////////
   // Private functions              //
-  //////////////////////////////////// 
-  
+  ////////////////////////////////////
+
     getDistance = function(def) {
       if (self._expanded) {
         return 2 * def * Math.sqrt(nodeArray.length);
       }
       return def;
     },
-  
+
     getCharge = function(def) {
       if (self._expanded) {
         return 4 * def * Math.sqrt(nodeArray.length);
       }
       return def;
     },
-  
+
     compPosi = function(p) {
       var d = self.position,
         x = p.x * d.z + d.x,
@@ -87,15 +86,15 @@ function CommunityNode(parent, initial) {
         z: z
       };
     },
-  
+
     getSourcePosition = function(e) {
       if (self._expanded) {
         return compPosi(e._source.position);
       }
       return self.position;
     },
-  
-  
+
+
     getTargetPosition = function(e) {
       if (self._expanded) {
         return compPosi(e._target.position);
@@ -110,7 +109,7 @@ function CommunityNode(parent, initial) {
         .attr("height", boundingBox.height + 30);
       bBoxTitle.attr("width", boundingBox.width + 10);
     },
-  
+
     getObserver = function() {
       if (!observer) {
         var factory = new DomObserverFactory();
@@ -125,7 +124,7 @@ function CommunityNode(parent, initial) {
       }
       return observer;
     },
-  
+
     updateNodeArray = function() {
       layouter.stop();
       nodeArray.length = 0;
@@ -134,7 +133,7 @@ function CommunityNode(parent, initial) {
       });
       layouter.start();
     },
-  
+
     updateEdgeArray = function() {
       layouter.stop();
       intEdgeArray.length = 0;
@@ -143,7 +142,7 @@ function CommunityNode(parent, initial) {
       });
       layouter.start();
     },
-  
+
     toArray = function(obj) {
       var res = [];
       _.each(obj, function(v) {
@@ -151,19 +150,19 @@ function CommunityNode(parent, initial) {
       });
       return res;
     },
-  
+
     hasNode = function(id) {
       return !!nodes[id];
     },
-  
+
     getNodes = function() {
       return nodeArray;
     },
-    
+
     getNode = function(id) {
       return nodes[id];
     },
-  
+
     insertNode = function(n) {
       nodes[n._id] = n;
       updateNodeArray();
@@ -177,14 +176,14 @@ function CommunityNode(parent, initial) {
       });
       updateNodeArray();
     },
-    
+
     removeNode = function(n) {
       var id = n._id || n;
       delete nodes[id];
       updateNodeArray();
       self._size--;
     },
-    
+
     removeInboundEdge = function(e) {
       var id;
       if (!_.has(e, "_id")) {
@@ -206,7 +205,7 @@ function CommunityNode(parent, initial) {
       self._inboundCounter--;
       return;
     },
-    
+
     removeOutboundEdge = function(e) {
       var id;
       if (!_.has(e, "_id")) {
@@ -229,7 +228,7 @@ function CommunityNode(parent, initial) {
       self._outboundCounter--;
       return;
     },
-    
+
     removeOutboundEdgesFromNode = function(n) {
       var id = n._id || n,
         res = [];
@@ -240,7 +239,7 @@ function CommunityNode(parent, initial) {
       delete outReferences[id];
       return res;
     },
-    
+
     insertInboundEdge = function(e) {
       e._target = e.target;
       e.target = self;
@@ -255,7 +254,7 @@ function CommunityNode(parent, initial) {
       self._inboundCounter++;
       return false;
     },
-    
+
     insertOutboundEdge = function(e) {
       var sId = e.source._id;
       e._source = e.source;
@@ -273,7 +272,7 @@ function CommunityNode(parent, initial) {
       outbound[e._id] = e;
       return false;
     },
-  
+
     getDissolveInfo = function() {
       return {
         nodes: nodeArray,
@@ -284,15 +283,15 @@ function CommunityNode(parent, initial) {
         }
       };
     },
-    
+
     expand = function() {
       this._expanded = true;
     },
-    
+
     dissolve = function() {
       parent.dissolveCommunity(self);
     },
-    
+
     collapse = function() {
       this._expanded = false;
     },
@@ -321,7 +320,7 @@ function CommunityNode(parent, initial) {
         .attr("fill", colourMapper.getCommunityColour())
         .text(self._size);
     },
-    
+
     addCollapsedShape = function(g, shapeFunc, start, colourMapper) {
       var inner = g.append("g")
         .attr("stroke", colourMapper.getForegroundCommunityColour())
@@ -354,7 +353,7 @@ function CommunityNode(parent, initial) {
       interior.selectAll("* > *").remove();
       shapeQue(interior);
     },
-    
+
     addBoundingBox = function(g, start) {
       bBox = g.append("g");
       bBoxBorder = bBox.append("rect")
@@ -406,12 +405,12 @@ function CommunityNode(parent, initial) {
         attributes:true
       });
     },
-    
+
     addDistortion = function(distFunc) {
       if (self._expanded) {
         var oldFocus = distFunc.focus(),
           newFocus = [
-            oldFocus[0] - self.position.x, 
+            oldFocus[0] - self.position.x,
             oldFocus[1] - self.position.y
           ];
         distFunc.focus(newFocus);
@@ -424,7 +423,7 @@ function CommunityNode(parent, initial) {
         distFunc.focus(oldFocus);
       }
     },
-    
+
     shapeAll = function(g, shapeFunc, shapeQue, start, colourMapper) {
       // First unbind all click events that are proably still bound
       g.on("click", null);
@@ -435,7 +434,7 @@ function CommunityNode(parent, initial) {
       }
       addCollapsedShape(g, shapeFunc, start, colourMapper);
     },
-    
+
     updateEdges = function(g, addPosition, addUpdate) {
       if (self._expanded) {
         var interior = g.selectAll(".link"),
@@ -444,7 +443,7 @@ function CommunityNode(parent, initial) {
         addUpdate(interior);
       }
     },
-    
+
     shapeEdges = function(g, addQue) {
       var idFunction = function(d) {
           return d._id;
@@ -455,7 +454,7 @@ function CommunityNode(parent, initial) {
         interior = g
           .selectAll(".link")
           .data(intEdgeArray, idFunction);
-        // Append the group and class to all new    
+        // Append the group and class to all new
         interior.enter()
           .append("g")
           .attr("class", "link") // link is CSS class that might be edited
@@ -468,15 +467,15 @@ function CommunityNode(parent, initial) {
         addQue(line, interior);
       }
     },
-    
+
     collapseNode = function(n) {
       removeOutboundEdgesFromNode(n);
     };
-  
+
   ////////////////////////////////////
   // Setup                          //
   ////////////////////////////////////
-  
+
   layouter = new ForceLayouter({
     distance: 100,
     gravity: 0.1,
@@ -486,7 +485,7 @@ function CommunityNode(parent, initial) {
     nodes: nodeArray,
     links: intEdgeArray
   });
-  
+
   ////////////////////////////////////
   // Values required for shaping    //
   ////////////////////////////////////
@@ -505,46 +504,46 @@ function CommunityNode(parent, initial) {
   // Easy check for the other classes,
   // no need for a regex on the _id any more.
   this._isCommunity = true;
-  
+
   insertInitialNodes(initial);
-  
+
   ////////////////////////////////////
   // Public functions               //
   ////////////////////////////////////
-  
+
   this.hasNode = hasNode;
   this.getNodes = getNodes;
   this.getNode = getNode;
   this.getDistance = getDistance;
   this.getCharge = getCharge;
-  
-  
+
+
   this.insertNode = insertNode;
   this.insertInboundEdge = insertInboundEdge;
   this.insertOutboundEdge = insertOutboundEdge;
-  
+
   this.removeNode = removeNode;
   this.removeInboundEdge = removeInboundEdge;
   this.removeOutboundEdge = removeOutboundEdge;
   this.removeOutboundEdgesFromNode = removeOutboundEdgesFromNode;
-  
-  
+
+
   this.collapseNode = collapseNode;
-  
+
   this.dissolve = dissolve;
   this.getDissolveInfo = getDissolveInfo;
-  
+
   this.collapse = collapse;
   this.expand = expand;
-  
+
   this.shapeNodes = shapeAll;
   this.shapeInnerEdges = shapeEdges;
   this.updateInnerEdges = updateEdges;
-  
-  
+
+
   this.addDistortion = addDistortion;
 
   this.getSourcePosition = getSourcePosition;
-  
+
   this.getTargetPosition = getTargetPosition;
 }

@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
+/*jshint unused: false */
 /*global it, expect, describe, beforeEach*/
 /*global spyOn, jasmine, window*/
 
@@ -34,7 +34,7 @@
   "use strict";
 
   window.describeInterface = function (testee) {
-    
+
     describe('checking the interface', function() {
       it('should comply to the Adapter Interface', function() {
         this.addMatchers({
@@ -57,7 +57,7 @@
             return true;
           }
         });
-        
+
         // Add functions to load here:
         expect(testee).toHaveFunction("loadNode", 2);
         expect(testee).toHaveFunction("loadInitialNode", 2);
@@ -76,25 +76,25 @@
         expect(testee).toHaveFunction("expandCommunity", 2);
       });
     });
-      
-      
+
+
   };
 
   /**
   * Expectations on constructor:
   * Created with config: {prioList: ["foo", "bar", "baz"]}
-  * loadNode -> Adds {_id: 1} -{_id:"1-2"}-> {_id: 2}  
+  * loadNode -> Adds {_id: 1} -{_id:"1-2"}-> {_id: 2}
   * createEdge({source: {_id: 1}, target: {_id: 1}}) -> {_id: "1-2", _from:1, _to:2}
   * createNode({}) -> {_id: 1}
   *
   */
 
   window.describeIntegeration = function(constructor) {
-    
+
     describe('checking integeration of the abstract adapter', function() {
-      
+
       var mockedAbstract, testee;
-      
+
       beforeEach(function() {
         mockedAbstract = {
           edges: [],
@@ -127,8 +127,8 @@
           changeTo: function(){},
           getPrioList: function(){}
         };
-        
-        
+
+
         spyOn(window, "AbstractAdapter").andCallFake(
           function(nodes, edges, descendant, viewer, config) {
             mockedAbstract.nodes = nodes;
@@ -137,7 +137,7 @@
           }
         );
       });
-      
+
       it('should create the AbstractAdapter with correct values', function() {
         testee = constructor();
         expect(window.AbstractAdapter).wasCalledWith(
@@ -148,28 +148,28 @@
           {prioList: ["foo", "bar", "baz"]}
         );
       });
-      
+
       it('should call getPrioList on the abstract', function() {
         spyOn(mockedAbstract, "getPrioList");
         testee = constructor();
         testee.getPrioList();
         expect(mockedAbstract.getPrioList).wasCalled();
       });
-      
+
       it('should call setNodeLimit on the abstract', function() {
         spyOn(mockedAbstract, "setNodeLimit");
         testee = constructor();
         testee.setNodeLimit(5, function(){});
         expect(mockedAbstract.setNodeLimit).wasCalledWith(5, jasmine.any(Function));
       });
-      
+
       it('should propagate changeTo to the abstract', function() {
         spyOn(mockedAbstract, "changeTo");
         testee = constructor();
         testee.changeTo({prioList: ["foo", "bar", "baz"]});
         expect(mockedAbstract.changeTo).wasCalledWith({prioList: ["foo", "bar", "baz"]});
       });
-      
+
       it('should call explore on the abstract', function() {
         spyOn(mockedAbstract, "explore");
         testee = constructor();
@@ -179,14 +179,14 @@
         testee.explore(node, function(){});
         expect(mockedAbstract.explore).wasCalledWith(node, jasmine.any(Function));
       });
-      
+
       it('should call setChildLimit on the abstract', function() {
         spyOn(mockedAbstract, "setChildLimit");
         testee = constructor();
         testee.setChildLimit(5);
         expect(mockedAbstract.setChildLimit).wasCalledWith(5);
       });
-      
+
       it('should call expandCommunity on the abstract', function() {
         spyOn(mockedAbstract, "expandCommunity");
         var comm = {};
@@ -194,7 +194,7 @@
         testee.expandCommunity(comm);
         expect(mockedAbstract.expandCommunity).wasCalledWith(comm);
       });
-      
+
       it('should use the abstract to insert objects from loadNode', function() {
         spyOn(mockedAbstract, "insertNode").andCallThrough();
         spyOn(mockedAbstract, "insertEdge").andCallThrough();
@@ -208,14 +208,14 @@
         expect(mockedAbstract.checkSizeOfInserted).wasCalledWith({2: mockedAbstract.nodes[1]});
         expect(mockedAbstract.checkNodeLimit).wasCalledWith(mockedAbstract.nodes[0]);
       });
-      
+
       it('should insert an edge on createEdge', function() {
         spyOn(mockedAbstract, "insertEdge");
         testee = constructor();
         testee.createEdge({source: {_id: 1}, target: {_id: 2}}, function(){});
         expect(mockedAbstract.insertEdge).wasCalledWith({_id: "1-2", _from: 1, _to: 2});
       });
-      
+
       it('should remove an edge on deleteEdge', function() {
         spyOn(mockedAbstract, "removeEdge");
         testee = constructor();
@@ -223,14 +223,14 @@
         testee.deleteEdge(edge);
         expect(mockedAbstract.removeEdge).wasCalledWith(edge);
       });
-      
+
       it('should insert a node on createNode', function() {
         spyOn(mockedAbstract, "insertNode");
         testee = constructor();
         testee.createNode({}, function(){});
         expect(mockedAbstract.insertNode).wasCalledWith({_id: 1});
       });
-      
+
       it('should remove a node on deleteNode', function() {
         spyOn(mockedAbstract, "removeNode");
         spyOn(mockedAbstract, "removeEdgesForNode");
@@ -240,8 +240,8 @@
         expect(mockedAbstract.removeEdgesForNode).wasCalledWith(node);
         expect(mockedAbstract.removeNode).wasCalledWith(node);
       });
-          
+
     });
-    
+
   };
 }());

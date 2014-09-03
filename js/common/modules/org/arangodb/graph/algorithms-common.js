@@ -1,5 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports */
+/*jshint strict: false */
+/*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -441,8 +441,8 @@ Vertex.prototype.measurement = function (measurement) {
 /// An optional `options` JSON object can be specified to control the result.
 /// `options` can have the following sub-attributes:
 /// - `grouped`: if not specified or set to `false`, the result will be a flat
-///   list. If set to `true`, the result will be a list containing list of 
-///   paths, grouped for each combination of source and target. 
+///   list. If set to `true`, the result will be a list containing list of
+///   paths, grouped for each combination of source and target.
 /// - `threshold`: if not specified, all paths will be returned. If `threshold`
 ///   is `true`, only paths with a minimum length of 3 will be returned
 ////////////////////////////////////////////////////////////////////////////////
@@ -488,7 +488,7 @@ Graph.prototype.geodesics = function (options) {
 /// @FUN{@FA{graph}.measurement(@FA{measurement})}
 ///
 /// Calculates the diameter or radius of a graph.
-/// `measurement` can either be: 
+/// `measurement` can either be:
 /// - `diameter`: to calculate the diameter
 /// - `radius`: to calculate the radius
 ///
@@ -533,7 +533,7 @@ Graph.prototype.measurement = function (measurement) {
 ///
 /// Calculates the normalized degree, closeness, betweenness or eccentricity
 /// of all vertices in a graph
-/// `measurement` can either be: 
+/// `measurement` can either be:
 /// - `closeness`: to calculate the closeness
 /// - `betweenness`: to calculate the betweenness
 /// - `eccentricity`: to calculate the eccentricity

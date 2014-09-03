@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 80 */
 /*global require, assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,11 +46,11 @@ var replication = require("org/arangodb/replication");
 function ReplicationLoggerSuite () {
   var cn  = "UnitTestsReplication";
   var cn2 = "UnitTestsReplication2";
-  
+
   var waitForSync = function () {
     internal.wait(1.5, false);
   };
-  
+
   var getLogEntries = function (tick, type) {
     var result = [ ];
     waitForSync();
@@ -104,7 +103,7 @@ function ReplicationLoggerSuite () {
         break;
       }
       internal.wait(0.1, false);
-    }  
+    }
   };
 
   return {
@@ -133,8 +132,8 @@ function ReplicationLoggerSuite () {
 
     testStartLogger : function () {
       var actual, state;
-      
-      // start 
+
+      // start
       actual = replication.logger.start();
       assertTrue(actual);
 
@@ -143,8 +142,8 @@ function ReplicationLoggerSuite () {
       assertTrue(typeof state.lastLogTick === 'string');
       assertMatch(/^\d+$/, state.lastLogTick);
       assertTrue(state.totalEvents >= 0);
-    
-      // start again  
+
+      // start again
       actual = replication.logger.start();
       assertTrue(actual);
     },
@@ -155,21 +154,21 @@ function ReplicationLoggerSuite () {
 
     testStopLogger : function () {
       var actual, state;
-      
-      // start 
+
+      // start
       actual = replication.logger.start();
       assertTrue(actual);
-      
+
       state = replication.logger.state().state;
       assertTrue(state.running);
       assertTrue(typeof state.lastLogTick === 'string');
       assertMatch(/^\d+$/, state.lastLogTick);
       assertTrue(state.totalEvents >= 0);
-    
+
       // stop
       actual = replication.logger.stop();
       assertTrue(actual);
-      
+
       state = replication.logger.state().state;
       assertTrue(state.running);
       assertTrue(typeof state.lastLogTick === 'string');
@@ -183,14 +182,14 @@ function ReplicationLoggerSuite () {
 
     testGetLoggerState : function () {
       var state, tick, server, clients;
-      
+
       state = replication.logger.state().state;
       assertTrue(state.running);
       tick = state.lastLogTick;
       assertTrue(typeof tick === 'string');
       assertNotEqual("", state.time);
       assertMatch(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/, state.time);
-      
+
       state = replication.logger.state().state;
       assertTrue(state.running);
 
@@ -198,10 +197,10 @@ function ReplicationLoggerSuite () {
       assertTrue(typeof state.lastLogTick === 'string');
       assertMatch(/^\d+$/, state.lastLogTick);
       assertTrue(state.totalEvents >= 0);
-      
+
       server = replication.logger.state().server;
-      assertEqual(server.version, db._version()); 
-      assertNotEqual("", server.serverId); 
+      assertEqual(server.version, db._version());
+      assertNotEqual("", server.serverId);
       assertMatch(/^\d+$/, server.serverId);
     },
 
@@ -211,7 +210,7 @@ function ReplicationLoggerSuite () {
 
     testDisabledLogger : function () {
       var state, tick, events;
-      
+
       state = replication.logger.state().state;
       assertTrue(state.running);
       tick = state.lastLogTick;
@@ -239,7 +238,7 @@ function ReplicationLoggerSuite () {
 
     testEnabledLogger : function () {
       var state, tick;
-      
+
       state = replication.logger.state().state;
       assertTrue(state.running);
       tick = state.lastLogTick;
@@ -253,7 +252,7 @@ function ReplicationLoggerSuite () {
       // do something that will cause logging
       var c = db._create(cn);
       c.save({ "test" : 1 });
-      
+
       waitForTick(tick);
 
       state = replication.logger.state().state;
@@ -271,7 +270,7 @@ function ReplicationLoggerSuite () {
 
     testPropertiesLogger : function () {
       var properties;
-      
+
       properties = replication.logger.properties();
       assertTrue(typeof properties === 'object');
       assertTrue(properties.hasOwnProperty('autoStart'));
@@ -286,7 +285,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerCreateCollection : function () {
       var state, tick;
-      
+
       waitForSync();
       state = replication.logger.state().state;
       tick = state.lastLogTick;
@@ -308,14 +307,14 @@ function ReplicationLoggerSuite () {
 
     testLoggerDropCollection : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
       waitForSync();
 
       state = replication.logger.state().state;
       tick = state.lastLogTick;
       db._drop(cn);
-      
+
       var entry = getLogEntries(tick, 2001)[0];
 
       assertEqual(2001, entry.type);
@@ -328,14 +327,14 @@ function ReplicationLoggerSuite () {
 
     testLoggerRenameCollection : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
       waitForSync();
 
       state = replication.logger.state().state;
       tick = state.lastLogTick;
       c.rename(cn2);
-      
+
       var entry = getLogEntries(tick, 2002)[0];
 
       assertEqual(2002, entry.type);
@@ -349,14 +348,14 @@ function ReplicationLoggerSuite () {
 
     testLoggerPropertiesCollection : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
       waitForSync();
 
       state = replication.logger.state().state;
       tick = state.lastLogTick;
       c.properties({ waitForSync: true, journalSize: 2097152 });
-      
+
       var entry = getLogEntries(tick, 2003)[0];
 
       assertEqual(2003, entry.type);
@@ -375,17 +374,17 @@ function ReplicationLoggerSuite () {
 
     testLoggerIncludedSystemCollection : function () {
       var state, tick;
-      
+
       c = db._collection("_graphs");
-      
+
       state = replication.logger.state().state;
       tick = state.lastLogTick;
       var doc = c.save({ "test": 1 });
-      
+
       var entry = getLogEntries(tick, 2300)[0];
       assertEqual(2300, entry.type);
       assertEqual(c._id, entry.cid);
-      
+
       state = replication.logger.state().state;
       tick = state.lastLogTick;
       c.remove(doc._key);
@@ -402,10 +401,10 @@ function ReplicationLoggerSuite () {
 
     testLoggerSystemCollection : function () {
       var state, tick, i;
-      
+
       db._drop("_unitfoxx");
       db._drop("_unittests");
-      
+
       state = replication.logger.state().state;
       tick = state.lastLogTick;
 
@@ -416,11 +415,11 @@ function ReplicationLoggerSuite () {
       assertEqual(2000, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual(c.name(), entry.collection.name);
-      
+
       state = replication.logger.state().state;
       tick = state.lastLogTick;
       c.properties({ waitForSync : true });
-      
+
       entry = getLogEntries(tick, 2003)[0];
       assertEqual(2003, entry.type);
       assertEqual(c._id, entry.cid);
@@ -429,16 +428,16 @@ function ReplicationLoggerSuite () {
       state = replication.logger.state().state;
       tick = state.lastLogTick;
       c.rename("_unitfoxx");
-      
+
       entry = getLogEntries(tick, 2002)[0];
       assertEqual(2002, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual("_unitfoxx", entry.collection.name);
-      
+
       state = replication.logger.state().state;
       tick = state.lastLogTick;
       c.rename("_unittests");
-      
+
       entry = getLogEntries(tick, 2002)[0];
       assertEqual(2002, entry.type);
       assertEqual(c._id, entry.cid);
@@ -451,7 +450,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerTruncateCollection1 : function () {
       var state, tick, i;
-      
+
       var c = db._create(cn);
       c.save({ "test": 1, "_key": "abc" });
       waitForSync();
@@ -459,15 +458,15 @@ function ReplicationLoggerSuite () {
       state = replication.logger.state().state;
       tick = state.lastLogTick;
       c.truncate();
-      
+
       var entry = getLogEntries(tick, 2302);
       assertEqual(1, entry.length);
       assertNotEqual("0", entry[0].tid);
       assertEqual(c._id, entry[0].cid);
       assertEqual("abc", entry[0].key);
-    
+
       c.save({ "test": 1, "_key": "abc" });
-      
+
       waitForSync();
       state = replication.logger.state().state;
       tick = state.lastLogTick;
@@ -485,7 +484,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerTruncateCollection2 : function () {
       var state, tick, i;
-      
+
       var c = db._create(cn);
       for (var i = 0; i < 100; ++i) {
         c.save({ "test": 1, "_key": "test" + i });
@@ -498,7 +497,7 @@ function ReplicationLoggerSuite () {
       waitForSync();
       var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2302 ]);
 
-      assertEqual(102, entry.length); 
+      assertEqual(102, entry.length);
       // trx start
       assertEqual(2200, entry[0].type);
       assertNotEqual("", entry[0].tid);
@@ -513,8 +512,8 @@ function ReplicationLoggerSuite () {
         keys[entry[i + 1].key] = true;
       }
       assertEqual(100, Object.keys(keys).length);
-     
-      // commit 
+
+      // commit
       assertEqual(2201, entry[101].type);
       assertEqual(tid, entry[101].tid);
     },
@@ -525,7 +524,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerCreateIndexHash1 : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
 
       state = replication.logger.state().state;
@@ -533,7 +532,7 @@ function ReplicationLoggerSuite () {
 
       c.ensureUniqueConstraint("a", "b");
       var idx = c.getIndexes()[1];
-      
+
       var entry = getLogEntries(tick, 2100)[0];
       assertTrue(2100, entry.type);
       assertEqual(c._id, entry.cid);
@@ -549,7 +548,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerCreateIndexHash2 : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
 
       state = replication.logger.state().state;
@@ -557,7 +556,7 @@ function ReplicationLoggerSuite () {
 
       c.ensureHashIndex("a");
       var idx = c.getIndexes()[1];
-      
+
       var entry = getLogEntries(tick, 2100)[0];
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
@@ -572,7 +571,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerCreateIndexSkiplist1 : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
 
       state = replication.logger.state().state;
@@ -581,7 +580,7 @@ function ReplicationLoggerSuite () {
       c.ensureSkiplist("a", "b", "c");
       var idx = c.getIndexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
-      
+
       assertTrue(2100, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
@@ -596,7 +595,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerCreateIndexSkiplist2 : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
 
       state = replication.logger.state().state;
@@ -605,7 +604,7 @@ function ReplicationLoggerSuite () {
       c.ensureUniqueSkiplist("a");
       var idx = c.getIndexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
-      
+
       var entry = getLogEntries(tick, 2100)[0];
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
@@ -620,14 +619,14 @@ function ReplicationLoggerSuite () {
 
     testLoggerCreateIndexFulltext1 : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
 
       state = replication.logger.state().state;
       tick = state.lastLogTick;
       c.ensureFulltextIndex("a", 5);
       var idx = c.getIndexes()[1];
-      
+
       var entry = getLogEntries(tick, 2100)[0];
       assertTrue(2100, entry.type);
       assertEqual(c._id, entry.cid);
@@ -644,7 +643,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerCreateIndexGeo1 : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
 
       state = replication.logger.state().state;
@@ -654,7 +653,7 @@ function ReplicationLoggerSuite () {
       c.ensureGeoIndex("a", "b");
       var idx = c.getIndexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
-      
+
       assertTrue(2100, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
@@ -670,7 +669,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerCreateIndexGeo2 : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
 
       state = replication.logger.state().state;
@@ -679,7 +678,7 @@ function ReplicationLoggerSuite () {
       c.ensureGeoIndex("a", true);
       var idx = c.getIndexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
-      
+
       assertTrue(2100, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
@@ -695,7 +694,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerCreateIndexGeo3 : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
 
       state = replication.logger.state().state;
@@ -704,7 +703,7 @@ function ReplicationLoggerSuite () {
       c.ensureGeoConstraint("a", "b", true);
       var idx = c.getIndexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
-      
+
       assertTrue(2100, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
@@ -721,7 +720,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerCreateIndexGeo4 : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
 
       state = replication.logger.state().state;
@@ -730,7 +729,7 @@ function ReplicationLoggerSuite () {
       c.ensureGeoConstraint("a", "b", false);
       var idx = c.getIndexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
-      
+
       assertTrue(2100, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
@@ -747,7 +746,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerCreateIndexGeo5 : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
 
       state = replication.logger.state().state;
@@ -756,7 +755,7 @@ function ReplicationLoggerSuite () {
       c.ensureGeoConstraint("a", true);
       var idx = c.getIndexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
-      
+
       assertTrue(2100, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
@@ -772,7 +771,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerCreateIndexCap1 : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
 
       state = replication.logger.state().state;
@@ -781,7 +780,7 @@ function ReplicationLoggerSuite () {
       c.ensureCapConstraint(100);
       var idx = c.getIndexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
-      
+
       assertTrue(2100, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
@@ -798,7 +797,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerCreateIndexCap2 : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
 
       state = replication.logger.state().state;
@@ -807,7 +806,7 @@ function ReplicationLoggerSuite () {
       c.ensureCapConstraint(null, 1048576);
       var idx = c.getIndexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
-      
+
       assertTrue(2100, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
@@ -822,7 +821,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerDropIndex : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
       c.ensureUniqueConstraint("a", "b");
 
@@ -833,7 +832,7 @@ function ReplicationLoggerSuite () {
       var idx = c.getIndexes()[1];
       c.dropIndex(idx);
       var entry = getLogEntries(tick, 2101)[0];
-      
+
       assertTrue(2101, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.id);
@@ -845,7 +844,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerSaveDocument : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
 
       state = replication.logger.state().state;
@@ -864,10 +863,10 @@ function ReplicationLoggerSuite () {
 
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      
+
       c.save({ "test": 2, "foo" : "bar", "_key": "12345" });
       rev = c.document("12345")._rev;
-      
+
       entry = getLogEntries(tick, 2300)[0];
       assertEqual(2300, entry.type);
       assertEqual(c._id, entry.cid);
@@ -883,7 +882,7 @@ function ReplicationLoggerSuite () {
       }
       catch (err) {
       }
-      
+
       entry = getLogEntries(tick, 2300);
       assertEqual(1, entry.length);
     },
@@ -894,7 +893,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerSaveDocuments : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
 
       state = replication.logger.state().state;
@@ -903,7 +902,7 @@ function ReplicationLoggerSuite () {
       for (var i = 0; i < 100; ++i) {
         c.save({ "test": 1, "_key": "test" + i });
       }
-      
+
       var entry = getLogEntries(tick, 2300);
       assertEqual(100, entry.length);
     },
@@ -914,16 +913,16 @@ function ReplicationLoggerSuite () {
 
     testLoggerDeleteDocument : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
       c.save({ "test": 1, "_key": "abc" });
       c.save({ "test": 1, "_key": "12345" });
 
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      
+
       c.remove("abc");
-      
+
       var entry = getLogEntries(tick, 2302)[0];
       assertEqual(2302, entry.type);
       assertEqual(c._id, entry.cid);
@@ -933,11 +932,11 @@ function ReplicationLoggerSuite () {
       tick = state.lastLogTick;
       c.remove("12345");
       entry = getLogEntries(tick, 2302)[0];
-      
+
       assertEqual(2302, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual("12345", entry.key);
-      
+
       state = replication.logger.state().state;
       tick = state.lastLogTick;
 
@@ -947,7 +946,7 @@ function ReplicationLoggerSuite () {
       }
       catch (err) {
       }
-      
+
       entry = getLogEntries(tick, 2302);
       assertEqual(0, entry.length);
     },
@@ -958,14 +957,14 @@ function ReplicationLoggerSuite () {
 
     testLoggerUpdateDocument : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
       c.save({ "test": 2, "_key": "abc" });
       c.save({ "test": 1, "_key": "12345" });
 
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      
+
       c.update("abc", { "test" : 2 });
       var entry = getLogEntries(tick, 2300);
 
@@ -974,25 +973,25 @@ function ReplicationLoggerSuite () {
       assertEqual("abc", entry[0].key);
       assertEqual("abc", entry[0].data._key);
       assertEqual(2, entry[0].data.test);
-      
+
       assertEqual(2300, entry[1].type);
       assertEqual(c._id, entry[1].cid);
       assertEqual("12345", entry[1].key);
       assertEqual("12345", entry[1].data._key);
       assertEqual(1, entry[1].data.test);
-      
+
 
       state = replication.logger.state().state;
       tick = state.lastLogTick;
       c.update("abc", { "test" : 3 });
       entry = getLogEntries(tick, 2300)[0];
-      
+
       assertEqual(2300, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual("abc", entry.key);
       assertEqual("abc", entry.data._key);
       assertEqual(3, entry.data.test);
-      
+
       state = replication.logger.state().state;
       tick = state.lastLogTick;
 
@@ -1002,17 +1001,17 @@ function ReplicationLoggerSuite () {
       entry = getLogEntries(tick, 2300);
       assertEqual(3, entry.length);
 
-      waitForSync();      
+      waitForSync();
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-       
+
       try {
         c.update("thefoxx", { });
         fail();
       }
       catch (err) {
       }
-      
+
       entry = getLogEntries(tick, 2300);
       assertEqual(0, entry.length);
     },
@@ -1023,14 +1022,14 @@ function ReplicationLoggerSuite () {
 
     testLoggerReplaceDocument : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
       c.save({ "test": 2, "_key": "abc" });
       c.save({ "test": 1, "_key": "12345" });
 
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      
+
       c.replace("abc", { "test" : 2 });
       var entry = getLogEntries(tick, 2300);
       assertEqual(2300, entry[0].type);
@@ -1038,7 +1037,7 @@ function ReplicationLoggerSuite () {
       assertEqual("abc", entry[0].key);
       assertEqual("abc", entry[0].data._key);
       assertEqual(2, entry[0].data.test);
-      
+
       assertEqual(2300, entry[1].type);
       assertEqual(c._id, entry[1].cid);
       assertEqual("12345", entry[1].key);
@@ -1051,10 +1050,10 @@ function ReplicationLoggerSuite () {
       c.replace("abc", { "test" : 3 });
       c.replace("12345", { "test" : 2 });
       c.replace("abc", { "test" : 4 });
-      
+
       entry = getLogEntries(tick, 2300);
       assertEqual(4, entry.length);
-      
+
       state = replication.logger.state().state;
       tick = state.lastLogTick;
 
@@ -1064,7 +1063,7 @@ function ReplicationLoggerSuite () {
       }
       catch (err) {
       }
-      
+
       entry = getLogEntries(tick, 2300);
       assertEqual(0, entry.length);
     },
@@ -1075,15 +1074,15 @@ function ReplicationLoggerSuite () {
 
     testLoggerSaveEdge : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
       var e = db._createEdgeCollection(cn2);
 
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      
+
       e.save(cn + "/test1", cn + "/test2", { "test": 1, "_key": "abc" });
-      
+
       var entry = getLogEntries(tick, 2301)[0];
       assertEqual(2301, entry.type);
       assertEqual(e._id, entry.cid);
@@ -1097,7 +1096,7 @@ function ReplicationLoggerSuite () {
       tick = state.lastLogTick;
       e.save(cn + "/test3", cn + "/test4", { "test": [ 99, false ], "_key": "12345" });
       entry = getLogEntries(tick, 2301)[0];
-      
+
       assertEqual(2301, entry.type);
       assertEqual(e._id, entry.cid);
       assertEqual("12345", entry.key);
@@ -1105,7 +1104,7 @@ function ReplicationLoggerSuite () {
       assertEqual(c._id + "/test3", entry.data._from);
       assertEqual(c._id + "/test4", entry.data._to);
       assertEqual([ 99, false ], entry.data.test);
-      
+
       state = replication.logger.state().state;
       tick = state.lastLogTick;
 
@@ -1115,7 +1114,7 @@ function ReplicationLoggerSuite () {
       }
       catch (err) {
       }
-      
+
       entry = getLogEntries(tick, 2301);
       assertEqual(0, entry.length);
     },
@@ -1126,25 +1125,25 @@ function ReplicationLoggerSuite () {
 
     testLoggerDeleteEdge : function () {
       var state, tick;
-      
+
       db._create(cn);
       var e = db._createEdgeCollection(cn2);
-      
+
       e.save(cn + "/test1", cn + "/test2", { "test": 1, "_key": "abc" });
       e.save(cn + "/test3", cn + "/test4", { "test": 1, "_key": "12345" });
 
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      
+
       e.remove("abc");
-      
+
       var entry = getLogEntries(tick, 2302)[0];
       assertEqual(2302, entry.type);
       assertEqual(e._id, entry.cid);
       assertEqual("abc", entry.key);
-      
+
       e.remove("12345");
-      
+
       waitForSync();
       state = replication.logger.state().state;
       tick = state.lastLogTick;
@@ -1155,7 +1154,7 @@ function ReplicationLoggerSuite () {
       }
       catch (err) {
       }
-      
+
       entry = getLogEntries(tick, 2302);
       assertEqual(0, entry.length);
     },
@@ -1166,7 +1165,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerUpdateEdge : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
       var e = db._createEdgeCollection(cn2);
       e.save(cn + "/test1", cn + "/test2", { "test": 2, "_key": "abc" });
@@ -1174,7 +1173,7 @@ function ReplicationLoggerSuite () {
 
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      
+
       e.update("abc", { "test" : 2 });
       var entry = getLogEntries(tick, 2301);
       assertEqual(2301, entry[0].type);
@@ -1184,7 +1183,7 @@ function ReplicationLoggerSuite () {
       assertEqual(2, entry[0].data.test);
       assertEqual(c._id + "/test1", entry[0].data._from);
       assertEqual(c._id + "/test2", entry[0].data._to);
-      
+
       assertEqual(2301, entry[1].type);
       assertEqual(e._id, entry[1].cid);
       assertEqual("12345", entry[1].key);
@@ -1202,7 +1201,7 @@ function ReplicationLoggerSuite () {
       entry = getLogEntries(tick, 2301);
 
       assertEqual(3, entry.length);
-      
+
       state = replication.logger.state().state;
       tick = state.lastLogTick;
 
@@ -1223,7 +1222,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerReplaceEdge : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
       var e = db._createEdgeCollection(cn2);
       e.save(cn + "/test1", cn + "/test2", { "test": 2, "_key": "abc" });
@@ -1231,7 +1230,7 @@ function ReplicationLoggerSuite () {
 
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      
+
       e.replace("abc", { "test" : 2 });
       var entry = getLogEntries(tick, 2301);
       assertEqual(2301, entry[0].type);
@@ -1241,7 +1240,7 @@ function ReplicationLoggerSuite () {
       assertEqual(2, entry[0].data.test);
       assertEqual(c._id + "/test1", entry[0].data._from);
       assertEqual(c._id + "/test2", entry[0].data._to);
-      
+
       assertEqual(2301, entry[1].type);
       assertEqual(e._id, entry[1].cid);
       assertEqual("12345", entry[1].key);
@@ -1249,7 +1248,7 @@ function ReplicationLoggerSuite () {
       assertEqual(1, entry[1].data.test);
       assertEqual(c._id + "/test3", entry[1].data._from);
       assertEqual(c._id + "/test4", entry[1].data._to);
-      
+
       state = replication.logger.state().state;
       tick = state.lastLogTick;
 
@@ -1257,13 +1256,13 @@ function ReplicationLoggerSuite () {
       e.replace("abc", { "test" : 3 });
       e.replace("12345", { "test" : 2 });
       e.replace("abc", { "test" : 4 });
-      
+
       entry = getLogEntries(tick, 2301);
       assertEqual(4, entry.length);
-      
+
       state = replication.logger.state().state;
       tick = state.lastLogTick;
-      
+
       try {
         e.replace("thefoxx", { });
         fail();
@@ -1281,7 +1280,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerTransactionEmpty : function () {
       var state, tick;
-      
+
       c = db._create(cn);
 
       state = replication.logger.state().state;
@@ -1306,7 +1305,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerTransactionRead1 : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
       c.save({ "test" : 1 });
 
@@ -1322,7 +1321,7 @@ function ReplicationLoggerSuite () {
         }
       });
       assertTrue(actual);
-      
+
       var entry = getLogEntries(tick, 2200);
       assertEqual(0, entry.length);
     },
@@ -1333,7 +1332,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerTransactionRead2 : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
       c.save({ "test" : 1, "_key": "abc" });
 
@@ -1356,7 +1355,7 @@ function ReplicationLoggerSuite () {
         }
       });
       assertTrue(actual);
-      
+
       var entry = getLogEntries(tick, [ 2200, 2201, 2202 ]);
       assertEqual(0, entry.length);
     },
@@ -1367,7 +1366,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerTransactionRead3 : function () {
       var state, tick;
-      
+
       db._create(cn);
 
       state = replication.logger.state().state;
@@ -1393,7 +1392,7 @@ function ReplicationLoggerSuite () {
       }
       catch (err) {
       }
-      
+
       var entry = getLogEntries(tick, [ 2200, 2201, 2202 ]);
       assertEqual(0, entry.length);
     },
@@ -1404,7 +1403,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerTransactionWrite1 : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
 
       state = replication.logger.state().state;
@@ -1419,7 +1418,7 @@ function ReplicationLoggerSuite () {
         }
       });
       assertTrue(actual);
-      
+
       var entry = getLogEntries(tick, [ 2200, 2201, 2202 ]);
       assertEqual(2, entry.length);
       assertEqual(2200, entry[0].type);
@@ -1433,7 +1432,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerTransactionWrite2 : function () {
       var state, tick;
-      
+
       var c = db._create(cn);
 
       state = replication.logger.state().state;
@@ -1454,7 +1453,7 @@ function ReplicationLoggerSuite () {
         }
       });
       assertTrue(actual);
-      
+
       var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
       assertEqual(3, entry.length);
       assertEqual(2200, entry[0].type);
@@ -1462,7 +1461,7 @@ function ReplicationLoggerSuite () {
       assertEqual(2201, entry[2].type);
       assertEqual(entry[0].tid, entry[1].tid);
       assertEqual(entry[1].tid, entry[2].tid);
-      
+
       assertEqual(c._id, entry[1].cid);
       assertEqual("abc", entry[1].key);
       assertEqual("abc", entry[1].data._key);
@@ -1476,7 +1475,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerTransactionWrite3 : function () {
       var state, tick;
-      
+
       db._create(cn);
 
       state = replication.logger.state().state;
@@ -1501,14 +1500,14 @@ function ReplicationLoggerSuite () {
       }
       catch (err) {
       }
-      
+
       var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
       assertEqual(3, entry.length);
-      
+
       assertEqual(2200, entry[0].type);
       assertEqual(2300, entry[1].type);
       assertEqual(2202, entry[2].type);
-      
+
       assertEqual(entry[0].tid, entry[1].tid);
       assertEqual(entry[1].tid, entry[2].tid);
     },
@@ -1519,7 +1518,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerTransactionWrite4 : function () {
       var state, tick;
-      
+
       db._create(cn);
       db._create(cn2);
 
@@ -1544,13 +1543,13 @@ function ReplicationLoggerSuite () {
       }
       catch (err) {
       }
-      
+
       var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
       assertEqual(2, entry.length);
-      
+
       assertEqual(2200, entry[0].type);
       assertEqual(2202, entry[1].type);
-      
+
       assertEqual(entry[0].tid, entry[1].tid);
     },
 
@@ -1560,7 +1559,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerTransactionWrite5 : function () {
       var state, tick;
-      
+
       var c1 = db._create(cn);
       db._create(cn2);
 
@@ -1578,18 +1577,18 @@ function ReplicationLoggerSuite () {
           c1.save({ "test" : 2, "_key": "abc" });
         },
         params: {
-          cn: cn 
+          cn: cn
         }
       });
-      
+
       var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
       assertEqual(4, entry.length);
-      
+
       assertEqual(2200, entry[0].type);
       assertEqual(2300, entry[1].type);
       assertEqual(2300, entry[2].type);
       assertEqual(2201, entry[3].type);
-      
+
       assertEqual(entry[0].tid, entry[1].tid);
       assertEqual(entry[1].tid, entry[2].tid);
       assertEqual(entry[2].tid, entry[3].tid);
@@ -1601,7 +1600,7 @@ function ReplicationLoggerSuite () {
 
     testLoggerTransactionWrite6 : function () {
       var state, tick;
-      
+
       var c1 = db._create(cn);
       var c2 = db._create(cn2);
 
@@ -1624,15 +1623,15 @@ function ReplicationLoggerSuite () {
           cn2: cn2
         }
       });
-      
+
       var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300 ]);
       assertEqual(4, entry.length);
-      
+
       assertEqual(2200, entry[0].type);
       assertEqual(2300, entry[1].type);
       assertEqual(2300, entry[2].type);
       assertEqual(2201, entry[3].type);
-      
+
       assertEqual(entry[0].tid, entry[1].tid);
       assertEqual(entry[1].tid, entry[2].tid);
       assertEqual(entry[2].tid, entry[3].tid);
@@ -1667,14 +1666,14 @@ function ReplicationLoggerSuite () {
           cn: cn
         }
       });
-      
+
       var entry = getLogEntries(tick, [ 2200, 2201, 2202, 2300, 2302 ]);
       assertEqual(3, entry.length);
-      
+
       assertEqual(2200, entry[0].type);
       assertEqual(2300, entry[1].type);
       assertEqual(2201, entry[2].type);
-      
+
       assertEqual(entry[0].tid, entry[1].tid);
       assertEqual(entry[1].tid, entry[2].tid);
       assertEqual(c._id, entry[1].cid);
@@ -1713,7 +1712,7 @@ function ReplicationApplierSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief start applier w/o configuration 
+/// @brief start applier w/o configuration
 ////////////////////////////////////////////////////////////////////////////////
 
     testStartApplierNoConfig : function () {
@@ -1724,7 +1723,7 @@ function ReplicationApplierSuite () {
       assertFalse(state.state.running);
 
       try {
-        // start 
+        // start
         replication.applier.start();
         fail();
       }
@@ -1734,7 +1733,7 @@ function ReplicationApplierSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief start applier with configuration 
+/// @brief start applier with configuration
 ////////////////////////////////////////////////////////////////////////////////
 
     testStartApplierInvalidEndpoint1 : function () {
@@ -1744,11 +1743,11 @@ function ReplicationApplierSuite () {
 
       assertFalse(state.state.running);
 
-      // configure && start 
-      replication.applier.properties({ 
+      // configure && start
+      replication.applier.properties({
         endpoint: "tcp://9.9.9.9:9999", // should not exist
         connectTimeout: 3,
-        maxConnectRetries: 1 
+        maxConnectRetries: 1
       });
 
       replication.applier.start();
@@ -1759,7 +1758,7 @@ function ReplicationApplierSuite () {
       var i = 0, max = 30;
       while (i++ < max) {
         internal.wait(1);
-      
+
         state = replication.applier.state();
         if (state.state.running) {
           continue;
@@ -1768,7 +1767,7 @@ function ReplicationApplierSuite () {
         assertFalse(state.state.running);
         assertTrue(state.state.totalFailedConnects > 0);
         assertTrue(state.state.progress.failedConnects > 0);
-        assertTrue(errors.ERROR_REPLICATION_NO_RESPONSE.code, state.state.lastError.errorNum); 
+        assertTrue(errors.ERROR_REPLICATION_NO_RESPONSE.code, state.state.lastError.errorNum);
         break;
       }
 
@@ -1778,13 +1777,13 @@ function ReplicationApplierSuite () {
 
       // call start again
       replication.applier.start();
-      
+
       state = replication.applier.state();
       assertTrue(state.state.running);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief start applier with configuration 
+/// @brief start applier with configuration
 ////////////////////////////////////////////////////////////////////////////////
 
     testStartApplierInvalidEndpoint2 : function () {
@@ -1793,21 +1792,21 @@ function ReplicationApplierSuite () {
       state = replication.applier.state();
 
       assertFalse(state.state.running);
-      // configure && start 
-      replication.applier.properties({ 
+      // configure && start
+      replication.applier.properties({
         endpoint: "tcp://www.arangodb.org:7999", // should not exist
         connectTimeout: 3,
-        maxConnectRetries: 1 
+        maxConnectRetries: 1
       });
 
       replication.applier.start();
       state = replication.applier.state();
       assertTrue(state.state.running);
-      
+
       var i = 0, max = 30;
       while (i++ < max) {
         internal.wait(1);
-      
+
         state = replication.applier.state();
         if (state.state.running) {
           continue;
@@ -1828,7 +1827,7 @@ function ReplicationApplierSuite () {
 
       // call start again
       replication.applier.start();
-      
+
       state = replication.applier.state();
       assertTrue(state.state.running);
     },
@@ -1844,11 +1843,11 @@ function ReplicationApplierSuite () {
 
       assertFalse(state.state.running);
 
-      // configure && start 
-      replication.applier.properties({ 
+      // configure && start
+      replication.applier.properties({
         endpoint: "tcp://9.9.9.9:9999" // should not exist
       });
-      
+
       replication.applier.start();
       state = replication.applier.state();
       assertEqual(errors.ERROR_NO_ERROR.code, state.state.lastError.errorNum);
@@ -1856,13 +1855,13 @@ function ReplicationApplierSuite () {
 
       // stop
       replication.applier.shutdown();
-      
+
       state = replication.applier.state();
       assertFalse(state.state.running);
-      
+
       // stop again
       replication.applier.shutdown();
-                  
+
       state = replication.applier.state();
       assertFalse(state.state.running);
     },
@@ -1882,7 +1881,7 @@ function ReplicationApplierSuite () {
       assertEqual(0, properties.chunkSize);
       assertFalse(properties.autoStart);
       assertTrue(properties.adaptivePolling);
-      assertUndefined(properties.endpoint); 
+      assertUndefined(properties.endpoint);
 
       try {
         replication.applier.properties({ });
@@ -1891,11 +1890,11 @@ function ReplicationApplierSuite () {
       catch (err) {
         assertEqual(errors.ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION.code, err.errorNum);
       }
-      
+
       replication.applier.properties({
-        endpoint: "tcp://9.9.9.9:9999" 
+        endpoint: "tcp://9.9.9.9:9999"
       });
-      
+
       properties = replication.applier.properties();
       assertEqual(properties.endpoint, "tcp://9.9.9.9:9999");
       assertEqual(300, properties.requestTimeout);
@@ -1914,7 +1913,7 @@ function ReplicationApplierSuite () {
         maxConnectRetries: 4,
         chunkSize: 65536
       });
-      
+
       properties = replication.applier.properties();
       assertEqual(properties.endpoint, "tcp://9.9.9.9:9998");
       assertEqual(5, properties.requestTimeout);
@@ -1937,7 +1936,7 @@ function ReplicationApplierSuite () {
 
       state = replication.applier.state();
       assertTrue(state.state.running);
-      
+
       try {
         replication.applier.properties({ endpoint: "tcp://9.9.9.9:9998" });
         fail();
@@ -1959,10 +1958,10 @@ function ReplicationApplierSuite () {
       assertFalse(state.state.running);
       assertMatch(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/, state.state.time);
 
-      assertEqual(state.server.version, db._version()); 
-      assertNotEqual("", state.server.serverId); 
+      assertEqual(state.server.version, db._version());
+      assertNotEqual("", state.server.serverId);
       assertMatch(/^\d+$/, state.server.serverId);
-      
+
       assertUndefined(state.endpoint);
     }
 
@@ -2002,7 +2001,7 @@ function ReplicationSyncSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testServerId : function () {
-      var result = replication.serverId(); 
+      var result = replication.serverId();
 
       assertTrue(typeof result === 'string');
       assertMatch(/^\d+$/, result);
@@ -2014,7 +2013,7 @@ function ReplicationSyncSuite () {
 
     testSyncNoEndpoint : function () {
       try {
-        replication.sync(); 
+        replication.sync();
         fail();
       }
       catch (err) {
@@ -2030,7 +2029,7 @@ function ReplicationSyncSuite () {
       try {
         replication.sync({
           endpoint: "tcp://9.9.9.9:9999"
-        }); 
+        });
         fail();
       }
       catch (err) {
@@ -2046,7 +2045,7 @@ function ReplicationSyncSuite () {
       try {
         replication.sync({
           endpoint: "tcp://www.arangodb.org:80"
-        }); 
+        });
         fail();
       }
       catch (err) {
@@ -2061,10 +2060,10 @@ function ReplicationSyncSuite () {
 
     testSyncRestrict1 : function () {
       try {
-        replication.sync({ 
+        replication.sync({
           endpoint: "tcp://9.9.9.9:9999",
           restrictType: "foo"
-        }); 
+        });
         fail();
       }
       catch (err) {
@@ -2079,10 +2078,10 @@ function ReplicationSyncSuite () {
 
     testSyncRestrict2 : function () {
       try {
-        replication.sync({ 
+        replication.sync({
           endpoint: "tcp://9.9.9.9:9999",
           restrictType: "exclude"
-        }); 
+        });
         fail();
       }
       catch (err) {
@@ -2097,10 +2096,10 @@ function ReplicationSyncSuite () {
 
     testSyncRestrict3 : function () {
       try {
-        replication.sync({ 
+        replication.sync({
           endpoint: "tcp://9.9.9.9:9999",
           restrictType: "include"
-        }); 
+        });
         fail();
       }
       catch (err) {
@@ -2115,10 +2114,10 @@ function ReplicationSyncSuite () {
 
     testSyncRestrict4 : function () {
       try {
-        replication.sync({ 
+        replication.sync({
           endpoint: "tcp://9.9.9.9:9999",
           restrictCollections: [ "foo" ]
-        }); 
+        });
         fail();
       }
       catch (err) {
@@ -2133,11 +2132,11 @@ function ReplicationSyncSuite () {
 
     testSyncRestrict5 : function () {
       try {
-        replication.sync({ 
+        replication.sync({
           endpoint: "tcp://9.9.9.9:9999",
           restrictType: "include",
           restrictCollections: "foo"
-        }); 
+        });
         fail();
       }
       catch (err) {

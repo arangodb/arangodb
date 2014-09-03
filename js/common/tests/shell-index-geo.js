@@ -1,10 +1,4 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 80 */
-/*global require,
-    db,
-    assertEqual, assertTrue,
-    ArangoCollection */
+/*global require, db, assertEqual, assertTrue, ArangoCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the geo index

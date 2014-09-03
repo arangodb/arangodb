@@ -1,9 +1,8 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
 /*global templateEngine, window, $, Backbone, plannerTemplateEngine, alert */
 
 (function() {
   "use strict";
-  
+
   window.LoginModalView = Backbone.View.extend({
 
     template: templateEngine.createTemplate("loginModal.ejs"),

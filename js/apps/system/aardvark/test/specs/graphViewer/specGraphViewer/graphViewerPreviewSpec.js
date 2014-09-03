@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
+/*jshint unused: false */
 /*global beforeEach, afterEach */
 /*global describe, it, expect, jasmine*/
 /*global runs, waitsFor, spyOn, waits */
@@ -38,9 +38,9 @@
   "use strict";
 
   describe('Graph Viewer Preview', function () {
-  
+
     var width, height, cont;
-  
+
     beforeEach(function() {
       width = 300;
       height = 300;
@@ -50,20 +50,20 @@
       cont.style.width =  width + "px";
       uiMatchers.define(this);
     });
-    
+
     afterEach(function() {
       document.body.removeChild(cont);
     });
-  
+
     describe('setup process', function() {
-      
+
       it('should append an svg to the container', function() {
         var ui = new GraphViewerPreview(cont),
           gsvg = $("#graphViewerSVG", $(cont));
         expect(gsvg.length).toEqual(1);
         expect(gsvg.get(0)).toBeTag("svg");
       });
-      
+
       it('should create a graphViewer with container dimensions and preview adapter', function() {
         spyOn(window, "GraphViewer").andCallThrough();
         var ui = new GraphViewerPreview(cont);
@@ -79,7 +79,7 @@
           jasmine.any(Object)
         );
       });
-      
+
       it('should automatically load the first node', function() {
         var mockObj = {
             loadInitialNode: function() {},
@@ -87,7 +87,7 @@
           },
           startNode = "1",
           ui;
-        
+
         spyOn(window, "PreviewAdapter").andCallFake(function() {
           return mockObj;
         });
@@ -96,7 +96,7 @@
         expect(mockObj.loadInitialNode).wasCalledWith(startNode, jasmine.any(Function));
 
       });
-      
+
       it('should overwrite the nodeShaper label attribute', function() {
         var oldShapes = window.NodeShaper.shapes,
           spy = spyOn(window, "NodeShaper").andCallThrough(),
@@ -119,7 +119,7 @@
           undefined
         );
       });
-      
+
       it('should overwrite the source attribute if image should be displayed', function() {
         var oldShapes = window.NodeShaper.shapes,
           width = 32,
@@ -154,7 +154,7 @@
           undefined
         );
       });
-      
+
       it('should overwrite the edgeShaper label attribute', function() {
         var oldShapes = window.EdgeShaper.shapes,
           spy = spyOn(window, "EdgeShaper").andCallThrough(),
@@ -175,12 +175,12 @@
           }
         );
       });
-      
+
     });
-  
+
     describe('testing mouse actions', function() {
       var disp;
-      
+
       beforeEach(function() {
         var OrigDisp = window.EventDispatcher;
         spyOn(window, "EventDispatcher").andCallFake(function(ns, es, conf) {
@@ -189,7 +189,7 @@
           return disp;
         });
       });
-      
+
       it('should be able to allow zoom', function() {
         spyOn(window, "ZoomManager");
         var config = {
@@ -198,13 +198,13 @@
           ui = new GraphViewerPreview(cont, config);
         expect(window.ZoomManager).wasCalled();
       });
-      
+
       it('should not configure zoom if it is undefined', function() {
         spyOn(window, "ZoomManager");
         var ui = new GraphViewerPreview(cont);
         expect(window.ZoomManager).wasNotCalled();
       });
-      
+
       it('should not configure zoom if it is forbidden', function() {
         spyOn(window, "ZoomManager");
         var config = {
@@ -213,7 +213,7 @@
           ui = new GraphViewerPreview(cont, config);
         expect(window.ZoomManager).wasNotCalled();
       });
-      
+
       it('should be able to bind drag initially', function() {
         var OrigLayouter = window.ForceLayouter,
           layouter,
@@ -235,7 +235,7 @@
         expect(disp.rebind).wasCalledWith("edges", undefined);
         expect(disp.rebind).wasCalledWith("svg", undefined);
       });
-      
+
       it('should be able to bind edit initially', function() {
         var actions = {
           edit: true
@@ -248,7 +248,7 @@
         expect(disp.rebind).wasCalledWith("edges", {click: jasmine.any(Function)});
         expect(disp.rebind).wasCalledWith("svg", undefined);
       });
-      
+
       it('should be able to bind create initially', function() {
         var actions = {
           create: true
@@ -267,7 +267,7 @@
           mouseup: jasmine.any(Function)
         });
       });
-      
+
       it('should be able to bind remove initially', function() {
         var actions = {
           remove: true
@@ -284,7 +284,7 @@
         });
         expect(disp.rebind).wasCalledWith("svg", undefined);
       });
-      
+
       it('should be able to bind expand initially', function() {
         var actions = {
           expand: true
@@ -299,13 +299,13 @@
         expect(disp.rebind).wasCalledWith("edges", undefined);
         expect(disp.rebind).wasCalledWith("svg", undefined);
       });
-      
-      
+
+
     });
-    
+
     describe('testing toolbox', function() {
       var toolboxSelector = "#toolbox";
-            
+
       it('should append the toolbox if any tool is added', function() {
         var toolboxConf = {
             expand: true
@@ -316,7 +316,7 @@
           ui = new GraphViewerPreview(cont, config);
         expect($(toolboxSelector).length).toEqual(1);
       });
-      
+
       it('should reduce the size of the svg', function() {
         var toolboxConf = {
             expand: true
@@ -340,7 +340,7 @@
           jasmine.any(Object)
         );
       });
-      
+
       /*
       it('should create the additional mouse-icon box', function() {
         var toolboxConf = {
@@ -366,14 +366,14 @@
           x = 40,
           y = 50,
           pointerBox = $("#mousepointer");
-          
+
         helper.simulateMouseMoveEvent("graphViewerSVG", x, y);
         expect(pointerBox.offset().left).toEqual(x + 7);
         expect(pointerBox.offset().top).toEqual(y + 12);
-        
+
         x = 66;
         y = 33;
-        
+
         helper.simulateMouseMoveEvent("graphViewerSVG", x, y);
         expect(pointerBox.offset().left).toEqual(x + 7);
         expect(pointerBox.offset().top).toEqual(y + 12);
@@ -387,7 +387,7 @@
           ui = new GraphViewerPreview(cont, config);
         expect($(toolboxSelector).length).toEqual(0);
       });
-      
+
       it('should be able to add the expand button', function() {
         var toolboxConf = {
             expand: true
@@ -396,11 +396,11 @@
             toolbox: toolboxConf
           },
           ui = new GraphViewerPreview(cont, config);
-          
+
         expect($(toolboxSelector + " #control_event_expand").length).toEqual(1);
         expect($(toolboxSelector)[0]).toConformToToolboxLayout();
       });
-      
+
       it('should not add a toolbox if all buttons are defined false', function() {
         var toolboxConf = {
           expand: false
@@ -410,7 +410,7 @@
           },
           ui = new GraphViewerPreview(cont, config);
       });
-      
+
       it('should be able to add the expand button', function() {
         var toolboxConf = {
             expand: true
@@ -419,11 +419,11 @@
             toolbox: toolboxConf
           },
           ui = new GraphViewerPreview(cont, config);
-          
+
         expect($(toolboxSelector + " #control_event_expand").length).toEqual(1);
         expect($(toolboxSelector)[0]).toConformToToolboxLayout();
       });
-      
+
       it('should be able to add the drag button', function() {
         var toolboxConf = {
             drag: true
@@ -432,11 +432,11 @@
             toolbox: toolboxConf
           },
           ui = new GraphViewerPreview(cont, config);
-          
+
         expect($(toolboxSelector + " #control_event_drag").length).toEqual(1);
         expect($(toolboxSelector)[0]).toConformToToolboxLayout();
       });
-      
+
       it('should be able to add the create buttons', function() {
         var toolboxConf = {
             create: true
@@ -445,12 +445,12 @@
             toolbox: toolboxConf
           },
           ui = new GraphViewerPreview(cont, config);
-        
-        expect($(toolboxSelector + " #control_event_new_node").length).toEqual(1);  
+
+        expect($(toolboxSelector + " #control_event_new_node").length).toEqual(1);
         expect($(toolboxSelector + " #control_event_connect").length).toEqual(1);
         expect($(toolboxSelector)[0]).toConformToToolboxLayout();
       });
-      
+
       it('should be able to add the edit button', function() {
         var toolboxConf = {
             edit: true
@@ -459,11 +459,11 @@
             toolbox: toolboxConf
           },
           ui = new GraphViewerPreview(cont, config);
-          
+
         expect($(toolboxSelector + " #control_event_edit").length).toEqual(1);
         expect($(toolboxSelector)[0]).toConformToToolboxLayout();
       });
-      
+
       it('should be able to add the remove button', function() {
         var toolboxConf = {
             remove: true
@@ -472,11 +472,11 @@
             toolbox: toolboxConf
           },
           ui = new GraphViewerPreview(cont, config);
-          
+
         expect($(toolboxSelector + " #control_event_delete").length).toEqual(1);
         expect($(toolboxSelector)[0]).toConformToToolboxLayout();
       });
-      
+
       it('should not add buttons configured as false', function() {
         var toolboxConf = {
             expand: false,
@@ -486,13 +486,13 @@
             toolbox: toolboxConf
           },
           ui = new GraphViewerPreview(cont, config);
-          
+
         expect($(toolboxSelector + " #control_event_expand").length).toEqual(0);
         expect($(toolboxSelector)[0]).toConformToToolboxLayout();
       });
-      
+
     });
-  
+
   });
 
 }());

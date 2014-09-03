@@ -1,6 +1,6 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
-/*global describe, isCoordinator, versionHelper, window,  it, expect, jasmine, spyOn, beforeEach*/
-/*global $, d3, arangoHelper*/
+/*jshint browser: true */
+/*jshint unused: false */
+/*global describe, isCoordinator, versionHelper, window, it, expect, spyOn, beforeEach, $, arangoHelper */
 
 
 describe("Arango Helper", function () {

@@ -1,11 +1,11 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, nonpropdel: true */
-/*global require, db, ArangoCollection, ArangoDatabase, ArangoCursor, module,
-         ShapedJson, RELOAD_AUTH, SYS_DEFINE_ACTION, SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION,
-         AHUACATL_RUN, AHUACATL_PARSE, AHUACATL_EXPLAIN, WAL_FLUSH, WAL_PROPERTIES,
-         REPLICATION_LOGGER_STATE, REPLICATION_LOGGER_CONFIGURE, REPLICATION_SERVER_ID,
-         REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_SHUTDOWN, 
-         REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE, REPLICATION_SYNCHRONISE,
-         ENABLE_STATISTICS, DISPATCHER_THREADS, SYS_CREATE_NAMED_QUEUE, SYS_ADD_JOB */ 
+/*jshint -W051: true */
+/*global require, db, ArangoCollection, ArangoDatabase, ArangoCursor, ShapedJson,
+  RELOAD_AUTH, SYS_DEFINE_ACTION, SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION,
+  AHUACATL_RUN, AHUACATL_PARSE, AHUACATL_EXPLAIN, WAL_FLUSH, WAL_PROPERTIES,
+  REPLICATION_LOGGER_STATE, REPLICATION_LOGGER_CONFIGURE, REPLICATION_SERVER_ID,
+  REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_SHUTDOWN,
+  REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE, REPLICATION_SYNCHRONISE,
+  ENABLE_STATISTICS, DISPATCHER_THREADS, SYS_CREATE_NAMED_QUEUE, SYS_ADD_JOB */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -39,6 +39,7 @@
 // -----------------------------------------------------------------------------
 
 (function () {
+  /*jshint strict: false */
   var internal = require("internal");
   var fs = require("fs");
   var console = require("console");
@@ -188,17 +189,16 @@
 
         try {
 
-          // require a module 
+          // require a module
           if (module.path !== undefined) {
             require(module.path);
           }
 
           // execute a user function
           else if (module.func !== undefined) {
-            /*jslint evil: true */
-            var func = new Function(module.func);
-            /*jslint evil: false */
-            func();
+              /*jshint evil: true */
+              var func = new Function(module.func);
+              func();
           }
         }
         catch (err) {

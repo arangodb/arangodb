@@ -1,4 +1,3 @@
-/*jslint indent: 2, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, nomen: true, sloppy: true */
 /*global require, fail, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,7 +90,7 @@ function AuthSuite () {
       }
       catch (err1) {
       }
-      
+
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "");
         fail();
@@ -112,7 +111,7 @@ function AuthSuite () {
 
       // this will issue a request using the new user
       assertTrue(db._collections().length > 0);
-      
+
       // double check with wrong password
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "foobar");
@@ -134,7 +133,7 @@ function AuthSuite () {
 
       // this will issue a request using the new user
       assertTrue(db._collections().length > 0);
-      
+
       // double check with wrong passwords
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "Foobar");
@@ -142,14 +141,14 @@ function AuthSuite () {
       }
       catch (err1) {
       }
-      
+
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "foobar");
         fail();
       }
       catch (err2) {
       }
-      
+
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "FOOBAR");
         fail();
@@ -170,7 +169,7 @@ function AuthSuite () {
 
       // this will issue a request using the new user
       assertTrue(db._collections().length > 0);
-      
+
       // double check with wrong passwords
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "fuxx");
@@ -178,14 +177,14 @@ function AuthSuite () {
       }
       catch (err1) {
       }
-      
+
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "bar");
         fail();
       }
       catch (err2) {
       }
-      
+
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "");
         fail();
@@ -206,7 +205,7 @@ function AuthSuite () {
 
       // this will issue a request using the new user
       assertTrue(db._collections().length > 0);
-      
+
       // double check with wrong passwords
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "foobar");
@@ -214,14 +213,14 @@ function AuthSuite () {
       }
       catch (err1) {
       }
-      
+
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "\\abc'def: x-a");
         fail();
       }
       catch (err2) {
       }
-      
+
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.org", "");
         fail();

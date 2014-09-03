@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
+/*jshint unused: false */
 /*global beforeEach, afterEach */
 /*global describe, it, expect, jasmine, spyOn*/
 /*global waitsFor, runs, waits */
@@ -40,7 +40,7 @@ describe("Graph Viewer", function() {
   var waittime = 500,
     svg,
     docSVG;
-  
+
   beforeEach(function() {
     docSVG = document.createElement("svg");
     docSVG.id = "outersvg";
@@ -48,14 +48,14 @@ describe("Graph Viewer", function() {
     svg = d3.select("svg");
     window.communicationMock(spyOn);
   });
-  
-  
+
+
   afterEach(function() {
     document.body.removeChild(docSVG);
   });
-  
+
   describe('set up process', function() {
-    
+
     it('should throw an error if the svg is not given or incorrect', function() {
       expect(
         function() {
@@ -68,7 +68,7 @@ describe("Graph Viewer", function() {
         }
       ).toThrow("SVG has to be given and has to be selected using d3.select");
     });
-    
+
     it('should throw an error if the width is not given or incorrect', function() {
       expect(
         function() {
@@ -81,7 +81,7 @@ describe("Graph Viewer", function() {
         }
       ).toThrow("A width greater 0 has to be given");
     });
-    
+
     it('should throw an error if the height is not given or incorrect', function() {
       expect(
         function() {
@@ -94,7 +94,7 @@ describe("Graph Viewer", function() {
         }
       ).toThrow("A height greater 0 has to be given");
     });
-    
+
     it('should throw an error if the adapterConfig is not given', function() {
       expect(
         function() {
@@ -102,7 +102,7 @@ describe("Graph Viewer", function() {
         }
       ).toThrow("An adapter configuration has to be given");
     });
-    
+
     it('should not throw an error if everything is given', function() {
       var adapterConfig = {type: "json", path: "../test_data/"};
       expect(
@@ -111,7 +111,7 @@ describe("Graph Viewer", function() {
         }
       ).not.toThrow();
     });
-    
+
     it('should be able to be setup with a foxx adapter', function() {
       var route = "foxx/route",
         adapterConfig = {type: "foxx", route: route},
@@ -126,7 +126,7 @@ describe("Graph Viewer", function() {
         jasmine.any(Object)
       );
     });
-    
+
     it('should be able to be setup with a json adapter', function() {
       var path = "json/path",
         adapterConfig = {type: "json", path: path},
@@ -144,7 +144,7 @@ describe("Graph Viewer", function() {
         height
       );
     });
-    
+
     it('should be able to be setup with a arango adapter', function() {
       var adapterConfig = {type: "arango"},
         gv,
@@ -235,36 +235,36 @@ describe("Graph Viewer", function() {
     });
 
   });
-  
+
   describe('set up correctly', function() {
-    
+
     var viewer, adapterConfig;
-    
+
     beforeEach(function() {
       adapterConfig = {type: "json", path: "../test_data/"};
       viewer = new GraphViewer(svg, 10, 10, adapterConfig);
     });
-    
+
     it('should offer the nodeShaper', function() {
       expect(viewer.nodeShaper).toBeDefined();
     });
-    
+
     it('should offer the edgeShaper', function() {
       expect(viewer.edgeShaper).toBeDefined();
     });
-    
+
     it('should offer the startFunction', function() {
       expect(viewer.start).toBeDefined();
     });
-    
+
     it('should offer the adapter', function() {
       expect(viewer.adapter).toBeDefined();
     });
-    
+
     it('should offer the layouter', function() {
       expect(viewer.layouter).toBeDefined();
     });
-    
+
     it('should offer the complete config for the event dispatcher', function() {
       expect(viewer.dispatcherConfig).toBeDefined();
       expect(viewer.dispatcherConfig).toEqual({
@@ -306,11 +306,11 @@ describe("Graph Viewer", function() {
         adapter: jasmine.any(Object)
       });
     });
-    
+
     it('should offer to load a new graph', function() {
       expect(viewer.loadGraph).toBeDefined();
     });
-    
+
     it('should offer to load a new graph by attribute value', function() {
       expect(viewer.loadGraphWithAttributeValue).toBeDefined();
     });
@@ -318,7 +318,7 @@ describe("Graph Viewer", function() {
     it("should offer a function for cleanUp", function() {
       expect(viewer.cleanUp).toBeDefined();
     });
-    
+
     it("should be able to load a root node", function() {
       runs (function() {
         this.addMatchers({
@@ -343,11 +343,11 @@ describe("Graph Viewer", function() {
         });
         viewer.loadGraph(0);
       });
-  
+
       // Give it a second to load
       // Unfortunately there is no handle to check for changes
       waits(waittime);
-  
+
       runs(function() {
         expect([0, 1, 2, 3, 4]).toBeDisplayed();
       });
@@ -369,7 +369,7 @@ describe("Graph Viewer", function() {
 
   describe('set up to support zoom', function() {
     var viewer, adapterConfig;
-    
+
     beforeEach(function() {
       if (window.ZoomManager === undefined) {
         window.ZoomManager = {};
@@ -381,7 +381,7 @@ describe("Graph Viewer", function() {
       };
       viewer = new GraphViewer(svg, 42, 13, adapterConfig, config);
     });
-    
+
     it('should set up the zoom manager', function() {
       expect(window.ZoomManager).toHaveBeenCalledWith(
         42,
@@ -394,13 +394,13 @@ describe("Graph Viewer", function() {
         jasmine.any(Function)
       );
     });
-    
+
     it('should trigger the adapter if zoom level is changed', function() {
       spyOn(viewer.adapter, "setNodeLimit");
       helper.simulateScrollUpMouseEvent("outersvg");
       expect(viewer.adapter.setNodeLimit).wasCalled();
     });
-    
+
     it('should trigger the start function if node limit is reduced to far', function() {
       spyOn(viewer.adapter, "setNodeLimit").andCallFake(function(l, callback) {
         callback();
@@ -409,7 +409,7 @@ describe("Graph Viewer", function() {
       helper.simulateScrollUpMouseEvent("outersvg");
       expect(viewer.start).wasCalled();
     });
-    
+
     it("should trigger colourlist resets on the shapers on cleanup", function() {
       spyOn(viewer.edgeShaper, "resetColourMap");
       spyOn(viewer.nodeShaper, "resetColourMap");
