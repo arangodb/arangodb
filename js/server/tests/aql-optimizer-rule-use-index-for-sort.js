@@ -89,7 +89,27 @@ function optimizerRuleTestSuite() {
             assertEqual(rn[0].ranges.length, 0, "Have IndexRangeNode with NO ranges");
         }
     };
-    var IsNodeType = function(node, type) {
+    var getRangeAttributes = function (plan) {
+        var rn = findExecutionNodes(plan, "IndexRangeNode");
+        assertEqual(rn.length, 1, "Has IndexRangeNode");
+        assertTrue(rn[0].ranges.length > 0, "Have IndexRangeNode with ranges");
+        return rn[0].ranges;
+    };
+    var getRangeAttribute = function (rangeAttributes, varcmp, attrcmp, getNth) {
+        var ret = {};
+        rangeAttributes.forEach(function compare(oneRA) {
+            if ( (oneRA.variable  === varcmp) &&
+                 (oneRA.attr === attrcmp)) {
+                getNth --;
+                if (getNth === 0) {
+                    ret = oneRA;
+                }
+            }
+
+        });
+        return ret;
+    };
+    var isNodeType = function(node, type) {
         assertEqual(node.type, type, "check whether this node is of type "+type);
     };
 
@@ -108,7 +128,7 @@ function optimizerRuleTestSuite() {
     setUp : function () {
         var loopto;
         if (typeof loopmax === 'undefined') {
-            loopto = 5;
+            loopto = 10;
         }
         else {
             loopto = loopmax;
@@ -128,7 +148,8 @@ function optimizerRuleTestSuite() {
 
         skiplist.ensureSkiplist("a", "b");
         skiplist.ensureSkiplist("d");
-        
+        skiplist.ensureIndex({ type: "hash", fields: [ "c" ], unique: false });
+
         skiplist2 = internal.db._create(colNameOther);
         for (j = 1; j <= loopto; ++j) {
             for (i = 1; i <= loopto; ++i) {
@@ -139,6 +160,7 @@ function optimizerRuleTestSuite() {
         }
         skiplist2.ensureSkiplist("f", "g");
         skiplist2.ensureSkiplist("i");
+        skiplist2.ensureIndex({ type: "hash", fields: [ "h" ], unique: false });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -198,6 +220,7 @@ function optimizerRuleTestSuite() {
 */
     },
 
+/*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test that rule has an effect
 ////////////////////////////////////////////////////////////////////////////////
@@ -222,7 +245,7 @@ function optimizerRuleTestSuite() {
             QResults[1] = AQL_EXECUTE(query, { }, paramIFS ).json;
             //          require("internal").print(result);
             
-            assertTrue(isEqual(QResults[0], QResults[1]), "Result " + i + "is Equal?");
+            assertTrue(isEqual(QResults[0], QResults[1]), "Result " + i + " is Equal?");
             i++;
         });
 
@@ -246,12 +269,12 @@ function optimizerRuleTestSuite() {
             hasSortNode(result);
             QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
             QResults[1] = AQL_EXECUTE(query, { }, paramIFS ).json;
-            assertTrue(isEqual(QResults[0], QResults[1]), "Result " + i + "is Equal?");
+            assertTrue(isEqual(QResults[0], QResults[1]), "Result " + i + " is Equal?");
             i++;
         });
 
     },
-
+*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test generated plans
@@ -299,7 +322,11 @@ function optimizerRuleTestSuite() {
       });
     },
 */
-//*
+/*
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  sortToIndexRange
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this sort is replaceable by an index.
 ////////////////////////////////////////////////////////////////////////////////
@@ -386,7 +413,7 @@ function optimizerRuleTestSuite() {
           hasIndexRangeNode_WithRanges(XPresult, true);
 
           for (i = 1; i < 4; i++) {
-              assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + "is Equal?");
+              assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
           }
       },
 
@@ -399,7 +426,7 @@ function optimizerRuleTestSuite() {
           var i;
 
           // the index we will compare to sorts by a & b, so we need to re-sort the result here to accomplish similarity.
-          QResults[0] = AQL_EXECUTE(query, { }, { optimizer: { rules: [ "-all" ] } }).json.sort(sortArray);
+          QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
 
           // -> use-index-for-sort alone.
           QResults[1] = AQL_EXECUTE(query, { }, paramIFS).json;
@@ -432,16 +459,255 @@ function optimizerRuleTestSuite() {
           // we should be able to find exactly one sortnode property - its a Calculation node.
           var sortProperty = findReferencedNodes(XPresult, findExecutionNodes(XPresult, "SortNode")[0]);
           assertEqual(sortProperty.length, 1);
-          IsNodeType(sortProperty[0], "CalculationNode");
+          isNodeType(sortProperty[0], "CalculationNode");
           // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
           hasIndexRangeNode_WithRanges(XPresult, true);
 
 
           for (i = 1; i < 4; i++) {
-              assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + "is Equal?");
+              assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
           }
 
-      }
+      },
+
+*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      toIndexRange
+// -----------------------------------------------------------------------------
+
+      testRangeEquals: function () {
+
+          var query = "FOR v IN " + colName + " FILTER v.a == 1 RETURN [v.a, v.b, v.c]";
+
+          var XPresult;
+          var QResults=[];
+          var i;
+
+          // the index we will compare to sorts by a & b, so we need to re-sort the result here to accomplish similarity.
+          QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
+
+          // -> use-index-range alone.
+          QResults[1] = AQL_EXECUTE(query, { }, paramIR).json;
+          XPresult    = AQL_EXPLAIN(query, { }, paramIR);
+          assertEqual([ secondRuleName ], XPresult.plan.rules);
+          // the sortnode and its calculation node should be there.
+          hasCalculationNodes(XPresult, 2);
+
+          // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
+          var RAs = getRangeAttributes(XPresult);
+          //require("internal").print(RAs);
+          var first = getRangeAttribute(RAs, "v", "a", 1);
+          
+          //require("internal").print(first);
+          assertEqual(first.low.bound.vType,  "int", "Type is int");
+          assertEqual(first.high.bound.vType, "int", "Type is int");
+          assertEqual(first.low.bound.value, first.high.bound.value);
+
+          for (i = 1; i < 2; i++) {
+              assertTrue(isEqual(QResults[0].sort(sortArray), QResults[i]), "Result " + i + " is Equal?");
+          }
+
+      },
+
+
+      testRangeLessThen: function () {
+          var query = "FOR v IN " + colName + " FILTER v.a < 5 RETURN [v.a, v.b]";
+
+          var XPresult;
+          var QResults=[];
+
+          // the index we will compare to sorts by a & b, so we need to re-sort the result here to accomplish similarity.
+          QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
+
+          // -> use-index-range alone.
+          QResults[1] = AQL_EXECUTE(query, { }, paramIR).json;
+
+          XPresult    = AQL_EXPLAIN(query, { }, paramIR);
+          assertEqual([ secondRuleName ], XPresult.plan.rules);
+          // the sortnode and its calculation node should be there.
+          hasCalculationNodes(XPresult, 2);
+
+          // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
+          var RAs = getRangeAttributes(XPresult);
+          var first = getRangeAttribute(RAs, "v", "a", 1);
+          assertEqual(first.high.bound.vType, "int", "Type is int");
+          assertEqual(first.high.bound.value, 5, "proper value was set");
+
+          assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
+      },
+
+      testRangeGreaterThen: function () {
+/*
+  TODO: can skiplist do a range?
+          var query = "FOR v IN " + colName + " FILTER v.a < 5 RETURN [v.a, v.b, v.c]";
+          var query = "FOR v IN " + colName + " FILTER v.a > 1 && v.a < 5 RETURN [v.a, v.b, v.c]";
+          var query = "FOR v IN " + colName + " FILTER v.c > 1 && v.c < 5 RETURN [v.a, v.b, v.c]";
+*/
+          var query = "FOR v IN " + colName + " FILTER v.a > 5 RETURN [v.a, v.b]";
+
+          var XPresult;
+          var QResults=[];
+
+          // the index we will compare to sorts by a & b, so we need to re-sort the result here to accomplish similarity.
+          QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
+
+          // -> use-index-range alone.
+          QResults[1] = AQL_EXECUTE(query, { }, paramIR).json;
+
+          XPresult    = AQL_EXPLAIN(query, { }, paramIR);
+          assertEqual([ secondRuleName ], XPresult.plan.rules);
+          // the sortnode and its calculation node should be there.
+          hasCalculationNodes(XPresult, 2);
+
+          // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
+          var RAs = getRangeAttributes(XPresult);
+//          require("internal").print(RAs);
+          var first = getRangeAttribute(RAs, "v", "a", 1);
+          
+//          require("internal").print(first);
+          assertEqual(first.low.bound.vType, "int", "Type is int");
+          assertEqual(first.low.bound.value, 5, "proper value was set");
+
+          assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
+      },
+
+      testRangeBandpass: function () {
+          var query = "FOR v IN " + colName + " FILTER v.a > 4 && v.a < 10 RETURN [v.a, v.b]";
+
+          var XPresult;
+          var QResults=[];
+
+          // the index we will compare to sorts by a & b, so we need to re-sort the result here to accomplish similarity.
+          QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
+
+          // -> use-index-range alone.
+          QResults[1] = AQL_EXECUTE(query, { }, paramIR).json;
+
+          XPresult    = AQL_EXPLAIN(query, { }, paramIR);
+          assertEqual([ secondRuleName ], XPresult.plan.rules);
+          // the sortnode and its calculation node should be there.
+          hasCalculationNodes(XPresult, 2);
+
+          // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
+          var RAs = getRangeAttributes(XPresult);
+//          require("internal").print(RAs);
+          var first = getRangeAttribute(RAs, "v", "a", 1);
+          
+//          require("internal").print(first);
+          assertEqual(first.low.bound.vType, "int", "Type is int");
+          assertEqual(first.low.bound.value, 4, "proper value was set");
+          assertEqual(first.high.bound.vType, "int", "Type is int");
+          assertEqual(first.high.bound.value, 10, "proper value was set");
+
+          assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
+          
+      },
+
+      testRangeBandpassInvalid: function () {
+/* TODO: this doesn't do anything. should it simply flush that range since its empty? or even raise?
+          var query = "FOR v IN " + colName + " FILTER v.a > 7 && v.a < 4 RETURN [v.a, v.b]";
+
+          var XPresult;
+          var QResults=[];
+
+          // the index we will compare to sorts by a & b, so we need to re-sort the result here to accomplish similarity.
+          QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
+
+          // -> use-index-range alone.
+          QResults[1] = AQL_EXECUTE(query, { }, paramIR).json;
+
+
+          XPresult    = AQL_EXPLAIN(query, { }, paramIR);
+          require("internal").print(XPresult);              
+          assertEqual([ secondRuleName ], XPresult.plan.rules);
+          // the sortnode and its calculation node should be there.
+          hasCalculationNodes(XPresult, 2);
+
+          // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
+          var RAs = getRangeAttributes(XPresult);
+//          require("internal").print(RAs);
+          var first = getRangeAttribute(RAs, "v", "a", 1);
+          
+          require("internal").print(first);
+//          require("internal").print(first);
+          assertEqual(first.low.bound.vType, "int", "Type is int");
+          assertEqual(first.low.bound.value, 4, "proper value was set");
+          assertEqual(first.high.bound.vType, "int", "Type is int");
+          assertEqual(first.high.bound.value, 10, "proper value was set");
+
+          assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
+*/          
+      },
+
+
+      testRangeBandstop: function () {
+/* TODO: OR  isn't implemented
+          var query = "FOR v IN " + colName + " FILTER v.a < 5 || v.a > 10 RETURN [v.a, v.b]";
+
+          var XPresult;
+          var QResults=[];
+
+          // the index we will compare to sorts by a & b, so we need to re-sort the result here to accomplish similarity.
+          QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
+
+          // -> use-index-range alone.
+          QResults[1] = AQL_EXECUTE(query, { }, paramIR).json;
+
+          XPresult    = AQL_EXPLAIN(query, { }, paramIR);
+          assertEqual([ secondRuleName ], XPresult.plan.rules);
+          // the sortnode and its calculation node should be there.
+          hasCalculationNodes(XPresult, 2);
+
+          // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
+          var RAs = getRangeAttributes(XPresult);
+          require("internal").print(RAs);
+          var first = getRangeAttribute(RAs, "v", "a", 1);
+          
+          require("internal").print(first);
+          assertEqual(first.low.bound.vType, "int", "Type is int");
+          assertEqual(first.low.bound.value, 5, "proper value was set");
+
+          require("internal").print(QResults[0]);
+          require("internal").print(QResults[1]);              
+          assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
+       */   
+      },
+
+      testMultiRangeBandpass: function () {
+/* TODO: OR  isn't implemented
+          var query = "FOR v IN " + colName + " FILTER ((v.a > 3 && v.a < 5) || (v.a > 4 && v.a < 7)) RETURN [v.a, v.b]";
+
+          var XPresult;
+          var QResults=[];
+
+          // the index we will compare to sorts by a & b, so we need to re-sort the result here to accomplish similarity.
+          QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
+
+          // -> use-index-range alone.
+          QResults[1] = AQL_EXECUTE(query, { }, paramIR).json;
+
+          XPresult    = AQL_EXPLAIN(query, { }, paramIR);
+          assertEqual([ secondRuleName ], XPresult.plan.rules);
+          // the sortnode and its calculation node should be there.
+          hasCalculationNodes(XPresult, 2);
+
+          // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
+          var RAs = getRangeAttributes(XPresult);
+//          require("internal").print(RAs);
+          var first = getRangeAttribute(RAs, "v", "a", 1);
+          
+//          require("internal").print(first);
+          assertEqual(first.low.bound.vType, "int", "Type is int");
+          assertEqual(first.low.bound.value, 4, "proper value was set");
+          assertEqual(first.high.bound.vType, "int", "Type is int");
+          assertEqual(first.high.bound.value, 10, "proper value was set");
+
+          assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
+*/          
+      },
+
+
+
 //*/
   };
 }

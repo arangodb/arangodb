@@ -645,6 +645,12 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         buildRangeInfo(node->getMember(0), enumCollVar, attr);
         buildRangeInfo(node->getMember(1), enumCollVar, attr);
       }
+      /* TODO: or isn't implemented yet.
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+        buildRangeInfo(node->getMember(0), enumCollVar, attr);
+        buildRangeInfo(node->getMember(1), enumCollVar, attr);
+      }
+      */
       attr = "";
       enumCollVar = "";
       return;
