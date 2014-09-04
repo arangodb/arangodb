@@ -5183,7 +5183,7 @@ function CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL (graphData, options) {
       if (paths[e._to][e._from]) {
         paths[e._to][e._from].distance =
           Math.min(paths[e._to][e._from].distance, DETERMINE_WEIGHT(e, options.weight,
-          options.defaultWeight));
+            options.defaultWeight));
       } else {
         paths[e._to][e._from] = {distance : DETERMINE_WEIGHT(e, options.weight,
           options.defaultWeight), paths : [{edges : [e], vertices : [e._from, e._to]}]};
@@ -5204,7 +5204,7 @@ function CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL (graphData, options) {
     return self.indexOf(elem) === pos;
   };
   Object.keys(graph.fromVerticesIDs).forEach(function (v) {
-      vertices[v] = 1;
+    vertices[v] = 1;
   });
 
 
@@ -5212,20 +5212,20 @@ function CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL (graphData, options) {
   allVertices.forEach(function (k) {
     allVertices.forEach(function (i) {
       allVertices.forEach(function (j) {
-          if (i === j ) {
-            if (!paths[i]) {
-              paths[i] = {};
-            }
-            paths[i][j] = null;
-            return;
+        if (i === j ) {
+          if (!paths[i]) {
+            paths[i] = {};
           }
-          if (paths[i] && paths[i][k] && paths[i][k].distance >=0
-            && paths[i][k].distance < Infinity &&
-            paths[k] && paths[k][j] && paths[k][j].distance >=0
-            && paths[k][j].distance < Infinity &&
-            ( !paths[i][j] ||
-              paths[i][k].distance + paths[k][j].distance  <= paths[i][j].distance
-             )
+          paths[i][j] = null;
+          return;
+        }
+        if (paths[i] && paths[i][k] && paths[i][k].distance >=0
+          && paths[i][k].distance < Infinity &&
+          paths[k] && paths[k][j] && paths[k][j].distance >=0
+          && paths[k][j].distance < Infinity &&
+          ( !paths[i][j] ||
+            paths[i][k].distance + paths[k][j].distance  <= paths[i][j].distance
+            )
           ) {
           if (!paths[i][j]) {
             paths[i][j] = {paths : [], distance : paths[i][k].distance + paths[k][j].distance};
@@ -5243,8 +5243,6 @@ function CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL (graphData, options) {
                 });
               });
             });
-          } else {
-            delete paths[i][j].paths;
           }
         }
 
@@ -5252,6 +5250,22 @@ function CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL (graphData, options) {
 
     });
   });
+
+  var transformPath = function (paths) {
+    paths.forEach(function (p) {
+      var vTmp = [];
+      p.vertices.forEach(function (v) {
+        if (graph.fromVerticesIDs[v]) {
+          vTmp.push(graph.fromVerticesIDs[v]);
+        } else {
+          vTmp.push(graph.toVerticesIDs[v]);
+        }
+      });
+      p.vertices = vTmp;
+    });
+    return paths;
+  };
+
   Object.keys(paths).forEach(function (from) {
     if (!graph.fromVerticesIDs[from]) {
       return;
@@ -5272,7 +5286,7 @@ function CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL (graphData, options) {
       result.push({
         startVertex : from,
         vertex : graph.toVerticesIDs[to],
-        paths : options.noPaths ? null : paths[from][to].paths,
+        paths : options.noPaths ? null : transformPath(paths[from][to].paths),
         distance : paths[from][to].distance
       });
     });
@@ -5392,7 +5406,8 @@ function IS_EXAMPLE_SET (example) {
   return (
       example && (
         (Array.isArray(example) && example.length > 0) ||
-        (typeof example === "object" && Object.keys(example) > 0)
+        (typeof example === "object" && Object.keys(example) > 0) ||
+         typeof example === "string"
         )
     );
 
@@ -6902,13 +6917,13 @@ function GENERAL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
     }
     d.paths.forEach(function (p) {
       p.vertices.forEach(function (v) {
-        if (v === d.startVertex ||  v === d.vertex._id) {
+        if (v._id === d.startVertex || v._id === d.vertex._id) {
           return;
         }
-        if (!tmp[v]) {
-          tmp[v] = 1;
+        if (!tmp[v._id]) {
+          tmp[v._id] = 1;
         } else {
-          tmp[v]++;
+          tmp[v._id]++;
         }
       });
     });
