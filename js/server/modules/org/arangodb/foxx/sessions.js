@@ -49,20 +49,26 @@ function decorateController(auth, controller) {
 
   controller.before('/*', function (req) {
     var sessions = auth.getSessionStorage();
+    var sid;
     if (cfg.type === 'cookie') {
-      req.session = sessions.fromCookie(req, cfg.cookieName, cfg.cookieSecret);
-    } else if (cfg.type === 'header') {
-      var sid = req.headers[cfg.headerName.toLowerCase()];
-      if (sid) {
-        if (cfg.headerJwt) {
-          sid = crypto.jwtDecode(cfg.headerJwtSecret, sid, !cfg.headerJwtVerify);
+      sid = req.cookie(cfg.cookieName, cfg.cookieSecret ? {
+        signed: {
+          secret: cfg.cookieSecret,
+          algorithm: cfg.cookieAlgorithm
         }
-        try {
-          req.session = sessions.get(sid);
-        } catch (e) {
-          if (!(e instanceof sessions.errors.SessionNotFound)) {
-            throw e;
-          }
+      } : undefined);
+    } else if (cfg.type === 'header') {
+      sid = req.headers[cfg.headerName.toLowerCase()];
+    }
+    if (sid) {
+      if (cfg.jwt) {
+        sid = crypto.jwtDecode(cfg.jwt.secret, sid, !cfg.jwt.verify);
+      }
+      try {
+        req.session = sessions.get(sid);
+      } catch (e) {
+        if (!(e instanceof sessions.errors.SessionNotFound)) {
+          throw e;
         }
       }
     }
@@ -73,13 +79,19 @@ function decorateController(auth, controller) {
 
   controller.after('/*', function (req, res) {
     if (req.session) {
+      var sid = req.session.get('_key');
+      if (cfg.jwt) {
+        sid = crypto.jwtEncode(cfg.jwt.secret, sid, cfg.jwt.algorithm);
+      }
       if (cfg.type === 'cookie') {
-        req.session.addCookie(res, cfg.cookieName, cfg.cookieSecret);
+        res.cookie(cfg.cookieName, sid, {
+          ttl: req.session.getTTL() / 1000,
+          signed: cfg.cookieSecret ? {
+            secret: cfg.cookieSecret,
+            algorithm: cfg.cookieAlgorithm
+          } : undefined
+        });
       } else if (cfg.type === 'header') {
-        var sid = req.session.get('_key');
-        if (cfg.headerJwt) {
-          sid = crypto.jwtEncode(cfg.headerJwtSecret, sid, cfg.headerJwtAlgorithm);
-        }
         res.set(cfg.headerName, sid);
       }
     }
@@ -115,7 +127,13 @@ function createDestroySessionHandler(auth, opts) {
       req.session = auth.getSessionStorage().create();
     } else {
       if (cfg.type === 'cookie') {
-        req.session.clearCookie(res, cfg.cookieName, cfg.cookieSecret);
+        res.cookie(cfg.cookieName, '', {
+          ttl: -(7 * 24 * 60 * 60),
+          sign: cfg.cookieSecret ? {
+            secret: cfg.cookieSecret,
+            algorithm: cfg.cookieAlgorithm
+          } : undefined
+        });
       }
       delete req.session;
     }
@@ -171,34 +189,34 @@ function Sessions(opts) {
     if (opts.headerName && typeof opts.headerName !== 'string') {
       throw new Error('Header name must be a string or empty.');
     }
-    if (opts.headerJwt !== false) {
-      if (opts.headerJwtVerify !== false) {
-        opts.headerJwtVerify = true;
-      }
-      if (!opts.headerJwtSecret) {
-        opts.headerJwtSecret = '';
-        if (!opts.headerJwtAlgorithm) {
-          opts.headerJwtAlgorithm = 'none';
-        } else if (opts.headerJwtAlgorithm !== 'none') {
-          throw new Error('Must provide a JWT secret to use any algorithm other than "none".');
-        }
-      } else {
-        opts.headerJwt = true;
-        if (typeof opts.headerJwtSecret !== 'string') {
-          throw new Error('Header JWT secret must be a string or empty.');
-        }
-        if (!opts.headerJwtAlgorithm) {
-          opts.headerJwtAlgorithm = 'HS256';
-        } else {
-          opts.headerJwtAlgorithm = crypto.jwtCanonicalAlgorithmName(opts.headerJwtAlgorithm);
-        }
-      }
-    }
     if (!opts.headerName) {
       opts.headerName = 'X-Session-Id';
     }
   } else {
     throw new Error('Only the following session types are supported at this time: ' + sessionTypes.join(', '));
+  }
+  if (opts.jwt !== false) {
+    if (opts.jwtVerify !== false) {
+      opts.jwtVerify = true;
+    }
+    if (!opts.jwtSecret) {
+      opts.jwtSecret = '';
+      if (!opts.jwtAlgorithm) {
+        opts.jwtAlgorithm = 'none';
+      } else if (opts.jwtAlgorithm !== 'none') {
+        throw new Error('Must provide a JWT secret to use any algorithm other than "none".');
+      }
+    } else {
+      opts.jwt = true;
+      if (typeof opts.jwtSecret !== 'string') {
+        throw new Error('Header JWT secret must be a string or empty.');
+      }
+      if (!opts.jwtAlgorithm) {
+        opts.jwtAlgorithm = 'HS256';
+      } else {
+        opts.jwtAlgorithm = crypto.jwtCanonicalAlgorithmName(opts.jwtAlgorithm);
+      }
+    }
   }
   if (opts.autoCreateSession !== false) {
     opts.autoCreateSession = true;
