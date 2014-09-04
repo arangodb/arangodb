@@ -6,7 +6,7 @@
   SYS_DOWNLOAD, SYS_EXECUTE, SYS_GET_CURRENT_REQUEST, SYS_GET_CURRENT_RESPONSE,
   SYS_LOAD, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STATISTICS,
   SYS_RAND, SYS_SERVER_STATISTICS, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER,
-  SYS_HMAC, SYS_SHA256, SYS_SHA224, SYS_SHA1, SYS_SLEEP, SYS_WAIT,
+  SYS_HMAC, SYS_SHA512, SYS_SHA384, SYS_SHA256, SYS_SHA224, SYS_SHA1, SYS_SLEEP, SYS_WAIT,
   SYS_PARSE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, SYS_LOG,
   SYS_GEN_RANDOM_NUMBERS, SYS_GEN_RANDOM_ALPHA_NUMBERS, SYS_GEN_RANDOM_SALT, SYS_CREATE_NONCE,
   SYS_CHECK_AND_MARK_NONCE, SYS_CLIENT_STATISTICS, SYS_HTTP_STATISTICS, SYS_UNIT_TESTS, SYS_UNIT_TESTS_RESULT:true,
@@ -534,6 +534,24 @@
   if (typeof SYS_RAND !== "undefined") {
     exports.rand = SYS_RAND;
     delete SYS_RAND;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sha512
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_SHA512 !== "undefined") {
+    exports.sha512 = SYS_SHA512;
+    delete SYS_SHA512;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sha384
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_SHA384 !== "undefined") {
+    exports.sha384 = SYS_SHA384;
+    delete SYS_SHA384;
   }
 
 ////////////////////////////////////////////////////////////////////////////////

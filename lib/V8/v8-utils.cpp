@@ -192,7 +192,7 @@ static bool LoadJavaScriptFile (char const* filename,
     length += strlen(prologue) + strlen(epilogue);
     content = contentWrapper;
   }
- 
+
   if (content == nullptr) {
     LOG_TRACE("cannot load java script file '%s': %s", filename, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
     return false;
@@ -2278,6 +2278,86 @@ static v8::Handle<v8::Value> JS_SPrintF (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief computes the sha512 sum
+///
+/// @FUN{internal.sha512(@FA{text})}
+///
+/// Computes an sha512 for the @FA{text}.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Sha512 (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1 || ! argv[0]->IsString()) {
+    TRI_V8_EXCEPTION_USAGE(scope, "sha512(<text>)");
+  }
+
+  string key = TRI_ObjectToString(argv[0]);
+
+  // create sha512
+  char* hash = 0;
+  size_t hashLen;
+
+  SslInterface::sslSHA512(key.c_str(), key.size(), hash, hashLen);
+
+  // as hex
+  char* hex = 0;
+  size_t hexLen;
+
+  SslInterface::sslHEX(hash, hashLen, hex, hexLen);
+
+  delete[] hash;
+
+  // and return
+  v8::Handle<v8::String> hashStr = v8::String::New(hex, (int) hexLen);
+
+  delete[] hex;
+
+  return scope.Close(hashStr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief computes the sha384 sum
+///
+/// @FUN{internal.sha384(@FA{text})}
+///
+/// Computes an sha384 for the @FA{text}.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_Sha384 (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() != 1 || ! argv[0]->IsString()) {
+    TRI_V8_EXCEPTION_USAGE(scope, "sha384(<text>)");
+  }
+
+  string key = TRI_ObjectToString(argv[0]);
+
+  // create sha384
+  char* hash = 0;
+  size_t hashLen;
+
+  SslInterface::sslSHA384(key.c_str(), key.size(), hash, hashLen);
+
+  // as hex
+  char* hex = 0;
+  size_t hexLen;
+
+  SslInterface::sslHEX(hash, hashLen, hex, hexLen);
+
+  delete[] hash;
+
+  // and return
+  v8::Handle<v8::String> hashStr = v8::String::New(hex, (int) hexLen);
+
+  delete[] hex;
+
+  return scope.Close(hashStr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief computes the sha256 sum
 ///
 /// @FUN{internal.sha256(@FA{text})}
@@ -2685,6 +2765,12 @@ static v8::Handle<v8::Value> JS_HMAC (v8::Arguments const& argv) {
 
     if (algorithm == "sha1") {
       al = SslInterface::Algorithm::ALGORITHM_SHA1;
+    }
+    else if (algorithm == "sha512") {
+      al = SslInterface::Algorithm::ALGORITHM_SHA512;
+    }
+    else if (algorithm == "sha384") {
+      al = SslInterface::Algorithm::ALGORITHM_SHA384;
     }
     else if (algorithm == "sha256") {
       al = SslInterface::Algorithm::ALGORITHM_SHA256;
@@ -3546,6 +3632,8 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_SHA1", JS_Sha1);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SHA224", JS_Sha224);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SHA256", JS_Sha256);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_SHA384", JS_Sha384);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_SHA512", JS_Sha512);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SLEEP", JS_Sleep);
   TRI_AddGlobalFunctionVocbase(context, "SYS_SPRINTF", JS_SPrintF);
   TRI_AddGlobalFunctionVocbase(context, "SYS_STATUS_EXTERNAL", JS_StatusExternal);
