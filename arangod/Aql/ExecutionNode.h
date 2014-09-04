@@ -1428,23 +1428,31 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
     
     struct SortInformation {
+
+      enum Match {
+        unequal,
+        weSupersede,
+        otherSupersedes,
+        allEqual
+      };
+
       std::vector<std::tuple<ExecutionNode const*, std::string, bool>> criteria;
       bool isValid   = true;
       bool isComplex = false;
           
-      bool isCoveredBy (SortInformation const& other) {
+      Match isCoveredBy (SortInformation const& other) {
         if (! isValid || ! other.isValid) {
-          return false;
+          return unequal;
         }
 
         if (isComplex) {
-          return false;
+          return unequal;
         }
 
         size_t const n = criteria.size();
         for (size_t i = 0; i < n; ++i) {
           if (other.criteria.size() <= i) {
-            return false;
+            return otherSupersedes;
           }
 
           auto ours = criteria[i];
@@ -1452,16 +1460,18 @@ namespace triagens {
 
           if (std::get<2>(ours) != std::get<2>(theirs)) {
             // sort order is different
-            return false;
+            return unequal;
           }
 
           if (std::get<1>(ours) != std::get<1>(theirs)) {
             // sort criterion is different
-            return false;
+            return unequal;
           }
         }
-
-        return true;
+        if (other.criteria.size() > n)
+          return weSupersede;
+        else
+          return allEqual;
       }
     };
 

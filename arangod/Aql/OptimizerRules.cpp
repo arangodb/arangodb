@@ -69,7 +69,14 @@ int triagens::aql::removeRedundantSorts (Optimizer* opt,
           // we found another sort. now check if they are compatible!
           auto other = static_cast<SortNode*>(current)->getSortInformation(plan);
 
-          if (sortInfo.isCoveredBy(other)) {
+          switch (sortInfo.isCoveredBy(other)) {
+          case triagens::aql::SortInformation::unequal:
+            break;
+          case triagens::aql::SortInformation::otherSupersedes:
+            toUnlink.insert(current);
+            break;
+          case triagens::aql::SortInformation::weSupersede:
+          case triagens::aql::SortInformation::allEqual:
             // the sort at the start of the pipeline makes the sort at the end
             // superfluous, so we'll remove it
             toUnlink.insert(n);
