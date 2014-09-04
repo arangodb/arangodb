@@ -308,6 +308,10 @@ function CryptoSuite () {
         [ "secret", "Arangodb", "hs256", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.IkFyYW5nb2RiIg.BjQqhHpWiGqi2RBeAjV1V0gkUBPNZHtKCu5rgeu9eno" ],
         [ "secret", {foxx: "roxx"}, "HS256", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJmb3h4Ijoicm94eCJ9.tCZwaqnZ7Wj9BljBndyDtINYWmmvr0eLsq8bkmtXhg0" ],
         [ "SECRET", {foxx: "roxx"}, "HS256", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJmb3h4Ijoicm94eCJ9.oXcCBnmuv9GzqFc0_N2qFXLWKDjCKEmN015CccDAgfw" ],
+        [ "secret", {foxx: "roxx"}, "HS384", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzM4NCJ9.eyJmb3h4Ijoicm94eCJ9.kkgSDKjZZh8OSbjeGLjObeLVcbJiH7EtFzS-WjQtSLfYsNLfSULsTuOYVctMaAk5" ],
+        [ "SECRET", {foxx: "roxx"}, "HS384", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzM4NCJ9.eyJmb3h4Ijoicm94eCJ9.HHrNONcNcrK0Y-xfiOsw9tNe-zcsOmS9kdTr14dmH_2-71QTPIRnJGTLfl58URtM" ],
+        [ "secret", {foxx: "roxx"}, "HS512", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJmb3h4Ijoicm94eCJ9.zjLEjyjxv_NzWMPQEyXcSgFB9c2-t1n_jZRQkxnpQU9-UNJQ-kUpW8pYsObMHDKcmM8GspmX4X5653Fb-ZDkWA" ],
+        [ "SECRET", {foxx: "roxx"}, "HS512", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJmb3h4Ijoicm94eCJ9.6MGHLPoS6r_F9HTZcHyRFWaQmLDf4boaTK5cxNnJPQeXNTSp8itLo4b1KPnq-wL4Q4HxnomghQLWRUjW612Wug" ],
         [ "secret", {foxx: "roxx"}, "none", "eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.eyJmb3h4Ijoicm94eCJ9." ],
         [ "SECRET", {foxx: "roxx"}, "none", "eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.eyJmb3h4Ijoicm94eCJ9." ]
       ];
