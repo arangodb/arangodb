@@ -131,6 +131,8 @@ function createDestroySessionHandler(auth, opts) {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
+var sessionTypes = ['cookie', 'header'];
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
@@ -162,7 +164,7 @@ function Sessions(opts) {
       opts.headerName = 'X-Session-Id';
     }
   } else {
-    throw new Error('Only "cookie" and "header" type sessions are supported at this time.');
+    throw new Error('Only the following session types are supported at this time: ' + sessionTypes.join(', '));
   }
   if (opts.autoCreateSession !== false) {
     opts.autoCreateSession = true;
@@ -235,10 +237,12 @@ UnauthorizedError.prototype = new Error();
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.UnauthorizedError                   = UnauthorizedError;
-exports.Sessions                      = Sessions;
-exports.decorateController                  = decorateController;
-exports.createDestroySessionHandler                 = createDestroySessionHandler;
+exports.UnauthorizedError = UnauthorizedError;
+exports.sessionTypes = sessionTypes;
+exports.Sessions = Sessions;
+exports.decorateController = decorateController;
+exports.createDestroySessionHandler = createDestroySessionHandler;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
