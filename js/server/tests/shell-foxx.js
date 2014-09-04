@@ -1402,6 +1402,7 @@ function SetupAuthorization () {
 
 function SetupSessions () {
   var app;
+  var sessionTypes = require('org/arangodb/foxx/sessions').sessionTypes;
 
   return {
     testWorksWithAllParameters: function () {
@@ -1439,7 +1440,7 @@ function SetupSessions () {
         err = e;
       }
 
-      assertEqual(err.message, 'Only "cookie" type sessions are supported at this time.');
+      assertEqual(err.message, 'Only the following session types are supported at this time: ' + sessionTypes.join(', '));
     }
   };
 }
