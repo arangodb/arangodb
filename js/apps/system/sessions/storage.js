@@ -44,7 +44,7 @@
       now = Number(new Date()),
       session = new Session({
         _key: sid,
-        sid: sid,
+        uid: null,
         sessionData: sessionData || {},
         userData: {},
         created: now,
