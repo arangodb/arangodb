@@ -84,11 +84,13 @@ namespace triagens {
       void assign (AstNode const* bound, bool include) {
         _include = include;
         _bound = Json(TRI_UNKNOWN_MEM_ZONE, bound->toJson(TRI_UNKNOWN_MEM_ZONE, true));
+        _undefined = false;
       }
       
       void assign (RangeInfoBound copy) {
         _include = copy._include;
         _bound = copy._bound; 
+        _undefined = false;
       }
 
       Json toJson () const {
