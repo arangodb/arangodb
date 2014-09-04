@@ -1405,7 +1405,7 @@ function SetupSessions () {
   var sessionTypes = require('org/arangodb/foxx/sessions').sessionTypes;
 
   return {
-    testWorksWithAllParameters: function () {
+    testWorksWithCookies: function () {
       var err;
 
       app = new FoxxController(fakeContext);
@@ -1416,6 +1416,43 @@ function SetupSessions () {
           cookieName: 'sid',
           cookieSecret: 'secret',
           type: 'cookie'
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertUndefined(err);
+    },
+
+    testWorksWithRawHeaders: function () {
+      var err;
+
+      app = new FoxxController(fakeContext);
+
+      try {
+        app.activateSessions({
+          sessionStorageApp: 'sessions',
+          headerName: 'sid',
+          type: 'header'
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertUndefined(err);
+    },
+
+    testWorksWithJwtHeaders: function () {
+      var err;
+
+      app = new FoxxController(fakeContext);
+
+      try {
+        app.activateSessions({
+          sessionStorageApp: 'sessions',
+          headerName: 'sid',
+          headerJwtSecret: 'secret',
+          type: 'header'
         });
       } catch (e) {
         err = e;

@@ -27,7 +27,8 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var Foxx = require('org/arangodb/foxx');
+var Foxx = require('org/arangodb/foxx'),
+  crypto = require('org/arangodb/crypto');
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
@@ -51,11 +52,17 @@ function decorateController(auth, controller) {
     if (cfg.type === 'cookie') {
       req.session = sessions.fromCookie(req, cfg.cookieName, cfg.cookieSecret);
     } else if (cfg.type === 'header') {
-      try {
-        req.session = sessions.get(req.headers[cfg.headerName.toLowerCase()]);
-      } catch (e) {
-        if (!(e instanceof sessions.errors.SessionNotFound)) {
-          throw e;
+      var sid = req.headers[cfg.headerName.toLowerCase()];
+      if (sid) {
+        if (cfg.headerJwt) {
+          sid = crypto.jwtDecode(cfg.headerJwtSecret, sid, !cfg.headerJwtVerify);
+        }
+        try {
+          req.session = sessions.get(sid);
+        } catch (e) {
+          if (!(e instanceof sessions.errors.SessionNotFound)) {
+            throw e;
+          }
         }
       }
     }
@@ -69,7 +76,11 @@ function decorateController(auth, controller) {
       if (cfg.type === 'cookie') {
         req.session.addCookie(res, cfg.cookieName, cfg.cookieSecret);
       } else if (cfg.type === 'header') {
-        res.set(cfg.headerName, req.session.get('_key'));
+        var sid = req.session.get('_key');
+        if (cfg.headerJwt) {
+          sid = crypto.jwtEncode(cfg.headerJwtSecret, sid, cfg.headerJwtAlgorithm);
+        }
+        res.set(cfg.headerName, sid);
       }
     }
   });
@@ -159,6 +170,29 @@ function Sessions(opts) {
   } else if (opts.type === 'header') {
     if (opts.headerName && typeof opts.headerName !== 'string') {
       throw new Error('Header name must be a string or empty.');
+    }
+    if (opts.headerJwt !== false) {
+      if (opts.headerJwtVerify !== false) {
+        opts.headerJwtVerify = true;
+      }
+      if (!opts.headerJwtSecret) {
+        opts.headerJwtSecret = '';
+        if (!opts.headerJwtAlgorithm) {
+          opts.headerJwtAlgorithm = 'none';
+        } else if (opts.headerJwtAlgorithm !== 'none') {
+          throw new Error('Must provide a JWT secret to use any algorithm other than "none".');
+        }
+      } else {
+        opts.headerJwt = true;
+        if (typeof opts.headerJwtSecret !== 'string') {
+          throw new Error('Header JWT secret must be a string or empty.');
+        }
+        if (!opts.headerJwtAlgorithm) {
+          opts.headerJwtAlgorithm = 'HS256';
+        } else {
+          opts.headerJwtAlgorithm = crypto.jwtCanonicalAlgorithmName(opts.headerJwtAlgorithm);
+        }
+      }
     }
     if (!opts.headerName) {
       opts.headerName = 'X-Session-Id';
