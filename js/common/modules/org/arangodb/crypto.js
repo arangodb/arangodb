@@ -74,6 +74,22 @@ exports.md5 = function (value) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief apply an SHA 512 hash
+////////////////////////////////////////////////////////////////////////////////
+
+exports.sha512 = function (value) {
+  return internal.sha512(value);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief apply an SHA 384 hash
+////////////////////////////////////////////////////////////////////////////////
+
+exports.sha384 = function (value) {
+  return internal.sha384(value);
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief apply an SHA 256 hash
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -163,19 +179,35 @@ function jwtUrlEncode(str) {
   return str.replace(/[+]/g, '-').replace(/[\/]/g, '_').replace(/[=]/g, '');
 }
 
+function jwtHmacSigner(algorithm) {
+  'use strict';
+  return function (key, segments) {
+    return new Buffer(exports.hmac(key, segments.join('.'), algorithm), 'hex').toString('base64');
+  };
+}
+
+function jwtHmacVerifier(algorithm) {
+  'use strict';
+  return function (key, segments) {
+    return exports.constantEquals(
+      exports.hmac(key, segments.slice(0, 2).join('.'), algorithm),
+      segments[2]
+    );
+  };
+}
+
 exports.jwtAlgorithms = {
   HS256: {
-    sign: function (key, segments) {
-      'use strict';
-      return new Buffer(exports.hmac(key, segments.join('.'), 'sha256'), 'hex').toString('base64');
-    },
-    verify: function (key, segments) {
-      'use strict';
-      return exports.constantEquals(
-        exports.hmac(key, segments.slice(0, 2).join('.'), 'sha256'),
-        segments[2]
-      );
-    }
+    sign: jwtHmacSigner('sha256'),
+    verify: jwtHmacVerifier('sha256')
+  },
+  HS384: {
+    sign: jwtHmacSigner('sha384'),
+    verify: jwtHmacVerifier('sha384')
+  },
+  HS512: {
+    sign: jwtHmacSigner('sha512'),
+    verify: jwtHmacVerifier('sha512')
   },
   none: {
     sign: function () {
