@@ -161,7 +161,7 @@
     setUser: function (user) {
       var session = this;
       if (user) {
-        session.set('uid', user.get('_key'));
+        session.set('uid', user.get('_id'));
         session.set('userData', user.get('userData'));
       } else {
         delete session.attributes.uid;
