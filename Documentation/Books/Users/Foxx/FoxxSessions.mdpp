@@ -22,6 +22,10 @@ If *type* is set to *"cookie"*, the session cookie will be updated after every r
   * *cookieName* (optional): name of the session cookie if using cookie sessions. If a *cookieSecret* is provided, the signature will be stored in a cookie named *cookieName + "_sig"*. Default: *"sid"*.
   * *cookieSecret* (optional): secret string to sign session cookies with if using cookie sessions.
   * *headerName* (optional): name of the session header if using header sessions. Default: *"X-Session-Id"*.
+  * *headerJwt* (optional): whether the session header should wrap the session ID in a JSON Web Token. Default: *false* unless *headerJwtSecret* is provided.
+  * *headerJwtSecret* (optional): secret string to sign session header JSON Web Tokens.
+  * *headerJwtAlgorithm* (optional): algorithm to sign session header JSON Web Tokens with, has no effect if no *headerJwtSecret* is provided. Default: *"HS256"*.
+  * *headerJwtVerify* (optional): whether incoming session header JSON Web Tokens should be verified, has no effect if no *headerJwtSecret* is provided. Default: *true*.
   * *autoCreateSession* (optional): whether a session should always be created if none exists. Default: *true*.
 
 @EXAMPLES
