@@ -331,9 +331,11 @@ function SetRoutesFoxxControllerSpec () {
 
       app.activateSessions({
         sessionStorageApp: 'sessions',
-        cookieName: 'sid',
-        cookieSecret: 'secret',
-        type: 'cookie'
+        type: 'cookie',
+        cookie: {
+          name: 'sid',
+          secret: 'secret'
+        }
       });
       app.destroySession('/simple/route', myFunc);
       assertEqual(routes[0].docs.httpMethod, 'POST');
@@ -1405,7 +1407,7 @@ function SetupSessions () {
   var sessionTypes = require('org/arangodb/foxx/sessions').sessionTypes;
 
   return {
-    testWorksWithCookies: function () {
+    testWorksWithUnsignedCookies: function () {
       var err;
 
       app = new FoxxController(fakeContext);
@@ -1413,9 +1415,10 @@ function SetupSessions () {
       try {
         app.activateSessions({
           sessionStorageApp: 'sessions',
-          cookieName: 'sid',
-          cookieSecret: 'secret',
-          type: 'cookie'
+          type: 'cookie',
+          cookie: {
+            name: 'sid'
+          }
         });
       } catch (e) {
         err = e;
@@ -1424,7 +1427,7 @@ function SetupSessions () {
       assertUndefined(err);
     },
 
-    testWorksWithRawHeaders: function () {
+    testWorksWithUnsignedCookiesShorthand: function () {
       var err;
 
       app = new FoxxController(fakeContext);
@@ -1432,8 +1435,8 @@ function SetupSessions () {
       try {
         app.activateSessions({
           sessionStorageApp: 'sessions',
-          headerName: 'sid',
-          type: 'header'
+          type: 'cookie',
+          cookie: 'sid'
         });
       } catch (e) {
         err = e;
@@ -1442,7 +1445,7 @@ function SetupSessions () {
       assertUndefined(err);
     },
 
-    testWorksWithJwtHeaders: function () {
+    testWorksWithSignedCookies: function () {
       var err;
 
       app = new FoxxController(fakeContext);
@@ -1450,15 +1453,201 @@ function SetupSessions () {
       try {
         app.activateSessions({
           sessionStorageApp: 'sessions',
-          headerName: 'sid',
-          headerJwtSecret: 'secret',
-          type: 'header'
+          type: 'cookie',
+          cookie: {
+            name: 'sid',
+            secret: 'keyboardcat'
+          }
         });
       } catch (e) {
         err = e;
       }
 
       assertUndefined(err);
+    },
+
+    testWorksWithHeaders: function () {
+      var err;
+
+      app = new FoxxController(fakeContext);
+
+      try {
+        app.activateSessions({
+          sessionStorageApp: 'sessions',
+          type: 'header',
+          header: 'X-Session-Id'
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertUndefined(err);
+    },
+
+    testWorksWithJwt: function () {
+      var err;
+
+      app = new FoxxController(fakeContext);
+
+      try {
+        app.activateSessions({
+          sessionStorageApp: 'sessions',
+          type: 'header',
+          header: 'X-Session-Token',
+          jwt: {
+            secret: 'secret'
+          }
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertUndefined(err);
+    },
+
+    testWorksWithJwtHS256: function () {
+      var err;
+
+      app = new FoxxController(fakeContext);
+
+      try {
+        app.activateSessions({
+          sessionStorageApp: 'sessions',
+          type: 'header',
+          header: 'X-Session-Token',
+          jwt: {
+            secret: 'secret',
+            algorithm: 'HS256'
+          }
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertUndefined(err);
+    },
+
+    testWorksWithJwtNone: function () {
+      var err;
+
+      app = new FoxxController(fakeContext);
+
+      try {
+        app.activateSessions({
+          sessionStorageApp: 'sessions',
+          type: 'header',
+          header: 'X-Session-Token',
+          jwt: {
+            algorithm: 'none'
+          }
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertUndefined(err);
+    },
+
+    testWorksWithJwtNoneWithSecret: function () {
+      var err;
+
+      app = new FoxxController(fakeContext);
+
+      try {
+        app.activateSessions({
+          sessionStorageApp: 'sessions',
+          type: 'header',
+          header: 'X-Session-Token',
+          jwt: {
+            algorithm: 'none',
+            secret: 'secret'
+          }
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertUndefined(err);
+    },
+
+    testWorksWithJwtUnverified: function () {
+      var err;
+
+      app = new FoxxController(fakeContext);
+
+      try {
+        app.activateSessions({
+          sessionStorageApp: 'sessions',
+          type: 'header',
+          header: 'X-Session-Token',
+          jwt: {
+            verify: false
+          }
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertUndefined(err);
+    },
+
+    testWorksWithJwtShorthand: function () {
+      var err;
+
+      app = new FoxxController(fakeContext);
+
+      try {
+        app.activateSessions({
+          sessionStorageApp: 'sessions',
+          type: 'header',
+          header: 'X-Session-Token',
+          jwt: 'secret'
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertUndefined(err);
+    },
+
+    testWorksWithJwtNoneShorthand: function () {
+      var err;
+
+      app = new FoxxController(fakeContext);
+
+      try {
+        app.activateSessions({
+          sessionStorageApp: 'sessions',
+          type: 'header',
+          header: 'X-Session-Token',
+          jwt: true
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertUndefined(err);
+    },
+
+    testRefusesJwtAlgorithmWithSecret: function () {
+      var err;
+
+      app = new FoxxController(fakeContext);
+
+      try {
+        app.activateSessions({
+          sessionStorageApp: 'sessions',
+          type: 'header',
+          header: 'X-Session-Token',
+          jwt: {
+            algorithm: 'HS256'
+          }
+        });
+      } catch (e) {
+        err = e;
+      }
+
+      assertTrue(err instanceof Error);
     },
 
     testRefusesUnknownSessionsTypes: function () {
@@ -1469,15 +1658,17 @@ function SetupSessions () {
       try {
         app.activateSessions({
           sessionStorageApp: 'sessions',
-          cookieName: 'sid',
-          cookieSecret: 'secret',
-          type: 'magic'
+          type: 'magic',
+          cookie: {
+            name: 'sid',
+            secret: 'secret'
+          }
         });
       } catch (e) {
         err = e;
       }
 
-      assertEqual(err.message, 'Only the following session types are supported at this time: ' + sessionTypes.join(', '));
+      assertTrue(err instanceof Error);
     }
   };
 }
