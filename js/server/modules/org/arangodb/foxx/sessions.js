@@ -159,7 +159,7 @@ function Sessions(opts) {
       throw new Error('Header name must be a string or empty.');
     }
     if (!opts.headerName) {
-      opts.headerName = 'X-Session-Id';
+      opts.headerName = 'x-session-id';
     }
   } else {
     throw new Error('Only "cookie" and "header" type sessions are supported at this time.');
