@@ -216,7 +216,13 @@ std::string Version::getRepositoryVersion () {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string Version::getBuildDate () {
+
+  // the OpenSuSE build system does not liked it, if __DATE__ is used
+#ifdef TRI_BUILD_DATE
+  return std::string(TRI_BUILD_DATE).append(" ").append(__TIME__);
+#else
   return std::string(__DATE__).append(" ").append(__TIME__);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

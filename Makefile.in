@@ -1252,7 +1252,8 @@ ACLOCAL_AMFLAGS = -I m4
 ################################################################################
 ### @brief preprocessor flags
 ################################################################################
-AM_CPPFLAGS = -D_SYSCONFDIR_='"${TRI_SYSCONFDIR}"' -I@top_srcdir@/lib \
+AM_CPPFLAGS = -DTRI_BUILD_DATE='"$(shell date +%Y-%m-%d)"' \
+	-D_SYSCONFDIR_='"${TRI_SYSCONFDIR}"' -I@top_srcdir@/lib \
 	-I@top_builddir@/lib @LIBEV_CPPFLAGS@ @MATH_CPPFLAGS@ \
 	@OPENSSL_CPPFLAGS@ @READLINE_CPPFLAGS@ @ICU_CPPFLAGS@ \
 	@ZLIB_CPPFLAGS@ @V8_CPPFLAGS@ $(am__append_1)
@@ -7796,7 +7797,8 @@ install-data-am: install-arangosysconfDATA install-data-local \
 	install-nobase_pkgdataCOMMONDATA install-nobase_pkgdataDATA \
 	install-nobase_pkgdataMRUBYDATA install-nobase_pkgdataNODEDATA \
 	install-nobase_pkgdataSERVERDATA
-
+	@$(NORMAL_INSTALL)
+	$(MAKE) $(AM_MAKEFLAGS) install-data-hook
 install-dvi: install-dvi-am
 
 install-dvi-am:
@@ -7857,7 +7859,8 @@ uninstall-am: uninstall-arangosysconfDATA uninstall-binPROGRAMS \
 
 uninstall-man: uninstall-man1 uninstall-man8
 
-.MAKE: all check install install-am install-exec-am install-strip
+.MAKE: all check install install-am install-data-am install-exec-am \
+	install-strip
 
 .PHONY: CTAGS GTAGS TAGS all all-am am--refresh check check-am clean \
 	clean-binPROGRAMS clean-cscope clean-generic clean-local \
@@ -7869,10 +7872,11 @@ uninstall-man: uninstall-man1 uninstall-man8
 	distdir distuninstallcheck dvi dvi-am html html-am info \
 	info-am install install-am install-arangosysconfDATA \
 	install-binPROGRAMS install-binSCRIPTS install-data \
-	install-data-am install-data-local install-dvi install-dvi-am \
-	install-exec install-exec-am install-exec-hook install-html \
-	install-html-am install-info install-info-am install-man \
-	install-man1 install-man8 install-nobase_pkgdataACTIONSDATA \
+	install-data-am install-data-hook install-data-local \
+	install-dvi install-dvi-am install-exec install-exec-am \
+	install-exec-hook install-html install-html-am install-info \
+	install-info-am install-man install-man1 install-man8 \
+	install-nobase_pkgdataACTIONSDATA \
 	install-nobase_pkgdataAPPSDATA \
 	install-nobase_pkgdataCLIENTDATA \
 	install-nobase_pkgdataCOMMONDATA install-nobase_pkgdataDATA \
@@ -7919,6 +7923,22 @@ install-exec-hook:
 
 	rm -f $(DESTDIR)$(sbindir)/arango-dfdb$(PROGRAM_SUFFIX)
 	$(LN_S) arangod$(PROGRAM_SUFFIX) $(DESTDIR)$(sbindir)/arango-dfdb$(PROGRAM_SUFFIX)
+
+################################################################################
+### @brief cleanup empty files
+################################################################################
+
+install-data-hook:
+	rm -f $(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/ncp/test/fixtures/src/c
+	rm -f $(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/ncp/test/fixtures/src/d
+	rm -f $(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/ncp/test/fixtures/src/e
+	rm -f $(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/ncp/test/fixtures/src/f
+	rm -f $(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/ncp/test/fixtures/src/sub/b
+	rm -f $(pkgdataNODEdir)/js/node/node_modules/joi/node_modules/hoek/test/modules/ignore.txt
+	rm -f $(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/rimraf/test/setup.sh
+	rm -f $(pkgdataNODEdir)/js/node/node_modules/joi/node_modules/isemail/dns-no-mx.js
+	rm -f $(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/rimraf/test/run.sh
+	rm -f $(pkgdataNODEdir)/js/node/node_modules/docco/node_modules/fs-extra/node_modules/rimraf/test/run.sh
 
 ################################################################################
 ### @brief version number
