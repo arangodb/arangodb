@@ -50,9 +50,17 @@ function decorateController(auth, controller) {
     var sessions = auth.getSessionStorage();
     if (cfg.type === 'cookie') {
       req.session = sessions.fromCookie(req, cfg.cookieName, cfg.cookieSecret);
-      if (!req.session && cfg.autoCreateSession) {
-        req.session = sessions.create();
+    } else if (cfg.type === 'header') {
+      try {
+        req.session = sessions.get(req.headers[cfg.headerName]);
+      } catch (e) {
+        if (!(e instanceof sessions.errors.SessionNotFound)) {
+          throw e;
+        }
       }
+    }
+    if (!req.session && cfg.autoCreateSession) {
+      req.session = sessions.create();
     }
   });
 
@@ -60,6 +68,8 @@ function decorateController(auth, controller) {
     if (req.session) {
       if (cfg.type === 'cookie') {
         req.session.addCookie(res, cfg.cookieName, cfg.cookieSecret);
+      } else if (cfg.type === 'header') {
+        res.set(cfg.headerName, req.session.get('_key'));
       }
     }
   });
@@ -130,21 +140,29 @@ function Sessions(opts) {
   if (!opts) {
     opts = {};
   }
-  if (opts.type !== 'cookie') {
-    throw new Error('Only "cookie" type sessions are supported at this time.');
-  }
-  if (opts.cookieSecret && typeof opts.cookieSecret !== 'string') {
-    throw new Error('Cookie secret must be a string or empty.');
-  }
-  if (opts.cookieName && typeof opts.cookieName !== 'string') {
-    throw new Error('Cookie name must be a string or empty.');
-  }
-
   if (!opts.type) {
     opts.type = 'cookie';
   }
-  if (!opts.cookieName) {
-    opts.cookieName = 'sid';
+
+  if (opts.type === 'cookie') {
+    if (opts.cookieSecret && typeof opts.cookieSecret !== 'string') {
+      throw new Error('Cookie secret must be a string or empty.');
+    }
+    if (opts.cookieName && typeof opts.cookieName !== 'string') {
+      throw new Error('Cookie name must be a string or empty.');
+    }
+    if (!opts.cookieName) {
+      opts.cookieName = 'sid';
+    }
+  } else if (opts.type === 'header') {
+    if (opts.headerName && typeof opts.headerName !== 'string') {
+      throw new Error('Header name must be a string or empty.');
+    }
+    if (!opts.headerName) {
+      opts.headerName = 'X-Session-Id';
+    }
+  } else {
+    throw new Error('Only "cookie" and "header" type sessions are supported at this time.');
   }
   if (opts.autoCreateSession !== false) {
     opts.autoCreateSession = true;
