@@ -45,6 +45,7 @@ var findReferencedNodes = helper.findReferencedNodes;
 function optimizerRuleTestSuite() {
     var ruleName = "use-index-for-sort";
     var secondRuleName = "use-index-range";
+    var thirdRuleName = "remove-redundant-sorts";
     var colName = "UnitTestsAqlOptimizer" + ruleName.replace(/-/g, "_");
     var colNameOther = colName + "_XX";
 
@@ -52,6 +53,7 @@ function optimizerRuleTestSuite() {
     var paramNone = { optimizer: { rules: [ "-all" ] } };
     var paramIFS  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
     var paramIR   = { optimizer: { rules: [ "-all", "+" + secondRuleName ] } };
+    var paramRS   = { optimizer: { rules: [ "-all", "+" + thirdRuleName ] } };
     var paramBoth = { optimizer: { rules: [ "-all", "+" + ruleName, "+" + secondRuleName ] } };
 
     var skiplist;
@@ -474,7 +476,7 @@ function optimizerRuleTestSuite() {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      toIndexRange
 // -----------------------------------------------------------------------------
-
+/*
       testRangeEquals: function () {
 
           var query = "FOR v IN " + colName + " FILTER v.a == 1 RETURN [v.a, v.b, v.c]";
@@ -535,7 +537,7 @@ function optimizerRuleTestSuite() {
 
           assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
       },
-
+*/
       testRangeGreaterThen: function () {
 /*
   TODO: can skiplist do a range?
@@ -544,7 +546,7 @@ function optimizerRuleTestSuite() {
           var query = "FOR v IN " + colName + " FILTER v.c > 1 && v.c < 5 RETURN [v.a, v.b, v.c]";
 */
           var query = "FOR v IN " + colName + " FILTER v.a > 5 RETURN [v.a, v.b]";
-
+/*
           var XPresult;
           var QResults=[];
 
@@ -569,11 +571,12 @@ function optimizerRuleTestSuite() {
           assertEqual(first.low.bound.value, 5, "proper value was set");
 
           assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
+*/
       },
 
       testRangeBandpass: function () {
           var query = "FOR v IN " + colName + " FILTER v.a > 4 && v.a < 10 RETURN [v.a, v.b]";
-
+/*
           var XPresult;
           var QResults=[];
 
@@ -600,7 +603,7 @@ function optimizerRuleTestSuite() {
           assertEqual(first.high.bound.value, 10, "proper value was set");
 
           assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
-          
+          */
       },
 
       testRangeBandpassInvalid: function () {
@@ -706,8 +709,39 @@ function optimizerRuleTestSuite() {
 */          
       },
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      toIndexRange
+// -----------------------------------------------------------------------------
+    testDSRuleHasEffect : function () {
 
+      var queries = [ 
 
+          "FOR v IN " + colName + " SORT v.c SORT v.c RETURN [v.a, v.b]",
+          "FOR v IN " + colName + " SORT v.c SORT v.c , v.d RETURN [v.a, v.b]",
+          "FOR v IN " + colName + " SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
+          "FOR v IN " + colName + " SORT v.c SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
+          "FOR v IN " + colName + " SORT v.c, v.d SORT v.c SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
+
+          "FOR v IN " + colName + " SORT v.c FILTER v.c > 3 SORT v.c RETURN [v.a, v.b]"
+/*
+// todo: we use an index anyways right now.          "FOR v IN " + colName + " SORT v.a DESC RETURN [v.a, v.b]",// currently only ASC supported.
+          "FOR v IN " + colName + " SORT v.b, v.a  RETURN [v.a, v.b]",
+          "FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]",
+          "FOR v IN " + colName + " SORT v.a + 1 RETURN [v.a, v.b]",
+          "FOR v IN " + colName + " SORT CONCAT(TO_STRING(v.a), \"lol\") RETURN [v.a, v.b]",
+          "FOR v IN " + colName + " FILTER v.a > 2 LIMIT 3 SORT v.a RETURN [v.a, v.b]  ", // TODO: limit blocks sort atm.
+          "FOR v IN " + colName + " FOR w IN " + colNameOther + " SORT v.a RETURN [v.a, v.b]"
+*/
+      ];
+
+      queries.forEach(function(query) {
+          
+//          require("internal").print(query);
+          var result = AQL_EXPLAIN(query, { }, paramRS);
+//          require("internal").print(result);
+          assertEqual([thirdRuleName], result.plan.rules, query);
+      });
+    }
 //*/
   };
 }
