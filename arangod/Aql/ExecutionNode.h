@@ -1443,7 +1443,7 @@ namespace triagens {
 
         size_t const n = criteria.size();
         for (size_t i = 0; i < n; ++i) {
-          if (other.criteria.size() < i) {
+          if (other.criteria.size() <= i) {
             return false;
           }
 
