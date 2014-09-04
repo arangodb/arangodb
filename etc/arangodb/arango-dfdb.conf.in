@@ -1,3 +1,5 @@
+# config file for arango-dfdb
+
 no-upgrade = true
 no-server = true
 
