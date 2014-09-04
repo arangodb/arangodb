@@ -52,7 +52,7 @@ function decorateController(auth, controller) {
       req.session = sessions.fromCookie(req, cfg.cookieName, cfg.cookieSecret);
     } else if (cfg.type === 'header') {
       try {
-        req.session = sessions.get(req.headers[cfg.headerName]);
+        req.session = sessions.get(req.headers[cfg.headerName.toLowerCase()]);
       } catch (e) {
         if (!(e instanceof sessions.errors.SessionNotFound)) {
           throw e;
@@ -159,7 +159,7 @@ function Sessions(opts) {
       throw new Error('Header name must be a string or empty.');
     }
     if (!opts.headerName) {
-      opts.headerName = 'x-session-id';
+      opts.headerName = 'X-Session-Id';
     }
   } else {
     throw new Error('Only "cookie" and "header" type sessions are supported at this time.');

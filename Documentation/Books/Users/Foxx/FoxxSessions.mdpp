@@ -21,7 +21,7 @@ If *type* is set to *"cookie"*, the session cookie will be updated after every r
   * *type* (optional): sessions type, currently only *"cookie"* and *"header"* are supported. Default: *"cookie"*.
   * *cookieName* (optional): name of the session cookie if using cookie sessions. If a *cookieSecret* is provided, the signature will be stored in a cookie named *cookieName + "_sig"*. Default: *"sid"*.
   * *cookieSecret* (optional): secret string to sign session cookies with if using cookie sessions.
-  * *headerName* (optional): name of the session header if using header sessions. Default: *"x-session-id"*.
+  * *headerName* (optional): name of the session header if using header sessions. Default: *"X-Session-Id"*.
   * *autoCreateSession* (optional): whether a session should always be created if none exists. Default: *true*.
 
 @EXAMPLES
