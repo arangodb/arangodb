@@ -2740,11 +2740,11 @@ static v8::Handle<v8::Value> JS_ClientStatistics (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief computes the PBKDF2 HMAC signature
+/// @brief computes the PBKDF2 HMAC derived key
 ///
-/// @FUN{internal.PBKDF2HMAC(@FA{key}, @FA{message}, @FA{algorithm})}
+/// @FUN{internal.PBKDF2HMAC(@FA{salt}, @FA{password}, @FA{iterations}, @FA{keyLength}, @FA{algorithm})}
 ///
-/// Computes the PBKDF2HMAC for the @FA{message}.
+/// Computes the PBKDF2 HMAC derived key for the @FA{password}.
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Value> JS_PBKDF2HMAC (v8::Arguments const& argv) {
