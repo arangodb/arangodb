@@ -2740,6 +2740,59 @@ static v8::Handle<v8::Value> JS_ClientStatistics (v8::Arguments const& argv) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief computes the PBKDF2 HMAC signature
+///
+/// @FUN{internal.PBKDF2HMAC(@FA{key}, @FA{message}, @FA{algorithm})}
+///
+/// Computes the PBKDF2HMAC for the @FA{message}.
+////////////////////////////////////////////////////////////////////////////////
+
+static v8::Handle<v8::Value> JS_PBKDF2HMAC (v8::Arguments const& argv) {
+  v8::HandleScope scope;
+
+  // extract arguments
+  if (argv.Length() < 4 || ! argv[0]->IsString() || ! argv[1]->IsString() || ! argv[2]->IsNumber() || ! argv[3]->IsNumber()) {
+    TRI_V8_EXCEPTION_USAGE(scope, "PBKDF2HMAC(<salt>, <password>, <iterations>, <keyLength>, <algorithm>)");
+  }
+
+  string salt = TRI_ObjectToString(argv[0]);
+  string password = TRI_ObjectToString(argv[1]);
+  int iterations = (int) TRI_ObjectToInt64(argv[2]);
+  int keyLength = (int) TRI_ObjectToInt64(argv[3]);
+
+  SslInterface::Algorithm al = SslInterface::Algorithm::ALGORITHM_SHA1;
+  if (argv.Length() > 4 && ! argv[4]->IsUndefined()) {
+    string algorithm = TRI_ObjectToString(argv[4]);
+    StringUtils::tolowerInPlace(&algorithm);
+
+    if (algorithm == "sha1") {
+      al = SslInterface::Algorithm::ALGORITHM_SHA1;
+    }
+    else if (algorithm == "sha512") {
+      al = SslInterface::Algorithm::ALGORITHM_SHA512;
+    }
+    else if (algorithm == "sha384") {
+      al = SslInterface::Algorithm::ALGORITHM_SHA384;
+    }
+    else if (algorithm == "sha256") {
+      al = SslInterface::Algorithm::ALGORITHM_SHA256;
+    }
+    else if (algorithm == "sha224") {
+      al = SslInterface::Algorithm::ALGORITHM_SHA224;
+    }
+    else if (algorithm == "md5") {
+      al = SslInterface::Algorithm::ALGORITHM_MD5;
+    }
+    else {
+      TRI_V8_EXCEPTION_PARAMETER(scope, "invalid value for <algorithm>");
+    }
+  }
+
+  string result = SslInterface::sslPBKDF2HMAC(salt.c_str(), salt.size(), password.c_str(), password.size(), iterations, keyLength, al);
+  return scope.Close(v8::String::New(result.c_str(), (int) result.size()));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief computes the HMAC signature
 ///
 /// @FUN{internal.HMAC(@FA{key}, @FA{message}, @FA{algorithm})}
@@ -3614,6 +3667,7 @@ void TRI_InitV8Utils (v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(context, "SYS_GEN_RANDOM_SALT", JS_RandomSalt);
   TRI_AddGlobalFunctionVocbase(context, "SYS_GETLINE", JS_Getline);
   TRI_AddGlobalFunctionVocbase(context, "SYS_HMAC", JS_HMAC);
+  TRI_AddGlobalFunctionVocbase(context, "SYS_PBKDF2HMAC", JS_PBKDF2HMAC);
   TRI_AddGlobalFunctionVocbase(context, "SYS_HTTP_STATISTICS", JS_HttpStatistics);
   TRI_AddGlobalFunctionVocbase(context, "SYS_IS_IP", JS_IsIP);
   TRI_AddGlobalFunctionVocbase(context, "SYS_KILL_EXTERNAL", JS_KillExternal);
