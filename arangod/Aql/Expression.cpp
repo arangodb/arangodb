@@ -328,7 +328,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
 
         // save the collection info
         *collection = docColls[regs[i]]; 
-        return argv[startPos + regs[i]];
+        return argv[startPos + regs[i]].clone();
       }
     }
     // fall-through to exception
