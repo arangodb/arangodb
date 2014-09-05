@@ -638,6 +638,7 @@ double IndexRangeNode::estimateCost () {
     _dependencies.at(0)->getCost();
 
   double cost = 1;
+  size_t count = 0;
   
   if (_index->_type == TRI_IDX_TYPE_HASH_INDEX) {
     return oldCost / 1000;
@@ -648,16 +649,23 @@ double IndexRangeNode::estimateCost () {
         if (x.is1ValueRangeInfo()) {
           if (!_index->_unique) {
             cost *= oldCost / 100;
+            count ++;
           }
         }
         else {
           cost *= oldCost / 10;
+          count ++;
         }
       }
       else if (!(x._low._undefined && x._high._undefined)){
         cost *= oldCost / 2;
+        count ++;
       }
     }
+  }
+  if (count == 0) {
+    // no ranges? so this is unlimited -> has to be more expensive
+    cost *= oldCost;
   }
   return cost;
 }

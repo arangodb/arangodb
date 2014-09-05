@@ -70,13 +70,13 @@ int triagens::aql::removeRedundantSorts (Optimizer* opt,
           auto other = static_cast<SortNode*>(current)->getSortInformation(plan);
 
           switch (sortInfo.isCoveredBy(other)) {
-          case triagens::aql::SortInformation::unequal:
+          case SortInformation::unequal:
             break;
-          case triagens::aql::SortInformation::otherSupersedes:
+          case SortInformation::otherSupersedes:
             toUnlink.insert(current);
             break;
-          case triagens::aql::SortInformation::weSupersede:
-          case triagens::aql::SortInformation::allEqual:
+          case SortInformation::weSupersede:
+          case SortInformation::allEqual:
             // the sort at the start of the pipeline makes the sort at the end
             // superfluous, so we'll remove it
             toUnlink.insert(n);
