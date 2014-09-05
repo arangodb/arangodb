@@ -148,7 +148,13 @@ namespace triagens {
       void sslBASE64 (char const* inputStr, char*& outputStr, size_t& outputLen);
 
 //////////////////////////////////////////////////////////////////////////
-/// @brief HMAC with sha265 hashing and base64 encoding
+/// @brief PBKDF2 HMAC
+//////////////////////////////////////////////////////////////////////////
+
+      string sslPBKDF2HMAC (char const* salt, size_t saltLength, char const* pass, size_t passLength, int iter, int keyLength, Algorithm algorithm);
+
+//////////////////////////////////////////////////////////////////////////
+/// @brief HMAC
 //////////////////////////////////////////////////////////////////////////
 
       string sslHMAC (char const* key, size_t keyLength, char const* message, size_t messageLen, Algorithm algorithm);
