@@ -219,7 +219,7 @@ void ApplicationV8::V8Context::handleGlobalContextMethods () {
 
     LOG_DEBUG("executing global context methods '%s' for context %d", func.c_str(), (int) _id);
 
-    TRI_v8_global_t* v8g = (TRI_v8_global_t*) v8::Isolate::GetCurrent()->GetData();
+    TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
     bool allowUseDatabase = v8g->_allowUseDatabase;
     v8g->_allowUseDatabase = true;
 
