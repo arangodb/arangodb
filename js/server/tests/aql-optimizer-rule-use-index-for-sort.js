@@ -27,7 +27,7 @@
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-
+var yaml = require("js-yaml")
 var internal = require("internal");
 var jsunity = require("jsunity");
 var errors = require("internal").errors;
@@ -728,44 +728,49 @@ function optimizerRuleTestSuite() {
 /// TODO: asc/desc? -> desc should win; doesn't work now!
 ///       "FOR v IN " + colName + " SORT v.c ASC SORT v.c DESC RETURN [v.a, v.b]",
       var queries = [ 
+/*
           "FOR v IN " + colName + " SORT v.c SORT v.c RETURN [v.a, v.b]",
           "FOR v IN " + colName + " SORT v.c SORT v.c , v.d RETURN [v.a, v.b]",
           "FOR v IN " + colName + " SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
           "FOR v IN " + colName + " SORT v.c SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
           "FOR v IN " + colName + " SORT v.c, v.d SORT v.c SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
+          "FOR v IN " + colName + " SORT v.c FILTER v.c > 3 SORT v.c RETURN [v.a, v.b]",
+          "FOR v IN " + colName + " SORT v.c ASC SORT v.c DESC RETURN [v.a, v.b]",
+*/
+          "FOR v IN " + colName + " SORT v.c ASC LIMIT 0,3 SORT v.c ASC RETURN [v.a, v.b]"
 
-          "FOR v IN " + colName + " SORT v.c FILTER v.c > 3 SORT v.c RETURN [v.a, v.b]"
       ];
 
       queries.forEach(function(query) {
           
 //          require("internal").print(query);
           var result = AQL_EXPLAIN(query, { }, paramRS);
-//          require("internal").print(result);
+          require("internal").print(yaml.safeDump(result));
           assertEqual([thirdRuleName], result.plan.rules, query);
       });
 
     },
     testDSRuleHasNoEffect : function () {
-// TODO: howto have "dependencies" on a sort node?
-//      var queries = [ 
-//          "FOR v IN " + colName + " SORT v.c SORT v.c RETURN [v.a, v.b]",
-//          "FOR v IN " + colName + " SORT v.c SORT v.c , v.d RETURN [v.a, v.b]",
-//          "FOR v IN " + colName + " SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
-//          "FOR v IN " + colName + " SORT v.c SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
-//          "FOR v IN " + colName + " SORT v.c, v.d SORT v.c SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
-//
-//          "FOR v IN " + colName + " SORT v.c FILTER v.c > 3 SORT v.c RETURN [v.a, v.b]"
-//      ];
-//
-//      queries.forEach(function(query) {
-//          
-////          require("internal").print(query);
-//          var result = AQL_EXPLAIN(query, { }, paramRS);
-////          require("internal").print(result);
-//          assertEqual([thirdRuleName], result.plan.rules, query);
-//      });
-//
+// TODO: if we implement nodes with multiple pre-nodes, we need to test this here.
+//   - Cluster
+      var queries = [ 
+/*        "FOR v IN " + colName + " SORT v.c SORT v.c RETURN [v.a, v.b]",
+          "FOR v IN " + colName + " SORT v.c SORT v.c , v.d RETURN [v.a, v.b]",
+          "FOR v IN " + colName + " SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
+          "FOR v IN " + colName + " SORT v.c SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
+          "FOR v IN " + colName + " SORT v.c, v.d SORT v.c SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
+*/
+          "FOR v IN " + colName + " SORT v.c ASC LIMIT 0,3 SORT v.c DESC RETURN [v.a, v.b]"
+      ];
+
+      queries.forEach(function(query) {
+          
+//          require("internal").print(query);
+          var result = AQL_EXPLAIN(query, { }, paramRS);
+          require("internal").print(yaml.safeDump(result));
+          assertEqual(result.plan.rules, query);
+      });
+
     }
 
   };
