@@ -1651,6 +1651,7 @@ bool FilterBlock::getBlock (size_t atLeast, size_t atMost) {
     }
 
     _buffer.pop_front();  // Block was useless, just try again
+    delete cur;   // free this block
   }
 
   return true;
