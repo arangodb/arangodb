@@ -91,13 +91,13 @@ TRI_log_appender_t;
 /// @brief already initialised
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool Initialised = false;
+static volatile int Initialised = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown function already installed
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ShutdownInitalised = false;
+static volatile bool ShutdownInitalised = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of first log file
@@ -1895,9 +1895,11 @@ char const* TRI_GetFilenameLogging () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseLogging (bool threaded) {
-  if (Initialised) {
+  if (Initialised > 0) {
     return;
   }
+
+  Initialised = 1;
 
   UseFileBasedLogging = false;
   memset(FilesToLog, 0, sizeof(FilesToLog));
@@ -1927,9 +1929,6 @@ void TRI_InitialiseLogging (bool threaded) {
     }
   }
 
-  // and initialised
-  Initialised = true;
-
   // always close logging at the end
   if (! ShutdownInitalised) {
     atexit((void (*)(void)) TRI_ShutdownLogging);
@@ -1942,11 +1941,16 @@ void TRI_InitialiseLogging (bool threaded) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ShutdownLogging (bool clearBuffers) {
-  if (! Initialised) {
-    return ThreadedLogging;
+  if (Initialised != 1) {
+    if (Initialised == 0) {
+      return ThreadedLogging;
+    }
+    
+    WriteStderr(TRI_LOG_LEVEL_ERROR, "race condition detected in logger");
+    return false;
   }
 
-  Initialised = false;
+  Initialised = 1;
 
   // logging is now inactive (this will terminate the logging thread)
   LoggingActive = 0;
@@ -2009,6 +2013,8 @@ bool TRI_ShutdownLogging (bool clearBuffers) {
   TRI_DestroySpin(&OutputPrefixLock);
   TRI_DestroySpin(&AppendersLock);
   TRI_DestroyMutex(&BufferLock);
+
+  Initialised = 0;
 
   return ThreadedLogging;
 }
