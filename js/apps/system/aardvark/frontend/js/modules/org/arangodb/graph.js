@@ -1,4 +1,5 @@
 module.define("org/arangodb/graph", function(exports, module) {
+/*jshint strict: false */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////

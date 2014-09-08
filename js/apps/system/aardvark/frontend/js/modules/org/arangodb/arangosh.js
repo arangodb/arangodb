@@ -1,4 +1,5 @@
 module.define("org/arangodb/arangosh", function(exports, module) {
+/*jshint strict: false */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////

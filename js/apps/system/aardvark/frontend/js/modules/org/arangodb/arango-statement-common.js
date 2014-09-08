@@ -1,5 +1,6 @@
 module.define("org/arangodb/arango-statement-common", function(exports, module) {
-/*global require, exports */
+/*jshint strict: false */
+/*global exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Arango statements
@@ -190,7 +191,7 @@ ArangoStatement.prototype.setOptions = function (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.setQuery = function (query) {
-  this._query = query;
+  this._query = (query && typeof query.toAQL === 'function') ? query.toAQL() : query;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

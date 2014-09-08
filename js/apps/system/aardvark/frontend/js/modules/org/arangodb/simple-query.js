@@ -1,4 +1,5 @@
 module.define("org/arangodb/simple-query", function(exports, module) {
+/*jshint strict: false */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
