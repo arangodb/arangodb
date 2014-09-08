@@ -116,8 +116,17 @@ AqlValue AqlValue::clone () const {
     case DOCVEC: {
       auto c = new std::vector<AqlItemBlock*>;
       c->reserve(_vector->size());
-      for (auto it = _vector->begin(); it != _vector->end(); ++it) {
-        c->push_back((*it)->slice(0, (*it)->size()));
+      try {
+        for (auto it = _vector->begin(); it != _vector->end(); ++it) {
+          c->push_back((*it)->slice(0, (*it)->size()));
+        }
+      }
+      catch (...) {
+        for (auto x : *c) {
+          delete x;
+        }
+        delete c;
+        throw;
       }
       return AqlValue(c);
     }
