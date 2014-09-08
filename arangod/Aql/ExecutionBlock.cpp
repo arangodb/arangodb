@@ -1489,8 +1489,9 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
     result->setDocumentCollection(_outReg, result->getDocumentCollection(_inRegs[0]));
 
     for (size_t i = 0; i < n; i++) {
-      // must clone, otherwise all the results become invalid
-      AqlValue a = result->getValue(i, _inRegs[0]).clone();
+      // need not clone to avoid a copy, the AqlItemBlock's hash takes
+      // care of correct freeing:
+      AqlValue a = result->getValue(i, _inRegs[0]);
       try {
         result->setValue(i, _outReg, a);
       }
