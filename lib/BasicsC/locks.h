@@ -121,13 +121,21 @@ void TRI_UnlockMutex (TRI_mutex_t*);
 /// @brief initialises a new spin-lock
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_FAKE_SPIN_LOCKS
+#define TRI_InitSpin TRI_InitMutex
+#else
 void TRI_InitSpin (TRI_spin_t* spin);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroyes a spin-lock
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_FAKE_SPIN_LOCKS
+#define TRI_DestroySpin TRI_DestroyMutex
+#else
 void TRI_DestroySpin (TRI_spin_t* spin);
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -137,13 +145,21 @@ void TRI_DestroySpin (TRI_spin_t* spin);
 /// @brief locks spin-lock
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_FAKE_SPIN_LOCKS
+#define TRI_LockSpin TRI_LockMutex
+#else
 void TRI_LockSpin (TRI_spin_t* spin);
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlocks spin-lock
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_FAKE_SPIN_LOCKS
+#define TRI_UnlockSpin TRI_UnlockMutex
+#else
 void TRI_UnlockSpin (TRI_spin_t* spin);
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   READ-WRITE LOCK
