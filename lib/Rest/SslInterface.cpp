@@ -218,32 +218,10 @@ namespace triagens {
       }
 
 
-      string sslPBKDF2HMAC (char const* salt, size_t saltLength, char const* pass, size_t passLength, int iter, int keyLength, Algorithm algorithm) {
-        EVP_MD* evp_md = nullptr;
-
-        if (algorithm == Algorithm::ALGORITHM_SHA1) {
-          evp_md = const_cast<EVP_MD*>(EVP_sha1());
-        }
-        else if (algorithm == Algorithm::ALGORITHM_SHA224) {
-          evp_md = const_cast<EVP_MD*>(EVP_sha224());
-        }
-        else if (algorithm == Algorithm::ALGORITHM_MD5) {
-          evp_md = const_cast<EVP_MD*>(EVP_md5());
-        }
-        else if (algorithm == Algorithm::ALGORITHM_SHA384) {
-          evp_md = const_cast<EVP_MD*>(EVP_sha384());
-        }
-        else if (algorithm == Algorithm::ALGORITHM_SHA512) {
-          evp_md = const_cast<EVP_MD*>(EVP_sha512());
-        }
-        else {
-          // default
-          evp_md = const_cast<EVP_MD*>(EVP_sha256());
-        }
-
+      string sslPBKDF2 (char const* salt, size_t saltLength, char const* pass, size_t passLength, int iter, int keyLength) {
         unsigned char* dk = (unsigned char*) TRI_SystemAllocate(EVP_MAX_MD_SIZE + 1, false);
 
-        PKCS5_PBKDF2_HMAC(pass, (int) passLength, (const unsigned char*) salt, (int) saltLength, iter, evp_md, keyLength, dk);
+        PKCS5_PBKDF2_HMAC_SHA1(pass, (int) passLength, (const unsigned char*) salt, (int) saltLength, iter, keyLength, dk);
 
         // return value as hex
         string result = StringUtils::encodeHex(string((char*)dk, keyLength));
