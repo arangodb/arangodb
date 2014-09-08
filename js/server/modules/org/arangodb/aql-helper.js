@@ -425,10 +425,51 @@ function getCompactPlan (explainResult) {
   return out;
 }
 
+function findExecutionNodes(plan, nodetype) {
+    var matches = [];
+    plan.plan.nodes.forEach(function(node) {
+        if (node.type === nodetype) {
+
+            matches.push(node);
+        }
+        else if (node.type === "SubqueryNode") {
+            var subPlan = {"plan" : node.subquery};
+            matches = matches.concat(findExecutionNodes(subPlan, nodetype));
+        }
+    });
+    return matches;
+}
+
+function findReferencedNodes(plan, testNode) {
+    var matches = [];
+    if (testNode.elements) {
+        testNode.elements.forEach(function(element) {
+            plan.plan.nodes.forEach(function(node) {
+                if (node.hasOwnProperty("outVariable") && 
+                    node.outVariable.id ===
+                    element.inVariable.id) {
+                    matches.push(node);
+                }
+            });
+        });
+    }
+    else {
+        plan.plan.nodes.forEach(function(node) {
+            if (node.outVariable.id === testNode.inVariable.id) {
+                matches.push(node);
+            }
+        });
+    }
+
+    return matches;
+}
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    module exports
 // -----------------------------------------------------------------------------
 
+exports.isEqual               = isEqual;
 exports.getParseResults       = getParseResults;
 exports.assertParseError      = assertParseError;
 exports.getQueryExplanation   = getQueryExplanation;
@@ -441,6 +482,8 @@ exports.assertQueryError      = assertQueryError;
 exports.assertQueryError2     = assertQueryError2;
 exports.getLinearizedPlan     = getLinearizedPlan;
 exports.getCompactPlan        = getCompactPlan;
+exports.findExecutionNodes    = findExecutionNodes;
+exports.findReferencedNodes   = findReferencedNodes;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

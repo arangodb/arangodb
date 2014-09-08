@@ -444,7 +444,7 @@ Json AqlValue::toJson (AQL_TRANSACTION_V8* trx,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract an attribute value from the AqlValue 
-/// this will return null if the value is not an array
+/// this will return an empty Json if the value is not an array
 ////////////////////////////////////////////////////////////////////////////////
 
 Json AqlValue::extractArrayMember (AQL_TRANSACTION_V8* trx,

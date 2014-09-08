@@ -186,6 +186,10 @@ bool ReadlineShell::close() {
 
   bool res = writeHistory();
 
+  clear_history();
+  HIST_ENTRY** hist = history_list();
+  free(hist);
+
 #ifndef __APPLE__
   // reset state of the terminal to what it was before readline()
   rl_cleanup_after_signal();
@@ -225,7 +229,8 @@ void ReadlineShell::addHistory(char const* str) {
   if (current_history()) {
     do {
       if (strcmp(current_history()->line, str) == 0) {
-        remove_history(where_history());
+        HIST_ENTRY* e = remove_history(where_history());
+        free_history_entry(e);
         break;
       }
     }

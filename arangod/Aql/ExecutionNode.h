@@ -107,6 +107,7 @@ namespace triagens {
         ExecutionNode (size_t id)
           : _id(id), 
             _estimatedCost(0.0), 
+            _estimatedCostSet(false),
             _varUsageValid(false) {
         }
 
@@ -353,8 +354,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         double getCost () {
-          if (_estimatedCost == 0.0) {
+          if (! _estimatedCostSet) {
             _estimatedCost = estimateCost();
+            _estimatedCostSet = true;
             TRI_ASSERT(_estimatedCost >= 0.0);
           }
           return _estimatedCost;
@@ -517,10 +519,12 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _estimatedCost = 0 if uninitialised and otherwise stores the result
-/// of estimateCost()
+/// of estimateCost(), the bool indicates if the cost has been set, it starts
+/// out as false
 ////////////////////////////////////////////////////////////////////////////////
 
         double _estimatedCost;
+        bool _estimatedCostSet;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _varsUsedLater and _varsValid, the former contains those
@@ -1424,23 +1428,31 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
     
     struct SortInformation {
+
+      enum Match {
+        unequal,
+        weSupersede,
+        otherSupersedes,
+        allEqual
+      };
+
       std::vector<std::tuple<ExecutionNode const*, std::string, bool>> criteria;
       bool isValid   = true;
       bool isComplex = false;
           
-      bool isCoveredBy (SortInformation const& other) {
+      Match isCoveredBy (SortInformation const& other) {
         if (! isValid || ! other.isValid) {
-          return false;
+          return unequal;
         }
 
         if (isComplex) {
-          return false;
+          return unequal;
         }
 
         size_t const n = criteria.size();
         for (size_t i = 0; i < n; ++i) {
-          if (other.criteria.size() < i) {
-            return false;
+          if (other.criteria.size() <= i) {
+            return otherSupersedes;
           }
 
           auto ours = criteria[i];
@@ -1448,16 +1460,18 @@ namespace triagens {
 
           if (std::get<2>(ours) != std::get<2>(theirs)) {
             // sort order is different
-            return false;
+            return unequal;
           }
 
           if (std::get<1>(ours) != std::get<1>(theirs)) {
             // sort criterion is different
-            return false;
+            return unequal;
           }
         }
-
-        return true;
+        if (other.criteria.size() > n)
+          return weSupersede;
+        else
+          return allEqual;
       }
     };
 
@@ -1525,7 +1539,12 @@ namespace triagens {
         
         double estimateCost () {
           double depCost = _dependencies.at(0)->getCost();
-          return log(depCost) * depCost;
+          if (depCost <= 2.0) {
+            return depCost;
+          }
+          else {
+            return log(depCost) * depCost;
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
