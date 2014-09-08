@@ -46,9 +46,9 @@ var jsUnity = exports.jsUnity = (function () {
         assertException: function (fn, message) {
             counter++;
             try {
-                fn instanceof Function && fn();
+              fn instanceof Function && fn();
             } catch (e) {
-                return;
+              return;
             }
             var err = new Error();
 
@@ -58,7 +58,8 @@ var jsUnity = exports.jsUnity = (function () {
 
         assertTrue: function (actual, message) {
             counter++;
-            if (!actual) {
+            if (! actual) {
+                var err = new Error();
                 throw fmt("?: (?) does not evaluate to true\n(?)",
                     message || "assertTrue", actual, err.stack);
             }
@@ -112,7 +113,7 @@ var jsUnity = exports.jsUnity = (function () {
         
         assertMatch: function (re, actual, message) {
             counter++;
-            if (!re.test(actual)) {
+            if (! re.test(actual)) {
                 var err = new Error();
                 throw fmt("?: (?) does not match (?)\n(?)",
                     message || "assertMatch", actual, re, err.stack);

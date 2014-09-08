@@ -27,7 +27,7 @@
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-
+var yaml = require("js-yaml")
 var internal = require("internal");
 var jsunity = require("jsunity");
 var errors = require("internal").errors;
@@ -51,10 +51,10 @@ function optimizerRuleTestSuite() {
 
     // various choices to control the optimizer: 
     var paramNone = { optimizer: { rules: [ "-all" ] } };
-    var paramIFS  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
-    var paramIR   = { optimizer: { rules: [ "-all", "+" + secondRuleName ] } };
-    var paramRS   = { optimizer: { rules: [ "-all", "+" + thirdRuleName ] } };
-    var paramBoth = { optimizer: { rules: [ "-all", "+" + ruleName, "+" + secondRuleName ] } };
+    var paramIndexFromSort  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
+    var paramIndexRange   = { optimizer: { rules: [ "-all", "+" + secondRuleName ] } };
+    var paramRedundantSort   = { optimizer: { rules: [ "-all", "+" + thirdRuleName ] } };
+    var paramIndexFromSort_IndexRange = { optimizer: { rules: [ "-all", "+" + ruleName, "+" + secondRuleName ] } };
 
     var skiplist;
     var skiplist2;
@@ -196,7 +196,7 @@ function optimizerRuleTestSuite() {
 
       queries.forEach(function(query) {
           
-          var result = AQL_EXPLAIN(query, { }, paramIFS);
+          var result = AQL_EXPLAIN(query, { }, paramIndexFromSort);
           assertEqual([], result.plan.rules, query);
       });
 
@@ -220,10 +220,10 @@ function optimizerRuleTestSuite() {
         var i = 0;
         queries.forEach(function(query) {
           
-            var result = AQL_EXPLAIN(query, { }, paramIFS);
+            var result = AQL_EXPLAIN(query, { }, paramIndexFromSort);
             assertEqual([ ruleName ], result.plan.rules, query);
             QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
-            QResults[1] = AQL_EXECUTE(query, { }, paramIFS ).json;
+            QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort ).json;
             
             assertTrue(isEqual(QResults[0], QResults[1]), "Result " + i + " is Equal?");
             i++;
@@ -246,12 +246,12 @@ function optimizerRuleTestSuite() {
         var i = 0;
         queries.forEach(function(query) {
 
-            var result = AQL_EXPLAIN(query, { }, paramIFS);
+            var result = AQL_EXPLAIN(query, { }, paramIndexFromSort);
             assertEqual([ ruleName ], result.plan.rules);
             hasIndexRangeNode_WithRanges(result, false);
             hasSortNode(result);
             QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
-            QResults[1] = AQL_EXECUTE(query, { }, paramIFS ).json;
+            QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort ).json;
             assertTrue(isEqual(QResults[0], QResults[1]), "Result " + i + " is Equal?");
             i++;
         });
@@ -278,8 +278,8 @@ function optimizerRuleTestSuite() {
           QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
 
           // -> use-index-for-sort alone.
-          XPresult    = AQL_EXPLAIN(query, { }, paramIFS);
-          QResults[1] = AQL_EXECUTE(query, { }, paramIFS).json;
+          XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort);
+          QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
           // our rule should have been applied.
           assertEqual([ ruleName ], XPresult.plan.rules);
           // The sortnode and its calculation node should have been removed.
@@ -310,8 +310,8 @@ function optimizerRuleTestSuite() {
 
 
           // -> use-index-for-sort alone.
-          QResults[1] = AQL_EXECUTE(query, { }, paramIFS).json;
-          XPresult    = AQL_EXPLAIN(query, { }, paramIFS);
+          QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
+          XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort);
           // our rule should be there.
           assertEqual([ ruleName ], XPresult.plan.rules);
           // The sortnode and its calculation node should have been removed.
@@ -323,8 +323,8 @@ function optimizerRuleTestSuite() {
 
           // -> combined use-index-for-sort and use-index-range
           //    use-index-range superseedes use-index-for-sort
-          QResults[2] = AQL_EXECUTE(query, { }, paramBoth).json;
-          XPresult    = AQL_EXPLAIN(query, { }, paramBoth);
+          QResults[2] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange).json;
+          XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange);
 
           assertEqual([ secondRuleName ], XPresult.plan.rules.sort());
           // The sortnode and its calculation node should not have been removed.
@@ -334,8 +334,8 @@ function optimizerRuleTestSuite() {
           hasIndexRangeNode_WithRanges(XPresult, true);
 
           // -> use-index-range alone.
-          QResults[3] = AQL_EXECUTE(query, { }, paramIR).json;
-          XPresult    = AQL_EXPLAIN(query, { }, paramIR);
+          QResults[3] = AQL_EXECUTE(query, { }, paramIndexRange).json;
+          XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
           assertEqual([ secondRuleName ], XPresult.plan.rules);
           // the sortnode and its calculation node should be there. 
 
@@ -370,8 +370,8 @@ function optimizerRuleTestSuite() {
           QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
 
           // -> use-index-for-sort alone.
-          QResults[1] = AQL_EXECUTE(query, { }, paramIFS).json;
-          XPresult    = AQL_EXPLAIN(query, { }, paramIFS);
+          QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
+          XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort);
           // our rule should be there.
           assertEqual([ ruleName ], XPresult.plan.rules);
           // The sortnode and its calculation node should have been removed.
@@ -381,8 +381,8 @@ function optimizerRuleTestSuite() {
           hasIndexRangeNode_WithRanges(XPresult, false);
 
           // -> combined use-index-for-sort and use-index-range
-          QResults[2] = AQL_EXECUTE(query, { }, paramBoth).json;
-          XPresult    = AQL_EXPLAIN(query, { }, paramBoth);
+          QResults[2] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange).json;
+          XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange);
           assertEqual([ secondRuleName, ruleName ].sort(), XPresult.plan.rules.sort());
           // The sortnode and its calculation node should have been removed.
           hasNoSortNode(XPresult);
@@ -391,8 +391,8 @@ function optimizerRuleTestSuite() {
           hasIndexRangeNode_WithRanges(XPresult, true);
 
           // -> use-index-range alone.
-          QResults[3] = AQL_EXECUTE(query, { }, paramIR).json;
-          XPresult    = AQL_EXPLAIN(query, { }, paramIR);
+          QResults[3] = AQL_EXECUTE(query, { }, paramIndexRange).json;
+          XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
           assertEqual([ secondRuleName ], XPresult.plan.rules);
           // the sortnode and its calculation node should be there.
           hasSortNode(XPresult);
@@ -427,8 +427,8 @@ function optimizerRuleTestSuite() {
           QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
 
           // -> use-index-for-sort alone.
-          QResults[1] = AQL_EXECUTE(query, { }, paramIFS).json;
-          XPresult    = AQL_EXPLAIN(query, { }, paramIFS);
+          QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
+          XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort);
           // our rule should be there.
           assertEqual([ ruleName ], XPresult.plan.rules);
           // The sortnode and its calculation node should have been removed.
@@ -438,9 +438,9 @@ function optimizerRuleTestSuite() {
           hasIndexRangeNode_WithRanges(XPresult, false);
 
           // -> combined use-index-for-sort and use-index-range
-          QResults[2] = AQL_EXECUTE(query, { }, paramBoth).json;
+          QResults[2] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange).json;
 
-          XPresult    = AQL_EXPLAIN(query, { }, paramBoth);
+          XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange);
           
           assertEqual([ secondRuleName, ruleName ].sort(), XPresult.plan.rules.sort());
           // The sortnode and its calculation node should have been removed.
@@ -450,8 +450,8 @@ function optimizerRuleTestSuite() {
           hasIndexRangeNode_WithRanges(XPresult, true);
 
           // -> use-index-range alone.
-          QResults[3] = AQL_EXECUTE(query, { }, paramIR).json;
-          XPresult    = AQL_EXPLAIN(query, { }, paramIR);
+          QResults[3] = AQL_EXECUTE(query, { }, paramIndexRange).json;
+          XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
           assertEqual([ secondRuleName ], XPresult.plan.rules);
           // the sortnode and its calculation node should be there.
           hasSortNode(XPresult);
@@ -491,8 +491,8 @@ function optimizerRuleTestSuite() {
           QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
 
           // -> use-index-range alone.
-          QResults[1] = AQL_EXECUTE(query, { }, paramIR).json;
-          XPresult    = AQL_EXPLAIN(query, { }, paramIR);
+          QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
+          XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
           assertEqual([ secondRuleName ], XPresult.plan.rules);
           // the sortnode and its calculation node should be there.
           hasCalculationNodes(XPresult, 2);
@@ -527,9 +527,9 @@ function optimizerRuleTestSuite() {
           QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
 
           // -> use-index-range alone.
-          QResults[1] = AQL_EXECUTE(query, { }, paramIR).json;
+          QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
 
-          XPresult    = AQL_EXPLAIN(query, { }, paramIR);
+          XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
           assertEqual([ secondRuleName ], XPresult.plan.rules);
           // the sortnode and its calculation node should be there.
           hasCalculationNodes(XPresult, 2);
@@ -555,9 +555,9 @@ function optimizerRuleTestSuite() {
           QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
 
           // -> use-index-range alone.
-          QResults[1] = AQL_EXECUTE(query, { }, paramIR).json;
+          QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
 
-          XPresult    = AQL_EXPLAIN(query, { }, paramIR);
+          XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
           assertEqual([ secondRuleName ], XPresult.plan.rules);
           // the sortnode and its calculation node should be there.
           hasCalculationNodes(XPresult, 2);
@@ -586,9 +586,9 @@ function optimizerRuleTestSuite() {
           QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
 
           // -> use-index-range alone.
-          QResults[1] = AQL_EXECUTE(query, { }, paramIR).json;
+          QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
 
-          XPresult    = AQL_EXPLAIN(query, { }, paramIR);
+          XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
           assertEqual([ secondRuleName ], XPresult.plan.rules);
           // the sortnode and its calculation node should be there.
           hasCalculationNodes(XPresult, 2);
@@ -620,10 +620,10 @@ function optimizerRuleTestSuite() {
 //        QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
 //
 //        // -> use-index-range alone.
-//        QResults[1] = AQL_EXECUTE(query, { }, paramIR).json;
+//        QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
 //
 //
-//        XPresult    = AQL_EXPLAIN(query, { }, paramIR);
+//        XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
 //        require("internal").print(XPresult);              
 //        assertEqual([ secondRuleName ], XPresult.plan.rules);
 //        // the sortnode and its calculation node should be there.
@@ -661,9 +661,9 @@ function optimizerRuleTestSuite() {
 //        QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
 //
 //        // -> use-index-range alone.
-//        QResults[1] = AQL_EXECUTE(query, { }, paramIR).json;
+//        QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
 //
-//        XPresult    = AQL_EXPLAIN(query, { }, paramIR);
+//        XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
 //        assertEqual([ secondRuleName ], XPresult.plan.rules);
 //        // the sortnode and its calculation node should be there.
 //        hasCalculationNodes(XPresult, 2);
@@ -697,9 +697,9 @@ function optimizerRuleTestSuite() {
 //          QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
 //
 //          // -> use-index-range alone.
-//          QResults[1] = AQL_EXECUTE(query, { }, paramIR).json;
+//          QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
 //
-//          XPresult    = AQL_EXPLAIN(query, { }, paramIR);
+//          XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
 //          assertEqual([ secondRuleName ], XPresult.plan.rules);
 //          // the sortnode and its calculation node should be there.
 //          hasCalculationNodes(XPresult, 2);
@@ -728,44 +728,49 @@ function optimizerRuleTestSuite() {
 /// TODO: asc/desc? -> desc should win; doesn't work now!
 ///       "FOR v IN " + colName + " SORT v.c ASC SORT v.c DESC RETURN [v.a, v.b]",
       var queries = [ 
+
           "FOR v IN " + colName + " SORT v.c SORT v.c RETURN [v.a, v.b]",
           "FOR v IN " + colName + " SORT v.c SORT v.c , v.d RETURN [v.a, v.b]",
           "FOR v IN " + colName + " SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
           "FOR v IN " + colName + " SORT v.c SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
           "FOR v IN " + colName + " SORT v.c, v.d SORT v.c SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
+          "FOR v IN " + colName + " SORT v.c FILTER v.c > 3 SORT v.c RETURN [v.a, v.b]",
+          "FOR v IN " + colName + " SORT v.c ASC SORT v.c DESC RETURN [v.a, v.b]",
 
-          "FOR v IN " + colName + " SORT v.c FILTER v.c > 3 SORT v.c RETURN [v.a, v.b]"
+          "FOR v IN " + colName + " SORT v.c ASC LIMIT 0,3 SORT v.c ASC RETURN [v.a, v.b]"
+
       ];
 
       queries.forEach(function(query) {
           
 //          require("internal").print(query);
-          var result = AQL_EXPLAIN(query, { }, paramRS);
-//          require("internal").print(result);
+          var result = AQL_EXPLAIN(query, { }, paramRedundantSort);
+          require("internal").print(yaml.safeDump(result));
           assertEqual([thirdRuleName], result.plan.rules, query);
       });
 
     },
     testDSRuleHasNoEffect : function () {
-// TODO: howto have "dependencies" on a sort node?
-//      var queries = [ 
-//          "FOR v IN " + colName + " SORT v.c SORT v.c RETURN [v.a, v.b]",
-//          "FOR v IN " + colName + " SORT v.c SORT v.c , v.d RETURN [v.a, v.b]",
-//          "FOR v IN " + colName + " SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
-//          "FOR v IN " + colName + " SORT v.c SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
-//          "FOR v IN " + colName + " SORT v.c, v.d SORT v.c SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
-//
-//          "FOR v IN " + colName + " SORT v.c FILTER v.c > 3 SORT v.c RETURN [v.a, v.b]"
-//      ];
-//
-//      queries.forEach(function(query) {
-//          
-////          require("internal").print(query);
-//          var result = AQL_EXPLAIN(query, { }, paramRS);
-////          require("internal").print(result);
-//          assertEqual([thirdRuleName], result.plan.rules, query);
-//      });
-//
+// TODO: if we implement nodes with multiple pre-nodes, we need to test this here.
+//   - Cluster
+      var queries = [ 
+/*        "FOR v IN " + colName + " SORT v.c SORT v.c RETURN [v.a, v.b]",
+          "FOR v IN " + colName + " SORT v.c SORT v.c , v.d RETURN [v.a, v.b]",
+          "FOR v IN " + colName + " SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
+          "FOR v IN " + colName + " SORT v.c SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
+          "FOR v IN " + colName + " SORT v.c, v.d SORT v.c SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
+*/
+          "FOR v IN " + colName + " SORT v.c ASC LIMIT 0,3 SORT v.c DESC RETURN [v.a, v.b]"
+      ];
+
+      queries.forEach(function(query) {
+          
+//          require("internal").print(query);
+          var result = AQL_EXPLAIN(query, { }, paramRedundantSort);
+          require("internal").print(yaml.safeDump(result));
+          assertEqual(result.plan.rules, query);
+      });
+
     }
 
   };
