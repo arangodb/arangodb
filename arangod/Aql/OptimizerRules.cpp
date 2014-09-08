@@ -70,21 +70,34 @@ int triagens::aql::removeRedundantSorts (Optimizer* opt,
           auto other = static_cast<SortNode*>(current)->getSortInformation(plan);
 
           switch (sortInfo.isCoveredBy(other)) {
-          case SortInformation::unequal:
-            break;
-          case SortInformation::otherSupersedes:
-            toUnlink.insert(current);
-            break;
-          case SortInformation::weSupersede:
-          case SortInformation::allEqual:
-            // the sort at the start of the pipeline makes the sort at the end
-            // superfluous, so we'll remove it
-            toUnlink.insert(n);
-            break;
+            case SortInformation::unequal:
+              break;
+
+            case SortInformation::otherSupersedes:
+              toUnlink.insert(current);
+              break;
+
+            case SortInformation::weSupersede:
+            case SortInformation::allEqual:
+              // the sort at the start of the pipeline makes the sort at the end
+              // superfluous, so we'll remove it
+              toUnlink.insert(n);
+              break;
           }
         }
-
+        else if (current->getType() == triagens::aql::ExecutionNode::CALCULATION ||
+                 current->getType() == triagens::aql::ExecutionNode::FILTER ||
+                 current->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION ||
+                 current->getType() == triagens::aql::ExecutionNode::ENUMERATE_LIST) {
+          // ok
+        }
+        else {
+          // abort at all other type of nodes. we cannot push a sort beyond them
+          break;
+        }
+                 
         auto deps = current->getDependencies();
+
         if (deps.size() != 1) {
           // node either has no or more than one dependency. we don't know what to do and must abort
           // note: this will also handle Singleton nodes
