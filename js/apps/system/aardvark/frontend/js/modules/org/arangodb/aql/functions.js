@@ -1,4 +1,5 @@
 module.define("org/arangodb/aql/functions", function(exports, module) {
+/*jshint strict: false */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////

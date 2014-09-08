@@ -1,4 +1,5 @@
 module.define("org/arangodb/graph/traversal", function(exports, module) {
+/*jshint strict: false, unused: false */
 /*global require, exports, ArangoClusterComm */
 
 ////////////////////////////////////////////////////////////////////////////////

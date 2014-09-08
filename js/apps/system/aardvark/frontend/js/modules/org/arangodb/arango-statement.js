@@ -1,4 +1,5 @@
 module.define("org/arangodb/arango-statement", function(exports, module) {
+/*jshint strict: false */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////

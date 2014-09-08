@@ -1,3 +1,4 @@
+/*jshint -W051: true */
 /*global require, SYS_GETLINE, SYS_LOG, jqconsole */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -28,8 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  // cannot use strict here as we are going to delete globals
-
+  /*jshint strict: false */
   var exports = require("console");
 
   var sprintf = require("internal").sprintf;
@@ -112,7 +112,7 @@
         else if (arg === null) {
           arg = "null";
         }
-        else if (arg.__proto__ === Object.prototype || Array.isArray(arg)) {
+        else if (Object.prototype.isPrototypeOf(arg) || Array.isArray(arg)) {
           arg = inspect(arg, {prettyPrint: false});
         }
       }
