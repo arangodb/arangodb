@@ -172,22 +172,16 @@ static inline uint64_t TRI_DecModU64(uint64_t i, uint64_t len) {
   return len-1;
 }
 
-// The following two possibilities are equivalent, but seem to produce
-// a branch instruction in the assembler code rather than a conditional move:
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fake spinlocks
+/// spin locks seem to have issues when used under Valgrind
+/// we thus mimic spinlocks using ordinary mutexes when in maintainer mode
+////////////////////////////////////////////////////////////////////////////////
 
-#if 0
-static inline uint64_t TRI_IncModU64(uint64_t i, uint64_t len) {
-  if ((++i) == len) {
-    return 0;
-  }
-  return i;
-}
-#endif
-
-#if 0
-static inline uint64_t TRI_IncModU64(uint64_t i, uint64_t len) {
-  return (++i) == len ? 0 : i;
-}
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+#define TRI_FAKE_SPIN_LOCKS 1
+#else
+#undef TRI_FAKE_SPIN_LOCKS
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
