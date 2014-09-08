@@ -986,6 +986,10 @@ SortInformation SortNode::getSortInformation (ExecutionPlan* plan) const {
       break;
     }
 
+    if (! result.canThrow && setter->canThrow()) {
+      result.canThrow = true;
+    }
+
     if (setter->getType() == ExecutionNode::CALCULATION) {
       // variable introduced by a calculation
       auto expression = static_cast<CalculationNode*>(setter)->expression();

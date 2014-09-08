@@ -717,59 +717,7 @@ function optimizerRuleTestSuite() {
 //
 //          assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
           
-      },
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      toIndexRange
-// -----------------------------------------------------------------------------
-    testDSRuleHasEffect : function () {
-
-
-/// TODO: asc/desc? -> desc should win; doesn't work now!
-///       "FOR v IN " + colName + " SORT v.c ASC SORT v.c DESC RETURN [v.a, v.b]",
-      var queries = [ 
-
-          "FOR v IN " + colName + " SORT v.c SORT v.c RETURN [v.a, v.b]",
-          "FOR v IN " + colName + " SORT v.c SORT v.c , v.d RETURN [v.a, v.b]",
-          "FOR v IN " + colName + " SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
-          "FOR v IN " + colName + " SORT v.c SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
-          "FOR v IN " + colName + " SORT v.c, v.d SORT v.c SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
-          "FOR v IN " + colName + " SORT v.c FILTER v.c > 3 SORT v.c RETURN [v.a, v.b]",
-          "FOR v IN " + colName + " SORT v.c ASC SORT v.c DESC RETURN [v.a, v.b]",
-
-          "FOR v IN " + colName + " SORT v.c ASC LIMIT 0,3 SORT v.c ASC RETURN [v.a, v.b]"
-
-      ];
-
-      queries.forEach(function(query) {
-          
-//          require("internal").print(query);
-          var result = AQL_EXPLAIN(query, { }, paramRedundantSort);
-          require("internal").print(yaml.safeDump(result));
-          assertEqual([thirdRuleName], result.plan.rules, query);
-      });
-
-    },
-    testDSRuleHasNoEffect : function () {
-// TODO: if we implement nodes with multiple pre-nodes, we need to test this here.
-//   - Cluster
-      var queries = [ 
-/*        "FOR v IN " + colName + " SORT v.c SORT v.c RETURN [v.a, v.b]",
-          "FOR v IN " + colName + " SORT v.c SORT v.c , v.d RETURN [v.a, v.b]",
-          "FOR v IN " + colName + " SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
-          "FOR v IN " + colName + " SORT v.c SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
-          "FOR v IN " + colName + " SORT v.c, v.d SORT v.c SORT v.c, v.d  SORT v.c RETURN [v.a, v.b]",
-*/
-          "FOR v IN " + colName + " SORT v.c ASC LIMIT 0,3 SORT v.c DESC RETURN [v.a, v.b]"
-      ];
-
-      queries.forEach(function(query) {
-          
-//          require("internal").print(query);
-          var result = AQL_EXPLAIN(query, { }, paramRedundantSort);
-          require("internal").print(yaml.safeDump(result));
-          assertEqual(result.plan.rules, query);
-      });
+      }
 
     }
 

@@ -45,6 +45,7 @@ function optimizerRuleTestSuite () {
   var paramNone     = { optimizer: { rules: [ "-all" ] } };
   var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
+  var paramMore     = { optimizer: { rules: [ "-all", "+" + ruleName, "+remove-unnecessary-calculations-2" ] } };
 
   return {
 
@@ -70,7 +71,8 @@ function optimizerRuleTestSuite () {
       var queries = [
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a SORT i.a RETURN i",
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a FILTER i.a == 1 SORT i.a RETURN i",
-        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a LIMIT 1 SORT i.a RETURN i"
+        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a LIMIT 1 SORT i.a RETURN i",
+        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a SORT i.b RETURN i"
       ];
 
       queries.forEach(function(query) {
@@ -86,9 +88,9 @@ function optimizerRuleTestSuite () {
     testRuleNoEffect : function () {
       var queries = [ 
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a RETURN i",
-        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a SORT i.b RETURN i",
-        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a SORT i.b RETURN i",
-        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a SORT i.c RETURN i"
+        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a + 1 SORT i.b RETURN i",
+        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a SORT RAND() RETURN i",
+        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] COLLECT x = i.a SORT x RETURN x"
       ];
 
       queries.forEach(function(query) {
@@ -108,13 +110,16 @@ function optimizerRuleTestSuite () {
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a DESC SORT i.a DESC RETURN i",
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a, i.b DESC SORT i.a, i.b DESC RETURN i",
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a FILTER i.a == 1 SORT i.a RETURN i",
-        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a DESC FILTER i.a == 1 SORT i.a DESC RETURN i"
+        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a DESC FILTER i.a == 1 SORT i.a DESC RETURN i",
+        "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] SORT i.a SORT i.a, i.b RETURN i", 
+        "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] SORT i.a, i.b SORT i.a RETURN i", 
+        "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] SORT i.a, i.b SORT i.a SORT i.a, i.b RETURN i", 
+        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a ASC SORT i.a DESC RETURN i"
       ];
 
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query, { }, paramEnabled);
-          //require("internal").print(result);
-        assertEqual([ ruleName ], result.plan.rules);
+        assertEqual([ ruleName ], result.plan.rules, query);
       });
     },
 
@@ -125,13 +130,19 @@ function optimizerRuleTestSuite () {
 
     testPlans : function () {
       var plans = [
+        [ "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a SORT i.a RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "SortNode", "ReturnNode" ] ],
+        [ "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a DESC SORT i.a DESC RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "SortNode", "ReturnNode" ] ],
+        [ "FOR i IN [ { a: 1, b: 1 }, { a: 2, b: 1 }, { a: 3, b: 1 } ] SORT i.a ASC, i.b DESC SORT i.a DESC, i.b ASC RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "CalculationNode", "SortNode", "ReturnNode" ] ],
+        [ "FOR i IN [ { a: 1, b: 1 }, { a: 2, b: 1 }, { a: 3, b: 1 } ] SORT i.a ASC, i.b DESC FILTER i.a == 1 SORT i.a DESC, i.b ASC RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "ReturnNode" ] ],
+        [ "FOR i IN [ { a: 1, b: 1 }, { a: 2, b: 1 }, { a: 3, b: 1 } ] SORT i.a ASC COLLECT x = i.a RETURN x", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "SortNode", "AggregateNode", "ReturnNode" ] ],
+        [ "FOR i IN [ { a: 1, b: 1 }, { a: 2, b: 1 }, { a: 3, b: 1 } ] SORT i.a, i.b SORT i.a SORT i.a RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "SortNode", "ReturnNode" ] ],
+        [ "FOR i IN [ { a: 1, b: 1 }, { a: 2, b: 1 }, { a: 3, b: 1 } ] SORT i.a, i.b SORT i.a DESC SORT i.a ASC RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "SortNode", "ReturnNode" ] ],
       ]; 
 
       plans.forEach(function(plan) {
-          var result = AQL_EXPLAIN(plan[0], { }, paramEnabled);
-          assertEqual([ ruleName ], result.plan.rules, plan[0]);
-          //require("internal").print(helper.getCompactPlan(result).map(function(node) { return node.type; }));
-          assertEqual(plan[1], helper.getCompactPlan(result).map(function(node) { return node.type; }), plan[0]);
+        var result = AQL_EXPLAIN(plan[0], { }, paramMore);
+        assertTrue(result.plan.rules.indexOf(ruleName) !== -1, plan[0]);
+        assertEqual(plan[1], helper.getCompactPlan(result).map(function(node) { return node.type; }), plan[0]);
       });
     },
 
@@ -145,15 +156,13 @@ function optimizerRuleTestSuite () {
         [ "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a DESC SORT i.a DESC RETURN i", [ { a: 3 }, { a: 2 }, { a: 1 } ] ],
         [ "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] SORT i.a, i.b ASC SORT i.a, i.b ASC RETURN i", [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] ],
         [ "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] SORT i.a, i.b DESC SORT i.a, i.b DESC RETURN i", [ { a: 1, b: 2 }, { a: 1, b: 1 }, { a: 2, b: 2 }, { a: 2, b: 1 }, { a: 3, b: 2 }, { a: 3, b: 1 } ] ],
-        [ "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] SORT i.a DESC, i.b DESC SORT i.a DESC, i.b DESC RETURN i", [ { a: 3, b: 2 }, { a: 3, b: 1 }, { a: 2, b: 2 }, { a: 2, b: 1 }, { a: 1, b: 2 }, { a: 1, b: 1 } ] ]
+        [ "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] SORT i.a DESC, i.b DESC SORT i.a DESC, i.b DESC RETURN i", [ { a: 3, b: 2 }, { a: 3, b: 1 }, { a: 2, b: 2 }, { a: 2, b: 1 }, { a: 1, b: 2 }, { a: 1, b: 1 } ] ],
+        [ "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a DESC SORT i.a RETURN i", [ { a: 1 }, { a: 2 }, { a: 3 } ] ],
+        [ "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a ASC SORT i.a DESC RETURN i", [ { a: 3 }, { a: 2 }, { a: 1 } ] ],
+        [ "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] SORT i.a, i.b DESC SORT i.a, i.b ASC RETURN i", [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] ],
+        [ "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] SORT i.a, i.b ASC SORT i.a, i.b DESC RETURN i", [ { a: 1, b: 2 }, { a: 1, b: 1 }, { a: 2, b: 2 }, { a: 2, b: 1 }, { a: 3, b: 2 }, { a: 3, b: 1 } ] ],
+        [ "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] SORT i.a, i.b ASC SORT i.a DESC, i.b DESC RETURN i", [ { a: 3, b: 2 }, { a: 3, b: 1 }, { a: 2, b: 2 }, { a: 2, b: 1 }, { a: 1, b: 2 }, { a: 1, b: 1 } ] ]
       ];
-
-      // note: the optimizer currently cannot optimize these queries:
-      // [ "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a DESC SORT i.a RETURN i", [ { a: 1 }, { a: 2 }, { a: 3 } ] ],
-      // [ "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a ASC SORT i.a DESC RETURN i", [ { a: 3 }, { a: 2 }, { a: 1 } ] ],
-      // [ "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] SORT i.a, i.b DESC SORT i.a, i.b ASC RETURN i", [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] ],
-      // [ "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] SORT i.a, i.b ASC SORT i.a, i.b DESC RETURN i", [ { a: 1, b: 2 }, { a: 1, b: 1 }, { a: 2, b: 2 }, { a: 2, b: 1 }, { a: 3, b: 2 }, { a: 3, b: 1 } ] ],
-      // [ "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] SORT i.a, i.b ASC SORT i.a DESC, i.b DESC RETURN i", [ { a: 3, b: 2 }, { a: 3, b: 1 }, { a: 2, b: 2 }, { a: 2, b: 1 }, { a: 1, b: 2 }, { a: 1, b: 1 } ] ],
 
       queries.forEach(function(query) {
         var planDisabled   = AQL_EXPLAIN(query[0], { }, paramDisabled);
@@ -169,7 +178,40 @@ function optimizerRuleTestSuite () {
         assertEqual(resultDisabled, query[1]);
         assertEqual(resultEnabled, query[1]);
       });
-    }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test limit
+////////////////////////////////////////////////////////////////////////////////
+
+    testLimit : function () {
+      var queries = [ 
+        [ "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] SORT i.a, i.b LIMIT 2 SORT i.a DESC, i.b DESC RETURN i", [ { a: 1, b: 2 }, { a: 1, b: 1 } ] ],
+        [ "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] SORT i.a DESC, i.b DESC LIMIT 2 SORT i.a, i.b RETURN i", [ { a: 3, b: 1 }, { a: 3, b: 2 } ] ],
+      ];
+
+      queries.forEach(function(query) {
+        var result = AQL_EXECUTE(query[0], { }, paramDisabled).json;
+        assertEqual(result, query[1]);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test collect
+////////////////////////////////////////////////////////////////////////////////
+
+    testCollect : function () {
+      var queries = [ 
+        [ "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] COLLECT x = i.a, y = i.b SORT x, y RETURN { a: x, b: y }", [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] ],
+        [ "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] SORT i.b, i.a COLLECT x = i.a RETURN { a: x }", [ { a: 1 }, { a: 2 }, { a: 3 } ] ],
+        [ "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] SORT i.a COLLECT x = i.a RETURN { a: x }", [ { a: 1 }, { a: 2 }, { a: 3 } ] ]
+      ];
+
+      queries.forEach(function(query) {
+        var result = AQL_EXECUTE(query[0], { }, paramDisabled).json;
+        assertEqual(result, query[1], query[0]);
+      });
+    },
 
   };
 }

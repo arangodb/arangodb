@@ -49,8 +49,13 @@ int triagens::aql::removeRedundantSorts (Optimizer* opt,
                                          Optimizer::Rule const* rule) { 
   std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::SORT, true);
   std::unordered_set<ExecutionNode*> toUnlink;
-  
+ 
   for (auto n : nodes) {
+    if (toUnlink.find(n) != toUnlink.end()) {
+      // encountered a sort node that we already deleted
+      continue;
+    }
+
     auto sortInfo = static_cast<SortNode*>(n)->getSortInformation(plan);
 
     if (sortInfo.isValid && ! sortInfo.criteria.empty()) {
@@ -61,39 +66,67 @@ int triagens::aql::removeRedundantSorts (Optimizer* opt,
         stack.push_back(dep);
       }
 
+      int nodesRelyingOnSort = 0;
+
       while (! stack.empty()) {
         auto current = stack.back();
         stack.pop_back();
 
         if (current->getType() == triagens::aql::ExecutionNode::SORT) {
           // we found another sort. now check if they are compatible!
-          auto other = static_cast<SortNode*>(current)->getSortInformation(plan);
 
-          switch (sortInfo.isCoveredBy(other)) {
-            case SortInformation::unequal:
+          if (nodesRelyingOnSort == 0) {
+            // a sort directly followed by another sort: now remove one of them
+            auto other = static_cast<SortNode*>(current)->getSortInformation(plan);
+            if (other.canThrow) {
+              // if the sort can throw, we must not remove it
               break;
+            }
 
-            case SortInformation::otherSupersedes:
-              toUnlink.insert(current);
-              break;
+            toUnlink.insert(current);
+            // continue;
+          }
+          else {
+            auto other = static_cast<SortNode*>(current)->getSortInformation(plan);
 
-            case SortInformation::weSupersede:
-            case SortInformation::allEqual:
-              // the sort at the start of the pipeline makes the sort at the end
-              // superfluous, so we'll remove it
-              toUnlink.insert(n);
-              break;
+            switch (sortInfo.isCoveredBy(other)) {
+              case SortInformation::unequal:
+                break;
+
+              case SortInformation::otherSupersedes:
+                toUnlink.insert(current);
+                break;
+
+              case SortInformation::weSupersede:
+              case SortInformation::allEqual:
+                // the sort at the start of the pipeline makes the sort at the end
+                // superfluous, so we'll remove it
+                toUnlink.insert(n);
+                break;
+            }
           }
         }
-        else if (current->getType() == triagens::aql::ExecutionNode::CALCULATION ||
-                 current->getType() == triagens::aql::ExecutionNode::FILTER ||
-                 current->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION ||
-                 current->getType() == triagens::aql::ExecutionNode::ENUMERATE_LIST ||
-                 current->getType() == triagens::aql::ExecutionNode::LIMIT) {
-          // ok
+        else if (current->getType() == triagens::aql::ExecutionNode::FILTER) {
+          // ok: a filter does not depend on sort order
+        }
+        else if (current->getType() == triagens::aql::ExecutionNode::CALCULATION) {
+          // ok: a filter does not depend on sort order only if it does not throw
+          if (current->canThrow()) {
+            ++nodesRelyingOnSort;
+          }
+        }
+        else if (current->getType() == triagens::aql::ExecutionNode::ENUMERATE_LIST ||
+                 current->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION) {
+          // ok, but we cannot remove two different sorts if one of these node types is between them
+          // example: in the following query, the one sort will be optimized away:
+          //   FOR i IN [ { a: 1 }, { a: 2 } , { a: 3 } ] SORT i.a ASC SORT i.a DESC RETURN i
+          // but in the following query, the sorts will stay:
+          //   FOR i IN [ { a: 1 }, { a: 2 } , { a: 3 } ] SORT i.a ASC LET a = i.a SORT i.a DESC RETURN i
+          ++nodesRelyingOnSort;
         }
         else {
-          // abort at all other type of nodes. we cannot push a sort beyond them
+          // abort at all other type of nodes. we cannot remove a sort beyond them
+          // this include COLLECT and LIMIT
           break;
         }
                  

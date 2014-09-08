@@ -194,6 +194,7 @@ namespace triagens {
 /// @returns a a qualification how good they match;
 ///      match->index==nullptr means no match at all.
 ////////////////////////////////////////////////////////////////////////////////
+
         enum MatchType {
           FULL_MATCH,
           REVERSE_MATCH,
@@ -202,7 +203,7 @@ namespace triagens {
           NO_MATCH
         };
 
-        struct IndexMatch{
+        struct IndexMatch {
           TRI_index_t* index;     // The index concerned; if null, this is a nonmatch.
           vector<MatchType> Match;// qualification of the attrs match quality
           bool fullmatch;         // do all critereons match
@@ -1439,6 +1440,7 @@ namespace triagens {
       std::vector<std::tuple<ExecutionNode const*, std::string, bool>> criteria;
       bool isValid   = true;
       bool isComplex = false;
+      bool canThrow  = false;
           
       Match isCoveredBy (SortInformation const& other) {
         if (! isValid || ! other.isValid) {
@@ -1468,10 +1470,12 @@ namespace triagens {
             return unequal;
           }
         }
-        if (other.criteria.size() > n)
+
+        if (other.criteria.size() > n) {
           return weSupersede;
-        else
-          return allEqual;
+        }
+          
+        return allEqual;
       }
     };
 
