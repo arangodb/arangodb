@@ -88,7 +88,8 @@ int triagens::aql::removeRedundantSorts (Optimizer* opt,
         else if (current->getType() == triagens::aql::ExecutionNode::CALCULATION ||
                  current->getType() == triagens::aql::ExecutionNode::FILTER ||
                  current->getType() == triagens::aql::ExecutionNode::ENUMERATE_COLLECTION ||
-                 current->getType() == triagens::aql::ExecutionNode::ENUMERATE_LIST) {
+                 current->getType() == triagens::aql::ExecutionNode::ENUMERATE_LIST ||
+                 current->getType() == triagens::aql::ExecutionNode::LIMIT) {
           // ok
         }
         else {
