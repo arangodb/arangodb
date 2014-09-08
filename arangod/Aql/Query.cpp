@@ -219,7 +219,7 @@ QueryResult Query::execute () {
       int res = trx.begin();
 
       if (res != TRI_ERROR_NO_ERROR) {
-        return QueryResult(res, TRI_errno_string(res));
+        return transactionError(res, trx);
       }
 
       plan = ExecutionPlan::instanciateFromAst(parser.ast());
@@ -243,7 +243,7 @@ QueryResult Query::execute () {
       int res = trx.begin();
 
       if (res != TRI_ERROR_NO_ERROR) {
-        return QueryResult(res, TRI_errno_string(res));
+        return transactionError(res, trx);
       }
     }
     
@@ -368,7 +368,7 @@ QueryResult Query::explain () {
     int res = trx.begin();
 
     if (res != TRI_ERROR_NO_ERROR) {
-      return QueryResult(res, TRI_errno_string(res));
+        return transactionError(res, trx);
     }
 
     plan = ExecutionPlan::instanciateFromAst(parser.ast());
@@ -481,6 +481,26 @@ char* Query::registerString (std::string const& p,
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief neatly format transaction errors to the user.
+////////////////////////////////////////////////////////////////////////////////
+
+QueryResult Query::transactionError (int errorCode, AQL_TRANSACTION_V8 const& trx)
+{
+  std::string err;
+  err += std::string(TRI_errno_string(errorCode));
+
+  auto detail = trx.getErrorData();
+  if (detail.size() > 0) {
+    err += std::string(" (") + detail + std::string(")");
+  }
+
+  err += std::string("\nwhile executing:\n") + _queryString + std::string("\n");
+
+  return QueryResult(errorCode, err);
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read the "optimizer.rules" section from the options
