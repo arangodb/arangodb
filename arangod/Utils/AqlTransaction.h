@@ -70,7 +70,8 @@ namespace triagens {
           this->addHint(TRI_TRANSACTION_HINT_LOCK_ENTIRELY, false);
 
           for (auto it = collections->begin(); it != collections->end(); ++it) {
-            processCollection((*it).second);
+            if (processCollection((*it).second) != TRI_ERROR_NO_ERROR)
+              break;
           }
         }
 
@@ -91,12 +92,12 @@ namespace triagens {
 /// @brief add a collection to the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        void processCollection (triagens::aql::Collection* collection) {
+        int processCollection (triagens::aql::Collection* collection) {
           if (ServerState::instance()->isCoordinator()) {
-            processCollectionCoordinator(collection);
+            return processCollectionCoordinator(collection);
           }
           else {
-            processCollectionNormal(collection);
+            return processCollectionNormal(collection);
           }
         }
 
@@ -104,17 +105,17 @@ namespace triagens {
 /// @brief add a coordinator collection to the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        void processCollectionCoordinator (triagens::aql::Collection* collection) {
+        int processCollectionCoordinator (triagens::aql::Collection* collection) {
           TRI_voc_cid_t cid = this->resolver()->getCollectionIdCluster(collection->name);
 
-          this->addCollection(cid, collection->name.c_str(), collection->accessType);
+          return this->addCollection(cid, collection->name.c_str(), collection->accessType);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a regular collection to the transaction
 ////////////////////////////////////////////////////////////////////////////////
 
-        void processCollectionNormal (triagens::aql::Collection* collection) {
+        int processCollectionNormal (triagens::aql::Collection* collection) {
           TRI_vocbase_col_t const* col = this->resolver()->getCollectionStruct(collection->name);
           TRI_voc_cid_t cid = 0;
 
@@ -128,6 +129,8 @@ namespace triagens {
               col != nullptr) {
             collection->collection = const_cast<TRI_vocbase_col_t*>(col);
           }
+
+          return res;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
