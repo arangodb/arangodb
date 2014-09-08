@@ -185,12 +185,17 @@ AqlItemBlock* AqlItemBlock::slice (size_t from,
           auto it = cache.find(a);
           if (it == cache.end()) {
             AqlValue b = a.clone();
-            res->_data[(row - from) * _nrRegs + col] = b;
-            // TODO: can we use emplace() here instead of insert()?
-            cache.insert(make_pair(a, b));
+            try {
+              res->setValue(row - from, col, b);
+            }
+            catch (...) {
+              b.destroy();
+              throw;
+            }
+            cache.emplace(a, b);
           }
           else {
-            res->_data[(row - from) * _nrRegs + col] = it->second;
+            res->setValue(row - from, col, it->second);
           }
         }
       }
@@ -232,12 +237,16 @@ AqlItemBlock* AqlItemBlock::slice (std::vector<size_t>& chosen,
           auto it = cache.find(a);
           if (it == cache.end()) {
             AqlValue b = a.clone();
-            res->_data[(row - from) * _nrRegs + col] = b;
-            // TODO: can we use emplace() here instead of insert()?
-            cache.insert(make_pair(a, b));
+            try {
+              res->setValue(row - from, col, b);
+            }
+            catch (...) {
+              b.destroy();
+            }
+            cache.emplace(a, b);
           }
           else {
-            res->_data[(row - from) * _nrRegs + col] = it->second;
+            res->setValue(row - from, col, it->second);
           }
         }
       }
