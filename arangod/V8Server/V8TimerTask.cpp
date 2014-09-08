@@ -117,7 +117,10 @@ bool V8TimerTask::handleTimeout () {
     "(function (params) { " + _command + " } )(params);",
     _parameters);
 
-  _dispatcher->addJob(job);
+  if (_dispatcher->addJob(job) != TRI_ERROR_NO_ERROR) {
+    // just in case the dispatcher cannot accept the job (e.g. when shutting down)
+    delete job;
+  }
 
   // note: this will destroy the task (i.e. ourselves!!)
   _scheduler->destroyTask(this);
