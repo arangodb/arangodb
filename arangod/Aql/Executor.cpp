@@ -120,7 +120,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "CEIL",                        Function("CEIL",                        "NUMBER_CEIL", "n", true, true) },
   { "ROUND",                       Function("ROUND",                       "NUMBER_ROUND", "n", true, true) },
   { "ABS",                         Function("ABS",                         "NUMBER_ABS", "n", true, true) },
-  { "RAND",                        Function("RAND",                        "NUMBER_RAND", "", false, true) },
+  { "RAND",                        Function("RAND",                        "NUMBER_RAND", "", false, false) },
   { "SQRT",                        Function("SQRT",                        "NUMBER_SQRT", "n", true, true) },
   
   // list functions
