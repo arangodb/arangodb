@@ -1129,7 +1129,7 @@ void IndexRangeBlock::readHashIndex () {
               JsonHelper::getArrayElement(x._low._bound.json(), "value"), false); 
           // here x->_low->_bound = x->_high->_bound 
           searchValue._values[i] = *shaped;
-          
+          TRI_Free(shaper->_memoryZone, shaped);
         }
       }
 
