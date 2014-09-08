@@ -426,7 +426,7 @@ int main (int argc, char* argv[]) {
   TRI_GlobalEntryFunction();
   TRIAGENS_REST_INITIALISE(argc, argv);
 
-  // create and start a ArangoDB server
+  // create and start an ArangoDB server
 
 #ifdef _WIN32
 
