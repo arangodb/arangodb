@@ -35,6 +35,8 @@
 #include "Aql/BindParameters.h"
 #include "Aql/Collections.h"
 #include "Aql/QueryResult.h"
+#include "Utils/AqlTransaction.h"
+#include "Utils/V8TransactionContext.h"
 
 struct TRI_json_s;
 struct TRI_vocbase_s;
@@ -217,6 +219,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<std::string> getRulesFromOptions () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief neatly format transaction errors to the user.
+////////////////////////////////////////////////////////////////////////////////
+
+        QueryResult transactionError (int errorCode, AQL_TRANSACTION_V8 const& trx);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
