@@ -970,9 +970,6 @@ int ArangoServer::runConsole (TRI_vocbase_t* vocbase) {
 int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
   ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, 0, true, true);
 
-  v8::HandleScope globalScope;
-
-  v8::Local<v8::String> name(v8::String::New("(arango)"));
   v8::Context::Scope contextScope(context->_context);
 
   bool ok = false;
@@ -989,6 +986,8 @@ int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
 
     context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS"), sysTestFiles);
     context->_context->Global()->Set(v8::String::New("SYS_UNIT_TESTS_RESULT"), v8::True());
+  
+    v8::Local<v8::String> name(v8::String::New("(arango)"));
 
     // run tests
     char const* input = "require(\"org/arangodb/testrunner\").runCommandLineTests();";
@@ -996,7 +995,7 @@ int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
 
     if (tryCatch.HasCaught()) {
       if (tryCatch.CanContinue()) {
-        cout << TRI_StringifyV8Exception(&tryCatch);
+        std::cerr << TRI_StringifyV8Exception(&tryCatch);
       }
       else {
         // will stop, so need for v8g->_canceled = true;
