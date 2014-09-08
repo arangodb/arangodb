@@ -84,11 +84,13 @@ namespace triagens {
       void assign (AstNode const* bound, bool include) {
         _include = include;
         _bound = Json(TRI_UNKNOWN_MEM_ZONE, bound->toJson(TRI_UNKNOWN_MEM_ZONE, true));
+        _undefined = false;
       }
       
       void assign (RangeInfoBound copy) {
         _include = copy._include;
         _bound = copy._bound; 
+        _undefined = false;
       }
 
       Json toJson () const {
@@ -154,7 +156,7 @@ namespace triagens {
         RangeInfo () :  _valid(false), _undefined(true) {}
         
         RangeInfo (basics::Json const& json) :
-          _var(basics::JsonHelper::checkAndGetStringValue(json.json(), "var")),
+          _var(basics::JsonHelper::checkAndGetStringValue(json.json(), "variable")),
           _attr(basics::JsonHelper::checkAndGetStringValue(json.json(), "attr")),
           _valid(basics::JsonHelper::checkAndGetBooleanValue(json.json(), "valid")),
           _undefined(false) {
@@ -178,7 +180,7 @@ namespace triagens {
 
         Json toJson () {
           Json item(basics::Json::Array);
-          item("var", Json(_var))("attr", Json(_attr));
+          item("variable", Json(_var))("attr", Json(_attr));
           if(!_low._undefined){
             item("low", _low.toJson());
           }
@@ -254,7 +256,7 @@ namespace triagens {
           for (auto x : _ranges) {
             for (auto y: x.second){
               Json item(Json::Array);
-              item("var", Json(x.first))
+              item("variable", Json(x.first))
                   ("attribute name", Json(y.first))
                   ("range info", y.second.toJson());
               list(item);

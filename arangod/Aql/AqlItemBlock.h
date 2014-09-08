@@ -130,8 +130,6 @@ namespace triagens {
                   _valueCount.erase(it);
                 }
                 catch (...) {
-                  it->second++;
-                  throw;
                 }
               }
             }

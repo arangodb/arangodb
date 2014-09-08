@@ -69,7 +69,14 @@ int triagens::aql::removeRedundantSorts (Optimizer* opt,
           // we found another sort. now check if they are compatible!
           auto other = static_cast<SortNode*>(current)->getSortInformation(plan);
 
-          if (sortInfo.isCoveredBy(other)) {
+          switch (sortInfo.isCoveredBy(other)) {
+          case triagens::aql::SortInformation::unequal:
+            break;
+          case triagens::aql::SortInformation::otherSupersedes:
+            toUnlink.insert(current);
+            break;
+          case triagens::aql::SortInformation::weSupersede:
+          case triagens::aql::SortInformation::allEqual:
             // the sort at the start of the pipeline makes the sort at the end
             // superfluous, so we'll remove it
             toUnlink.insert(n);
@@ -645,6 +652,12 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         buildRangeInfo(node->getMember(0), enumCollVar, attr);
         buildRangeInfo(node->getMember(1), enumCollVar, attr);
       }
+      /* TODO: or isn't implemented yet.
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+        buildRangeInfo(node->getMember(0), enumCollVar, attr);
+        buildRangeInfo(node->getMember(1), enumCollVar, attr);
+      }
+      */
       attr = "";
       enumCollVar = "";
       return;
@@ -787,13 +800,13 @@ public:
 /// @brief removes the sortNode and its referenced Calculationnodes from the plan.
 ////////////////////////////////////////////////////////////////////////////////
   void removeSortNodeFromPlan (ExecutionPlan *newPlan) {
-    newPlan->unlinkNode(newPlan->getNodeById(sortNodeID));
-
     for (auto idToRemove = _sortNodeData.begin();
          idToRemove != _sortNodeData.end();
          ++idToRemove) {
       newPlan->unlinkNode(newPlan->getNodeById((*idToRemove)->calculationNodeID));
     }
+
+    newPlan->unlinkNode(newPlan->getNodeById(sortNodeID));
   }
 };
 
@@ -817,7 +830,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
       _plan(plan),
       _sortNode(Node),
       _level(level) {
-    planModified = true;
+    planModified = false;
   }
 
 ////////////////////////////////////////////////////////////////////////////////

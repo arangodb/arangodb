@@ -37,7 +37,10 @@ var assertQueryError = helper.assertQueryError2;
 
 function optimizerRuleTestSuite () {
   var ruleName = "move-calculations-up";
-
+  // various choices to control the optimizer: 
+  var paramNone   = { optimizer: { rules: [ "-all" ] } };
+  var paramMCU    = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
+  var paramNoMCU  = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,7 +69,7 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { }, { optimizer: { rules: [ "-all" ] } });
+        var result = AQL_EXPLAIN(query, { }, paramNone);
         assertEqual([ ], result.plan.rules);
       });
     },
@@ -84,7 +87,7 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { }, { optimizer: { rules: [ "-all", "+" + ruleName ] } });
+        var result = AQL_EXPLAIN(query, { }, paramMCU);
         assertEqual([ ], result.plan.rules, query);
       });
     },
@@ -104,7 +107,7 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { }, { optimizer: { rules: [ "-all", "+" + ruleName ] } });
+        var result = AQL_EXPLAIN(query, { }, paramMCU);
         assertEqual([ ruleName ], result.plan.rules);
       });
     },
@@ -120,7 +123,7 @@ function optimizerRuleTestSuite () {
       ];
 
       plans.forEach(function(plan) {
-        var result = AQL_EXPLAIN(plan[0], { }, { optimizer: { rules: [ "-all", "+" + ruleName ] } });
+        var result = AQL_EXPLAIN(plan[0], { }, paramMCU);
         assertEqual([ ruleName ], result.plan.rules, plan[0]);
         assertEqual(plan[1], helper.getCompactPlan(result).map(function(node) { return node.type; }), plan[0]);
       });
@@ -139,11 +142,11 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var planDisabled   = AQL_EXPLAIN(query[0], { }, { optimizer: { rules: [ "+all", "-" + ruleName ] } });
-        var planEnabled    = AQL_EXPLAIN(query[0], { }, { optimizer: { rules: [ "-all", "+" + ruleName ] } });
+        var planDisabled   = AQL_EXPLAIN(query[0], { }, paramNoMCU);
+        var planEnabled    = AQL_EXPLAIN(query[0], { }, paramMCU);
 
-        var resultDisabled = AQL_EXECUTE(query[0], { }, { optimizer: { rules: [ "+all", "-" + ruleName ] } });
-        var resultEnabled  = AQL_EXECUTE(query[0], { }, { optimizer: { rules: [ "-all", "+" + ruleName ] } });
+        var resultDisabled = AQL_EXECUTE(query[0], { }, paramNoMCU);
+        var resultEnabled  = AQL_EXECUTE(query[0], { }, paramMCU);
 
         assertTrue(planDisabled.plan.rules.indexOf(ruleName) === -1, query[0]);
         assertTrue(planEnabled.plan.rules.indexOf(ruleName) !== -1, query[0]);

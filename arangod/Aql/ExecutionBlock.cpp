@@ -1023,7 +1023,7 @@ void IndexRangeBlock::readSkiplistIndex () {
         skiplistOperator = TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, nullptr,
             nullptr, parameters.copy().steal(), shaper, nullptr, i, nullptr);
       }
-      if (range._low._undefined) {
+      if (!range._low._undefined) {
         auto op = range._low.toIndexOperator(false, parameters.copy(), shaper);
         if (skiplistOperator != nullptr) {
           skiplistOperator = TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, 
@@ -1033,7 +1033,7 @@ void IndexRangeBlock::readSkiplistIndex () {
           skiplistOperator = op;
         }
       }
-      if (range._high._undefined) {
+      if (!range._high._undefined) {
         auto op = range._high.toIndexOperator(true, parameters.copy(), shaper);
         if (skiplistOperator != nullptr) {
           skiplistOperator = TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, 
