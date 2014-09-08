@@ -114,6 +114,8 @@ void TRI_UnlockMutex (TRI_mutex_t* mutex) {
 // --SECTION--                                                              SPIN
 // -----------------------------------------------------------------------------
 
+#ifndef TRI_FAKE_SPIN_LOCKS
+
 #ifdef TRI_HAVE_POSIX_SPIN
 
 // -----------------------------------------------------------------------------
@@ -176,6 +178,8 @@ void TRI_UnlockSpin (TRI_spin_t* spinLock) {
     LOG_FATAL_AND_EXIT("could not release the spin-lock: %s", strerror(rc));
   }
 }
+
+#endif
 
 #endif
 

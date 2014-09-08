@@ -48,7 +48,15 @@ extern "C" {
 /// @brief spin-lock type
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_FAKE_SPIN_LOCKS
+
+#define TRI_spin_t phread_mutex_t
+
+#else
+
 #define TRI_spin_t OSSpinLock
+
+#endif
 
 #ifdef __cplusplus
 }
