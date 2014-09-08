@@ -66,11 +66,11 @@ exports.hmac = function (key, message, algorithm) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief apply a PBKDF2-HMAC
+/// @brief apply a PBKDF2
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.pbkdf2hmac = function (salt, password, iterations, keyLength, algorithm) {
-  return internal.pbkdf2hmac(salt, password, iterations, keyLength, algorithm);
+exports.pbkdf2 = function (salt, password, iterations, keyLength) {
+  return internal.pbkdf2(salt, password, iterations, keyLength);
 };
 
 ////////////////////////////////////////////////////////////////////////////////

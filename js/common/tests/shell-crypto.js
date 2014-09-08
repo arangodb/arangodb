@@ -295,16 +295,16 @@ function CryptoSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test pbkdf2hmac, invalid values
+/// @brief test pbkdf2, invalid values
 ////////////////////////////////////////////////////////////////////////////////
 
-    testPbkdf2hmacInvalid : function () {
+    testPbkdf2Invalid : function () {
       [ undefined, null, true, false, 0, 1, -1, 32.5, [ ], { } ].forEach(function (value1, i, arr) {
         arr.forEach(function(value2) {
           arr.forEach(function(value3) {
             arr.forEach(function(value4) {
               try {
-                crypto.pbkdf2hmac(value1, value2, value3, value4);
+                crypto.pbkdf2(value1, value2, value3, value4);
                 fail();
               }
               catch (err) {
@@ -313,47 +313,28 @@ function CryptoSuite () {
           });
         });
       });
-      try {
-        crypto.pbkdf2hmac("a", "b", 20, 32, "nosuchalgo");
-        fail();
-      }
-      catch (err) {
-      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test pbkdf2hmac
+/// @brief test pbkdf2
 ////////////////////////////////////////////////////////////////////////////////
 
-    testPbkdf2hmac : function () {
+    testPbkdf2 : function () {
       var data = [
-        [ 'secret', '', 10, 16, 'sha1', '7ae85791509c581fbda11a945893d623' ],
-        [ 'secret', '', 10, 16, 'SHA1', '7ae85791509c581fbda11a945893d623' ],
-        [ 'secret', '', 10, 16, undefined, '7ae85791509c581fbda11a945893d623' ],
-        [ 'secret', ' ', 10, 16, undefined, '539e069417a0148aa8673d206b57f345' ],
-        [ 'secret', 'arangodb', 10, 16, undefined, 'cd55a9a823ba8a788060c2353440092f' ],
-        [ 'secret', 'Arangodb', 10, 16, undefined, '9af0cdc4ab37b4a17120f9796941046d' ],
-        [ 'secret', 'Arangodb', 10, 32, undefined, '9af0cdc4ab37b4a17120f9796941046d34c5260035189c297df5c07f9f7748a6' ],
-        [ 'secret', 'Arangodb', 100, 16, undefined, 'e9afe4e0f3d6fb5dddbe98046be214f7' ],
-        [ 'secret', 'ArangoDB is a database', 10, 16, undefined, '9a6a9c9f7bc553f9ee41e95f22a9600f' ],
-        [ 'SECRET', 'ArangoDB is a database', 10, 16, undefined, '9a56ce2d622a09678bcc7fbb1f01d47c' ]
-        // [ "secret", "ArangoDB is a database", 10, 16, "sha224", "" ],
-        // [ "secret", "ArangoDB is a database", 10, 16, "SHA224", "" ],
-        // [ "secret", "ArangoDB is a database", 10, 16, "sha256", "" ],
-        // [ "secret", "ArangoDB is a database", 10, 16, "SHA256", "" ],
-        // [ "secret", "ArangoDB is a database", 10, 16, "sha384", "" ],
-        // [ "secret", "ArangoDB is a database", 10, 16, "SHA384", "" ],
-        // [ "secret", "ArangoDB is a database", 10, 16, "sha512", "" ],
-        // [ "secret", "ArangoDB is a database", 10, 16, "SHA512", "" ],
-        // [ "secret", "ArangoDB is a database", 10, 16, "md5", "" ],
-        // [ "secret", "ArangoDB is a database", 10, 16, "MD5", "" ]
+        [ 'secret', '', 10, 16, '7ae85791509c581fbda11a945893d623' ],
+        [ 'secret', '', 10, 16, '7ae85791509c581fbda11a945893d623' ],
+        [ 'secret', '', 10, 16, '7ae85791509c581fbda11a945893d623' ],
+        [ 'secret', ' ', 10, 16, '539e069417a0148aa8673d206b57f345' ],
+        [ 'secret', 'arangodb', 10, 16, 'cd55a9a823ba8a788060c2353440092f' ],
+        [ 'secret', 'Arangodb', 10, 16, '9af0cdc4ab37b4a17120f9796941046d' ],
+        [ 'secret', 'Arangodb', 10, 32, '9af0cdc4ab37b4a17120f9796941046d34c5260035189c297df5c07f9f7748a6' ],
+        [ 'secret', 'Arangodb', 100, 16, 'e9afe4e0f3d6fb5dddbe98046be214f7' ],
+        [ 'secret', 'ArangoDB is a database', 10, 16, '9a6a9c9f7bc553f9ee41e95f22a9600f' ],
+        [ 'SECRET', 'ArangoDB is a database', 10, 16, '9a56ce2d622a09678bcc7fbb1f01d47c' ]
       ];
 
       data.forEach(function (value) {
-        if (value[4] === undefined) {
-          assertEqual(value[5], crypto.pbkdf2hmac(value[0], value[1], value[2], value[3]));
-        }
-        assertEqual(value[5], crypto.pbkdf2hmac(value[0], value[1], value[2], value[3], value[4]));
+        assertEqual(value[4], crypto.pbkdf2(value[0], value[1], value[2], value[3]));
       });
     },
 
