@@ -1094,7 +1094,15 @@ AstNode* Ast::optimizeBinaryOperatorLogical (AstNode* node) {
     return node;
   }
 
-  if (! lhsIsConst || ! rhsIsConst) {
+  if (! lhsIsConst) {
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+      if (rhsIsConst && ! rhs->getBoolValue()) {
+        // (lhs || false) => lhs
+        return lhs;
+      }
+    }
+
+    // default: don't optimize
     return node;
   }
 
