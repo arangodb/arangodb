@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true, stupid: true*/
+/*jshint browser: true */
+/*jshint unused: false */
 /*global require, exports, Backbone, activeUser, window, ArangoQuery, $, data, _, arangoHelper*/
 (function() {
   "use strict";

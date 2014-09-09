@@ -1,4 +1,3 @@
-/*jslint es5: true, indent: 2, nomen: true, maxlen: 120, white: true, plusplus: true, unparam: true, regexp: true, vars: true, stupid: true */
 /*global require, applicationContext*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1145,7 +1144,7 @@
     }
   )
   .errorResponse(
-    Error, actions.HTTP_BAD, "Edge is invalid.", function(e) {
+    Error, actions.HTTP_BAD, "Edge is invalid.", function() {
       return buildError({
         errorNum: errors.ERROR_GRAPH_INVALID_EDGE.code,
         errorMessage: errors.ERROR_GRAPH_INVALID_EDGE.message

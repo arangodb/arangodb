@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
+/*jshint strict: false, unused: false */
 /*global require, exports, module, TRANSACTION */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,7 +105,7 @@ ArangoDatabase.prototype.toString = function(seen, path, names, level) {
 /// @brief factory method to create a new statement
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._createStatement = function (data) {  
+ArangoDatabase.prototype._createStatement = function (data) {
   return new ArangoStatement(this, data);
 };
 
@@ -113,7 +113,7 @@ ArangoDatabase.prototype._createStatement = function (data) {
 /// @brief factory method to create and execute a new statement
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, options) {  
+ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, options) {
   var payload = {
     query: query,
     bindVars: bindVars || undefined,
@@ -145,32 +145,32 @@ ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, opti
 /// Executes a server-side transaction, as specified by *object*.
 ///
 /// *object* must have the following attributes:
-/// - *collections*: a sub-object that defines which collections will be 
+/// - *collections*: a sub-object that defines which collections will be
 ///   used in the transaction. *collections* can have these attributes:
 ///   - *read*: a single collection or a list of collections that will be
 ///     used in the transaction in read-only mode
 ///   - *write*: a single collection or a list of collections that will be
-///     used in the transaction in write or read mode. 
+///     used in the transaction in write or read mode.
 /// - *action*: a Javascript function or a string with Javascript code
 ///   containing all the instructions to be executed inside the transaction.
 ///   If the code runs through successfully, the transaction will be committed
-///   at the end. If the code throws an exception, the transaction will be 
+///   at the end. If the code throws an exception, the transaction will be
 ///   rolled back and all database operations will be rolled back.
 ///
 /// Additionally, *object* can have the following optional attributes:
 /// - *waitForSync*: boolean flag indicating whether the transaction
 ///   is forced to be synchronous.
-/// - *lockTimeout*: a numeric value that can be used to set a timeout for 
-///   waiting on collection locks. If not specified, a default value will be 
-///   used. Setting *lockTimeout* to *0* will make ArangoDB not time 
+/// - *lockTimeout*: a numeric value that can be used to set a timeout for
+///   waiting on collection locks. If not specified, a default value will be
+///   used. Setting *lockTimeout* to *0* will make ArangoDB not time
 ///   out waiting for a lock.
-/// - *params*: optional arguments passed to the function specified in 
+/// - *params*: optional arguments passed to the function specified in
 ///   *action*.
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._executeTransaction = function (data) {  
+ArangoDatabase.prototype._executeTransaction = function (data) {
   return TRANSACTION(data);
 };
 
@@ -397,17 +397,17 @@ ArangoDatabase.prototype._index = function(id) {
 /// ```js
 /// arango> db.example.ensureSkiplist("a", "b");
 /// { "id" : "example/1577138", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"], "isNewlyCreated" : true }
-/// 
+///
 /// arango> i = db.example.getIndexes();
 /// [{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] },
 ///  { "id" : "example/1577138", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"] }]
-///  
+///
 ///  arango> db._dropIndex(i[0]);
 ///  false
-///  
+///
 ///  arango> db._dropIndex(i[1].id);
 /// true
-/// 
+///
 /// arango> i = db.example.getIndexes();
 /// [{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] }]
 /// ```
@@ -463,7 +463,7 @@ ArangoDatabase.prototype._dropIndex = function (id) {
 /// Returns a list of all endpoints and their mapped databases.
 ///
 /// Please note that managing endpoints can only be performed from out of the
-/// *_system* database. When not in the default database, you must first switch 
+/// *_system* database. When not in the default database, you must first switch
 /// to it using the "db._useDatabase" method.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -479,8 +479,8 @@ ArangoDatabase.prototype._listEndpoints = function () {
 ///
 /// Adds and connects or updates the *endpoint*.
 ///
-/// The optional *databases* argument allows restricting the endpoint for 
-/// use with specific databases only. The first database in the list will 
+/// The optional *databases* argument allows restricting the endpoint for
+/// use with specific databases only. The first database in the list will
 /// automatically become the default database for the endpoint. The default
 /// database will be used for incoming requests that do not specify the database
 /// name explicitly.
@@ -489,11 +489,11 @@ ArangoDatabase.prototype._listEndpoints = function () {
 /// existing databases.
 ///
 /// The adjusted list of endpoints is saved in a file *ENDPOINTS* in the
-/// database directory. The endpoints are restored from the file at server 
+/// database directory. The endpoints are restored from the file at server
 /// start.
 ///
 /// Please note that managing endpoints can only be performed from out of the
-/// *_system* database. When not in the default database, you must first switch 
+/// *_system* database. When not in the default database, you must first switch
 /// to it using the "db._useDatabase" method.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -507,17 +507,17 @@ ArangoDatabase.prototype._configureEndpoint = function (endpoint, databases) {
 /// @startDocuBlock removeEndpoint
 /// `db._removeEndpoint(endpoint)`
 ///
-/// Disconnects and removes the *endpoint*. If the endpoint was not 
+/// Disconnects and removes the *endpoint*. If the endpoint was not
 /// configured before, the operation will fail. If the endpoint happens to be
-/// the last bound endpoint, the operation will also fail as disconnecting 
+/// the last bound endpoint, the operation will also fail as disconnecting
 /// would make the server unable to communicate with any clients.
 ///
 /// The adjusted list of endpoints is saved in a file *ENDPOINTS* in the
-/// database directory. The endpoints are restored from the file at server 
+/// database directory. The endpoints are restored from the file at server
 /// start.
 ///
 /// Please note that managing endpoints can only be performed from out of the
-/// *_system* database. When not in the default database, you must first switch 
+/// *_system* database. When not in the default database, you must first switch
 /// to it using the "db._useDatabase" method.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////

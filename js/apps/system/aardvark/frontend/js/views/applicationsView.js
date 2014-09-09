@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*jshint browser: true */
+/*jshint strict: false, unused: false */
 /*global Backbone, $, window, arangoHelper, templateEngine, Joi, _*/
 
 window.ApplicationsView = Backbone.View.extend({
@@ -131,7 +132,7 @@ window.ApplicationsView = Backbone.View.extend({
                   type: "POST",
                   async: false,
                   url: '/_admin/foxx/fetch',
-                  data: JSON.stringify({ 
+                  data: JSON.stringify({
                     name: res.name,
                     version: res.version,
                     filename: res.filename
@@ -162,7 +163,7 @@ window.ApplicationsView = Backbone.View.extend({
       });
     }
   },
-  
+
   showSpinner: function() {
     $('#uploadIndicator').show();
   },
@@ -178,7 +179,7 @@ window.ApplicationsView = Backbone.View.extend({
       v.toggle("devel", self._showDevel);
     });
   },
-  
+
   toggleActive: function() {
     var self = this;
     this._showActive = !this._showActive;
@@ -186,7 +187,7 @@ window.ApplicationsView = Backbone.View.extend({
       v.toggle("active", self._showActive);
     });
   },
-  
+
   toggleInactive: function() {
     var self = this;
     this._showInactive = !this._showInactive;
@@ -332,7 +333,7 @@ window.ApplicationsView = Backbone.View.extend({
       v.toggle("active", self._showActive);
       v.toggle("inactive", self._showInactive);
     });
-  
+
     arangoHelper.fixTooltips("icon_arangodb", "left");
     return this;
   }

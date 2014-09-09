@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, ArangoAgency */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -42,8 +41,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
+  "use strict";
   var internal = require("internal");
-  var db = internal.db;
 
   // in the cluster the kickstarter will call boostrap-role.js
   if (ArangoAgency.prefix() !== "") {

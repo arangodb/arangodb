@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 80 */
 /*global require, assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -99,7 +98,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testConstructWithBind : function () {
-      var query = "for v in @values return v"; 
+      var query = "for v in @values return v";
       var bind = { values: [ 1, 2, 3 ] };
       var st = new ArangoStatement(db, { query: query, bindVars: bind });
 
@@ -114,7 +113,7 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testConstructWithBindExecute : function () {
-      var query = "for v in @values return v"; 
+      var query = "for v in @values return v";
       var bind = { values: [ 1, 2, 3 ] };
       var st = new ArangoStatement(db, { query: query, bindVars: bind, count: true });
 
@@ -247,7 +246,7 @@ function StatementSuite () {
       assertEqual(50, result.getExtra("fullCount"));
       var docs = result.toArray();
       assertEqual(2, docs.length);
-      
+
       assertEqual([ 2, 3 ], docs);
     },
 
@@ -304,7 +303,7 @@ function StatementSuite () {
       st.bind("list", [ 1, 2, 3 ]);
       try {
         st.execute();
-        fail(); 
+        fail();
       }
       catch (e) {
         assertEqual(ERRORS.ERROR_QUERY_BIND_PARAMETER_MISSING.code, e.errorNum);
@@ -320,7 +319,7 @@ function StatementSuite () {
       st.bind("value", 1);
       try {
         st.bind("value", 1);
-        fail(); 
+        fail();
       }
       catch (e) {
       }
@@ -350,7 +349,7 @@ function StatementSuite () {
 
       st.setCount(true);
       assertEqual(true, st.getCount());
-      
+
       st.setCount(false);
       assertEqual(false, st.getCount());
     },
@@ -366,10 +365,10 @@ function StatementSuite () {
 
       st.setBatchSize(1);
       assertEqual(1, st.getBatchSize());
-      
+
       st.setBatchSize(100);
       assertEqual(100, st.getBatchSize());
-      
+
       st.setBatchSize(10000);
       assertEqual(10000, st.getBatchSize());
     },
@@ -382,10 +381,10 @@ function StatementSuite () {
       var st = new ArangoStatement(db, { query : "for u in [ 1 ] return 1", options : { foo: 1, bar: 2 } });
 
       assertEqual({ foo: 1, bar: 2 }, st.getOptions());
-      
+
       st.setOptions({ });
       assertEqual({ }, st.getOptions());
-      
+
       st.setOptions({ baz: true });
       assertEqual({ baz: true }, st.getOptions());
     },
@@ -478,9 +477,9 @@ function StatementSuite () {
       while (c.hasNext()) {
         result.push(c.next());
       }
-      
+
       assertEqual([ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ], result);
-        
+
       db._useDatabase("_system");
       db._dropDatabase("UnitTestsDatabase0");
     }
@@ -559,7 +558,7 @@ function ExplainSuite () {
       assertEqual(1, result[0]["id"]);
       assertEqual(1, result[0]["loopLevel"]);
       assertEqual("for", result[0]["type"]);
-      
+
       assertEqual(2, result[1]["id"]);
       assertEqual(1, result[1]["loopLevel"]);
       assertEqual("return", result[1]["type"]);
@@ -578,7 +577,7 @@ function ExplainSuite () {
       assertEqual(1, result[0]["id"]);
       assertEqual(1, result[0]["loopLevel"]);
       assertEqual("for", result[0]["type"]);
-      
+
       assertEqual(2, result[1]["id"]);
       assertEqual(1, result[1]["loopLevel"]);
       assertEqual("return", result[1]["type"]);
@@ -620,11 +619,11 @@ function ExplainSuite () {
       assertEqual(2, result[1]["id"]);
       assertEqual(1, result[1]["loopLevel"]);
       assertEqual("filter", result[1]["type"]);
-      
+
       assertEqual(3, result[2]["id"]);
       assertEqual(2, result[2]["loopLevel"]);
       assertEqual("for", result[2]["type"]);
-      
+
       assertEqual(4, result[3]["id"]);
       assertEqual(2, result[3]["loopLevel"]);
       assertEqual("return", result[3]["type"]);

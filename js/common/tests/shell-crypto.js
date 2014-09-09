@@ -73,6 +73,72 @@ function CryptoSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test sha512, invalid values
+////////////////////////////////////////////////////////////////////////////////
+
+    testSha512Invalid : function () {
+      [ undefined, null, true, false, 0, 1, -1, 32.5, [ ], { } ].forEach(function (value) {
+        try {
+          crypto.sha512(value);
+          fail();
+        }
+        catch (err) {
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sha512
+////////////////////////////////////////////////////////////////////////////////
+
+    testSha512 : function () {
+      var data = [
+        [ "", "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e" ],
+        [ " ", "f90ddd77e400dfe6a3fcf479b00b1ee29e7015c5bb8cd70f5f15b4886cc339275ff553fc8a053f8ddc7324f45168cffaf81f8c3ac93996f6536eef38e5e40768"],
+        [ "arangodb", "87509a178c07ce9f75bf70042297e414fded142109644781774bee3a5634ef0986de9806b9a63e18353037ef9fc04c6fc0cab2b12eff5d081e0a9d4d8412c4eb" ],
+        [ "Arangodb", "fb4d3ac6ccf6ac32751943ae10aa4cb86e1495042898e2d24fae79220f9421d94394db3be05a5e5f92b4ffe7ca4356bff56aa3eee0e68365e77245ebb6c34fb5" ],
+        [ "ArangoDB is a database", "b6a1ca6cdc7d8085ceda20a5b78251787df5f959daa36929f6bc6bb517dd9adc5d1610f43443151d14294ece1885e5560c12ca44d10e430d0208ca4bc481ebbd" ]
+      ];
+
+      data.forEach(function (value) {
+        assertEqual(value[1], crypto.sha512(value[0]));
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sha256, invalid values
+////////////////////////////////////////////////////////////////////////////////
+
+    testSha384Invalid : function () {
+      [ undefined, null, true, false, 0, 1, -1, 32.5, [ ], { } ].forEach(function (value) {
+        try {
+          crypto.sha384(value);
+          fail();
+        }
+        catch (err) {
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sha384
+////////////////////////////////////////////////////////////////////////////////
+
+    testSha384 : function () {
+      var data = [
+        [ "", "38b060a751ac96384cd9327eb1b1e36a21fdb71114be07434c0cc7bf63f6e1da274edebfe76f65fbd51ad2f14898b95b" ],
+        [ " ", "588016eb10045dd85834d67d187d6b97858f38c58c690320c4a64e0c2f92eebd9f1bd74de256e8268815905159449566"],
+        [ "arangodb", "d2b5ff08b3784080520f11535243c2314e3f9ef42335d8e80d17cb8b002626d9833d9cd68c50b0b5aea8f2c111fb95dd" ],
+        [ "Arangodb", "643d99c8edd96d48075161ad92f541bdd6d77460c1b1fd14353abcc309155f84ca7c138df1b647db59c537afd7b80521" ],
+        [ "ArangoDB is a database", "579f8b2972baf5b0acb3b4db39afeebd7274b1a2083cd110a554df0b63cdc0cc757d1e8d771e51e71cfe2c2ac2617e93" ]
+      ];
+
+      data.forEach(function (value) {
+        assertEqual(value[1], crypto.sha384(value[0]));
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test sha256, invalid values
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -210,6 +276,10 @@ function CryptoSuite () {
         [ "SECRET", "ArangoDB is a database", "sha256", "a04df5ce362f49439db5e30032b20e0fa64d01c60ceb32a9150e58d3c2c929af" ],
         [ "secret", "ArangoDB is a database", "sha224", "b55c13e25227abf919b510cf2289f4501fa13584676e7e4d56108172" ],
         [ "secret", "ArangoDB is a database", "SHA224", "b55c13e25227abf919b510cf2289f4501fa13584676e7e4d56108172" ],
+        [ "secret", "ArangoDB is a database", "sha384", "bb8da1979a964225996280d30c1ff73b1297145aaaa57520d4a1f38c648a85541f2d8e22f7e20dc3a556563e386521a7" ],
+        [ "secret", "ArangoDB is a database", "SHA384", "bb8da1979a964225996280d30c1ff73b1297145aaaa57520d4a1f38c648a85541f2d8e22f7e20dc3a556563e386521a7" ],
+        [ "secret", "ArangoDB is a database", "sha512", "8ef4e708db5bbc13ecf675ab81c9bfac72faedaf68fae91c51c0736746d087396af758a43cd60f763a5a8187d856c906c1677c7525b756cdb1ad5a7df823df73" ],
+        [ "secret", "ArangoDB is a database", "SHA512", "8ef4e708db5bbc13ecf675ab81c9bfac72faedaf68fae91c51c0736746d087396af758a43cd60f763a5a8187d856c906c1677c7525b756cdb1ad5a7df823df73" ],
         [ "secret", "ArangoDB is a database", "sha1", "f39d7a76e502ba3f79d663cfbc9ac43eb6fd323e" ],
         [ "secret", "ArangoDB is a database", "SHA1", "f39d7a76e502ba3f79d663cfbc9ac43eb6fd323e" ],
         [ "secret", "ArangoDB is a database", "md5", "6eecfc947725974efc24bbaaafe15a13" ],
@@ -221,6 +291,50 @@ function CryptoSuite () {
           assertEqual(value[3], crypto.hmac(value[0], value[1]));
         }
         assertEqual(value[3], crypto.hmac(value[0], value[1], value[2]));
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test pbkdf2, invalid values
+////////////////////////////////////////////////////////////////////////////////
+
+    testPbkdf2Invalid : function () {
+      [ undefined, null, true, false, 0, 1, -1, 32.5, [ ], { } ].forEach(function (value1, i, arr) {
+        arr.forEach(function(value2) {
+          arr.forEach(function(value3) {
+            arr.forEach(function(value4) {
+              try {
+                crypto.pbkdf2(value1, value2, value3, value4);
+                fail();
+              }
+              catch (err) {
+              }
+            });
+          });
+        });
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test pbkdf2
+////////////////////////////////////////////////////////////////////////////////
+
+    testPbkdf2 : function () {
+      var data = [
+        [ 'secret', '', 10, 16, '7ae85791509c581fbda11a945893d623' ],
+        [ 'secret', '', 10, 16, '7ae85791509c581fbda11a945893d623' ],
+        [ 'secret', '', 10, 16, '7ae85791509c581fbda11a945893d623' ],
+        [ 'secret', ' ', 10, 16, '539e069417a0148aa8673d206b57f345' ],
+        [ 'secret', 'arangodb', 10, 16, 'cd55a9a823ba8a788060c2353440092f' ],
+        [ 'secret', 'Arangodb', 10, 16, '9af0cdc4ab37b4a17120f9796941046d' ],
+        [ 'secret', 'Arangodb', 10, 32, '9af0cdc4ab37b4a17120f9796941046d34c5260035189c297df5c07f9f7748a6' ],
+        [ 'secret', 'Arangodb', 100, 16, 'e9afe4e0f3d6fb5dddbe98046be214f7' ],
+        [ 'secret', 'ArangoDB is a database', 10, 16, '9a6a9c9f7bc553f9ee41e95f22a9600f' ],
+        [ 'SECRET', 'ArangoDB is a database', 10, 16, '9a56ce2d622a09678bcc7fbb1f01d47c' ]
+      ];
+
+      data.forEach(function (value) {
+        assertEqual(value[4], crypto.pbkdf2(value[0], value[1], value[2], value[3]));
       });
     },
 
@@ -238,6 +352,10 @@ function CryptoSuite () {
         [ "secret", "Arangodb", "hs256", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.IkFyYW5nb2RiIg.BjQqhHpWiGqi2RBeAjV1V0gkUBPNZHtKCu5rgeu9eno" ],
         [ "secret", {foxx: "roxx"}, "HS256", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJmb3h4Ijoicm94eCJ9.tCZwaqnZ7Wj9BljBndyDtINYWmmvr0eLsq8bkmtXhg0" ],
         [ "SECRET", {foxx: "roxx"}, "HS256", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJmb3h4Ijoicm94eCJ9.oXcCBnmuv9GzqFc0_N2qFXLWKDjCKEmN015CccDAgfw" ],
+        [ "secret", {foxx: "roxx"}, "HS384", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzM4NCJ9.eyJmb3h4Ijoicm94eCJ9.kkgSDKjZZh8OSbjeGLjObeLVcbJiH7EtFzS-WjQtSLfYsNLfSULsTuOYVctMaAk5" ],
+        [ "SECRET", {foxx: "roxx"}, "HS384", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzM4NCJ9.eyJmb3h4Ijoicm94eCJ9.HHrNONcNcrK0Y-xfiOsw9tNe-zcsOmS9kdTr14dmH_2-71QTPIRnJGTLfl58URtM" ],
+        [ "secret", {foxx: "roxx"}, "HS512", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJmb3h4Ijoicm94eCJ9.zjLEjyjxv_NzWMPQEyXcSgFB9c2-t1n_jZRQkxnpQU9-UNJQ-kUpW8pYsObMHDKcmM8GspmX4X5653Fb-ZDkWA" ],
+        [ "SECRET", {foxx: "roxx"}, "HS512", "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJmb3h4Ijoicm94eCJ9.6MGHLPoS6r_F9HTZcHyRFWaQmLDf4boaTK5cxNnJPQeXNTSp8itLo4b1KPnq-wL4Q4HxnomghQLWRUjW612Wug" ],
         [ "secret", {foxx: "roxx"}, "none", "eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.eyJmb3h4Ijoicm94eCJ9." ],
         [ "SECRET", {foxx: "roxx"}, "none", "eyJ0eXAiOiJKV1QiLCJhbGciOiJub25lIn0.eyJmb3h4Ijoicm94eCJ9." ]
       ];

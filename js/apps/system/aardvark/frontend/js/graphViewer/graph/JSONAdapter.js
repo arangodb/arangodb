@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, d3, _, console, alert*/
 /*global AbstractAdapter*/
 ////////////////////////////////////////////////////////////////////////////////
@@ -30,18 +29,18 @@
 
 function JSONAdapter(jsonPath, nodes, edges, viewer, width, height) {
   "use strict";
-  
+
   var self = this,
   initialX = {},
   initialY = {},
   absAdapter = new AbstractAdapter(nodes, edges, this, viewer),
-  findNode = function(n) {    
+  findNode = function(n) {
     var res = $.grep(nodes, function(e){
       return e._id === n._id;
     });
     if (res.length === 0) {
       return false;
-    } 
+    }
     if (res.length === 1) {
       return res[0];
     }
@@ -62,29 +61,29 @@ function JSONAdapter(jsonPath, nodes, edges, viewer, width, height) {
     node._inboundCounter = 0;
     return node;
   },
-  
+
   insertEdge = function(source, target) {
     edges.push({source: source, target: target});
     source._outboundCounter++;
     target._inboundCounter++;
   };
-  
+
   initialX.range = width / 2;
   initialX.start = width / 4;
   initialX.getStart = function () {
     return this.start + Math.random() * this.range;
   };
-  
+
   initialY.range = height / 2;
   initialY.start = height / 4;
   initialY.getStart = function () {
     return this.start + Math.random() * this.range;
   };
-  
+
   self.loadNode = function(nodeId, callback) {
     self.loadNodeFromTreeById(nodeId, callback);
   };
-  
+
   self.loadInitialNode = function(nodeId, callback) {
     var json = jsonPath + nodeId + ".json";
     absAdapter.cleanUp();
@@ -115,7 +114,7 @@ function JSONAdapter(jsonPath, nodes, edges, viewer, width, height) {
       }
     });
   };
-  
+
   self.loadNodeFromTreeById = function(nodeId, callback) {
     var json = jsonPath + nodeId + ".json";
     d3.json(json, function(error, node) {
@@ -144,8 +143,8 @@ function JSONAdapter(jsonPath, nodes, edges, viewer, width, height) {
         callback(n);
       }
     });
-  };  
-  
+  };
+
   self.requestCentralityChildren = function(nodeId, callback) {
     var json = jsonPath + nodeId + ".json";
     d3.json(json, function(error, node) {
@@ -161,54 +160,54 @@ function JSONAdapter(jsonPath, nodes, edges, viewer, width, height) {
       }
     });
   };
-  
+
   self.loadNodeFromTreeByAttributeValue = function(attribute, value, callback) {
     throw "Sorry this adapter is read-only";
   };
-  
+
   self.loadInitialNodeByAttributeValue = function(attribute, value, callback) {
     throw "Sorry this adapter is read-only";
   };
-  
+
   self.createEdge = function(edgeToCreate, callback){
       throw "Sorry this adapter is read-only";
   };
-  
+
   self.deleteEdge = function(edgeToDelete, callback){
       throw "Sorry this adapter is read-only";
   };
-  
+
   self.patchEdge = function(edgeToPatch, patchData, callback){
       throw "Sorry this adapter is read-only";
   };
-  
+
   self.createNode = function(nodeToCreate, callback){
       throw "Sorry this adapter is read-only";
   };
-  
+
   self.deleteNode = function(nodeToDelete, callback){
       throw "Sorry this adapter is read-only";
   };
-  
+
   self.patchNode = function(nodeToPatch, patchData, callback){
       throw "Sorry this adapter is read-only";
   };
-  
+
   self.setNodeLimit = function (limit, callback) {
-  
+
   };
-  
+
   self.setChildLimit = function (limit) {
-  
+
   };
-  
+
   self.expandCommunity = function (commNode, callback) {
-  
+
   };
 
   self.setWidth = function() {
   };
-  
+
   self.explore = absAdapter.explore;
-  
+
 }

@@ -202,7 +202,7 @@ void ApplicationEndpointServer::setupOptions (map<string, ProgramOptionsDescript
   options[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
     ("server.allow-method-override", &_allowMethodOverride, "allow HTTP method override using special headers")
     ("server.backlog-size", &_backlogSize, "listen backlog size")
-    ("server.default-api-compatibility", &_defaultApiCompatibility, "default API compatibility version (e.g. 10300)")
+    ("server.default-api-compatibility", &_defaultApiCompatibility, "default API compatibility version")
     ("server.keep-alive-timeout", &_keepAliveTimeout, "keep-alive timeout in seconds")
     ("server.reuse-address", &_reuseAddress, "try to reuse address")
   ;
@@ -250,8 +250,9 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
     }
   }
 
-  if (_defaultApiCompatibility < 10300L) {
-    LOG_FATAL_AND_EXIT("invalid value for --server.default-api-compatibility. minimum allowed value is 10300");
+  if (_defaultApiCompatibility < HttpRequest::MinCompatibility) {
+    LOG_FATAL_AND_EXIT("invalid value for --server.default-api-compatibility. minimum allowed value is %d",
+                       (int) HttpRequest::MinCompatibility);
   }
 
   // and return

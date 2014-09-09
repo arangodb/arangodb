@@ -1,10 +1,4 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 80 */
-/*global require,
-    db,
-    assertEqual, assertTrue,
-    ArangoCollection */
+/*global require, db, assertEqual, assertTrue, ArangoCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the index
@@ -193,7 +187,7 @@ function ensureIndexSuite() {
       assertEqual("hash", res.type);
       assertFalse(res.unique);
       assertEqual([ "a" ], res.fields);
-      
+
       assertEqual(idx.id, res.id);
     },
 
@@ -216,7 +210,7 @@ function ensureIndexSuite() {
       assertEqual("hash", res.type);
       assertTrue(res.unique);
       assertEqual([ "b", "c" ], res.fields);
-      
+
       assertEqual(idx.id, res.id);
     },
 
@@ -253,7 +247,7 @@ function ensureIndexSuite() {
       assertEqual("skiplist", res.type);
       assertFalse(res.unique);
       assertEqual([ "a" ], res.fields);
-      
+
       assertEqual(idx.id, res.id);
     },
 
@@ -276,7 +270,7 @@ function ensureIndexSuite() {
       assertEqual("skiplist", res.type);
       assertTrue(res.unique);
       assertEqual([ "b", "c" ], res.fields);
-      
+
       assertEqual(idx.id, res.id);
     },
 
@@ -315,7 +309,7 @@ function ensureIndexSuite() {
       assertFalse(res.unique);
       assertEqual([ "a" ], res.fields);
       assertEqual(2, res.minLength);
-      
+
       assertEqual(idx.id, res.id);
     },
 
@@ -356,7 +350,7 @@ function ensureIndexSuite() {
       assertEqual([ "a" ], res.fields);
       assertFalse(res.ignoreNull);
       assertFalse(res.geoJson);
-      
+
       assertEqual(idx.id, res.id);
     },
 
@@ -383,7 +377,7 @@ function ensureIndexSuite() {
       assertEqual([ "a", "b" ], res.fields);
       assertFalse(res.ignoreNull);
       assertFalse(res.geoJson);
-      
+
       assertEqual(idx.id, res.id);
     },
 
@@ -464,7 +458,7 @@ function ensureIndexSuite() {
       assertFalse(res.unique);
       assertFalse(res["undefined"]);
       assertEqual([ [ "a", [ 1, 2 ] ], [ "b", [ 3, 4 ] ] ], res.fields);
-      
+
       assertEqual(idx.id, res.id);
     },
 
@@ -489,7 +483,7 @@ function ensureIndexSuite() {
       assertFalse(res.unique);
       assertTrue(res["undefined"]);
       assertEqual([ [ "a", [ 1, 2 ] ] ], res.fields);
-      
+
       assertEqual(idx.id, res.id);
     },
 

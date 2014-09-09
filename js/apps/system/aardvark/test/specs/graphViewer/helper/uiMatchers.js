@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
+/*jshint unused: false */
 /*global expect, _, $ */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -32,30 +32,30 @@ var uiMatchers = uiMatchers || {};
 
 (function UIMatchers() {
   "use strict";
-  
+
   uiMatchers.define = function(suite) {
     suite.addMatchers({
-      
+
       toBeTag: function(name) {
         var el = this.actual;
         this.message = function() {
-          return "Expected " + el.tagName.toLowerCase() + " to be a " + name; 
+          return "Expected " + el.tagName.toLowerCase() + " to be a " + name;
         };
         return el.tagName.toLowerCase() === name;
       },
-      
+
       toBeOfClass: function(name) {
         var el = $(this.actual);
         this.message = function() {
-          return "Expected \"" + el.attr("class") + "\" to contain " + name; 
+          return "Expected \"" + el.attr("class") + "\" to contain " + name;
         };
         return el.hasClass(name);
       },
-      
+
       toNotHaveClass: function(name) {
         var el = $(this.actual);
         this.message = function() {
-          return "Expected \"" + el.attr("class") + "\" to not contain " + name; 
+          return "Expected \"" + el.attr("class") + "\" to not contain " + name;
         };
         return !el.hasClass(name);
       },
@@ -70,7 +70,7 @@ var uiMatchers = uiMatchers || {};
         };
         expect(div).toBeOfClass("btn-group");
         expect(btn).toBeTag("button");
-        expect(btn).toBeOfClass("btn"); 
+        expect(btn).toBeOfClass("btn");
         expect(btn).toBeOfClass("btn-inverse");
         expect(btn).toBeOfClass("btn-small");
         expect(btn).toBeOfClass("dropdown-toggle");
@@ -91,7 +91,7 @@ var uiMatchers = uiMatchers || {};
         }
         return true;
       },
-            
+
       toConformToToolboxLayout: function() {
         var box = this.actual;
         expect(box).toBeTag("div");

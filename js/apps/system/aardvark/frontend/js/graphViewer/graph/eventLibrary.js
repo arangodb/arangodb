@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global _*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -34,7 +33,7 @@
 //    loadNode,
 //    reshapeNodes
 //  }
-//  
+//
 //  nodeEditor: {
 //    nodes,
 //    adapter,
@@ -51,9 +50,9 @@
 //
 function EventLibrary() {
   "use strict";
-  
+
   var self = this;
-  
+
   this.checkExpandConfig = function(config) {
     if (config.startCallback === undefined) {
       throw "A callback to the Start-method has to be defined";
@@ -66,10 +65,10 @@ function EventLibrary() {
     }
     return true;
   };
-  
+
   this.Expand = function (config) {
     self.checkExpandConfig(config);
-    var 
+    var
       startCallback = config.startCallback,
       explore = config.adapter.explore,
       reshapeNodes = config.reshapeNodes;
@@ -79,7 +78,7 @@ function EventLibrary() {
       startCallback();
     };
   };
-  
+
   this.checkDragConfig = function (config) {
     if (config.layouter === undefined) {
       throw "A layouter has to be defined";
@@ -89,12 +88,12 @@ function EventLibrary() {
     }
     return true;
   };
-  
+
   this.Drag = function (config) {
     self.checkDragConfig(config);
     return config.layouter.drag;
   };
-  
+
   this.checkNodeEditorConfig = function (config) {
     if (config.adapter === undefined) {
       throw "An adapter has to be defined";
@@ -104,7 +103,7 @@ function EventLibrary() {
     }
     return true;
   };
-  
+
   this.checkEdgeEditorConfig = function (config) {
     if (config.adapter === undefined) {
       throw "An adapter has to be defined";
@@ -114,12 +113,12 @@ function EventLibrary() {
     }
     return true;
   };
-  
+
   this.InsertNode = function (config) {
     self.checkNodeEditorConfig(config);
     var adapter = config.adapter,
       nodeShaper = config.shaper;
-    
+
     return function(data, callback, x, y) {
       var cb, d;
       if (_.isFunction(data) && !callback) {
@@ -135,12 +134,12 @@ function EventLibrary() {
       }, x, y);
     };
   };
-  
+
   this.PatchNode = function (config) {
     self.checkNodeEditorConfig(config);
     var adapter = config.adapter,
     nodeShaper = config.shaper;
-    
+
     return function(nodeToPatch, patchData, callback) {
       adapter.patchNode(nodeToPatch, patchData, function(patchedNode) {
         nodeShaper.reshapeNodes();
@@ -148,12 +147,12 @@ function EventLibrary() {
       });
     };
   };
-  
+
   this.DeleteNode = function (config) {
     self.checkNodeEditorConfig(config);
     var adapter = config.adapter,
     nodeShaper = config.shaper;
-    
+
     return function(nodeToDelete, callback) {
       adapter.deleteNode(nodeToDelete, function() {
         nodeShaper.reshapeNodes();
@@ -173,7 +172,7 @@ function EventLibrary() {
       callback();
     };
   };
-  
+
   this.InsertEdge = function (config) {
     self.checkEdgeEditorConfig(config);
     var adapter = config.adapter,
@@ -185,7 +184,7 @@ function EventLibrary() {
       });
     };
   };
-  
+
   this.PatchEdge = function (config) {
     self.checkEdgeEditorConfig(config);
     var adapter = config.adapter,
@@ -197,7 +196,7 @@ function EventLibrary() {
       });
     };
   };
-  
+
   this.DeleteEdge = function (config) {
     self.checkEdgeEditorConfig(config);
     var adapter = config.adapter,
@@ -209,5 +208,5 @@ function EventLibrary() {
       });
     };
   };
-  
+
 }

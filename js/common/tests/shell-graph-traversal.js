@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -246,7 +245,7 @@ function memoryDatasource (nodes, connections) {
 
     var edge = {
       _id : "edges/" + key,
-      _key : key, 
+      _key : key,
       _from : "vertices/" + from,
       _to : "vertices/" + to,
       what : from + "->" + to
@@ -255,7 +254,7 @@ function memoryDatasource (nodes, connections) {
     if (typeof label !== "undefined") {
       edge.label = label;
     }
-    
+
     if (outEdges[edge._from] === undefined) {
       outEdges[edge._from] = [];
     }
@@ -278,7 +277,7 @@ function memoryDatasource (nodes, connections) {
     inEdges: inEdges,
     outEdges: outEdges,
     vertices: vertices,
-    
+
     getVertexId: function (vertex) {
       return vertex._id;
     },
@@ -314,11 +313,11 @@ function memoryDatasource (nodes, connections) {
     getAllEdges: function (vertex) {
       return this.inEdges[vertex._id].concat(outEdges[vertex._id]);
     },
-    
+
     getInEdges: function (vertex) {
       return this.inEdges[vertex._id];
     },
-    
+
     getOutEdges: function (vertex) {
       return this.outEdges[vertex._id];
     }
@@ -332,16 +331,16 @@ function memoryDatasource (nodes, connections) {
 function MemoryTraversalSuite () {
   var datasourceWorld;
   var datasourcePeople;
-   
+
   var setUpSourceWorld = function () {
     var nodes = [
       "World", "Nothing", "Europe", "Asia", "America", "Australia", "Antarctica",
       "Africa", "Blackhole", "DE", "FR", "GB", "IE", "CN", "JP", "TW", "US",
       "MX", "AU", "EG", "ZA", "AN", "London", "Paris", "Lyon", "Cologne",
       "Dusseldorf", "Beijing", "Shanghai", "Tokyo", "Kyoto", "Taipeh", "Perth",
-      "Sydney" 
+      "Sydney"
     ];
-    
+
     var connections = [
       ["World", "Europe"],
       ["World", "Asia"],
@@ -361,15 +360,15 @@ function MemoryTraversalSuite () {
       ["Australia", "AU"],
       ["Antarctica", "AN"]
     ];
-       
+
     datasourceWorld = memoryDatasource(nodes, connections);
   };
-    
+
   var setUpSourcePeople = function () {
     var nodes = [
       "Alice", "Bob", "Charly", "Diana", "Eric", "Frank"
     ];
-  
+
     var connections = [
       ["Alice", "Bob", "likes"],
       ["Bob", "Alice", "likes"],
@@ -384,11 +383,11 @@ function MemoryTraversalSuite () {
       ["Alice", "Frank", "l"],
       ["Frank", "Bob", "likes"]
     ];
-  
+
     datasourcePeople = memoryDatasource(nodes, connections);
   };
-   
-      
+
+
   var visitor = traversal.trackingVisitor;
 
   var filter = function (config, vertex, path) {
@@ -427,7 +426,7 @@ function MemoryTraversalSuite () {
 
     return r;
   };
-  
+
   var getVisitedPaths = function (data) {
     var r = [ ];
 
@@ -437,14 +436,14 @@ function MemoryTraversalSuite () {
 
     return r;
   };
-  
+
   var getResult = function () {
     return {
       visited: {
         vertices: [ ],
         paths: [ ]
       }
-    }; 
+    };
   };
 
   var getConfig = function () {
@@ -452,7 +451,7 @@ function MemoryTraversalSuite () {
       uniqueness: {
         vertices: Traverser.UNIQUE_NONE,
         edges: Traverser.UNIQUE_NONE
-      }, 
+      },
 
       visitor: visitor,
       filter: filter,
@@ -497,12 +496,12 @@ function MemoryTraversalSuite () {
       config.strategy = Traverser.DEPTH_FIRST;
       config.order = Traverser.PRE_ORDER;
       config.itemOrder = Traverser.FORWARD;
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
 
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
-      
+
       var expectedVisits = [
         "vertices/World",
         "vertices/Europe",
@@ -542,7 +541,7 @@ function MemoryTraversalSuite () {
         [ "vertices/World", "vertices/Africa" ],
         [ "vertices/World", "vertices/Antarctica", "vertices/AN" ]
       ];
-      
+
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
@@ -555,7 +554,7 @@ function MemoryTraversalSuite () {
       config.strategy = Traverser.DEPTH_FIRST;
       config.order = Traverser.PRE_ORDER;
       config.itemOrder = Traverser.BACKWARD;
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
@@ -580,7 +579,7 @@ function MemoryTraversalSuite () {
       ];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
-      
+
       var expectedPaths = [
         [ "vertices/World" ],
         [ "vertices/World", "vertices/Antarctica", "vertices/AN" ],
@@ -599,7 +598,7 @@ function MemoryTraversalSuite () {
         [ "vertices/World", "vertices/Europe", "vertices/FR" ],
         [ "vertices/World", "vertices/Europe", "vertices/DE" ]
       ];
-      
+
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
@@ -612,7 +611,7 @@ function MemoryTraversalSuite () {
       config.strategy = Traverser.DEPTH_FIRST;
       config.order = Traverser.POST_ORDER;
       config.itemOrder = Traverser.FORWARD;
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
@@ -637,7 +636,7 @@ function MemoryTraversalSuite () {
       ];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
-      
+
       var expectedPaths = [
         [ "vertices/World", "vertices/Europe", "vertices/DE" ],
         [ "vertices/World", "vertices/Europe", "vertices/FR" ],
@@ -656,7 +655,7 @@ function MemoryTraversalSuite () {
         [ "vertices/World", "vertices/Antarctica", "vertices/AN" ],
         [ "vertices/World" ]
       ];
-      
+
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
@@ -669,7 +668,7 @@ function MemoryTraversalSuite () {
       config.strategy = Traverser.DEPTH_FIRST;
       config.order = Traverser.POST_ORDER;
       config.itemOrder = Traverser.BACKWARD;
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
@@ -694,7 +693,7 @@ function MemoryTraversalSuite () {
       ];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
-      
+
       var expectedPaths = [
         [ "vertices/World", "vertices/Antarctica", "vertices/AN" ],
         [ "vertices/World", "vertices/Africa" ],
@@ -713,7 +712,7 @@ function MemoryTraversalSuite () {
         [ "vertices/World", "vertices/Europe" ],
         [ "vertices/World" ]
       ];
-      
+
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
@@ -726,7 +725,7 @@ function MemoryTraversalSuite () {
       config.strategy = Traverser.BREADTH_FIRST;
       config.order = Traverser.PRE_ORDER;
       config.itemOrder = Traverser.FORWARD;
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
@@ -751,7 +750,7 @@ function MemoryTraversalSuite () {
       ];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
-      
+
       var expectedPaths = [
         [ "vertices/World" ],
         [ "vertices/World", "vertices/Europe" ],
@@ -770,7 +769,7 @@ function MemoryTraversalSuite () {
         [ "vertices/World", "vertices/Australia", "vertices/AU" ],
         [ "vertices/World", "vertices/Antarctica", "vertices/AN" ]
       ];
-      
+
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
@@ -783,11 +782,11 @@ function MemoryTraversalSuite () {
       config.strategy = Traverser.BREADTH_FIRST;
       config.order = Traverser.PRE_ORDER;
       config.itemOrder = Traverser.BACKWARD;
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
-      
+
       var expectedVisits = [
         "vertices/World",
         "vertices/Africa",
@@ -808,7 +807,7 @@ function MemoryTraversalSuite () {
       ];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
-      
+
       var expectedPaths = [
         [ "vertices/World" ],
         [ "vertices/World", "vertices/Africa" ],
@@ -827,7 +826,7 @@ function MemoryTraversalSuite () {
         [ "vertices/World", "vertices/Europe", "vertices/FR" ],
         [ "vertices/World", "vertices/Europe", "vertices/DE" ]
       ];
-      
+
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
@@ -840,7 +839,7 @@ function MemoryTraversalSuite () {
       config.strategy = Traverser.BREADTH_FIRST;
       config.order = Traverser.POST_ORDER;
       config.itemOrder = Traverser.FORWARD;
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
@@ -865,7 +864,7 @@ function MemoryTraversalSuite () {
       ];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
-      
+
       var expectedPaths = [
         [ "vertices/World", "vertices/Europe", "vertices/DE" ],
         [ "vertices/World", "vertices/Europe", "vertices/FR" ],
@@ -884,7 +883,7 @@ function MemoryTraversalSuite () {
         [ "vertices/World", "vertices/Africa" ],
         [ "vertices/World" ]
       ];
-      
+
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
@@ -897,7 +896,7 @@ function MemoryTraversalSuite () {
       config.strategy = Traverser.BREADTH_FIRST;
       config.order = Traverser.POST_ORDER;
       config.itemOrder = Traverser.BACKWARD;
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
@@ -922,7 +921,7 @@ function MemoryTraversalSuite () {
       ];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
-      
+
       var expectedPaths = [
         [ "vertices/World", "vertices/Antarctica", "vertices/AN" ],
         [ "vertices/World", "vertices/Australia", "vertices/AU" ],
@@ -941,7 +940,7 @@ function MemoryTraversalSuite () {
         [ "vertices/World", "vertices/Europe" ],
         [ "vertices/World" ]
       ];
-      
+
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
@@ -956,11 +955,11 @@ function MemoryTraversalSuite () {
         filter: traversal.minDepthFilter,
         minDepth: 0
       };
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
-      
+
       var expectedVisits = [
         "vertices/World",
         "vertices/Europe",
@@ -1004,10 +1003,10 @@ function MemoryTraversalSuite () {
         [ "vertices/World", "vertices/Antarctica"],
         [ "vertices/World", "vertices/Antarctica", "vertices/AN" ]
       ];
-      
+
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test minimal depth filter with depth 1
 ////////////////////////////////////////////////////////////////////////////////
@@ -1019,11 +1018,11 @@ function MemoryTraversalSuite () {
         filter: traversal.minDepthFilter,
         minDepth: 1
       };
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
-      
+
       var expectedVisits = [
         "vertices/Europe",
         "vertices/DE",
@@ -1065,10 +1064,10 @@ function MemoryTraversalSuite () {
         [ "vertices/World", "vertices/Antarctica"],
         [ "vertices/World", "vertices/Antarctica", "vertices/AN" ]
       ];
-      
+
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test minimal depth filter with depth 2
 ////////////////////////////////////////////////////////////////////////////////
@@ -1080,11 +1079,11 @@ function MemoryTraversalSuite () {
         filter: traversal.minDepthFilter,
         minDepth: 2
       };
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
-      
+
       var expectedVisits = [
         "vertices/DE",
         "vertices/FR",
@@ -1114,10 +1113,10 @@ function MemoryTraversalSuite () {
         [ "vertices/World", "vertices/Australia", "vertices/AU" ],
         [ "vertices/World", "vertices/Antarctica", "vertices/AN" ]
       ];
-      
+
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test maximal depth filter with depth 0
 ////////////////////////////////////////////////////////////////////////////////
@@ -1129,11 +1128,11 @@ function MemoryTraversalSuite () {
         filter: traversal.maxDepthFilter,
         maxDepth: 0
       };
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
-      
+
       var expectedVisits = [
         "vertices/World"
       ];
@@ -1143,7 +1142,7 @@ function MemoryTraversalSuite () {
       var expectedPaths = [
         [ "vertices/World" ]
       ];
-      
+
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
@@ -1158,11 +1157,11 @@ function MemoryTraversalSuite () {
         filter: traversal.maxDepthFilter,
         maxDepth: 1
       };
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
-      
+
       var expectedVisits = [
         "vertices/World",
         "vertices/Europe",
@@ -1184,7 +1183,7 @@ function MemoryTraversalSuite () {
         [ "vertices/World", "vertices/Africa" ],
         [ "vertices/World", "vertices/Antarctica"]
       ];
-      
+
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
@@ -1199,11 +1198,11 @@ function MemoryTraversalSuite () {
         filter: traversal.maxDepthFilter,
         maxDepth: 2
       };
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
-      
+
       var expectedVisits = [
         "vertices/World",
         "vertices/Europe",
@@ -1247,14 +1246,14 @@ function MemoryTraversalSuite () {
         [ "vertices/World", "vertices/Antarctica"],
         [ "vertices/World", "vertices/Antarctica", "vertices/AN" ]
       ];
-      
+
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test filter by given key value pairs
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testIncludeMatchingAttributesFilter : function () {
       // Can be removed as soon as all expanders use datasource
       var anyExp = function (config, vertex, path) {
@@ -1270,24 +1269,24 @@ function MemoryTraversalSuite () {
         }
         return result;
       };
-      
+
       var config = {
         uniqueness: {
           vertices: Traverser.UNIQUE_GLOBAL,
           edges: Traverser.UNIQUE_NONE
-        },  
+        },
         matchingAttributes: [{"name": "Alice"}, {"name": "Frank"}, {"name": "Diana", "key": "FAIL"}, {"_id": "vertices/Bob"}],
         visitor: visitor,
         expander: anyExp,
         filter: traversal.includeMatchingAttributesFilter,
         datasource: datasourcePeople
       };
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
-      
+
       traverser.traverse(result, config.datasource.vertices["vertices/Alice"]);
-      
+
       var expectedVisits = [
         "vertices/Alice",
         "vertices/Bob",
@@ -1296,36 +1295,36 @@ function MemoryTraversalSuite () {
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
     },
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test combination of filters
 ////////////////////////////////////////////////////////////////////////////////
-  
+
     testCombineFilters : function () {
       var excluder1 = function(config, vertex, path) {
         if (vertex.name && vertex.name === config.exclude1) { return "exclude"; }
       };
-      
+
       var excluder2 = function(config, vertex, path) {
         if (vertex.name && vertex.name === config.exclude2) { return "exclude"; }
       };
-      
+
       var excluder3 = function(config, vertex, path) {
         if (vertex.name && vertex.name === config.exclude3) { return "exclude"; }
       };
-      
+
       var pruner1 = function(config, vertex, path) {
         if (vertex.name && vertex.name === config.prune1) { return "prune"; }
       };
-      
+
       var pruner2 = function(config, vertex, path) {
         if (vertex.name && vertex.name === config.prune2) { return "prune"; }
       };
-      
+
       var config = {
         expander: expander,
         filter: [
-          excluder1, 
+          excluder1,
           pruner1,
           excluder2,
           pruner2,
@@ -1338,11 +1337,11 @@ function MemoryTraversalSuite () {
         prune2: "Europe",
         datasource: datasourceWorld
       };
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
-      
+
       var expectedVisits = [
         "vertices/Asia",
         "vertices/America",
@@ -1366,19 +1365,19 @@ function MemoryTraversalSuite () {
         [ "vertices/World", "vertices/Antarctica"],
         [ "vertices/World", "vertices/Antarctica", "vertices/AN" ]
       ];
-      
+
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test if exclude or prune can be overridden in combined filters
 ////////////////////////////////////////////////////////////////////////////////
-  
+
     testOverrideExcludeAndPruneOfCombinedFilters : function () {
       var excludeAndPrune = function(config, vertex, path) {
         if (vertex.name && vertex.name === config.excludeAndPrune) { return ["prune", "exclude"]; }
       };
-      
+
       var config = {
         expander: expander,
         filter: [
@@ -1388,41 +1387,41 @@ function MemoryTraversalSuite () {
         excludeAndPrune: "World",
         datasource: datasourceWorld
       };
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
       traverser.traverse(result, config.datasource.vertices["vertices/World"]);
-      
+
       var expectedVisits = [];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
 
       var expectedPaths = [];
-      
+
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test if all edges with one label are followed
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testFollowEdgesWithLabels : function () {
       var config = {
         uniqueness: {
           vertices: Traverser.UNIQUE_GLOBAL,
           edges: Traverser.UNIQUE_NONE
-        },  
+        },
         labels: "likes",
         visitor: visitor,
         expander: traversal.expandEdgesWithLabels,
         datasource: datasourcePeople
       };
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
-      
+
       traverser.traverse(result, config.datasource.vertices["vertices/Alice"]);
-      
+
       var expectedVisits = [
         "vertices/Alice",
         "vertices/Bob",
@@ -1442,31 +1441,31 @@ function MemoryTraversalSuite () {
         [ "vertices/Alice", "vertices/Diana" ],
         [ "vertices/Alice", "vertices/Diana", "vertices/Eric" ]
       ];
-      
+
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test if all and only inbound edges with one label are followed
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testFollowInEdgesWithLabels : function () {
       var config = {
         uniqueness: {
           vertices: Traverser.UNIQUE_GLOBAL,
           edges: Traverser.UNIQUE_NONE
-        },  
+        },
         labels: "likes",
         visitor: visitor,
         expander: traversal.expandInEdgesWithLabels,
         datasource: datasourcePeople
       };
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
 
       traverser.traverse(result, config.datasource.vertices["vertices/Alice"]);
-      
+
       var expectedVisits = [
         "vertices/Alice",
         "vertices/Bob",
@@ -1482,31 +1481,31 @@ function MemoryTraversalSuite () {
         [ "vertices/Alice", "vertices/Bob", "vertices/Frank" ],
         [ "vertices/Alice", "vertices/Diana" ]
       ];
-      
+
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test if all and only outbound edges with one label are followed
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testFollowOutEdgesWithLabels : function () {
       var config = {
         uniqueness: {
           vertices: Traverser.UNIQUE_GLOBAL,
           edges: Traverser.UNIQUE_NONE
-        },  
+        },
         labels: "likes",
         visitor: visitor,
         expander: traversal.expandOutEdgesWithLabels,
         datasource: datasourcePeople
       };
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
 
       traverser.traverse(result, config.datasource.vertices["vertices/Alice"]);
-      
+
       var expectedVisits = [
         "vertices/Alice",
         "vertices/Bob",
@@ -1520,7 +1519,7 @@ function MemoryTraversalSuite () {
         [ "vertices/Alice", "vertices/Bob" ],
         [ "vertices/Alice", "vertices/Bob", "vertices/Charly" ]
       ];
-      
+
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     }
   };
@@ -1540,16 +1539,16 @@ function CollectionTraversalSuite () {
 
   var vertexCollection;
   var edgeCollection;
-  
+
   var getResult = function () {
     return {
       visited: {
         vertices: [ ],
         paths: [ ]
       }
-    }; 
+    };
   };
-  
+
   var getIds = function (data) {
     var r = [ ];
     data.forEach(function (item) {
@@ -1599,29 +1598,29 @@ function CollectionTraversalSuite () {
       var config = {
         sort: function (l, r) { return l._key < r._key ? -1 : 1; },
         datasource: traversal.collectionDatasourceFactory(edgeCollection)
-      }; 
+      };
 
       var expander = traversal.outboundExpander;
       var connected;
-      
+
       connected = [ ];
       expander(config, vertexCollection.document(vn + "/A")).forEach(function(item) {
         connected.push(item.vertex._key);
-      }); 
+      });
 
       assertEqual([ "B", "D" ], connected);
-      
+
       connected = [ ];
       expander(config, vertexCollection.document(vn + "/D")).forEach(function(item) {
         connected.push(item.vertex._key);
-      }); 
+      });
 
       assertEqual([ "E", "F" ], connected);
-      
+
       connected = [ ];
       expander(config, vertexCollection.document(vn + "/H")).forEach(function(item) {
         connected.push(item.vertex._key);
-      }); 
+      });
 
       assertEqual([ ], connected);
     },
@@ -1634,29 +1633,29 @@ function CollectionTraversalSuite () {
       var config = {
         sort: function (l, r) { return l._key < r._key ? -1 : 1; },
         datasource: traversal.collectionDatasourceFactory(edgeCollection)
-      }; 
+      };
 
       var expander = traversal.inboundExpander;
       var connected;
-      
+
       connected = [ ];
       expander(config, vertexCollection.document(vn + "/D")).forEach(function(item) {
         connected.push(item.vertex._key);
-      }); 
+      });
 
       assertEqual([ "A", "C" ], connected);
-      
+
       connected = [ ];
       expander(config, vertexCollection.document(vn + "/H")).forEach(function(item) {
         connected.push(item.vertex._key);
-      }); 
+      });
 
       assertEqual([ "G", "I" ], connected);
-      
+
       connected = [ ];
       expander(config, vertexCollection.document(vn + "/A")).forEach(function(item) {
         connected.push(item.vertex._key);
-      }); 
+      });
 
       assertEqual([ ], connected);
     },
@@ -1666,7 +1665,7 @@ function CollectionTraversalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIterateFullOutbound : function () {
-      var config = { 
+      var config = {
         datasource: traversal.collectionDatasourceFactory(db._collection(en)),
         strategy: Traverser.DEPTH_FIRST,
         order: Traverser.PRE_ORDER,
@@ -1676,25 +1675,25 @@ function CollectionTraversalSuite () {
 
         sort: function (l, r) { return l._key < r._key ? -1 : 1; }
       };
-      
+
       var traverser = new Traverser(config);
       var result = getResult();
       traverser.traverse(result, vertexCollection.document(vn + "/A"));
 
       var expectedVisits = [
-        vn + "/A", 
-        vn + "/B", 
-        vn + "/C", 
-        vn + "/D", 
-        vn + "/E", 
-        vn + "/F", 
-        vn + "/G", 
-        vn + "/H", 
-        vn + "/I", 
-        vn + "/H", 
-        vn + "/D", 
-        vn + "/E", 
-        vn + "/F" 
+        vn + "/A",
+        vn + "/B",
+        vn + "/C",
+        vn + "/D",
+        vn + "/E",
+        vn + "/F",
+        vn + "/G",
+        vn + "/H",
+        vn + "/I",
+        vn + "/H",
+        vn + "/D",
+        vn + "/E",
+        vn + "/F"
       ];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
@@ -1705,7 +1704,7 @@ function CollectionTraversalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIterateInbound : function () {
-      var config = { 
+      var config = {
         datasource: traversal.collectionDatasourceFactory(db._collection(en)),
         strategy: Traverser.DEPTH_FIRST,
         order: Traverser.PRE_ORDER,
@@ -1715,18 +1714,18 @@ function CollectionTraversalSuite () {
 
         sort: function (l, r) { return l._key < r._key ? -1 : 1; }
       };
-     
-      var result = getResult(); 
+
+      var result = getResult();
       var traverser = new Traverser(config);
       traverser.traverse(result, vertexCollection.document(vn + "/F"));
 
       var expectedVisits = [
-        vn + "/F", 
-        vn + "/D", 
-        vn + "/A", 
-        vn + "/C", 
-        vn + "/B", 
-        vn + "/A" 
+        vn + "/F",
+        vn + "/D",
+        vn + "/A",
+        vn + "/C",
+        vn + "/B",
+        vn + "/A"
       ];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
@@ -1737,7 +1736,7 @@ function CollectionTraversalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIterateUniqueGlobalVertices : function () {
-      var config = { 
+      var config = {
         datasource: traversal.collectionDatasourceFactory(db._collection(en)),
         strategy: Traverser.DEPTH_FIRST,
         order: Traverser.PRE_ORDER,
@@ -1745,27 +1744,27 @@ function CollectionTraversalSuite () {
         uniqueness: {
           vertices: Traverser.UNIQUE_GLOBAL,
           edges: Traverser.UNIQUE_NONE
-        }, 
+        },
         filter: traversal.visitAllFilter,
         expander: traversal.outboundExpander,
 
         sort: function (l, r) { return l._key < r._key ? -1 : 1; }
       };
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
       traverser.traverse(result, vertexCollection.document(vn + "/A"));
 
       var expectedVisits = [
-        vn + "/A", 
-        vn + "/B", 
-        vn + "/C", 
-        vn + "/D", 
-        vn + "/E", 
-        vn + "/F", 
-        vn + "/G", 
-        vn + "/H", 
-        vn + "/I" 
+        vn + "/A",
+        vn + "/B",
+        vn + "/C",
+        vn + "/D",
+        vn + "/E",
+        vn + "/F",
+        vn + "/G",
+        vn + "/H",
+        vn + "/I"
       ];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
@@ -1776,7 +1775,7 @@ function CollectionTraversalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIterateUniquePathVertices : function () {
-      var config = { 
+      var config = {
         datasource: traversal.collectionDatasourceFactory(db._collection(en)),
         strategy: Traverser.DEPTH_FIRST,
         order: Traverser.PRE_ORDER,
@@ -1784,27 +1783,27 @@ function CollectionTraversalSuite () {
         uniqueness: {
           vertices: Traverser.UNIQUE_PATH,
           edges: Traverser.UNIQUE_NONE
-        }, 
+        },
         filter: traversal.visitAllFilter,
         expander: traversal.outboundExpander,
 
         sort: function (l, r) { return l._key < r._key ? -1 : 1; }
       };
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
       traverser.traverse(result, vertexCollection.document(vn + "/A"));
 
       var expectedVisits = [
-        vn + "/A", 
-        vn + "/B", 
-        vn + "/C", 
-        vn + "/D", 
-        vn + "/E", 
-        vn + "/F", 
-        vn + "/G", 
-        vn + "/H", 
-        vn + "/I", 
+        vn + "/A",
+        vn + "/B",
+        vn + "/C",
+        vn + "/D",
+        vn + "/E",
+        vn + "/F",
+        vn + "/G",
+        vn + "/H",
+        vn + "/I",
         vn + "/H",
         vn + "/D",
         vn + "/E",
@@ -1819,7 +1818,7 @@ function CollectionTraversalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIterateUniqueEdges : function () {
-      var config = { 
+      var config = {
         datasource: traversal.collectionDatasourceFactory(db._collection(en)),
         strategy: Traverser.DEPTH_FIRST,
         order: Traverser.PRE_ORDER,
@@ -1827,29 +1826,29 @@ function CollectionTraversalSuite () {
         uniqueness: {
           vertices: Traverser.UNIQUE_NONE,
           edges: Traverser.UNIQUE_GLOBAL
-        }, 
+        },
         filter: traversal.visitAllFilter,
         expander: traversal.outboundExpander,
 
         sort: function (l, r) { return l._key < r._key ? -1 : 1; }
       };
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
       traverser.traverse(result, vertexCollection.document(vn + "/A"));
 
       var expectedVisits = [
-        vn + "/A", 
-        vn + "/B", 
-        vn + "/C", 
-        vn + "/D", 
-        vn + "/E", 
-        vn + "/F", 
-        vn + "/G", 
-        vn + "/H", 
-        vn + "/I", 
-        vn + "/H", 
-        vn + "/D" 
+        vn + "/A",
+        vn + "/B",
+        vn + "/C",
+        vn + "/D",
+        vn + "/E",
+        vn + "/F",
+        vn + "/G",
+        vn + "/H",
+        vn + "/I",
+        vn + "/H",
+        vn + "/D"
       ];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
@@ -1877,16 +1876,16 @@ function GeneralGraphTraversalSuite () {
   var gn = "UnitTestsGraph";
 
   var g;
-  
+
   var getResult = function () {
     return {
       visited: {
         vertices: [ ],
         paths: [ ]
       }
-    }; 
+    };
   };
-  
+
   var getIds = function (data) {
     var r = [ ];
     data.forEach(function (item) {
@@ -1963,29 +1962,29 @@ function GeneralGraphTraversalSuite () {
       var config = {
         sort: function (l, r) { return l._key < r._key ? -1 : 1; },
         datasource: traversal.generalGraphDatasourceFactory(gn)
-      }; 
+      };
 
       var expander = traversal.outboundExpander;
       var connected;
-      
+
       connected = [ ];
       expander(config, g[vnA].document("A")).forEach(function(item) {
         connected.push(item.vertex._key);
-      }); 
+      });
 
       assertEqual([ "B", "D" ], connected);
-      
+
       connected = [ ];
       expander(config, g[vnBDH].document("D")).forEach(function(item) {
         connected.push(item.vertex._key);
-      }); 
+      });
 
       assertEqual([ "E", "F" ], connected);
-      
+
       connected = [ ];
       expander(config, g[vnBDH].document("H")).forEach(function(item) {
         connected.push(item.vertex._key);
-      }); 
+      });
 
       assertEqual([ ], connected);
     },
@@ -1998,29 +1997,29 @@ function GeneralGraphTraversalSuite () {
       var config = {
         sort: function (l, r) { return l._key < r._key ? -1 : 1; },
         datasource: traversal.generalGraphDatasourceFactory(gn)
-      }; 
+      };
 
       var expander = traversal.inboundExpander;
       var connected;
-      
+
       connected = [ ];
       expander(config, g[vnBDH].document("D")).forEach(function(item) {
         connected.push(item.vertex._key);
-      }); 
+      });
 
       assertEqual([ "A", "C" ], connected);
-      
+
       connected = [ ];
       expander(config, g[vnBDH].document("H")).forEach(function(item) {
         connected.push(item.vertex._key);
-      }); 
+      });
 
       assertEqual([ "G", "I" ], connected);
-      
+
       connected = [ ];
       expander(config, g[vnA].document("A")).forEach(function(item) {
         connected.push(item.vertex._key);
-      }); 
+      });
 
       assertEqual([ ], connected);
     },
@@ -2030,7 +2029,7 @@ function GeneralGraphTraversalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIterateFullOutbound : function () {
-      var config = { 
+      var config = {
         datasource: traversal.generalGraphDatasourceFactory(gn),
         strategy: Traverser.DEPTH_FIRST,
         order: Traverser.PRE_ORDER,
@@ -2040,25 +2039,25 @@ function GeneralGraphTraversalSuite () {
 
         sort: function (l, r) { return l._key < r._key ? -1 : 1; }
       };
-      
+
       var traverser = new Traverser(config);
       var result = getResult();
       traverser.traverse(result, g[vnA].document("A"));
 
       var expectedVisits = [
-        vnA + "/A", 
-        vnBDH + "/B", 
-        vnCEFGI + "/C", 
-        vnBDH + "/D", 
-        vnCEFGI + "/E", 
-        vnCEFGI + "/F", 
-        vnCEFGI + "/G", 
-        vnBDH + "/H", 
-        vnCEFGI + "/I", 
-        vnBDH + "/H", 
-        vnBDH + "/D", 
-        vnCEFGI + "/E", 
-        vnCEFGI + "/F" 
+        vnA + "/A",
+        vnBDH + "/B",
+        vnCEFGI + "/C",
+        vnBDH + "/D",
+        vnCEFGI + "/E",
+        vnCEFGI + "/F",
+        vnCEFGI + "/G",
+        vnBDH + "/H",
+        vnCEFGI + "/I",
+        vnBDH + "/H",
+        vnBDH + "/D",
+        vnCEFGI + "/E",
+        vnCEFGI + "/F"
       ];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
@@ -2069,7 +2068,7 @@ function GeneralGraphTraversalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIterateInbound : function () {
-      var config = { 
+      var config = {
         datasource: traversal.generalGraphDatasourceFactory(gn),
         strategy: Traverser.DEPTH_FIRST,
         order: Traverser.PRE_ORDER,
@@ -2079,18 +2078,18 @@ function GeneralGraphTraversalSuite () {
 
         sort: function (l, r) { return l._key < r._key ? -1 : 1; }
       };
-     
-      var result = getResult(); 
+
+      var result = getResult();
       var traverser = new Traverser(config);
       traverser.traverse(result, g[vnCEFGI].document("F"));
 
       var expectedVisits = [
-        vnCEFGI + "/F", 
-        vnBDH + "/D", 
-        vnA + "/A", 
-        vnCEFGI + "/C", 
-        vnBDH + "/B", 
-        vnA + "/A" 
+        vnCEFGI + "/F",
+        vnBDH + "/D",
+        vnA + "/A",
+        vnCEFGI + "/C",
+        vnBDH + "/B",
+        vnA + "/A"
       ];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
@@ -2101,7 +2100,7 @@ function GeneralGraphTraversalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIterateUniqueGlobalVertices : function () {
-      var config = { 
+      var config = {
         datasource: traversal.generalGraphDatasourceFactory(gn),
         strategy: Traverser.DEPTH_FIRST,
         order: Traverser.PRE_ORDER,
@@ -2109,27 +2108,27 @@ function GeneralGraphTraversalSuite () {
         uniqueness: {
           vertices: Traverser.UNIQUE_GLOBAL,
           edges: Traverser.UNIQUE_NONE
-        }, 
+        },
         filter: traversal.visitAllFilter,
         expander: traversal.outboundExpander,
 
         sort: function (l, r) { return l._key < r._key ? -1 : 1; }
       };
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
       traverser.traverse(result, g[vnA].document("A"));
 
       var expectedVisits = [
-        vnA + "/A", 
-        vnBDH + "/B", 
-        vnCEFGI + "/C", 
-        vnBDH + "/D", 
-        vnCEFGI + "/E", 
-        vnCEFGI + "/F", 
-        vnCEFGI + "/G", 
-        vnBDH + "/H", 
-        vnCEFGI + "/I" 
+        vnA + "/A",
+        vnBDH + "/B",
+        vnCEFGI + "/C",
+        vnBDH + "/D",
+        vnCEFGI + "/E",
+        vnCEFGI + "/F",
+        vnCEFGI + "/G",
+        vnBDH + "/H",
+        vnCEFGI + "/I"
       ];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));
@@ -2140,7 +2139,7 @@ function GeneralGraphTraversalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIterateUniquePathVertices : function () {
-      var config = { 
+      var config = {
         datasource: traversal.generalGraphDatasourceFactory(gn),
         strategy: Traverser.DEPTH_FIRST,
         order: Traverser.PRE_ORDER,
@@ -2148,27 +2147,27 @@ function GeneralGraphTraversalSuite () {
         uniqueness: {
           vertices: Traverser.UNIQUE_PATH,
           edges: Traverser.UNIQUE_NONE
-        }, 
+        },
         filter: traversal.visitAllFilter,
         expander: traversal.outboundExpander,
 
         sort: function (l, r) { return l._key < r._key ? -1 : 1; }
       };
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
       traverser.traverse(result, g[vnA].document("A"));
 
       var expectedVisits = [
-        vnA + "/A", 
-        vnBDH + "/B", 
-        vnCEFGI + "/C", 
-        vnBDH + "/D", 
-        vnCEFGI + "/E", 
-        vnCEFGI + "/F", 
-        vnCEFGI + "/G", 
-        vnBDH + "/H", 
-        vnCEFGI + "/I", 
+        vnA + "/A",
+        vnBDH + "/B",
+        vnCEFGI + "/C",
+        vnBDH + "/D",
+        vnCEFGI + "/E",
+        vnCEFGI + "/F",
+        vnCEFGI + "/G",
+        vnBDH + "/H",
+        vnCEFGI + "/I",
         vnBDH + "/H",
         vnBDH + "/D",
         vnCEFGI + "/E",
@@ -2183,7 +2182,7 @@ function GeneralGraphTraversalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIterateUniqueEdges : function () {
-      var config = { 
+      var config = {
         datasource: traversal.generalGraphDatasourceFactory(gn),
         strategy: Traverser.DEPTH_FIRST,
         order: Traverser.PRE_ORDER,
@@ -2191,29 +2190,29 @@ function GeneralGraphTraversalSuite () {
         uniqueness: {
           vertices: Traverser.UNIQUE_NONE,
           edges: Traverser.UNIQUE_GLOBAL
-        }, 
+        },
         filter: traversal.visitAllFilter,
         expander: traversal.outboundExpander,
 
         sort: function (l, r) { return l._key < r._key ? -1 : 1; }
       };
-      
+
       var result = getResult();
       var traverser = new Traverser(config);
       traverser.traverse(result, g[vnA].document("A"));
 
       var expectedVisits = [
-        vnA + "/A", 
-        vnBDH + "/B", 
-        vnCEFGI + "/C", 
-        vnBDH + "/D", 
-        vnCEFGI + "/E", 
-        vnCEFGI + "/F", 
-        vnCEFGI + "/G", 
-        vnBDH + "/H", 
-        vnCEFGI + "/I", 
-        vnBDH + "/H", 
-        vnBDH + "/D" 
+        vnA + "/A",
+        vnBDH + "/B",
+        vnCEFGI + "/C",
+        vnBDH + "/D",
+        vnCEFGI + "/E",
+        vnCEFGI + "/F",
+        vnCEFGI + "/G",
+        vnBDH + "/H",
+        vnCEFGI + "/I",
+        vnBDH + "/H",
+        vnBDH + "/D"
       ];
 
       assertEqual(expectedVisits, getIds(result.visited.vertices));

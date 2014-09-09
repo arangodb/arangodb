@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, UPGRADE_ARGS: true */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -37,13 +36,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
+  /*jshint strict: false */
   var internal = require("internal");
 
-  UPGRADE_ARGS = {
-    isCluster: true,
-    isCoordinator: true,
-    isRelaunch: false
-  };
+  // do not overwrite arguments set from the calling C++ code
+  if (! UPGRADE_ARGS) {
+    UPGRADE_ARGS = { };
+  }
+
+  // merge in our arguments
+  UPGRADE_ARGS.isCluster = true;
+  UPGRADE_ARGS.isCoordinator = true;
+  UPGRADE_ARGS.isRelaunch = false;
 
   // run the local upgrade-database script
   return internal.loadStartup("server/bootstrap/local-database.js");

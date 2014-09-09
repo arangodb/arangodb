@@ -1,4 +1,4 @@
-/*jslint indent: 2, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, sloppy: true, proto: true */
+/*jshint -W051: true */
 /*global require, SYS_GETLINE, SYS_LOG, jqconsole */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -29,8 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  // cannot use strict here as we are going to delete globals
-
+  /*jshint strict: false */
   var exports = require("console");
 
   var sprintf = require("internal").sprintf;
@@ -65,7 +64,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   var log;
- 
+
   try {
     // this will work when we are in arangod but not in the browser / web interface
     log = SYS_LOG;
@@ -102,7 +101,7 @@
     if (0 < args.length && typeof args[0] !== "string") {
       result.push("%s");
     }
-    
+
     for (i = 0;  i < args.length;  ++i) {
       var arg = args[i];
 
@@ -113,7 +112,7 @@
         else if (arg === null) {
           arg = "null";
         }
-        else if (arg.__proto__ === Object.prototype || Array.isArray(arg)) {
+        else if (Object.prototype.isPrototypeOf(arg) || Array.isArray(arg)) {
           arg = inspect(arg, {prettyPrint: false});
         }
       }
@@ -390,7 +389,7 @@
     if (! time) {
       throw new Error('No such label: ' + label);
     }
-    
+
     var duration = Date.now() - time;
 
     delete timers[label];

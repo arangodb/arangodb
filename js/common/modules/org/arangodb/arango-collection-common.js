@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
+/*jshint strict: false, unused: false */
 /*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,7 +101,7 @@ ArangoCollection.STATUS_LOADING = 6;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document collection
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 ArangoCollection.TYPE_DOCUMENT = 2;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -155,7 +155,7 @@ ArangoCollection.prototype._PRINT = function (context) {
 /// @brief converts into a string
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.toString = function () {  
+ArangoCollection.prototype.toString = function () {
   return "[ArangoCollection: " + this._id + "]";
 };
 
@@ -213,15 +213,15 @@ ArangoCollection.prototype.all = function () {
 /// `collection.byExample(example)`
 ///
 /// Selects all documents of a collection that match the specified
-/// example and returns a cursor. 
+/// example and returns a cursor.
 ///
 /// You can use *toArray*, *next*, or *hasNext* to access the
 /// result. The result can be limited using the *skip* and *limit*
 /// operator.
 ///
 /// An attribute name of the form *a.b* is interpreted as attribute path,
-/// not as attribute. If you use 
-/// 
+/// not as attribute. If you use
+///
 /// *{ a : { c : 1 } }*
 ///
 /// as example, then you will find all documents, such that the attribute
@@ -229,20 +229,20 @@ ArangoCollection.prototype.all = function () {
 ///
 /// *{ a : { c : 1 }, b : 1 }*
 ///
-/// will match, but the document 
+/// will match, but the document
 ///
 /// *{ a : { c : 1, b : 1 } }*
 ///
 /// will not.
 ///
-/// However, if you use 
+/// However, if you use
 ///
-/// *{ a.c : 1 }*, 
+/// *{ a.c : 1 }*,
 ///
 /// then you will find all documents, which contain a sub-document in *a*
-/// that has an attribute *c* of value *1*. Both the following documents 
+/// that has an attribute *c* of value *1*. Both the following documents
 ///
-/// *{ a : { c : 1 }, b : 1 }* and 
+/// *{ a : { c : 1 }, b : 1 }* and
 ///
 /// *{ a : { c : 1, b : 1 } }*
 ///
@@ -310,16 +310,16 @@ ArangoCollection.prototype.byExample = function (example) {
 /// @startDocuBLock collectionByExampleHash
 /// `collection.byExampleHash(index, example)`
 ///
-/// Selects all documents from the specified hash index that match the 
-/// specified example example and returns a cursor. 
+/// Selects all documents from the specified hash index that match the
+/// specified example example and returns a cursor.
 ///
 /// You can use *toArray*, *next*, or *hasNext* to access the
 /// result. The result can be limited using the *skip* and *limit*
 /// operator.
 ///
 /// An attribute name of the form *a.b* is interpreted as attribute path,
-/// not as attribute. If you use 
-/// 
+/// not as attribute. If you use
+///
 /// *{ a : { c : 1 } }*
 ///
 /// as example, then you will find all documents, such that the attribute
@@ -327,20 +327,20 @@ ArangoCollection.prototype.byExample = function (example) {
 ///
 /// *{ a : { c : 1 }, b : 1 }*
 ///
-/// will match, but the document 
+/// will match, but the document
 ///
 /// *{ a : { c : 1, b : 1 } }*
 ///
 /// will not.
 ///
-/// However, if you use 
+/// However, if you use
 ///
-/// *{ a.c : 1 }*, 
+/// *{ a.c : 1 }*,
 ///
 /// then you will find all documents, which contain a sub-document in *a*
-/// that has an attribute @LIT{c} of value *1*. Both the following documents 
+/// that has an attribute @LIT{c} of value *1*. Both the following documents
 ///
-/// *{ a : { c : 1 }, b : 1 }* and 
+/// *{ a : { c : 1 }, b : 1 }* and
 ///
 /// *{ a : { c : 1, b : 1 } }*
 ///
@@ -363,16 +363,16 @@ ArangoCollection.prototype.byExampleHash = function (index, example) {
 /// @startDocuBlock collectionByExampleSkiplist
 /// `collection}.byExampleSkiplist(index, example)
 ///
-/// Selects all documents from the specified skiplist index that match the 
-/// specified example example and returns a cursor. 
+/// Selects all documents from the specified skiplist index that match the
+/// specified example example and returns a cursor.
 ///
 /// You can use *toArray*, *next*, or *hasNext* to access the
 /// result. The result can be limited using the *skip* and *limit*
 /// operator.
 ///
 /// An attribute name of the form *a.b* is interpreted as attribute path,
-/// not as attribute. If you use 
-/// 
+/// not as attribute. If you use
+///
 /// *{ a : { c : 1 } }*
 ///
 /// as example, then you will find all documents, such that the attribute
@@ -380,20 +380,20 @@ ArangoCollection.prototype.byExampleHash = function (index, example) {
 ///
 /// *{ a : { c : 1 }, b : 1 }*
 ///
-/// will match, but the document 
+/// will match, but the document
 ///
 /// *{ a : { c : 1, b : 1 } }*
 ///
 /// will not.
 ///
-/// However, if you use 
+/// However, if you use
 ///
-/// *{ a.c : 1 }*, 
+/// *{ a.c : 1 }*,
 ///
 /// then you will find all documents, which contain a sub-document in *a*
-/// that has an attribute @LIT{c} of value *1*. Both the following documents 
+/// that has an attribute @LIT{c} of value *1*. Both the following documents
 ///
-/// *{ a : { c : 1 }, b : 1 }*and 
+/// *{ a : { c : 1 }, b : 1 }*and
 ///
 /// *{ a : { c : 1, b : 1 } }*
 ///
@@ -416,16 +416,16 @@ ArangoCollection.prototype.byExampleSkiplist = function (index, example) {
 /// @startDocuBlock collectionByExampleBitArray
 /// `collection.byExampleBitarray(index, example)`
 ///
-/// Selects all documents from the specified bitarray index that match the 
-/// specified example example and returns a cursor. 
+/// Selects all documents from the specified bitarray index that match the
+/// specified example example and returns a cursor.
 ///
 /// You can use *toArray*, *next*, or *hasNext* to access the
 /// result. The result can be limited using the *skip* and *limit*
 /// operator.
 ///
 /// An attribute name of the form *a.b* is interpreted as attribute path,
-/// not as attribute. If you use 
-/// 
+/// not as attribute. If you use
+///
 /// *{ a : { c : 1 } }*
 ///
 /// as example, then you will find all documents, such that the attribute
@@ -433,20 +433,20 @@ ArangoCollection.prototype.byExampleSkiplist = function (index, example) {
 ///
 /// *{ a : { c : 1 }, b : 1 }*
 ///
-/// will match, but the document 
+/// will match, but the document
 ///
 /// *{ a : { c : 1, b : 1 } }*
 ///
 /// will not.
 ///
-/// However, if you use 
+/// However, if you use
 ///
-/// *{ a.c : 1 }*, 
+/// *{ a.c : 1 }*,
 ///
 /// then you will find all documents, which contain a sub-document in *a*
-/// that has an attribute @LIT{c} of value *1*. Both the following documents 
+/// that has an attribute @LIT{c} of value *1*. Both the following documents
 ///
-/// *{ a : { c : 1 }, b : 1 }*and 
+/// *{ a : { c : 1 }, b : 1 }*and
 ///
 /// *{ a : { c : 1, b : 1 } }*
 ///
@@ -570,8 +570,8 @@ ArangoCollection.prototype.closedRange = function (name, left, right) {
 ///
 /// Looks up a geo index defined on attribute *location-attribute*.
 ///
-/// Returns a geo index object if an index was found. The *near* or 
-/// *within* operators can then be used to execute a geo-spatial query on 
+/// Returns a geo index object if an index was found. The *near* or
+/// *within* operators can then be used to execute a geo-spatial query on
 /// this particular index.
 ///
 /// This is useful for collections with multiple defined geo indexes.
@@ -580,8 +580,8 @@ ArangoCollection.prototype.closedRange = function (name, left, right) {
 ///
 /// Looks up a geo index on a compound attribute *location-attribute*.
 ///
-/// Returns a geo index object if an index was found. The *near* or 
-/// *within* operators can then be used to execute a geo-spatial query on 
+/// Returns a geo index object if an index was found. The *near* or
+/// *within* operators can then be used to execute a geo-spatial query on
 /// this particular index.
 ///
 /// `collection.geo(latitude-attribute, longitude-attribute)`
@@ -589,8 +589,8 @@ ArangoCollection.prototype.closedRange = function (name, left, right) {
 /// Looks up a geo index defined on the two attributes *latitude-attribute*
 /// and *longitude-attribute*.
 ///
-/// Returns a geo index object if an index was found. The *near* or 
-/// *within* operators can then be used to execute a geo-spatial query on 
+/// Returns a geo index object if an index was found. The *near* or
+/// *within* operators can then be used to execute a geo-spatial query on
 /// this particular index.
 ///
 /// @EXAMPLES
@@ -603,42 +603,42 @@ ArangoCollection.prototype.closedRange = function (name, left, right) {
 /// ```
 /// arango> for (i = -90;  i <= 90;  i += 10) {
 /// .......>   for (j = -180;  j <= 180;  j += 10) {
-/// .......>     db.complex.save({ name : "Name/" + i + "/" + j, 
-/// .......>                       home : [ i, j ], 
+/// .......>     db.complex.save({ name : "Name/" + i + "/" + j,
+/// .......>                       home : [ i, j ],
 /// .......>                       work : [ -i, -j ] });
 /// .......>   }
 /// .......> }
-/// 
+///
 /// arango> db.complex.near(0, 170).limit(5);
 /// exception in file '/simple-query' at 1018,5: a geo-index must be known
-/// 
+///
 /// arango> db.complex.ensureGeoIndex(""home"");
 /// arango> db.complex.near(0, 170).limit(5).toArray();
-/// [ { "_id" : "complex/74655276", "_key" : "74655276", "_rev" : "74655276", "name" : 
+/// [ { "_id" : "complex/74655276", "_key" : "74655276", "_rev" : "74655276", "name" :
 /// "Name/0/170", "home" : [ 0, 170 ], "work" : [ 0, -170 ] },
-///   { "_id" : "complex/74720812", "_key" : "74720812", "_rev" : "74720812", "name" : 
-/// "Name/0/180", "home" : [ 0, 180 ], "work" : [ 0, -180 ] }, 
-///   { "_id" : "complex/77080108", "_key" : "77080108", "_rev" : "77080108", "name" : 
+///   { "_id" : "complex/74720812", "_key" : "74720812", "_rev" : "74720812", "name" :
+/// "Name/0/180", "home" : [ 0, 180 ], "work" : [ 0, -180 ] },
+///   { "_id" : "complex/77080108", "_key" : "77080108", "_rev" : "77080108", "name" :
 /// "Name/10/170", "home" : [ 10, 170 ], "work" : [ -10, -170 ] },
-///   { "_id" : "complex/72230444", "_key" : "72230444", "_rev" : "72230444", "name" : 
+///   { "_id" : "complex/72230444", "_key" : "72230444", "_rev" : "72230444", "name" :
 /// "Name/-10/170", "home" : [ -10, 170 ], "work" : [ 10, -170 ] },
-///   { "_id" : "complex/72361516", "_key" : "72361516", "_rev" : "72361516", "name" : 
-/// "Name/0/-180", "home" : [ 0, -180 ], "work" : [ 0, 180 ] } ]      
-/// 
+///   { "_id" : "complex/72361516", "_key" : "72361516", "_rev" : "72361516", "name" :
+/// "Name/0/-180", "home" : [ 0, -180 ], "work" : [ 0, 180 ] } ]
+///
 /// arango> db.complex.geo("work").near(0, 170).limit(5);
 /// exception in file '/simple-query' at 1018,5: a geo-index must be known
-/// 
+///
 /// arango> db.complex.ensureGeoIndex("work");
 /// arango> db.complex.geo("work").near(0, 170).limit(5).toArray();
-/// [ { "_id" : "complex/72427052", "_key" : "72427052", "_rev" : "72427052", "name" : 
-/// "Name/0/-170", "home" : [ 0, -170 ], "work" : [ 0, 170 ] }, 
-///   { "_id" : "complex/72361516", "_key" : "72361516", "_rev" : "72361516", "name" : 
-/// "Name/0/-180", "home" : [ 0, -180 ], "work" : [ 0, 180 ] }, 
-///   { "_id" : "complex/70002220", "_key" : "70002220", "_rev" : "70002220", "name" : 
-/// "Name/-10/-170", "home" : [ -10, -170 ], "work" : [ 10, 170 ] }, 
-///   { "_id" : "complex/74851884", "_key" : "74851884", "_rev" : "74851884", "name" : 
-/// "Name/10/-170", "home" : [ 10, -170 ], "work" : [ -10, 170 ] }, 
-///   { "_id" : "complex/74720812", "_key" : "74720812", "_rev" : "74720812", "name" : 
+/// [ { "_id" : "complex/72427052", "_key" : "72427052", "_rev" : "72427052", "name" :
+/// "Name/0/-170", "home" : [ 0, -170 ], "work" : [ 0, 170 ] },
+///   { "_id" : "complex/72361516", "_key" : "72361516", "_rev" : "72361516", "name" :
+/// "Name/0/-180", "home" : [ 0, -180 ], "work" : [ 0, 180 ] },
+///   { "_id" : "complex/70002220", "_key" : "70002220", "_rev" : "70002220", "name" :
+/// "Name/-10/-170", "home" : [ -10, -170 ], "work" : [ 10, 170 ] },
+///   { "_id" : "complex/74851884", "_key" : "74851884", "_rev" : "74851884", "name" :
+/// "Name/10/-170", "home" : [ 10, -170 ], "work" : [ -10, 170 ] },
+///   { "_id" : "complex/74720812", "_key" : "74720812", "_rev" : "74720812", "name" :
 /// "Name/0/180", "home" : [ 0, 180 ], "work" : [ 0, -180 ] } ]
 /// ```
 ///
@@ -651,34 +651,34 @@ ArangoCollection.prototype.geo = function(loc, order) {
   var locateGeoIndex1 = function(collection, loc, order) {
     var inds = collection.getIndexes();
     var i;
-    
+
     for (i = 0;  i < inds.length;  ++i) {
       var index = inds[i];
-      
+
       if (index.type === "geo1") {
         if (index.fields[0] === loc && index.geoJson === order) {
           return index;
         }
       }
     }
-    
+
     return null;
   };
 
   var locateGeoIndex2 = function(collection, lat, lon) {
     var inds = collection.getIndexes();
     var i;
-    
+
     for (i = 0;  i < inds.length;  ++i) {
       var index = inds[i];
-      
+
       if (index.type === "geo2") {
         if (index.fields[0] === lat && index.fields[1] === lon) {
           return index;
         }
       }
     }
-    
+
     return null;
   };
 
@@ -712,10 +712,10 @@ ArangoCollection.prototype.geo = function(loc, order) {
 /// @startDocuBlock collectionNear
 /// `collection.near(latitude, longitude)`
 ///
-/// The returned list is sorted according to the distance, with the nearest 
-/// document to the coordinate (*latitude*, *longitude*) coming first. 
-/// If there are near documents of equal distance, documents are chosen randomly 
-/// from this set until the limit is reached. It is possible to change the limit 
+/// The returned list is sorted according to the distance, with the nearest
+/// document to the coordinate (*latitude*, *longitude*) coming first.
+/// If there are near documents of equal distance, documents are chosen randomly
+/// from this set until the limit is reached. It is possible to change the limit
 /// using the *limit* operator.
 ///
 /// In order to use the *near* operator, a geo index must be defined for the
@@ -772,7 +772,7 @@ ArangoCollection.prototype.near = function (lat, lon) {
 ///
 /// This will find all documents within a given radius around the coordinate
 /// (*latitude*, *longitude*). The returned list is sorted by distance,
-/// beginning with the nearest document. 
+/// beginning with the nearest document.
 ///
 /// In order to use the *within* operator, a geo index must be defined for the
 /// collection. This index also defines which attribute holds the coordinates
@@ -822,21 +822,21 @@ ArangoCollection.prototype.within = function (lat, lon, radius) {
 ///
 /// ```
 /// arango> db.emails.fulltext("text", "word").toArray();
-/// [ 
-///   { 
-///     "_id" : "emails/1721603", 
-///     "_key" : "1721603", 
-///     "_rev" : "1721603", 
-///     "text" : "this document contains a word" 
-///   },  
+/// [
+///   {
+///     "_id" : "emails/1721603",
+///     "_key" : "1721603",
+///     "_rev" : "1721603",
+///     "text" : "this document contains a word"
+///   },
 ///   {
 ///     "_id" : "emails/1783231",
-///     "_key" : "1783231", 
-///     "_rev" : "1783231", 
-///     "text" : "this document also contains a word" 
-///   } 
+///     "_key" : "1783231",
+///     "_rev" : "1783231",
+///     "text" : "this document also contains a word"
+///   }
 /// ]
-/// ``` 
+/// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -967,7 +967,7 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
 ///
 /// `collection.removeByExample(document, waitForSync, limit)`
 ///
-/// The optional *limit* parameter can be used to restrict the number of 
+/// The optional *limit* parameter can be used to restrict the number of
 /// removals to the specified value. If *limit* is specified but less than the
 /// number of documents in the collection, it is undefined which documents are
 /// removed.
@@ -993,7 +993,7 @@ ArangoCollection.prototype.removeByExample = function (example, waitForSync, lim
 /// `collection.replaceByExample(example, newValue)`
 ///
 /// Replaces all documents matching an example with a new document body.
-/// The entire document body of each document matching the *example* will be 
+/// The entire document body of each document matching the *example* will be
 /// replaced with *newValue*. The document meta-attributes such as *_id*,
 /// *_key*, *_from*, *_to* will not be replaced.
 ///
@@ -1012,8 +1012,8 @@ ArangoCollection.prototype.removeByExample = function (example, waitForSync, lim
 ///
 /// `collection.replaceByExample(document, newValue, waitForSync, limit)`
 ///
-/// The optional *limit* parameter can be used to restrict the number of 
-/// replacements to the specified value. If *limit* is specified but less than 
+/// The optional *limit* parameter can be used to restrict the number of
+/// replacements to the specified value. If *limit* is specified but less than
 /// the number of documents in the collection, it is undefined which documents are
 /// replaced.
 ///
@@ -1038,9 +1038,9 @@ ArangoCollection.prototype.replaceByExample = function (example, newValue, waitF
 /// `collection.updateByExample(example, newValue)`
 ///
 /// Partially updates all documents matching an example with a new document body.
-/// Specific attributes in the document body of each document matching the 
-/// *example* will be updated with the values from *newValue*. 
-/// The document meta-attributes such as *_id*, *_key*, *_from*, 
+/// Specific attributes in the document body of each document matching the
+/// *example* will be updated with the values from *newValue*.
+/// The document meta-attributes such as *_id*, *_key*, *_from*,
 /// *_to* cannot be updated.
 ///
 /// `collection.updateByExample(document, newValue, keepNull, waitForSync)`
@@ -1048,7 +1048,7 @@ ArangoCollection.prototype.replaceByExample = function (example, newValue, waitF
 /// The optional *keepNull* parameter can be used to modify the behavior when
 /// handling *null* values. Normally, *null* values are stored in the
 /// database. By setting the *keepNull* parameter to *false*, this behavior
-/// can be changed so that all attributes in *data* with *null* values will 
+/// can be changed so that all attributes in *data* with *null* values will
 /// be removed from the target document.
 ///
 /// The optional *waitForSync* parameter can be used to force synchronization
@@ -1064,8 +1064,8 @@ ArangoCollection.prototype.replaceByExample = function (example, newValue, waitF
 ///
 /// `collection.updateByExample(document, newValue, keepNull, waitForSync, limit)`
 ///
-/// The optional *limit* parameter can be used to restrict the number of 
-/// updates to the specified value. If *limit* is specified but less than 
+/// The optional *limit* parameter can be used to restrict the number of
+/// updates to the specified value. If *limit* is specified but less than
 /// the number of documents in the collection, it is undefined which documents are
 /// updated.
 ///

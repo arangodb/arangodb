@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _, d3*/
 /*global document*/
 /*global NodeShaper, modalDialogHelper, uiComponentsHelper*/
@@ -30,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 function NodeShaperControls(list, shaper) {
   "use strict";
-  
+
   if (list === undefined) {
     throw "A list element has to be given.";
   }
@@ -39,7 +38,7 @@ function NodeShaperControls(list, shaper) {
   }
   var self = this,
     colourDiv,
-    
+
     fillColourDiv = function(mapping) {
       while (colourDiv.hasChildNodes()) {
           colourDiv.removeChild(colourDiv.lastChild);
@@ -60,7 +59,7 @@ function NodeShaperControls(list, shaper) {
         list.appendChild(ul);
       });
     };
-  
+
   this.addControlOpticShapeNone = function() {
     uiComponentsHelper.createButton(list, "None", "control_node_none", function() {
       shaper.changeTo({
@@ -70,7 +69,7 @@ function NodeShaperControls(list, shaper) {
       });
     });
   };
-  
+
   this.addControlOpticShapeCircle = function() {
     var prefix = "control_node_circle",
       idprefix = prefix + "_";
@@ -91,7 +90,7 @@ function NodeShaperControls(list, shaper) {
       );
     });
   };
-  
+
   this.addControlOpticShapeRect = function() {
     var prefix = "control_node_rect",
       idprefix = prefix + "_";
@@ -117,7 +116,7 @@ function NodeShaperControls(list, shaper) {
       );
     });
   };
-  
+
   this.addControlOpticLabel = function() {
     var prefix = "control_node_label",
       idprefix = prefix + "_";
@@ -135,11 +134,11 @@ function NodeShaperControls(list, shaper) {
       );
     });
   };
-  
+
   //////////////////////////////////////////////////////////////////
   //  Colour Buttons
   //////////////////////////////////////////////////////////////////
-  
+
   this.addControlOpticSingleColour = function() {
     var prefix = "control_node_singlecolour",
       idprefix = prefix + "_";
@@ -165,7 +164,7 @@ function NodeShaperControls(list, shaper) {
       );
     });
   };
-  
+
   this.addControlOpticAttributeColour = function() {
     var prefix = "control_node_attributecolour",
       idprefix = prefix + "_";
@@ -186,7 +185,7 @@ function NodeShaperControls(list, shaper) {
       );
     });
   };
-  
+
   this.addControlOpticExpandColour = function() {
     var prefix = "control_node_expandcolour",
       idprefix = prefix + "_";
@@ -212,11 +211,11 @@ function NodeShaperControls(list, shaper) {
       );
     });
   };
-  
+
   //////////////////////////////////////////////////////////////////
   //  Mixed Buttons
-  //////////////////////////////////////////////////////////////////  
-  
+  //////////////////////////////////////////////////////////////////
+
   this.addControlOpticLabelAndColour = function(adapter) {
     var prefix = "control_node_labelandcolour",
       idprefix = prefix + "_";
@@ -264,7 +263,7 @@ function NodeShaperControls(list, shaper) {
           if (colourDiv === undefined) {
             colourDiv = self.createColourMappingList();
           }
-          
+
         }
       );
     });
@@ -334,11 +333,11 @@ function NodeShaperControls(list, shaper) {
       );
     });
   };
-  
+
   //////////////////////////////////////////////////////////////////
   //  Multiple Buttons
-  ////////////////////////////////////////////////////////////////// 
-  
+  //////////////////////////////////////////////////////////////////
+
   this.addAllOptics = function () {
     self.addControlOpticShapeNone();
     self.addControlOpticShapeCircle();
@@ -348,20 +347,20 @@ function NodeShaperControls(list, shaper) {
     self.addControlOpticAttributeColour();
     self.addControlOpticExpandColour();
   };
-  
+
   this.addAllActions = function () {
-  
+
   };
-  
+
   this.addAll = function () {
     self.addAllOptics();
     self.addAllActions();
   };
-  
+
   //////////////////////////////////////////////////////////////////
   //  Colour Mapping List
-  //////////////////////////////////////////////////////////////////  
-  
+  //////////////////////////////////////////////////////////////////
+
   this.createColourMappingList = function() {
     if (colourDiv !== undefined) {
       return colourDiv;

@@ -1,5 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true, eqeq: true */
-/*global require, exports */
+/*global exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Check if something is something
@@ -31,8 +30,7 @@
 // Check if a value is not undefined or null
 var existy = function (x) {
   "use strict";
-  // This is != on purpose to also check for undefined
-  return x != null;
+  return x !== null && x !== undefined;
 };
 
 // Check if a value is undefined or null

@@ -645,18 +645,7 @@ void ApplicationServer::stop () {
 
 void ApplicationServer::raisePrivileges () {
 
-#ifdef TRI_HAVE_SETGID
-
-  if (_effectiveGid != _realGid) {
-    int res = setegid(_realGid);
-
-    if (res != 0) {
-      LOG_FATAL_AND_EXIT("cannot set gid %d: %s", (int) _effectiveGid, strerror(errno));
-    }
-  }
-
-#endif
-
+  // first UID
 #ifdef TRI_HAVE_SETUID
 
   if (_effectiveUid != _realUid) {
@@ -664,6 +653,19 @@ void ApplicationServer::raisePrivileges () {
 
     if (res != 0) {
       LOG_FATAL_AND_EXIT("cannot set uid '%s': %s", _uid.c_str(), strerror(errno));
+    }
+  }
+
+#endif
+
+  // then GID (because we are raising)
+#ifdef TRI_HAVE_SETGID
+
+  if (_effectiveGid != _realGid) {
+    int res = setegid(_realGid);
+
+    if (res != 0) {
+      LOG_FATAL_AND_EXIT("cannot set gid %d: %s", (int) _effectiveGid, strerror(errno));
     }
   }
 
@@ -676,6 +678,7 @@ void ApplicationServer::raisePrivileges () {
 
 void ApplicationServer::dropPrivileges () {
 
+  // first GID
 #ifdef TRI_HAVE_SETGID
 
   if (_effectiveGid != _realGid) {
@@ -688,6 +691,7 @@ void ApplicationServer::dropPrivileges () {
 
 #endif
 
+  // then UID (because we are dropping)
 #ifdef TRI_HAVE_SETUID
 
   if (_effectiveUid != _realUid) {
@@ -708,6 +712,18 @@ void ApplicationServer::dropPrivileges () {
 void ApplicationServer::dropPrivilegesPermanently () {
   raisePrivileges();
 
+  // clear all supplementary groups
+#if defined(TRI_HAVE_INITGROUPS) && defined(TRI_HAVE_SETGID) && defined(TRI_HAVE_SETUID)
+
+  struct passwd* pwent = getpwuid(_effectiveUid);
+
+  if (pwent != nullptr) {
+    initgroups(pwent->pw_name, _effectiveGid);
+  }
+
+#endif  
+
+  // first GID
 #ifdef TRI_HAVE_SETGID
 
   if (_effectiveGid != _realGid) {
@@ -724,6 +740,7 @@ void ApplicationServer::dropPrivilegesPermanently () {
 
 #endif
 
+  // then UID (because we are dropping)
 #ifdef TRI_HAVE_SETUID
 
   if (_effectiveUid != _realUid) {

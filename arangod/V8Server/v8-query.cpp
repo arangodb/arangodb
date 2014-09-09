@@ -1573,7 +1573,7 @@ static v8::Handle<v8::Value> EdgesQuery (TRI_edge_direction_e direction,
       TRI_FreeString(TRI_CORE_MEM_ZONE, key);
     }
 
-    uint32_t const n = edges.size();
+    uint32_t const n = static_cast<uint32_t>(edges.size());
     documents = v8::Array::New(static_cast<int>(n));
     for (uint32_t j = 0;  j < n;  ++j) {
       v8::Handle<v8::Value> doc = WRAP_SHAPED_JSON(trx, col->_cid, &edges[j]);
