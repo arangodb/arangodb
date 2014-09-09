@@ -1,3 +1,5 @@
+# config file for arangosh
+
 pretty-print = true
 
 [server]

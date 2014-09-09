@@ -1,3 +1,5 @@
+# config file for arangodump
+
 progress = true
 
 [server]

@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
+/*jshint browser: true */
+/*jshint unused: false */
 /*global describe, beforeEach, afterEach, it, jasmine, */
 /*global spyOn, expect*/
 /*global _*/
@@ -22,11 +23,11 @@
               throw "This should be a spy";
             }
           };
-          spyOn(window.App, "addAuth"); 
+          spyOn(window.App, "addAuth");
           spyOn(window.App, "getNewRoute").andCallFake(function(a) {
-            return a; 
-          }); 
-          spyOn(window.App, "registerForUpdate"); 
+            return a;
+          });
+          spyOn(window.App, "registerForUpdate");
             list = [];
             db1 = {name: "_system"};
             db2 = {name: "otherDB"};

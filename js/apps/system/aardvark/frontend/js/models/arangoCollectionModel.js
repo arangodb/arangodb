@@ -1,5 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true */
-/*global require, window, Backbone, $, arangoHelper */
+/*global window, Backbone, $, arangoHelper */
 (function() {
   'use strict';
   window.arangoCollectionModel = Backbone.Model.extend({
@@ -103,7 +102,7 @@
           contentType: "application/json",
           processData: false,
           async: false,
-          success: function(data) {
+          success: function() {
               returnVal = true;
           },
           error: function(data) {
@@ -175,7 +174,7 @@
         data: '{"name":"' + name + '"}',
         contentType: "application/json",
         processData: false,
-        success: function(data) {
+        success: function() {
           self.set("name", name);
           result = true;
         },
@@ -203,7 +202,7 @@
         data: '{"waitForSync":' + wfs + ',"journalSize":' + JSON.stringify(journalSize) + '}',
         contentType: "application/json",
         processData: false,
-        success: function(data) {
+        success: function() {
           result = true;
         },
         error: function(data) {

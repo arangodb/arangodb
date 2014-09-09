@@ -1,10 +1,4 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 80 */
-/*global require,
-    db,
-    assertEqual, assertTrue,
-    ArangoCollection */
+/*global require, db, assertEqual, assertTrue, ArangoCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the unique constraint
@@ -181,7 +175,7 @@ function UniqueConstraintSuite() {
       s = collection.byExampleHash(idx.id, { a : 1, b : 1 });
       assertEqual(1, s.count());
       assertEqual([d1], s.toArray().map(fun));
-      
+
       s = collection.byExampleHash(idx.id, { a : 1, b : "foo" });
       assertEqual(0, s.count());
       assertEqual([ ], s.toArray().map(fun));

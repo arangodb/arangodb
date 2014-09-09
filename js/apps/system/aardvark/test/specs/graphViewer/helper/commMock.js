@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
+/*jshint unused: false */
 /*global document, window, d3*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -30,7 +30,7 @@
 
 window.communicationMock = function (spyOn) {
   "use strict";
-  
+
   var graph = {
     0: {"_id":0,"children" : [{"_id":1}, {"_id":2}, {"_id":3}, {"_id":4}]},
     1: {"_id": 1, "children": [{"_id": 5}, {"_id": 6}, {"_id": 7}]},
@@ -56,10 +56,10 @@ window.communicationMock = function (spyOn) {
       "age": 42
     }
   };
-  
+
   spyOn(d3, "json").andCallFake(function(path, cb) {
     var last = path.substring(path.lastIndexOf("/") + 1),
-     obj, res; 
+     obj, res;
     if (last.substring(last.indexOf(".")) !== ".json") {
       cb("No JSON Object could be loaded");
       return;
@@ -67,5 +67,5 @@ window.communicationMock = function (spyOn) {
     obj = last.substring(0, last.indexOf("."));
     cb(null, graph[obj]);
   });
-      
+
 };

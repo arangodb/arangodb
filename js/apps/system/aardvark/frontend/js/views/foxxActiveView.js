@@ -1,13 +1,12 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
+/*jshint browser: true */
+/*jshint unused: false */
 /*global Backbone, $, window, EJS, arangoHelper, _, templateEngine, Joi*/
 
 (function() {
   "use strict";
   var checkMount = function(mount) {
-    /*jslint regexp: true*/
-    var regex = /^(\/[^\/\s]+)+$/;
-    /*jslint regexp: false*/
-    if (!regex.test(mount)){
+        var regex = /^(\/[^\/\s]+)+$/;
+        if (!regex.test(mount)){
       arangoHelper.arangoError("Please give a valid mount point, e.g.: /myPath");
       return false;
     }

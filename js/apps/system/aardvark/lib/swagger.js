@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true, unparam: true */
 /*global exports, appCollection*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -30,16 +29,16 @@
 
 exports.Swagger = function () {
   "use strict";
-  
+
   var db = require("internal").db,
     _aal = db._collection("_aal"),
     _ = require("underscore"),
     foxx_manager = require("org/arangodb/foxx/manager");
-  
-  
+
+
   // Define the functionality to receive the documentation.
   // And transform it into swagger format.
-  
+
   // Get the overview of all installed foxxes.
   this.list = function(basePath) {
     var result = {},
@@ -51,7 +50,7 @@ exports.Swagger = function () {
     while (res.hasNext()) {
       var m = res.next().mount;
       if (m === "/aardvark") {
-      
+
       } else {
         apis.push({
           path: m
@@ -60,7 +59,7 @@ exports.Swagger = function () {
     }
     return result;
   },
-  
+
   this.listOne = function(basePath, key) {
     var result = {},
       res;
@@ -81,8 +80,8 @@ exports.Swagger = function () {
 
     return result;
   },
-  
-  // Get details of one specific installed foxx. 
+
+  // Get details of one specific installed foxx.
   this.show = function(mount) {
       var result = {},
       apis = [],

@@ -1,5 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, assertTrue, assertEqual, AQL_EXECUTE, fail */
+/*jshint strict: false */
+/*global require, exports, assertTrue, assertEqual, fail, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aql test helper functions
@@ -38,12 +38,12 @@ var ShapedJson = internal.ShapedJson;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief normalise a single row result 
+/// @brief normalise a single row result
 ////////////////////////////////////////////////////////////////////////////////
 
 function normalizeRow (row, recursive) {
-  if (row !== null && 
-      typeof row === 'object' && 
+  if (row !== null &&
+      typeof row === 'object' &&
       ! Array.isArray(row)) {
     var keys = Object.keys(row);
 
@@ -71,7 +71,7 @@ function normalizeRow (row, recursive) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the parse results for a query
 ////////////////////////////////////////////////////////////////////////////////
-    
+
 function getParseResults (query) {
   return internal.AQL_PARSE(query);
 }
@@ -106,7 +106,7 @@ function getQueryExplanation (query, bindVars) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function getModifyQueryResults (query, bindVars) {
-  var queryResult = internal.AQL_QUERY(query, bindVars); 
+  var queryResult = internal.AQL_QUERY(query, bindVars);
 
   if (queryResult instanceof arangodb.ArangoCursor) {
     return queryResult.getExtra();
@@ -120,9 +120,9 @@ function getModifyQueryResults (query, bindVars) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function getRawQueryResults (query, bindVars) {
-  var queryResult = internal.AQL_QUERY(query, bindVars, { 
-    count: true, 
-    batchSize : 3000 
+  var queryResult = internal.AQL_QUERY(query, bindVars, {
+    count: true,
+    batchSize : 3000
   });
 
   if (! (queryResult instanceof arangodb.ArangoCursor)) {

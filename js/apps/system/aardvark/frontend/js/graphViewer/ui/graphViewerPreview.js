@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global document, $, _ */
 /*global d3, window*/
 /*global GraphViewer, EventDispatcherControls, EventDispatcher, NodeShaper */
@@ -37,7 +36,7 @@
 
 function GraphViewerPreview(container, viewerConfig) {
   "use strict";
-  
+
   /*******************************************************************************
   * Internal variables and functions
   *******************************************************************************/
@@ -50,8 +49,8 @@ function GraphViewerPreview(container, viewerConfig) {
     adapterConfig,
     dispatcherUI,
     //mousePointerBox = document.createElement("div"),
-    
-    
+
+
     createSVG = function() {
       return d3.select(container)
         .append("svg")
@@ -61,7 +60,7 @@ function GraphViewerPreview(container, viewerConfig) {
         .attr("class", "graph-viewer")
         .attr("style", "width:" + width + "px;height:" + height + ";");
     },
-    
+
     shouldCreateToolbox = function(config) {
       var counter = 0;
       _.each(config, function(v, k) {
@@ -73,7 +72,7 @@ function GraphViewerPreview(container, viewerConfig) {
       });
       return counter > 0;
     },
-    
+
     addRebindsToList = function(list, rebinds) {
       _.each(rebinds, function(acts, obj) {
         list[obj] = list[obj] || {};
@@ -82,7 +81,7 @@ function GraphViewerPreview(container, viewerConfig) {
         });
       });
     },
-    
+
     parseActions = function(config) {
       if (!config) {
         return;
@@ -104,9 +103,9 @@ function GraphViewerPreview(container, viewerConfig) {
       if (config.edit) {
         addRebindsToList(allActions, dispatcherUI.editRebinds());
       }
-      dispatcherUI.rebindAll(allActions);      
+      dispatcherUI.rebindAll(allActions);
     },
-    
+
     createToolbox = function(config) {
       var toolbox = document.createElement("div");
       dispatcherUI = new EventDispatcherControls(
@@ -145,7 +144,7 @@ function GraphViewerPreview(container, viewerConfig) {
         }
       });
     },
-    
+
     createDispatcherOnly = function(config) {
       var toolbox = document.createElement("div");
       dispatcherUI = new EventDispatcherControls(
@@ -157,7 +156,7 @@ function GraphViewerPreview(container, viewerConfig) {
         viewer.dispatcherConfig
       );
     },
-    
+
     changeConfigToPreviewGraph = function() {
       if (viewerConfig) {
         // Fix nodeShaper:
@@ -181,23 +180,23 @@ function GraphViewerPreview(container, viewerConfig) {
         }
       }
     },
-    
+
     createViewer = function() {
       changeConfigToPreviewGraph();
       return new GraphViewer(svg, width, height, adapterConfig, viewerConfig);
     };
-  
-  
+
+
   /*******************************************************************************
   * Execution start
-  *******************************************************************************/  
-  
+  *******************************************************************************/
+
   width = container.offsetWidth;
   height = container.offsetHeight;
   adapterConfig = {
     type: "preview"
   };
-  
+
   viewerConfig = viewerConfig || {};
   createTB = shouldCreateToolbox(viewerConfig.toolbox);
   if (createTB) {
@@ -212,5 +211,5 @@ function GraphViewerPreview(container, viewerConfig) {
   }
   viewer.loadGraph("1");
   parseActions(viewerConfig.actions);
-  
+
 }

@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
+/*jshint unused: false */
 /*global window, $, document */
 
 (function() {
@@ -273,7 +273,7 @@ return returnVal;
 
       return dt.getUTCFullYear() + '-'
       + pad(dt.getUTCMonth() + 1) + '-'
-      + pad(dt.getUTCDate()) + ' <br>'
+      + pad(dt.getUTCDate()) + ' '
       + pad(dt.getUTCHours()) + ':'
       + pad(dt.getUTCMinutes()) + ':'
       + pad(dt.getUTCSeconds());

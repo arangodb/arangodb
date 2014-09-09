@@ -171,10 +171,6 @@
 // The jslint directive is a special comment that can set one or more options.
 // For example:
 
-/*jslint
-    evil: true, nomen: true, regexp: true, todo: true
-*/
-
 // The current option set is
 
 //     ass        true, if assignment expressions should be allowed

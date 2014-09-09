@@ -1,10 +1,4 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 80 */
-/*global require,
-    db,
-    assertEqual, assertTrue,
-    ArangoCollection */
+/*global require, db, assertEqual, assertTrue, ArangoCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the index
@@ -214,7 +208,7 @@ function indexSuite() {
       catch (e1) {
         assertEqual(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, e1.errorNum);
       }
-      
+
       try {
         collection.getIndexes();
         fail();

@@ -1,6 +1,6 @@
-/*jslint indent: 2, nomen: true, maxlen: 140, sloppy: true, vars: true, white: true, plusplus: true, evil: true */
-/*global require, exports, module, SYS_CLUSTER_TEST, ArangoServerState, ArangoClusterComm, ArangoClusterInfo,
-         UPGRADE_ARGS: true */
+/*jshint strict: false, unused: false */
+/*global require, SYS_CLUSTER_TEST, UPGRADE_ARGS: true,
+  ArangoServerState, ArangoClusterComm, ArangoClusterInfo */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cluster actions
@@ -34,8 +34,6 @@
 var actions = require("org/arangodb/actions");
 var cluster = require("org/arangodb/cluster");
 var internal = require("internal");
-var console = require("console");
-var fs = require("fs");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions

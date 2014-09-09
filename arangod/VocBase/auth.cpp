@@ -145,7 +145,7 @@ static TRI_vocbase_auth_t* AuthFromJson (TRI_json_t const* json) {
 
   // extract "user" attribute
   TRI_json_t const* userJson = TRI_LookupArrayJson(json, "user");
-   
+
   if (! TRI_IsStringJson(userJson)) {
     LOG_DEBUG("cannot extract username");
     return nullptr;
@@ -159,7 +159,7 @@ static TRI_vocbase_auth_t* AuthFromJson (TRI_json_t const* json) {
   }
 
   TRI_json_t const* simpleJson = TRI_LookupArrayJson(authDataJson, "simple");
-  
+
   if (! TRI_IsArrayJson(simpleJson)) {
     LOG_DEBUG("cannot extract simple");
     return nullptr;
@@ -169,7 +169,7 @@ static TRI_vocbase_auth_t* AuthFromJson (TRI_json_t const* json) {
   TRI_json_t const* saltJson   = TRI_LookupArrayJson(simpleJson, "salt");
   TRI_json_t const* hashJson   = TRI_LookupArrayJson(simpleJson, "hash");
 
-  if (! TRI_IsStringJson(methodJson) || 
+  if (! TRI_IsStringJson(methodJson) ||
       ! TRI_IsStringJson(saltJson) ||
       ! TRI_IsStringJson(hashJson)) {
     LOG_DEBUG("cannot extract password internals");
@@ -179,17 +179,17 @@ static TRI_vocbase_auth_t* AuthFromJson (TRI_json_t const* json) {
   // extract "active" attribute
   bool active;
   TRI_json_t const* activeJson = TRI_LookupArrayJson(authDataJson, "active");
-   
+
   if (! TRI_IsBooleanJson(activeJson)) {
     LOG_DEBUG("cannot extract active flag");
     return nullptr;
   }
   active = activeJson->_value._boolean;
-  
+
   // extract "changePassword" attribute
   bool mustChange;
   TRI_json_t const* mustChangeJson = TRI_LookupArrayJson(json, "changePassword");
-   
+
   if (TRI_IsBooleanJson(mustChangeJson)) {
     mustChange = mustChangeJson->_value._boolean;
   }
@@ -213,7 +213,7 @@ static TRI_vocbase_auth_t* AuthFromJson (TRI_json_t const* json) {
   result->_passwordHash    = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE, hashJson->_value._string.data, hashJson->_value._string.length - 1);
   result->_active          = active;
   result->_mustChange      = mustChange;
-  
+
   return result;
 }
 
@@ -225,14 +225,14 @@ static TRI_vocbase_auth_t* ConvertAuthInfo (TRI_vocbase_t* vocbase,
                                             TRI_document_collection_t* document,
                                             TRI_doc_mptr_t const* mptr) {
   TRI_shaper_t* shaper = document->getShaper();  // PROTECTED by trx in caller, checked by RUNTIME
-  
+
   TRI_shaped_json_t shapedJson;
   TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, mptr->getDataPtr());  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (shapedJson._sid == TRI_SHAPE_ILLEGAL) {
     return nullptr;
   }
-  
+
   TRI_json_t* json = TRI_JsonShapedJson(shaper, &shapedJson);
 
   if (json == nullptr) {
@@ -359,12 +359,12 @@ bool TRI_InsertInitialAuthInfo (TRI_vocbase_t* vocbase) {
                            simple,
                            "method",
                            TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "sha256"));
-      
+
       TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                            simple,
                            "salt",
                            TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "c776f5f4"));
-      
+
       TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                            simple,
                            "hash",
@@ -372,7 +372,7 @@ bool TRI_InsertInitialAuthInfo (TRI_vocbase_t* vocbase) {
 
       TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, authData, "simple", simple);
     }
-  
+
     // active
     TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE,
                          authData,
@@ -543,28 +543,34 @@ bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
 
   size_t const n = strlen(auth->_passwordSalt);
   size_t const p = strlen(password);
-    
+
   char* salted = static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n + p + 1, false));
 
   if (salted == nullptr) {
     TRI_ReadUnlockReadWriteLock(&vocbase->_authInfoLock);
     return false;
   }
-  
+
   memcpy(salted, auth->_passwordSalt, n);
   memcpy(salted + n, password, p);
   salted[n + p] = '\0';
-     
-  // default value is false 
+
+  // default value is false
   bool res = false;
   char* crypted = nullptr;
   size_t cryptedLength;
- 
+
   TRI_ASSERT(auth->_passwordMethod != nullptr);
-  
-  try { 
+
+  try {
     if (strcmp(auth->_passwordMethod, "sha1") == 0) {
       triagens::rest::SslInterface::sslSHA1(salted, n + p, crypted, cryptedLength);
+    }
+    else if (strcmp(auth->_passwordMethod, "sha512") == 0) {
+      triagens::rest::SslInterface::sslSHA512(salted, n + p, crypted, cryptedLength);
+    }
+    else if (strcmp(auth->_passwordMethod, "sha384") == 0) {
+      triagens::rest::SslInterface::sslSHA384(salted, n + p, crypted, cryptedLength);
     }
     else if (strcmp(auth->_passwordMethod, "sha256") == 0) {
       triagens::rest::SslInterface::sslSHA256(salted, n + p, crypted, cryptedLength);
@@ -584,7 +590,7 @@ bool TRI_CheckAuthenticationAuthInfo (TRI_vocbase_t* vocbase,
     // SslInterface::ssl....() allocate strings with new, which might throw exceptions
     // if we get one, we can ignore it because res is set to false anyway
   }
-      
+
   if (crypted != nullptr) {
     TRI_ASSERT(cryptedLength > 0);
 
