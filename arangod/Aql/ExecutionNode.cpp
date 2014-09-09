@@ -980,12 +980,12 @@ SortInformation SortNode::getSortInformation (ExecutionPlan* plan) const {
     auto variable = (*it).first;
     TRI_ASSERT(variable != nullptr);
     auto setter = plan->getVarSetBy(variable->id);
-
+      
     if (setter == nullptr) {
       result.isValid = false;
       break;
     }
-
+      
     if (! result.canThrow && setter->canThrow()) {
       result.canThrow = true;
     }

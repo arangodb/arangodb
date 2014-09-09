@@ -44,7 +44,6 @@ function optimizerRuleTestSuite () {
   var paramNone     = { optimizer: { rules: [ "-all" ] } };
   var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
-  var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
   var paramMore     = { optimizer: { rules: [ "-all", "+" + ruleName, "+remove-unnecessary-calculations-2" ] } };
 
   return {
@@ -85,9 +84,9 @@ function optimizerRuleTestSuite () {
 
     testRuleNoEffect : function () {
       var queries = [ 
-          "FOR i IN 1..10 FILTER i > 1 RETURN i",
-          "FOR i IN 1..10 LET a = 99 FILTER i > a RETURN i",
-          "FOR i IN 1..10 LET a = i FILTER a != 99 RETURN i",
+        "FOR i IN 1..10 FILTER i > 1 RETURN i",
+        "FOR i IN 1..10 LET a = 99 FILTER i > a RETURN i",
+        "FOR i IN 1..10 LET a = i FILTER a != 99 RETURN i"
       ];
 
       queries.forEach(function(query) {
