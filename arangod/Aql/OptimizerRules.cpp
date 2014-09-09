@@ -56,13 +56,15 @@ int triagens::aql::removeRedundantSorts (Optimizer* opt,
       continue;
     }
 
-    auto sortInfo = static_cast<SortNode*>(n)->getSortInformation(plan);
+    auto const sortNode = static_cast<SortNode*>(n);
+
+    auto sortInfo = sortNode->getSortInformation(plan);
 
     if (sortInfo.isValid && ! sortInfo.criteria.empty()) {
       // we found a sort that we can understand
     
       std::vector<ExecutionNode*> stack;
-      for (auto dep : n->getDependencies()) {
+      for (auto dep : sortNode->getDependencies()) {
         stack.push_back(dep);
       }
 
@@ -74,35 +76,50 @@ int triagens::aql::removeRedundantSorts (Optimizer* opt,
 
         if (current->getType() == triagens::aql::ExecutionNode::SORT) {
           // we found another sort. now check if they are compatible!
+    
+          auto other = static_cast<SortNode*>(current)->getSortInformation(plan);
 
-          if (nodesRelyingOnSort == 0) {
-            // a sort directly followed by another sort: now remove one of them
-            auto other = static_cast<SortNode*>(current)->getSortInformation(plan);
-            if (other.canThrow) {
-              // if the sort can throw, we must not remove it
+          switch (sortInfo.isCoveredBy(other)) {
+            case SortInformation::unequal: {
+              // different sort criteria
+              if (nodesRelyingOnSort == 0) {
+                // a sort directly followed by another sort: now remove one of them
+
+                if (other.canThrow) {
+                  // if the sort can throw, we must not remove it
+                  break;
+                }
+
+                if (sortNode->isStable()) {
+                  // we should not optimize predecessors of a stable sort (used in a COLLECT node)
+                  // the stable sort is for a reason, and removing any predecessors sorts might
+                  // change the result
+                  break;
+                }
+
+                // remove sort that is a direct predecessor of a sort
+                toUnlink.insert(current);
+              }
               break;
             }
 
-            toUnlink.insert(current);
-            // continue;
-          }
-          else {
-            auto other = static_cast<SortNode*>(current)->getSortInformation(plan);
+            case SortInformation::otherLessAccurate: {
+              toUnlink.insert(current);
+              break;
+            }
 
-            switch (sortInfo.isCoveredBy(other)) {
-              case SortInformation::unequal:
-                break;
-
-              case SortInformation::otherSupersedes:
-                toUnlink.insert(current);
-                break;
-
-              case SortInformation::weSupersede:
-              case SortInformation::allEqual:
-                // the sort at the start of the pipeline makes the sort at the end
-                // superfluous, so we'll remove it
-                toUnlink.insert(n);
-                break;
+            case SortInformation::ourselvesLessAccurate: {
+              // the sort at the start of the pipeline makes the sort at the end
+              // superfluous, so we'll remove it
+              toUnlink.insert(n);
+              break;
+            }
+            
+            case SortInformation::allEqual: {
+              // the sort at the end of the pipeline makes the sort at the start
+              // superfluous, so we'll remove it
+              toUnlink.insert(current);
+              break;
             }
           }
         }

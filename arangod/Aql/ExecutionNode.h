@@ -1431,10 +1431,10 @@ namespace triagens {
     struct SortInformation {
 
       enum Match {
-        unequal,
-        weSupersede,
-        otherSupersedes,
-        allEqual
+        unequal,                // criteria are unequal
+        otherLessAccurate,      // leftmost sort criteria are equal, but other sort criteria are less accurate than ourselves
+        ourselvesLessAccurate,  // leftmost sort criteria are equal, but our own sort criteria is less accurate than the other
+        allEqual                // all criteria are equal
       };
 
       std::vector<std::tuple<ExecutionNode const*, std::string, bool>> criteria;
@@ -1447,17 +1447,17 @@ namespace triagens {
           return unequal;
         }
 
-        if (isComplex) {
+        if (isComplex || other.isComplex) {
           return unequal;
         }
 
         size_t const n = criteria.size();
         for (size_t i = 0; i < n; ++i) {
           if (other.criteria.size() <= i) {
-            return otherSupersedes;
+            return otherLessAccurate;
           }
 
-          auto ours = criteria[i];
+          auto ours   = criteria[i];
           auto theirs = other.criteria[i];
 
           if (std::get<2>(ours) != std::get<2>(theirs)) {
@@ -1472,7 +1472,7 @@ namespace triagens {
         }
 
         if (other.criteria.size() > n) {
-          return weSupersede;
+          return ourselvesLessAccurate;
         }
           
         return allEqual;
@@ -1517,6 +1517,14 @@ namespace triagens {
 
         NodeType getType () const override {
           return SORT;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the sort is stable
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool isStable () const {
+          return _stable;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
