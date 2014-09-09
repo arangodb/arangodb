@@ -61,7 +61,7 @@ Optimizer::Optimizer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Optimizer::addPlan (ExecutionPlan* plan,
-                         int level,
+                         RuleLevel level,
                          bool wasModified) {
   TRI_ASSERT(plan != nullptr);
 
@@ -303,11 +303,15 @@ void Optimizer::setupRules () {
 
   // move calculations up the dependency chain (to pull them out of
   // inner loops etc.)
-  registerRule("move-calculations-up", moveCalculationsUpRule, 10);
+  registerRule("move-calculations-up",
+               moveCalculationsUpRule,
+               moveCalculationsUpRule_pass1);
 
   // move filters up the dependency chain (to make result sets as small
   // as possible as early as possible)
-  registerRule("move-filters-up", moveFiltersUpRule, 20);
+  registerRule("move-filters-up",
+               moveFiltersUpRule,
+               moveFiltersUpRule_pass1);
 
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 2": try to remove redundant or unnecessary nodes
@@ -317,14 +321,19 @@ void Optimizer::setupRules () {
   // remove filters from the query that are not necessary at all
   // filters that are always true will be removed entirely
   // filters that are always false will be replaced with a NoResults node
-  registerRule("remove-unnecessary-filters", removeUnnecessaryFiltersRule, 110);
+  registerRule("remove-unnecessary-filters",
+               removeUnnecessaryFiltersRule,
+               removeUnnecessaryFiltersRule_pass2);
   
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations", 
-               removeUnnecessaryCalculationsRule, 120);
+               removeUnnecessaryCalculationsRule,
+               removeUnnecessaryCalculationsRule_pass2);
 
   // remove redundant sort blocks
-  registerRule("remove-redundant-sorts", removeRedundantSorts, 130);
+  registerRule("remove-redundant-sorts",
+               removeRedundantSorts,
+               removeRedundantSorts_pass2);
 
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 3": interchange EnumerateCollection nodes in all possible ways
@@ -333,7 +342,8 @@ void Optimizer::setupRules () {
   //////////////////////////////////////////////////////////////////////////////
 
   registerRule("interchange-adjacent-enumerations", 
-               interchangeAdjacentEnumerations, 500);
+               interchangeAdjacentEnumerations,
+               interchangeAdjacentEnumerations_pass3);
 
   //////////////////////////////////////////////////////////////////////////////
   // "Pass 4": moving nodes "up" (potentially outside loops) (second try):
@@ -342,11 +352,15 @@ void Optimizer::setupRules () {
 
   // move calculations up the dependency chain (to pull them out of
   // inner loops etc.)
-  registerRule("move-calculations-up-2", moveCalculationsUpRule, 510);
+  registerRule("move-calculations-up-2",
+               moveCalculationsUpRule,
+               moveCalculationsUpRule_pass4);
 
   // move filters up the dependency chain (to make result sets as small
   // as possible as early as possible)
-  registerRule("move-filters-up-2", moveFiltersUpRule, 520);
+  registerRule("move-filters-up-2",
+               moveFiltersUpRule,
+               moveFiltersUpRule_pass4);
 
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 5": try to remove redundant or unnecessary nodes (second try)
@@ -356,14 +370,19 @@ void Optimizer::setupRules () {
   // remove filters from the query that are not necessary at all
   // filters that are always true will be removed entirely
   // filters that are always false will be replaced with a NoResults node
-  registerRule("remove-unnecessary-filters-2", removeUnnecessaryFiltersRule, 610);
+  registerRule("remove-unnecessary-filters-2",
+               removeUnnecessaryFiltersRule,
+               removeUnnecessaryFiltersRule_pass5);
   
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations-2", 
-               removeUnnecessaryCalculationsRule, 620);
+               removeUnnecessaryCalculationsRule,
+               removeUnnecessaryCalculationsRule_pass5);
 
   // remove redundant sort blocks
-  registerRule("remove-redundant-sorts-2", removeRedundantSorts, 630);
+  registerRule("remove-redundant-sorts-2",
+               removeRedundantSorts,
+               removeRedundantSorts_pass5);
 
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
@@ -371,11 +390,16 @@ void Optimizer::setupRules () {
   //////////////////////////////////////////////////////////////////////////////
 
   // try to find a filter after an enumerate collection and find an index . . . 
-  registerRule("use-index-range", useIndexRange, 710);
+  registerRule("use-index-range",
+               useIndexRange,
+               useIndexRange_pass6);
 
   // try to find sort blocks which are superseeded by indexes
-  registerRule("use-index-for-sort", useIndexForSort, 720);
-  
+  registerRule("use-index-for-sort",
+               useIndexForSort,
+               useIndexForSort_pass6);
+
+
   //////////////////////////////////////////////////////////////////////////////
   /// END OF OPTIMISATIONS
   //////////////////////////////////////////////////////////////////////////////
