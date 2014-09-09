@@ -1082,8 +1082,8 @@ namespace triagens {
                          Expression* expr, 
                          Variable const* outVariable)
           : ExecutionNode(id), 
-            _expression(expr), 
-            _outVariable(outVariable) {
+            _outVariable(outVariable),
+            _expression(expr) {
 
           TRI_ASSERT(_expression != nullptr);
           TRI_ASSERT(_outVariable != nullptr);
@@ -1191,16 +1191,16 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief we need to have an expression and where to write the result
-////////////////////////////////////////////////////////////////////////////////
-
-        Expression* _expression;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief output variable to write to
 ////////////////////////////////////////////////////////////////////////////////
 
         Variable const* _outVariable;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief we need to have an expression and where to write the result
+////////////////////////////////////////////////////////////////////////////////
+
+        Expression* _expression;
 
     };
 
