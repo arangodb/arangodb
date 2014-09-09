@@ -27,7 +27,7 @@
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-var yaml = require("js-yaml")
+var PY = function (plan) { require("internal").print(require("js-yaml").safeDump(plan));};
 var internal = require("internal");
 var jsunity = require("jsunity");
 var errors = require("internal").errors;
@@ -45,6 +45,7 @@ var findReferencedNodes = helper.findReferencedNodes;
 function optimizerRuleTestSuite() {
     var ruleName = "use-index-for-sort";
     var secondRuleName = "use-index-range";
+    var removeCalculationNodes = "remove-unnecessary-calculations-2";
     var thirdRuleName = "remove-redundant-sorts";
     var colName = "UnitTestsAqlOptimizer" + ruleName.replace(/-/g, "_");
     var colNameOther = colName + "_XX";
@@ -55,6 +56,15 @@ function optimizerRuleTestSuite() {
     var paramIndexRange   = { optimizer: { rules: [ "-all", "+" + secondRuleName ] } };
     var paramRedundantSort   = { optimizer: { rules: [ "-all", "+" + thirdRuleName ] } };
     var paramIndexFromSort_IndexRange = { optimizer: { rules: [ "-all", "+" + ruleName, "+" + secondRuleName ] } };
+    var paramIndexRangeRemoveCalculations   = {
+        optimizer: { rules: [ "-all", "+" + secondRuleName, "+" + removeCalculationNodes ] }
+    };
+    var paramIndexFromSort_IndexRange_RemoveCalculations = {
+        optimizer: { rules: [ "-all", "+" + ruleName, "+" + secondRuleName, "+" + removeCalculationNodes ] }
+    };
+    var paramIndexFromSort_RemoveCalculations = {
+        optimizer: { rules: [ "-all", "+" + ruleName, "+" + removeCalculationNodes ] }
+    };
 
     var skiplist;
     var skiplist2;
@@ -76,7 +86,7 @@ function optimizerRuleTestSuite() {
     var hasCalculationNodes = function (plan, countXPect) {
         assertEqual(findExecutionNodes(plan, "CalculationNode").length,
                     countXPect,
-                    "Has " + countXPect +  "CalculationNode");
+                    "Has " + countXPect +  " CalculationNode");
     };
     var hasNoCalculationNode = function (plan) {
         assertEqual(findExecutionNodes(plan, "CalculationNode").length, 0, "Has NO CalculationNode");
@@ -273,6 +283,7 @@ function optimizerRuleTestSuite() {
 
           var XPresult;
           var QResults=[];
+          var i;
 
           // we have to re-sort here, because of the index has one more sort criteria.
           QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
@@ -284,11 +295,26 @@ function optimizerRuleTestSuite() {
           assertEqual([ ruleName ], XPresult.plan.rules);
           // The sortnode and its calculation node should have been removed.
           hasNoSortNode(XPresult);
+          // the dependencies of the sortnode weren't removed...
+          hasCalculationNodes(XPresult, 2);
+          // The IndexRangeNode created by this rule is simple; it shouldn't have ranges.
+          hasIndexRangeNode_WithRanges(XPresult, false);
+
+          // -> combined use-index-for-sort and remove-unnecessary-calculations-2
+          XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_RemoveCalculations);
+          QResults[2] = AQL_EXECUTE(query, { }, paramIndexFromSort_RemoveCalculations).json;
+          // our rule should have been applied.
+          assertEqual([ ruleName, removeCalculationNodes ].sort(), XPresult.plan.rules.sort());
+          // The sortnode and its calculation node should have been removed.
+          hasNoSortNode(XPresult);
+          // now the dependencies of the sortnode should be gone:
           hasCalculationNodes(XPresult, 1);
           // The IndexRangeNode created by this rule is simple; it shouldn't have ranges.
           hasIndexRangeNode_WithRanges(XPresult, false);
 
-          assertTrue(isEqual(QResults[0], QResults[1]), "Query results are equal?");
+          for (i = 1; i < 3; i++) {
+              assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
+          }
 
       },
 
@@ -374,9 +400,11 @@ function optimizerRuleTestSuite() {
           XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort);
           // our rule should be there.
           assertEqual([ ruleName ], XPresult.plan.rules);
-          // The sortnode and its calculation node should have been removed.
+          // The sortnode should be gone, its calculation node should not have been removed yet.
           hasNoSortNode(XPresult);
-          hasCalculationNodes(XPresult, 2);
+          hasCalculationNodes(XPresult, 3);
+
+
           // The IndexRangeNode created by this rule is simple; it shouldn't have ranges.
           hasIndexRangeNode_WithRanges(XPresult, false);
 
@@ -384,9 +412,9 @@ function optimizerRuleTestSuite() {
           QResults[2] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange).json;
           XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange);
           assertEqual([ secondRuleName, ruleName ].sort(), XPresult.plan.rules.sort());
-          // The sortnode and its calculation node should have been removed.
+          // The sortnode should be gone, its calculation node should not have been removed yet.
           hasNoSortNode(XPresult);
-          hasCalculationNodes(XPresult, 2);
+          hasCalculationNodes(XPresult, 3);
           // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
           hasIndexRangeNode_WithRanges(XPresult, true);
 
@@ -404,8 +432,18 @@ function optimizerRuleTestSuite() {
           // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
           hasIndexRangeNode_WithRanges(XPresult, true);
 
+          // -> combined use-index-for-sort, remove-unnecessary-calculations-2 and use-index-range
+          QResults[4] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange_RemoveCalculations).json;
 
-          for (i = 1; i < 4; i++) {
+          XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange_RemoveCalculations);
+          assertEqual([ secondRuleName, removeCalculationNodes, ruleName ].sort(), XPresult.plan.rules.sort());
+          // the sortnode and its calculation node should be gone.
+          hasNoSortNode(XPresult);
+          hasCalculationNodes(XPresult, 2);
+          // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
+          hasIndexRangeNode_WithRanges(XPresult, true);
+
+          for (i = 1; i < 5; i++) {
               assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
           }
 
@@ -431,9 +469,9 @@ function optimizerRuleTestSuite() {
           XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort);
           // our rule should be there.
           assertEqual([ ruleName ], XPresult.plan.rules);
-          // The sortnode and its calculation node should have been removed.
+          // The sortnode should be gone, its calculation node should not have been removed yet.
           hasNoSortNode(XPresult);
-          hasCalculationNodes(XPresult, 2);
+          hasCalculationNodes(XPresult, 4);
           // The IndexRangeNode created by this rule is simple; it shouldn't have ranges.
           hasIndexRangeNode_WithRanges(XPresult, false);
 
@@ -443,9 +481,10 @@ function optimizerRuleTestSuite() {
           XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange);
           
           assertEqual([ secondRuleName, ruleName ].sort(), XPresult.plan.rules.sort());
-          // The sortnode and its calculation node should have been removed.
+          // The sortnode should be gone, its calculation node should not have been removed yet.
           hasNoSortNode(XPresult);
-          hasCalculationNodes(XPresult, 2);
+
+          hasCalculationNodes(XPresult, 4);
           // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
           hasIndexRangeNode_WithRanges(XPresult, true);
 
@@ -464,8 +503,18 @@ function optimizerRuleTestSuite() {
           // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
           hasIndexRangeNode_WithRanges(XPresult, true);
 
+          // -> combined use-index-for-sort, remove-unnecessary-calculations-2 and use-index-range
+          QResults[4] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange_RemoveCalculations).json;
+          XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange_RemoveCalculations);
+          assertEqual([ ruleName, secondRuleName, removeCalculationNodes].sort(), XPresult.plan.rules.sort());
+          // the sortnode and its calculation node should be there.
+          hasNoSortNode(XPresult);
+          hasCalculationNodes(XPresult, 2);
 
-          for (i = 1; i < 4; i++) {
+          // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
+          hasIndexRangeNode_WithRanges(XPresult, true);
+
+          for (i = 1; i < 5; i++) {
               assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
           }
       },
@@ -610,7 +659,7 @@ function optimizerRuleTestSuite() {
 ///   greater then + less then filter spanning a range. TODO: doesn't work now.
 ////////////////////////////////////////////////////////////////////////////////
       testRangeBandpassInvalid: function () {
-// TODO: this doesn't do anything. should it simply flush that range since its empty? or even raise?
+// TODO: this doesn't do anything. should it simply flush that range since its empty? or even raise? -> NoResultsNode????
 //        var query = "FOR v IN " + colName + " FILTER v.a > 7 && v.a < 4 RETURN [v.a, v.b]";
 //
 //        var XPresult;
