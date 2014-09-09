@@ -83,7 +83,7 @@ namespace triagens {
         ~AqlTransaction () {
         }
 
-        int addCollections (std::map<std::string, triagens::aql::Collection*>* collections) {
+        int addCollectionList (std::map<std::string, triagens::aql::Collection*>* collections) {
           int ret = TRI_ERROR_NO_ERROR;
           for (auto it = collections->begin(); it != collections->end(); ++it) {
             ret = processCollection((*it).second);
