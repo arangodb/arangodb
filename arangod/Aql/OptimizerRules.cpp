@@ -940,8 +940,11 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
 
         if (idx.fullmatch) { // if the index superseedes the sort, remove it.
           _sortNode->removeSortNodeFromPlan(newPlan);
+          _opt->addPlan(newPlan, Optimizer::RuleLevel::pass5, true);
         }
-        _opt->addPlan(newPlan, level, true);
+        else {
+          _opt->addPlan(newPlan, level, true);
+        }
       }
       catch (...) {
         delete newPlan;
