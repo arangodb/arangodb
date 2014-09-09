@@ -10,7 +10,6 @@
     el: '#content',
     el2: '#userManagementThumbnailsIn',
 
-
     template: templateEngine.createTemplate("userManagementView.ejs"),
 
     events: {
@@ -405,7 +404,7 @@
         {
           type: window.modalView.tables.READONLY,
           label: "Username",
-          value: username
+          value: _.escape(username)
         },
         {
           type: window.modalView.tables.TEXT,
@@ -434,7 +433,7 @@
           callback: this.submitEditUser.bind(this, username)
         }
       ];
-        window.modalView.show("modalTable.ejs", "Edit User", buttons, tableContent);
+      window.modalView.show("modalTable.ejs", "Edit User", buttons, tableContent);
     },
 
     createCreateUserModal: function() {
@@ -554,7 +553,6 @@
 
       window.modalView.show("modalTable.ejs", "Edit User Password", buttons, tableContent);
     }
-
 
   });
 }());
