@@ -238,9 +238,11 @@ QueryResult Query::execute () {
 
       // creating the plan may have produced some collections
       // we need to add them to the transaction now (otherwise the query will fail)
-      trx.addCollections(_collections.collections());
+      int res = trx.addCollectionList(_collections.collections());
       
-      int res = trx.begin();
+      if (res == TRI_ERROR_NO_ERROR) {
+        res = trx.begin();
+      }
 
       if (res != TRI_ERROR_NO_ERROR) {
         return transactionError(res, trx);
