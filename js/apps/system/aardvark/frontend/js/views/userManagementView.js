@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global window, document, Backbone, EJS, SwaggerUi, hljs, $, arangoHelper, templateEngine,
+/*global _, window, document, Backbone, EJS, SwaggerUi, hljs, $, arangoHelper, templateEngine,
   CryptoJS, Joi */
 (function() {
 
