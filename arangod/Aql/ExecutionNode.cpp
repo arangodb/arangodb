@@ -705,8 +705,8 @@ void LimitNode::toJsonHelper (triagens::basics::Json& nodes,
 
 CalculationNode::CalculationNode (Ast* ast, basics::Json const& base)
   : ExecutionNode(base),
-    _expression(new Expression(ast, base)),
-    _outVariable(varFromJson(ast, base, "outVariable")) {
+    _outVariable(varFromJson(ast, base, "outVariable")),
+    _expression(new Expression(ast, base)) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
