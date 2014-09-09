@@ -32,6 +32,7 @@
 
   var FoxxController = require("org/arangodb/foxx").Controller,
     controller = new FoxxController(applicationContext),
+    cluster = require("org/arangodb/cluster"),
     ArangoError = require("org/arangodb").ArangoError,
     actions = require("org/arangodb/actions"),
     Model = require("org/arangodb/foxx").Model,
@@ -42,6 +43,41 @@
     errors = arangodb.errors,
     toId = function(c, k) {
       return c + "/" + k;
+    },
+    collectionRepresentation = function(collection, showProperties, showCount, showFigures) {
+      var result = {};
+      result.id = collection._id;
+      result.name = collection.name();
+      result.isSystem = (result.name.charAt(0) === '_');
+      if (showProperties) {
+        var properties = collection.properties();
+        result.doCompact     = properties.doCompact;
+        result.isVolatile    = properties.isVolatile;
+        result.journalSize   = properties.journalSize;
+        result.keyOptions    = properties.keyOptions;
+        result.waitForSync   = properties.waitForSync;
+        if (cluster.isCoordinator()) {
+          result.shardKeys = properties.shardKeys;
+          result.numberOfShards = properties.numberOfShards;
+        }
+      }
+
+      if (showCount) {
+        result.count = collection.count();
+      }
+
+      if (showFigures) {
+        var figures = collection.figures();
+
+        if (figures) {
+          result.figures = figures;
+        }
+      }
+
+      result.status = collection.status();
+      result.type = collection.type();
+
+      return result;
     },
     buildError = function(err, code) {
       return {
@@ -366,9 +402,17 @@
   controller.get("/:graph/vertex", function(req, res) {
     var name = req.params("graph");
     var g = Graph._graph(name);
-    setResponse(res, "collections", _.map(g._vertexCollections(), function(c) {
-      return c.name();
-    }).sort(), actions.HTTP_OK);
+    var mapFunc;
+    if (req.params("collectionObjects")) {
+      mapFunc = function(c) {
+        return collectionRepresentation(c, false, false, false);
+      };
+    } else {
+      mapFunc = function(c) {
+        return c.name();
+      };
+    }
+    setResponse(res, "collections", _.map(g._vertexCollections(), mapFunc).sort(), actions.HTTP_OK);
   })
   .pathParam("graph", {
     type: graphName
