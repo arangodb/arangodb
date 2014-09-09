@@ -51,86 +51,131 @@ namespace triagens {
 
     struct RangeInfoBound {
 
-      RangeInfoBound (AstNode const* bound, bool include) 
-        : _include(include), _undefined(false){
-        _bound = Json(TRI_UNKNOWN_MEM_ZONE, bound->toJson(TRI_UNKNOWN_MEM_ZONE, true));
-      }
-      
-      RangeInfoBound (basics::Json const& json) 
-          :   _bound(Json(TRI_UNKNOWN_MEM_ZONE,
-              basics::JsonHelper::checkAndGetArrayValue(json.json(), "bound"), 
-              basics::Json::NOFREE).copy()),
-        _include(basics::JsonHelper::checkAndGetBooleanValue(json.json(), "include")),
-              _undefined(false) {}
-      
-      RangeInfoBound () : _include(false), _undefined(true) {}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructors
+////////////////////////////////////////////////////////////////////////////////
 
-      ~RangeInfoBound(){}
-      
-      RangeInfoBound ( RangeInfoBound const& copy ) 
-          : _bound(copy._bound.copy()), _include(copy._include),
-          _undefined(copy._undefined) {} 
-          
-      RangeInfoBound& operator= ( RangeInfoBound const& copy ) = delete;
-
-      void assign ( basics::Json const& json ) {
-        _bound = Json(TRI_UNKNOWN_MEM_ZONE,
-              basics::JsonHelper::checkAndGetArrayValue(json.json(), "bound"), 
-              basics::Json::NOFREE).copy();
-        _include = basics::JsonHelper::checkAndGetBooleanValue(json.json(), "include");
-        _undefined = false;
-      }
-
-      void assign (AstNode const* bound, bool include) {
-        _include = include;
-        _bound = Json(TRI_UNKNOWN_MEM_ZONE, bound->toJson(TRI_UNKNOWN_MEM_ZONE, true));
-        _undefined = false;
-      }
-      
-      void assign (RangeInfoBound copy) {
-        _include = copy._include;
-        _bound = copy._bound; 
-        _undefined = false;
-      }
-
-      Json toJson () const {
-        Json item(basics::Json::Array);
-          item("bound", Json(TRI_UNKNOWN_MEM_ZONE, 
-                TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, _bound.json())))
-              ("include", Json(_include));
-        return item;
-      }
-
-      // doesn't work with unbounded above and below RangeInfos
-      TRI_index_operator_t* toIndexOperator (bool high, Json parameters,
-          TRI_shaper_t* shaper) const {
-        TRI_index_operator_type_e op;
-
-        if (high) {
-          if (_include) {
-            op = TRI_LE_INDEX_OPERATOR;
-          }
-          else {
-            op = TRI_LT_INDEX_OPERATOR;
-          }
-        } 
-        else {
-          if (_include) {
-            op = TRI_GE_INDEX_OPERATOR;
-          }
-          else {
-            op = TRI_GT_INDEX_OPERATOR;
-          }
+        RangeInfoBound (AstNode const* bound, bool include) 
+          : _include(include), _undefined(false){
+          _bound = Json(TRI_UNKNOWN_MEM_ZONE, 
+                        bound->toJson(TRI_UNKNOWN_MEM_ZONE, true));
         }
-        parameters.add(_bound.get("value").copy());
-        size_t nr = parameters.size();
-        return TRI_CreateIndexOperator(op, NULL, NULL, parameters.steal(),
-            shaper, NULL, nr, NULL);
-      } 
+        
+        RangeInfoBound (basics::Json const& json) 
+          : _bound(Json(TRI_UNKNOWN_MEM_ZONE,
+            basics::JsonHelper::checkAndGetArrayValue(json.json(), "bound"), 
+            basics::Json::NOFREE).copy()),
+            _include(basics::JsonHelper::checkAndGetBooleanValue(json.json(),
+                                                                 "include")),
+            _undefined(false) {
+        }
+      
+        RangeInfoBound () : _include(false), _undefined(true) {
+        }
 
-      Json _bound;
-      bool _include;
-      bool _undefined;
+        RangeInfoBound ( RangeInfoBound const& copy ) 
+            : _bound(copy._bound.copy()), _include(copy._include),
+            _undefined(copy._undefined) {
+        } 
+          
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+        ~RangeInfoBound(){}
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete assignment
+////////////////////////////////////////////////////////////////////////////////
+
+        RangeInfoBound& operator= ( RangeInfoBound const& copy ) = delete;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief explicit assign
+////////////////////////////////////////////////////////////////////////////////
+
+        void assign ( basics::Json const& json ) {
+          _bound = Json(TRI_UNKNOWN_MEM_ZONE,
+            basics::JsonHelper::checkAndGetArrayValue(json.json(), "bound"), 
+            basics::Json::NOFREE).copy();
+            _include = basics::JsonHelper::checkAndGetBooleanValue(json.json(), 
+                                                                   "include");
+          _undefined = false;
+        }
+
+        void assign (AstNode const* bound, bool include) {
+          _include = include;
+          _bound = Json(TRI_UNKNOWN_MEM_ZONE, 
+                        bound->toJson(TRI_UNKNOWN_MEM_ZONE, true));
+          _undefined = false;
+        }
+      
+        void assign (RangeInfoBound copy) {
+          _include = copy._include;
+          _bound = copy._bound; 
+          _undefined = false;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson
+////////////////////////////////////////////////////////////////////////////////
+
+        Json toJson () const {
+          Json item(basics::Json::Array);
+            item("bound", Json(TRI_UNKNOWN_MEM_ZONE, 
+                  TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, _bound.json())))
+                ("include", Json(_include));
+          return item;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toIndexOperator, doesn't work with unbounded above and below 
+/// RangeInfos
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_index_operator_t* toIndexOperator (bool high, Json parameters,
+            TRI_shaper_t* shaper) const {
+          TRI_index_operator_type_e op;
+
+          if (high) {
+            if (_include) {
+              op = TRI_LE_INDEX_OPERATOR;
+            }
+            else {
+              op = TRI_LT_INDEX_OPERATOR;
+            }
+          } 
+          else {
+            if (_include) {
+              op = TRI_GE_INDEX_OPERATOR;
+            }
+            else {
+              op = TRI_GT_INDEX_OPERATOR;
+            }
+          }
+          parameters.add(_bound.get("value").copy());
+          size_t nr = parameters.size();
+          return TRI_CreateIndexOperator(op, NULL, NULL, parameters.steal(),
+              shaper, NULL, nr, NULL);
+        } 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _bound as Json
+////////////////////////////////////////////////////////////////////////////////
+
+        Json _bound;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _include, flag indicating whether or not bound is included
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _include;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _undefined, if this is true the bound is undefined
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _undefined;
 
     };
 
