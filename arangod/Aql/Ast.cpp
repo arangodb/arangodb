@@ -38,11 +38,11 @@
 using namespace triagens::aql;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             static initialization
+// --SECTION--                                             static initialisation
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize a singleton NOP node instance
+/// @brief initialise a singleton NOP node instance
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode const Ast::NopNode = { NODE_TYPE_NOP }; 

@@ -54,7 +54,7 @@ Function::Function (std::string const& externalName,
     implementation(implementation),
     conversions() {
 
-  initArguments();
+  initializeArguments();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,7 +73,7 @@ Function::~Function () {
 /// arguments
 ////////////////////////////////////////////////////////////////////////////////
 
-void Function::initArguments () {
+void Function::initializeArguments () {
   minRequiredArguments = 0;
   maxRequiredArguments = 0;
 
