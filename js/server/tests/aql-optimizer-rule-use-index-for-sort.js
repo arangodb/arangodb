@@ -115,7 +115,7 @@ function optimizerRuleTestSuite() {
         assertEqual(node.type, type, "check whether this node is of type "+type);
     };
 
-  return {
+    return {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set up
@@ -718,8 +718,6 @@ function optimizerRuleTestSuite() {
 //          assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
           
       }
-
-    }
 
   };
 }
