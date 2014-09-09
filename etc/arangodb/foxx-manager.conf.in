@@ -1,3 +1,5 @@
+# config file for foxx-manager
+
 pretty-print = true
 
 [server]

@@ -92,15 +92,16 @@
 /// @brief available functions
 ////////////////////////////////////////////////////////////////////////////////
 
+#define TRI_GETRUSAGE_MAXRSS_UNIT           1
 #define TRI_HAVE_GETGRGID                   1
 #define TRI_HAVE_GETGRNAM                   1
 #define TRI_HAVE_GETPPID                    1
 #define TRI_HAVE_GETPWNAM                   1
 #define TRI_HAVE_GETPWUID                   1
 #define TRI_HAVE_GETRUSAGE                  1
-#define TRI_GETRUSAGE_MAXRSS_UNIT           1
 #define TRI_HAVE_GETTIMEOFDAY               1
 #define TRI_HAVE_GMTIME_R                   1
+#define TRI_HAVE_INITGROUPS                 1
 #define TRI_HAVE_SETGID                     1
 #define TRI_HAVE_SETUID                     1
 #define TRI_HAVE_STRTOLL                    1
@@ -417,6 +418,7 @@
 /// @brief available functions
 ////////////////////////////////////////////////////////////////////////////////
 
+#define TRI_GETRUSAGE_MAXRSS_UNIT           1024
 #define TRI_HAVE_GETGRGID                   1
 #define TRI_HAVE_GETGRNAM                   1
 #define TRI_HAVE_GETLINE                    1
@@ -424,9 +426,9 @@
 #define TRI_HAVE_GETPWNAM                   1
 #define TRI_HAVE_GETPWUID                   1
 #define TRI_HAVE_GETRUSAGE                  1
-#define TRI_GETRUSAGE_MAXRSS_UNIT           1024
 #define TRI_HAVE_GETTIMEOFDAY               1
 #define TRI_HAVE_GMTIME_R                   1
+#define TRI_HAVE_INITGROUPS                 1
 #define TRI_HAVE_PRCTL                      1
 #define TRI_HAVE_SETGID                     1
 #define TRI_HAVE_SETUID                     1
