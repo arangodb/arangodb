@@ -39,12 +39,11 @@ var isEqual = helper.isEqual;
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerRuleTestSuite () {
-  var ruleName = "remove-unnecessary-filters";
+  var ruleName = "move-filters-up";
   // various choices to control the optimizer: 
   var paramNone     = { optimizer: { rules: [ "-all" ] } };
-  var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
+  var paramEnabled  = { optimizer: { rules: [ "-all", "+move-calculations-up", "+" + ruleName ] } };
   var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
-  var paramMore     = { optimizer: { rules: [ "-all", "+" + ruleName, "+remove-unnecessary-calculations-2" ] } };
 
   return {
 
@@ -68,10 +67,9 @@ function optimizerRuleTestSuite () {
 
     testRuleDisabled : function () {
       var queries = [ 
-        "FOR i IN 1..10 FILTER true RETURN 1",
-        "FOR i IN 1..10 FILTER 1 != 7 RETURN 1",
-        "FOR i IN 1..10 FILTER 1 == 1 && 2 == 2 RETURN 1",
-        "FOR i IN 1..10 FILTER 1 != 1 && 2 != 2 RETURN 1"
+        "FOR i IN 1..10 SORT i FILTER i == 1 RETURN 1",
+        "FOR i IN 1..10 LET x = (FOR j IN [ i ] RETURN j) FILTER i == 2 RETURN x",
+        "FOR i IN 1..10 FOR j IN 1..10 FILTER i == 1 FILTER j == 2 RETURN i"
       ];
 
       queries.forEach(function(query) {
@@ -87,13 +85,17 @@ function optimizerRuleTestSuite () {
     testRuleNoEffect : function () {
       var queries = [ 
         "FOR i IN 1..10 FILTER i > 1 RETURN i",
-        "FOR i IN 1..10 LET a = 99 FILTER i > a RETURN i",
-        "FOR i IN 1..10 LET a = i FILTER a != 99 RETURN i"
+        "LET a = 99 FOR i IN 1..10 FILTER i > a RETURN i",
+        "LET a = 1 FOR i IN 1..10 FILTER a != i RETURN i",
+        "FOR i IN 1..10 LET a = i LET b = i FILTER a == b RETURN i",
+        "FOR i IN 1..10 FOR j IN 1..10 FILTER i > j RETURN i",
+        "FOR i IN 1..10 LET a = 2 * i FILTER a == 1 RETURN i",
+        "FOR i IN 1..10 LIMIT 1 FILTER i == 1 RETURN i"
       ];
 
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query, { }, paramEnabled);
-        assertEqual([ ], result.plan.rules, query);
+        assertTrue(result.plan.rules.indexOf(ruleName) === -1, query);
       });
     },
 
@@ -103,21 +105,15 @@ function optimizerRuleTestSuite () {
 
     testRuleHasEffect : function () {
       var queries = [ 
-        "FOR i IN 1..10 FILTER true RETURN i",
-        "FOR i IN 1..10 FILTER 1 < 9 RETURN i",
-        "FOR i IN 1..10 LET a = 1 FILTER a == 1 RETURN i",
-        "FOR i IN 1..10 LET a = 1 LET b = 1 FILTER a == b RETURN i",
-        "FOR i IN 1..10 LET a = 1 LET b = 2 FILTER a != b RETURN i",
-        "FOR i IN 1..10 FILTER false RETURN i",
-        "FOR i IN 1..10 LET a = 1 FILTER a == 9 RETURN i",
-        "FOR i IN 1..10 LET a = 1 FILTER a != 1 RETURN i",
-        "FOR i IN 1..10 FILTER 1 == 1 && 2 == 2 RETURN 1",
-        "FOR i IN 1..10 FILTER 1 != 1 && 2 != 2 RETURN 1"
+        "FOR i IN 1..10 FOR j IN 1..10 FILTER i > 1 RETURN i",
+        "FOR i IN 1..10 LET x = (FOR j IN [i] RETURN j) FILTER i > 1 RETURN i",
+        "FOR i IN 1..10 LET a = 2 * i FILTER i == 1 RETURN a",
+        "FOR i IN 1..10 LET a = 2 * i FILTER i == 1 LIMIT 1 RETURN a"
       ];
 
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query, { }, paramEnabled);
-        assertEqual([ ruleName ], result.plan.rules);
+        assertTrue(result.plan.rules.indexOf(ruleName) === 1, query);
       });
     },
 
@@ -128,18 +124,14 @@ function optimizerRuleTestSuite () {
 
     testPlans : function () {
       var plans = [ 
-        [ "FOR i IN 1..10 FILTER true RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "ReturnNode" ] ],
-        [ "FOR i IN 1..10 FILTER 1 < 9 RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "ReturnNode" ] ],
-        [ "FOR i IN 1..10 LET a = 1 FILTER a == 1 RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "ReturnNode" ] ],
-        [ "FOR i IN 1..10 LET a = 1 LET b = 1 FILTER a == b RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "ReturnNode" ] ],
-        [ "FOR i IN 1..10 LET a = 1 LET b = 2 FILTER a != b RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "ReturnNode" ] ],
-        [ "FOR i IN 1..10 FILTER false RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "NoResultsNode", "ReturnNode" ] ],
-        [ "FOR i IN 1..10 LET a = 1 FILTER a == 9 RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "NoResultsNode", "ReturnNode" ] ],
-        [ "FOR i IN 1..10 LET a = 1 FILTER a != 1 RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "NoResultsNode", "ReturnNode" ] ]
+        [ "FOR i IN 1..10 FOR j IN 1..10 FILTER i > 1 RETURN i", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "EnumerateListNode", "ReturnNode" ] ],
+        [ "FOR i IN 1..10 LET x = (FOR j IN [i] RETURN j) FILTER i > 1 RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "SubqueryNode", "CalculationNode", "ReturnNode" ] ],
+        [ "FOR i IN 1..10 LET a = 2 * i FILTER i == 1 RETURN a", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ] ],
+        [ "FOR i IN 1..10 FOR j IN 1..10 FILTER i == 1 FILTER j == 2 RETURN i", [ "SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "EnumerateListNode", "CalculationNode", "FilterNode", "ReturnNode" ] ]
       ];
 
       plans.forEach(function(plan) {
-        var result = AQL_EXPLAIN(plan[0], { }, paramMore);
+        var result = AQL_EXPLAIN(plan[0], { }, paramEnabled);
         assertTrue(result.plan.rules.indexOf(ruleName) !== -1, plan[0]);
         assertEqual(plan[1], helper.getCompactPlan(result).map(function(node) { return node.type; }), plan[0]);
       });
@@ -151,15 +143,10 @@ function optimizerRuleTestSuite () {
 
     testResults : function () {
       var queries = [ 
-        [ "FOR i IN 1..10 FILTER true RETURN i", [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
-        [ "FOR i IN 1..10 LET a = 1 FILTER a == 1 RETURN i", [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
-        [ "FOR i IN 1..10 LET a = 1 FILTER a != 99 RETURN i", [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
-        [ "FOR i IN 1..10 LET a = 1 LET b = 1 FILTER a == b RETURN i", [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
-        [ "FOR i IN 1..10 FILTER false RETURN i", [ ] ],
-        [ "FOR i IN 1..10 FILTER 1 == 7 RETURN i", [ ] ],
-        [ "LET a = 1 FOR i IN 1..10 FILTER a == 7 && a == 3 RETURN i", [ ] ],
-        [ "FOR i IN 1..10 LET a = 1 FILTER a == 7 RETURN i", [ ] ],
-        [ "FOR i IN 1..10 LET a = 1 FILTER a != 1 RETURN i", [ ] ]
+        [ "FOR i IN 1..10 FOR j IN 1..10 FILTER i > 9 RETURN j", [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
+        [ "FOR i IN 1..10 LET x = (FOR j IN [i] RETURN j) FILTER i > 9 RETURN x", [ [ 10 ] ] ],
+        [ "FOR i IN 1..10 LET a = 2 * i FILTER i == 1 RETURN a", [ 2 ] ],
+        [ "FOR i IN 1..10 LET a = i FOR j IN 1..10 LET b = j FILTER a == 1 FILTER b == 2 RETURN [ a, b ]", [ [ 1, 2 ] ] ]
       ];
 
       queries.forEach(function(query) {
