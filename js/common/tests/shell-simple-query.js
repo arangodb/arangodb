@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 80 */
 /*global require, assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,7 +77,7 @@ function SimpleQueryArraySkipLimitSuite () {
       assertEqual(n, numbers.slice(2,10));
 
       n = query.clone().skip(10).toArray();
-      
+
       assertEqual(n, []);
 
       n = query.clone().skip(11).toArray();
@@ -300,19 +299,19 @@ function SimpleQueryByExampleSuite () {
     testByExampleHash1 : function () {
       var d, s;
       var example = { "a" : { "b" : true, "c" : "foo" }, "d" : true };
-     
+
       collection.ensureHashIndex("d");
-       
+
       d = collection.save(example);
       s = collection.firstExample({ "d" : true });
       assertEqual(d._id, s._id);
-      
+
       s = collection.firstExample({ "d" : false });
       assertEqual(null, s);
-      
+
       s = collection.firstExample({ "a.b" : true });
       assertEqual(d._id, s._id);
-      
+
       s = collection.firstExample({ "a.c" : "foo" });
       assertEqual(d._id, s._id);
     },
@@ -325,9 +324,9 @@ function SimpleQueryByExampleSuite () {
       var d1, d2, s;
       var example1 = { "a" : { "b" : true } };
       var example2 = { "a" : { "b" : "foo" } };
-     
+
       collection.ensureHashIndex("a.b");
-       
+
       d1 = collection.save(example1);
       d2 = collection.save(example2);
 
@@ -337,7 +336,7 @@ function SimpleQueryByExampleSuite () {
       assertEqual(d2._id, s._id);
       s = collection.firstExample({ "a.b" : false });
       assertEqual(null, s);
-      
+
       s = collection.firstExample(example1);
       assertEqual(d1._id, s._id);
       s = collection.firstExample(example2);
@@ -350,11 +349,11 @@ function SimpleQueryByExampleSuite () {
 
     testByExampleKey : function () {
       var d, s;
-      
+
       d = collection.save({ _key: "meow" });
       s = collection.firstExample({ _key: "foo" });
       assertEqual(null, s);
-      
+
       s = collection.firstExample({ _key: "meow" });
       assertEqual(d._id, s._id);
       assertEqual(d._key, s._key);
@@ -366,11 +365,11 @@ function SimpleQueryByExampleSuite () {
 
     testByExampleKeyMore : function () {
       var d, s;
-      
+
       d = collection.save({ _key: "meow" });
       s = collection.firstExample({ _key: "meow", a: 1 });
       assertEqual(null, s);
-      
+
       d = collection.save({ _key: "foo", a: 2 });
       s = collection.firstExample({ _key: "foo", a: 2 });
       assertEqual(d._id, s._id);
@@ -384,11 +383,11 @@ function SimpleQueryByExampleSuite () {
 
     testByExampleId : function () {
       var d, s;
-      
+
       d = collection.save({ _key: "meow" });
       s = collection.firstExample({ _id: cn + "/foo" });
       assertEqual(null, s);
-      
+
       s = collection.firstExample({ _id: cn + "/meow" });
       assertEqual(d._id, s._id);
       assertEqual(d._key, s._key);
@@ -400,11 +399,11 @@ function SimpleQueryByExampleSuite () {
 
     testByExampleIdMore : function () {
       var d, s;
-      
+
       d = collection.save({ _key: "meow" });
       s = collection.firstExample({ _id: cn + "/meow", a: 1 });
       assertEqual(null, s);
-      
+
       d = collection.save({ _key: "foo", a: 2 });
       s = collection.firstExample({ _id: cn + "/foo", a: 2 });
       assertEqual(d._id, s._id);
@@ -418,7 +417,7 @@ function SimpleQueryByExampleSuite () {
 
     testByExampleNonExisting : function () {
       var d, s;
-      
+
       d = collection.save({ _key: "meow" });
       s = collection.firstExample({ _foo: "foo" });
       assertEqual(null, s);
@@ -515,23 +514,23 @@ function SimpleQueryByExampleSuite () {
 
       deleted = collection.removeByExample({ value : 20 });
       assertEqual(1, deleted);
-      
+
       deleted = collection.removeByExample({ value : 20 });
       assertEqual(0, deleted);
 
       deleted = collection.removeByExample({ value : 1 });
       assertEqual(1, deleted);
-      
+
       // not existing documents
       deleted = collection.removeByExample({ value : 50 });
       assertEqual(0, deleted);
-      
+
       deleted = collection.removeByExample({ value : null });
       assertEqual(0, deleted);
-      
+
       deleted = collection.removeByExample({ value : "5" });
       assertEqual(0, deleted);
-      
+
       deleted = collection.removeByExample({ peter : "meow" });
       assertEqual(0, deleted);
 
@@ -560,17 +559,17 @@ function SimpleQueryByExampleSuite () {
 
       deleted = collection.removeByExample({ a : 1 }, {waitForSync: true, limit : 15});
       assertEqual(15, deleted);
-      
+
       // not existing documents
       deleted = collection.removeByExample({ value : 500 });
       assertEqual(0, deleted);
-      
+
       deleted = collection.removeByExample({ value : null });
       assertEqual(0, deleted);
-      
+
       deleted = collection.removeByExample({ value : "5" });
       assertEqual(0, deleted);
-      
+
       deleted = collection.removeByExample({ peter : "meow" });
       assertEqual(0, deleted);
 
@@ -600,20 +599,20 @@ function SimpleQueryByExampleSuite () {
 
       deleted = collection.removeByExample({ value1 : 4 });
       assertEqual(4, deleted);
-      
+
       deleted = collection.removeByExample({ value1 : 4 });
       assertEqual(0, deleted);
 
       // not existing documents
       deleted = collection.removeByExample({ value1 : 99 });
       assertEqual(0, deleted);
-      
+
       deleted = collection.removeByExample({ value1 : "0" });
       assertEqual(0, deleted);
-      
+
       deleted = collection.removeByExample({ meow : 1 });
       assertEqual(0, deleted);
-      
+
       deleted = collection.removeByExample({ meow : "peter" });
       assertEqual(0, deleted);
 
@@ -640,17 +639,17 @@ function SimpleQueryByExampleSuite () {
 
       deleted = collection.removeByExample({ value : 1 }, false, 20);
       assertEqual(20, deleted);
-      
+
       assertEqual(20, collection.count());
-      
+
       deleted = collection.removeByExample({ value : 1 }, false, 20);
       assertEqual(20, deleted);
-      
+
       assertEqual(0, collection.count());
-      
+
       deleted = collection.removeByExample({ value : 1 }, false, 20);
       assertEqual(0, deleted);
-      
+
       assertEqual(0, collection.count());
     },
 
@@ -678,10 +677,10 @@ function SimpleQueryByExampleSuite () {
       // not existing documents
       replaced = collection.replaceByExample({ meow : true }, { });
       assertEqual(0, replaced);
-      
+
       replaced = collection.replaceByExample({ value : null }, { });
       assertEqual(0, replaced);
-      
+
       collection.truncate();
       replaced = collection.replaceByExample({ value : 6 }, { });
       assertEqual(0, replaced);
@@ -712,10 +711,10 @@ function SimpleQueryByExampleSuite () {
       // not existing documents
       replaced = collection.replaceByExample({ meow : true }, { });
       assertEqual(0, replaced);
-      
+
       replaced = collection.replaceByExample({ value : null }, { });
       assertEqual(0, replaced);
-      
+
       collection.truncate();
       replaced = collection.replaceByExample({ value : 6 }, { });
       assertEqual(0, replaced);
@@ -741,7 +740,7 @@ function SimpleQueryByExampleSuite () {
       assertEqual(10, docs.length);
       docs = collection.byExample({ value : 1 }).toArray();
       assertEqual(40, docs.length);
-      
+
       replaced = collection.replaceByExample({ value : 1 }, { meow : false }, false, 15);
       assertEqual(15, replaced);
 
@@ -753,14 +752,14 @@ function SimpleQueryByExampleSuite () {
       assertEqual(15, docs.length);
       docs = collection.byExample({ value : 1 }).toArray();
       assertEqual(25, docs.length);
-      
+
       // not existing documents
       replaced = collection.replaceByExample({ meow : true }, { }, false, 99);
       assertEqual(0, replaced);
-      
+
       replaced = collection.replaceByExample({ value : null }, { }, false, 99);
       assertEqual(0, replaced);
-      
+
       // check counts
       docs = collection.byExample({ foo : "bar", bar : "baz" }).toArray();
       assertEqual(10, docs.length);
@@ -768,7 +767,7 @@ function SimpleQueryByExampleSuite () {
       assertEqual(15, docs.length);
       docs = collection.byExample({ value : 1 }).toArray();
       assertEqual(25, docs.length);
-      
+
       collection.truncate();
       replaced = collection.replaceByExample({ value : 1 }, { }, false);
       assertEqual(0, replaced);
@@ -795,20 +794,20 @@ function SimpleQueryByExampleSuite () {
       assertEqual("bar", doc.foo);
       assertEqual("baz", doc.bar);
       assertEqual(2, doc.value);
-      
+
       // update and remove old values
       updated = collection.updateByExample({ value : 5 }, { foo : "bart", bar : "baz", value : null }, false);
       assertEqual(1, updated);
-      
+
       var doc = collection.firstExample({ foo : "bart", bar : "baz" });
       assertEqual("bart", doc.foo);
       assertEqual("baz", doc.bar);
       assertEqual(undefined, doc.value);
-      
+
       // update and overwrite old values
       updated = collection.updateByExample({ value : 17 }, { foo : "barw", bar : "baz", value : 9 }, false);
       assertEqual(1, updated);
-      
+
       var doc = collection.firstExample({ foo : "barw", bar : "baz" });
       assertEqual("barw", doc.foo);
       assertEqual("baz", doc.bar);
@@ -817,10 +816,10 @@ function SimpleQueryByExampleSuite () {
       // not existing documents
       updated = collection.updateByExample({ meow : true }, { });
       assertEqual(0, updated);
-      
+
       updated = collection.updateByExample({ value : null }, { });
       assertEqual(0, updated);
-      
+
       collection.truncate();
       updated = collection.updateByExample({ value : 6 }, { });
       assertEqual(0, updated);
@@ -846,29 +845,29 @@ function SimpleQueryByExampleSuite () {
       assertEqual("bar", doc.foo);
       assertEqual("baz", doc.bar);
       assertEqual(2, doc.value);
-      
+
       // update and remove old values
       updated = collection.updateByExample({ value : 5 }, { foo : "bart", bar : "baz", value : null }, {keepNull: false});
       assertEqual(1, updated);
-      
+
       var doc = collection.firstExample({ foo : "bart", bar : "baz" });
       assertEqual("bart", doc.foo);
       assertEqual("baz", doc.bar);
       assertEqual(undefined, doc.value);
-      
+
       // update and overwrite old values
       updated = collection.updateByExample({ value : 17 }, { foo : "barw", bar : "baz", value : 9 }, {keepNull: false});
       assertEqual(1, updated);
-      
+
       var doc = collection.firstExample({ foo : "barw", bar : "baz" });
       assertEqual("barw", doc.foo);
       assertEqual("baz", doc.bar);
       assertEqual(9, doc.value);
-      
+
       // update and remove old values keep null values
       updated = collection.updateByExample({ value : 6 }, { foo : "bart6", bar : "baz6", value : null }, {keepNull: true});
       assertEqual(1, updated);
-      
+
       var doc = collection.firstExample({ foo : "bart6", bar : "baz6" });
       assertEqual("bart6", doc.foo);
       assertEqual("baz6", doc.bar);
@@ -877,10 +876,10 @@ function SimpleQueryByExampleSuite () {
       // not existing documents
       updated = collection.updateByExample({ meow : true }, { });
       assertEqual(0, updated);
-      
+
       updated = collection.updateByExample({ not_existent_null_value : null }, { });
       assertEqual(0, updated);
-      
+
       collection.truncate();
       updated = collection.updateByExample({ value : 6 }, { });
       assertEqual(0, updated);
@@ -915,7 +914,7 @@ function SimpleQueryByExampleSuite () {
       assertEqual(10, docs.length);
       docs = collection.byExample({ value : 1 }).toArray();
       assertEqual(50, docs.length);
-      
+
       // update some others
       updated = collection.updateByExample({ value : 1 }, { meow : false }, false, false, 15);
       assertEqual(15, updated);
@@ -939,7 +938,7 @@ function SimpleQueryByExampleSuite () {
       assertEqual(5, docs.length);
       docs = collection.byExample({ value : 1 }).toArray();
       assertEqual(45, docs.length);
-      
+
       // update some, overwrite old values
       updated = collection.updateByExample({ value : 1 }, { value : 16 }, false, false, 10);
       assertEqual(10, updated);
@@ -952,14 +951,14 @@ function SimpleQueryByExampleSuite () {
       assertEqual(5, docs.length);
       docs = collection.byExample({ value : 1 }).toArray();
       assertEqual(35, docs.length);
-      
+
       // not existing documents
       updated = collection.updateByExample({ meow : true }, { }, false, false, 99);
       assertEqual(0, updated);
-      
+
       updated = collection.updateByExample({ value : null }, { }, false, false, 99);
       assertEqual(0, updated);
-      
+
       collection.truncate();
       updated = collection.updateByExample({ value : 1 }, { });
       assertEqual(0, updated);
@@ -980,7 +979,7 @@ function SimpleQueryByExampleHashSuite () {
   var cn = "UnitTestsCollectionByExample";
   var collection = null;
   var errors = require("org/arangodb").errors;
-  
+
   var id = function(d) { return d._id; };
 
   return {
@@ -1022,7 +1021,7 @@ function SimpleQueryByExampleHashSuite () {
 
     testByExampleHashWrongIndex : function () {
       var idx = collection.ensureSkiplist("d");
-       
+
       try {
         collection.byExampleHash(idx.id, { "d" : true }).toArray();
         fail();
@@ -1056,7 +1055,7 @@ function SimpleQueryByExampleHashSuite () {
 
       s = collection.byExampleHash(idx, { i : 9 }).toArray();
       assertEqual([ ], s);
-      
+
       try {
         collection.byExampleHash(idx.id, { j : 2 }).toArray();
         fail();
@@ -1064,7 +1063,7 @@ function SimpleQueryByExampleHashSuite () {
       catch (err1) {
         assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err1.errorNum);
       }
-      
+
       idx = collection.ensureHashIndex("a.j");
 
       s = collection.byExampleHash(idx.id, { "a.j" : 1 }).toArray().map(id).sort();
@@ -1077,7 +1076,7 @@ function SimpleQueryByExampleHashSuite () {
       catch (err2) {
         assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err2.errorNum);
       }
-      
+
       try {
         collection.byExampleHash(idx.id, { j : 2 }).toArray();
         fail();
@@ -1085,11 +1084,11 @@ function SimpleQueryByExampleHashSuite () {
       catch (err3) {
         assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err3.errorNum);
       }
-      
+
       idx = collection.ensureHashIndex("i", "a.j");
       s = collection.byExampleHash(idx, { i : 1, "a.j" : 1 }).toArray().map(id).sort();
       assertEqual([d2._id, d3._id].sort(), s);
-      
+
       s = collection.byExampleHash(idx, { "a.j" : 1, i : 1 }).toArray().map(id).sort();
       assertEqual([d2._id, d3._id].sort(), s);
     }
@@ -1109,7 +1108,7 @@ function SimpleQueryByExampleSkiplistSuite () {
   var cn = "UnitTestsCollectionByExample";
   var collection = null;
   var errors = require("org/arangodb").errors;
-  
+
   var id = function(d) { return d._id; };
 
   return {
@@ -1151,7 +1150,7 @@ function SimpleQueryByExampleSkiplistSuite () {
 
     testByExampleSkiplistWrongIndex : function () {
       var idx = collection.ensureHashIndex("d");
-       
+
       try {
         collection.byExampleSkiplist(idx.id, { "d" : true }).toArray();
         fail();
@@ -1185,7 +1184,7 @@ function SimpleQueryByExampleSkiplistSuite () {
 
       s = collection.byExampleSkiplist(idx, { i : 9 }).toArray();
       assertEqual([ ], s);
-      
+
       try {
         collection.byExampleSkiplist(idx.id, { j : 2 }).toArray();
         fail();
@@ -1193,7 +1192,7 @@ function SimpleQueryByExampleSkiplistSuite () {
       catch (err1) {
         assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err1.errorNum);
       }
-      
+
       idx = collection.ensureSkiplist("a.j");
 
       s = collection.byExampleSkiplist(idx.id, { "a.j" : 1 }).toArray().map(id).sort();
@@ -1206,7 +1205,7 @@ function SimpleQueryByExampleSkiplistSuite () {
       catch (err2) {
         assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err2.errorNum);
       }
-      
+
       try {
         collection.byExampleSkiplist(idx.id, { j : 2 }).toArray();
         fail();
@@ -1214,11 +1213,11 @@ function SimpleQueryByExampleSkiplistSuite () {
       catch (err3) {
         assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err3.errorNum);
       }
-      
+
       idx = collection.ensureSkiplist("i", "a.j");
       s = collection.byExampleSkiplist(idx, { i : 1, "a.j" : 1 }).toArray().map(id).sort();
       assertEqual([d2._id, d3._id].sort(), s);
-     
+
       s = collection.byExampleSkiplist(idx, { "a.j" : 1, i : 1 }).toArray().map(id).sort();
       assertEqual([d2._id, d3._id].sort(), s);
     }
@@ -1351,7 +1350,7 @@ function SimpleQueryAnySuite () {
 
     setUp : function () {
       var name;
-      
+
       name = cn + "Empty";
       db._drop(name);
       collectionEmpty = db._create(name, { waitForSync : false });

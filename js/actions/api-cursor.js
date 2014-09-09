@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*jshint strict: false */
 /*global require, CURSOR, DELETE_CURSOR */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -493,9 +493,7 @@ function put_api_cursor (req, res) {
   catch (e) {
   }
 
-  // force garbage-collection
   cursor = null;
-  internal.wait(0.0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

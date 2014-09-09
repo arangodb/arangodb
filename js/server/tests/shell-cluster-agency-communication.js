@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, regexp: true */
 /*global require, fail*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -38,7 +37,7 @@
     var prefix = prefixes.join("/") + "/";
     var res = {};
     _.each(list, function(v, k) {
-      res[prefix + k] = v; 
+      res[prefix + k] = v;
     });
     return res;
   };
@@ -86,7 +85,7 @@
       shards: {
         v1: "pavel",
         v2: "paul",
-        v3: "patricia", 
+        v3: "patricia",
         v4: "pavel",
         v5: "patricia",
         v6: "pavel"
@@ -344,7 +343,7 @@
   // --SECTION--                                                            vision
   // -----------------------------------------------------------------------------
   function runVisionTests(test) {
-   // Not yet defined and in use, changes are applied in Target directly 
+   // Not yet defined and in use, changes are applied in Target directly
   };
 
   // -----------------------------------------------------------------------------
@@ -612,7 +611,7 @@
           ].sort();
           assertEqual(dbs.getList(), list);
         },
-        
+
         testGetCollectionListForDatabase: function() {
           var syslist = [
             "_graphs",
@@ -652,9 +651,9 @@
 
         testGetShardsForServer: function() {
           var colV = dbs.select("_system").collection("v");
-          assertEqual(colV.getShardsForServer("pavel"), ["v1", "v4", "v6"].sort()); 
-          assertEqual(colV.getShardsForServer("paul"), ["v2"].sort()); 
-          assertEqual(colV.getShardsForServer("patricia"), ["v3", "v5"].sort()); 
+          assertEqual(colV.getShardsForServer("pavel"), ["v1", "v4", "v6"].sort());
+          assertEqual(colV.getShardsForServer("paul"), ["v2"].sort());
+          assertEqual(colV.getShardsForServer("patricia"), ["v3", "v5"].sort());
         },
 
         testGetServerForShard: function() {
@@ -681,7 +680,7 @@
           assertTrue(wasCalled, "Agency has not been informed to move shard..");
           assertEqual(colV.getServerForShard(shard), target);
         }
-        
+
       };
     };
 
@@ -818,9 +817,9 @@
 
         testGetShardsForServer: function() {
           var colV = dbs.select("_system").collection("v");
-          assertEqual(colV.getShardsForServer("pavel"), ["v1", "v4", "v6"].sort()); 
-          assertEqual(colV.getShardsForServer("paul"), ["v2"].sort()); 
-          assertEqual(colV.getShardsForServer("patricia"), ["v3", "v5"].sort()); 
+          assertEqual(colV.getShardsForServer("pavel"), ["v1", "v4", "v6"].sort());
+          assertEqual(colV.getShardsForServer("paul"), ["v2"].sort());
+          assertEqual(colV.getShardsForServer("patricia"), ["v3", "v5"].sort());
         },
 
         testGetServerForShard: function() {
@@ -944,7 +943,7 @@
           ].sort();
           assertEqual(dbs.getList(), list);
         },
-        
+
         testGetCollectionListForDatabase: function() {
           var syslist = [
             "_graphs",
@@ -984,9 +983,9 @@
 
         testGetShardsForServer: function() {
           var colV = dbs.select("_system").collection("v");
-          assertEqual(colV.getShardsForServer("pavel"), ["v1", "v4", "v6"].sort()); 
-          assertEqual(colV.getShardsForServer("paul"), ["v2"].sort()); 
-          assertEqual(colV.getShardsForServer("patricia"), ["v3", "v5"].sort()); 
+          assertEqual(colV.getShardsForServer("pavel"), ["v1", "v4", "v6"].sort());
+          assertEqual(colV.getShardsForServer("paul"), ["v2"].sort());
+          assertEqual(colV.getShardsForServer("patricia"), ["v3", "v5"].sort());
         },
 
         testGetServerForShard: function() {
@@ -994,7 +993,7 @@
           assertEqual(colV.getServerForShard("v1"), "pavel");
           assertEqual(colV.getServerForShard("v2"), "paul");
         }
-        
+
       };
     };
 
@@ -1089,7 +1088,7 @@
 
       return {
         setUp: function() {
-          setup();  
+          setup();
           targetServers = comm.target.DBServers();
           targetCoordinators = comm.target.Coordinators();
         },

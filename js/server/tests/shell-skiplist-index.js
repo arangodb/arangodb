@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 80 */
 /*global require, db, assertEqual, assertTrue, ArangoCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -349,7 +348,7 @@ function SkipListSuite() {
         for (j = 1;  j < documents.length;  ++j) {
           var valj = values[j].a;
           var expect = documents.slice(i, j + 1);
-        
+
           var isValid = ! ((vali !== null && typeof vali === 'object'));
           if (isValid) {
             isValid &= ! ((valj !== null && typeof valj === 'object'));

@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _, d3*/
 /*global document*/
 /*global modalDialogHelper, uiComponentsHelper*/
@@ -30,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 function GharialAdapterControls(list, adapter) {
   "use strict";
-  
+
   if (list === undefined) {
     throw "A list element has to be given.";
   }
@@ -40,7 +39,7 @@ function GharialAdapterControls(list, adapter) {
   this.addControlChangeGraph = function(callback) {
     var prefix = "control_adapter_graph",
       idprefix = prefix + "_";
-      
+
     adapter.getGraphs(function(graphs) {
       uiComponentsHelper.createButton(list, "Graph", prefix, function() {
         modalDialogHelper.createModalDialog("Switch Graph",
@@ -79,7 +78,7 @@ function GharialAdapterControls(list, adapter) {
       });
     });
   };
-  
+
   this.addControlChangePriority = function() {
     var prefix = "control_adapter_priority",
       idprefix = prefix + "_",
@@ -107,7 +106,7 @@ function GharialAdapterControls(list, adapter) {
       );
     });
   };
-  
+
   this.addAll = function() {
     this.addControlChangeGraph();
     this.addControlChangePriority();

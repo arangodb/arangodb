@@ -1,9 +1,8 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, newcap: true */
 /*global window, btoa, $, Backbone, templateEngine, alert, _ */
 
 (function() {
   "use strict";
-  
+
   window.PlanSymmetricView = Backbone.View.extend({
     el: "#content",
     template: templateEngine.createTemplate("symmetricPlan.ejs"),
@@ -36,8 +35,7 @@
       var data = {dispatchers: []};
       var foundCoordinator = false;
       var foundDBServer = false;
-      /*jslint unparam: true*/
-      data.useSSLonDBservers = !!$(".useSSLonDBservers").prop('checked');
+            data.useSSLonDBservers = !!$(".useSSLonDBservers").prop('checked');
       data.useSSLonCoordinators = !!$(".useSSLonCoordinators").prop('checked');
       $(".dispatcher").each(function(i, dispatcher) {
         var host = $(".host", dispatcher).val();
@@ -64,8 +62,7 @@
 
         data.dispatchers.push(hostObject);
       });
-      /*jslint unparam: false*/
-      if (!self.isSymmetric) {
+            if (!self.isSymmetric) {
         if (!foundDBServer) {
             alert("Please provide at least one database server");
             return;
@@ -87,8 +84,7 @@
       $('.modal-backdrop.fade.in').addClass('waitModalBackdrop');
       $('#waitModalMessage').html('Please be patient while your cluster is being launched');
       delete window.App.clusterPlan._coord;
-      /*jslint unparam: true*/
-      window.App.clusterPlan.save(
+            window.App.clusterPlan.save(
         data,
         {
           success : function() {
@@ -104,8 +100,7 @@
           }
         }
       );
-      /*jslint unparam: false*/
-    },
+          },
 
     addEntry: function() {
       //disable launch button

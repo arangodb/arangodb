@@ -1,3 +1,5 @@
+# config file for arangob
+
 keep-alive = true
 progress = true
 

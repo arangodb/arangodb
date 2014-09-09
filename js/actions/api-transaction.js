@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 180, sloppy: true, vars: true, white: true, plusplus: true */
+/*jshint strict: false */
 /*global require, TRANSACTION */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -168,7 +168,14 @@ var actions = require("org/arangodb/actions");
 ///       collections: {
 ///         write : [ "products", "materials" ]
 ///       },
-///       action: "function () { var db = require('internal').db; db.products.save({}); db.materials.save({}); return 'worked!'; }"
+///       action: (
+///         "function () {" +
+///         "var db = require('internal').db;" +
+///         "db.products.save({});" +
+///         "db.materials.save({});" +
+///         "return 'worked!';" +
+///         "}"
+///       )
 ///     };
 ///
 ///     var response = logCurlRequest('POST', url, body);
@@ -190,7 +197,13 @@ var actions = require("org/arangodb/actions");
 ///       collections: {
 ///         write : "products"
 ///       },
-///       action : "function () { var db = require('internal').db; db.products.save({ _key: 'abc'}); db.products.save({ _key: 'abc'}); }"
+///       action : (
+///         "function () {" +
+///         "var db = require('internal').db;" +
+///         "db.products.save({ _key: 'abc'});" +
+///         "db.products.save({ _key: 'abc'});" +
+///         "}"
+///       )
 ///     };
 ///
 ///     var response = logCurlRequest('POST', url, body);

@@ -1,0 +1,52 @@
+{% macro articles(_articles) %}
+    {% for item in _articles %}
+        {% set externalLink = item.path|isExternalLink %}
+        <li class="chapter {% if item.path == _input %}active{% endif %}" data-level="{{ item.level }}" {% if item.path && !externalLink %}data-path="{{ item.path|mdLink }}"{% endif %}>
+            {% if item.path %}
+                {% if !externalLink %}
+                    <a href="{{ basePath }}/{{ item.path|mdLink }}">
+                        <i class="fa fa-check"></i>
+                        {% if item.level !== "0" %}
+                            <b>{{ item.level }}.</b>
+                        {% endif %}
+                         {{ item.title }}
+                    </a>
+                {% else %}
+                    <a target="_blank" href="{{ item.path }}">
+                        <i class="fa fa-check"></i>
+                        {% if item.level !== "0" %}
+                            <b>{{ item.level }}.</b>
+                        {% endif %}
+                         {{ item.title }}
+                    </a>
+                {% endif %}
+            {% else %}
+            <span><b>{{ item.level }}.</b> {{ item.title }}</span>
+            {% endif %}
+            {% if item.articles.length > 0 %}
+            <ul class="articles">
+                {{ articles(item.articles) }}
+            </ul>
+            {% endif %}
+        </li>
+    {% endfor %}
+{% endmacro %}
+
+<div class="book-summary">
+    <div class="book-search">
+        <input type="text" placeholder="Search" class="form-control" />
+    </div>
+    <ul class="summary">
+        {% set _divider = false %}
+        {% if options.links.issues !== false && (options.links.issues || githubId) %}
+        {% set _divider = true %}
+        <li>
+            <a href="http://docs.arangodb.org" target="blank">Documentation</a>
+        </li>
+        {% endif %}
+        {% if _divider %}
+        <li class="divider"></li>
+        {% endif %}
+        {{ articles(summary.chapters) }}
+    </ul>
+</div>

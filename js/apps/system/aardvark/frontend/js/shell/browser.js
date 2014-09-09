@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*jshint strict: false, unused: false */
 /*global $, jqconsole, window, document */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -269,7 +269,7 @@ function ArangoConnection () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getDatabaseName 
+/// @brief getDatabaseName
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoConnection.prototype.getDatabaseName = function () {
@@ -277,7 +277,7 @@ ArangoConnection.prototype.getDatabaseName = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief setDatabaseName 
+/// @brief setDatabaseName
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoConnection.prototype.setDatabaseName = function (name) {
@@ -309,16 +309,16 @@ ArangoConnection.prototype.databasePrefix = function (url) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoConnection.prototype.get = function (url) {
-  var msg = null; 
+  var msg = null;
 
   $.ajax({
-    async: false, 
+    async: false,
     cache: false,
     type: "GET",
-    url: url, 
+    url: url,
     contentType: "application/json",
     dataType: "json",
-    processData: false, 
+    processData: false,
     success: function(data) {
       msg = data;
     },
@@ -332,7 +332,7 @@ ArangoConnection.prototype.get = function (url) {
     }
   });
 
-  return msg;  
+  return msg;
 };
 
 ArangoConnection.prototype.GET = ArangoConnection.prototype.get;
@@ -342,15 +342,15 @@ ArangoConnection.prototype.GET = ArangoConnection.prototype.get;
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoConnection.prototype._delete = function (url) {
-  var msg = null; 
+  var msg = null;
 
   $.ajax({
-    async: false, 
+    async: false,
     type: "DELETE",
-    url: url, 
+    url: url,
     contentType: "application/json",
     dataType: "json",
-    processData: false, 
+    processData: false,
     success: function(data) {
       msg = data;
     },
@@ -364,7 +364,7 @@ ArangoConnection.prototype._delete = function (url) {
     }
   });
 
-  return msg;  
+  return msg;
 };
 
 ArangoConnection.prototype.DELETE = ArangoConnection.prototype._delete;
@@ -377,13 +377,13 @@ ArangoConnection.prototype.post = function (url, body) {
   var msg = null;
 
   $.ajax({
-    async: false, 
+    async: false,
     type: "POST",
-    url: url, 
-    data: body, 
+    url: url,
+    data: body,
     contentType: "application/json",
     dataType: "json",
-    processData: false, 
+    processData: false,
     success: function(data) {
       msg = data;
     },
@@ -397,7 +397,7 @@ ArangoConnection.prototype.post = function (url, body) {
     }
   });
 
-  return msg;  
+  return msg;
 };
 
 ArangoConnection.prototype.POST = ArangoConnection.prototype.post;
@@ -407,16 +407,16 @@ ArangoConnection.prototype.POST = ArangoConnection.prototype.post;
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoConnection.prototype.put = function (url, body) {
-  var msg = null; 
+  var msg = null;
 
   $.ajax({
-    async: false, 
+    async: false,
     type: "PUT",
-    url: url, 
-    data: body, 
+    url: url,
+    data: body,
     contentType: "application/json",
     dataType: "json",
-    processData: false, 
+    processData: false,
     success: function(data) {
       msg = data;
     },
@@ -430,7 +430,7 @@ ArangoConnection.prototype.put = function (url, body) {
     }
   });
 
-  return msg;  
+  return msg;
 };
 
 ArangoConnection.prototype.PUT = ArangoConnection.prototype.put;
@@ -440,16 +440,16 @@ ArangoConnection.prototype.PUT = ArangoConnection.prototype.put;
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoConnection.prototype.patch = function (url, body) {
-  var msg = null; 
+  var msg = null;
 
   $.ajax({
-    async: false, 
+    async: false,
     type: "PATCH",
-    url: url, 
-    data: body, 
+    url: url,
+    data: body,
     contentType: "application/json",
     dataType: "json",
-    processData: false, 
+    processData: false,
     success: function(data) {
       msg = data;
     },
@@ -463,7 +463,7 @@ ArangoConnection.prototype.patch = function (url, body) {
     }
   });
 
-  return msg;  
+  return msg;
 };
 
 ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
@@ -542,7 +542,7 @@ ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
         text = String(value);
       }
 
-      internal.browserOutputBuffer += text; 
+      internal.browserOutputBuffer += text;
     }
   };
 

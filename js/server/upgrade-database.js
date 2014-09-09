@@ -1,6 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, stupid: true, continue: true, regexp: true nonpropdel: true*/
-/*global require, exports, module, ArangoAgency,
-         UPGRADE_ARGS: true, UPGRADE_STARTED: true */
+/*jshint strict: false, unused: false, -W051: true */
+/*global require, module, ArangoAgency, UPGRADE_ARGS: true, UPGRADE_STARTED: true */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief upgrade or initialise the database
@@ -36,7 +35,16 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+function updateGlobals() {
+  // set this global variable to inform the server we actually got until here...
+  UPGRADE_STARTED = true;
+
+  // delete the global variable
+  delete UPGRADE_ARGS;
+}
+
 (function (args) {
+  "use strict";
   var internal = require("internal");
   var fs = require("fs");
   var console = require("console");
@@ -46,7 +54,6 @@
   var db = internal.db;
 
   function upgrade () {
-    'use strict';
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -650,7 +657,10 @@
       database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
 
       task: function () {
-        return createSystemCollection("_users", { waitForSync : true, shardKeys: [ "user" ] });
+        return createSystemCollection("_users", { 
+          waitForSync : true, 
+          shardKeys: [ "user" ] 
+        });
       }
     });
 
@@ -1237,7 +1247,7 @@
       task: function () {
         var name = "_configuration";
         var result = createSystemCollection(name, {
-          waitForSync: true,
+          waitForSync: false,
           journalSize: 1024 * 1024
         });
 
@@ -1407,11 +1417,7 @@
     return upgradeDatabase();
   }
 
-  // set this global variable to inform the server we actually got until here...
-  UPGRADE_STARTED = true;
-
-  // delete the global variable
-  delete UPGRADE_ARGS;
+  updateGlobals();
 
   // and run the upgrade
   return upgrade();

@@ -1,5 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, proto: true */
-/*jslint sloppy: true, regexp: true */
+/*jshint strict: false, unused: false, -W051: true */
 /*global require, module, Module, ArangoError, SleepAndRequeue,
   CONFIGURE_ENDPOINT, REMOVE_ENDPOINT, LIST_ENDPOINTS, STARTUP_PATH,
   SYS_BASE64DECODE, SYS_BASE64ENCODE, SYS_DEBUG_SEGFAULT,
@@ -7,7 +6,7 @@
   SYS_DOWNLOAD, SYS_EXECUTE, SYS_GET_CURRENT_REQUEST, SYS_GET_CURRENT_RESPONSE,
   SYS_LOAD, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STATISTICS,
   SYS_RAND, SYS_SERVER_STATISTICS, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER,
-  SYS_HMAC, SYS_SHA256, SYS_SHA224, SYS_SHA1, SYS_SLEEP, SYS_WAIT,
+  SYS_HMAC, SYS_PBKDF2, SYS_SHA512, SYS_SHA384, SYS_SHA256, SYS_SHA224, SYS_SHA1, SYS_SLEEP, SYS_WAIT,
   SYS_PARSE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, SYS_LOG,
   SYS_GEN_RANDOM_NUMBERS, SYS_GEN_RANDOM_ALPHA_NUMBERS, SYS_GEN_RANDOM_SALT, SYS_CREATE_NONCE,
   SYS_CHECK_AND_MARK_NONCE, SYS_CLIENT_STATISTICS, SYS_HTTP_STATISTICS, SYS_UNIT_TESTS, SYS_UNIT_TESTS_RESULT:true,
@@ -49,7 +48,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  // cannot use strict here as we are going to delete globals
+  /*jshint strict: false */
 
   var exports = require("internal");
 
@@ -483,6 +482,15 @@
   }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief pbkdf2-hmac
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_PBKDF2 !== "undefined") {
+    exports.pbkdf2 = SYS_PBKDF2;
+    delete SYS_PBKDF2;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief createNonce
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -535,6 +543,24 @@
   if (typeof SYS_RAND !== "undefined") {
     exports.rand = SYS_RAND;
     delete SYS_RAND;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sha512
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_SHA512 !== "undefined") {
+    exports.sha512 = SYS_SHA512;
+    delete SYS_SHA512;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sha384
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_SHA384 !== "undefined") {
+    exports.sha384 = SYS_SHA384;
+    delete SYS_SHA384;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1115,7 +1141,7 @@
       context.output += context.names[p];
     }
     else {
-      if (value && (value instanceof Object || value.__proto__ === null)) {
+      if (value && (value instanceof Object || (typeof value === 'object' && Object.getPrototypeOf(value) === null))) {
         context.seen.push(value);
         context.names.push(context.path);
         if (customInspect && typeof value._PRINT === "function") {
@@ -1129,7 +1155,10 @@
         else if (value instanceof Array) {
           printArray(value, context);
         }
-        else if (value.toString === Object.prototype.toString || value.__proto__ === null) {
+        else if (
+          value.toString === Object.prototype.toString
+          || (typeof value === 'object' && Object.getPrototypeOf(value) === null)
+        ) {
           printObject(value, context);
 
           if (context.emit && context.output.length >= context.emit) {

@@ -1,5 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, vars: true, white: true, plusplus: true, continue: true, regexp: true */
-/*global require, window, Backbone, arangoHelper, _ */
+/*global window, Backbone, arangoHelper, _ */
 
 window.arangoDocumentModel = Backbone.Model.extend({
   initialize: function () {
@@ -27,7 +26,7 @@ window.arangoDocumentModel = Backbone.Model.extend({
 
       return l < r ? -1 : 1;
     });
-    
+
     var sorted = {};
     _.each(keys, function (k) {
       sorted[k] = self.attributes[k];

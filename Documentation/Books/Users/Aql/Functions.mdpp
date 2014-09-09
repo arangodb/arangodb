@@ -491,7 +491,7 @@ AQL supports the following functions to operate on document values:
   The *examples* must be a list of 1..n example documents, with any number of attributes
   each. Note: specifying an empty list of examples is not allowed.
    
-  @EXAMPLE
+  @EXAMPLES
 
       RETURN MATCHES(
         { "test" : 1 }, [ 
@@ -694,7 +694,7 @@ will fail with an error.
 
 AQL has the following functions to traverse graphs:
 
-**Warning Deprecated**
+**Warning: Deprecated**
 
 This query is deprecated and will be removed soon.
 Please use [Graph operations](../Aql/GraphOperations.md) instead.
@@ -726,7 +726,7 @@ Please use [Graph operations](../Aql/GraphOperations.md) instead.
         FILTER p.source._id == "123456/123456" && LENGTH(p.edges) == 2
         RETURN p.vertices[*].name
 
-**Warning Deprecated**
+**Warning: Deprecated**
 
 This query is deprecated and will be removed soon.
 Please use [Graph operations](../Aql/GraphOperations.md) instead.
@@ -867,7 +867,7 @@ Please use [Graph operations](../Aql/GraphOperations.md) instead.
         return [ ]; // include everything else
       }, false);
 
-**Warning Deprecated**
+**Warning: Deprecated**
 
 This query is deprecated and will be removed soon.
 Please use [Graph operations](../Aql/GraphOperations.md) instead.
@@ -896,7 +896,7 @@ If no bounds are set, a traversal may run into an endless loop in a cyclic graph
 and even in a non-cyclic graph, traversing far into the graph may consume a lot of processing
 time and memory for the result set.
 
-**Warning Deprecated**
+**Warning: Deprecated**
 
 This query is deprecated and will be removed soon.
 Please use [Graph operations](../Aql/GraphOperations.md) instead.
@@ -1018,7 +1018,7 @@ Please use [Graph operations](../Aql/GraphOperations.md) instead.
       EDGES(friendrelations, "friends/john", "outbound")
       EDGES(friendrelations, "friends/john", "any", [ { "$label": "knows" } ])
 
-**Warning Deprecated**
+**Warning: Deprecated**
 
 This query is deprecated and will be removed soon.
 Please use [Graph operations](../Aql/GraphOperations.md) instead.

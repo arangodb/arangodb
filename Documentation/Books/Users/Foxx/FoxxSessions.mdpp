@@ -18,12 +18,30 @@ If *type* is set to *"cookie"*, the session cookie will be updated after every r
 
 * *options* (optional): an object with any of the following properties:
   * *sessionStorageApp* (optional): mount point of the session storage app to use. Default: *"/_system/sessions"*.
-  * *type* (optional): sessions type, currently only *"cookie"* is supported. Default: *"cookie"*.
-  * *cookieName* (optional): name of the session cookie if using cookie sessions. If a *cookieSecret* is provided, the signature will be stored in a cookie named *cookieName + "_sig"*. Defaults to *"sid"*.
-  * *cookieSecret* (optional): secret string to sign session cookies with if using cookie sessions.
+  * *type* (optional): sessions type, currently only *"cookie"* and *"header"* are supported. Default: *"cookie"*.
+  * *cookie* (optional): an object with the following properties:
+    * *name*: name of the session cookie if using cookie sessions. Default: *"sid"*.
+    * *secret* (optional): secret string to sign session cookies with if using cookie sessions.
+    * *algorithm* (optional): algorithm to sign session cookies with if using cookie sessions. Default: *"sha256"*.
+  * *header* (optional): name of the session header if using header sessions. Default: *"X-Session-Id"*.
+  * *jwt* (optional): whether the session ID should be wrapped in a JSON Web Token. Default: *false*.
   * *autoCreateSession* (optional): whether a session should always be created if none exists. Default: *true*.
 
-@EXAMPLES
+If *cookie* is set to a string, its value will be used as the *cookie.name* instead.
+
+Optionally *jwt* can be an object with any of the following values:
+
+* *secret* (optional): secret string to sign session JSON Web Tokens with.
+* *algorithm* (optional): algorithm to sign session JSON Web Tokens with. Default: *"HS256"* if a *secret* is provided, *"none"* otherwise.
+* *verify* (optional): whether incoming session JSON Web Tokens should be verified. Default: *true*.
+
+If *jwt* is set to a string, its value will be used as the *jwt.secret* instead.
+
+Note that if the *jwt.algorithm* is explicitly set to any algorithm other than *"none"*, not providing a *jwt.secret* will raise an exception.
+
+*Examples*
+
+Example configuration for using signed cookies:
 
 ```js
 var controller = new FoxxController(applicationContext);
@@ -31,6 +49,79 @@ controller.activateSessions({
   sessionStorageApp: '/_system/sessions',
   cookieName: 'sid',
   cookieSecret: 'secret',
+  type: 'cookie'
+});
+```
+
+Example configuration for using a header:
+
+```js
+var controller = new FoxxController(applicationContext);
+controller.activateSessions({
+  sessionStorageApp: '/_system/sessions',
+  headerName: 'X-Session-Token',
+  type: 'header'
+});
+```
+
+Example configuration for using a JWT header:
+
+```js
+var controller = new FoxxController(applicationContext);
+controller.activateSessions({
+  sessionStorageApp: '/_system/sessions',
+  headerName: 'X-Web-Token',
+  jwt: 'keyboardcat',
+  type: 'header'
+});
+```
+
+Example configuration for using a JWT header with signature algorithm "none" (and no secret):
+
+```js
+var controller = new FoxxController(applicationContext);
+controller.activateSessions({
+  sessionStorageApp: '/_system/sessions',
+  headerName: 'X-Web-Token',
+  jwt: true,
+  type: 'header'
+});
+```
+
+Example configuration for using a JWT header with signature verification disabled:
+
+```js
+var controller = new FoxxController(applicationContext);
+controller.activateSessions({
+  sessionStorageApp: '/_system/sessions',
+  headerName: 'X-Web-Token',
+  jwt: {
+    verify: false
+  },
+  type: 'header'
+});
+```
+
+Example configuration for using signed JWT cookies:
+
+```js
+var controller = new FoxxController(applicationContext);
+controller.activateSessions({
+  sessionStorageApp: '/_system/sessions',
+  cookieName: 'token',
+  cookieSecret: 'secret',
+  jwt: 'keyboardcat',
+  type: 'cookie'
+});
+```
+
+Example configuration for using unsigned cookies:
+
+```js
+var controller = new FoxxController(applicationContext);
+controller.activateSessions({
+  sessionStorageApp: '/_system/sessions',
+  cookieName: 'sid',
   type: 'cookie'
 });
 ```

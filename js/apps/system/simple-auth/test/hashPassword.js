@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, es5: true */
 /*global require, module, describe, it, beforeEach */
 (function () {
   'use strict';
@@ -33,14 +32,14 @@
 
     it('uses the salt length defined by the configuration', function () {
       cfg.saltLength = 42;
-      var result = hashPassword('secret');
+      hashPassword('secret');
       expect(crypto.genRandomAlphaNumbers.callCount).to.equal(1);
       expect(crypto.genRandomAlphaNumbers.args[0]).to.eql([42]);
     });
 
     it('prefixes the password with the salt', function () {
       crypto.genRandomAlphaNumbers.returns('keyboardcat');
-      var result = hashPassword('secret');
+      hashPassword('secret');
       expect(crypto.bogohash.callCount).to.equal(1);
       expect(crypto.bogohash.args[0]).to.eql(['keyboardcatsecret']);
     });

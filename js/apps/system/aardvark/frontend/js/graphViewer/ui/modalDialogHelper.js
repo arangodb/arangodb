@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global document, $, _ */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -32,8 +31,8 @@ var modalDialogHelper = modalDialogHelper || {};
 
 (function dialogHelper() {
   "use strict";
-  
-  var 
+
+  var
     bindSubmit = function(button) {
       $(document).bind("keypress.key13", function(e) {
         if (e.which && e.which === 13) {
@@ -41,11 +40,11 @@ var modalDialogHelper = modalDialogHelper || {};
         }
       });
     },
-  
+
     unbindSubmit = function() {
       $(document).unbind("keypress.key13");
     },
-  
+
     createDialogWithObject = function (title, buttonTitle, idprefix, object, callback) {
       var tableToJSON,
         callbackCapsule = function() {
@@ -63,30 +62,30 @@ var modalDialogHelper = modalDialogHelper || {};
       tableToJSON = function() {
         var result = {};
         _.each($("#" + idprefix + "table tr:not(#first_row)"), function(tr) {
-        
+
           var key = $(".keyCell input", tr).val(),
             value = $(".valueCell input", tr).val();
           result[key] = value;
         });
         return result;
       };
-    
+
       table.appendChild(firstRow);
       firstRow.id = "first_row";
       firstRow.appendChild(firstCell);
       firstCell.className = "keyCell";
-    
+
       firstRow.appendChild(secondCell);
       secondCell.className = "valueCell";
-    
+
       firstRow.appendChild(thirdCell);
-    
+
       thirdCell.className = "actionCell";
       thirdCell.appendChild(addRow);
-    
+
       addRow.id = idprefix + "new";
       addRow.className = "graphViewer-icon-button gv-icon-small add";
-    
+
       insertRow = function(value, key) {
         var internalRegex = /^_(id|rev|key|from|to)/,
           tr = document.createElement("tr"),
@@ -100,7 +99,7 @@ var modalDialogHelper = modalDialogHelper || {};
           return;
         }
         table.appendChild(tr);
-      
+
         tr.appendChild(keyTh);
         keyTh.className = "keyCell";
         keyInput = document.createElement("input");
@@ -108,8 +107,8 @@ var modalDialogHelper = modalDialogHelper || {};
         keyInput.id = idprefix + key + "_key";
         keyInput.value = key;
         keyTh.appendChild(keyInput);
-      
-      
+
+
         tr.appendChild(valueTh);
         valueTh.className = "valueCell";
         valueInput = document.createElement("input");
@@ -120,33 +119,33 @@ var modalDialogHelper = modalDialogHelper || {};
         } else {
           valueInput.value = value;
         }
-      
+
         valueTh.appendChild(valueInput);
-      
+
 
         tr.appendChild(actTh);
         actTh.className = "actionCell";
         deleteInput = document.createElement("button");
         deleteInput.id = idprefix + key + "_delete";
         deleteInput.className = "graphViewer-icon-button gv-icon-small delete";
-      
+
         actTh.appendChild(deleteInput);
-      
+
         deleteInput.onclick = function() {
           table.removeChild(tr);
         };
-      
+
       };
-    
+
       addRow.onclick = function() {
         insertRow("", "new_" + newCounter);
         newCounter++;
       };
-    
+
       _.each(object, insertRow);
       $("#" + idprefix + "modal").modal('show');
     },
-  
+
     createViewWithObject = function (title, buttonTitle, idprefix, object, callback) {
       var table = modalDialogHelper.modalDivTemplate(title, buttonTitle, idprefix, callback),
         firstRow = document.createElement("tr"),
@@ -159,7 +158,7 @@ var modalDialogHelper = modalDialogHelper || {};
       pre.innerHTML = JSON.stringify(object, null, 2);
       $("#" + idprefix + "modal").modal('show');
     },
-    
+
     createTextInput = function(id, value) {
       var input = document.createElement("input");
         input.type = "text";
@@ -167,7 +166,7 @@ var modalDialogHelper = modalDialogHelper || {};
         input.value = value;
         return input;
     },
-    
+
     createCheckboxInput = function(id, selected) {
       var input = document.createElement("input");
       input.type = "checkbox";
@@ -175,7 +174,7 @@ var modalDialogHelper = modalDialogHelper || {};
       input.checked = selected;
       return input;
     },
-    
+
     createListInput = function(id, list, selected) {
       var input = document.createElement("select");
       input.id = id;
@@ -193,7 +192,7 @@ var modalDialogHelper = modalDialogHelper || {};
       });
       return input;
     },
-    
+
     displayDecissionRowsOfGroup = function(group) {
       var options = $(".decission_" + group),
       selected = $("input[type='radio'][name='" + group + "']:checked").attr("id");
@@ -205,9 +204,9 @@ var modalDialogHelper = modalDialogHelper || {};
         }
       });
     },
-    
+
     insertModalRow,
-    
+
     insertDecissionInput = function(idPre, idPost, group,
       text, isDefault, interior, contentTh, table) {
       var input = document.createElement("input"),
@@ -239,7 +238,7 @@ var modalDialogHelper = modalDialogHelper || {};
       };
       displayDecissionRowsOfGroup(group);
     },
-    
+
     insertExtendableInput = function(idPre, idPost, list, contentTh, table, tr) {
       var rows = [],
         i,
@@ -305,14 +304,14 @@ var modalDialogHelper = modalDialogHelper || {};
 
     modalContent = function(title, idprefix) {
       // Create needed Elements
-      
+
       var div = document.createElement("div"),
         headerDiv = document.createElement("div"),
         buttonDismiss = document.createElement("button"),
         header = document.createElement("a"),
         bodyDiv = document.createElement("div"),
         bodyTable = document.createElement("table");
-          
+
       // Set Classnames and attributes.
       div.id = idprefix + "modal";
       div.className = "modal hide fade createModalDialog";
@@ -325,7 +324,7 @@ var modalDialogHelper = modalDialogHelper || {};
         unbindSubmit();
         document.body.removeChild(div);
       };
-        
+
       headerDiv.className = "modal-header";
       header.className = "arangoHeader";
       buttonDismiss.id = idprefix + "modal_dismiss";
@@ -333,22 +332,22 @@ var modalDialogHelper = modalDialogHelper || {};
       buttonDismiss.dataDismiss = "modal";
       buttonDismiss.ariaHidden = "true";
       buttonDismiss.appendChild(document.createTextNode("×"));
-      
+
       header.appendChild(document.createTextNode(title));
-      
+
       bodyDiv.className = "modal-body";
-      
+
       bodyTable.id = idprefix + "table";
-      
+
       // Append in correct ordering
       div.appendChild(headerDiv);
       div.appendChild(bodyDiv);
-      
+
       headerDiv.appendChild(buttonDismiss);
       headerDiv.appendChild(header);
-      
+
       bodyDiv.appendChild(bodyTable);
-      
+
       document.body.appendChild(div);
 
       buttonDismiss.onclick = function() {
@@ -361,7 +360,7 @@ var modalDialogHelper = modalDialogHelper || {};
         bodyTable: bodyTable
       };
     };
-    
+
   insertModalRow = function(table, idprefix, o) {
     var tr = document.createElement("tr"),
       labelTh = document.createElement("th"),
@@ -422,16 +421,16 @@ var modalDialogHelper = modalDialogHelper || {};
     buttonCancel.id = idprefix + "cancel";
     buttonCancel.className = "button-close btn-margin";
     buttonCancel.appendChild(document.createTextNode("Close"));
-    
+
     buttonSubmit.id = idprefix + "submit";
     buttonSubmit.className = "button-success";
     buttonSubmit.style.marginRight = "8px";
     buttonSubmit.appendChild(document.createTextNode(buttonTitle));
-    
+
     content.div.appendChild(footerDiv);
     footerDiv.appendChild(buttonSubmit);
     footerDiv.appendChild(buttonCancel);
-    
+
     // Add click events
     buttonCancel.onclick = function() {
       unbindSubmit();
@@ -446,7 +445,7 @@ var modalDialogHelper = modalDialogHelper || {};
     // Return the table which has to be filled somewhere else
     return content.bodyTable;
   };
-  
+
   modalDialogHelper.createModalDialog = function(title, idprefix, objects, callback, buttonTitle) {
     var table =  modalDialogHelper.modalDivTemplate(title, buttonTitle, idprefix, callback);
     _.each(objects, function(o) {
@@ -454,7 +453,7 @@ var modalDialogHelper = modalDialogHelper || {};
     });
     $("#" + idprefix + "modal").modal('show');
   };
-  
+
   modalDialogHelper.createModalChangeDialog = function(title, idprefix, objects, callback) {
     var table =  modalDialogHelper.modalDivTemplate(title, "Change", idprefix, callback);
     _.each(objects, function(o) {
@@ -462,19 +461,19 @@ var modalDialogHelper = modalDialogHelper || {};
     });
     $("#" + idprefix + "modal").modal('show');
   };
-  
+
   modalDialogHelper.createModalEditDialog = function(title, idprefix, object, callback) {
     createDialogWithObject(title, "Save", idprefix, object, callback);
   };
-  
+
   modalDialogHelper.createModalCreateDialog = function(title, idprefix, object, callback) {
     createDialogWithObject(title, "Create", idprefix, object, callback);
   };
-  
+
   modalDialogHelper.createModalViewDialog = function(title, idprefix, object, callback) {
     createViewWithObject(title, "Edit", idprefix, object, callback);
   };
-  
+
   modalDialogHelper.createModalDeleteDialog = function(title, idprefix, object, callback) {
     var footerDiv = document.createElement("div"),
       buttonCancel = document.createElement("button"),
@@ -486,16 +485,16 @@ var modalDialogHelper = modalDialogHelper || {};
     buttonCancel.id = idprefix + "cancel";
     buttonCancel.className = "button-close btn-margin";
     buttonCancel.appendChild(document.createTextNode("Close"));
-    
+
     buttonSubmit.id = idprefix + "submit";
     buttonSubmit.className = "button-danger";
     buttonSubmit.style.marginRight = "8px";
     buttonSubmit.appendChild(document.createTextNode("Delete"));
-    
+
     content.div.appendChild(footerDiv);
     footerDiv.appendChild(buttonSubmit);
     footerDiv.appendChild(buttonCancel);
-    
+
     // Add click events
     buttonCancel.onclick = function() {
       unbindSubmit();
@@ -509,5 +508,5 @@ var modalDialogHelper = modalDialogHelper || {};
     bindSubmit(buttonSubmit);
     $("#" + idprefix + "modal").modal('show');
   };
-  
+
 }());

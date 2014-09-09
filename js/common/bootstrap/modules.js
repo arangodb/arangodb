@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, regexp: true, nonpropdel: true */
+/*jshint -W051: true */
 /*global require, module: true, STARTUP_PATH, DEV_APP_PATH, APP_PATH, MODULES_PATH,
   EXPORTS_SLOW_BUFFER, SYS_PLATFORM, REGISTER_EXECUTE_FILE, SYS_EXECUTE, SYS_READ */
 
@@ -48,8 +48,7 @@ module = null;
 ////////////////////////////////////////////////////////////////////////////////
 
 function require (path) {
-  'use strict';
-
+  "use strict";
   return module.require(path);
 }
 
@@ -58,6 +57,7 @@ function require (path) {
 // -----------------------------------------------------------------------------
 
 (function () {
+  /*jshint strict: false */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief running under windows
@@ -123,7 +123,7 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal" declaration
 ////////////////////////////////////////////////////////////////////////////////
-  
+
   var internal;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,13 +131,13 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   var fs;
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "console" declaration
 ////////////////////////////////////////////////////////////////////////////////
 
   var console;
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Package constructor declaration
 ////////////////////////////////////////////////////////////////////////////////
@@ -343,7 +343,7 @@ function require (path) {
 
         throw e;
       }
-      
+
       return {
         id: id,
         path: normalizeModuleName(path + "/.."),
@@ -451,7 +451,7 @@ function require (path) {
     var e = new Error("corrupted module '" + path
                     + "', in collection '" + m[1]
                     + "', no content");
-    
+
     e.moduleNotFound = false;
     e._path = path;
     e._origin = origin;
@@ -550,8 +550,10 @@ function require (path) {
       }
 
       script += "delete __myenv__;"
-             + content
-             + "\n});";
+             +  "(function () {\n"
+             +  content
+             +  "\n}());"
+             +  "\n});";
 
       var fun = internal.executeScript(script, undefined, filename);
 
@@ -898,7 +900,7 @@ function require (path) {
 
       if (/\.coffee$/.test(filename)) {
         var cs = require("coffee-script");
-      
+
         fileContent = cs.compile(fileContent, {bare: true});
       }
 
@@ -936,7 +938,7 @@ function require (path) {
     this._description = description;    // the package.json file
     this._parent = parent;              // parent package
 
-    this._moduleCache = {};             // module cache 
+    this._moduleCache = {};             // module cache
     this._packageCache = {};            // package chache
 
     this._origin = origin;              // root of the package
@@ -1100,13 +1102,13 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "/"
 ////////////////////////////////////////////////////////////////////////////////
-  
+
   module = Module.prototype.root = systemPackage.defineSystemModule("/");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
 ////////////////////////////////////////////////////////////////////////////////
-  
+
   internal = systemPackage.defineSystemModule("/internal").exports;
 
   (function () {
@@ -1128,13 +1130,13 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "fs"
 ////////////////////////////////////////////////////////////////////////////////
-  
+
   fs = systemPackage.defineSystemModule("/fs").exports;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "console"
 ////////////////////////////////////////////////////////////////////////////////
-  
+
   console = systemPackage.defineSystemModule("/console").exports;
 
 // -----------------------------------------------------------------------------
@@ -1421,7 +1423,7 @@ function require (path) {
 
   ArangoApp = function (id, manifest, root, path, options) {
     'use strict';
-    
+
     this._id = id;
     this._manifest = manifest;
     this._name = manifest.name;
@@ -1547,7 +1549,7 @@ function require (path) {
     }
 
     var file = fs.join(mp.root, mp.path, "manifest.json");
-    
+
     if (! fs.exists(file)) {
       console.error("manifest file is missing '%s'", file);
       return null;
@@ -1570,12 +1572,12 @@ function require (path) {
       console.error("manifest file '%s' is missing a name attribute", file);
       return null;
     }
-        
+
     if (! manifest.hasOwnProperty("version")) {
       console.error("manifest file '%s' is missing a version attribute", file);
       return null;
     }
-        
+
     if (appId.substr(0,4) === "dev:") {
       appId = "dev:" + manifest.name + ":" + mp.path;
     }
@@ -1682,7 +1684,7 @@ function require (path) {
     }
     else if (/\.coffee$/.test(filename)) {
       var cs = require("coffee-script");
-      
+
       fileContent = cs.compile(fileContent, {bare: true});
     }
 
@@ -1717,7 +1719,9 @@ function require (path) {
     }
 
     content += "delete __myenv__;"
+             + "(function () {\n"
              + fileContent
+             + "\n}());"
              + "\n});";
 
     var fun = internal.executeScript(content, undefined, full);

@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
+/*jshint browser: true */
+/*jshint unused: false */
 /*global describe, jasmine, beforeEach, afterEach, Backbone, it, spyOn, expect*/
 /*global $*/
 
@@ -126,7 +127,7 @@
       expect(reqps.axes.y.valueFormatter).toBeDefined();
       formatter = reqps.axes.y.valueFormatter;
       expect(formatter(floatNum)).toEqual(parseFloat(floatNum.toPrecision(3)));
-     
+
       expect(reqps.axes.y.axisLabelFormatter).toBeDefined();
       formatter = reqps.axes.y.axisLabelFormatter;
       expect(formatter(floatNum)).toEqual(parseFloat(floatNum.toPrecision(3)));
