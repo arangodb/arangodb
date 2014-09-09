@@ -39,11 +39,14 @@ var isEqual = helper.isEqual;
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerRuleTestSuite () {
-  var ruleName = "remove-unnecessary-calculations";
+  var ruleName = "remove-unnecessary-filters";
   // various choices to control the optimizer: 
-  var paramNone   = { optimizer: { rules: [ "-all" ] } };
-  var paramEnabled    = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
-  var paramDisabled  = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
+  var paramNone     = { optimizer: { rules: [ "-all" ] } };
+  var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
+  var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
+  var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
+  var paramMore     = { optimizer: { rules: [ "-all", "+" + ruleName, "+remove-unnecessary-calculations-2" ] } };
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,7 +69,8 @@ function optimizerRuleTestSuite () {
 
     testRuleDisabled : function () {
       var queries = [ 
-          "LET a = SLEEP(2) RETURN 1"
+        "FOR i IN 1..10 FILTER true RETURN 1",
+        "FOR i IN 1..10 FILTER 1 != 7 RETURN 1"
       ];
 
       queries.forEach(function(query) {
@@ -81,7 +85,9 @@ function optimizerRuleTestSuite () {
 
     testRuleNoEffect : function () {
       var queries = [ 
-          "FOR a IN 1 RETURN a + 1"
+          "FOR i IN 1..10 FILTER i > 1 RETURN i",
+          "FOR i IN 1..10 LET a = 99 FILTER i > a RETURN i",
+          "FOR i IN 1..10 LET a = i FILTER a != 99 RETURN i",
       ];
 
       queries.forEach(function(query) {
@@ -96,13 +102,18 @@ function optimizerRuleTestSuite () {
 
     testRuleHasEffect : function () {
       var queries = [ 
-          "FOR i IN 1..10 LET a = 1 FILTER i == a RETURN i"
-//          "FOR i IN 1..10 LET a = i + 1 FILTER i != a RETURN i"
+        "FOR i IN 1..10 FILTER true RETURN i",
+        "FOR i IN 1..10 FILTER 1 < 9 RETURN i",
+        "FOR i IN 1..10 LET a = 1 FILTER a == 1 RETURN i",
+        "FOR i IN 1..10 LET a = 1 LET b = 1 FILTER a == b RETURN i",
+        "FOR i IN 1..10 LET a = 1 LET b = 2 FILTER a != b RETURN i",
+        "FOR i IN 1..10 FILTER false RETURN i",
+        "FOR i IN 1..10 LET a = 1 FILTER a == 9 RETURN i",
+        "FOR i IN 1..10 LET a = 1 FILTER a != 1 RETURN i"
       ];
 
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query, { }, paramEnabled);
-          //require("internal").print(result);
         assertEqual([ ruleName ], result.plan.rules);
       });
     },
@@ -114,14 +125,20 @@ function optimizerRuleTestSuite () {
 
     testPlans : function () {
       var plans = [ 
-          ["FOR i IN 1..10 LET a = 1 FILTER i == a RETURN i", ["SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "ReturnNode" ]]
-          ];
+        [ "FOR i IN 1..10 FILTER true RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "ReturnNode" ] ],
+        [ "FOR i IN 1..10 FILTER 1 < 9 RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "ReturnNode" ] ],
+        [ "FOR i IN 1..10 LET a = 1 FILTER a == 1 RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "ReturnNode" ] ],
+        [ "FOR i IN 1..10 LET a = 1 LET b = 1 FILTER a == b RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "ReturnNode" ] ],
+        [ "FOR i IN 1..10 LET a = 1 LET b = 2 FILTER a != b RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "ReturnNode" ] ],
+        [ "FOR i IN 1..10 FILTER false RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "NoResultsNode", "ReturnNode" ] ],
+        [ "FOR i IN 1..10 LET a = 1 FILTER a == 9 RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "NoResultsNode", "ReturnNode" ] ],
+        [ "FOR i IN 1..10 LET a = 1 FILTER a != 1 RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "NoResultsNode", "ReturnNode" ] ]
+      ];
 
       plans.forEach(function(plan) {
-          var result = AQL_EXPLAIN(plan[0], { }, paramEnabled);
-          assertEqual([ ruleName ], result.plan.rules, plan[0]);
-          //require("internal").print(helper.getCompactPlan(result).map(function(node) { return node.type; }));
-          assertEqual(plan[1], helper.getCompactPlan(result).map(function(node) { return node.type; }), plan[0]);
+        var result = AQL_EXPLAIN(plan[0], { }, paramMore);
+        assertTrue(result.plan.rules.indexOf(ruleName) !== -1, plan[0]);
+        assertEqual(plan[1], helper.getCompactPlan(result).map(function(node) { return node.type; }), plan[0]);
       });
     },
 
@@ -131,14 +148,29 @@ function optimizerRuleTestSuite () {
 
     testResults : function () {
       var queries = [ 
-          ["FOR i IN 1..10 LET a = 1 FILTER i == a RETURN i", ["SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "ReturnNode" ]]
+        [ "FOR i IN 1..10 FILTER true RETURN i", [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
+        [ "FOR i IN 1..10 LET a = 1 FILTER a == 1 RETURN i", [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
+        [ "FOR i IN 1..10 LET a = 1 FILTER a != 99 RETURN i", [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
+        [ "FOR i IN 1..10 LET a = 1 LET b = 1 FILTER a == b RETURN i", [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
+        [ "FOR i IN 1..10 FILTER false RETURN i", [ ] ],
+        [ "FOR i IN 1..10 FILTER 1 == 7 RETURN i", [ ] ],
+        [ "FOR i IN 1..10 LET a = 1 FILTER a == 7 RETURN i", [ ] ],
+        [ "FOR i IN 1..10 LET a = 1 FILTER a != 1 RETURN i", [ ] ]
       ];
 
       queries.forEach(function(query) {
-          var resultDisabled = AQL_EXECUTE(query[0], { }, paramDisabled).json;
-          var resultEnabled  = AQL_EXECUTE(query[0], { }, paramEnabled).json;
+        var planDisabled   = AQL_EXPLAIN(query[0], { }, paramDisabled);
+        var planEnabled    = AQL_EXPLAIN(query[0], { }, paramEnabled);
+        var resultDisabled = AQL_EXECUTE(query[0], { }, paramDisabled).json;
+        var resultEnabled  = AQL_EXECUTE(query[0], { }, paramEnabled).json;
 
-          assertTrue(isEqual(resultDisabled, resultEnabled), query[0]);
+        assertTrue(isEqual(resultDisabled, resultEnabled), query[0]);
+
+        assertTrue(planDisabled.plan.rules.indexOf(ruleName) === -1, query[0]);
+        assertTrue(planEnabled.plan.rules.indexOf(ruleName) !== -1, query[0]);
+
+        assertEqual(resultDisabled, query[1]);
+        assertEqual(resultEnabled, query[1]);
       });
     }
 
