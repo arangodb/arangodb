@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _, d3*/
 /*global ColourMapper*/
 ////////////////////////////////////////////////////////////////////////////////
@@ -31,7 +30,7 @@
 
 function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config, limitCallback) {
   "use strict";
-  
+
   if (width === undefined || width < 0) {
     throw("A width has to be given.");
   }
@@ -59,8 +58,8 @@ function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config, limi
   ) {
     throw("The Edge shaper has to be given.");
   }
-  
-  
+
+
   var self = this,
     fontSize,
     nodeRadius,
@@ -80,7 +79,7 @@ function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config, limi
     slider,
     minZoom,
     limitCB = limitCallback || function() {},
-    
+
     calcNodeLimit = function () {
       var div, reqSize;
       if (currentZoom >= labelToggle) {
@@ -94,14 +93,14 @@ function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config, limi
       }
       return Math.floor(size / div);
     },
-    
+
     calcDistortionValues = function () {
       currentDistortion = baseDist / currentZoom - 0.99999999; // Always > 0
       currentDistortionRadius = baseDRadius / currentZoom;
       fisheye.distortion(currentDistortion);
       fisheye.radius(currentDistortionRadius);
     },
-    
+
     reactToZoom = function(scale, transX, transY, fromButton) {
       if (fromButton) {
         if (scale !== null) {
@@ -121,7 +120,7 @@ function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config, limi
       nodeShaper.activateLabel(currentZoom >= labelToggle);
       edgeShaper.activateLabel(currentZoom >= labelToggle);
       calcDistortionValues();
-      
+
       var transT = "translate(" + currentTranslation + ")",
       scaleT = " scale(" + currentZoom + ")";
       if (g._isCommunity) {
@@ -133,13 +132,13 @@ function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config, limi
          slider.slider("option", "value", currentZoom);
       }
     },
-    
+
     getScaleDelta = function(nextScale) {
       var diff = lastD3Scale - nextScale;
       lastD3Scale = nextScale;
       return diff;
     },
-    
+
     getTranslationDelta = function(nextTrans) {
       var tmp = [];
       tmp[0] = nextTrans[0] - lastD3Translation[0];
@@ -148,7 +147,7 @@ function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config, limi
       lastD3Translation[1] = nextTrans[1];
       return tmp;
     },
-    
+
     parseConfig = function (conf) {
       if (conf === undefined) {
         conf = {};
@@ -162,15 +161,15 @@ function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config, limi
       minZoom = rMin/rMax;
       fontSize = fontMax;
       nodeRadius = rMax;
-      
+
       labelToggle = fontMin / fontMax;
       currentZoom = 1;
       currentTranslation = [0, 0];
       lastD3Translation = [0, 0];
       calcDistortionValues();
-      
+
       currentLimit = calcNodeLimit();
-      
+
       zoom = d3.behavior.zoom()
         .scaleExtent([minZoom, 1])
         .on("zoom", function() {
@@ -209,10 +208,10 @@ function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config, limi
           } else {
             translation = getTranslationDelta(d3.event.translate);
           }
-          
+
           reactToZoom(scale, translation[0], translation[1]);
        });
-      
+
     },
     mouseMoveHandle = function() {
       var focus = d3.mouse(this);
@@ -224,57 +223,57 @@ function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config, limi
       nodeShaper.updateNodes();
       edgeShaper.updateEdges();
     };
-    
-    
-  
+
+
+
   fisheye = d3.fisheye.circular();
-  
+
   parseConfig(config);
-  
+
   svg.call(zoom);
-  
+
   nodeShaper.changeTo({
     distortion: fisheye
   });
-  
+
   svg.on("mousemove", mouseMoveHandle);
-  
+
   self.translation = function() {
     return null;
   };
-  
+
   self.scaleFactor = function() {
     return currentZoom;
   };
-  
+
   self.scaledMouse = function() {
     return null;
   };
- 
+
   self.getDistortion = function() {
     return currentDistortion;
   };
-  
+
   self.getDistortionRadius = function() {
     return currentDistortionRadius;
   };
-  
+
   self.getNodeLimit = function() {
     return currentLimit;
   };
-  
+
   self.getMinimalZoomFactor = function() {
     return minZoom;
   };
-  
+
   self.registerSlider = function(s) {
     slider = s;
   };
-  
+
   self.triggerScale = function(s) {
     reactToZoom(s, null, null, true);
   };
-  
+
   self.triggerTranslation = function(x, y) {
     reactToZoom(null, x, y, true);
   };
@@ -282,5 +281,5 @@ function ZoomManager(width, height, svg, g, nodeShaper, edgeShaper, config, limi
   self.changeWidth = function(w) {
     size =  width * height;
   };
- 
+
 }

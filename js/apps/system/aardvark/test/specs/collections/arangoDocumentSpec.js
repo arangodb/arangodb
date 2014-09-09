@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
+/*jshint browser: true */
+/*jshint unused: false */
 /*global XMLHttpRequestException, describe, beforeEach, afterEach, it, spyOn,
  arangoHelper, expect*/
 /*global $*/

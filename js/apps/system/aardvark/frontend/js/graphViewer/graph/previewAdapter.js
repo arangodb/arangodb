@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, d3, _, console, document, window*/
 /*global AbstractAdapter*/
 ////////////////////////////////////////////////////////////////////////////////
@@ -30,7 +29,7 @@
 
 function PreviewAdapter(nodes, edges, viewer, config) {
   "use strict";
-  
+
   if (nodes === undefined) {
     throw "The nodes have to be given.";
   }
@@ -43,7 +42,7 @@ function PreviewAdapter(nodes, edges, viewer, config) {
 
   var self = this,
     absAdapter = new AbstractAdapter(nodes, edges, this, viewer),
-    
+
     parseConfig = function(config) {
       if (config.width !== undefined) {
         absAdapter.setWidth(config.width);
@@ -71,7 +70,7 @@ function PreviewAdapter(nodes, edges, viewer, config) {
     };
 
   config = config || {};
-  
+
   parseConfig(config);
 
   self.loadInitialNode = function(nodeId, callback) {
@@ -137,63 +136,63 @@ function PreviewAdapter(nodes, edges, viewer, config) {
         _to: 3,
         label: "Edge 5"
       };
-      
+
     ns.push(n1);
     ns.push(n2);
     ns.push(n3);
     ns.push(n4);
     ns.push(n5);
-        
+
     es.push(e12);
     es.push(e13);
     es.push(e14);
     es.push(e15);
     es.push(e23);
-    
+
     result.first = n1;
     result.nodes = ns;
     result.edges = es;
-    
+
     parseResult(result, callback);
   };
 
   self.explore = absAdapter.explore;
 
   self.requestCentralityChildren = function(nodeId, callback) {};
-  
+
   self.createEdge = function (edgeToAdd, callback) {
     window.alert("Server-side: createEdge was triggered.");
   };
-  
+
   self.deleteEdge = function (edgeToRemove, callback) {
     window.alert("Server-side: deleteEdge was triggered.");
   };
-  
+
   self.patchEdge = function (edgeToPatch, patchData, callback) {
     window.alert("Server-side: patchEdge was triggered.");
   };
-  
+
   self.createNode = function (nodeToAdd, callback) {
     window.alert("Server-side: createNode was triggered.");
   };
-  
+
   self.deleteNode = function (nodeToRemove, callback) {
     window.alert("Server-side: deleteNode was triggered.");
     window.alert("Server-side: onNodeDelete was triggered.");
   };
-  
+
   self.patchNode = function (nodeToPatch, patchData, callback) {
     window.alert("Server-side: patchNode was triggered.");
   };
-    
+
   self.setNodeLimit = function (pLimit, callback) {
     absAdapter.setNodeLimit(pLimit, callback);
   };
-  
+
   self.setChildLimit = function (pLimit) {
     absAdapter.setChildLimit(pLimit);
   };
-  
+
   self.setWidth = absAdapter.setWidth;
 
   self.expandCommunity = function (commNode, callback) {
@@ -202,5 +201,5 @@ function PreviewAdapter(nodes, edges, viewer, config) {
       callback();
     }
   };
-  
+
 }

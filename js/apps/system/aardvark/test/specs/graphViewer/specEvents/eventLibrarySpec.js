@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
+/*jshint unused: false */
 /*global beforeEach, afterEach */
 /*global describe, it, expect, jasmine */
 /*global runs, spyOn, waitsFor */
@@ -42,7 +42,7 @@
       nodeShaperDummy = {},
       edgeShaperDummy = {},
       adapterDummy = {};
-    
+
     beforeEach(function() {
       eventLib = new EventLibrary();
       nodeShaperDummy.reshapeNodes = function() {};
@@ -54,11 +54,11 @@
     });
 
     describe('Expand', function() {
-      
-      var 
+
+      var
         config,
         testee;
-      
+
       beforeEach(function() {
         adapterDummy.explore = function(){};
         config = {
@@ -67,7 +67,7 @@
           reshapeNodes: function() {}
         };
       });
-      
+
       it('should call explore on the adapter', function() {
         var node = {
           _id: "0"
@@ -77,11 +77,11 @@
         //config.adapter = adapterDummy.loadNode;
         testee = eventLib.Expand(config);
         testee(node);
-        
+
         expect(adapterDummy.explore).wasCalledWith(node, config.startCallback);
-        
+
       });
-      
+
       it('should call reshape nodes', function() {
         var node = {
           _id: "0"
@@ -89,11 +89,11 @@
         spyOn(config, "reshapeNodes");
         testee = eventLib.Expand(config);
         testee(node);
-        
+
         expect(config.reshapeNodes).wasCalled();
-        
+
       });
-      
+
       it('should call the start callback', function() {
         var node = {
           _id: "0"
@@ -103,17 +103,17 @@
 
         testee = eventLib.Expand(config);
         testee(node);
-        
+
         expect(config.startCallback).wasCalled();
 
       });
-      
 
-            
+
+
       describe('setup process', function() {
-        
+
         var testConfig = {};
-     
+
         it('should throw an error if start callback is not given', function() {
           expect(
             function() {
@@ -121,7 +121,7 @@
             }
           ).toThrow("A callback to the Start-method has to be defined");
         });
-        
+
         it('should throw an error if load node callback is not given', function() {
           testConfig.startCallback = function(){};
           expect(
@@ -130,7 +130,7 @@
             }
           ).toThrow("An adapter to load data has to be defined");
         });
-        
+
         it('should throw an error if reshape node callback is not given', function() {
           testConfig.startCallback = function(){};
           testConfig.adapter = adapterDummy;
@@ -140,71 +140,71 @@
             }
           ).toThrow("A callback to reshape nodes has to be defined");
         });
-        
+
       });
-      
+
     });
-    
+
     describe('Drag', function() {
-      
+
       describe('setup process', function() {
-        
+
         it('should throw an error if layouter is not given', function() {
           var testConfig = {};
-          
+
           expect(
             function() {
               eventLib.checkDragConfig(testConfig);
             }
           ).toThrow("A layouter has to be defined");
-          
+
           expect(
             function() {
               eventLib.Drag(testConfig);
             }
           ).toThrow("A layouter has to be defined");
         });
-        
+
         it('should throw an error if the layouter does not offer a drag function', function() {
           var testConfig = {
             layouter: {}
           };
-          
+
           expect(
             function() {
               eventLib.checkDragConfig(testConfig);
             }
           ).toThrow("The layouter has to offer a drag function");
-          
+
           expect(
             function() {
               eventLib.Drag(testConfig);
             }
           ).toThrow("The layouter has to offer a drag function");
-          
+
           testConfig.layouter.drag = 42;
-          
+
           expect(
             function() {
               eventLib.checkDragConfig(testConfig);
             }
           ).toThrow("The layouter has to offer a drag function");
-          
+
           expect(
             function() {
               eventLib.Drag(testConfig);
             }
           ).toThrow("The layouter has to offer a drag function");
         });
-        
+
       });
-      
+
     });
-    
+
     describe('Insert Node', function() {
-      
+
       it('should create an event to add a node', function() {
-                
+
         var adapterDummy = {},
         nodes = [],
         created = null,
@@ -213,7 +213,7 @@
           called = true;
         },
         testee;
-        
+
         runs(function() {
           adapterDummy.createNode = function(nodeToCreate, callback) {
             created = nodeToCreate;
@@ -226,26 +226,26 @@
             adapter: adapterDummy,
             shaper: nodeShaperDummy
           };
-        
+
           testee = eventLib.InsertNode(nodeEditorConfig);
           testee(callbackCheck);
         });
-        
+
         waitsFor(function() {
           return called;
         });
-        
+
         runs(function() {
           expect(created).toBeDefined();
           expect(nodeShaperDummy.reshapeNodes).toHaveBeenCalled();
         });
-        
+
       });
-      
+
     });
-    
+
     describe('Patch Node', function() {
-      
+
       it('should create an event to patch a node', function() {
         var adapterDummy = {},
         patched = {id: "1"},
@@ -261,23 +261,23 @@
           shaper: nodeShaperDummy
         },
         testee;
-        
+
         adapterDummy.patchNode = function(nodeToPatch, patchData, callback) {
           patched = nodeToPatch;
           $.extend(patched, patchData);
           callback();
         };
 
-        
+
         runs(function() {
           testee = eventLib.PatchNode(nodeEditorConfig);
           testee(patched, data, callbackCheck);
         });
-        
+
         waitsFor(function() {
           return called;
         });
-        
+
         runs(function() {
           expect(patched).toBeDefined();
           expect(nodeShaperDummy.reshapeNodes).toHaveBeenCalled();
@@ -285,11 +285,11 @@
           expect(patched.hello).toEqual("world");
         });
       });
-      
+
     });
-    
+
     describe('Delete Node', function() {
-      
+
       it('should create an event to delete a node', function() {
         var adapterDummy = {},
         toDel = {id: "2"},
@@ -305,35 +305,35 @@
           shaper: nodeShaperDummy
         },
         testee;
-        
+
         adapterDummy.deleteNode = function(nodeToDelete, callback) {
           deleted = nodeToDelete;
           nodes.pop();
           callback();
         };
-        
-        
+
+
         runs(function() {
           testee = eventLib.DeleteNode(nodeEditorConfig);
           testee(toDel, callbackCheck);
         });
-        
+
         waitsFor(function() {
           return called;
         });
-        
+
         runs(function() {
           expect(deleted).toEqual(toDel);
           expect(nodeShaperDummy.reshapeNodes).toHaveBeenCalled();
         });
-        
+
       });
-    
+
     });
-    
-    
+
+
     describe('Insert Edge', function() {
-      
+
       it('should create an event to add an edge', function() {
         var adapterDummy = {},
         edges = [],
@@ -350,35 +350,35 @@
           shaper: edgeShaperDummy
         },
         testee;
-        
+
         adapterDummy.createEdge = function(edgeToCreate, callback) {
           created = edgeToCreate;
           edges.push(created);
           callback(created);
         };
-        
+
         runs(function() {
           testee = eventLib.InsertEdge(edgeEditorConfig);
           testee(source, target, callbackCheck);
         });
-        
+
         waitsFor(function() {
           return called;
         });
-        
+
         runs(function() {
           expect(created).toBeDefined();
           expect(edgeShaperDummy.reshapeEdges).toHaveBeenCalled();
           expect(created.source).toEqual(source);
           expect(created.target).toEqual(target);
         });
-        
+
       });
-      
+
     });
-    
+
     describe('Patch Edge', function() {
-      
+
       it('should create an event to patch an edge', function() {
         var adapterDummy = {},
         source = {_id: 1},
@@ -396,22 +396,22 @@
           shaper: edgeShaperDummy
         },
         testee;
-        
+
         adapterDummy.patchEdge = function(edgeToPatch, patchData, callback) {
           patched = edgeToPatch;
           $.extend(patched, patchData);
           callback();
         };
-        
+
         runs(function() {
           testee = eventLib.PatchEdge(edgeEditorConfig);
           testee(patched, data, callbackCheck);
         });
-        
+
         waitsFor(function() {
           return called;
         });
-        
+
         runs(function() {
           expect(patched).toBeDefined();
           expect(edgeShaperDummy.reshapeEdges).toHaveBeenCalled();
@@ -419,13 +419,13 @@
           expect(patched.target).toEqual(target);
           expect(patched.hello).toEqual("world");
         });
-        
+
       });
-      
+
     });
-    
+
     describe('Delete Edge', function() {
-      
+
       it('should create an event to delete an edge', function() {
         var adapterDummy = {},
         source = {_id: 1},
@@ -443,30 +443,30 @@
           shaper: edgeShaperDummy
         },
         testee;
-        
+
         adapterDummy.deleteEdge = function(edgeToDelete, callback) {
           deleted = edgeToDelete;
           edges.pop();
           callback();
         };
 
-        
+
         runs(function() {
           testee = eventLib.DeleteEdge(edgeEditorConfig);
           testee(toDel, callbackCheck);
         });
-        
+
         waitsFor(function() {
           return called;
         });
-        
+
         runs(function() {
           expect(deleted).toEqual(toDel);
           expect(edgeShaperDummy.reshapeEdges).toHaveBeenCalled();
         });
-        
+
       });
-      
+
     });
   });
 

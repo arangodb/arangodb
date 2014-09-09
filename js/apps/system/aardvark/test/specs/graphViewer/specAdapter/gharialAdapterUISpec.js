@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
+/*jshint unused: false */
 /*global beforeEach, afterEach */
 /*global describe, it, expect*/
 /*global runs, waitsFor, spyOn */
@@ -99,7 +99,7 @@
       this.addMatchers({
         toOfferFunction: function(name) {
           this.message = function() {
-            return "Function \"" + name +  "\" is not available on adapter."; 
+            return "Function \"" + name +  "\" is not available on adapter.";
           };
           return _.isFunction(this.actual[name]);
         }
@@ -109,11 +109,11 @@
           expect(realAdapter).toOfferFunction(name);
         }
       );
-      
+
     });
-    
+
     describe('change graph control', function() {
-      
+
       var idPrefix = "#control_adapter_graph",
         callbacks;
 
@@ -132,13 +132,13 @@
           expect($(idPrefix + "_modal").length).toEqual(1);
         });
       });
-      
+
       afterEach(function() {
         waitsFor(function() {
           return $(idPrefix + "_modal").length === 0;
         }, 2000, "The modal dialog should disappear.");
       });
-      
+
       it('should be added to the list', function() {
         runs(function() {
           $(idPrefix + "_graph").prop("selectedIndex", 1);
@@ -149,29 +149,29 @@
           );
         });
       });
-      
+
       it('should change graph and traversal direction to directed', function() {
         runs(function() {
           $(idPrefix + "_graph").prop("selectedIndex", 1);
           $(idPrefix + "_undirected").attr("checked", false);
-        
+
           helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
-      
+
           expect(adapter.changeToGraph).toHaveBeenCalledWith(
             "oldGraph",
             false
           );
         });
-      
+
       });
-      
+
       it('should change graph and traversal direction to undirected', function() {
         runs(function() {
           $(idPrefix + "_graph").prop("selectedIndex", 1);
           $(idPrefix + "_undirected").attr("checked", true);
-        
+
           helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
-      
+
           expect(adapter.changeToGraph).toHaveBeenCalledWith(
             "oldGraph",
             true
@@ -185,22 +185,22 @@
           $(idPrefix + "_graph").prop("selectedIndex", 1);
           $(idPrefix + "_undirected").attr("checked", true);
           $(idPrefix + "_random").attr("checked", true);
-        
+
           helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
-      
+
           expect(adapter.loadRandomNode).toHaveBeenCalled();
         });
       });
-      
+
       it('should be possible to not start with a random vertex', function() {
         runs(function() {
           spyOn(adapter, "loadRandomNode");
           $(idPrefix + "_graph").prop("selectedIndex", 1);
           $(idPrefix + "_undirected").attr("checked", true);
           $(idPrefix + "_random").attr("checked", false);
-        
+
           helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
-      
+
           expect(adapter.loadRandomNode).not.toHaveBeenCalled();
         });
       });
@@ -210,9 +210,9 @@
           $(idPrefix + "_graph").prop("selectedIndex", 1);
           $(idPrefix + "_undirected").attr("checked", true);
           $(idPrefix + "_random").attr("checked", false);
-        
+
           helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
-      
+
           expect(callbacks.cb).toHaveBeenCalled();
         });
       });
@@ -221,17 +221,17 @@
         runs(function() {
           var graphList = document.getElementById(idPrefix.substr(1) + "_graph"),
             graphCollectionOptions = graphList.children;
-           
+
           expect(adapter.getGraphs).toHaveBeenCalled();
-        
+
           expect(graphList).toBeTag("select");
           expect(graphCollectionOptions.length).toEqual(2);
           expect(graphCollectionOptions[0]).toBeTag("option");
           expect(graphCollectionOptions[1]).toBeTag("option");
-          
+
           expect(graphCollectionOptions[0].value).toEqual("newGraph");
           expect(graphCollectionOptions[1].value).toEqual("oldGraph");
-        
+
           helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
         });
       });
@@ -244,19 +244,19 @@
       beforeEach(function() {
         idPrefix = "#control_adapter_priority";
         adapterUI.addControlChangePriority();
-        
+
         expect($("#control_adapter_list " + idPrefix).length).toEqual(1);
         expect($("#control_adapter_list " + idPrefix)[0]).toConformToListCSS();
         helper.simulateMouseEvent("click", idPrefix.substr(1) + "_button");
         expect($(idPrefix + "_modal").length).toEqual(1);
       });
-      
+
       afterEach(function() {
         waitsFor(function() {
           return $(idPrefix + "_modal").length === 0;
         }, 2000, "The modal dialog should disappear.");
       });
-      
+
       it('should be added to the list', function() {
         runs(function() {
           $(idPrefix + "_attribute_1").attr("value", "foo");
@@ -266,7 +266,7 @@
           });
         });
       });
-      
+
       it('should not add empty attributes to priority', function() {
         runs(function() {
           $(idPrefix + "_attribute_1").attr("value", "");
@@ -276,7 +276,7 @@
           });
         });
       });
-      
+
       it('should add a new line to priority on demand', function() {
         runs(function() {
           helper.simulateMouseEvent("click", idPrefix.substr(1) + "_attribute_addLine");
@@ -291,7 +291,7 @@
           });
         });
       });
-      
+
       it('should add many new lines to priority on demand', function() {
 
         runs(function() {
@@ -305,13 +305,13 @@
           expect($("#" + idPrefixAttr + "3").length).toEqual(1);
           expect($("#" + idPrefixAttr + "4").length).toEqual(1);
           expect($("#" + idPrefixAttr + "5").length).toEqual(1);
-          
+
           expect($("#" + idPrefixAttr + "1").val()).toEqual("");
           expect($("#" + idPrefixAttr + "2").val()).toEqual("");
           expect($("#" + idPrefixAttr + "3").val()).toEqual("");
           expect($("#" + idPrefixAttr + "4").val()).toEqual("");
           expect($("#" + idPrefixAttr + "5").val()).toEqual("");
-          
+
           expect($("#" + idPrefixAttr + "addLine").length).toEqual(1);
           $("#" + idPrefixAttr + "1").val("foo");
           $("#" + idPrefixAttr + "2").val("bar");
@@ -324,18 +324,18 @@
           });
         });
       });
-      
+
       it('should remove all but the first line', function() {
         runs(function() {
           helper.simulateMouseEvent("click", idPrefix.substr(1) + "_attribute_addLine");
           expect($(idPrefix + "_attribute_1_remove").length).toEqual(0);
           expect($(idPrefix + "_attribute_2_remove").length).toEqual(1);
           helper.simulateMouseEvent("click", idPrefix.substr(1) + "_attribute_2_remove");
-          
+
           expect($(idPrefix + "_attribute_addLine").length).toEqual(1);
           expect($(idPrefix + "_attribute_2_remove").length).toEqual(0);
           expect($(idPrefix + "_attribute_2").length).toEqual(0);
-          
+
           $(idPrefix + "_attribute_1").attr("value", "foo");
           helper.simulateMouseEvent("click", idPrefix.substr(1) + "_submit");
           expect(adapter.changeTo).toHaveBeenCalledWith({
@@ -345,17 +345,17 @@
       });
 
       /* TO_DO
-      
+
       it('should load the current prioList from the adapter', function() {
-        
+
         runs(function() {
           helper.simulateMouseEvent("click", "control_adapter_priority_cancel");
         });
-        
+
         waitsFor(function() {
           return $("#control_adapter_priority_modal").length === 0;
         }, 2000, "The modal dialog should disappear.");
-        
+
         runs(function() {
           expect($("#control_adapter_priority_cancel").length).toEqual(0);
           prioList.push("foo");
@@ -382,7 +382,7 @@
       });
       */
     });
-    
+
     it('should be able to add all controls to the list', function() {
       adapterUI.addAll();
       expect($("#control_adapter_list #control_adapter_graph").length).toEqual(1);

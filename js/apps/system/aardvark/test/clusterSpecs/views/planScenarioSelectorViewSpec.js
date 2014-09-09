@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
+/*jshint browser: true */
+/*jshint unused: false */
 /*global describe, beforeEach, afterEach, it, */
 /*global spyOn, expect, runs, waitsFor*/
 /*global templateEngine, $, uiMatchers*/
@@ -10,7 +11,7 @@
 
     beforeEach(function() {
       div = document.createElement("div");
-      div.id = "content"; 
+      div.id = "content";
       document.body.appendChild(div);
       view = new window.PlanScenarioSelectorView();
       view.render();

@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
+/*jshint browser: true */
+/*jshint unused: false */
 /*global describe, beforeEach, afterEach, it, spyOn, expect*/
 /*global $*/
 
@@ -22,7 +23,7 @@
     });
 
     describe("parses the status", function() {
-      
+
       it("Error", function() {
         model.set("level", 1);
         expect(model.getLogStatus()).toEqual("Error");

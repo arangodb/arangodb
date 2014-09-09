@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -28,7 +27,7 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal"); 
+var internal = require("internal");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                 module "org/arangodb/replication"
@@ -61,17 +60,17 @@ logger.start = function () {
 
 logger.stop = function () {
   'use strict';
- 
+
   // the logger in ArangoDB 2.2 is now the WAL...
   // so the logger cannot be stopped
-  return true; 
+  return true;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the replication logger state
 ////////////////////////////////////////////////////////////////////////////////
 
-logger.state = function () {  
+logger.state = function () {
   'use strict';
 
   return internal.getStateReplicationLogger();
@@ -80,7 +79,7 @@ logger.state = function () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the configuration of the replication logger
 ////////////////////////////////////////////////////////////////////////////////
- 
+
 logger.properties = function () {
   'use strict';
 
@@ -104,7 +103,7 @@ applier.start = function (initialTick) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down the replication applier
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 applier.shutdown = applier.stop = function () {
   'use strict';
 
@@ -114,7 +113,7 @@ applier.shutdown = applier.stop = function () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the replication applier state
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 applier.state = function () {
   'use strict';
 
@@ -124,7 +123,7 @@ applier.state = function () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop the applier and "forget" all configuration
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 applier.forget = function () {
   'use strict';
 
@@ -134,14 +133,14 @@ applier.forget = function () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the configuration of the replication applier
 ////////////////////////////////////////////////////////////////////////////////
- 
+
 applier.properties = function (config) {
   'use strict';
 
   if (config === undefined) {
     return internal.configureReplicationApplier();
   }
-  
+
   return internal.configureReplicationApplier(config);
 };
 
@@ -173,10 +172,10 @@ var serverId = function () {
 // --SECTION--                                                    module exports
 // -----------------------------------------------------------------------------
 
-exports.logger   = logger; 
-exports.applier  = applier; 
-exports.sync     = sync; 
-exports.serverId = serverId; 
+exports.logger   = logger;
+exports.applier  = applier;
+exports.sync     = sync;
+exports.serverId = serverId;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

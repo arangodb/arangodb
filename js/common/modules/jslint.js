@@ -28,8 +28,10 @@
 var internal = require("internal");
 var fs = require("fs");
 var console = require("console");
+var _ = require('underscore')
 
-var JSLINT = require("./jslint/jslint").JSLINT;
+var JSHINT = require("jshint").JSHINT;
+var jshintrc = JSON.parse(fs.read('./js/.jshintrc'));
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -56,10 +58,11 @@ function RunTest (path, options) {
   }
 
   var result = { };
-  result["passed"] = JSLINT(content, options);
+  content = content.replace("/*jslint", "/*xxxxxx");
+  result["passed"] = JSHINT(content, _.extend({}, jshintrc, options));
 
-  if (JSLINT.errors) {
-    result["errors"] = JSLINT.errors;
+  if (JSHINT.errors) {
+    result["errors"] = JSHINT.errors;
   }
 
   return result;

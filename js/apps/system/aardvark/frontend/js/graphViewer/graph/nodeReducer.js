@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global _*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -29,23 +28,23 @@
 
 function NodeReducer(prioList) {
   "use strict";
-  
+
   prioList = prioList || [];
-  
-  var 
-  
+
+  var
+
     ////////////////////////////////////
     // Private functions              //
-    //////////////////////////////////// 
-    
+    ////////////////////////////////////
+
     /////////////////////////////
     // Functions for Buckets   //
     /////////////////////////////
-    
+
    addNode = function(bucket, node) {
      bucket.push(node);
    },
-   
+
    getSimilarityValue = function(bucketContainer, node) {
      if (!bucketContainer.reason.example) {
        bucketContainer.reason.example = node;
@@ -69,15 +68,15 @@ function NodeReducer(prioList) {
      countMatch++;
      return countMatch / propCount;
    },
-   
+
    getPrioList = function() {
      return prioList;
    },
-   
+
    changePrioList = function (list) {
      prioList = list;
    },
-   
+
    bucketByPrioList = function (toSort, numBuckets) {
      var res = {},
        resArray = [];
@@ -118,7 +117,7 @@ function NodeReducer(prioList) {
    },
 
   bucketNodes = function(toSort, numBuckets) {
-    
+
     var res = [],
     threshold = 0.5;
     if (toSort.length <= numBuckets) {
@@ -161,15 +160,15 @@ function NodeReducer(prioList) {
     });
     return res;
   };
-  
+
   ////////////////////////////////////
   // Public functions               //
   ////////////////////////////////////
-   
+
   this.bucketNodes = bucketNodes;
-  
+
   this.changePrioList = changePrioList;
-  
+
   this.getPrioList = getPrioList;
-  
+
 }

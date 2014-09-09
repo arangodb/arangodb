@@ -1,4 +1,3 @@
-/*jslint indent: 2, maxlen: 120, vars: true, white: true, plusplus: true, nonpropdel: true, nomen: true, sloppy: true */
 /*global require, fail, assertTrue, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,7 +52,7 @@ function EndpointsSuite () {
       }
     });
   };
-      
+
   var filterDefault = function (endpoints) {
     var result = [ ];
 
@@ -82,7 +81,7 @@ function EndpointsSuite () {
 
     tearDown : function () {
       cleanupEndpoints();
-     
+
       var i;
       for (i = 0; i < 3; ++i) {
         try {
@@ -171,7 +170,7 @@ function EndpointsSuite () {
       catch (err1) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err1.errorNum);
       }
-      
+
       try {
         // invalid type for 2nd argument
         db._configureEndpoint("tcp://127.0.0.1:" + base, "_system");
@@ -180,7 +179,7 @@ function EndpointsSuite () {
       catch (err2) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err2.errorNum);
       }
-      
+
       try {
         // invalid type for 1st argument
         db._configureEndpoint("foo", "_system");
@@ -218,7 +217,7 @@ function EndpointsSuite () {
 
       var actual = filterDefault(db._listEndpoints());
       assertEqual(expected, actual);
-      
+
       // remove next
       assertTrue(db._removeEndpoint("tcp://127.0.0.1:" + (base + 2)));
 
@@ -231,7 +230,7 @@ function EndpointsSuite () {
 
       // remove last
       assertTrue(db._removeEndpoint("tcp://127.0.0.1:" + (base + 1)));
-      
+
       expected = [
       ];
 
@@ -246,7 +245,7 @@ function EndpointsSuite () {
       catch (err) {
       }
     },
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test database access
 ////////////////////////////////////////////////////////////////////////////////
@@ -256,7 +255,7 @@ function EndpointsSuite () {
       db._createDatabase("UnitTestsDatabase0");
       db._createDatabase("UnitTestsDatabase1");
       db._createDatabase("UnitTestsDatabase2");
-      
+
       var base = 30000 + parseInt(Math.random() * 10000, 10);
 
       // create a few endpoints
@@ -265,7 +264,7 @@ function EndpointsSuite () {
       db._configureEndpoint("tcp://127.0.0.1:" + (base + 2), [ "UnitTestsDatabase1" ]);
       db._configureEndpoint("tcp://127.0.0.1:" + (base + 3), [ "UnitTestsDatabase0", "UnitTestsDatabase1" ]);
       db._configureEndpoint("tcp://127.0.0.1:" + (base + 4), [ "UnitTestsDatabase1", "_system" ]);
- 
+
       // and now connect to the endpoints
       var test = function (endpoint, endpoints) {
         endpoints.forEach(function (e) {
@@ -285,52 +284,52 @@ function EndpointsSuite () {
           }
         });
       };
-      
+
       var endpoints;
 
-      endpoints = [ 
-        [ "", "_system" ], 
-        [ "_system", "_system" ], 
-        [ "UnitTestsDatabase0", "UnitTestsDatabase0" ], 
+      endpoints = [
+        [ "", "_system" ],
+        [ "_system", "_system" ],
+        [ "UnitTestsDatabase0", "UnitTestsDatabase0" ],
         [ "UnitTestsDatabase1", "UnitTestsDatabase1" ]
       ];
 
       test("tcp://127.0.0.1:" + (base), endpoints);
 
-      endpoints = [ 
-        [ "", "UnitTestsDatabase0" ], 
-        [ "_system", null ], 
-        [ "UnitTestsDatabase0", "UnitTestsDatabase0" ], 
+      endpoints = [
+        [ "", "UnitTestsDatabase0" ],
+        [ "_system", null ],
+        [ "UnitTestsDatabase0", "UnitTestsDatabase0" ],
         [ "UnitTestsDatabase1", null ]
       ];
-      
+
       test("tcp://127.0.0.1:" + (base + 1), endpoints);
 
 
-      endpoints = [ 
-        [ "", "UnitTestsDatabase1" ], 
-        [ "_system", null ], 
-        [ "UnitTestsDatabase0", null ], 
+      endpoints = [
+        [ "", "UnitTestsDatabase1" ],
+        [ "_system", null ],
+        [ "UnitTestsDatabase0", null ],
         [ "UnitTestsDatabase1", "UnitTestsDatabase1" ]
       ];
 
       test("tcp://127.0.0.1:" + (base + 2), endpoints);
-      
 
-      endpoints = [ 
-        [ "", "UnitTestsDatabase0" ], 
-        [ "_system", null ], 
-        [ "UnitTestsDatabase0", "UnitTestsDatabase0" ], 
+
+      endpoints = [
+        [ "", "UnitTestsDatabase0" ],
+        [ "_system", null ],
+        [ "UnitTestsDatabase0", "UnitTestsDatabase0" ],
         [ "UnitTestsDatabase1", "UnitTestsDatabase1" ]
       ];
 
       test("tcp://127.0.0.1:" + (base + 3), endpoints);
-      
-      
-      endpoints = [ 
-        [ "", "UnitTestsDatabase1" ], 
-        [ "_system", "_system" ], 
-        [ "UnitTestsDatabase0", null ], 
+
+
+      endpoints = [
+        [ "", "UnitTestsDatabase1" ],
+        [ "_system", "_system" ],
+        [ "UnitTestsDatabase0", null ],
         [ "UnitTestsDatabase1", "UnitTestsDatabase1" ]
       ];
 

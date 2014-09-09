@@ -2542,7 +2542,7 @@ static v8::Handle<v8::Value> JS_ListEndpoints (v8::Arguments const& argv) {
     TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
 
-  const map<string, vector<string> >& endpoints = s->getEndpoints();
+  auto const& endpoints = s->getEndpoints();
 
   v8::Handle<v8::Array> result = v8::Array::New();
   uint32_t j = 0;

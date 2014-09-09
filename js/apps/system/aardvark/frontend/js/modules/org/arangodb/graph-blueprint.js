@@ -1,5 +1,5 @@
 module.define("org/arangodb/graph-blueprint", function(exports, module) {
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*jshint strict: false */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -223,11 +223,11 @@ Graph.prototype.initialize = function (name, vertices, edges) {
   this._properties = results.graph;
   this._vertices = arangodb.db._collection(this._properties.edgeDefinitions[0].from[0]);
   this._edges = arangodb.db._collection(this._properties.edgeDefinitions[0].collection);
-  
+
   // and dictionary for vertices and edges
   this._verticesCache = {};
   this._edgesCache = {};
-  
+
   // and store the cashes
   this.predecessors = {};
   this.distances = {};
@@ -278,7 +278,7 @@ Graph.prototype.drop = function () {
 
 Graph.prototype._saveEdge = function(id, out_vertex_id, in_vertex_id, params) {
   var results;
-  
+
   this.emptyCachedPredecessors();
 
   params._key = id;

@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, ArangoServerState */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -37,6 +36,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
+  "use strict";
   return function () {
     var internal = require("internal");
     var console = require("console");

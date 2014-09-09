@@ -90,44 +90,6 @@ assertEqual(session.get('sessionData'), sessionData);
 
 !SUBSECTION Fetch an existing session
 
-There are two ways to fetch a session via the session storage API:
-
-* resolving a session cookie with the *fromCookie* method
-* calling the session storage's *get* method with a session ID directly
-
-!SUBSUBSECTION Resolve a session cookie
-
-Fetch a session matching a cookie in a Foxx request.
-
-`sessionStorage.fromCookie(request, cookieName, secret)`
-
-Parses a request's cookies and returns the matching instance of the session model.
-
-The method will return *null* instead of a session object in the following cases:
-
-* the request has no session cookie
-* the request's session cookie does not match a known session ID
-* the matching session has expired
-* the cookie's signature is missing (if a *secret* is provided)
-* the cookie's signature does not match (if a *secret* is provided)
-
-*Parameter*
-
-* *request*: a Foxx request object as passed to controller routes.
-* *cookieName*: name of the cookie to parse.
-* *secret* (optional): secret string to validate the cookie's signature with.
-
-@EXAMPLES
-
-```js
-controller.get('/hello', function(request, response) {
-    var session = sessionStorage.fromCookie(request, cookieName, secret);
-    response.json(session.get('sessionData'));
-});
-```
-
-!SUBSUBSECTION Resolve a session ID directly
-
 Fetch a session from the database for a given ID.
 
 `sessionStorage.get(sessionId)`
@@ -236,54 +198,12 @@ Get a session's expiry time.
 
 `session.getExpiry()`
 
-Returns an integer representing the time at which the session will expire, or *Number.MAX_VALUE* (indicating the session will never expire) if session expiry is disabled.
+Returns an integer representing the UTC timestamp in milliseconds at which the session will expire, or *Infinity* (indicating the session will never expire) if session expiry is disabled.
 
-!SUBSECTION Add a session cookie to a response
+!SUBSECTION Determine the TTL of a session
 
-Add a session cookie to a Foxx response.
+Get a session's time to live.
 
-`session.addCookie(response, cookieName, secret)`
+`session.getTTL()`
 
-Adds a session cookie to the response.
-
-If a *secret* string is provided, the cookie is signed using that secret (a second cookie with the name *cookieName + '_sig'* containing the cryptographic signature of the cookie value is added to the response).
-
-If you want to use signed cookies, you must make sure to pass the same *secret* to the *fromCookie* method when fetching the session from a cookie later.
-
-*Parameter*
-
-* *response*: a Foxx response object as passed to controller routes.
-* *cookieName*: name of the cookie to parse.
-* *secret* (optional): secret string to sign the cookie with.
-
-@EXAMPLES
-
-```js
-controller.get('/hello', function(request, response) {
-    session.addCookie(response, cookieName, secret);
-});
-```
-
-!SUBSECTION Clear a session cookie
-
-Clear the session cookie of a Foxx response.
-
-`session.clearCookie(response, cookieName, secret)`
-
-Adds a blank expired cookie to clear the user's previously set session cookie.
-
-If the method is passed a *secret* string, a second blank expired cookie is added that overwrites the signature cookie (see above).
-
-*Parameter*
-
-* *response*: a Foxx response object as passed to controller routes.
-* *cookieName*: name of the cookie to parse.
-* *secret* (optional): indicates the signature should be cleared also.
-
-@EXAMPLES
-
-```js
-controller.get('/goodbye', function(request, response) {
-    session.clearCookie(response, cookieName, secret);
-});
-```
+Returns an integer representing number of milliseconds until the session will expire, or *Infinity* (indicating the session will never expire) if session expiry is disabled.

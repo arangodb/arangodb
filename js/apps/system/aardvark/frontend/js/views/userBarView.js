@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
+/*jshint browser: true */
+/*jshint unused: false */
 /*global Backbone, templateEngine, $, window*/
 (function () {
   "use strict";
@@ -65,12 +66,13 @@
         img = currentUser.get("extra").img;
         active = currentUser.get("active");
       }
-      if (!img) {
+      if (! img) {
         img = "img/arangodblogoAvatar_24.png";
-      } else {
+      } 
+      else {
         img = "https://s.gravatar.com/avatar/" + img + "?s=24";
       }
-      if (!name) {
+      if (! name) {
         name = "";
       }
 

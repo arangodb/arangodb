@@ -1,5 +1,5 @@
 module.define("org/arangodb/arangosh", function(exports, module) {
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, regexp: true plusplus: true */
+/*jshint strict: false */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -42,7 +42,7 @@ var internal = require("internal");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return a formatted type string for object
-/// 
+///
 /// If the object has an id, it will be included in the string.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -62,7 +62,7 @@ exports.getIdString = function (object, typeName) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a formatted headline text 
+/// @brief create a formatted headline text
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.createHelpHeadline = function (text) {
@@ -79,7 +79,7 @@ exports.createHelpHeadline = function (text) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles error results
-/// 
+///
 /// throws an exception in case of an an error
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -97,7 +97,7 @@ exports.checkRequestResult = function (requestResult) {
     };
   }
 
-  if (requestResult.error !== undefined && requestResult.error) {    
+  if (requestResult.error !== undefined && requestResult.error) {
     if (requestResult.errorNum === arangodb.ERROR_TYPE_ERROR) {
       throw new TypeError(requestResult.errorMessage);
     }

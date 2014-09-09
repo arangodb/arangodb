@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
+/*jshint browser: true */
+/*jshint unused: false */
 /*global window, document, Backbone, EJS, SwaggerUi, hljs, $, arangoHelper, templateEngine, Joi*/
 (function() {
 
@@ -110,7 +111,7 @@
         return false;
       }
       if (db === "") {
-        arangoHelper.arangoError("DB", "You have to define a name for the new database"); 
+        arangoHelper.arangoError("DB", "You have to define a name for the new database");
         return false;
       }
       if (db.indexOf("_") === 0) {

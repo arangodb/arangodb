@@ -1,3 +1,5 @@
+# config file for arangorestore
+
 progress = true
 
 [server]
