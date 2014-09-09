@@ -332,7 +332,7 @@ void Optimizer::setupRules () {
   ///           levels go back to this or lower levels!
   //////////////////////////////////////////////////////////////////////////////
 
-  registerRule("interchangeAdjacentEnumerations", 
+  registerRule("interchange-adjacent-enumerations", 
                interchangeAdjacentEnumerations, 500);
 
   //////////////////////////////////////////////////////////////////////////////
