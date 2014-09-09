@@ -15,6 +15,24 @@ exports.repository = TodosRepository;
 
 @startDocuBlock JSF_foxx_repository_initializer
 
+!SECTION Defining custom queries
+
+You can define custom query methods using Foxx.createQuery and Foxx.Repository.extend.
+
+For more details see the chapter on Foxx Queries.
+
+*Examples*
+
+```javascript
+var Foxx = require("org/arangodb/foxx");
+
+var TodosRepository = Foxx.Repository.extend({
+    getPendingItems: Foxx.createQuery(
+        'FOR todo IN my_todos FILTER todo.completed == false RETURN todo'
+    )
+});
+```
+
 !SECTION Attributes of a Repository
 
 !SUBSECTION Collection
