@@ -450,11 +450,14 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
   ExecutionPlan* _plan;
   std::unordered_set<VariableId> _varIds;
   bool _canThrow; 
-  int _level;
+  Optimizer::RuleLevel _level;
   
   public:
 
-    FilterToEnumCollFinder (Optimizer* opt, ExecutionPlan* plan, Variable const* var, int level) 
+    FilterToEnumCollFinder (Optimizer* opt,
+                            ExecutionPlan* plan,
+                            Variable const* var,
+                            Optimizer::RuleLevel level) 
       : _opt(opt),
         _plan(plan), 
         _canThrow(false),
@@ -864,12 +867,6 @@ public:
 /// @brief removes the sortNode and its referenced Calculationnodes from the plan.
 ////////////////////////////////////////////////////////////////////////////////
   void removeSortNodeFromPlan (ExecutionPlan *newPlan) {
-    for (auto idToRemove = _sortNodeData.begin();
-         idToRemove != _sortNodeData.end();
-         ++idToRemove) {
-      newPlan->unlinkNode(newPlan->getNodeById((*idToRemove)->calculationNodeID));
-    }
-
     newPlan->unlinkNode(newPlan->getNodeById(sortNodeID));
   }
 };
@@ -880,7 +877,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
   Optimizer*           _opt;
   ExecutionPlan*       _plan;
   sortAnalysis*        _sortNode;
-  int                  _level;
+  Optimizer::RuleLevel _level;
 
   public:
   bool                 planModified;
@@ -889,7 +886,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
   sortToIndexNode (Optimizer* opt,
                    ExecutionPlan* plan,
                    sortAnalysis* Node,
-                   int level)
+                   Optimizer::RuleLevel level)
     : _opt(opt),
       _plan(plan),
       _sortNode(Node),
@@ -916,7 +913,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
 /// @brief check whether we can sort via an index.
 ////////////////////////////////////////////////////////////////////////////////
 
-  bool handleEnumerateCollectionNode (EnumerateCollectionNode* node, int level) {
+  bool handleEnumerateCollectionNode (EnumerateCollectionNode* node, Optimizer::RuleLevel level) {
     auto variableName = node->getVariablesSetHere()[0]->name;
     auto result = _sortNode->getAttrsForVariableName(variableName);
 
@@ -1017,8 +1014,9 @@ int triagens::aql::useIndexForSort (Optimizer* opt,
       }
     }
   }
- 
-  opt->addPlan(plan, rule->level, planModified);
+  opt->addPlan(plan,
+               planModified ? Optimizer::RuleLevel::pass5 : rule->level,
+               planModified);
 
   return TRI_ERROR_NO_ERROR;
 }

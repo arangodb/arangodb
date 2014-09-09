@@ -40,6 +40,95 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     class Optimizer {
+
+    public:
+
+      enum RuleLevel:int {
+  // List all the rules in the system here:
+  // lower level values mean earlier rule execution
+  
+  // note that levels must be unique
+
+  //////////////////////////////////////////////////////////////////////////////
+  // "Pass 1": moving nodes "up" (potentially outside loops):
+  //           please use levels between 1 and 99 here
+  //////////////////////////////////////////////////////////////////////////////
+
+  // move calculations up the dependency chain (to pull them out of
+  // inner loops etc.)
+        pass1 = 100,
+        moveCalculationsUpRule_pass1    = 110,
+
+  // move filters up the dependency chain (to make result sets as small
+  // as possible as early as possible)
+          moveFiltersUpRule_pass1       = 120,
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// "Pass 2": try to remove redundant or unnecessary nodes
+  ///           use levels between 101 and 199 for this
+  //////////////////////////////////////////////////////////////////////////////
+          pass2 = 200,
+  // remove filters from the query that are not necessary at all
+  // filters that are always true will be removed entirely
+  // filters that are always false will be replaced with a NoResults node
+          removeUnnecessaryFiltersRule_pass2 = 210,
+  
+  // remove calculations that are never necessary
+          removeUnnecessaryCalculationsRule_pass2 = 220,
+
+  // remove redundant sort blocks
+          removeRedundantSorts_pass2 = 230,
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// "Pass 3": interchange EnumerateCollection nodes in all possible ways
+  ///           this is level 500, please never let new plans from higher
+  ///           levels go back to this or lower levels!
+  //////////////////////////////////////////////////////////////////////////////
+          pass3 = 500,
+          interchangeAdjacentEnumerations_pass3 = 510,
+
+  //////////////////////////////////////////////////////////////////////////////
+  // "Pass 4": moving nodes "up" (potentially outside loops) (second try):
+  //           please use levels between 501 and 599 here
+  //////////////////////////////////////////////////////////////////////////////
+          pass4 = 600,
+  // move calculations up the dependency chain (to pull them out of
+  // inner loops etc.)
+          moveCalculationsUpRule_pass4 = 610,
+
+  // move filters up the dependency chain (to make result sets as small
+  // as possible as early as possible)
+          moveFiltersUpRule_pass4 = 620,
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// "Pass 5": try to remove redundant or unnecessary nodes (second try)
+  ///           use levels between 601 and 699 for this
+  //////////////////////////////////////////////////////////////////////////////
+
+  // remove filters from the query that are not necessary at all
+  // filters that are always true will be removed entirely
+  // filters that are always false will be replaced with a NoResults node
+          pass5 = 700,
+          removeUnnecessaryFiltersRule_pass5 = 710,
+  
+  // remove calculations that are never necessary
+          removeUnnecessaryCalculationsRule_pass5 = 720,
+
+  // remove redundant sort blocks
+          removeRedundantSorts_pass5 = 730,
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
+  ///           use levels between 701 and 799 for this
+  //////////////////////////////////////////////////////////////////////////////
+          pass6 = 800,
+  // try to find a filter after an enumerate collection and find an index . . . 
+          useIndexRange_pass6 = 810,
+
+  // try to find sort blocks which are superseeded by indexes
+          useIndexForSort_pass6 = 820
+
+          };
     
       public:
       
@@ -64,11 +153,11 @@ namespace triagens {
         struct Rule {
           std::string name;
           RuleFunction func;
-          int level;
+          RuleLevel level;
 
           Rule () = delete;
 
-          Rule (std::string const& name, RuleFunction func, int level)
+          Rule (std::string const& name, RuleFunction func, RuleLevel level)
             : name(name), 
               func(func), 
               level(level) {
@@ -106,6 +195,15 @@ namespace triagens {
             for (auto p : list) {
               delete p;
             }
+          }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get a plan index pointing before the referenced rule, so it can be 
+///   re-executed
+////////////////////////////////////////////////////////////////////////////////
+          static RuleLevel beforeRule(RuleLevel l) {
+            return (RuleLevel) (l - 1);
           }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -239,7 +337,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool addPlan (ExecutionPlan*,
-                      int,
+                      RuleLevel,
                       bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -328,7 +426,7 @@ namespace triagens {
 
         static void registerRule (std::string const& name, 
                                   RuleFunction func, 
-                                  int level) {
+                                  RuleLevel level) {
           if (_ruleLookup.find(name) != _ruleLookup.end()) {
             // duplicate rule names are not allowed
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "duplicate optimizer rule name");
