@@ -69,7 +69,7 @@
                 active = user.get("active"),
                 avatar = '<img src="';
 
-              if (!img) {
+              if (! img) {
                 avatar += 'img/arangodblogoAvatar_50.png';
               } else {
                 avatar += 'https://s.gravatar.com/avatar/';
@@ -77,16 +77,16 @@
                 avatar += '?s=50';
               }
               avatar += '" height="50" width="50" alt="" class="icon" id="';
-              avatar += username;
+              avatar += _.escape(username);
               avatar += '" />';
-              if (!name) {
+              if (! name) {
                 name = " ";
               }
       %>
 
       <div class="tile">
         <div class="iconSet">
-          <span class="icon_arangodb_settings2 editUser" id="<%=username %>_edit-user" alt="Edit user" title="Edit user"></span>
+          <span class="icon_arangodb_settings2 editUser" id="<%=_.escape(username) %>_edit-user" alt="Edit user" title="Edit user"></span>
         </div>
         <%=avatar %>
         <div class="tileBadge">
@@ -103,7 +103,7 @@
           </span>
         </div>
 
-        <h5 class="collectionName"><%=username %> <% if (name !== ' ') { %>(<%=name %>)<%}%></h5>
+        <h5 class="collectionName"><%=_.escape(username) %> <% if (name !== ' ') { %>(<%=_.escape(name) %>)<%}%></h5>
       </div>
       <%});%>
      </div>

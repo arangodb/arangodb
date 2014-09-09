@@ -9,9 +9,9 @@
       <li class="dropdown-header" style="text-transform: none">
         <%
         if (name) {%>
-        <%=name%> (<%=username%>)
+        <%=_.escape(name)%> (<%=_.escape(username)%>)
         <% } else {%>
-        <%=username%>
+        <%=_.escape(username)%>
         <% } %>
       <li class="dropdown-item">
         <a id="userProfile" class="tab" href="#user">User profile</a>
