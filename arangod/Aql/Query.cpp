@@ -351,7 +351,7 @@ QueryResult Query::parse () {
 /// @brief explain an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
-QueryResult Query::explain () {
+QueryResult Query::explain (bool returnAllPlans) {
   try {
     ExecutionPlan* plan;
     Parser parser(this);
@@ -370,7 +370,7 @@ QueryResult Query::explain () {
     int res = trx.begin();
 
     if (res != TRI_ERROR_NO_ERROR) {
-        return transactionError(res, trx);
+      return transactionError(res, trx);
     }
 
     plan = ExecutionPlan::instanciateFromAst(parser.ast());
@@ -386,16 +386,32 @@ QueryResult Query::explain () {
     std::vector<std::string> rules(getRulesFromOptions());
 
     opt.createPlans(plan, rules);
-    // Now plan and all derived plans belong to the optimizer
-    plan = opt.stealBest(); // Now we own the best one again
-    TRI_ASSERT(plan != nullptr);
-
+      
     trx.commit();
-
+      
     QueryResult result(TRI_ERROR_NO_ERROR);
-    result.json = plan->toJson(TRI_UNKNOWN_MEM_ZONE, false).steal(); //json();
 
-    delete plan;
+    if (returnAllPlans) {
+      triagens::basics::Json out(triagens::basics::Json::List);
+
+      auto plans = opt.getPlans();
+      for (auto it : plans) {
+        TRI_ASSERT(it != nullptr);
+
+        out.add(it->toJson(TRI_UNKNOWN_MEM_ZONE, false));
+      }
+      
+      result.json = out.steal();
+    }
+    else {
+      // Now plan and all derived plans belong to the optimizer
+      plan = opt.stealBest(); // Now we own the best one again
+      TRI_ASSERT(plan != nullptr);
+
+      result.json = plan->toJson(TRI_UNKNOWN_MEM_ZONE, false).steal(); 
+
+      delete plan;
+    }
     
     return result;
   }

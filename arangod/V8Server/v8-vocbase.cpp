@@ -889,7 +889,9 @@ static v8::Handle<v8::Value> JS_ExplainAql (v8::Arguments const& argv) {
     }
   }
 
+  bool returnAllPlans = false;
   TRI_json_t* options = nullptr;
+
   if (argv.Length() > 2) {
     // handle options
     if (! argv[2]->IsObject()) {
@@ -898,13 +900,19 @@ static v8::Handle<v8::Value> JS_ExplainAql (v8::Arguments const& argv) {
       }
       TRI_V8_TYPE_ERROR(scope, "expecting object for <options>");
     }
+
+    if (argv[2]->ToObject()->Has(TRI_V8_STRING("allPlans"))) {
+      // should we return all plans?
+      returnAllPlans = TRI_ObjectToBoolean(argv[2]->ToObject()->Get(TRI_V8_STRING("allPlans")));
+    }
+
     options = TRI_ObjectToJson(argv[2]);
   }
 
   // bind parameters will be freed by the query later
   triagens::aql::Query query(vocbase, queryString.c_str(), queryString.size(), parameters, options);
   
-  auto queryResult = query.explain();
+  auto queryResult = query.explain(returnAllPlans);
   
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION_FULL(scope, queryResult.code, queryResult.details);
@@ -912,7 +920,12 @@ static v8::Handle<v8::Value> JS_ExplainAql (v8::Arguments const& argv) {
   
   v8::Handle<v8::Object> result = v8::Object::New();
   if (queryResult.json != nullptr) {
-    result->Set(TRI_V8_STRING("plan"), TRI_ObjectJson(queryResult.json));
+    if (returnAllPlans) {
+      result->Set(TRI_V8_STRING("plans"), TRI_ObjectJson(queryResult.json));
+    }
+    else {
+      result->Set(TRI_V8_STRING("plan"), TRI_ObjectJson(queryResult.json));
+    }
   }
 
   return scope.Close(result);
