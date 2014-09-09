@@ -226,7 +226,7 @@ namespace triagens {
 /// @brief create the string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::basics::StringBuffer* initBuffer ();
+        triagens::basics::StringBuffer* initializeBuffer ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

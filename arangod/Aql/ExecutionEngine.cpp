@@ -234,7 +234,7 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (AQL_TRANSACTION_V8* trx,
 
     root->staticAnalysis();
     root->initialize();
-    root->initCursor(nullptr, 0);
+    root->initializeCursor(nullptr, 0);
 
     engine->_root = root;
   
