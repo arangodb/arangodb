@@ -61,19 +61,82 @@ using namespace triagens::aql;
 
 static int CompareRangeInfoBound (RangeInfoBound left, RangeInfoBound right, 
         int lowhigh) {
-  if (left._undefined) {
-    return (right._undefined ? 0 : 1);
+  if (! left.isDefined()) {
+    return (right.isDefined() ? 1 : 0);
   } 
-  if (right._undefined) {
+  if (! right.isDefined()) {
     return -1;
   }
 
-  int cmp = TRI_CompareValuesJson(left._bound.json(), right._bound.json());
-  if (cmp == 0 && (left._include != right._include)) {
-    return (left._include?1:-1);
+  int cmp = TRI_CompareValuesJson(left.bound().json(), right.bound().json());
+  if (cmp == 0 && (left.inclusive() != right.inclusive())) {
+    return (left.inclusive() ? 1 : -1);
   }
   return cmp * lowhigh;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class RangeInfo
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor from JSON
+////////////////////////////////////////////////////////////////////////////////
+
+RangeInfo::RangeInfo (basics::Json const& json) :
+  _var(basics::JsonHelper::checkAndGetStringValue(json.json(), "variable")),
+  _attr(basics::JsonHelper::checkAndGetStringValue(json.json(), "attr")),
+  _valid(basics::JsonHelper::checkAndGetBooleanValue(json.json(), "valid")),
+  _defined(true) {
+
+  Json lows = json.get("low");
+  if (! lows.isList()) {
+    THROW_INTERNAL_ERROR("low attribute must be a list");
+  }
+  Json highs = json.get("high");
+  if (! highs.isList()) {
+    THROW_INTERNAL_ERROR("high attribute must be a list");
+  }
+  // If an exception is thrown from within these loops, then the
+  // vectors _low and _high will be destroyed properly, so no 
+  // try/catch is needed.
+  for (size_t i = 0; i < lows.size(); i++) {
+    _low.emplace_back(lows.at(i));
+  }
+  for (size_t i = 0; i < highs.size(); i++) {
+    _high.emplace_back(highs.at(i));
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson for a RangeInfo
+////////////////////////////////////////////////////////////////////////////////
+
+Json RangeInfo::toJson () {
+  Json item(basics::Json::Array);
+  item("variable", Json(_var))
+      ("attr", Json(_attr));
+  Json lowList(Json::List, _low.size());
+  for (auto l : _low) {
+    if (l.isDefined()) {
+      lowList(l.toJson());
+    }
+  }
+  item("low", lowList);
+  Json highList(Json::List, _high.size());
+  for (auto h : _high) {
+    if (h.isDefined()) {
+      highList(h.toJson());
+    }
+  }
+  item("high", highList);
+  item("valid", Json(_valid));
+  return item;
+}
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class RangesInfo
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief  insert if there is no range corresponding to variable name <var>,
@@ -82,7 +145,7 @@ static int CompareRangeInfoBound (RangeInfoBound left, RangeInfoBound right,
 
 void RangesInfo::insert (RangeInfo newRange) { 
   
-  TRI_ASSERT(!newRange._undefined);
+  TRI_ASSERT(newRange.isDefined());
 
   std::unordered_map<std::string, RangeInfo>* oldMap = find(newRange._var);
 
@@ -106,29 +169,30 @@ void RangesInfo::insert (RangeInfo newRange) {
     return;
   }
   
-  //this case is not covered by those below . . .
+  // this case is not covered by those below . . .
   if (oldRange.is1ValueRangeInfo() && newRange.is1ValueRangeInfo()) {
-    if (!TRI_CheckSameValueJson(oldRange._low._bound.json(), 
-        newRange._low._bound.json())) {
+    if (!TRI_CheckSameValueJson(oldRange._low[0].bound().json(), 
+                                newRange._low[0].bound().json())) {
       oldRange._valid = false;
       return;
     }
   }
 
-  if (CompareRangeInfoBound(newRange._low, oldRange._low, -1) == -1) {
-    oldRange._low.assign(newRange._low);
+  if (CompareRangeInfoBound(newRange._low[0], oldRange._low[0], -1) == -1) {
+    oldRange._low[0].assign(newRange._low[0]);
   }
   
-  if (CompareRangeInfoBound(newRange._high, oldRange._high, 1) == -1) {
-    oldRange._high.assign(newRange._high);
+  if (CompareRangeInfoBound(newRange._high[0], oldRange._high[0], 1) == -1) {
+    oldRange._high[0].assign(newRange._high[0]);
   }
 
   // check the new range bounds are valid
-  if (!oldRange._low._undefined && !oldRange._high._undefined) {
-    int cmp = TRI_CompareValuesJson(oldRange._low._bound.json(), 
-            oldRange._high._bound.json());
+  if (oldRange._low[0].isDefined() && oldRange._high[0].isDefined()) {
+    int cmp = TRI_CompareValuesJson(oldRange._low[0].bound().json(), 
+            oldRange._high[0].bound().json());
     if (cmp == 1 || (cmp == 0 && 
-          !(oldRange._low._include == true && oldRange._high._include == true ))) {
+          !(oldRange._low[0].inclusive() == true && 
+            oldRange._high[0].inclusive() == true ))) {
       // range invalid
       oldRange._valid = false;
     }

@@ -46,7 +46,9 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief struct to keep an upper or lower bound named _bound and a bool
-/// _include which indicates if the _bound is included or not.
+/// _include which indicates if the _bound is included or not. This can
+/// hold a constant value (NODE_TYPE_VALUE) or a subexpression, which is
+/// indicated by the boolean flag _isConstant.
 ////////////////////////////////////////////////////////////////////////////////
 
     struct RangeInfoBound {
@@ -56,33 +58,42 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         RangeInfoBound (AstNode const* bound, bool include) 
-          : _include(include), _undefined(false){
-          _bound = Json(TRI_UNKNOWN_MEM_ZONE, 
-                        bound->toJson(TRI_UNKNOWN_MEM_ZONE, true));
+          : _bound(), _include(include), _defined(false) {
+          if (bound->type == NODE_TYPE_VALUE) {
+            _bound = Json(TRI_UNKNOWN_MEM_ZONE,
+                          bound->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+            _isConstant = true;
+          }
+          else {
+            _bound = Json(TRI_UNKNOWN_MEM_ZONE,
+                          bound->toJson(TRI_UNKNOWN_MEM_ZONE, true));
+            _isConstant = false;
+          }
+          _defined = true;
         }
         
         RangeInfoBound (basics::Json const& json) 
-          : _bound(Json(TRI_UNKNOWN_MEM_ZONE,
-            basics::JsonHelper::checkAndGetArrayValue(json.json(), "bound"), 
-            basics::Json::NOFREE).copy()),
+          : _bound(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE,
+              basics::JsonHelper::checkAndGetArrayValue(json.json(), "bound"))),
             _include(basics::JsonHelper::checkAndGetBooleanValue(json.json(),
                                                                  "include")),
-            _undefined(false) {
+            _defined(true) {
         }
       
-        RangeInfoBound () : _include(false), _undefined(true) {
+        RangeInfoBound () 
+          : _bound(), _include(false), _isConstant(false), _defined(false) {
         }
 
         RangeInfoBound ( RangeInfoBound const& copy ) 
-            : _bound(copy._bound.copy()), _include(copy._include),
-            _undefined(copy._undefined) {
+            : _bound(copy._bound.copy()), _include(copy._include), 
+              _isConstant(copy._isConstant), _defined(copy._defined) {
         } 
           
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~RangeInfoBound(){}
+        ~RangeInfoBound () {}
       
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief delete assignment
@@ -94,26 +105,40 @@ namespace triagens {
 /// @brief explicit assign
 ////////////////////////////////////////////////////////////////////////////////
 
-        void assign ( basics::Json const& json ) {
+        void assign (basics::Json const& json) {
+          _defined = false;   // keep it undefined in case of an exception
           _bound = Json(TRI_UNKNOWN_MEM_ZONE,
             basics::JsonHelper::checkAndGetArrayValue(json.json(), "bound"), 
             basics::Json::NOFREE).copy();
-            _include = basics::JsonHelper::checkAndGetBooleanValue(json.json(), 
-                                                                   "include");
-          _undefined = false;
+          _include = basics::JsonHelper::checkAndGetBooleanValue(
+                           json.json(), "include");
+          _isConstant = basics::JsonHelper::checkAndGetBooleanValue(
+                           json.json(), "isConstant");
+          _defined = true;
         }
 
         void assign (AstNode const* bound, bool include) {
+          _defined = false;  // keep it undefined in case of an exception
           _include = include;
-          _bound = Json(TRI_UNKNOWN_MEM_ZONE, 
-                        bound->toJson(TRI_UNKNOWN_MEM_ZONE, true));
-          _undefined = false;
+          if (bound->type == NODE_TYPE_VALUE) {
+            _bound = Json(TRI_UNKNOWN_MEM_ZONE,
+                          bound->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
+            _isConstant = true;
+          }
+          else {
+            _bound = Json(TRI_UNKNOWN_MEM_ZONE,
+                          bound->toJson(TRI_UNKNOWN_MEM_ZONE, true));
+            _isConstant = false;
+          }
+          _defined = true;
         }
       
-        void assign (RangeInfoBound copy) {
+        void assign (RangeInfoBound& copy) {
+          _defined = false;
+          _bound = copy._bound.copy(); 
           _include = copy._include;
-          _bound = copy._bound; 
-          _undefined = false;
+          _isConstant = copy._isConstant;
+          _defined = copy._defined;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -121,20 +146,23 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Json toJson () const {
-          Json item(basics::Json::Array);
-            item("bound", Json(TRI_UNKNOWN_MEM_ZONE, 
-                  TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, _bound.json())))
-                ("include", Json(_include));
+          Json item(basics::Json::Array, 3);
+          item("bound", _bound.copy())
+              ("include", Json(_include))
+              ("isConstant", Json(_isConstant));
           return item;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toIndexOperator, doesn't work with unbounded above and below 
-/// RangeInfos
+/// RangeInfos and only for constant values
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_index_operator_t* toIndexOperator (bool high, Json parameters,
             TRI_shaper_t* shaper) const {
+
+          TRI_ASSERT(_isConstant);
+
           TRI_index_operator_type_e op;
 
           if (high) {
@@ -153,15 +181,51 @@ namespace triagens {
               op = TRI_GT_INDEX_OPERATOR;
             }
           }
-          parameters.add(_bound.get("value").copy());
+          parameters.add(_bound.copy());
           size_t nr = parameters.size();
           return TRI_CreateIndexOperator(op, NULL, NULL, parameters.steal(),
               shaper, NULL, nr, NULL);
         } 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _bound as Json
+/// @brief getter for bound
 ////////////////////////////////////////////////////////////////////////////////
+
+        Json const& bound () const {
+          return _bound;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getter for inclusion
+////////////////////////////////////////////////////////////////////////////////
+
+        bool inclusive () const {
+          return _include;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getter for isConstant
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isConstant () const {
+          return _isConstant;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getter for isDefined
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isDefined () const {
+          return _defined;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _bound as Json, this is either for constant values 
+/// (_isConstant==true) or for JSON-serialised subexpressions
+/// (_isConstant==false).
+////////////////////////////////////////////////////////////////////////////////
+
+      private:
 
         Json _bound;
 
@@ -172,103 +236,161 @@ namespace triagens {
         bool _include;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _undefined, if this is true the bound is undefined
+/// @brief _isConstant, this is true iff the bound is a constant value
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool _undefined;
+        bool _isConstant;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _defined, if this is true iff the bound is defined
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _defined;
     };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief struct to keep a pair of RangeInfoBounds _low and _high, and _valid
-/// to indicate if the range is valid (i.e. not of the form x<2 and x>3).
+/// @brief struct to keep a list of RangeInfoBounds for _low and one for _high, 
+/// and _valid to indicate if the range is valid (i.e. not known to be
+/// empty), the two vectors are always of length at least 1, if necessary,
+/// they contain a single, undefined bound, in the case of all constant
+/// bounds the vectors are kept at length exactly 1 by combining the
+/// bounds
 ////////////////////////////////////////////////////////////////////////////////
     
-    struct RangeInfo{
+    struct RangeInfo {
         
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructors
+////////////////////////////////////////////////////////////////////////////////
+
         RangeInfo ( std::string var,
                     std::string attr,
                     RangeInfoBound low, 
                     RangeInfoBound high )
-          : _var(var), _attr(attr), _low(low), _high(high), _valid(true), _undefined(false) {
+          : _var(var), _attr(attr), _valid(true), _defined(true) {
+          _low.emplace_back(low);
+          _high.emplace_back(high);
         }
 
         RangeInfo ( std::string var,
                     std::string attr)
-          : _var(var), _attr(attr), _valid(true), _undefined(false) {
+          : _var(var), _attr(attr), _valid(true), _defined(true) {
         }
 
-        RangeInfo () :  _valid(false), _undefined(true) {}
+        RangeInfo () : _valid(false), _defined(false) {
+        }
         
-        RangeInfo (basics::Json const& json) :
-          _var(basics::JsonHelper::checkAndGetStringValue(json.json(), "variable")),
-          _attr(basics::JsonHelper::checkAndGetStringValue(json.json(), "attr")),
-          _valid(basics::JsonHelper::checkAndGetBooleanValue(json.json(), "valid")),
-          _undefined(false) {
+        RangeInfo (basics::Json const& json);
 
-          if (! json.get("low").isEmpty()) {
-            _low.assign(json.get("low"));
-          }
-          
-          if (! json.get("high").isEmpty()) {
-            _high.assign(json.get("high"));
-          }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+        
+        ~RangeInfo () {
         }
 
-        /* RangeInfo( RangeInfo const& copy ) 
-            : _var(copy._var), _attr(copy._attr), _low(copy._low),
-              _high(copy._high), _valid(copy._valid){} */
+////////////////////////////////////////////////////////////////////////////////
+/// @brief delete assignment operator
+////////////////////////////////////////////////////////////////////////////////
         
         RangeInfo& operator= ( RangeInfo const& copy ) = delete;
 
-        ~RangeInfo(){}
-
-        Json toJson () {
-          Json item(basics::Json::Array);
-          item("variable", Json(_var))("attr", Json(_attr));
-          if(!_low._undefined){
-            item("low", _low.toJson());
-          }
-          if(!_high._undefined){
-            item("high", _high.toJson());
-          }
-          item("valid", Json(_valid));
-          return item;
-        }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson
+////////////////////////////////////////////////////////////////////////////////
         
-        std::string toString() {
+        Json toJson ();
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toString
+////////////////////////////////////////////////////////////////////////////////
+        
+        std::string toString () {
           return this->toJson().toString();
         }
         
+////////////////////////////////////////////////////////////////////////////////
+/// @brief is1ValueRangeInfo
+////////////////////////////////////////////////////////////////////////////////
+        
         // is the range a unique value (i.e. something like x<=1 and x>=1)
         bool is1ValueRangeInfo () const { 
-          return _valid && !_low._undefined  && !_high._undefined &&
-                  TRI_CheckSameValueJson(_low._bound.json(), _high._bound.json())
-                  && _low._include && _high._include;
+          bool res = _valid && _low.size() == 1 && _high.size() == 1 &&
+                     _low[0].isDefined() && _high[0].isDefined() &&
+                     _low[0].isConstant() && _high[0].isConstant();
+          if (res == false) {
+            return false;
+          }
+          res = TRI_CheckSameValueJson(_low[0].bound().json(),
+                                       _high[0].bound().json()) &&
+                _low[0].inclusive() && _high[0].inclusive();
+          return res;
         }
         
+////////////////////////////////////////////////////////////////////////////////
+/// @brief isDefined, getter for _defined
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isDefined () {
+          return _defined;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _var, the AQL variable name
+////////////////////////////////////////////////////////////////////////////////
+        
         std::string _var;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _attr, the attribute access in the variable, can have dots meaning
+/// deep access
+////////////////////////////////////////////////////////////////////////////////
+        
         std::string _attr;
-        RangeInfoBound _low;
-        RangeInfoBound _high;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _low, all lower bounds, constant lower bounds are combined into
+/// the first one (index 0)
+////////////////////////////////////////////////////////////////////////////////
+        
+        std::vector<RangeInfoBound> _low;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _high, all upper bounds, constant upper bounds are combined into
+/// the first one (index 0)
+////////////////////////////////////////////////////////////////////////////////
+        
+        std::vector<RangeInfoBound> _high;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _valid, this is set to true iff the range is known to be non-empty
+////////////////////////////////////////////////////////////////////////////////
+        
         bool _valid;
-        bool _undefined;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _defined, this is set iff the range is defined
+////////////////////////////////////////////////////////////////////////////////
+        
+      private:
+
+        bool _defined;
     };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class to keep RangeInfos associated to variable and attribute names. 
 ////////////////////////////////////////////////////////////////////////////////
     
-    class RangesInfo{
+    class RangesInfo {
         
       public:
         
         RangesInfo( const RangesInfo& copy ) = delete;
         RangesInfo& operator= ( RangesInfo const& copy ) = delete;
         
-        RangesInfo () : _ranges(){}
+        RangesInfo () : _ranges() {}
 
-        ~RangesInfo(){}
+        ~RangesInfo() {}
         
         // find the all the range infos for variable <var>, ownership is not
         // transferred
@@ -299,7 +421,7 @@ namespace triagens {
         Json toJson () const {
           Json list(Json::List);
           for (auto x : _ranges) {
-            for (auto y: x.second){
+            for (auto y: x.second) {
               Json item(Json::Array);
               item("variable", Json(x.first))
                   ("attribute name", Json(y.first))
