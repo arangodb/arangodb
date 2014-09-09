@@ -556,7 +556,7 @@ exports.run = function (args) {
       printf("Application %s installed successfully at mount point %s\n",
              res.appId,
              res.mount);
-      printf("options used: %s", JSON.stringify(options));
+      printf("options used: %s\n", JSON.stringify(options));
     }
     else if (type === 'replace') {
       if (3 < args.length) {
