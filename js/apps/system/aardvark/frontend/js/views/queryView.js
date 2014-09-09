@@ -81,6 +81,9 @@
               ' title="Delete query"></span></a>';
       });
 
+      // escape all columns but the third (which contains HTML)
+      this.tableDescription.unescaped = [ false, false, true ];
+
       this.$(this.id).html(this.table.render({content: this.tableDescription}));
     },
 
@@ -517,24 +520,24 @@
     renderSelectboxes: function () {
       this.sortQueries();
       var selector = '';
-        selector = '#querySelect';
-        $(selector).empty();
+      selector = '#querySelect';
+      $(selector).empty();
 
-        $(selector).append('<option id="emptyquery">Insert Query</option>');
+      $(selector).append('<option id="emptyquery">Insert Query</option>');
 
-        $(selector).append('<optgroup label="Example queries">');
-        jQuery.each(this.queries, function (k, v) {
+      $(selector).append('<optgroup label="Example queries">');
+      jQuery.each(this.queries, function (k, v) {
+        $(selector).append('<option id="' + _.escape(v.name) + '">' + _.escape(v.name) + '</option>');
+      });
+      $(selector).append('</optgroup>');
+
+      if (this.customQueries.length > 0) {
+        $(selector).append('<optgroup label="Custom queries">');
+        jQuery.each(this.customQueries, function (k, v) {
           $(selector).append('<option id="' + _.escape(v.name) + '">' + _.escape(v.name) + '</option>');
         });
         $(selector).append('</optgroup>');
-
-        if (this.customQueries.length > 0) {
-          $(selector).append('<optgroup label="Custom queries">');
-          jQuery.each(this.customQueries, function (k, v) {
-            $(selector).append('<option id="' + _.escape(v.name) + '">' + _.escape(v.name) + '</option>');
-          });
-          $(selector).append('</optgroup>');
-        }
+      }
     },
     undoText: function () {
       var inputEditor = ace.edit("aqlEditor");
