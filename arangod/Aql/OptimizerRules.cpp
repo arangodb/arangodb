@@ -901,7 +901,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
 /// @brief if the sort is already done by an indexrange, remove the sort.
 ////////////////////////////////////////////////////////////////////////////////
 
-  bool handleIndexRangeNode(IndexRangeNode* node) {
+  bool handleIndexRangeNode (IndexRangeNode* node) {
     auto variableName = node->getVariablesSetHere()[0]->name;
     auto result = _sortNode->getAttrsForVariableName(variableName);
 
@@ -916,7 +916,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
 /// @brief check whether we can sort via an index.
 ////////////////////////////////////////////////////////////////////////////////
 
-  bool handleEnumerateCollectionNode(EnumerateCollectionNode* node, int level) {
+  bool handleEnumerateCollectionNode (EnumerateCollectionNode* node, int level) {
     auto variableName = node->getVariablesSetHere()[0]->name;
     auto result = _sortNode->getAttrsForVariableName(variableName);
 
@@ -1167,7 +1167,8 @@ int triagens::aql::interchangeAdjacentEnumerations (Optimizer* opt,
         throw;
       }
 
-    } while(nextPermutationTuple(permTuple, starts));
+    } 
+    while (nextPermutationTuple(permTuple, starts));
   }
 
   return TRI_ERROR_NO_ERROR;

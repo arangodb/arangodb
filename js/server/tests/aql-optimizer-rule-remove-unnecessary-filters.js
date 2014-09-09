@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 200, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, assertTrue, assertEqual, AQL_EXECUTE, AQL_EXPLAIN, fail, loopmax */
+/*global require, exports, assertTrue, assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
 ///
