@@ -86,10 +86,10 @@ Using a transformation:
 
 ```js
 var query = Foxx.createQuery({
-    query: 'FOR u IN _users RETURN u',
+    query: 'FOR u IN _users SORT u.user ASC RETURN u',
     transform: function (results) {
-        return results.length;
+        return results[0];
     }
 });
-var numberOfUsers = query(); // a number >= 0
+var user = query(); // first user by username
 ```
