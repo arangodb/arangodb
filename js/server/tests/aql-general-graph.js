@@ -770,8 +770,8 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
       middle = middle.connected[0];
       assertTrue(middle.connected.length === 1);
       assertEqual(middle.connected[0]._key, "Fritz");
-
     },
+
     testGRAPH_SHORTEST_PATH: function () {
       var actual;
 
@@ -1077,6 +1077,7 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
 
       actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar', " +
         " 'UnitTests_Berliner/Anton', {direction : 'outbound',  weight: 'entfernung', algorithm : 'Floyd-Warshall'}) SORT e.startVertex, e.vertex._id RETURN e.paths[0].vertices");
+      assertEqual([ "UnitTests_Hamburger/Caesar", "UnitTests_Berliner/Berta", "UnitTests_Berliner/Anton" ], actual[0].map(function(d) { return d._id; }));
       assertEqual(actual[0].length, 3);
 
       actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar', " +

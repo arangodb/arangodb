@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require,AQL_EXECUTEJSON */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -32,6 +31,8 @@
 var actions = require("org/arangodb/actions");
 
 function post_api_executeJson (req, res) {
+  "use strict";
+
   var json = actions.getJsonBody(req, res, actions.HTTP_BAD);
 
   if (json === undefined) {
@@ -47,6 +48,8 @@ actions.defineHttp({
   url : "_api/aql2/execute-json",
 
   callback : function (req, res) {
+    "use strict";
+
     try {
       switch (req.requestType) {
         case actions.POST:
