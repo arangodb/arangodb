@@ -651,29 +651,41 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
         auto lhs = node->getMember(0);
         auto rhs = node->getMember(1);
-        AstNode const* val;
-        AstNode const* nextNode;
-        if(rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && lhs->type == NODE_TYPE_VALUE) {
-          val = lhs;
-          nextNode = rhs;
-        }
-        else if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->type == NODE_TYPE_VALUE) {
-          val = rhs;
-          nextNode = lhs;
-        }
-        else {
-          val = nullptr;
-        }
-        
-        if (val != nullptr) {
-          buildRangeInfo(nextNode, enumCollVar, attr);
+        bool found = false;
+        AstNode const* val = nullptr;
+        if(rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+          buildRangeInfo(rhs, enumCollVar, attr);
           if (! enumCollVar.empty()) {
-            _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
-                RangeInfoBound(val, true), RangeInfoBound(val, true));
+            // Found a multiple attribute access of a variable
+            if (lhs->type == NODE_TYPE_VALUE) {
+              val = lhs;
+              found = true;
+            }
+            else {
+              enumCollVar.clear();
+            }
           }
         }
-        attr = "";
-        enumCollVar = "";
+        if (! found && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+          buildRangeInfo(lhs, enumCollVar, attr);
+          if (! enumCollVar.empty()) {
+            // Found a multiple attribute access of a variable
+            if (rhs->type == NODE_TYPE_VALUE) {
+              val = rhs;
+              found = true;
+            }
+            else {
+              enumCollVar.clear();
+            }
+          }
+        }
+        
+        if (found) {
+          _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
+              RangeInfoBound(val, true), RangeInfoBound(val, true));
+        }
+        attr.clear();
+        enumCollVar.clear();
         return;
       }
 
