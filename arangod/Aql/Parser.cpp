@@ -178,37 +178,33 @@ void Parser::registerParseError (int errorCode,
   // extract the query string part where the error happened
   std::string const region(_query->extractRegion(line, column));
 
+  // note: line numbers reported by bison/flex start at 1, columns start at 0
+  std::stringstream errorMessage;
+  errorMessage
+    << data
+    << std::string(" near '")
+    << region 
+    << std::string("' at position ")
+    << line
+    << std::string(":")
+    << (column + 1)
+    << std::endl
+    << _query->queryString()
+    << std::endl;
+
   // create a neat pointer to the location of the error.
-  auto arrowpointer = (char*) malloc (sizeof(char) * (column + 10) );
   size_t i;
-  for (i = 0; i < (size_t) column; i++) {
-    arrowpointer[i] = ' ';
+  for (i = 0; i + 1 < (size_t) column; i++) {
+    errorMessage << ' ';
   }
   if (i > 0) {
-	i --;
-	arrowpointer[i++] = '^';
+    errorMessage << '^';
   }
+  errorMessage << '^'
+               << '^'
+               << std::endl;
 
-  arrowpointer[i++] = '^';
-  arrowpointer[i++] = '^';
-  arrowpointer[i++] = '\0';
-  
-
-  // note: line numbers reported by bison/flex start at 1, columns start at 0
-  char buffer[512];
-  snprintf(buffer,
-           sizeof(buffer),
-           "%s near '%s' at position %d:%d:\n%s\n%s\n",
-           data,
-           region.c_str(),
-           line,
-           column + 1,
-           _query->queryString(),
-           arrowpointer);
-
-  free(arrowpointer);
-
-  registerError(errorCode, buffer);
+  registerError(errorCode, errorMessage.str().c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
