@@ -177,10 +177,13 @@
 #define TRI_RMDIR                       rmdir
 #define TRI_UNLINK                      unlink
 #define TRI_WRITE                       write
+#define TRI_STAT                        stat
+#define TRI_FSTAT                       fstat
 
 #define TRI_write_t                     size_t
 #define TRI_read_t                      size_t
 #define TRI_lseek_t                     off_t
+#define TRI_stat_t                      struct stat
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
 
@@ -323,10 +326,13 @@
 #define TRI_RMDIR                       rmdir
 #define TRI_UNLINK                      unlink
 #define TRI_WRITE                       write
+#define TRI_STAT                        stat
+#define TRI_FSTAT                       fstat
 
 #define TRI_write_t                     size_t
 #define TRI_read_t                      size_t
 #define TRI_lseek_t                     off_t
+#define TRI_stat_t                      struct stat
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
 
@@ -488,10 +494,13 @@
 #define TRI_RMDIR                       rmdir
 #define TRI_UNLINK                      unlink
 #define TRI_WRITE                       write
+#define TRI_STAT                        stat
+#define TRI_FSTAT                       fstat
 
 #define TRI_write_t                     size_t
 #define TRI_read_t                      size_t
 #define TRI_lseek_t                     off_t
+#define TRI_stat_t                      struct stat
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
 
@@ -700,10 +709,13 @@ typedef unsigned char bool;
 #define TRI_RMDIR                       _rmdir
 #define TRI_UNLINK                      _unlink
 #define TRI_WRITE                       _write
+#define TRI_STAT                        _stat64
+#define TRI_FSTAT                       _fstat64
 
 #define TRI_write_t                     unsigned int
 #define TRI_read_t                      unsigned int
 #define TRI_lseek_t                     __int64
+#define TRI_stat_t                      struct _stat64
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
 
