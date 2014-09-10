@@ -810,7 +810,8 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ask about a collection
-/// If it is not found in the cache, the cache is reloaded once.
+/// If it is not found in the cache, the cache is reloaded once. The second
+/// argument can be a collection ID or a collection name (both cluster-wide).
 ////////////////////////////////////////////////////////////////////////////////
 
         shared_ptr<CollectionInfo> getCollection (DatabaseID const&,
