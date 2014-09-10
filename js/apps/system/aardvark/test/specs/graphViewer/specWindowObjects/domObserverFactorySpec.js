@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
+/*jshint unused: false */
 /*global beforeEach, afterEach, jasmine*/
 /*global describe, it, expect, spyOn */
 /*global DomObserverFactory, window, _ */
@@ -33,12 +33,12 @@
   "use strict";
 
   describe('Dom Observer', function() {
-    
+
     it('should offer a function to create a Mutation Observer', function() {
       var factory = new DomObserverFactory();
       expect(_.isFunction(factory.createObserver)).toBeTruthy();
     });
-    
+
     it('should create a Mutation Observer Instance', function() {
       // First is Firefox, Second is Chrome and Safari
       var Observer = window.MutationObserver || window.WebKitMutationObserver,
@@ -53,7 +53,7 @@
       }
       expect(factory.createObserver(function() {})).toEqual(jasmine.any(Observer));
     });
-    
+
     it('should propagate the callback to the MutationObserver', function() {
       var factory,
         callback = function() {};
@@ -67,9 +67,9 @@
           factory = new DomObserverFactory();
           factory.createObserver(callback);
           expect(window.MutationObserver).wasCalledWith(callback);
-        } 
+        }
     });
-    
+
   });
 
 }());

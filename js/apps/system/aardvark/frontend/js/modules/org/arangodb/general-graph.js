@@ -1,6 +1,6 @@
 module.define("org/arangodb/general-graph", function(exports, module) {
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, Graph, ArangoClusterComm, arguments */
+/*jshint strict: false */
+/*global require, exports, ArangoClusterComm */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -170,7 +170,7 @@ var wrapCollection = function(col) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_example_description
-/// 
+///
 /// For many of the following functions *examples* can be passed in as a parameter.
 /// *Examples* are used to filter the result set for objects that match the conditions.
 /// These *examples* can have the following values:
@@ -277,7 +277,7 @@ AQLStatement.prototype.isNeighborQuery = function() {
 AQLStatement.prototype.allowsRestrict = function() {
   return this.isEdgeQuery()
     || this.isVertexQuery()
-    || this.isNeighborQuery(); 
+    || this.isNeighborQuery();
 };
 
 // -----------------------------------------------------------------------------
@@ -520,7 +520,7 @@ AQLGenerator.prototype.outEdges = function(example) {
 /// @brief Select all inbound edges for the vertices selected before.
 ///
 /// `graph_query.inEdges(examples)`
-/// 
+///
 ///
 /// Creates an AQL statement to select all *inbound* edges for each of the vertices selected
 /// in the step before.
@@ -731,7 +731,7 @@ AQLGenerator.prototype.fromVertices = function(example) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_toVertices
 /// @brief Select all vertices targeted by the edges selected before.
-/// 
+///
 /// `graph_query.toVertices(examples)`
 ///
 /// Creates an AQL statement to select the set of vertices where the edges selected
@@ -867,7 +867,7 @@ AQLGenerator.prototype.pathEdges = function() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_fluent_aql_neighbors
 /// @brief Select all neighbors of the vertices selected in the step before.
-/// 
+///
 /// `graph_query.neighbors(examples, options)`
 ///
 /// Creates an AQL statement to select all neighbors for each of the vertices selected
@@ -880,7 +880,7 @@ AQLGenerator.prototype.pathEdges = function() {
 /// See [Definition of examples](#definition_of_examples)
 ///
 /// @PARAM{options, object, optional}
-///   An object defining further options. Can have the following values: 
+///   An object defining further options. Can have the following values:
 ///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeExamples*: Filter the edges to be followed, see [Definition of examples](#definition_of_examples)
 ///   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
@@ -982,7 +982,7 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 /// to a specific set of collections within the graph.
 /// Restriction is only applied to this one part of the query.
 /// It does not effect earlier or later statements.
-/// 
+///
 /// @PARAMS
 ///
 /// @PARAM{restrictions, array, optional}
@@ -992,7 +992,7 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 /// @EXAMPLES
 ///
 /// Request all directly connected vertices unrestricted:
-/// 
+///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLUnrestricted}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
@@ -1057,7 +1057,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 ///
 /// This can be used to further specfiy the expected result of the query.
 /// The result set is reduced to the set of elements that matches the given *examples*.
-/// 
+///
 /// @PARAMS
 ///
 /// @PARAM{examples, object, optional}
@@ -1066,7 +1066,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 /// @EXAMPLES
 ///
 /// Request vertices unfiltered:
-///  
+///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLUnfilteredVertices}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
@@ -1075,7 +1075,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Request vertices filtered:
-///  
+///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFilteredVertices}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
@@ -1084,7 +1084,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Request edges unfiltered:
-///  
+///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLUnfilteredEdges}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
@@ -1093,7 +1093,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Request edges filtered:
-///  
+///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLFilteredEdges}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
@@ -1192,7 +1192,7 @@ AQLGenerator.prototype.toArray = function() {
 ///
 /// @EXAMPLES
 ///
-/// To count the number of matched elements: 
+/// To count the number of matched elements:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLCount}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -1224,7 +1224,7 @@ AQLGenerator.prototype.count = function() {
 ///
 /// @EXAMPLES
 ///
-/// Start query execution with hasNext: 
+/// Start query execution with hasNext:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLHasNext}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -1234,7 +1234,7 @@ AQLGenerator.prototype.count = function() {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Iterate over the result as long as it has more elements:
-/// 
+///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLHasNextIteration}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
@@ -1245,7 +1245,7 @@ AQLGenerator.prototype.count = function() {
 ///   }
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
-/// 
+///
 ////////////////////////////////////////////////////////////////////////////////
 
 AQLGenerator.prototype.hasNext = function() {
@@ -1269,7 +1269,7 @@ AQLGenerator.prototype.hasNext = function() {
 ///
 /// @EXAMPLES
 ///
-/// Request some elements with next: 
+/// Request some elements with next:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLNext}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
@@ -1722,7 +1722,7 @@ var _create = function (graphName, edgeDefinitions, orphanCollections, options) 
   );
 
   try {
-    var g = gdb.document(graphName);
+    gdb.document(graphName);
   } catch (e) {
     if (e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
       throw e;
@@ -2066,7 +2066,7 @@ var updateBindCollections = function(graph) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_vertex_collection_remove
 /// @brief Removes a vertex in collection *vertexCollectionName*
-/// 
+///
 /// `graph.vertexCollectionName.remove(vertexId, options)`
 ///
 /// Additionally removes all ingoing and outgoing edges of the vertex recursively
@@ -2291,7 +2291,7 @@ var _graph = function(graphName) {
 
   try {
     g = gdb.document(graphName);
-  } 
+  }
   catch (e) {
     if (e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
       throw e;
@@ -2783,7 +2783,7 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 /// @PARAM{vertexExample, object, optional}
 /// See [Definition of examples](#definition_of_examples)
 /// @PARAM{options, object, optional}
-/// An object defining further options. Can have the following values: 
+/// An object defining further options. Can have the following values:
 ///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeExamples*: Filter the edges, see [Definition of examples](#definition_of_examples)
 ///   * *neighborExamples*: Filter the neighbor vertices, see [Definition of examples](#definition_of_examples)
@@ -2985,7 +2985,7 @@ Graph.prototype._countCommonNeighbors = function(vertex1Example, vertex2Example,
 /// Filter the set of vertices compared to, see [Definition of examples](#definition_of_examples)
 ///
 /// @PARAM{options, object, optional}
-/// An object defining further options. Can have the following values: 
+/// An object defining further options. Can have the following values:
 ///   * *vertex1CollectionRestriction* : One or a list of vertex-collection names that should be
 ///       searched for source vertices.
 ///   * *vertex2CollectionRestriction* : One or a list of vertex-collection names that should be
@@ -3338,7 +3338,7 @@ Graph.prototype._distanceTo = function(startVertexExample, endVertexExample, opt
 /// Filter the vertices, see [Definition of examples](#definition_of_examples)
 ///
 /// @PARAM{options, object, optional}
-/// An object defining further options. Can have the following values: 
+/// An object defining further options. Can have the following values:
 ///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
 ///       considered to be on the path.
@@ -3478,7 +3478,7 @@ Graph.prototype._eccentricity = function(options) {
 /// Filter the vertices, see [Definition of examples](#definition_of_examples)
 ///
 /// @PARAM{options, object, optional}
-/// An object defining further options. Can have the following values: 
+/// An object defining further options. Can have the following values:
 ///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *edgeCollectionRestriction* : One or a list of edge-collection names that should be
 ///       considered to be on the path.
@@ -3620,7 +3620,7 @@ Graph.prototype._closeness = function(options) {
 /// @PARAMS
 ///
 /// @PARAM{options, object, optional}
-/// An object defining further options. Can have the following values: 
+/// An object defining further options. Can have the following values:
 ///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *weight*: The name of the attribute of the edges containing the weight.
 ///   * *defaultWeight*: Only used with the option *weight*.
@@ -3747,7 +3747,7 @@ Graph.prototype._betweenness = function(options) {
 /// @PARAMS
 ///
 /// @PARAM{options, object, optional}
-/// An object defining further options. Can have the following values: 
+/// An object defining further options. Can have the following values:
 ///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *algorithm*: The algorithm to calculate the shortest paths, possible values are
 ///       [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) and
@@ -3821,7 +3821,7 @@ Graph.prototype._radius = function(options) {
 /// @PARAMS
 ///
 /// @PARAM{options, object, optional}
-/// An object defining further options. Can have the following values: 
+/// An object defining further options. Can have the following values:
 ///   * *direction*: The direction of the edges. Possible values are *outbound*, *inbound* and *any* (default).
 ///   * *algorithm*: The algorithm to calculate the shortest paths, possible values are
 ///       [Floyd-Warshall](http://en.wikipedia.org/wiki/Floyd%E2%80%93Warshall_algorithm) and

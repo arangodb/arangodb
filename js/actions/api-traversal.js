@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true, evil: true */
+/*jshint strict: false */
 /*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -537,6 +537,7 @@ function notFound (req, res, code, message) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function post_api_traversal(req, res) {
+  /*jshint evil: true */
   var json = actions.getJsonBody(req, res);
 
   if (json === undefined) {

@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*jshint strict: false, unused: false */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -144,7 +144,7 @@ Edge.prototype.setProperty = function (name, value) {
 /// @EXAMPLES
 ///
 /// @verbinclude graph-vertex-edges
-/// @endDocuBlock 
+/// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
 Vertex.prototype.edges = function () {
@@ -339,8 +339,8 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
   if (typeof name !== "string" || name === "") {
     throw "<name> must be a string";
   }
- 
-  // convert collection objects to collection names  
+
+  // convert collection objects to collection names
   if (typeof vertices === 'object' && typeof vertices.name === 'function') {
     vertices = vertices.name();
   }
@@ -403,7 +403,7 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
   else if (typeof edges !== "string" || edges === "") {
     throw "<edges> must be a string or null";
   }
-  
+
   // create a new graph or get an existing graph
   else {
     try {
@@ -455,7 +455,7 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
         }
         else {
           throw "edge collection already used";
-        }         
+        }
       }
       else {
         throw "found graph but has different <name>";
@@ -482,7 +482,7 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
   // and dictionary for vertices and edges
   this._verticesCache = {};
   this._edgesCache = {};
-  
+
   // and store the caches
   this.predecessors = {};
   this.distances = {};
@@ -522,7 +522,7 @@ Graph.getAll = function getAllGraphs () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief static drop function 
+/// @brief static drop function
 ////////////////////////////////////////////////////////////////////////////////
 
 Graph.drop = function (name, waitForSync) {
@@ -530,7 +530,7 @@ Graph.drop = function (name, waitForSync) {
   var exists = gdb.exists(name);
 
   try {
-    var obj = new Graph(name); 
+    var obj = new Graph(name);
     return obj.drop(waitForSync);
   }
   catch (err) {

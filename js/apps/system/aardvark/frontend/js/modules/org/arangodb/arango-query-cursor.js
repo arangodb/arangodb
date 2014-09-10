@@ -1,5 +1,5 @@
 module.define("org/arangodb/arango-query-cursor", function(exports, module) {
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*jshint strict: false */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,17 +54,17 @@ function ArangoQueryCursor (database, data) {
   this._pos = 0;
   this._count = 0;
   this._total = 0;
-  
+
   if (data.result !== undefined) {
     this._count = data.result.length;
-    
+
     if (this._pos < this._count) {
       this._hasNext = true;
     }
-    
+
     if (data.hasMore !== undefined && data.hasMore) {
       this._hasMore = true;
-    }    
+    }
   }
 }
 
@@ -78,13 +78,13 @@ exports.ArangoQueryCursor = ArangoQueryCursor;
 /// @brief return a string representation of the cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoQueryCursor.prototype.toString = function () {  
+ArangoQueryCursor.prototype.toString = function () {
   var result = "[object ArangoQueryCursor";
   if (this.data.id) {
     result += ":" + this.data.id;
-  } 
- 
-  if (this.data && this.data.extra && this.data.extra.hasOwnProperty("operations")) { 
+  }
+
+  if (this.data && this.data.extra && this.data.extra.hasOwnProperty("operations")) {
     result += " - operations executed: " + this.data.extra.operations.executed;
   }
   else {
@@ -100,16 +100,16 @@ ArangoQueryCursor.prototype.toString = function () {
 /// @brief return all remaining result documents from the cursor
 ///
 /// If no more results are available locally but more results are available on
-/// the server, this function will make one or multiple roundtrips to the 
+/// the server, this function will make one or multiple roundtrips to the
 /// server. Calling this function will also fully exhaust the cursor.
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype.toArray =
-ArangoQueryCursor.prototype.elements = function () {  
+ArangoQueryCursor.prototype.elements = function () {
   var result = [];
 
-  while (this.hasNext()) { 
-    result.push( this.next() ); 
+  while (this.hasNext()) {
+    result.push( this.next() );
   }
 
   return result;
@@ -176,7 +176,7 @@ ArangoQueryCursor.prototype.next = function () {
     if (this._hasMore && this.data.id) {
       this._hasMore = false;
 
-      // load more results      
+      // load more results
       var requestResult = this._database._connection.PUT(this._baseurl(), "");
 
       arangosh.checkRequestResult(requestResult);
@@ -190,8 +190,8 @@ ArangoQueryCursor.prototype.next = function () {
 
       if (requestResult.hasMore !== undefined && requestResult.hasMore) {
         this._hasMore = true;
-      }                
-    }    
+      }
+    }
   }
 
   return result;
@@ -224,7 +224,7 @@ ArangoQueryCursor.prototype.dispose = function () {
 /// The number will remain the same regardless how much result documents have
 /// already been fetched from the cursor.
 ///
-/// This function will return the number only if the cursor was constructed 
+/// This function will return the number only if the cursor was constructed
 /// with the "doCount" attribute. Otherwise it will return undefined.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -257,7 +257,7 @@ ArangoQueryCursor.prototype.getExtra = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype._baseurl = function () {
-  return "/_db/" + encodeURIComponent(this._dbName) + 
+  return "/_db/" + encodeURIComponent(this._dbName) +
          "/_api/cursor/" + encodeURIComponent(this.data.id);
 };
 

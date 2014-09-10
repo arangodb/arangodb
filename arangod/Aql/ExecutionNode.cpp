@@ -705,8 +705,8 @@ void LimitNode::toJsonHelper (triagens::basics::Json& nodes,
 
 CalculationNode::CalculationNode (Ast* ast, basics::Json const& base)
   : ExecutionNode(base),
-    _expression(new Expression(ast, base)),
-    _outVariable(varFromJson(ast, base, "outVariable")) {
+    _outVariable(varFromJson(ast, base, "outVariable")),
+    _expression(new Expression(ast, base)) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -980,12 +980,12 @@ SortInformation SortNode::getSortInformation (ExecutionPlan* plan) const {
     auto variable = (*it).first;
     TRI_ASSERT(variable != nullptr);
     auto setter = plan->getVarSetBy(variable->id);
-
+      
     if (setter == nullptr) {
       result.isValid = false;
       break;
     }
-
+      
     if (! result.canThrow && setter->canThrow()) {
       result.canThrow = true;
     }

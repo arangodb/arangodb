@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global window */
 
 //////////////////////////////////
@@ -31,9 +30,9 @@
 
 function DomObserverFactory() {
   "use strict";
-  
+
   var Constructor = window.WebKitMutationObserver || window.MutationObserver;
-  
+
   this.createObserver = function(callback) {
     if (!Constructor) {
       throw "Observer not supported";

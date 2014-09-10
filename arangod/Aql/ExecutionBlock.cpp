@@ -149,9 +149,9 @@ bool ExecutionBlock::removeDependency (ExecutionBlock* ep) {
   return false;
 }
 
-int ExecutionBlock::initCursor (AqlItemBlock* items, size_t pos) {
+int ExecutionBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   for (auto d : _dependencies) {
-    int res = d->initCursor(items, pos);
+    int res = d->initializeCursor(items, pos);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
@@ -522,10 +522,10 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initCursor, store a copy of the register values coming from above
+/// @brief initializeCursor, store a copy of the register values coming from above
 ////////////////////////////////////////////////////////////////////////////////
 
-int SingletonBlock::initCursor (AqlItemBlock* items, size_t pos) {
+int SingletonBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   // Create a deep copy of the register values given to us:
   if (_inputRegisterValues != nullptr) {
     delete _inputRegisterValues;
@@ -640,13 +640,13 @@ int EnumerateCollectionBlock::initialize () {
   return ExecutionBlock::initialize();
 }
 
-int EnumerateCollectionBlock::initCursor (AqlItemBlock* items, size_t pos) {
-  int res = ExecutionBlock::initCursor(items, pos);
+int EnumerateCollectionBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
+  int res = ExecutionBlock::initializeCursor(items, pos);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  initDocuments();
+  initializeDocuments();
 
   if (_totalCount == 0) {
     _done = true;
@@ -719,7 +719,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t atLeast,
     // fetch more documents into our buffer
     if (! moreDocuments()) {
       // nothing more to read, re-initialize fetching of documents
-      initDocuments();
+      initializeDocuments();
       if (++_pos >= cur->size()) {
         _buffer.pop_front();  // does not throw
         delete cur;
@@ -761,7 +761,7 @@ size_t EnumerateCollectionBlock::skipSome (size_t atLeast, size_t atMost) {
       // fetch more documents into our buffer
       if (! moreDocuments()) {
         // nothing more to read, re-initialize fetching of documents
-        initDocuments();
+        initializeDocuments();
         if (++_pos >= cur->size()) {
           _buffer.pop_front();  // does not throw
           delete cur;
@@ -831,8 +831,8 @@ int IndexRangeBlock::initialize () {
   return res;
 }
 
-int IndexRangeBlock::initCursor (AqlItemBlock* items, size_t pos) {
-  int res = ExecutionBlock::initCursor(items, pos);
+int IndexRangeBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
+  int res = ExecutionBlock::initializeCursor(items, pos);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -1179,8 +1179,8 @@ int EnumerateListBlock::initialize () {
   return TRI_ERROR_NO_ERROR;
 }
 
-int EnumerateListBlock::initCursor (AqlItemBlock* items, size_t pos) {
-  int res = ExecutionBlock::initCursor(items, pos);
+int EnumerateListBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
+  int res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -1567,7 +1567,7 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
   }
 
   for (size_t i = 0; i < res->size(); i++) {
-    int ret = _subquery->initCursor(res.get(), i);
+    int ret = _subquery->initializeCursor(res.get(), i);
     if (ret != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(ret);
     }
@@ -1790,7 +1790,7 @@ int AggregateBlock::initialize () {
 
   auto en = static_cast<AggregateNode const*>(getPlanNode());
 
-  // Reinitialise if we are called a second time:
+  // Reinitialize if we are called a second time:
   _aggregateRegisters.clear();
   _variableNames.clear();
 
@@ -1815,7 +1815,7 @@ int AggregateBlock::initialize () {
     // we need this mapping to generate the grouped output
 
     for (size_t i = 0; i < _varOverview->varInfo.size(); ++i) {
-      _variableNames.push_back(""); // init with some default value
+      _variableNames.push_back(""); // initialize with some default value
     }
 
     // iterate over all our variables
@@ -2037,9 +2037,9 @@ int SortBlock::initialize () {
   return TRI_ERROR_NO_ERROR;
 }
 
-int SortBlock::initCursor (AqlItemBlock* items, size_t pos) {
+int SortBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 
-  int res = ExecutionBlock::initCursor(items, pos);
+  int res = ExecutionBlock::initializeCursor(items, pos);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -2249,8 +2249,8 @@ int LimitBlock::initialize () {
   return TRI_ERROR_NO_ERROR;
 }
 
-int LimitBlock::initCursor (AqlItemBlock* items, size_t pos) {
-  int res = ExecutionBlock::initCursor(items, pos);
+int LimitBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
+  int res = ExecutionBlock::initializeCursor(items, pos);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -3092,10 +3092,10 @@ void ExecutionBlock::VarOverview::after (ExecutionBlock *eb) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initCursor, only call base
+/// @brief initializeCursor, only call base
 ////////////////////////////////////////////////////////////////////////////////
 
-int NoResultsBlock::initCursor (AqlItemBlock* items, size_t pos) {
+int NoResultsBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   _done = true;
   return TRI_ERROR_NO_ERROR;
 }

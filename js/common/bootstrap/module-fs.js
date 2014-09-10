@@ -1,6 +1,6 @@
-/*jslint indent: 2, maxlen: 120, vars: true, white: true, plusplus: true, regexp: true, nonpropdel: true, sloppy: true, stupid: true */
+/*jshint -W051: true */
 /*global require, FS_MAKE_DIRECTORY, FS_MOVE, FS_REMOVE, FS_REMOVE_DIRECTORY, FS_LIST,
-  FS_REMOVE_RECURSIVE_DIRECTORY, FS_EXISTS, FS_IS_DIRECTORY, FS_IS_FILE, FS_MAKE_ABSOLUTE, FS_FILESIZE, 
+  FS_REMOVE_RECURSIVE_DIRECTORY, FS_EXISTS, FS_IS_DIRECTORY, FS_IS_FILE, FS_MAKE_ABSOLUTE, FS_FILESIZE,
   FS_GET_TEMP_FILE, FS_GET_TEMP_PATH, FS_LIST_TREE, FS_UNZIP_FILE, FS_ZIP_FILE,
   SYS_READ, SYS_READ64, SYS_SAVE, PATH_SEPARATOR, HOME */
 
@@ -55,7 +55,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  // cannot use strict here as we are going to delete globals
+  /*jshint strict: false */
 
   var exports = require("fs");
   var isWindows = require("internal").platform.substr(0, 3) === 'win';
@@ -213,7 +213,7 @@
     exports.exists = FS_EXISTS;
     delete FS_EXISTS;
   }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getTempFile
 ////////////////////////////////////////////////////////////////////////////////
@@ -231,7 +231,7 @@
     exports.getTempPath = FS_GET_TEMP_PATH;
     delete FS_GET_TEMP_PATH;
   }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief home
 ////////////////////////////////////////////////////////////////////////////////
@@ -257,7 +257,7 @@
     exports.isDirectory = FS_IS_DIRECTORY;
     delete FS_IS_DIRECTORY;
   }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief isFile
 ////////////////////////////////////////////////////////////////////////////////
@@ -325,7 +325,7 @@
 
       var paths = Array.prototype.slice.call(arguments, 0);
 
-      return normalize(paths.filter(function(p, index) {
+      return normalize(paths.filter(function(p) {
         if (typeof p !== 'string') {
           throw new TypeError('Arguments to path.join must be strings');
         }
@@ -392,7 +392,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief makeDirectoryRecursive
 ////////////////////////////////////////////////////////////////////////////////
-  
+
   exports.makeDirectoryRecursive = function (path) {
     'use strict';
 
@@ -438,7 +438,7 @@
 /// @brief readFileSync (node compatibility)
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.readFileSync = function (filename, encoding) {
+  exports.readFileSync = function (filename) {
     return exports.read(filename);
   };
 
@@ -459,7 +459,7 @@
     exports.remove = FS_REMOVE;
     delete FS_REMOVE;
   }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removeDirectory
 ////////////////////////////////////////////////////////////////////////////////
@@ -468,7 +468,7 @@
     exports.removeDirectory = FS_REMOVE_DIRECTORY;
     delete FS_REMOVE_DIRECTORY;
   }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removeDirectoryRecursive
 ////////////////////////////////////////////////////////////////////////////////
@@ -477,7 +477,7 @@
     exports.removeDirectoryRecursive = FS_REMOVE_RECURSIVE_DIRECTORY;
     delete FS_REMOVE_RECURSIVE_DIRECTORY;
   }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief size
 ////////////////////////////////////////////////////////////////////////////////
@@ -486,7 +486,7 @@
     exports.size = FS_FILESIZE;
     delete FS_FILESIZE;
   }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unzipFile
 ////////////////////////////////////////////////////////////////////////////////
@@ -495,7 +495,7 @@
     exports.unzipFile = FS_UNZIP_FILE;
     delete FS_UNZIP_FILE;
   }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write
 ////////////////////////////////////////////////////////////////////////////////

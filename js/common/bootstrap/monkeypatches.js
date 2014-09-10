@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, plusplus: true */
+/*jshint strict: false */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief monkey-patches to built-in prototypes

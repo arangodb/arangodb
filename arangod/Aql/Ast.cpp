@@ -38,11 +38,11 @@
 using namespace triagens::aql;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             static initialization
+// --SECTION--                                             static initialisation
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize a singleton NOP node instance
+/// @brief initialise a singleton NOP node instance
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode const Ast::NopNode = { NODE_TYPE_NOP }; 
@@ -1094,7 +1094,15 @@ AstNode* Ast::optimizeBinaryOperatorLogical (AstNode* node) {
     return node;
   }
 
-  if (! lhsIsConst || ! rhsIsConst) {
+  if (! lhsIsConst) {
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+      if (rhsIsConst && ! rhs->getBoolValue()) {
+        // (lhs || false) => lhs
+        return lhs;
+      }
+    }
+
+    // default: don't optimize
     return node;
   }
 

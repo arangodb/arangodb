@@ -1,5 +1,5 @@
 module.define("org/arangodb/graph", function(exports, module) {
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*jshint strict: false */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -36,7 +36,7 @@ var gp = require("org/arangodb/graph-blueprint");
 /*
  * require("console").warn('module "graph" is deprecated, please use ' +
  *                      'module "general-graph" instead');
- */                      
+ */
 
 Object.keys(gp).forEach(function (m) {
   exports[m] = gp[m];

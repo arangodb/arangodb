@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
+/*jshint unused: false */
 /*global beforeEach, afterEach */
 /*global describe, it, expect, jasmine*/
 /*global runs, waitsFor, spyOn, waits */
@@ -39,12 +39,12 @@
   "use strict";
 
   describe('Graph Viewer UI', function () {
-    
+
     var div,
     ui,
     adapterConfig,
     adapterMockCall;
-    
+
     beforeEach(function() {
       //Mock for jsonAdapter
       window.communicationMock(spyOn);
@@ -89,11 +89,11 @@
       ui = new GraphViewerUI(div, adapterConfig);
       uiMatchers.define(this);
     });
-    
+
     afterEach(function() {
         document.body.removeChild(div);
     });
-    
+
     it('should throw an error if no container element is given', function() {
       expect(
         function() {
@@ -101,7 +101,7 @@
         }
       ).toThrow("A parent element has to be given.");
     });
-    
+
     it('should throw an error if the container element has no id', function() {
       expect(
         function() {
@@ -109,7 +109,7 @@
         }
       ).toThrow("The parent element needs an unique id.");
     });
-    
+
     it('should throw an error if the adapter config is not given', function() {
       expect(
         function() {
@@ -117,11 +117,11 @@
         }
       ).toThrow("An adapter configuration has to be given");
     });
-    
+
     it('should append a svg to the given parent', function() {
       expect($("#contentDiv svg").length).toEqual(1);
     });
-    
+
     it('should automatically start the ZoomManager', function() {
       expect(window.ZoomManager).toHaveBeenCalledWith(
         119,
@@ -134,14 +134,14 @@
         jasmine.any(Function)
       );
     });
-    
+
     describe('checking the toolbox', function() {
       var toolboxSelector = "#contentDiv #toolbox";
-            
+
       it('should append the toolbox', function() {
         expect($(toolboxSelector).length).toEqual(1);
       });
-      
+
       it('should contain the objects from eventDispatcher', function() {
         expect($(toolboxSelector + " #control_event_drag").length).toEqual(1);
         expect($(toolboxSelector + " #control_event_edit").length).toEqual(1);
@@ -149,19 +149,19 @@
         expect($(toolboxSelector + " #control_event_delete").length).toEqual(1);
         expect($(toolboxSelector + " #control_event_connect").length).toEqual(1);
       });
-      
+
       it('should have the correct layout', function() {
         expect($(toolboxSelector)[0]).toConformToToolboxLayout();
       });
-      
+
     });
-    
+
     describe('checking the menubar', function() {
-      
+
       it('should append the menubar', function() {
         expect($("#contentDiv #menubar").length).toEqual(1);
       });
-      
+
       it('should contain a field to load a node by attribute', function() {
         var barSelector = "#contentDiv #menubar",
           attrfield = $(barSelector + " #attribute")[0],
@@ -180,13 +180,13 @@
         expect(btn).toBeTag("img");
         expect(btn.className).toEqual("gv-search-submit-icon");
       });
-      
+
       it('should contain a position for the layout buttons', function() {
         var buttonBar = $("#contentDiv #menubar #modifiers");
         expect(buttonBar.length).toEqual(1);
         expect(buttonBar).toBeOfClass("headerButtonBar");
       });
-      
+
       it('should contain a general configure menu', function() {
         var menuSelector = "#contentDiv #menubar #configuredropdown",
           dropDownSelector = "#configureDropdown .dropdownInner ul";
@@ -197,7 +197,7 @@
         expect($(dropDownSelector +  " #control_node_labelandcolourlist").length).toEqual(1);
         expect($(dropDownSelector +  " #control_adapter_priority").length).toEqual(1);
       });
-      
+
       it('should contain a filter menu', function() {
         var menuSelector = "#contentDiv #menubar #filterdropdown",
           dropDownSelector = "#filterDropdown .dropdownInner ul";
@@ -212,29 +212,29 @@
         expect(header.id).toEqual("menubar");
       });
     });
-    
+
     describe('checking the node colour mapping list', function() {
-      
+
       var map;
-      
+
       beforeEach(function() {
         map = $("#contentDiv #node_colour_list");
       });
-      
+
       it('should append the list', function() {
         expect(map.length).toEqual(1);
       });
-      
+
       it('should have the correct css class', function() {
         expect(map).toBeOfClass("gv-colour-list");
       });
-      
+
     });
-    
+
     describe('checking to load a graph', function() {
-      
+
       var waittime = 200;
-      
+
       beforeEach(function() {
         this.addMatchers({
           toBeDisplayed: function() {
@@ -257,41 +257,41 @@
           }
         });
       });
-      
+
       it('should load the graph by _id', function() {
-        
+
         runs(function() {
           $("#contentDiv #menubar #value").attr("value", "0");
           helper.simulateMouseEvent("click", "loadnode");
         });
-        
+
         waits(waittime);
-        
+
         runs(function() {
           expect([0, 1, 2, 3, 4]).toBeDisplayed();
         });
-        
+
       });
-      
+
       it('should load the graph on pressing enter', function() {
-        
+
         runs(function() {
           $("#contentDiv #menubar #value").attr("value", "0");
           var e = $.Event("keypress");
           e.keyCode = 13;
           $("#value").trigger(e);
         });
-        
+
         waits(waittime);
-        
+
         runs(function() {
           expect([0, 1, 2, 3, 4]).toBeDisplayed();
         });
-        
+
       });
-      
+
       it('should load the graph by attribute and value', function() {
-        
+
         runs(function() {
           adapterMockCall = {};
           $("#contentDiv #menubar #attribute").attr("value", "name");
@@ -302,19 +302,19 @@
             value: "0"
           });
         });
-        
+
       });
-      
+
     });
-    
+
     describe('set up with jsonAdapter and click Expand rest default', function() {
       // This waittime is rather optimistic, on a slow machine this has to be increased
-      var waittime = 100, 
-    
+      var waittime = 100,
+
       clickOnNode = function(id) {
         helper.simulateMouseEvent("click", id);
       };
-    
+
       beforeEach(function() {
 
         this.addMatchers({
@@ -370,7 +370,7 @@
           }
 
         });
-      
+
         runs (function() {
           $("#contentDiv #menubar #value").attr("value", "0");
           helper.simulateMouseEvent("click", "loadnode");
@@ -378,31 +378,31 @@
         });
 
         waits(waittime);
-      
+
       });
-    
+
       it("should be able to expand a node", function() {
-  
+
         runs (function() {
           clickOnNode(1);
         });
-  
+
         waits(waittime);
-      
+
         runs (function() {
           expect([0, 1, 2, 3, 4, 5, 6, 7]).toBeDisplayed();
         });
 
       });
-    
+
       it("should be able to collapse the root", function() {
-  
+
         runs (function() {
           clickOnNode(0);
         });
-  
+
         waits(waittime);
-  
+
         runs (function() {
           // Load 1 Nodes: Root
           expect([0]).toBeDisplayed();
@@ -410,24 +410,24 @@
         });
 
       });
-    
+
       it("should be able to load a different graph", function() {
         runs (function() {
           $("#contentDiv #menubar #value").attr("value", "42");
           helper.simulateMouseEvent("click", "loadnode");
         });
-  
+
         waits(waittime);
-  
+
         runs (function() {
           expect([42, 43, 44, 45]).toBeDisplayed();
           expect([0, 1, 2, 3, 4]).toNotBeDisplayed();
         });
-    
+
       });
-    
+
       describe("when a user rapidly expand nodes", function() {
-      
+
         beforeEach(function() {
           runs (function() {
             clickOnNode(1);
@@ -435,17 +435,17 @@
             clickOnNode(3);
             clickOnNode(4);
           });
-  
+
           waits(waittime);
-        
+
           it("the graph should still be correct", function() {
             expect([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 12]).toBeDisplayed();
           });
         });
       });
-    
+
       describe("when a user rapidly expand and collapses nodes", function() {
-    
+
         beforeEach(function() {
           runs (function() {
             clickOnNode(1);
@@ -453,7 +453,7 @@
             clickOnNode(3);
             clickOnNode(4);
           });
-      
+
           // Wait a gentle second for all nodes to expand properly
           waits(waittime);
 
@@ -461,76 +461,76 @@
             clickOnNode(1);
             clickOnNode(4);
           });
-      
+
           waits(waittime);
         });
-      
+
         it("the graph should still be correct", function() {
           expect([0, 1, 2, 3, 4, 8, 9]).toBeDisplayed();
           expect([5, 6, 7, 12]).toNotBeDisplayed();
         });
       });
-    
+
       describe("when an undirected circle has been loaded", function() {
-      
+
         beforeEach(function() {
 
           runs (function() {
             clickOnNode(2);
             clickOnNode(3);
           });
-        
+
           waits(waittime);
-        
+
         });
-      
+
         it("the basis should be correct", function() {
           expect([0, 1, 2, 3, 4, 8, 9]).toBeDisplayed();
         });
-      
+
         it("should be able to collapse one node "
          + "without removing the double referenced one", function() {
-    
+
           runs (function() {
             clickOnNode(2);
           });
-    
+
           waits(waittime);
-    
+
           runs (function() {
             expect([2, 3, 8]).toBeDisplayed();
             expect(2).toNotBeConnectedTo(8);
             expect(3).toBeConnectedTo(8);
           });
         });
-      
-      
+
+
         it("should be able to collapse the other node "
          + "without removing the double referenced one", function() {
-    
+
           runs (function() {
             clickOnNode(3);
           });
-    
+
           waits(waittime);
-    
+
           runs (function() {
             expect([2, 3, 8]).toBeDisplayed();
             expect(3).toNotBeConnectedTo(8);
             expect(2).toBeConnectedTo(8);
           });
         });
-      
+
         it("should be able to collapse the both nodes "
          + "and remove the double referenced one", function() {
-    
+
           runs (function() {
             clickOnNode(3);
             clickOnNode(2);
           });
-    
+
           waits(waittime);
-    
+
           runs (function() {
             expect([2, 3]).toBeDisplayed();
             expect([8]).toNotBeDisplayed();
@@ -538,11 +538,11 @@
             expect(2).toNotBeConnectedTo(8);
           });
         });
-      
+
       });
-    
+
       describe("when a complex graph has been loaded", function() {
-      
+
         beforeEach(function() {
           runs(function() {
             clickOnNode(1);
@@ -552,39 +552,39 @@
           });
           waits(waittime);
         });
-      
+
         it("should be able to collapse a node "
         + "referencing a node connected to a subgraph", function() {
-        
-          runs(function() {         
+
+          runs(function() {
             clickOnNode(1);
           });
-        
+
           waits(waittime);
-        
+
           runs(function() {
-          
+
             expect([0, 1, 2, 3, 4, 5, 8, 9, 12]).toBeDisplayed();
             expect([6, 7, 10, 11]).toNotBeDisplayed();
-          
+
             expect(0).toBeConnectedTo(1);
             expect(0).toBeConnectedTo(2);
             expect(0).toBeConnectedTo(3);
-            expect(0).toBeConnectedTo(4); 
+            expect(0).toBeConnectedTo(4);
             expect(1).toNotBeConnectedTo(5);
-          
+
             expect(2).toBeConnectedTo(8);
-          
+
             expect(3).toBeConnectedTo(8);
             expect(3).toBeConnectedTo(9);
-          
+
             expect(4).toBeConnectedTo(5);
             expect(4).toBeConnectedTo(12);
           });
         });
       });
     });
-    
+
   });
 
 }());

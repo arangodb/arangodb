@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true*/
 /*global window, _, $, document*/
 (function() {
   "use strict";
@@ -37,5 +36,5 @@
     };
     return exports;
   };
-  window.templateEngine = new TemplateEngine(); 
+  window.templateEngine = new TemplateEngine();
 }());

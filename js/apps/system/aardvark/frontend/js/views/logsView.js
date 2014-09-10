@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true */
+/*jshint browser: true */
+/*jshint unused: false */
 /*global Backbone, arangoHelper, $, window, templateEngine*/
 
 (function () {
@@ -70,7 +71,7 @@
 
     invertArray: function (array) {
       var rtnArr = [], counter = 0, i;
-      for (i = array.length-1; i >= 0; i--) {
+      for (i = array.length - 1; i >= 0; i--) {
         rtnArr[counter] = array[i];
         counter++;
       }

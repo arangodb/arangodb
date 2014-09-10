@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, vars: true, white: true, plusplus: true*/
+/*jshint unused: false */
 /*global $, window, _*/
 (function() {
   "use strict";

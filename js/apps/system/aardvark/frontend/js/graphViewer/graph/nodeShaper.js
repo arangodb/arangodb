@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, _, d3*/
 /*global ColourMapper, ContextMenu*/
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,7 +118,7 @@ function NodeShaper(parent, flags, idfunc) {
       return chunks;
     },
     noop = function (node) {
-    
+
     },
     start = noop,
     defaultDistortion = function(n) {
@@ -169,7 +168,7 @@ function NodeShaper(parent, flags, idfunc) {
       };
       addUpdate = noop;
     },
-    
+
     addEvents = function (nodes) {
       _.each(events, function (func, type) {
         if (type === "drag") {
@@ -177,10 +176,10 @@ function NodeShaper(parent, flags, idfunc) {
         } else {
           nodes.on(type, func);
         }
-        
+
       });
     },
-    
+
     addQue = function (g) {
       var community = g.filter(function(n) {
           return n._isCommunity;
@@ -199,7 +198,7 @@ function NodeShaper(parent, flags, idfunc) {
       addEvents(normal);
       addDistortion();
     },
-    
+
     bindEvent = function (type, func) {
       if (type === "update") {
         addUpdate = func;
@@ -209,16 +208,16 @@ function NodeShaper(parent, flags, idfunc) {
         events[type] = func;
       }
     },
-    
+
     updateNodes = function () {
       var nodes = self.parent.selectAll(".node");
       addDistortion();
       nodes.attr("transform", function(d) {
-        return "translate(" + d.position.x + "," + d.position.y + ")scale(" + d.position.z + ")"; 
+        return "translate(" + d.position.x + "," + d.position.y + ")scale(" + d.position.z + ")";
       });
       addUpdate(nodes);
     },
-    
+
     shapeNodes = function (newNodes) {
       if (newNodes !== undefined) {
         nodes = newNodes;
@@ -226,7 +225,7 @@ function NodeShaper(parent, flags, idfunc) {
       var g = self.parent
         .selectAll(".node")
         .data(nodes, idFunction);
-      // Append the group and class to all new    
+      // Append the group and class to all new
       g.enter()
         .append("g")
         .attr("class", function(d) {
@@ -338,7 +337,7 @@ function NodeShaper(parent, flags, idfunc) {
           throw "Sorry given Shape not known!";
       }
     },
-    
+
     parseLabelFlag = function (label) {
       if (_.isFunction(label)) {
         addLabel = function (node) {
@@ -382,7 +381,7 @@ function NodeShaper(parent, flags, idfunc) {
         };
       }
     },
-    
+
     parseActionFlag = function (actions) {
       if (actions.reset !== undefined && actions.reset) {
         unbindEvents();
@@ -393,7 +392,7 @@ function NodeShaper(parent, flags, idfunc) {
         }
       });
     },
-    
+
     parseColorFlag = function (color) {
       resetColourMap();
       switch (color.type) {
@@ -438,12 +437,12 @@ function NodeShaper(parent, flags, idfunc) {
             }
             return colourMapper.getForegroundColour(findFirstValue(color.key, n._data));
           };
-          break; 
+          break;
         default:
           throw "Sorry given colour-scheme not known";
       }
     },
-    
+
     parseDistortionFlag = function (dist) {
       if (dist === "reset") {
         distortion = defaultDistortion;
@@ -453,7 +452,7 @@ function NodeShaper(parent, flags, idfunc) {
         throw "Sorry distortion cannot be parsed.";
       }
     },
-    
+
     parseConfig = function(config) {
       if (config.shape !== undefined) {
         parseShapeFlag(config.shape);
@@ -473,61 +472,61 @@ function NodeShaper(parent, flags, idfunc) {
         parseDistortionFlag(config.distortion);
       }
     };
-    
+
   self.parent = parent;
-  
+
   unbindEvents();
-  
+
   if (flags === undefined) {
     flags = {};
   }
-  
+
   if (flags.shape === undefined) {
    flags.shape = {
      type: NodeShaper.shapes.RECT
-   }; 
+   };
   }
-  
+
   if (flags.color === undefined) {
     flags.color = {
       type: "single",
       fill: "#333333",
       stroke: "white"
-    }; 
+    };
   }
-  
+
   if (flags.distortion === undefined) {
     flags.distortion = "reset";
   }
-  
+
   parseConfig(flags);
 
   if (_.isFunction(idfunc)) {
     idFunction = idfunc;
   }
-  
-  
+
+
   /////////////////////////////////////////////////////////
   /// Public functions
   /////////////////////////////////////////////////////////
-  
+
   self.changeTo = function(config) {
     parseConfig(config);
     shapeNodes();
   };
-  
+
   self.drawNodes = function (nodes) {
     shapeNodes(nodes);
   };
-  
+
   self.updateNodes = function () {
     updateNodes();
   };
-  
+
   self.reshapeNodes = function() {
     shapeNodes();
   };
-  
+
   self.activateLabel = function(toogle) {
     if (toogle) {
       visibleLabels = true;
@@ -536,15 +535,15 @@ function NodeShaper(parent, flags, idfunc) {
     }
     shapeNodes();
   };
-  
+
   self.getColourMapping = function() {
     return colourMapper.getList();
-  }; 
-  
+  };
+
   self.setColourMappingListener = function(callback) {
     colourMapper.setChangeListener(callback);
   };
-  
+
   self.setGVStartFunction = function(func) {
     start = func;
   };
@@ -552,7 +551,7 @@ function NodeShaper(parent, flags, idfunc) {
   self.getLabel = function() {
     return self.label || "";
   };
-  
+
   self.getColor = function() {
     return self.color.key || "";
   };

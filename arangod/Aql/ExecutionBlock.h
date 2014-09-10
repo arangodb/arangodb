@@ -224,7 +224,7 @@ namespace triagens {
 ///    then the ExecutionEngine automatically calls 
 ///      initialize() once, including subqueries
 ///    possibly repeat many times:
-///      initCursor(...)   (optionally with bind parameters)
+///      initializeCursor(...)   (optionally with bind parameters)
 ///      // use cursor functionality
 ///    then the ExecutionEngine automatically calls
 ///      shutdown()
@@ -244,10 +244,10 @@ namespace triagens {
         virtual int initialize ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initCursor, could be called multiple times
+/// @brief initializeCursor, could be called multiple times
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual int initCursor (AqlItemBlock* items, size_t pos);
+        virtual int initializeCursor (AqlItemBlock* items, size_t pos);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown, will be called exactly once for the whole query
@@ -472,10 +472,10 @@ public:
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initCursor, store a copy of the register values coming from above
+/// @brief initializeCursor, store a copy of the register values coming from above
 ////////////////////////////////////////////////////////////////////////////////
 
-        int initCursor (AqlItemBlock* items, size_t pos);
+        int initializeCursor (AqlItemBlock* items, size_t pos);
 
         int shutdown ();
 
@@ -528,7 +528,7 @@ public:
 /// @brief initialize fetching of documents
 ////////////////////////////////////////////////////////////////////////////////
 
-        void initDocuments () {
+        void initializeDocuments () {
           _internalSkip = 0;
           if (! moreDocuments()) {
             _done = true;
@@ -551,7 +551,7 @@ public:
 /// @brief initCursor, here we release our docs from this collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        int initCursor (AqlItemBlock* items, size_t pos);
+        int initializeCursor (AqlItemBlock* items, size_t pos);
 
         AqlItemBlock* getSome (size_t atLeast, size_t atMost);
 
@@ -621,10 +621,10 @@ public:
         int initialize ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initCursor, here we release our docs from this collection
+/// @brief initializeCursor, here we release our docs from this collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        int initCursor (AqlItemBlock* items, size_t pos);
+        int initializeCursor (AqlItemBlock* items, size_t pos);
 
         AqlItemBlock* getSome (size_t atLeast, size_t atMost);
 
@@ -706,10 +706,10 @@ public:
         int initialize ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initCursor, here we release our docs from this collection
+/// @brief initializeCursor, here we release our docs from this collection
 ////////////////////////////////////////////////////////////////////////////////
 
-        int initCursor (AqlItemBlock* items, size_t pos);
+        int initializeCursor (AqlItemBlock* items, size_t pos);
 
         AqlItemBlock* getSome (size_t atLeast, size_t atMost);
 
@@ -1036,7 +1036,7 @@ public:
 
         int initialize ();
 
-        virtual int initCursor (AqlItemBlock* items, size_t pos);
+        virtual int initializeCursor (AqlItemBlock* items, size_t pos);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dosorting
@@ -1108,7 +1108,7 @@ public:
 
         int initialize ();
 
-        int initCursor (AqlItemBlock* items, size_t pos);
+        int initializeCursor (AqlItemBlock* items, size_t pos);
 
         virtual int getOrSkipSome (size_t atLeast,
                                    size_t atMost,
@@ -1413,10 +1413,10 @@ public:
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initCursor, store a copy of the register values coming from above
+/// @brief initializeCursor, store a copy of the register values coming from above
 ////////////////////////////////////////////////////////////////////////////////
 
-        int initCursor (AqlItemBlock* items, size_t pos);
+        int initializeCursor (AqlItemBlock* items, size_t pos);
 
         bool hasMore () {
           return false;

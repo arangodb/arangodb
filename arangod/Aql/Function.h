@@ -54,12 +54,12 @@ namespace triagens {
 /// @brief create the function
 ////////////////////////////////////////////////////////////////////////////////
 
-      Function (std::string const&,
-                std::string const&,
-                std::string const&,
-                bool,
-                bool,
-                FunctionImplementation = nullptr);
+      Function (std::string const& externalName,
+                std::string const& internalName,
+                std::string const& arguments,
+                bool isDeterministic,
+                bool canThrow,
+                FunctionImplementation implementation = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the function
@@ -105,7 +105,7 @@ namespace triagens {
 /// arguments
 ////////////////////////////////////////////////////////////////////////////////
 
-      void initArguments ();
+      void initializeArguments ();
       
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables

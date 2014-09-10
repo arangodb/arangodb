@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global _, $, d3*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -29,14 +28,14 @@
 
 function ColourMapper() {
   "use strict";
-  
+
   var mapping = {},
     reverseMapping = {},
     colours = [],
     listener,
     self = this,
     nextColour = 0;
-  
+
   colours.push({back: "navy", front: "white"});
   colours.push({back: "green", front: "white"});
   colours.push({back: "gold", front: "black"});
@@ -57,7 +56,7 @@ function ColourMapper() {
   colours.push({back: "teal", front: "black"});
   colours.push({back: "peru", front: "black"});
   colours.push({back: "maroon", front: "white"});
-  
+
   this.getColour = function(value) {
     if (mapping[value] === undefined) {
       mapping[value] = colours[nextColour];
@@ -103,13 +102,13 @@ function ColourMapper() {
     }
     return mapping[value].front;
   };
-  
+
   this.getForegroundCommunityColour = function() {
     return "white";
   };
-  
 
-  
+
+
   this.reset = function() {
     mapping = {};
     reverseMapping = {};
@@ -118,14 +117,14 @@ function ColourMapper() {
       listener(self.getList());
     }
   };
-  
+
   this.getList = function() {
     return reverseMapping;
   };
-  
+
   this.setChangeListener = function(callback) {
     listener = callback;
-  }; 
-  
+  };
+
   this.reset();
 }

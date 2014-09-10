@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*jshint strict: false */
 /*global require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -52,11 +52,11 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.parse = function () {
-  var result = internal.AQL_PARSE(this._query); 
+  var result = internal.AQL_PARSE(this._query);
 
-  return { 
-    bindVars : result.parameters, 
-    collections : result.collections 
+  return {
+    bindVars : result.parameters,
+    collections : result.collections
   };
 };
 
@@ -65,7 +65,7 @@ ArangoStatement.prototype.parse = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.explain = function () {
-  return internal.AQL_EXPLAIN(this._query, this._bindVars); 
+  return internal.AQL_EXPLAIN(this._query, this._bindVars);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -75,8 +75,8 @@ ArangoStatement.prototype.explain = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.execute = function () {
-  var result = internal.AQL_QUERY(this._query, 
-                                  this._bindVars, 
+  var result = internal.AQL_QUERY(this._query,
+                                  this._bindVars,
                                   {
                                     count: this._doCount
                                   },
@@ -98,7 +98,7 @@ ArangoStatement.prototype.execute = function () {
 /// @{
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.ArangoStatement = ArangoStatement; 
+exports.ArangoStatement = ArangoStatement;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
