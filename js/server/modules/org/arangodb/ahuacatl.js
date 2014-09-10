@@ -5147,6 +5147,7 @@ function CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL (graphData, options) {
   graph.toVertices.forEach(function (a) {
     graph.toVerticesIDs[a._id] = a;
   });
+  graph.docStore = {};
 
   var paths = {};
 
@@ -5257,8 +5258,13 @@ function CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL (graphData, options) {
       p.vertices.forEach(function (v) {
         if (graph.fromVerticesIDs[v]) {
           vTmp.push(graph.fromVerticesIDs[v]);
-        } else {
+        } else if (graph.toVerticesIDs[v]) {
           vTmp.push(graph.toVerticesIDs[v]);
+        } else if (graph.docStore[v]) {
+          vTmp.push(graph.docStore[v]);
+        } else {
+          graph.docStore[v] = DOCUMENT_HANDLE(v);
+          vTmp.push(graph.docStore[v]);
         }
       });
       p.vertices = vTmp;
