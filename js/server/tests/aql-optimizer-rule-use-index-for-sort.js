@@ -503,9 +503,10 @@ function optimizerRuleTestSuite() {
           var first = getRangeAttribute(RAs, "v", "a", 1);
           
           //require("internal").print(first);
-          assertEqual(first.low.bound.vType,  "int", "Type is int");
-          assertEqual(first.high.bound.vType, "int", "Type is int");
-          assertEqual(first.low.bound.value, first.high.bound.value);
+          assertEqual(first.low.length, 1, "exactly one constant low bound");
+          assertEqual(first.high.length, 1, "exactly one constant high bound");
+          assertEqual(first.low[0].bound, 1, "correctness of bound");
+          assertEqual(first.low[0].bound, first.high[0].bound, "bounds equality");
 
           for (i = 1; i < 2; i++) {
               assertTrue(isEqual(QResults[0].sort(sortArray), QResults[i]), "Result " + i + " is Equal?");
@@ -537,8 +538,9 @@ function optimizerRuleTestSuite() {
           // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
           var RAs = getRangeAttributes(XPresult);
           var first = getRangeAttribute(RAs, "v", "a", 1);
-          assertEqual(first.high.bound.vType, "int", "Type is int");
-          assertEqual(first.high.bound.value, 5, "proper value was set");
+          assertEqual(first.low.length, 0, "no low bound");
+          assertEqual(first.high.length, 1, "exactly one constant high bound");
+          assertEqual(first.high[0].bound, 5, "proper value was set");
 
           assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
       },
@@ -566,8 +568,9 @@ function optimizerRuleTestSuite() {
           var RAs = getRangeAttributes(XPresult);
           var first = getRangeAttribute(RAs, "v", "a", 1);
           
-          assertEqual(first.low.bound.vType, "int", "Type is int");
-          assertEqual(first.low.bound.value, 5, "proper value was set");
+          assertEqual(first.high.length, 0, "no high bound");
+          assertEqual(first.low.length, 1, "exactly one constant low bound");
+          assertEqual(first.low[0].bound, 5, "proper value was set");
 
           assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
 
@@ -597,10 +600,10 @@ function optimizerRuleTestSuite() {
           var RAs = getRangeAttributes(XPresult);
           var first = getRangeAttribute(RAs, "v", "a", 1);
           
-          assertEqual(first.low.bound.vType, "int", "Type is int");
-          assertEqual(first.low.bound.value, 4, "proper value was set");
-          assertEqual(first.high.bound.vType, "int", "Type is int");
-          assertEqual(first.high.bound.value, 10, "proper value was set");
+          assertEqual(first.high.length, 1, "exactly one constant high bound");
+          assertEqual(first.low.length, 1, "exactly one constant low bound");
+          assertEqual(first.low[0].bound, 4, "proper value was set");
+          assertEqual(first.high[0].bound, 10, "proper value was set");
 
           assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
       },
