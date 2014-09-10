@@ -910,6 +910,8 @@ namespace triagens {
         virtual ExecutionNode* clone () const {
           std::vector<std::vector<RangeInfo>> ranges;
           for (size_t i = 0; i < _ranges.size(); i++){
+            ranges.push_back(std::vector<RangeInfo>());
+
             for (auto x: _ranges.at(i)){
               ranges.at(i).push_back(x);
             }
