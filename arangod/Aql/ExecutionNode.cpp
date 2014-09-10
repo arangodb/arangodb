@@ -366,7 +366,7 @@ Variable* ExecutionNode::varFromJson (Ast* ast,
     }
     else {
       std::string msg;
-      msg += "Mandatory variable \"" + std::string(variableName) + "\"not found.";
+      msg += "Mandatory variable \"" + std::string(variableName) + "\" not found.";
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
     }
   }

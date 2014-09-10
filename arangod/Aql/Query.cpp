@@ -84,6 +84,7 @@ Query::Query (TRI_vocbase_t* vocbase,
     _queryJson(queryStruct),
     _type(Type),
     _bindParameters(nullptr),
+    _options(nullptr),
     _collections(vocbase),
     _strings() {
 
@@ -99,6 +100,7 @@ Query::Query (TRI_vocbase_t* vocbase,
 Query::~Query () {
   if (_options != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _options);
+    _options = nullptr;
   }
 
   if (_executor != nullptr) {
@@ -398,7 +400,7 @@ QueryResult Query::explain (bool returnAllPlans) {
       for (auto it : plans) {
         TRI_ASSERT(it != nullptr);
 
-        out.add(it->toJson(TRI_UNKNOWN_MEM_ZONE, false));
+        out.add(it->toJson(TRI_UNKNOWN_MEM_ZONE, true));
       }
       
       result.json = out.steal();
