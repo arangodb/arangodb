@@ -1,5 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, vars: true */
-/*global module, require, exports */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx BaseMiddleware
@@ -46,9 +45,60 @@ BaseMiddleware = function () {
       trace,
       _ = require("underscore"),
       console = require("console"),
+      crypto = require("org/arangodb/crypto"),
       actions = require("org/arangodb/actions");
 
     requestFunctions = {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_BaseMiddleware_request_cookie
+///
+/// `request.cookie(name, cfg)`
+///
+/// Read a cookie from the request. Optionally the cookie's signature can be verified.
+///
+/// *Parameter*
+///
+/// * *name*: the name of the cookie to read from the request.
+/// * *cfg* (optional): an object with any of the following properties:
+///   * *signed* (optional): an object with any of the following properties:
+///     * *secret*: a secret string that was used to sign the cookie.
+///     * *algorithm*: hashing algorithm that was used to sign the cookie. Default: *"sha256"*.
+///
+/// If *signed* is a string, it will be used as the *secret* instead.
+///
+/// If a *secret* is provided, a second cookie with the name *name + ".sig"* will
+/// be read and its value will be verified as the cookie value's signature.
+///
+/// If the cookie is not set or its signature is invalid, "undefined" will be returned instead.
+///
+/// @EXAMPLES
+///
+/// ```
+/// var sid = request.cookie("sid", {signed: "keyboardcat"});
+/// ```
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+      cookie: function (name, cfg) {
+        if (!cfg || typeof cfg !== 'object') {
+          cfg = {};
+        }
+        var value = this.cookies[name] || undefined;
+        if (value && cfg.signed) {
+          if (typeof cfg.signed === 'string') {
+            cfg.signed = {secret: cfg.signed};
+          }
+          var valid = crypto.constantEquals(
+            this.cookies[name + '.sig'] || '',
+            crypto.hmac(cfg.signed.secret, value, cfg.signed.algorithm)
+          );
+          if (!valid) {
+            value = undefined;
+          }
+        }
+        return value;
+      },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_BaseMiddleware_request_body
@@ -102,6 +152,55 @@ BaseMiddleware = function () {
     };
 
     responseFunctions = {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_BaseMiddleware_response_cookie
+///
+/// `response.cookie(name, value, cfg)`
+///
+/// Add a cookie to the response. Optionally the cookie can be signed.
+///
+/// *Parameter*
+///
+/// * *name*: the name of the cookie to add to the response.
+/// * *value*: the value of the cookie to add to the response.
+/// * *cfg* (optional): an object with any of the following properties:
+///   * *ttl* (optional): the number of seconds until this cookie expires.
+///   * *path* (optional): the cookie path.
+///   * *domain* (optional): the cookie domain.
+///   * *secure* (optional): mark the cookie as safe transport (HTTPS) only.
+///   * *httpOnly* (optional): mark the cookie as HTTP(S) only.
+///   * *signed* (optional): an object with any of the following properties:
+///     * *secret*: a secret string to sign the cookie with.
+///     * *algorithm*: hashing algorithm to sign the cookie with. Default: *"sha256"*.
+///
+/// If *signed* is a string, it will be used as the *secret* instead.
+///
+/// If a *secret* is provided, a second cookie with the name *name + ".sig"* will
+/// be added to the response, containing the cookie's HMAC signature.
+///
+/// @EXAMPLES
+///
+/// ```
+/// response.cookie("sid", "abcdef", {signed: "keyboardcat"});
+/// ```
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+      cookie: function (name, value, cfg) {
+        if (!cfg || typeof cfg !== 'object') {
+          cfg = {ttl: cfg};
+        }
+        var ttl = (typeof cfg.ttl === 'number' && cfg.ttl !== Infinity) ? cfg.ttl : undefined;
+        actions.addCookie(this, name, value, ttl, cfg.path, cfg.domain, cfg.secure, cfg.httpOnly);
+        if (cfg.signed) {
+          if (typeof cfg.signed === 'string') {
+            cfg.signed = {secret: cfg.signed};
+          }
+          var sig = crypto.hmac(cfg.signed.secret, value, cfg.signed.algorithm);
+          actions.addCookie(this, name + '.sig', sig, ttl, cfg.path, cfg.domain, cfg.secure, cfg.httpOnly);
+        }
+      },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_BaseMiddleware_response_status
@@ -226,19 +325,19 @@ BaseMiddleware = function () {
         }
         console.log("%s, outgoing response with status %s of type %s, body length: %d",
                     options.mount,
-                    response.responseCode,
+                    response.responseCode || 200,
                     response.contentType,
                     bodyLength);
       } else if (response.hasOwnProperty("bodyFromFile")) {
         console.log("%s, outgoing response with status %s of type %s, body file: %s",
                     options.mount,
-                    response.responseCode,
+                    response.responseCode || 200,
                     response.contentType,
                     response.bodyFromFile);
       } else {
         console.log("%s, outgoing response with status %s of type %s, no body",
                     options.mount,
-                    response.responseCode,
+                    response.responseCode || 200,
                     response.contentType);
       }
     }

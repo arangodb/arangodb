@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 80 */
 /*global require, db, assertEqual, assertTrue, ArangoCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -79,7 +78,7 @@ function SkipListCorrSuite() {
 
   testCorrectnessNonUnique : function () {
     coll.ensureSkiplist("v");
-    
+
     coll.save({a:1,_key:"1",v:1});
     coll.save({a:17,_key:"2",v:2});
     coll.save({a:22,_key:"3",v:3});
@@ -149,7 +148,7 @@ function SkipListCorrSuite() {
 
   testCorrectnessUnique : function () {
     coll.ensureUniqueSkiplist("v");
-    
+
     coll.save({a:1,_key:"1",v:1});
     coll.save({a:17,_key:"2",v:2});
     coll.save({a:22,_key:"3",v:3});

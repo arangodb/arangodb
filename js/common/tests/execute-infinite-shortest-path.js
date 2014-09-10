@@ -1,14 +1,5 @@
-/*jslint indent: 2,
-         nomen: true,
-         maxlen: 80,
-         sloppy: true */
-/*global require,
-    db,
-    assertEqual, assertTrue,
-    print,
-    PRINT_OBJECT,
-    console,
-    AvocadoCollection, AvocadoEdgesCollection */
+/*global require, db, assertEqual, assertTrue, print, PRINT_OBJECT, console,
+  AvocadoCollection, AvocadoEdgesCollection */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph class

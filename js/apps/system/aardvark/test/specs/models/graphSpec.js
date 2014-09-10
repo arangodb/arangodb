@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
+/*jshint browser: true */
+/*jshint unused: false */
 /*global describe, beforeEach, afterEach, it, spyOn, expect*/
 /*global $*/
 
@@ -6,7 +7,7 @@
   "use strict";
 
   describe("The current database", function() {
-    
+
     var model, myKey, ajaxVerify, server_result, e, v;
 
     beforeEach(function() {

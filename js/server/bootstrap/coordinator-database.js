@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true */
 /*global require, UPGRADE_ARGS: true */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -37,6 +36,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
+  /*jshint strict: false */
   var internal = require("internal");
 
   // do not overwrite arguments set from the calling C++ code

@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
+/*jshint unused: false */
 /*global beforeEach, afterEach */
 /*global describe, it, expect, jasmine */
 /*global runs, spyOn, waitsFor, waits */
@@ -39,15 +39,15 @@
   "use strict";
 
   describe('Foxx Adapter', function () {
-    
+
     describeInterface(new FoxxAdapter([], [], "foxx/route", {}));
-    
+
     describeIntegeration(function() {
       spyOn($, "ajax").andCallFake(function(req) {
         var node1 = {_id: 1},
           node2 = {_id: 2},
           edge = {_id: "1-2", _from: 1, _to: 2};
-          
+
         switch(req.type) {
           case "DELETE":
             req.success();
@@ -75,15 +75,15 @@
             req.success();
         }
       });
-      
+
       return new FoxxAdapter([], [], "foxx/route", {}, {prioList: ["foo", "bar", "baz"]});
     });
-    
+
     var adapter,
       viewer,
       nodes,
       edges;
-    
+
       beforeEach(function() {
         nodes = [];
         edges = [];
@@ -91,7 +91,7 @@
           cleanUp: function(){}
         };
       });
-            
+
       it('should throw an error if no nodes are given', function() {
         expect(
           function() {
@@ -99,7 +99,7 @@
           }
         ).toThrow("The nodes have to be given.");
       });
-      
+
       it('should throw an error if no edges are given', function() {
         expect(
           function() {
@@ -107,22 +107,22 @@
           }
         ).toThrow("The edges have to be given.");
       });
-      
+
       it('should throw an error if no route is given', function() {
         expect(
           function() {
             var t = new FoxxAdapter([], []);
           }
         ).toThrow("The route has to be given.");
-      }); 
-      
+      });
+
       it('should throw an error if no reference to the graph viewer is given', function() {
         expect(
           function() {
             var t = new FoxxAdapter([], [], "foxx/route");
           }
         ).toThrow("A reference to the graph viewer has to be given.");
-      }); 
+      });
 
       it('should not throw an error if necessary info is given', function() {
         expect(
@@ -130,8 +130,8 @@
             var t = new FoxxAdapter([], [], "foxx/route", viewer);
           }
         ).not.toThrow();
-      }); 
-      /*    
+      });
+      /*
       it('should automatically determine the host of relative route is given', function() {
         var route = "foxx/route",
           args,
@@ -158,15 +158,15 @@
         );
         expect(window.NodeReducer).wasCalledWith();
       });
-    
+
       describe('setup correctly', function() {
-        
+
         var edgeRoute,
           nodeRoute,
           queryRoute,
           requests;
-        
-        beforeEach(function() {  
+
+        beforeEach(function() {
           var self = this,
             route = "foxx/route",
             host = route;
@@ -193,8 +193,8 @@
           );
           edgeRoute = host + "/edges";
           nodeRoute = host + "/nodes";
-          queryRoute = host + "/query";      
-          
+          queryRoute = host + "/query";
+
           requests = {};
           requests.query = function(id) {
             return {
@@ -267,11 +267,11 @@
             };
           };
         });
-        
+
         it('should be able to load a graph', function() {
-          
+
           var called, id;
-          
+
           runs(function() {
             called = false;
             id = 1;
@@ -292,11 +292,11 @@
             };
             adapter.loadNode(id, callback);
           });
-          
+
           waitsFor(function() {
             return called;
           }, 1000);
-          
+
           runs(function() {
             expect(nodes.length).toEqual(2);
             expect(edges.length).toEqual(1);
@@ -312,7 +312,7 @@
           adapter.createNode(node);
           expect($.ajax).wasCalledWith(requests.node().create(node));
         });
-        
+
         it('should be able to change a node', function() {
           spyOn($, "ajax");
           var toPatch = {_id: 1},
@@ -320,7 +320,7 @@
           adapter.patchNode(toPatch, data);
           expect($.ajax).wasCalledWith(requests.node().patch(toPatch._id, data));
         });
-        
+
         it('should be able to delete a node', function() {
           //Checks first ajax Call and omits propagation
           spyOn($, "ajax");
@@ -328,7 +328,7 @@
           adapter.deleteNode(node);
           expect($.ajax).wasCalledWith(requests.node().del(node._id));
         });
-        
+
         it('should delete adjacent edges on node delete', function() {
           // Checks the second (and last) ajax Call.
           spyOn($, "ajax").andCallFake(function(req) {
@@ -338,7 +338,7 @@
           adapter.deleteNode(node);
           expect($.ajax).wasCalledWith(requests.edge().delForNode(node._id));
         });
-        
+
         it('should be able to insert an edge', function() {
           spyOn($, "ajax");
           var source = {_id: 1},
@@ -353,7 +353,7 @@
             source._id, target._id, {label: "Foxx"})
           );
         });
-        
+
         it('should be able to change an edge', function() {
           spyOn($, "ajax");
           var source = {_id: 1},
@@ -369,7 +369,7 @@
           adapter.patchEdge(edge, patch);
           expect($.ajax).wasCalledWith(requests.edge().patch(edge._id, patch));
         });
-        
+
         it('should be able to delete an edge', function() {
           spyOn($, "ajax");
           var source = {_id: 1},
@@ -382,12 +382,12 @@
           adapter.deleteEdge(edge);
           expect($.ajax).wasCalledWith(requests.edge().del(edge._id));
         });
-        
+
 
         it('should not bucket existing nodes', function() {
           var lastCallWith, n0, n1, n2, n3, n4, n5, n6, isFirstCall,
           callbackCheck, checkCallbackFunction;
-          
+
           runs(function() {
             checkCallbackFunction = function() {
               callbackCheck = true;
@@ -453,47 +453,47 @@
                 }
               ];
             });
-            
+
             callbackCheck = false;
             adapter.loadNode(n0, checkCallbackFunction);
-            
+
           });
-          
+
           waitsFor(function() {
             return callbackCheck;
           }, 1000);
-          
+
           runs(function() {
             expect(lastCallWith).toEqual(["1", "2", "3"]);
-            
+
             callbackCheck = false;
             adapter.loadNode(n1, checkCallbackFunction);
           });
-          
+
           waitsFor(function() {
             return callbackCheck;
           }, 1000);
-          
+
           runs(function() {
             expect(lastCallWith).toEqual(["4", "5", "6"]);
-            
+
           });
-          
+
         });
 
         describe('that has already loaded a graph', function() {
-          
+
         });
-        
-        
+
+
         /*
         describe('that has already loaded one graph', function() {
           var c0, c1, c2, c3, c4, c5, c6, c7,
             fakeResult, spyHook;
-      
-      
+
+
           beforeEach(function() {
-      
+
             runs(function() {
               spyOn($, "ajax").andCallFake(function(request) {
                 if (spyHook !== undefined) {
@@ -509,7 +509,7 @@
                 } else {
                   request.success(fakeResult);
                 }
-                
+
               });
               c0 = insertNode(nodesCollection, 0);
               c1 = insertNode(nodesCollection, 1);
@@ -519,7 +519,7 @@
               c5 = insertNode(nodesCollection, 5);
               c6 = insertNode(nodesCollection, 6);
               c7 = insertNode(nodesCollection, 7);
-          
+
               insertEdge(edgesCollection, c0, c1);
               insertEdge(edgesCollection, c0, c2);
               insertEdge(edgesCollection, c0, c3);
@@ -527,10 +527,10 @@
               insertEdge(edgesCollection, c1, c5);
               insertEdge(edgesCollection, c1, c6);
               insertEdge(edgesCollection, c1, c7);
-          
+
               callbackCheck = false;
               adapter.loadNode(c0, checkCallbackFunction);
-          
+
               this.addMatchers({
                 toBeStoredPermanently: function() {
                   var id = this.actual,
@@ -556,7 +556,7 @@
                   });
                   return res;
                 },
-            
+
                 toNotBeStoredPermanently: function() {
                   var id = this.actual,
                   res = false;
@@ -573,12 +573,12 @@
                       if (data.status === 404) {
                         res = true;
                       }
-                  
+
                     }
                   });
                   return res;
                 },
-            
+
                 toHavePermanentAttributeWithValue: function(attribute, value) {
                   var id = this.actual,
                   res = false;
@@ -593,33 +593,33 @@
                         res = true;
                       }
                     },
-                    error: function(data) {                  
+                    error: function(data) {
                     }
                   });
                   return res;
                 }
               });
             });
-      
+
             waitsFor(function() {
               return callbackCheck;
             });
-        
+
             runs(function() {
               callbackCheck = false;
-            });     
+            });
           });
-          
+
           it('should be able to add nodes from another query', function() {
-        
+
             runs(function() {
               adapter.loadNode(c1, checkCallbackFunction);
             });
-      
+
             waitsFor(function() {
               return callbackCheck;
             });
-      
+
             runs(function() {
               existNodes([c0, c1, c2, c3, c4, c5, c6, c7]);
               expect(nodes.length).toEqual(8);
@@ -628,43 +628,43 @@
               );
             });
           });
-          
+
           it('should be able to change a value of one node permanently', function() {
             var toPatch;
-        
+
             runs(function() {
               fakeResult = {hello: "world"};
               toPatch = nodeWithID(c0);
               adapter.patchNode(toPatch, {hello: "world"}, checkCallbackFunction);
             });
-        
+
             waitsFor(function() {
               return callbackCheck;
             });
-        
+
             runs(function() {
               expect(toPatch._data.hello).toEqual("world");
               expect($.ajax).toHaveBeenCalledWith(
                 requests.node(nodesCollection).patch(c0, fakeResult)
               );
-              
+
             });
-        
+
           });
-          
+
           it('should be able to change a value of one edge permanently', function() {
             var toPatch;
-        
+
             runs(function() {
               fakeResult = {hello: "world"};
               toPatch = edgeWithSourceAndTargetId(c0, c1);
               adapter.patchEdge(toPatch, {hello: "world"}, checkCallbackFunction);
             });
-        
+
             waitsFor(function() {
               return callbackCheck;
             });
-        
+
             runs(function() {
               expect(toPatch._data.hello).toEqual("world");
               expect($.ajax).toHaveBeenCalledWith(
@@ -672,57 +672,57 @@
               );
             });
           });
-          
+
           it('should be able to remove an edge permanently', function() {
-        
+
             var toDelete;
-        
+
             runs(function() {
               fakeResult = "";
               toDelete = edgeWithSourceAndTargetId(c0, c4);
               existEdge(c0, c4);
               adapter.deleteEdge(toDelete, checkCallbackFunction);
             });
-        
+
             waitsFor(function() {
               return callbackCheck;
             });
-        
+
             runs(function() {
               expect($.ajax).toHaveBeenCalledWith(
                 requests.node(edgesCollection).del(toDelete._id)
               );
               notExistEdge(c0, c4);
             });
-        
+
           });
-          
+
           it('should be able to add a node permanently', function() {
-        
+
             var insertedId;
-        
+
             runs(function() {
               adapter.createNode({}, function(node) {
                 insertedId = node._id;
                 callbackCheck = true;
               });
             });
-        
+
             waitsFor(function() {
               return callbackCheck;
             });
-        
+
             runs(function() {
               expect($.ajax).toHaveBeenCalledWith(
                 requests.node(nodesCollection).create({})
               );
-              
+
               existNode(insertedId);
             });
           });
-          
+
           it('should trigger the reducer if too many nodes are added', function() {
-        
+
             runs(function() {
               adapter.setNodeLimit(6);
               spyOn(this, "fakeReducerRequest").andCallFake(function() {
@@ -732,10 +732,10 @@
               expect(this.fakeReducerRequest).toHaveBeenCalledWith(6, nodeWithID(c1));
             });
           });
-          
+
 
           describe('checking community nodes', function() {
-            
+
             it('should not trigger the reducer if the limit is set large enough', function() {
               spyOn(this, "fakeReducerRequest").andCallFake(function() {
                 return [c0];
@@ -743,7 +743,7 @@
               adapter.setNodeLimit(10);
               expect(this.fakeReducerRequest).not.toHaveBeenCalled();
             });
-          
+
             it('should trigger the reducer if the limit is set too small', function() {
               spyOn(this, "fakeReducerRequest").andCallFake(function() {
                 return [c0];
@@ -751,10 +751,10 @@
               adapter.setNodeLimit(2);
               expect(this.fakeReducerRequest).toHaveBeenCalledWith(2);
             });
-            
+
             it('should create a community node if limit is set too small', function() {
               var called;
-              
+
               runs(function() {
                 callbackCheck = false;
                 spyOn(this, "fakeReducerRequest").andCallFake(function() {
@@ -762,11 +762,11 @@
                 });
                 adapter.setNodeLimit(2, checkCallbackFunction);
               });
-              
+
               waitsFor(function() {
                 return callbackCheck;
               });
-              
+
               runs(function() {
                 var commId = getCommunityNodesIds()[0];
                 notExistNodes([c0, c1, c2]);
@@ -776,9 +776,9 @@
                 existEdge(commId, c3);
                 existEdge(commId, c4);
                 expect(edges.length).toEqual(2);
-              });              
+              });
             });
-            
+
             it('should create a community node if too many nodes are added', function() {
               runs(function() {
                 adapter.setNodeLimit(6);
@@ -787,35 +787,35 @@
                 });
                 adapter.loadNode(c1, checkCallbackFunction);
               });
-            
+
               waitsFor(function() {
                 return callbackCheck;
               });
-      
+
               runs(function() {
                 var commId = getCommunityNodesIds()[0];
                 notExistNodes([c0, c1, c2, c3]);
                 existNode(commId);
                 existNodes([c4, c5, c6, c7]);
                 expect(nodes.length).toEqual(5);
-              
+
                 existEdge(commId, c4);
                 existEdge(commId, c5);
                 existEdge(commId, c6);
                 existEdge(commId, c7);
                 expect(edges.length).toEqual(4);
               });
-            
+
             });
-            
+
             describe('expanding after a while', function() {
-              
+
               it('should connect edges of internal nodes accordingly', function() {
-                
+
                 var commNode, called, counterCallback,
                 v0, v1, v2, v3, v4,
                 e0_1, e0_2, e1_3, e1_4, e2_3, e2_4;
-                
+
                 runs(function() {
                   var v = "vertices",
                     e = "edges";
@@ -840,49 +840,49 @@
                     return [v1, v3, v4];
                   });
                   adapter.setNodeLimit(3);
-                  
+
                   adapter.changeTo(v, e);
                   adapter.loadNode(v0, counterCallback);
                   adapter.loadNode(v1, counterCallback);
-                  
+
                 });
-                
+
                 waitsFor(function() {
                   return called === 2;
                 });
-                
+
                 runs(function() {
                   adapter.loadNode(v2, counterCallback);
                   commNode = getCommunityNodes()[0];
                 });
-                
+
                 waitsFor(function() {
                   return called === 3;
                 });
-                
+
                 runs(function() {
                   var commId = commNode._id;
                   // Check start condition
                   existNodes([commId, v0, v2]);
                   expect(nodes.length).toEqual(3);
-                  
+
                   existEdge(v0, v2);
                   existEdge(v0, commId);
                   existEdge(v2, commId);
                   expect(edges.length).toEqual(4);
-                  
+
                   adapter.setNodeLimit(20);
                   adapter.expandCommunity(commNode, counterCallback);
                 });
-                
+
                 waitsFor(function() {
                   return called === 4;
                 });
-                
+
                 runs(function() {
                   existNodes([v0, v1, v2, v3, v4]);
                   expect(nodes.length).toEqual(5);
-                  
+
                   existEdge(v0, v1);
                   existEdge(v0, v2);
                   existEdge(v1, v3);
@@ -890,16 +890,16 @@
                   existEdge(v2, v3);
                   existEdge(v2, v4);
                   expect(edges.length).toEqual(6);
-                  
+
                 });
               });
-              
+
               it('set inbound and outboundcounter correctly', function() {
-                
+
                 var commNode, called, counterCallback,
                 v0, v1, v2, v3, v4,
                 e0_1, e0_2, e1_3, e1_4, e2_3, e2_4;
-                
+
                 runs(function() {
                   var v = "vertices",
                     e = "edges";
@@ -924,35 +924,35 @@
                     return [v1, v3, v4];
                   });
                   adapter.setNodeLimit(3);
-                  
+
                   adapter.changeTo(v, e);
                   adapter.loadNode(v0, counterCallback);
                   adapter.loadNode(v1, counterCallback);
-                  
+
                 });
-                
+
                 waitsFor(function() {
                   return called === 2;
                 });
-                
+
                 runs(function() {
                   adapter.loadNode(v2, counterCallback);
                   commNode = getCommunityNodes()[0];
                 });
-                
+
                 waitsFor(function() {
                   return called === 3;
                 });
-                
+
                 runs(function() {
                   adapter.setNodeLimit(20);
                   adapter.expandCommunity(commNode, counterCallback);
                 });
-                
+
                 waitsFor(function() {
                   return called === 4;
                 });
-                
+
                 runs(function() {
                   var checkNodeWithInAndOut = function(id, inbound, outbound) {
                     var n = nodeWithID(id);
@@ -963,17 +963,17 @@
                   checkNodeWithInAndOut(v1, 1, 2);
                   checkNodeWithInAndOut(v2, 1, 2);
                   checkNodeWithInAndOut(v3, 2, 0);
-                  checkNodeWithInAndOut(v4, 2, 0);            
+                  checkNodeWithInAndOut(v4, 2, 0);
                 });
               });
-              
+
             });
-            
+
             describe('that displays a community node already', function() {
-              
+
               var firstCommId,
               fakeResult;
-              
+
               beforeEach(function() {
                 runs(function() {
                   callbackCheck = false;
@@ -984,27 +984,27 @@
                   });
                   adapter.loadNode(c1, checkCallbackFunction);
                 });
-            
+
                 waitsFor(function() {
                   return callbackCheck;
                 });
-      
+
                 runs(function() {
                   firstCommId = getCommunityNodesIds()[0];
                 });
               });
-              
+
               it('should expand a community if enough space is available', function() {
                 runs(function() {
                   adapter.setNodeLimit(10);
                   callbackCheck = false;
                   adapter.expandCommunity(nodeWithID(firstCommId), checkCallbackFunction);
                 });
-                
+
                 waitsFor(function() {
                   return callbackCheck;
                 });
-                
+
                 runs(function() {
                   expect(getCommunityNodes().length).toEqual(0);
                   existNodes([c0, c1, c2, c3, c4, c5, c6, c7]);
@@ -1013,9 +1013,9 @@
                   existEdge(c0, c3);
                   existEdge(c0, c4);
                 });
-                
+
               });
-              
+
               it('should expand a community and join another '
               + 'one if not enough space is available', function() {
                 runs(function() {
@@ -1023,52 +1023,52 @@
                   callbackCheck = false;
                   adapter.expandCommunity(nodeWithID(firstCommId), checkCallbackFunction);
                 });
-                
+
                 waitsFor(function() {
                   return callbackCheck;
                 });
-                
+
                 runs(function() {
                   var newCommId = getCommunityNodesIds()[0];
                   expect(getCommunityNodes().length).toEqual(1);
                   existNodes([c0, c2, c3, c4, c5, c6, newCommId]);
                   notExistNodes([c1, c7]);
-                  
+
                   existEdge(c0, c2);
                   existEdge(c0, c3);
                   existEdge(c0, c4);
-                  
+
                   existEdge(c0, newCommId);
                   existEdge(newCommId, c5);
                   existEdge(newCommId, c6);
                 });
               });
-              
+
               it('should join another community if space is further reduced', function() {
                 runs(function() {
                   fakeResult = [c1, c7];
                   callbackCheck = false;
                   adapter.setNodeLimit(6, checkCallbackFunction);
                 });
-                
+
                 waitsFor(function() {
                   return callbackCheck;
                 });
-                
+
                 runs(function() {
                   expect(getCommunityNodes().length).toEqual(2);
                   var ids = getCommunityNodesIds(),
                     newCommId;
-                  
+
                   if (firstCommId === ids[0]) {
                     newCommId = ids[1];
                   } else {
                     newCommId = ids[0];
                   }
-                  
+
                   existNodes([c3, c4, c5, c6, firstCommId, newCommId]);
                   notExistNodes([c0, c1, c2, c7]);
-                  
+
                   existEdge(firstCommId, c3);
                   existEdge(firstCommId, c4);
                   existEdge(firstCommId, newCommId);
@@ -1076,81 +1076,81 @@
                   existEdge(newCommId, c6);
                 });
               });
-              
+
               it('should connect edges to internal nodes', function() {
-                
+
                 runs(function() {
                   insertEdge(edgesCollection, c3, c0);
-                  
+
                   adapter.setNodeLimit(20);
                   callbackCheck = false;
                   adapter.loadNode(c3, checkCallbackFunction);
                 });
-                
+
                 waitsFor(function() {
                   return callbackCheck;
                 });
-                
+
                 runs(function() {
                   existEdge(c3, firstCommId);
                 });
-                
+
               });
-              
+
             });
-            
+
           });
-          
+
           describe('that has loaded several queries', function() {
             var c8, c9, e2_8;
-      
+
             beforeEach(function() {
-      
+
               runs(function() {
                 c8 = insertNode(nodesCollection, 8);
                 c9 = insertNode(nodesCollection, 9);
-          
+
                 e2_8 = insertEdge(edgesCollection, c2, c8);
                 insertEdge(edgesCollection, c3, c8);
                 insertEdge(edgesCollection, c3, c9);
-          
+
                 callbackCheck = false;
                 adapter.loadNode(c2, checkCallbackFunction);
               });
-      
+
               waitsFor(function() {
                 return callbackCheck;
               });
-      
+
               runs(function() {
                 callbackCheck = false;
               });
-      
+
             });
-            
+
             it('should not add a node to the list twice', function() {
-      
+
               runs(function() {
                 adapter.loadNode(c3, checkCallbackFunction);
               });
-      
+
               waitsFor(function() {
                 return callbackCheck;
-              });  
-        
+              });
+
               runs(function() {
                 existNodes([c0, c1, c2, c3, c4, c8, c9]);
                 expect(nodes.length).toEqual(7);
               });
             });
-            
+
             it('should be able to add an edge permanently', function() {
               var insertedId,
                 source,
                 target,
                 insertedEdge;
-        
-        
+
+
               runs(function() {
                 source = nodeWithID(c0);
                 target = nodeWithID(c8);
@@ -1167,11 +1167,11 @@
                   insertedEdge = edge;
                 });
               });
-        
+
               waitsFor(function() {
                 return callbackCheck;
               });
-        
+
               runs(function() {
                 expect($.ajax).toHaveBeenCalledWith(
                   requests.edge(edgesCollection).create(source._id, target._id, {})
@@ -1190,9 +1190,9 @@
                   }
                 });
               });
-        
+
             });
-            
+
             it('should be able to remove a node and all connected edges permanently', function() {
               var toDelete;
               runs(function() {
@@ -1209,9 +1209,9 @@
                 toDelete = nodeWithID(c2);
                 adapter.deleteNode(toDelete, checkCallbackFunction);
               });
-        
+
               waits(2000);
-        
+
               runs(function() {
                 expect($.ajax).toHaveBeenCalledWith(
                   requests.node(nodesCollection).del(toDelete._id)
@@ -1223,36 +1223,36 @@
                 notExistEdge(c2, c8);
               });
             });
-            
+
           });
-          
+
         });
         */
-        
+
         /*
         describe('displaying only parts of the graph', function() {
-    
+
           it('should be able to remove a node and all '
           + 'connected edges including not visible ones', function() {
             var s0, s1, t0, toDel,
             s0_toDel, s1_toDel, toDel_t0;
-        
+
             runs(function() {
-          
+
               callbackCheck = false;
               s0 = insertNode(nodesCollection, 0);
               s1 = insertNode(nodesCollection, 1);
               t0 = insertNode(nodesCollection, 2);
               toDel = insertNode(nodesCollection, 3);
-          
+
               s0_toDel = insertEdge(edgesCollection, s0, toDel);
               s1_toDel = insertEdge(edgesCollection, s1, toDel);
               toDel_t0 = insertEdge(edgesCollection, toDel, t0);
-              
+
               var loaded = false,
                 fakeResult = "";
-              
-              spyOn($, "ajax").andCallFake(function(request) {                
+
+              spyOn($, "ajax").andCallFake(function(request) {
                 if (request.url.indexOf("cursor", request.url.length - "cursor".length) !== -1) {
                   if (!loaded) {
                     var vars = JSON.parse(request.data).bindVars;
@@ -1268,8 +1268,8 @@
                        _id: s1_toDel
                      },{
                        _id: toDel_t0
-                     }      
-                    ]});    
+                     }
+                    ]});
                   }
                 } else {
                   request.success(fakeResult);
@@ -1278,27 +1278,27 @@
 
               adapter.loadNode(s0, checkCallbackFunction);
             });
-        
+
             waitsFor(function() {
               return callbackCheck;
             });
-        
+
             runs(function() {
               callbackCheck = false;
               adapter.deleteNode(nodeWithID(toDel), checkCallbackFunction);
             });
-        
+
             // Wait 2 seconds as no handle for the deletion of edges exists.
             waits(2000);
-        
+
             runs(function() {
               notExistNodes([toDel, s1, t0]);
               existNode(s0);
-          
+
               notExistEdge(s0, toDel);
               notExistEdge(s1, toDel);
               notExistEdge(toDel, t0);
-              
+
               expect($.ajax).toHaveBeenCalledWith(
                 requests.node(nodesCollection).del(toDel)
               );
@@ -1311,18 +1311,18 @@
               expect($.ajax).toHaveBeenCalledWith(
                 requests.node(edgesCollection).del(toDel_t0)
               );
-              
+
               // Check if counter is set correctly
               expect(nodeWithID(s0)._outboundCounter).toEqual(0);
             });
-        
+
           });
-    
+
         });
         */
-        
+
       });
-      
+
   });
-  
+
 }());

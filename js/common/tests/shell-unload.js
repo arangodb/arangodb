@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 80 */
 /*global require, assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,7 +93,7 @@ function UnloadSuite () {
       collection.drop();
       collection = null;
 
-      internal.wait(0.0); 
+      internal.wait(0.0);
     }
 
   };

@@ -1,4 +1,3 @@
-/*jslint sloppy: true, white: true, indent: 2, nomen: true, maxlen: 80 */
 /*global require, assertEqual, assertTrue, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -59,7 +58,7 @@ function ReplicationSuite () {
   var connectToMaster = function () {
     arango.reconnect(masterEndpoint, db._name(), replicatorUser, replicatorPassword);
   };
-  
+
   var connectToSlave = function () {
     arango.reconnect(slaveEndpoint, db._name(), "root", "");
   };
@@ -68,7 +67,7 @@ function ReplicationSuite () {
     var c = db._collection(name).checksum(true, true);
     return c.checksum;
   };
-  
+
   var collectionCount = function (name) {
     return db._collection(name).count();
   };
@@ -98,22 +97,22 @@ function ReplicationSuite () {
     var state = { };
 
     db._flushCache();
-    masterFunc(state);  
+    masterFunc(state);
 
     connectToSlave();
     replication.applier.stop();
 
     internal.wait(1, false);
 
-    var syncResult = replication.sync({ 
-      endpoint: masterEndpoint, 
+    var syncResult = replication.sync({
+      endpoint: masterEndpoint,
       username: replicatorUser,
       password: replicatorPassword,
-      verbose: true 
+      verbose: true
     });
 
     assertTrue(syncResult.hasOwnProperty('lastLogTick'));
-  
+
     if (typeof applierConfiguration === 'object') {
       console.log("using special applier configuration: " + JSON.stringify(applierConfiguration));
     }
@@ -139,9 +138,9 @@ function ReplicationSuite () {
         break;
       }
 
-      if (compareTicks(slaveState.state.lastAppliedContinuousTick, syncResult.lastLogTick) > 0 || 
+      if (compareTicks(slaveState.state.lastAppliedContinuousTick, syncResult.lastLogTick) > 0 ||
           compareTicks(slaveState.state.lastProcessedContinuousTick, syncResult.lastLogTick) > 0 ||
-          compareTicks(slaveState.state.lastAvailableContinuousTick, syncResult.lastLogTick) > 0) { 
+          compareTicks(slaveState.state.lastAvailableContinuousTick, syncResult.lastLogTick) > 0) {
         break;
       }
 
@@ -175,7 +174,7 @@ function ReplicationSuite () {
 
     tearDown : function () {
       connectToMaster();
-      
+
       db._drop(cn);
       db._drop(cn2);
 
@@ -253,11 +252,11 @@ function ReplicationSuite () {
       compare(
         function (state) {
           var c = db._create(cn), i;
- 
+
           for (i = 0; i < 5000; ++i) {
             c.save({ "value" : i });
           }
-     
+
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(5000, state.count);
@@ -279,11 +278,11 @@ function ReplicationSuite () {
       compare(
         function (state) {
           var c = db._create(cn), i;
- 
+
           for (i = 0; i < 50000; ++i) {
             c.save({ "value" : i });
           }
-      
+
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(50000, state.count);
@@ -305,11 +304,11 @@ function ReplicationSuite () {
       compare(
         function (state) {
           var c = db._create(cn), i;
- 
+
           for (i = 0; i < 150000; ++i) {
             c.save({ "value" : i });
           }
-      
+
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(150000, state.count);
@@ -335,14 +334,14 @@ function ReplicationSuite () {
           for (i = 0; i < 1000; ++i) {
             doc["test" + i] = "the quick brown foxx jumped over the LAZY dog";
           }
- 
+
           for (i = 0; i < 100; ++i) {
             c.save({ "value" : i, "values": doc });
           }
 
           var d = c.any();
           assertEqual(1000, Object.keys(d.values).length);
-      
+
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(100, state.count);
@@ -368,14 +367,14 @@ function ReplicationSuite () {
           for (i = 0; i < 1000; ++i) {
             doc.push("the quick brown foxx jumped over the LAZY dog");
           }
- 
+
           for (i = 0; i < 100; ++i) {
             c.save({ "value" : i, "values": doc });
           }
 
           var d = c.any();
           assertEqual(1000, d.values.length);
-      
+
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(100, state.count);
@@ -397,16 +396,16 @@ function ReplicationSuite () {
       compare(
         function (state) {
           var c = db._create(cn), i;
- 
+
           for (i = 0; i < 1000; ++i) {
             var doc = { };
             doc["test" + i] = "the quick brown foxx jumped over the LAZY dog";
             c.save({ "value" : i, "values": doc });
           }
-          
+
           var d = c.any();
           assertEqual(1, Object.keys(d.values).length);
-      
+
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(1000, state.count);
@@ -428,11 +427,11 @@ function ReplicationSuite () {
       compare(
         function (state) {
           var c = db._create(cn), i;
- 
+
           for (i = 0; i < 1000; ++i) {
             c.save({ });
           }
-      
+
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(1000, state.count);
@@ -452,11 +451,11 @@ function ReplicationSuite () {
       compare(
         function (state) {
           var c = db._create(cn), i;
- 
+
           for (i = 0; i < 1000; ++i) {
             c.save({ "value" : i, "foo" : true, "bar" : [ i , false ], "value2" : null, "mydata" : { "test" : [ "abc", "def" ] } });
           }
-      
+
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(1000, state.count);
@@ -609,7 +608,7 @@ function ReplicationSuite () {
         function (state) {
           assertEqual(state.count1, collectionCount(cn));
           assertEqual(state.checksum1, collectionChecksum(cn));
-          
+
           assertEqual(state.count2, collectionCount(cn2));
           assertEqual(state.checksum2, collectionChecksum(cn2));
         }
@@ -627,7 +626,7 @@ function ReplicationSuite () {
 
           try {
             db._executeTransaction({
-              collections: { 
+              collections: {
                 write: cn
               },
               action: function () {
@@ -636,13 +635,13 @@ function ReplicationSuite () {
                 }
 
                 throw "rollback!";
-              } 
+              }
             });
             fail();
           }
           catch (err) {
           }
-          
+
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(0, state.count);
@@ -662,28 +661,28 @@ function ReplicationSuite () {
       compare(
         function (state) {
           var c = db._create(cn), i;
-              
+
           for (i = 0; i < 1000; ++i) {
             c.save({ "_key" : "test" + i });
           }
 
           try {
             db._executeTransaction({
-              collections: { 
+              collections: {
                 write: cn
               },
               action: function () {
                 for (i = 0; i < 1000; ++i) {
                   c.remove("test" + i);
                 }
-              } 
+              }
             });
             fail();
           }
           catch (err) {
 
           }
-          
+
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(1000, state.count);
@@ -705,7 +704,7 @@ function ReplicationSuite () {
           db._create(cn);
 
           db._executeTransaction({
-            collections: { 
+            collections: {
               write: cn
             },
             action: function (params) {
@@ -715,9 +714,9 @@ function ReplicationSuite () {
                 c.save({ "_key" : "test" + i });
               }
             },
-            params: { "cn": cn }, 
+            params: { "cn": cn },
           });
-          
+
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(1000, state.count);
@@ -739,7 +738,7 @@ function ReplicationSuite () {
           db._create(cn);
 
           db._executeTransaction({
-            collections: { 
+            collections: {
               write: cn
             },
             action: function (params) {
@@ -748,11 +747,11 @@ function ReplicationSuite () {
               for (i = 0; i < 1000; ++i) {
                 c.save({ "_key" : "test" + i });
               }
-              
+
               for (i = 0; i < 1000; ++i) {
                 c.update("test" + i, { "foo" : "bar" + i });
               }
-              
+
               for (i = 0; i < 1000; ++i) {
                 c.update("test" + i, { "foo" : "baz" + i });
               }
@@ -761,9 +760,9 @@ function ReplicationSuite () {
                 c.remove("test" + i);
               }
             },
-            params: { "cn": cn }, 
+            params: { "cn": cn },
           });
-          
+
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(900, state.count);
@@ -785,7 +784,7 @@ function ReplicationSuite () {
           db._create(cn);
 
           db._executeTransaction({
-            collections: { 
+            collections: {
               write: cn
             },
             action: function (params) {
@@ -800,9 +799,9 @@ function ReplicationSuite () {
                 }
               }
             },
-            params: { "cn" : cn }, 
+            params: { "cn" : cn },
           });
-          
+
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
           assertEqual(40000, state.count);
@@ -828,23 +827,23 @@ function ReplicationSuite () {
           db._create(cn2);
 
           db._executeTransaction({
-            collections: { 
+            collections: {
               write: [ cn, cn2 ]
             },
             action: function (params) {
               var c1 = require("internal").db._collection(params.cn);
-              var c2 = require("internal").db._collection(params.cn2); 
+              var c2 = require("internal").db._collection(params.cn2);
               var i;
 
               for (i = 0; i < 1000; ++i) {
                 c1.save({ "_key" : "test" + i });
                 c2.save({ "_key" : "test" + i, "foo": "bar" });
               }
-              
+
               for (i = 0; i < 1000; ++i) {
                 c1.update("test" + i, { "foo" : "bar" + i });
               }
-              
+
               for (i = 0; i < 1000; ++i) {
                 c1.update("test" + i, { "foo" : "baz" + i });
                 c2.update("test" + i, { "foo" : "baz" + i });
@@ -855,9 +854,9 @@ function ReplicationSuite () {
                 c2.remove("test" + i);
               }
             },
-            params: { "cn": cn, "cn2": cn2 }, 
+            params: { "cn": cn, "cn2": cn2 },
           });
-          
+
           state.checksum1 = collectionChecksum(cn);
           state.checksum2 = collectionChecksum(cn2);
           state.count1 = collectionCount(cn);
@@ -889,23 +888,23 @@ function ReplicationSuite () {
 
           try {
             db._executeTransaction({
-              collections: { 
+              collections: {
                 write: [ cn, cn2 ]
               },
               action: function (params) {
                 var c1 = require("internal").db._collection(params.cn);
-                var c2 = require("internal").db._collection(params.cn2); 
+                var c2 = require("internal").db._collection(params.cn2);
                 var i;
 
                 for (i = 0; i < 1000; ++i) {
                   c1.save({ "_key" : "test" + i });
                   c2.save({ "_key" : "test" + i, "foo": "bar" });
                 }
-              
+
                 for (i = 0; i < 1000; ++i) {
                   c1.update("test" + i, { "foo" : "bar" + i });
                 }
-              
+
                 for (i = 0; i < 1000; ++i) {
                   c1.update("test" + i, { "foo" : "baz" + i });
                   c2.update("test" + i, { "foo" : "baz" + i });
@@ -915,16 +914,16 @@ function ReplicationSuite () {
                   c1.remove("test" + i);
                   c2.remove("test" + i);
                 }
-   
+
                 throw "rollback!";
               },
-              params: { "cn": cn, "cn2": cn2 }, 
+              params: { "cn": cn, "cn2": cn2 },
             });
             fail();
           }
           catch (err) {
           }
-          
+
           state.checksum1 = collectionChecksum(cn);
           state.checksum2 = collectionChecksum(cn2);
           state.count1 = collectionCount(cn);
@@ -948,18 +947,18 @@ function ReplicationSuite () {
     testRenameCollection1 : function () {
       compare(
         function (state) {
-          var c = db._create(cn, { 
-            isVolatile : true, 
-            waitForSync : false, 
-            doCompact : false, 
+          var c = db._create(cn, {
+            isVolatile : true,
+            waitForSync : false,
+            doCompact : false,
             journalSize : 1048576,
-            keyOptions : { 
-              allowUserKeys : false 
-            }, 
+            keyOptions : {
+              allowUserKeys : false
+            },
           });
 
           c.rename(cn2);
-          
+
           state.cid = c._id;
           state.properties = c.properties();
         },
@@ -993,10 +992,10 @@ function ReplicationSuite () {
     testRenameCollection2 : function () {
       compare(
         function (state) {
-          var c = db._create(cn); 
+          var c = db._create(cn);
           c.rename(cn2);
           c.rename(cn);
-          
+
           state.cid = c._id;
           state.properties = c.properties();
         },
@@ -1022,12 +1021,12 @@ function ReplicationSuite () {
     testChangeCollection1 : function () {
       compare(
         function (state) {
-          var c = db._create(cn, { 
-            waitForSync : false, 
-            doCompact : false, 
+          var c = db._create(cn, {
+            waitForSync : false,
+            doCompact : false,
             journalSize : 1048576
           });
-          
+
           var properties = c.properties();
           assertFalse(properties.waitForSync);
           assertFalse(properties.doCompact);
@@ -1037,7 +1036,7 @@ function ReplicationSuite () {
           assertTrue(properties.waitForSync);
           assertTrue(properties.doCompact);
           assertEqual(2097152, properties.journalSize);
-          
+
           state.cid = c._id;
           state.properties = c.properties();
         },
@@ -1059,9 +1058,9 @@ function ReplicationSuite () {
     testChangeCollection2 : function () {
       compare(
         function (state) {
-          var c = db._create(cn, { 
-            waitForSync : true, 
-            doCompact : true, 
+          var c = db._create(cn, {
+            waitForSync : true,
+            doCompact : true,
             journalSize : 2097152
           });
 
@@ -1069,12 +1068,12 @@ function ReplicationSuite () {
           assertTrue(properties.waitForSync);
           assertTrue(properties.doCompact);
           assertEqual(2097152, properties.journalSize);
-          
+
           properties = c.properties({ waitForSync: false, doCompact: false, journalSize: 1048576 });
           assertFalse(properties.waitForSync);
           assertFalse(properties.doCompact);
           assertEqual(1048576, properties.journalSize);
-          
+
           state.cid = c._id;
           state.properties = c.properties();
         },
@@ -1096,13 +1095,13 @@ function ReplicationSuite () {
     testCreateCollection1 : function () {
       compare(
         function (state) {
-          var c = db._create(cn, { 
-            isVolatile : true, 
-            waitForSync : false, 
-            doCompact : false, 
+          var c = db._create(cn, {
+            isVolatile : true,
+            waitForSync : false,
+            doCompact : false,
             journalSize : 1048576
           });
-          
+
           state.cid = c._id;
           state.properties = c.properties();
         },
@@ -1128,17 +1127,17 @@ function ReplicationSuite () {
     testCreateCollection2 : function () {
       compare(
         function (state) {
-          var c = db._create(cn, { 
-            keyOptions : { 
-              type : "autoincrement", 
-              allowUserKeys : false 
-            }, 
-            isVolatile : false, 
-            waitForSync : true, 
-            doCompact : true, 
-            journalSize : 2097152 
+          var c = db._create(cn, {
+            keyOptions : {
+              type : "autoincrement",
+              allowUserKeys : false
+            },
+            isVolatile : false,
+            waitForSync : true,
+            doCompact : true,
+            journalSize : 2097152
           });
-          
+
           state.cid = c._id;
           state.properties = c.properties();
         },
@@ -1182,7 +1181,7 @@ function ReplicationSuite () {
         function (state) {
           var c = db._create(cn), i;
           c.ensureCapConstraint(128);
-              
+
           for (i = 0; i < 1000; ++i) {
             c.save({ "_key" : "test" + i });
           }
@@ -1194,14 +1193,14 @@ function ReplicationSuite () {
           assertEqual("test999", state.last[0]._key);
           assertEqual("test998", state.last[1]._key);
           assertEqual("test997", state.last[2]._key);
-          
+
           state.idx = c.getIndexes()[1];
         },
         function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.last, db._collection(cn).last(3));
-          
+
           assertEqual(state.idx.id, db._collection(cn).getIndexes()[1].id);
         }
       );
@@ -1216,7 +1215,7 @@ function ReplicationSuite () {
         function (state) {
           var c = db._create(cn), i;
           c.ensureHashIndex("a", "b");
-              
+
           for (i = 0; i < 1000; ++i) {
             c.save({ "_key" : "test" + i, "a" : parseInt(i / 2), "b" : i });
           }
@@ -1249,7 +1248,7 @@ function ReplicationSuite () {
         function (state) {
           var c = db._create(cn), i;
           c.ensureUniqueConstraint("a");
-              
+
           for (i = 0; i < 1000; ++i) {
             try {
               c.save({ "_key" : "test" + i, "a" : parseInt(i / 2) });
@@ -1286,7 +1285,7 @@ function ReplicationSuite () {
         function (state) {
           var c = db._create(cn), i;
           c.ensureSkiplist("a", "b");
-              
+
           for (i = 0; i < 1000; ++i) {
             c.save({ "_key" : "test" + i, "a" : parseInt(i / 2), "b" : i });
           }
@@ -1300,7 +1299,7 @@ function ReplicationSuite () {
         function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
-          
+
           var idx = db._collection(cn).getIndexes()[1];
           assertEqual(state.idx.id, idx.id);
           assertEqual("skiplist", state.idx.type);
@@ -1319,7 +1318,7 @@ function ReplicationSuite () {
         function (state) {
           var c = db._create(cn), i;
           c.ensureUniqueSkiplist("a");
-              
+
           for (i = 0; i < 1000; ++i) {
             try {
               c.save({ "_key" : "test" + i, "a" : parseInt(i / 2) });
@@ -1337,7 +1336,7 @@ function ReplicationSuite () {
         function (state) {
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
-          
+
           var idx = db._collection(cn).getIndexes()[1];
           assertEqual(state.idx.id, idx.id);
           assertEqual("skiplist", state.idx.type);

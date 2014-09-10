@@ -1,3 +1,5 @@
+# config file for arangoirb
+
 [server]
 endpoint = tcp://localhost:8529
 

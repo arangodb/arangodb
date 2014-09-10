@@ -1,5 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, plusplus: true, stupid: true */
-/*global module, require, exports, ArangoAgency */
+/*jshint strict: false */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Cluster planning functionality
@@ -61,7 +61,7 @@ var PlannerLocalDefaults = {
   "useSSLonDBservers"       : false,
   "useSSLonCoordinators"    : false
 };
-  
+
 // Some helpers using underscore:
 
 var _ = require("underscore");
@@ -169,7 +169,7 @@ PortFinder.prototype.next = function () {
     }
   }
 };
- 
+
 function exchangeProtocol (endpoint, useSSL) {
   var pos = endpoint.indexOf("://");
   if (pos !== -1) {
@@ -177,7 +177,7 @@ function exchangeProtocol (endpoint, useSSL) {
   }
   return (useSSL ? "ssl://" : "tcp://") + endpoint;
 }
-    
+
 function exchangePort (endpoint, newport) {
   var pos = endpoint.lastIndexOf(":");
   if (pos < 0) {
@@ -243,7 +243,7 @@ function fillConfigWithDefaults (config, defaultConfig) {
 ///   - *dispatchers*: an object with a property for each dispatcher,
 ///     the property name is the ID of the dispatcher and the value
 ///     should be an object with at least the property *endpoint*
-///     containing the endpoint of the corresponding dispatcher. 
+///     containing the endpoint of the corresponding dispatcher.
 ///     Further optional properties are:
 ///
 ///       - *avoidPorts* which is an object
@@ -280,7 +280,7 @@ function fillConfigWithDefaults (config, defaultConfig) {
 ///     In all other cases both agents and *arangod* instances bind
 ///     their endpoints to all available network devices.
 ///   - *numberOfAgents*: the number of agents in the agency,
-///     usually there is no reason to deviate from the default of 3. The 
+///     usually there is no reason to deviate from the default of 3. The
 ///     planner distributes them amongst the dispatchers, if possible.
 ///   - *agencyPrefix*: a string that is used as prefix for all keys of
 ///     configuration data stored in the agency.
@@ -291,15 +291,15 @@ function fillConfigWithDefaults (config, defaultConfig) {
 ///     silently ignored, since we do not yet have secondary servers.
 ///   - *numberOfCoordinators*: the number of coordinators in the cluster,
 ///     the planner distributes them evenly amongst the dispatchers.
-///   - *DBserverIDs*: a list of DBserver IDs (strings). If the planner 
+///   - *DBserverIDs*: a list of DBserver IDs (strings). If the planner
 ///     runs out of IDs it creates its own ones using *DBserver*
 ///     concatenated with a unique number.
-///   - *coordinatorIDs*: a list of coordinator IDs (strings). If the planner 
+///   - *coordinatorIDs*: a list of coordinator IDs (strings). If the planner
 ///     runs out of IDs it creates its own ones using *Coordinator*
 ///     concatenated with a unique number.
 ///   - *dataPath*: this is a string and describes the path under which
 ///     the agents, the DBservers and the coordinators store their
-///     data directories. This can either be an absolute path (in which 
+///     data directories. This can either be an absolute path (in which
 ///     case all machines in the clusters must use the same path), or
 ///     it can be a relative path. In the latter case it is relative
 ///     to the directory that is configured in the dispatcher with the
@@ -308,7 +308,7 @@ function fillConfigWithDefaults (config, defaultConfig) {
 ///     *PREFIX* is replaced with the agency prefix (see above) and *ID*
 ///     is the ID of the DBserver or coordinator.
 ///   - *logPath*: this is a string and describes the path under which
-///     the DBservers and the coordinators store their log file. This can 
+///     the DBservers and the coordinators store their log file. This can
 ///     either be an absolute path (in which case all machines in the cluster
 ///     must use the same path), or it can be a relative path. In the
 ///     latter case it is relative to the directory that is configured
@@ -325,7 +325,7 @@ function fillConfigWithDefaults (config, defaultConfig) {
 ///     actual executable that will be started for the agents in the
 ///     agency. If this is an absolute path, it obviously has to be
 ///     the same on all machines in the cluster, as described for
-///     *arangodPath*. If it is an empty string, the dispatcher 
+///     *arangodPath*. If it is an empty string, the dispatcher
 ///     uses its *cluster.agent-path* option.
 ///   - *agentExtPorts*: a list of port numbers to use for the external
 ///     ports of the agents. When running out of numbers in this list,
@@ -342,14 +342,14 @@ function fillConfigWithDefaults (config, defaultConfig) {
 ///     DBservers. The same comments as for *agentExtPorts* apply.
 ///   - *coordinatorPorts*: a list of port numbers to use for the
 ///     coordinators. The same comments as for *agentExtPorts* apply.
-///   - *useSSLonDBservers*: a boolean flag indicating whether or not 
+///   - *useSSLonDBservers*: a boolean flag indicating whether or not
 ///     we use SSL on all DBservers in the cluster
 ///   - *useSSLonCoordinators*: a boolean flag indicating whether or not
 ///     we use SSL on all coordinators in the cluster
 ///
 /// All these values have default values. Here is the current set of
 /// default values:
-/// 
+///
 /// ```js
 /// {
 ///   "agencyPrefix"            : "arango",
@@ -422,7 +422,7 @@ Planner.prototype.makePlan = function() {
   }
   // If no dispatcher is there, configure a local one (ourselves):
   if (Object.keys(dispatchers).length === 0) {
-    dispatchers.me = { "id": "me", "endpoint": "tcp://localhost:", 
+    dispatchers.me = { "id": "me", "endpoint": "tcp://localhost:",
                        "avoidPorts": {}, "allowCoordinators": true,
                        "allowDBservers": true, "allowAgents": true };
     config.onlyLocalhost = true;
@@ -430,7 +430,7 @@ Planner.prototype.makePlan = function() {
   else {
     config.onlyLocalhost = false;
     var k = Object.keys(dispatchers);
-    if (k.length === 1 && 
+    if (k.length === 1 &&
         dispatchers[k[0]].endpoint.substr(0,16) === "tcp://localhost:") {
       config.onlyLocalhost = true;
     }
@@ -478,7 +478,7 @@ Planner.prototype.makePlan = function() {
   while (i < config.numberOfCoordinators) {
     if (dispatchers[dispList[d]].allowCoordinators) {
       if (!pf.hasOwnProperty(d)) {
-        pf[d] = new PortFinder(config.coordinatorPorts, 
+        pf[d] = new PortFinder(config.coordinatorPorts,
                                dispatchers[dispList[d]]);
       }
       if (!config.coordinatorIDs.hasOwnProperty(i)) {
@@ -506,7 +506,7 @@ Planner.prototype.makePlan = function() {
   while (i < config.numberOfDBservers) {
     if (dispatchers[dispList[d]].allowDBservers) {
       if (!pf.hasOwnProperty(d)) {
-        pf[d] = new PortFinder(config.DBserverPorts, 
+        pf[d] = new PortFinder(config.DBserverPorts,
                                dispatchers[dispList[d]]);
       }
       if (!config.DBserverIDs.hasOwnProperty(i)) {
@@ -531,7 +531,7 @@ Planner.prototype.makePlan = function() {
   this.agents = agents;
   var launchers = {};
   for (i = 0; i < dispList.length; i++) {
-    launchers[dispList[i]] = { "DBservers": [], 
+    launchers[dispList[i]] = { "DBservers": [],
                                "Coordinators": [] };
   }
 
@@ -621,14 +621,14 @@ Planner.prototype.makePlan = function() {
                     "endpoints": agents.map(function(a) {
                         return exchangePort(dispatchers[a.dispatcher].endpoint,
                                             a.extPort);}) };
-  tmp.push( { "action": "sendConfiguration", 
+  tmp.push( { "action": "sendConfiguration",
               "agency": agencyPos,
               "data": agencyData } );
   for (i = 0; i < dispList.length; i++) {
     tmp.push( { "action": "startServers", "dispatcher": dispList[i],
                 "DBservers": copy(launchers[dispList[i]].DBservers),
                 "Coordinators": copy(launchers[dispList[i]].Coordinators),
-                "name": dispList[i], 
+                "name": dispList[i],
                 "dataPath": config.dataPath,
                 "logPath": config.logPath,
                 "arangodPath": config.arangodPath,

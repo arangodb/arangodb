@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 200, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, assertTrue, assertEqual, AQL_EXECUTE, AQL_EXPLAIN, fail, loopmax */
+/*global require, exports, assertTrue, assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
 ///
@@ -135,8 +135,8 @@ function optimizerRuleTestSuite () {
         [ "FOR i IN [ { a: 1, b: 1 }, { a: 2, b: 1 }, { a: 3, b: 1 } ] SORT i.a ASC, i.b DESC SORT i.a DESC, i.b ASC RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "CalculationNode", "SortNode", "ReturnNode" ] ],
         [ "FOR i IN [ { a: 1, b: 1 }, { a: 2, b: 1 }, { a: 3, b: 1 } ] SORT i.a ASC, i.b DESC FILTER i.a == 1 SORT i.a DESC, i.b ASC RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "ReturnNode" ] ],
         [ "FOR i IN [ { a: 1, b: 1 }, { a: 2, b: 1 }, { a: 3, b: 1 } ] SORT i.a ASC COLLECT x = i.a RETURN x", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "SortNode", "AggregateNode", "ReturnNode" ] ],
-        [ "FOR i IN [ { a: 1, b: 1 }, { a: 2, b: 1 }, { a: 3, b: 1 } ] SORT i.a, i.b SORT i.a SORT i.a RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "SortNode", "ReturnNode" ] ],
-        [ "FOR i IN [ { a: 1, b: 1 }, { a: 2, b: 1 }, { a: 3, b: 1 } ] SORT i.a, i.b SORT i.a DESC SORT i.a ASC RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "SortNode", "ReturnNode" ] ],
+        [ "FOR i IN [ { a: 1, b: 1 }, { a: 2, b: 1 }, { a: 3, b: 1 } ] SORT i.a, i.b SORT i.a SORT i.a RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "CalculationNode", "SortNode", "ReturnNode" ] ],
+        [ "FOR i IN [ { a: 1, b: 1 }, { a: 2, b: 1 }, { a: 3, b: 1 } ] SORT i.a, i.b SORT i.a DESC SORT i.a ASC RETURN i", [ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "CalculationNode", "SortNode", "ReturnNode" ] ]
       ]; 
 
       plans.forEach(function(plan) {
@@ -161,7 +161,8 @@ function optimizerRuleTestSuite () {
         [ "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a ASC SORT i.a DESC RETURN i", [ { a: 3 }, { a: 2 }, { a: 1 } ] ],
         [ "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] SORT i.a, i.b DESC SORT i.a, i.b ASC RETURN i", [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] ],
         [ "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] SORT i.a, i.b ASC SORT i.a, i.b DESC RETURN i", [ { a: 1, b: 2 }, { a: 1, b: 1 }, { a: 2, b: 2 }, { a: 2, b: 1 }, { a: 3, b: 2 }, { a: 3, b: 1 } ] ],
-        [ "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] SORT i.a, i.b ASC SORT i.a DESC, i.b DESC RETURN i", [ { a: 3, b: 2 }, { a: 3, b: 1 }, { a: 2, b: 2 }, { a: 2, b: 1 }, { a: 1, b: 2 }, { a: 1, b: 1 } ] ]
+        [ "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] SORT i.a, i.b ASC SORT i.a DESC, i.b DESC RETURN i", [ { a: 3, b: 2 }, { a: 3, b: 1 }, { a: 2, b: 2 }, { a: 2, b: 1 }, { a: 1, b: 2 }, { a: 1, b: 1 } ] ],
+        [ "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] SORT i.a ASC, i.b DESC COLLECT x = i.a INTO g RETURN { x: x, g: g[*].i.b }", [ { x: 1, g: [ 2, 1 ] }, { x: 2, g: [ 2, 1 ] }, { x: 3, g: [ 2, 1 ] } ] ],
       ];
 
       queries.forEach(function(query) {

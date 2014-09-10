@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 130, vars: true, white: true, plusplus: true, continue: true, regexp: true */
 /*global require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -79,7 +78,7 @@ function processDirectory (source) {
   if (! fs.exists(location) || ! fs.isDirectory(location)) {
     throwFileNotFound("'" + String(location) + "' is not a directory");
   }
-  
+
   // .............................................................................
   // extract name and version from manifest
   // .............................................................................
@@ -107,10 +106,10 @@ function processDirectory (source) {
     throwFileNotFound("Directory '" + String(location) + "' is empty");
   }
 
-  var tempFile = fs.getTempFile("downloads", false); 
+  var tempFile = fs.getTempFile("downloads", false);
   source.filename = tempFile;
   source.removeFile = true;
-    
+
   fs.zipFile(tempFile, location, files);
 }
 
@@ -125,7 +124,7 @@ function repackZipFile (source) {
   var i;
 
   var filename = source.filename;
-  var path = fs.getTempFile("zip", false); 
+  var path = fs.getTempFile("zip", false);
 
   fs.unzipFile(filename, path, false, true);
 
@@ -133,8 +132,8 @@ function repackZipFile (source) {
   // locate the manifest file
   // .............................................................................
 
-  var tree = fs.listTree(path).sort(function(a,b) { 
-    return a.length - b.length; 
+  var tree = fs.listTree(path).sort(function(a,b) {
+    return a.length - b.length;
   });
   var found;
   var mf = "manifest.json";
@@ -173,7 +172,7 @@ function repackZipFile (source) {
     catch (err1) {
       arangodb.printf("Cannot remove temporary file '%s'\n", source.filename);
     }
-  } 
+  }
 
   delete source.filename;
   delete source.removeFile;
@@ -203,14 +202,14 @@ function repackZipFile (source) {
   }
 }
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief processes files from a github repository 
+/// @brief processes files from a github repository
 ////////////////////////////////////////////////////////////////////////////////
 
 function processGithubRepository (source) {
   'use strict';
 
   var url = buildGithubUrl(source.location, source.version);
-  var tempFile = fs.getTempFile("downloads", false); 
+  var tempFile = fs.getTempFile("downloads", false);
 
   try {
     var result = download(url, "", {

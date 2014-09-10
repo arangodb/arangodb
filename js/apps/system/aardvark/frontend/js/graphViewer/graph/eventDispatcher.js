@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
 /*global _, $, window, d3*/
 /*global EventLibrary*/
 ////////////////////////////////////////////////////////////////////////////////
@@ -29,7 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 function EventDispatcher(nodeShaper, edgeShaper, config) {
   "use strict";
-  
+
   var eventlib,
     svgBase,
     svgTemp,
@@ -43,7 +42,7 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
         var insert = new eventlib.InsertNode(config),
           patch = new eventlib.PatchNode(config),
           del = new eventlib.DeleteNode(config);
-        
+
         self.events.CREATENODE = function(getNewData, callback, x, y) {
           var data;
           if (!_.isFunction(getNewData)) {
@@ -63,7 +62,7 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
             patch(node, getNewData(), callback);
           };
         };
-        
+
         self.events.DELETENODE = function(callback) {
           return function(node) {
             del(node, callback);
@@ -71,7 +70,7 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
         };
       }
     },
-    
+
     parseEdgeEditorConfig = function(config) {
       if (config.shaper === undefined) {
         config.shaper = edgeShaper;
@@ -82,7 +81,7 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
           del = new eventlib.DeleteEdge(config),
           edgeStart = null,
           didInsert = false;
-        
+
         self.events.STARTCREATEEDGE = function(callback) {
           return function(node) {
             var e = d3.event || window.event;
@@ -95,7 +94,7 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
             e.stopPropagation();
           };
         };
-        
+
         self.events.CANCELCREATEEDGE = function(callback) {
           return function() {
             edgeStart = null;
@@ -104,7 +103,7 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
             }
           };
         };
-        
+
         self.events.FINISHCREATEEDGE = function(callback) {
           return function(node) {
             if (edgeStart !== null && node !== edgeStart) {
@@ -113,7 +112,7 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
             }
           };
         };
-        
+
         self.events.PATCHEDGE = function(edge, getNewData, callback) {
           if (!_.isFunction(getNewData)) {
             throw "Please give a function to extract the new node data";
@@ -122,7 +121,7 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
             patch(edge, getNewData(), callback);
           };
         };
-        
+
         self.events.DELETEEDGE = function(callback) {
           return function(edge) {
             del(edge, callback);
@@ -130,7 +129,7 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
         };
       }
     },
-    
+
     bindSVGEvents = function() {
       svgObj = svgObj || $("svg");
       svgObj.unbind();
@@ -145,17 +144,17 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
         });
       });
     };
-  
+
   if (nodeShaper === undefined) {
     throw "NodeShaper has to be given.";
   }
-  
+
   if (edgeShaper === undefined) {
     throw "EdgeShaper has to be given.";
   }
-  
+
   eventlib = new EventLibrary();
-  
+
   svgBase = {
     click: [],
     dblclick: [],
@@ -166,9 +165,9 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
     mouseover: []
   };
   svgTemp = {};
-  
+
   self.events = {};
-  
+
   if (config !== undefined) {
     if (config.expand !== undefined) {
       if (eventlib.checkExpandConfig(config.expand)) {
@@ -192,7 +191,7 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
     }
   }
   Object.freeze(self.events);
-  
+
   //Check for expand config
   self.bind = function (object, event, func) {
     if (func === undefined || !_.isFunction(func)) {
@@ -226,7 +225,7 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
         }
     }
   };
-  
+
   self.rebind = function (object, actions) {
     actions = actions || {};
     actions.reset = true;
@@ -255,7 +254,7 @@ function EventDispatcher(nodeShaper, edgeShaper, config) {
           + "\"nodes\", \"edges\" or \"svg\"";
     }
   };
-  
+
   self.fixSVG = function(event, action) {
     if (svgBase[event] === undefined) {
       throw "Sorry unkown event";

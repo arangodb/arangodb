@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 200, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, assertTrue, assertEqual, AQL_EXECUTE, AQL_EXPLAIN, fail, loopmax */
+/*global require, exports, assertTrue, assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
 ///
@@ -44,7 +44,6 @@ function optimizerRuleTestSuite () {
   var paramNone     = { optimizer: { rules: [ "-all" ] } };
   var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
-  var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
   var paramMore     = { optimizer: { rules: [ "-all", "+" + ruleName, "+remove-unnecessary-calculations-2" ] } };
 
   return {
@@ -70,7 +69,9 @@ function optimizerRuleTestSuite () {
     testRuleDisabled : function () {
       var queries = [ 
         "FOR i IN 1..10 FILTER true RETURN 1",
-        "FOR i IN 1..10 FILTER 1 != 7 RETURN 1"
+        "FOR i IN 1..10 FILTER 1 != 7 RETURN 1",
+        "FOR i IN 1..10 FILTER 1 == 1 && 2 == 2 RETURN 1",
+        "FOR i IN 1..10 FILTER 1 != 1 && 2 != 2 RETURN 1"
       ];
 
       queries.forEach(function(query) {
@@ -85,9 +86,9 @@ function optimizerRuleTestSuite () {
 
     testRuleNoEffect : function () {
       var queries = [ 
-          "FOR i IN 1..10 FILTER i > 1 RETURN i",
-          "FOR i IN 1..10 LET a = 99 FILTER i > a RETURN i",
-          "FOR i IN 1..10 LET a = i FILTER a != 99 RETURN i",
+        "FOR i IN 1..10 FILTER i > 1 RETURN i",
+        "FOR i IN 1..10 LET a = 99 FILTER i > a RETURN i",
+        "FOR i IN 1..10 LET a = i FILTER a != 99 RETURN i"
       ];
 
       queries.forEach(function(query) {
@@ -109,7 +110,9 @@ function optimizerRuleTestSuite () {
         "FOR i IN 1..10 LET a = 1 LET b = 2 FILTER a != b RETURN i",
         "FOR i IN 1..10 FILTER false RETURN i",
         "FOR i IN 1..10 LET a = 1 FILTER a == 9 RETURN i",
-        "FOR i IN 1..10 LET a = 1 FILTER a != 1 RETURN i"
+        "FOR i IN 1..10 LET a = 1 FILTER a != 1 RETURN i",
+        "FOR i IN 1..10 FILTER 1 == 1 && 2 == 2 RETURN 1",
+        "FOR i IN 1..10 FILTER 1 != 1 && 2 != 2 RETURN 1"
       ];
 
       queries.forEach(function(query) {
@@ -154,6 +157,7 @@ function optimizerRuleTestSuite () {
         [ "FOR i IN 1..10 LET a = 1 LET b = 1 FILTER a == b RETURN i", [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ] ],
         [ "FOR i IN 1..10 FILTER false RETURN i", [ ] ],
         [ "FOR i IN 1..10 FILTER 1 == 7 RETURN i", [ ] ],
+        [ "LET a = 1 FOR i IN 1..10 FILTER a == 7 && a == 3 RETURN i", [ ] ],
         [ "FOR i IN 1..10 LET a = 1 FILTER a == 7 RETURN i", [ ] ],
         [ "FOR i IN 1..10 LET a = 1 FILTER a != 1 RETURN i", [ ] ]
       ];

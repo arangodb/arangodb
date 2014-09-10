@@ -139,6 +139,40 @@ namespace triagens {
 
 
 
+      void sslSHA384 (char const* inputStr, size_t length, char*& outputStr, size_t& outputLen) {
+        if (outputStr == 0) {
+          outputStr = new char[SHA384_DIGEST_LENGTH];
+          outputLen = SHA384_DIGEST_LENGTH;
+        }
+
+        SHA384((const unsigned char*) inputStr, length, (unsigned char*) outputStr);
+      }
+
+
+
+      void sslSHA384 (char const* inputStr, char*& outputStr, size_t& outputLen) {
+        sslSHA384(inputStr, strlen(inputStr), outputStr, outputLen);
+      }
+
+
+
+      void sslSHA512 (char const* inputStr, size_t length, char*& outputStr, size_t& outputLen) {
+        if (outputStr == 0) {
+          outputStr = new char[SHA512_DIGEST_LENGTH];
+          outputLen = SHA512_DIGEST_LENGTH;
+        }
+
+        SHA512((const unsigned char*) inputStr, length, (unsigned char*) outputStr);
+      }
+
+
+
+      void sslSHA512 (char const* inputStr, char*& outputStr, size_t& outputLen) {
+        sslSHA512(inputStr, strlen(inputStr), outputStr, outputLen);
+      }
+
+
+
       void sslHEX (char const* inputStr, size_t length, char*& outputStr, size_t& outputLen) {
         static char const hexval[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
@@ -184,6 +218,19 @@ namespace triagens {
       }
 
 
+      string sslPBKDF2 (char const* salt, size_t saltLength, char const* pass, size_t passLength, int iter, int keyLength) {
+        unsigned char* dk = (unsigned char*) TRI_SystemAllocate(EVP_MAX_MD_SIZE + 1, false);
+
+        PKCS5_PBKDF2_HMAC_SHA1(pass, (int) passLength, (const unsigned char*) salt, (int) saltLength, iter, keyLength, dk);
+
+        // return value as hex
+        string result = StringUtils::encodeHex(string((char*)dk, keyLength));
+        TRI_SystemFree(dk);
+
+        return result;
+      }
+
+
       string sslHMAC (char const* key, size_t keyLength, char const* message, size_t messageLen, Algorithm algorithm) {
         EVP_MD* evp_md = nullptr;
 
@@ -195,6 +242,12 @@ namespace triagens {
         }
         else if (algorithm == Algorithm::ALGORITHM_MD5) {
           evp_md = const_cast<EVP_MD*>(EVP_md5());
+        }
+        else if (algorithm == Algorithm::ALGORITHM_SHA384) {
+          evp_md = const_cast<EVP_MD*>(EVP_sha384());
+        }
+        else if (algorithm == Algorithm::ALGORITHM_SHA512) {
+          evp_md = const_cast<EVP_MD*>(EVP_sha512());
         }
         else {
           // default
@@ -212,7 +265,6 @@ namespace triagens {
 
         return result;
       }
-
 
 
       bool verifyHMAC (char const* challenge, size_t challengeLength, char const* secret, size_t secretLen, char const* response, size_t responseLen, Algorithm algorithm) {

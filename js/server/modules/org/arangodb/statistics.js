@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, white: true, plusplus: true, eqeq: true, vars: true */
 /*global require, exports, ArangoServerState */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -185,7 +184,7 @@ function avgPercentDistributon (now, last, cuts) {
 
 function computePerSeconds (current, prev) {
   'use strict';
-  
+
   // sanity check if we have restarted the server
   if (prev.time + exports.STATISTICS_INTERVAL * 1.5 < current.time) {
     return null;
@@ -313,7 +312,7 @@ function computePerSeconds (current, prev) {
 
   return result;
 }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief computes the 15 minute averages
 ////////////////////////////////////////////////////////////////////////////////
@@ -363,12 +362,12 @@ function compute15Minute (start, clusterId) {
 
   result.client = {
     httpConnections: 0,
-    bytesSentPerSecond: 0, 
-    bytesReceivedPerSecond: 0, 
-    avgTotalTime: 0, 
-    avgRequestTime: 0, 
-    avgQueueTime: 0, 
-    avgIoTime: 0 
+    bytesSentPerSecond: 0,
+    bytesReceivedPerSecond: 0,
+    avgTotalTime: 0,
+    avgRequestTime: 0,
+    avgQueueTime: 0,
+    avgIoTime: 0
   };
 
   while (values.hasNext()) {
@@ -441,13 +440,13 @@ function compute15Minute (start, clusterId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.STATISTICS_INTERVAL = 10;
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief statistics interval for history
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.STATISTICS_HISTORY_INTERVAL = 15 * 60;
-  
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -484,7 +483,7 @@ exports.createStatisticsCollections = function () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a statistics entry
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 exports.historian = function () {
   "use strict";
 
@@ -545,7 +544,7 @@ exports.historian = function () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an average entry
 ////////////////////////////////////////////////////////////////////////////////
-  
+
 exports.historianAverage = function () {
   "use strict";
 
@@ -613,7 +612,7 @@ exports.garbageCollector = function () {
   collectGarbage("_statisticsRaw", time - 60 * 60);
   collectGarbage("_statistics15", time - 30 * 24 * 60 * 60);
 };
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise the module
 ////////////////////////////////////////////////////////////////////////////////

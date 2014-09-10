@@ -1,18 +1,20 @@
 {
   "dependencies": {
-    "docco": "0.6.3",
-    "decimal": "0.0.2",
+    "aqb": "1.2.0",
     "buster-format": "0.5.6",
-    "joi": "4.6.1",
-    "iced-coffee-script": "1.7.1-f",
     "cheerio": "0.17.0",
+    "coffee-script": "1.7.1",
+    "decimal": "0.0.2",
+    "docco": "0.6.3",
     "htmlparser2": "3.7.2",
+    "iced-coffee-script": "1.7.1-f",
+    "joi": "4.6.1",
+    "jshint": "2.5.5",
     "marked": "0.3.2",
-    "sinon": "1.10.0",
-    "underscore": "1.6.0",
+    "moment": "2.6.0",
     "numeral": "1.5.3",
     "semver": "2.3.0",
-    "moment": "2.6.0",
-    "coffee-script": "1.7.1"
+    "sinon": "1.10.0",
+    "underscore": "1.6.0"
   }
 }

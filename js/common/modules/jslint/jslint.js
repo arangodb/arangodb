@@ -201,10 +201,6 @@
 
 // For example:
 
-/*jslint
-    evil: true, nomen: true, regexp: true
-*/
-
 // The properties directive declares an exclusive list of property names.
 // Any properties named in the program that are not in the list will
 // produce a warning.

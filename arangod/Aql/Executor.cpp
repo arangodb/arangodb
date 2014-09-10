@@ -393,8 +393,8 @@ v8::Handle<v8::Value> Executor::compileExpression () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Executor::generateCodeExpression (AstNode const* node) {  
-  // initialise and/or clear the buffer
-  initBuffer();
+  // initialize and/or clear the buffer
+  initializeBuffer();
   TRI_ASSERT(_buffer != nullptr);
 
   // write prologue
@@ -873,7 +873,7 @@ void Executor::generateCodeNode (AstNode const* node) {
 /// @brief create the string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::StringBuffer* Executor::initBuffer () {
+triagens::basics::StringBuffer* Executor::initializeBuffer () {
   if (_buffer == nullptr) {
     _buffer = new triagens::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE);
 

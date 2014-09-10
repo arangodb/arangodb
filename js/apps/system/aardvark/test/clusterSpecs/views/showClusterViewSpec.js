@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
+/*jshint browser: true */
+/*jshint unused: false */
 /*global $, arangoHelper, jasmine, nv, d3, describe, beforeEach, afterEach, it, spyOn, expect*/
 
 (function () {
@@ -760,7 +761,7 @@
           return  "123.456.789";
         case "status":
           return  "ok";
-        case "name": 
+        case "name":
           return  "heinz";
         default:
           throw "Requested unknown attribute: " + a;
@@ -774,7 +775,7 @@
           return  "123.456.799";
         case "status":
           return  "ok";
-        case "name": 
+        case "name":
           return  "herbert";
         default:
           throw "Requested unknown attribute: " + a;
@@ -788,13 +789,13 @@
           return  "123.456.119";
         case "status":
           return  "notOk";
-        case "name": 
+        case "name":
           return  "heinzle";
         default:
           throw "Requested unknown attribute: " + a;
       }
     },
-    
+
     clusterStatisticsCollectionDummy = {
       add : function () {
         return undefined;
@@ -812,7 +813,7 @@
       },
       {
         id: 2,
-        get: getServer2 
+        get: getServer2
       },
       {
         id: 3,

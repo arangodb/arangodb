@@ -37,10 +37,12 @@ var assertQueryError = helper.assertQueryError2;
 
 function optimizerRuleTestSuite () {
   var ruleName = "move-calculations-up";
+
   // various choices to control the optimizer: 
   var paramNone   = { optimizer: { rules: [ "-all" ] } };
   var paramEnabled    = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var paramDisabled  = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////

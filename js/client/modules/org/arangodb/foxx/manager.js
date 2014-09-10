@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 130, vars: true, white: true, plusplus: true, continue: true, regexp: true */
+/*jshint unused: false */
 /*global require, exports, module */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -164,11 +164,11 @@ function processSource (src) {
     utils.processGithubRepository(src);
   }
   else {
-    throwBadParameter("Unknown application type '" + src.type + "'. " + 
+    throwBadParameter("Unknown application type '" + src.type + "'. " +
                       "expected type: 'github', 'zip', or 'directory'.");
   }
 
-  // upload file to the server 
+  // upload file to the server
   var response = arango.SEND_FILE("/_api/upload", src.filename);
 
   if (src.removeFile && src.filename !== '') {
@@ -178,7 +178,7 @@ function processSource (src) {
     catch (err2) {
       arangodb.printf("Cannot remove temporary file '%s'\n", src.filename);
     }
-  } 
+  }
 
   if (! response.filename) {
     throw new ArangoError({
@@ -225,7 +225,7 @@ function updateFishbowlFromZip (filename) {
 
     var m = fs.listTree(root);
     var reSub = /(.*)\.json$/;
-   
+
     for (i = 0;  i < m.length;  ++i) {
       var f = m[i];
       var match = reSub.exec(f);
@@ -275,7 +275,7 @@ function updateFishbowlFromZip (filename) {
         }
       });
 
-      arangodb.printf("Updated local repository information with %d application(s)\n", 
+      arangodb.printf("Updated local repository information with %d application(s)\n",
                       toSave.length);
     }
   }
@@ -300,8 +300,8 @@ function updateFishbowl () {
   'use strict';
 
   var url = utils.buildGithubUrl(getFishbowlUrl());
-  var filename = fs.getTempFile("downloads", false); 
-  var path = fs.getTempFile("zip", false); 
+  var filename = fs.getTempFile("downloads", false);
+  var path = fs.getTempFile("zip", false);
 
   try {
     var result = download(url, "", {
@@ -325,7 +325,7 @@ function updateFishbowl () {
 
     try {
       fs.removeDirectoryRecursive(path);
-    } 
+    }
     catch (ignore) {
     }
 
@@ -337,18 +337,18 @@ function updateFishbowl () {
 /// @brief comparator for applications
 ////////////////////////////////////////////////////////////////////////////////
 
-function compareApps (l, r) { 
+function compareApps (l, r) {
   'use strict';
 
   var left = l.name.toLowerCase();
   var right = r.name.toLowerCase();
 
-  if (left < right) { 
-    return -1; 
+  if (left < right) {
+    return -1;
   }
 
-  if (right < left) { 
-    return 1; 
+  if (right < left) {
+    return 1;
   }
 
   return 0;
@@ -553,10 +553,10 @@ exports.run = function (args) {
       var options = extractOptions();
       res = exports.install(args[1], args[2], options);
 
-      printf("Application %s installed successfully at mount point %s\n", 
-             res.appId, 
+      printf("Application %s installed successfully at mount point %s\n",
+             res.appId,
              res.mount);
-      printf("options used: %s", JSON.stringify(options));
+      printf("options used: %s\n", JSON.stringify(options));
     }
     else if (type === 'replace') {
       if (3 < args.length) {
@@ -566,23 +566,23 @@ exports.run = function (args) {
         res = exports.replace(args[1], args[2]);
       }
 
-      printf("Application %s replaced successfully at mount point %s\n", 
-             res.appId, 
+      printf("Application %s replaced successfully at mount point %s\n",
+             res.appId,
              res.mount);
     }
     else if (type === 'uninstall') {
       res = exports.uninstall(args[1]);
 
-      printf("Application %s unmounted successfully from mount point %s\n", 
-             res.appId, 
+      printf("Application %s unmounted successfully from mount point %s\n",
+             res.appId,
              res.mount);
     }
     else if (type === 'purge' || type === 'remove') {
       res = exports.purge(args[1]);
 
-      printf("Application %s and %d mounts purged successfully\n", 
+      printf("Application %s and %d mounts purged successfully\n",
              res.name,
-             res.purged.length); 
+             res.purged.length);
     }
     else if (type === 'config') {
       exports.config();
@@ -648,10 +648,10 @@ exports.fetch = function (type, location, version) {
       [ "Location", "string" ] ],
     [ type, location ] );
 
-  var source = { 
-    type: type, 
-    location: location, 
-    version: version 
+  var source = {
+    type: type,
+    location: location,
+    version: version
   };
 
   var filename = processSource(source);
@@ -705,7 +705,7 @@ exports.mount = function (appId, mount, options) {
     mount: mount,
     options: options
   };
-  
+
   validateAppName(appId);
   validateMount(mount);
 
@@ -729,7 +729,7 @@ exports.setup = function (mount) {
   var req = {
     mount: mount
   };
-  
+
   validateMount(mount);
 
   var res = arango.POST("/_admin/foxx/setup", JSON.stringify(req));
@@ -751,7 +751,7 @@ exports.teardown = function (mount) {
   var req = {
     mount: mount
   };
-  
+
   validateMount(mount);
 
   var res = arango.POST("/_admin/foxx/teardown", JSON.stringify(req));
@@ -771,7 +771,7 @@ exports.unmount = function (mount) {
     [ mount ] );
 
   validateAppName(mount);
-  
+
   var req = {
     mount: mount
   };
@@ -972,8 +972,8 @@ exports.list = function (showPrefix) {
   columns.push("active");
   columns.push("system");
 
-  arangodb.printTable(list, columns, { 
-    prettyStrings: true, 
+  arangodb.printTable(list, columns, {
+    prettyStrings: true,
     totalString: "%s application(s) found",
     emptyString: "no applications found",
     rename: {
@@ -1036,7 +1036,7 @@ exports.fetched = function () {
     list,
     ["name", "author", "description", "appId", "version", "path"],
     {
-      prettyStrings: true, 
+      prettyStrings: true,
       totalString: "%s application(s) found",
       emptyString: "no applications found",
       rename: {
@@ -1074,14 +1074,14 @@ exports.available = function () {
     list.sort(compareApps),
     [ "name", "author", "description", "latestVersion" ],
     {
-      prettyStrings: true, 
+      prettyStrings: true,
       totalString: "%s application(s) found",
       emptyString: "no applications found, please use 'update'",
       rename: {
         "name" : "Name",
         "author" : "Author",
         "description" : "Description",
-        "latestVersion" : "Latest Version" 
+        "latestVersion" : "Latest Version"
       }
     }
   );
@@ -1118,21 +1118,21 @@ exports.info = function (name) {
   if (desc.hasOwnProperty('author')) {
     arangodb.printf("Author:      %s\n", desc.author);
   }
-  
+
   var isSystem = desc.hasOwnProperty('isSystem') && desc.isSystem;
   arangodb.printf("System:      %s\n", JSON.stringify(isSystem));
 
   if (desc.hasOwnProperty('description')) {
     arangodb.printf("Description: %s\n\n", desc.description);
   }
-  
+
   var header = false;
   var versions = Object.keys(desc.versions);
   versions.sort(module.compareVersions);
 
   versions.forEach(function (v) {
     var version = desc.versions[v];
-      
+
     if (! header) {
       arangodb.print("Versions:");
       header = true;
@@ -1217,7 +1217,7 @@ exports.search = function (name) {
     docs.sort(compareApps),
     [ "name", "author", "description" ],
     {
-      prettyStrings: true, 
+      prettyStrings: true,
       totalString: "%s application(s) found",
       emptyString: "no applications found",
       rename: {
@@ -1242,6 +1242,7 @@ exports.update = updateFishbowl;
 exports.help = function () {
   'use strict';
 
+  /*jshint maxlen: 200 */
   var commands = {
     "fetch"        : "fetches a Foxx application from the central foxx-apps repository into the local repository",
     "mount"        : "mounts a fetched Foxx application to a local URL",
@@ -1259,7 +1260,7 @@ exports.help = function () {
     "remove"       : "alias for the 'purge' command",
     "list"         : "lists all installed Foxx applications",
     "installed"    : "alias for the 'list' command",
-    "fetched"      : "lists all fetched Foxx applications that were fetched into the local repository", 
+    "fetched"      : "lists all fetched Foxx applications that were fetched into the local repository",
     "available"    : "lists all Foxx applications available in the local repository",
     "info"         : "displays information about a Foxx application",
     "search"       : "searches the local foxx-apps repository",
@@ -1285,7 +1286,7 @@ exports.help = function () {
   }
 
   arangodb.print();
-  arangodb.print("Use foxx-manager --help to show a list of global options\n"); 
+  arangodb.print("Use foxx-manager --help to show a list of global options\n");
   arangodb.print("There is also an online manual available at:");
   arangodb.print("https://www.arangodb.org/manuals/current/UserManualFoxxManager.html");
 
@@ -1304,7 +1305,7 @@ exports.devSetup = function (name) {
   var req = {
     name: name
   };
-  
+
   res = arango.POST("/_admin/foxx/dev-setup", JSON.stringify(req));
   arangosh.checkRequestResult(res);
 };
@@ -1320,7 +1321,7 @@ exports.devTeardown = function (name) {
   var req = {
     name: name
   };
-  
+
   res = arango.POST("/_admin/foxx/dev-teardown", JSON.stringify(req));
   arangosh.checkRequestResult(res);
 };

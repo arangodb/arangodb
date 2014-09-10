@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 120, sloppy: true, vars: true, white: true, regexp: true, plusplus: true, continue: true */
+/*jshint strict: false */
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,7 +69,7 @@ var MOUNTED_APPS = {};
 ////////////////////////////////////////////////////////////////////////////////
 
 function transformScript (file) {
-  'use strict';
+  "use strict";
 
   if (/\.coffee$/.test(file)) {
     return function (content) {
@@ -85,7 +85,7 @@ function transformScript (file) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function getStorage () {
-  'use strict';
+  "use strict";
 
   return arangodb.db._collection('_aal');
 }
@@ -97,7 +97,7 @@ function getStorage () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function checkManifest (filename, mf) {
-  'use strict';
+  "use strict";
 
   // add some default attributes
   if (! mf.hasOwnProperty("author")) {
@@ -189,7 +189,7 @@ function checkManifest (filename, mf) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function extendContext (context, app, root) {
-  'use strict';
+  "use strict";
 
   var cp = context.collectionPrefix;
 
@@ -231,7 +231,7 @@ function extendContext (context, app, root) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function prefixFromMount (mount) {
-  'use strict';
+  "use strict";
 
   return mount.substr(1).replace(/-/g, "_").replace(/\//g, "_");
 }
@@ -241,7 +241,7 @@ function prefixFromMount (mount) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function mountFromId (mount) {
-  'use strict';
+  "use strict";
 
   var aal = getStorage();
   var doc = aal.firstExample({ type: "mount", _id: mount });
@@ -266,7 +266,7 @@ function mountFromId (mount) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function appFromAppId (appId) {
-  'use strict';
+  "use strict";
 
   var app = module.createApp(appId, {});
 
@@ -282,7 +282,7 @@ function appFromAppId (appId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function buildAssetContent (app, assets, basePath) {
-  'use strict';
+  "use strict";
 
   var i;
   var j;
@@ -366,7 +366,7 @@ function buildAssetContent (app, assets, basePath) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function buildFileAsset (app, path, basePath, asset) {
-  'use strict';
+  "use strict";
 
   var content = buildAssetContent(app, asset.files, basePath);
   var type;
@@ -408,10 +408,7 @@ function buildFileAsset (app, path, basePath, asset) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function buildDevelopmentAssetRoute (app, path, basePath, asset) {
-  'use strict';
-
-  var internal = require("internal");
-
+  "use strict";
   return {
     url: { match: path },
     action: {
@@ -430,7 +427,7 @@ function buildDevelopmentAssetRoute (app, path, basePath, asset) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function buildAssetRoute (app, path, basePath, asset) {
-  'use strict';
+  "use strict";
 
   var c = buildFileAsset(app, path, basePath, asset);
 
@@ -445,7 +442,7 @@ function buildAssetRoute (app, path, basePath, asset) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function installAssets (app, routes) {
-  'use strict';
+  "use strict";
 
   var path;
 
@@ -513,7 +510,7 @@ function installAssets (app, routes) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function executeAppScript (app, name, mount, prefix) {
-  'use strict';
+  "use strict";
 
   var desc = app._manifest;
 
@@ -562,7 +559,7 @@ function executeAppScript (app, name, mount, prefix) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function setupApp (app, mount, prefix) {
-  'use strict';
+  "use strict";
 
   return executeAppScript(app, "setup", mount, prefix);
 }
@@ -572,7 +569,7 @@ function setupApp (app, mount, prefix) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function teardownApp (app, mount, prefix) {
-  'use strict';
+  "use strict";
 
   return executeAppScript(app, "teardown", mount, prefix);
 }
@@ -583,7 +580,7 @@ function teardownApp (app, mount, prefix) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function upsertAalAppEntry (manifest, thumbnail, path) {
-  'use strict';
+  "use strict";
 
   var aal = getStorage();
   var doc = aal.firstExample({
@@ -628,7 +625,7 @@ function upsertAalAppEntry (manifest, thumbnail, path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function mountAalApp (app, mount, options) {
-  'use strict';
+  "use strict";
 
   var aal = getStorage();
 
@@ -679,7 +676,7 @@ function mountAalApp (app, mount, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function routingAalApp (app, mount, options) {
-  'use strict';
+  "use strict";
 
   MOUNTED_APPS[mount] = app;
 
@@ -886,7 +883,7 @@ function routingAalApp (app, mount, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function scanDirectory (path) {
-  'use strict';
+  "use strict";
 
   var j;
 
@@ -939,7 +936,7 @@ function scanDirectory (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function checkConfiguration (app, options) {
-  'use strict';
+  "use strict";
 
   if (options === undefined || options === null) {
     options = {};
@@ -1005,7 +1002,7 @@ function checkConfiguration (app, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function systemMountPoint (appName) {
-    'use strict';
+    "use strict";
 
     if (appName === "aardvark") {
       return "/_admin/aardvark";
@@ -1027,7 +1024,7 @@ function checkConfiguration (app, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function systemCollectionPrefix (appName) {
-    'use strict';
+    "use strict";
 
     if (appName === "sessions") {
       return "_";
@@ -1049,7 +1046,7 @@ function checkConfiguration (app, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.scanAppDirectory = function () {
-  'use strict';
+  "use strict";
 
   var aal = getStorage();
 
@@ -1076,7 +1073,7 @@ exports.scanAppDirectory = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.rescan = function () {
-  'use strict';
+  "use strict";
 
   return exports.scanAppDirectory();
 };
@@ -1098,7 +1095,7 @@ exports.rescan = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.mount = function (appId, mount, options) {
-  'use strict';
+  "use strict";
 
   checkParameter(
     "mount(<appId>, <mount>, [<options>])",
@@ -1184,7 +1181,7 @@ exports.mount = function (appId, mount, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.setup = function (mount) {
-  'use strict';
+  "use strict";
 
   checkParameter(
     "setup(<mount>)",
@@ -1208,7 +1205,7 @@ exports.setup = function (mount) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.teardown = function (mount) {
-  'use strict';
+  "use strict";
 
   checkParameter(
     "teardown(<mount>)",
@@ -1244,7 +1241,7 @@ exports.teardown = function (mount) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.unmount = function (mount) {
-  'use strict';
+  "use strict";
 
   checkParameter(
     "unmount(<mount>)",
@@ -1276,7 +1273,7 @@ exports.unmount = function (mount) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.gitinfo = function (key) {
-  'use strict';
+  "use strict";
 
   var _ = require("underscore"), gitinfo,
   aal = getStorage(),
@@ -1317,9 +1314,9 @@ exports.gitinfo = function (key) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.mountinfo = function (key) {
-  'use strict';
+  "use strict";
 
-  var _ = require("underscore"), mountinfo = [];
+  var _ = require("underscore"), mountinfo = [];
 
   if (key === undefined) {
     _.each(exports.appRoutes(), function(m) {
@@ -1350,7 +1347,7 @@ exports.mountinfo = function (key) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.purge = function (key) {
-  'use strict';
+  "use strict";
 
   checkParameter(
     "purge(<app-id>)",
@@ -1408,7 +1405,7 @@ exports.purge = function (key) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.devSetup = function (filename) {
-  'use strict';
+  "use strict";
 
   checkParameter(
     "devSetup(<mount>)",
@@ -1456,7 +1453,7 @@ exports.devSetup = function (filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.devTeardown = function (filename) {
-  'use strict';
+  "use strict";
 
   checkParameter(
     "devTeardown(<mount>)",
@@ -1498,7 +1495,7 @@ exports.devTeardown = function (filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.appRoutes = function () {
-  'use strict';
+  "use strict";
 
   var aal = getStorage();
 
@@ -1556,7 +1553,7 @@ exports.appRoutes = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.developmentRoutes = function () {
-  'use strict';
+  "use strict";
 
   var mounts = [];
   var routes = [];
@@ -1633,7 +1630,7 @@ exports.developmentRoutes = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.developmentMounts = function () {
-  'use strict';
+  "use strict";
 
   if (DEVELOPMENTMOUNTS === null) {
     exports.developmentRoutes();
@@ -1659,7 +1656,7 @@ exports.mountedApp = function (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.buildGithubUrl = function (repository, version) {
-  'use strict';
+  "use strict";
 
   if (typeof version === "undefined") {
     version = "master";
@@ -1713,7 +1710,7 @@ exports.fetchFromGithub = function (url, name, version) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.availableJson = function () {
-  'use strict';
+  "use strict";
 
   return utils.availableJson();
 };
@@ -1723,7 +1720,7 @@ exports.availableJson = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.listJson = function () {
-  'use strict';
+  "use strict";
 
   return utils.listJson();
 };
@@ -1733,7 +1730,7 @@ exports.listJson = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.getFishbowlStorage = function () {
-  'use strict';
+  "use strict";
 
   return utils.getFishbowlStorage();
 };
@@ -1743,7 +1740,7 @@ exports.getFishbowlStorage = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.initializeFoxx = function () {
-  'use strict';
+  "use strict";
 
   try {
     exports.scanAppDirectory();

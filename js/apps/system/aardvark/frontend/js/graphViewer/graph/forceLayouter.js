@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global _, d3*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -33,11 +32,11 @@
 * {
 *   nodes: nodes,
 *   links: links,
-*   
+*
 *   (optional)
 *   width: width,
 *   height: height,
-*   distance: distance, 
+*   distance: distance,
 *   gravity: gravity,
 *   onUpdate: callback
 * }
@@ -75,7 +74,7 @@ function ForceLayouter(config) {
       }
       return defaultCharge;
     },
-    
+
     onUpdate = config.onUpdate || function () {},
     width = config.width || 880,
     height = config.height || 680,
@@ -90,7 +89,7 @@ function ForceLayouter(config) {
         defaultCharge = config.charge;
       }
     };
-   
+
   if (config.nodes === undefined) {
     throw "No nodes defined";
   }
@@ -105,15 +104,15 @@ function ForceLayouter(config) {
   force.gravity(gravity); // Set gravity
   force.charge(charge); // Set charge
   force.on("tick", function(){}); // Bind tick function
-    
+
   self.start = function() {
     force.start(); // Start Force computation
   };
-  
+
   self.stop = function() {
     force.stop(); // Stop Force computation
   };
-  
+
   self.drag = force.drag;
 
   self.setCombinedUpdateFunction = function(nodeShaper, edgeShaper, additional) {
@@ -142,7 +141,7 @@ function ForceLayouter(config) {
       force.on("tick", onUpdate);
     }
   };
-  
+
   self.changeTo = function(config) {
     parseConfig(config);
   };

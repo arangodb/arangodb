@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, d3, _, console, document*/
 /*global AbstractAdapter*/
 ////////////////////////////////////////////////////////////////////////////////
@@ -30,7 +29,7 @@
 
 function FoxxAdapter(nodes, edges, route, viewer, config) {
   "use strict";
-  
+
   if (nodes === undefined) {
     throw "The nodes have to be given.";
   }
@@ -67,7 +66,7 @@ function FoxxAdapter(nodes, edges, route, viewer, config) {
         }
       }
     },
-    
+
     fillRoutes = function () {
       routes.query = {
         get: function(id, cb) {
@@ -146,23 +145,23 @@ function FoxxAdapter(nodes, edges, route, viewer, config) {
         }
       };
     },
-    
+
     sendGet = function (type, id, callback) {
       routes[type].get(id, callback);
     },
-    
+
     sendPost = function (type, data, callback) {
       routes[type].post(data, callback);
     },
-    
+
     sendDelete = function (type, id, callback) {
       routes[type].del(id, callback);
     },
-    
+
     sendPut = function (type, id, data, callback) {
       routes[type].put(id, data, callback);
     },
-    
+
     parseConfig = function(config) {
       /*
       if (config.host === undefined) {
@@ -201,17 +200,17 @@ function FoxxAdapter(nodes, edges, route, viewer, config) {
         callback(first);
       }
     };
-  
+
   if (config.prioList) {
     absConfig.prioList = config.prioList;
   }
   absAdapter = new AbstractAdapter(nodes, edges, this, viewer, absConfig);
-  
+
   parseConfig(config);
   fillRoutes();
 
   self.explore = absAdapter.explore;
-  
+
   self.loadNode = function(nodeId, callback) {
     sendGet("query", nodeId, function(result) {
       parseResult(result, callback);
@@ -235,7 +234,7 @@ function FoxxAdapter(nodes, edges, route, viewer, config) {
     });
     */
   };
-  
+
   self.createEdge = function (edgeToAdd, callback) {
     var toSend = _.clone(edgeToAdd);
     toSend._from = edgeToAdd.source._id;
@@ -252,7 +251,7 @@ function FoxxAdapter(nodes, edges, route, viewer, config) {
       }
     });
   };
-  
+
   self.deleteEdge = function (edgeToRemove, callback) {
     sendDelete("edges", edgeToRemove._id, function() {
       absAdapter.removeEdge(edgeToRemove);
@@ -261,7 +260,7 @@ function FoxxAdapter(nodes, edges, route, viewer, config) {
       }
     });
   };
-  
+
   self.patchEdge = function (edgeToPatch, patchData, callback) {
     sendPut("edges", edgeToPatch._id, patchData, function(data) {
       edgeToPatch._data = $.extend(edgeToPatch._data, patchData);
@@ -270,7 +269,7 @@ function FoxxAdapter(nodes, edges, route, viewer, config) {
       }
     });
   };
-  
+
   self.createNode = function (nodeToAdd, callback) {
     sendPost("nodes", nodeToAdd, function(data) {
       absAdapter.insertNode(data);
@@ -279,7 +278,7 @@ function FoxxAdapter(nodes, edges, route, viewer, config) {
       }
     });
   };
-  
+
   self.deleteNode = function (nodeToRemove, callback) {
     sendDelete("nodes", nodeToRemove._id, function() {
       absAdapter.removeEdgesForNode(nodeToRemove);
@@ -290,7 +289,7 @@ function FoxxAdapter(nodes, edges, route, viewer, config) {
       }
     });
   };
-  
+
   self.patchNode = function (nodeToPatch, patchData, callback) {
     sendPut("nodes", nodeToPatch._id, patchData, function(data) {
       nodeToPatch._data = $.extend(nodeToPatch._data, patchData);
@@ -299,22 +298,22 @@ function FoxxAdapter(nodes, edges, route, viewer, config) {
       }
     });
   };
-    
+
   self.setNodeLimit = function (pLimit, callback) {
     absAdapter.setNodeLimit(pLimit, callback);
   };
-  
+
   self.setChildLimit = function (pLimit) {
     absAdapter.setChildLimit(pLimit);
   };
-  
+
   self.expandCommunity = function (commNode, callback) {
     absAdapter.expandCommunity(commNode);
     if (callback !== undefined) {
       callback();
     }
   };
-  
+
   self.setWidth = absAdapter.setWidth;
   self.changeTo = absAdapter.changeTo;
   self.getPrioList = absAdapter.getPrioList;

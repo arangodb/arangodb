@@ -1,4 +1,5 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true, browser: true*/
+/*jshint browser: true */
+/*jshint unused: false */
 /*global describe, beforeEach, afterEach, it, spyOn, expect*/
 /*global runs, waitsFor, jasmine*/
 /*global $, arangoHelper */
@@ -59,7 +60,7 @@
           opts.success();
         }
       });
-      view = new window.ApplicationsView({collection: collection}); 
+      view = new window.ApplicationsView({collection: collection});
       view.reload();
     });
 
@@ -82,7 +83,7 @@
         });
 
         waitsFor(function() {
-          return $("#modal-dialog").css("display") === "block";  
+          return $("#modal-dialog").css("display") === "block";
         }, "show the modal dialog");
 
         runs(function() {

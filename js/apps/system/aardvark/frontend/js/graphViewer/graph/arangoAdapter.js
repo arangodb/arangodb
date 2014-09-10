@@ -1,4 +1,3 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, white: true  plusplus: true */
 /*global $, d3, _, console, document*/
 /*global AbstractAdapter*/
 ////////////////////////////////////////////////////////////////////////////////
@@ -113,7 +112,7 @@ function ArangoAdapter(nodes, edges, viewer, config) {
       api.graph = api.base + "graph";
       api.collection = api.base + "collection/";
       api.document = api.base + "document/";
-      api.any = api.base + "simple/any";     
+      api.any = api.base + "simple/any";
       if (config.graph) {
         getCollectionsFromGraph(config.graph);
         setGraphName(config.graph);
@@ -123,7 +122,7 @@ function ArangoAdapter(nodes, edges, viewer, config) {
         setGraphName(undefined);
       }
     },
-  
+
     sendQuery = function(query, bindVars, onSuccess) {
       if (query !== queries.getAllGraphs) {
         if (query !== queries.connectedEdges) {
@@ -159,7 +158,7 @@ function ArangoAdapter(nodes, edges, viewer, config) {
         }
       });
     },
-  
+
     getNRandom = function(n, callback) {
       var list = [],
         i = 0,
@@ -182,7 +181,7 @@ function ArangoAdapter(nodes, edges, viewer, config) {
         });
       }
     },
-    
+
     parseResultOfTraversal = function (result, callback) {
       if (result.length === 0) {
         if (callback) {
@@ -197,7 +196,7 @@ function ArangoAdapter(nodes, edges, viewer, config) {
         n = absAdapter.insertNode(result[0].vertex),
         oldLength = nodes.length,
         com, buckets;
-        
+
       _.each(result, function(visited) {
         var node = absAdapter.insertNode(visited.vertex),
           path = visited.path;
@@ -215,7 +214,7 @@ function ArangoAdapter(nodes, edges, viewer, config) {
         _.each(path.edges, function(edge) {
           absAdapter.insertEdge(edge);
         });
-      });      
+      });
       delete inserted[n._id];
       absAdapter.checkSizeOfInserted(inserted);
       absAdapter.checkNodeLimit(n);
@@ -279,15 +278,15 @@ function ArangoAdapter(nodes, edges, viewer, config) {
          _.each(res, self.deleteEdge);
        });
     };
-   
-   
+
+
   if (config.prioList) {
     absConfig.prioList = config.prioList;
   }
   absAdapter = new AbstractAdapter(nodes, edges, this, viewer, absConfig);
-  
+
   parseConfig(config);
-  
+
   queries.getAllGraphs = "FOR g IN _graphs"
     + " return g._key";
   queries.randomDocuments = "FOR u IN @@nodes"
@@ -347,9 +346,9 @@ function ArangoAdapter(nodes, edges, viewer, config) {
     });
   };
   */
-  
+
   self.explore = absAdapter.explore;
-  
+
   self.loadNode = function(nodeId, callback) {
     self.loadNodeFromTreeById(nodeId, callback);
   };
@@ -360,17 +359,17 @@ function ArangoAdapter(nodes, edges, viewer, config) {
       var r = list[0];
       if (r._id) {
         self.loadInitialNode(r._id, callback);
-        return; 
+        return;
       }
       return;
     });
   };
-  
+
   self.loadInitialNode = function(nodeId, callback) {
     absAdapter.cleanUp();
     self.loadNode(nodeId, insertInitialCallback(callback));
   };
-  
+
   self.loadNodeFromTreeById = function(nodeId, callback) {
     sendQuery(queries.traversalById, {
       id: nodeId
@@ -378,20 +377,20 @@ function ArangoAdapter(nodes, edges, viewer, config) {
       parseResultOfTraversal(res, callback);
     });
   };
-  
+
   self.loadNodeFromTreeByAttributeValue = function(attribute, value, callback) {
     sendQuery(queries.traversalByAttribute(attribute), {
       value: value
     }, function(res) {
       parseResultOfTraversal(res, callback);
     });
-  };  
-  
+  };
+
   self.loadInitialNodeByAttributeValue = function(attribute, value, callback) {
     absAdapter.cleanUp();
     self.loadNodeFromTreeByAttributeValue(attribute, value, insertInitialCallback(callback));
   };
-  
+
   self.requestCentralityChildren = function(nodeId, callback) {
     sendQuery(queries.childrenCentrality,{
       id: nodeId
@@ -399,8 +398,8 @@ function ArangoAdapter(nodes, edges, viewer, config) {
       callback(res[0]);
     });
   };
-  
-  self.createEdge = function (edgeToAdd, callback) { 
+
+  self.createEdge = function (edgeToAdd, callback) {
     $.ajax({
       cache: false,
       type: "POST",
@@ -421,7 +420,7 @@ function ArangoAdapter(nodes, edges, viewer, config) {
       }
     });
   };
-  
+
   self.deleteEdge = function (edgeToRemove, callback) {
     $.ajax({
       cache: false,
@@ -440,9 +439,9 @@ function ArangoAdapter(nodes, edges, viewer, config) {
         throw data.statusText;
       }
     });
-    
+
   };
-  
+
   self.patchEdge = function (edgeToPatch, patchData, callback) {
     $.ajax({
       cache: false,
@@ -461,7 +460,7 @@ function ArangoAdapter(nodes, edges, viewer, config) {
       }
     });
   };
-  
+
   self.createNode = function (nodeToAdd, callback) {
     $.ajax({
       cache: false,
@@ -485,7 +484,7 @@ function ArangoAdapter(nodes, edges, viewer, config) {
       }
     });
   };
-  
+
   self.deleteNode = function (nodeToRemove, callback) {
     $.ajax({
       cache: false,
@@ -507,7 +506,7 @@ function ArangoAdapter(nodes, edges, viewer, config) {
       }
     });
   };
-  
+
   self.patchNode = function (nodeToPatch, patchData, callback) {
     $.ajax({
       cache: false,
@@ -526,7 +525,7 @@ function ArangoAdapter(nodes, edges, viewer, config) {
       }
     });
   };
-  
+
   self.changeToCollections = function (nodesCol, edgesCol, dir) {
     absAdapter.cleanUp();
     setNodeCollection(nodesCol);
@@ -541,7 +540,7 @@ function ArangoAdapter(nodes, edges, viewer, config) {
 
     setGraphName(undefined);
   };
-  
+
   self.changeToGraph = function (name, dir) {
     absAdapter.cleanUp();
     getCollectionsFromGraph(name);
@@ -554,22 +553,22 @@ function ArangoAdapter(nodes, edges, viewer, config) {
     }
     setGraphName(name);
   };
-  
+
   self.setNodeLimit = function (pLimit, callback) {
     absAdapter.setNodeLimit(pLimit, callback);
   };
-  
+
   self.setChildLimit = function (pLimit) {
     absAdapter.setChildLimit(pLimit);
   };
-  
+
   self.expandCommunity = function (commNode, callback) {
     absAdapter.expandCommunity(commNode);
     if (callback !== undefined) {
       callback();
     }
   };
-  
+
   self.getCollections = function(callback) {
     if (callback && callback.length >= 2) {
       $.ajax({
@@ -600,17 +599,17 @@ function ArangoAdapter(nodes, edges, viewer, config) {
       });
     }
   };
-  
+
   self.getGraphs = function(callback) {
-    if (callback && callback.length >= 1) {      
+    if (callback && callback.length >= 1) {
       sendQuery(
         queries.getAllGraphs,
-        {}, 
+        {},
         callback
       );
     }
   };
-  
+
   self.getAttributeExamples = function(callback) {
     if (callback && callback.length >= 1) {
       getNRandom(10, function(l) {
@@ -645,7 +644,7 @@ function ArangoAdapter(nodes, edges, viewer, config) {
   self.getGraphName = function () {
     return graphName;
   };
-  
+
   self.setWidth = absAdapter.setWidth;
   self.changeTo = absAdapter.changeTo;
   self.getPrioList = absAdapter.getPrioList;

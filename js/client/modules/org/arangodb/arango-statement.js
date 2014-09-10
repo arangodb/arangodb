@@ -1,4 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 100, sloppy: true, vars: true, white: true, plusplus: true */
+/*jshint strict: false */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,7 +47,7 @@ var ArangoQueryCursor = require("org/arangodb/arango-query-cursor").ArangoQueryC
 /// @brief return a string representation of the statement
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoStatement.prototype.toString = function () {  
+ArangoStatement.prototype.toString = function () {
   return arangosh.getIdString(this, "ArangoStatement");
 };
 
@@ -145,7 +145,7 @@ ArangoStatement.prototype.execute = function () {
   if (this._batchSize) {
     body.batchSize = this._batchSize;
   }
-  
+
   if (this._options) {
     body.options = this._options;
   }
@@ -163,7 +163,7 @@ ArangoStatement.prototype.execute = function () {
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
 
-exports.ArangoStatement = ArangoStatement; 
+exports.ArangoStatement = ArangoStatement;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
