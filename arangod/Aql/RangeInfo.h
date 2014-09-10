@@ -254,7 +254,8 @@ namespace triagens {
 /// empty), the two vectors are always of length at least 1, if necessary,
 /// they contain a single, undefined bound, in the case of all constant
 /// bounds the vectors are kept at length exactly 1 by combining the
-/// bounds
+/// bounds, the constant bounds are always combined into the first one,
+/// all non-constant ones are kept afterwards. 
 ////////////////////////////////////////////////////////////////////////////////
     
     struct RangeInfo {
@@ -266,18 +267,21 @@ namespace triagens {
         RangeInfo ( std::string var,
                     std::string attr,
                     RangeInfoBound low, 
-                    RangeInfoBound high )
-          : _var(var), _attr(attr), _valid(true), _defined(true) {
+                    RangeInfoBound high,
+                    bool equality)
+          : _var(var), _attr(attr), _valid(true), _defined(true),
+            _equality(equality) {
           _low.emplace_back(low);
           _high.emplace_back(high);
         }
 
         RangeInfo ( std::string var,
                     std::string attr)
-          : _var(var), _attr(attr), _valid(true), _defined(true) {
+          : _var(var), _attr(attr), _valid(true), _defined(true),
+            _equality(false) {
         }
 
-        RangeInfo () : _valid(false), _defined(false) {
+        RangeInfo () : _valid(false), _defined(false), _equality(false) {
         }
         
         RangeInfo (basics::Json const& json);
@@ -315,6 +319,12 @@ namespace triagens {
         
         // is the range a unique value (i.e. something like x<=1 and x>=1)
         bool is1ValueRangeInfo () const { 
+          if (! _valid) {
+            return false;
+          }
+          if (_equality) {
+            return true;
+          }
           bool res = _valid && _low.size() == 1 && _high.size() == 1 &&
                      _low[0].isDefined() && _high[0].isDefined() &&
                      _low[0].isConstant() && _high[0].isConstant();
@@ -331,8 +341,24 @@ namespace triagens {
 /// @brief isDefined, getter for _defined
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isDefined () {
+        bool isDefined () const {
           return _defined;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief isValid, getter for _valid
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isValid () const {
+          return _valid;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalidate
+////////////////////////////////////////////////////////////////////////////////
+
+        void invalidate () {
+          _valid = false;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -366,15 +392,21 @@ namespace triagens {
 /// @brief _valid, this is set to true iff the range is known to be non-empty
 ////////////////////////////////////////////////////////////////////////////////
         
+      private:
+
         bool _valid;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _defined, this is set iff the range is defined
 ////////////////////////////////////////////////////////////////////////////////
         
-      private:
-
         bool _defined;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _equality, range is known to be an equality
+////////////////////////////////////////////////////////////////////////////////
+        
+        bool _equality;
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -388,12 +420,25 @@ namespace triagens {
         RangesInfo( const RangesInfo& copy ) = delete;
         RangesInfo& operator= ( RangesInfo const& copy ) = delete;
         
-        RangesInfo () : _ranges() {}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default constructor
+////////////////////////////////////////////////////////////////////////////////
+    
+        RangesInfo () : _ranges() {
+        }
 
-        ~RangesInfo() {}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+    
+        ~RangesInfo() {
+        }
         
-        // find the all the range infos for variable <var>, ownership is not
-        // transferred
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find, find the all the range infos for variable <var>,
+/// ownership is not transferred
+////////////////////////////////////////////////////////////////////////////////
+    
         std::unordered_map<std::string, RangeInfo>* find (std::string var) {
           auto it = _ranges.find(var);
           if (it == _ranges.end()) {
@@ -402,22 +447,44 @@ namespace triagens {
           return &((*it).second);
         }
         
-        // insert if it's not already there and otherwise intersection with
-        // existing range
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insert, insert if it's not already there and otherwise
+/// intersection with existing range, for variable values we keep them all.
+/// The equality flag should be set if and only if the caller knows that the
+/// lower and upper bound are equal, this is particularly important if the
+/// bounds are variable and can only be computed at runtime.
+////////////////////////////////////////////////////////////////////////////////
+    
+        void insert (std::string var, std::string name, 
+                     RangeInfoBound low, RangeInfoBound high,
+                     bool equality);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insert, directly using a RangeInfo structure
+////////////////////////////////////////////////////////////////////////////////
+
         void insert (RangeInfo range);
         
-        void insert (std::string var, std::string name, 
-                     RangeInfoBound low, RangeInfoBound high);
-
-        // the number of range infos stored
+////////////////////////////////////////////////////////////////////////////////
+/// @brief size, the number of range infos stored
+////////////////////////////////////////////////////////////////////////////////
+    
         size_t size () const {
           return _ranges.size();
         }
         
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toString, via Json
+////////////////////////////////////////////////////////////////////////////////
+    
         std::string toString() const {
           return this->toJson().toString();
         }
         
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson
+////////////////////////////////////////////////////////////////////////////////
+    
         Json toJson () const {
           Json list(Json::List);
           for (auto x : _ranges) {
@@ -432,11 +499,24 @@ namespace triagens {
           return list;
         }
         
+////////////////////////////////////////////////////////////////////////////////
+/// @brief private data
+////////////////////////////////////////////////////////////////////////////////
+    
       private: 
         std::unordered_map<std::string, std::unordered_map<std::string, RangeInfo>> _ranges; 
         
     };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief RangeInfoVec, type for vector of vector of RangeInfo. The meaning
+/// is: the outer vector means an implicit "OR" between the entries. Each
+/// entry is a vector which means an implicit "AND" between the individual
+/// RangeInfo objects. This is actually the disjunctive normal form of
+/// all conditions, therefore, every boolean expression of ANDs and ORs
+/// can be expressed in this form.
+////////////////////////////////////////////////////////////////////////////////
+    
     typedef std::vector<std::vector<RangeInfo>> RangeInfoVec;
   }
 }
