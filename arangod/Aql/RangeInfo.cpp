@@ -165,7 +165,8 @@ void RangesInfo::insert (RangeInfo newRange) {
 
   RangeInfo& oldRange((*it).second);
 
-  if (!oldRange._valid) { // intersection of the empty set with any set is empty!
+  if (! oldRange.isValid()) { 
+    // intersection of the empty set with any set is empty!
     return;
   }
   
@@ -173,7 +174,7 @@ void RangesInfo::insert (RangeInfo newRange) {
   if (oldRange.is1ValueRangeInfo() && newRange.is1ValueRangeInfo()) {
     if (!TRI_CheckSameValueJson(oldRange._low[0].bound().json(), 
                                 newRange._low[0].bound().json())) {
-      oldRange._valid = false;
+      oldRange.invalidate();
       return;
     }
   }
@@ -194,7 +195,7 @@ void RangesInfo::insert (RangeInfo newRange) {
           !(oldRange._low[0].inclusive() == true && 
             oldRange._high[0].inclusive() == true ))) {
       // range invalid
-      oldRange._valid = false;
+      oldRange.invalidate();
     }
   }
 };
@@ -205,7 +206,8 @@ void RangesInfo::insert (RangeInfo newRange) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RangesInfo::insert (std::string var, std::string name, 
-                         RangeInfoBound low, RangeInfoBound high) { 
-  insert(RangeInfo(var, name, low, high));
+                         RangeInfoBound low, RangeInfoBound high,
+                         bool equality) { 
+  insert(RangeInfo(var, name, low, high, equality));
 };
 

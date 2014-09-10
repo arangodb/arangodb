@@ -539,7 +539,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             bool equality = true;  // are all the range infos equalities?
 
             for(auto x: *map) {
-              valid &= x.second._valid; 
+              valid &= x.second.isValid(); 
               if (!valid) {
                 break;
               }
@@ -682,7 +682,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         
         if (found) {
           _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
-              RangeInfoBound(val, true), RangeInfoBound(val, true));
+              RangeInfoBound(val, true), RangeInfoBound(val, true), true);
         }
         attr.clear();
         enumCollVar.clear();
@@ -717,7 +717,8 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
               else {
                 low.assign(lhs, include);
               }
-              _ranges->insert(enumCollVar, attr.substr(0, attr.size()-1), low, high);
+              _ranges->insert(enumCollVar, attr.substr(0, attr.size()-1), 
+                              low, high, false);
             }
           }
         }
@@ -736,7 +737,8 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
               else {
                 high.assign(rhs, include);
               }
-              _ranges->insert(enumCollVar, attr.substr(0, attr.size()-1), low, high);
+              _ranges->insert(enumCollVar, attr.substr(0, attr.size()-1), 
+                              low, high, false);
             }
           }
         }
