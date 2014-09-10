@@ -318,13 +318,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         // is the range a unique value (i.e. something like x<=1 and x>=1)
-        bool is1ValueRangeInfo () const { 
+        bool is1ValueRangeInfo () { 
           if (! _valid) {
             return false;
           }
           if (_equality) {
             return true;
           }
+          // Detect an equality even if it was not given as one:
           bool res = _valid && _low.size() == 1 && _high.size() == 1 &&
                      _low[0].isDefined() && _high[0].isDefined() &&
                      _low[0].isConstant() && _high[0].isConstant();
@@ -334,6 +335,9 @@ namespace triagens {
           res = TRI_CheckSameValueJson(_low[0].bound().json(),
                                        _high[0].bound().json()) &&
                 _low[0].inclusive() && _high[0].inclusive();
+          if (res == true) {
+            _equality = true;
+          }
           return res;
         }
         

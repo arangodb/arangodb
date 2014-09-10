@@ -87,7 +87,8 @@ RangeInfo::RangeInfo (basics::Json const& json) :
   _var(basics::JsonHelper::checkAndGetStringValue(json.json(), "variable")),
   _attr(basics::JsonHelper::checkAndGetStringValue(json.json(), "attr")),
   _valid(basics::JsonHelper::checkAndGetBooleanValue(json.json(), "valid")),
-  _defined(true) {
+  _defined(true),
+  _equality(basics::JsonHelper::checkAndGetBooleanValue(json.json(), "equality")) {
 
   Json lows = json.get("low");
   if (! lows.isList()) {
@@ -131,6 +132,7 @@ Json RangeInfo::toJson () {
   }
   item("high", highList);
   item("valid", Json(_valid));
+  item("equality", Json(_equality));
   return item;
 }
         
