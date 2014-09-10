@@ -1,6 +1,16 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
 
+* changed return value of Foxx.applicationContext#collectionName:
+
+  Previously, the function could return invalid collection names because
+  invalid characters were not replaced in the application name prefix, only
+  in the collection name passed.
+
+  Now, the function replaces invalid characters also in the application name
+  prefix, which might to slightly different results for application names that
+  contained any characters outside the ranges [a-z], [A-Z] and [0-9].
+
 * prevent XSS in AQL editor and logs view
 
 * integrated tutorial into ArangoShell and web interface
