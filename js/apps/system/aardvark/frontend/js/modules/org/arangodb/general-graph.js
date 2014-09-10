@@ -1304,6 +1304,9 @@ AQLGenerator.prototype.next = function() {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// Deprecated block
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_undirectedRelation
 /// @brief Define an undirected relation.
 ///
@@ -1344,6 +1347,9 @@ AQLGenerator.prototype.next = function() {
 ////////////////////////////////////////////////////////////////////////////////
 
 
+////////////////////////////////////////////////////////////////////////////////
+/// Deprecated block
+////////////////////////////////////////////////////////////////////////////////
 var _undirectedRelation = function (relationName, vertexCollections) {
   var err;
   if (arguments.length < 2) {
@@ -1373,8 +1379,9 @@ var _undirectedRelation = function (relationName, vertexCollections) {
     to: stringToArray(vertexCollections)
   };
 };
-
-
+////////////////////////////////////////////////////////////////////////////////
+/// Deprecated block
+////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_directedRelation
 /// @brief Define a directed relation.
@@ -1411,6 +1418,47 @@ var _undirectedRelation = function (relationName, vertexCollections) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_general_graph_relation
+/// @brief Define a directed relation.
+///
+/// `graph_module._relation(relationName, fromVertexCollections, toVertexCollections)`
+///
+/// The *relationName* defines the name of this relation and references to the underlying edge collection.
+/// The *fromVertexCollections* is an Array of document collections holding the start vertices.
+/// The *toVertexCollections* is an Array of document collections holding the target vertices.
+/// Relations are only allowed in the direction from any collection in *fromVertexCollections*
+/// to any collection in *toVertexCollections*.
+///
+/// @PARAMS
+///
+/// @PARAM{relationName, string, required}
+///   The name of the edge collection where the edges should be stored.
+///   Will be created if it does not yet exist.
+///
+/// @PARAM{fromVertexCollections, array, required}
+///   One or a list of collection names. Source vertices for the edges
+///   have to be stored in these collections. Collections will be created if they do not exist.
+///
+/// @PARAM{toVertexCollections, array, required}
+///   One or a list of collection names. Target vertices for the edges
+///   have to be stored in these collections. Collections will be created if they do not exist.
+///
+/// @EXAMPLES
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRelationDefinition}
+///   var graph_module = require("org/arangodb/general-graph");
+///   graph_module._relation("has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]);
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRelationDefinitionSingle}
+///   var graph_module = require("org/arangodb/general-graph");
+///   graph_module._relation("has_bought", "Customer", "Product");
+/// @END_EXAMPLE_ARANGOSH_OUTPUT
+///
+/// @endDocuBlock
+///
+////////////////////////////////////////////////////////////////////////////////
 
 var _relation = function (
   relationName, fromVertexCollections, toVertexCollections) {
@@ -1500,8 +1548,8 @@ var _listObjects = function() {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitions}
 ///   var graph_module = require("org/arangodb/general-graph");
-///   directed_relation = graph_module._directedRelation("lives_in", "user", "city");
-///   undirected_relation = graph_module._undirectedRelation("knows", "user");
+///   directed_relation = graph_module._relation("lives_in", "user", "city");
+///   undirected_relation = graph_module._relation("knows", "user", "user");
 ///   edgedefinitions = graph_module._edgeDefinitions(directed_relation, undirected_relation);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -1542,8 +1590,8 @@ var _edgeDefinitions = function () {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeDefinitionsExtend}
 ///   var graph_module = require("org/arangodb/general-graph");
-///   directed_relation = graph_module._directedRelation("lives_in", "user", "city");
-///   undirected_relation = graph_module._undirectedRelation("knows", "user");
+///   directed_relation = graph_module._relation("lives_in", "user", "city");
+///   undirected_relation = graph_module._relation("knows", "user", "user");
 ///   edgedefinitions = graph_module._edgeDefinitions(directed_relation);
 ///   edgedefinitions = graph_module._extendEdgeDefinitions(undirected_relation);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -1605,7 +1653,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraphHowTo3}
 /// ~ var graph_module = require("org/arangodb/general-graph");
 /// ~ var graph = graph_module._create("myGraph");
-///   var rel = graph_module._directedRelation("isCustomer", ["shop"], ["customer"]);
+///   var rel = graph_module._relation("isCustomer", ["shop"], ["customer"]);
 ///   graph._extendEdgeDefinitions(rel);
 ///   graph;
 /// ~ graph_module._drop("myGraph", true);
@@ -1654,7 +1702,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraph2}
 ///   var graph_module = require("org/arangodb/general-graph");
 /// | graph = graph_module._create("myGraph",
-///   [graph_module._undirectedRelation("myRelation", ["male", "female"])], ["sessions"]);
+///   [graph_module._relation("myRelation", ["male", "female"])], ["sessions"]);
 /// ~ graph_module._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -3900,8 +3948,8 @@ Graph.prototype._diameter = function(options) {
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__extendEdgeDefinitions}
 ///   var graph_module = require("org/arangodb/general-graph")
 /// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
-///   var ed1 = graph_module._directedRelation("myEC1", ["myVC1"], ["myVC2"]);
-///   var ed2 = graph_module._directedRelation("myEC2", ["myVC1"], ["myVC3"]);
+///   var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
+///   var ed2 = graph_module._relation("myEC2", ["myVC1"], ["myVC3"]);
 ///   var graph = graph_module._create("myGraph", [ed1]);
 ///   graph._extendEdgeDefinitions(ed2);
 /// ~ var blub = graph_module._drop("myGraph", true);
@@ -4081,8 +4129,8 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__editEdgeDefinition}
 ///   var graph_module = require("org/arangodb/general-graph")
 /// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
-///   var original = graph_module._directedRelation("myEC1", ["myVC1"], ["myVC2"]);
-///   var modified = graph_module._directedRelation("myEC1", ["myVC2"], ["myVC3"]);
+///   var original = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
+///   var modified = graph_module._relation("myEC1", ["myVC2"], ["myVC3"]);
 ///   var graph = graph_module._create("myGraph", [original]);
 ///   graph._editEdgeDefinitions(modified);
 /// ~ var blub = graph_module._drop("myGraph", true);
@@ -4160,8 +4208,8 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__deleteEdgeDefinition}
 ///   var graph_module = require("org/arangodb/general-graph")
 /// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
-///   var ed1 = graph_module._directedRelation("myEC1", ["myVC1"], ["myVC2"]);
-///   var ed2 = graph_module._directedRelation("myEC2", ["myVC1"], ["myVC3"]);
+///   var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
+///   var ed2 = graph_module._relation("myEC2", ["myVC1"], ["myVC3"]);
 ///   var graph = graph_module._create("myGraph", [ed1, ed2]);
 ///   graph._deleteEdgeDefinition("myEC1");
 ///   db._collection("myEC1");
@@ -4173,8 +4221,8 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__deleteEdgeDefinitionWithDrop}
 ///   var graph_module = require("org/arangodb/general-graph")
 /// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
-///   var ed1 = graph_module._directedRelation("myEC1", ["myVC1"], ["myVC2"]);
-///   var ed2 = graph_module._directedRelation("myEC2", ["myVC1"], ["myVC3"]);
+///   var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
+///   var ed2 = graph_module._relation("myEC2", ["myVC1"], ["myVC3"]);
 ///   var graph = graph_module._create("myGraph", [ed1, ed2]);
 ///   graph._deleteEdgeDefinition("myEC1", true);
 ///   db._collection("myEC1");
@@ -4258,7 +4306,7 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection, dropCollection)
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__addVertexCollection}
 ///   var graph_module = require("org/arangodb/general-graph");
 /// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
-///   var ed1 = graph_module._directedRelation("myEC1", ["myVC1"], ["myVC2"]);
+///   var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
 ///   var graph = graph_module._create("myGraph", [ed1]);
 ///   graph._addVertexCollection("myVC3", true);
 /// ~ var blub = graph_module._drop("myGraph", true);
@@ -4318,7 +4366,7 @@ Graph.prototype._addVertexCollection = function(vertexCollectionName, createColl
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__orphanCollections}
 ///   var graph_module = require("org/arangodb/general-graph")
 /// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
-///   var ed1 = graph_module._directedRelation("myEC1", ["myVC1"], ["myVC2"]);
+///   var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
 ///   var graph = graph_module._create("myGraph", [ed1]);
 ///   graph._addVertexCollection("myVC3", true);
 ///   graph._orphanCollections();
@@ -4357,7 +4405,7 @@ Graph.prototype._orphanCollections = function() {
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph__removeVertexCollections}
 ///   var graph_module = require("org/arangodb/general-graph")
 /// ~ if (graph_module._exists("myGraph")){var blub = graph_module._drop("myGraph", true);}
-///   var ed1 = graph_module._directedRelation("myEC1", ["myVC1"], ["myVC2"]);
+///   var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
 ///   var graph = graph_module._create("myGraph", [ed1]);
 ///   graph._addVertexCollection("myVC3", true);
 ///   graph._addVertexCollection("myVC4", true);
@@ -4422,7 +4470,9 @@ Graph.prototype._PRINT = function(context) {
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
 
+/// Deprecated function (announced 2.3)
 exports._undirectedRelation = _undirectedRelation;
+/// Deprecated function (announced 2.3)
 exports._directedRelation = function () {
   return _relation.apply(this, arguments);
 } ;
@@ -4455,9 +4505,9 @@ exports._listObjects = _listObjects;
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph_create_graph_example1}
 ///   var graph_module = require("org/arangodb/general-graph");
 ///   var edgeDefinitions = graph_module._edgeDefinitions();
-///   graph_module._extendEdgeDefinitions(edgeDefinitions, graph_module._undirectedRelation("friend_of", ["Customer"]));
+///   graph_module._extendEdgeDefinitions(edgeDefinitions, graph_module._relation("friend_of", "Customer", "Customer"));
 /// | graph_module._extendEdgeDefinitions(
-/// | edgeDefinitions, graph_module._directedRelation(
+/// | edgeDefinitions, graph_module._relation(
 ///   "has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
 ///   graph_module._create("myStore", edgeDefinitions);
 /// ~ graph_module._drop("myStore");
@@ -4472,7 +4522,7 @@ exports._listObjects = _listObjects;
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph_create_graph_example2}
 ///   var graph_module = require("org/arangodb/general-graph");
 /// |  var edgeDefinitions = graph_module._edgeDefinitions(
-/// |  graph_module._undirectedRelation("friend_of", ["Customer"]), graph_module._directedRelation(
+/// |  graph_module._relation("friend_of", ["Customer"]), graph_module._relation(
 ///    "has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
 ///   graph_module._create("myStore", edgeDefinitions);
 /// ~ graph_module._drop("myStore");
