@@ -8,7 +8,7 @@ In order to create a non empty graph the functionality to create edge definition
 
 !SECTION Edge Definitions
 
-An edge definition is a directed or undirected relation of a graph. Each graph can have arbitrary many relations defined within the edge definitions array.
+An edge definition is always a directed relation of a graph. Each graph can have arbitrary many relations defined within the edge definitions array.
 
 !SUBSECTION Initialize the list
 
@@ -18,11 +18,26 @@ An edge definition is a directed or undirected relation of a graph. Each graph c
 
 @startDocuBlock JSF_general_graph_extend_edge_definitions 
 
+!SUBSUBSECTION Relation
+
+@startDocuBlock JSF_general_graph_relation
+
+
 !SUBSUBSECTION Undirected Relation
+
+**Warning: Deprecated**
+
+This function is deprecated and will be removed soon.
+Please use [Relation](../General-Graphs/Management.html#relation) instead.
 
 @startDocuBlock JSF_general_graph_undirectedRelation
 
 !SUBSUBSECTION Directed Relation
+
+**Warning: Deprecated**
+
+This function is deprecated and will be removed soon.
+Please use [Relation](../General-Graphs/Management.html#relation) instead.
 
 @startDocuBlock JSF_general_graph_directedRelation
 
