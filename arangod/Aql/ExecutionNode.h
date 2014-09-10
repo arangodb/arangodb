@@ -880,6 +880,12 @@ namespace triagens {
           TRI_ASSERT(_collection != nullptr);
           TRI_ASSERT(_outVariable != nullptr);
           TRI_ASSERT(_index != nullptr);
+          std::cout << "Hallole" << std::endl;
+          for (auto x : ranges) {
+            for (auto y : x) {
+              std::cout << y.toString() << std::endl;
+            }
+          }
         }
 
         IndexRangeNode (Ast*, basics::Json const& base);
