@@ -1002,7 +1002,7 @@ void IndexRangeBlock::readSkiplistIndex () {
   TRI_index_t* idx = en->_index;
   TRI_ASSERT(idx != nullptr);
   
-  std::vector<std::vector<RangeInfo>> ranges = en->_ranges;
+  std::vector<std::vector<RangeInfo>> const& ranges = en->_ranges;
 
   TRI_shaper_t* shaper = _collection->documentCollection()->getShaper(); 
   TRI_ASSERT(shaper != nullptr);
@@ -1016,7 +1016,7 @@ void IndexRangeBlock::readSkiplistIndex () {
     // TODO only doing 1 dim case at the moment . . .
     auto range = ranges.at(0).at(i);
     if (range.is1ValueRangeInfo()) {   // it's an equality . . . 
-      parameters(range._low[0].bound().get("value").copy());
+      parameters(range._low[0].bound().copy());
     } 
     else {                          // it's not an equality and so the final comparison 
       if (parameters.size() != 0) {
