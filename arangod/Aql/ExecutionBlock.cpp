@@ -1125,8 +1125,7 @@ void IndexRangeBlock::readHashIndex () {
 
       for (auto x: en->_ranges.at(0)) {
         if (x._attr == std::string(name)){//found attribute
-          auto shaped = TRI_ShapedJsonJson(shaper, 
-              JsonHelper::getArrayElement(x._low[0].bound().json(), "value"), false); 
+          auto shaped = TRI_ShapedJsonJson(shaper, x._low[0].bound().json(), false); 
           // here x->_low->_bound = x->_high->_bound 
           searchValue._values[i] = *shaped;
           TRI_Free(shaper->_memoryZone, shaped);
