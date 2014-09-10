@@ -156,7 +156,7 @@ static inline void* CONST_CAST (void const* ptr) {
 /// @brief incrementing a uint64_t modulo a number with wraparound
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline uint64_t TRI_IncModU64(uint64_t i, uint64_t len) {
+static inline uint64_t TRI_IncModU64 (uint64_t i, uint64_t len) {
   // Note that the dummy variable gives the compiler a (good) chance to
   // use a conditional move instruction instead of a branch. This actually
   // works on modern gcc.
@@ -165,7 +165,7 @@ static inline uint64_t TRI_IncModU64(uint64_t i, uint64_t len) {
   return i < len ? i : dummy;
 }
 
-static inline uint64_t TRI_DecModU64(uint64_t i, uint64_t len) {
+static inline uint64_t TRI_DecModU64 (uint64_t i, uint64_t len) {
   if ((i--) != 0) {
     return i;
   }
@@ -203,12 +203,11 @@ static inline uint64_t TRI_DecModU64(uint64_t i, uint64_t len) {
 #endif
 
 #endif
-static inline void _backtrace(void)
-{
+static inline void _backtrace (void) {
 #if HAVE_BACKTRACE
-  void *stack_frames[50];
+  void* stack_frames[50];
   size_t size, i;
-  char **strings;
+  char** strings;
 
   size = backtrace(stack_frames, sizeof(stack_frames) / sizeof(void*));
   strings = backtrace_symbols(stack_frames, size);
@@ -234,41 +233,45 @@ static inline void _backtrace(void)
       // if the line could be processed, attempt to demangle the symbol
       if (mangled_name && offset_begin && offset_end && 
           mangled_name < offset_begin) {
-            *mangled_name++ = '\0';
-            *offset_begin++ = '\0';
-            *offset_end++ = '\0';
-            int status = 0;
-            char * demangled_name = abi::__cxa_demangle(mangled_name, 0, 0, &status);
-            if (status == 0) {
-              fprintf(stderr, "%s() [%p] %s\n", strings[i], stack_frames[i], demangled_name);
-            }
-            else {
-              fprintf(stderr, "%s\n", strings[i]);
-            }
-            free(demangled_name);
+        *mangled_name++ = '\0';
+        *offset_begin++ = '\0';
+        *offset_end++ = '\0';
+        int status = 0;
+        char * demangled_name = abi::__cxa_demangle(mangled_name, 0, 0, &status);
+        if (demangled_name != nullptr) {
+          if (status == 0) {
+            fprintf(stderr, "%s() [%p] %s\n", strings[i], stack_frames[i], demangled_name);
+          }
+          else {
+            fprintf(stderr, "%s\n", strings[i]);
+          }
+          TRI_SystemFree(demangled_name);
+        }
       }
       else
 #endif
-        {
-          fprintf(stderr, "%s\n", strings[i]);
-        }
+      {
+        fprintf(stderr, "%s\n", strings[i]);
+      }
     }
-    else
+    else {
       fprintf(stderr, "[%p]\n", stack_frames[i]);
+    }
   }
-  free(strings);  
+  if (strings != NULL) {
+    TRI_SystemFree(strings);  
+  }
 #endif
 }
 
 #ifdef __cplusplus
 #include <string>
 #include <sstream>
-static inline void _getBacktrace(std::string &btstr)
-{
+static inline void _getBacktrace (std::string& btstr) {
 #if HAVE_BACKTRACE
-  void *stack_frames[50];
+  void* stack_frames[50];
   size_t size, i;
-  char **strings;
+  char** strings;
 
   size = backtrace(stack_frames, sizeof(stack_frames) / sizeof(void*));
   strings = backtrace_symbols(stack_frames, size);
@@ -300,26 +303,28 @@ static inline void _getBacktrace(std::string &btstr)
             *offset_end++ = '\0';
             int status = 0;
             char * demangled_name = abi::__cxa_demangle(mangled_name, 0, 0, &status);
-            if (status == 0) {
-              ss << stack_frames[i];
-              btstr +=  strings[i] +
-                std::string("() [") +
-                ss.str() +
-                std::string("] ") +
-                demangled_name +
-                std::string("\n");
+
+            if (demangled_name != nullptr) {
+              if (status == 0) {
+                ss << stack_frames[i];
+                btstr +=  strings[i] +
+                  std::string("() [") +
+                  ss.str() +
+                  std::string("] ") +
+                  demangled_name +
+                  std::string("\n");
+              }
+              else {
+                btstr += strings[i] +
+                  std::string("\n");
+              }
+              TRI_SystemFree(demangled_name);
             }
-            else {
-              btstr +=  strings[i] +
-                std::string("\n");
-            }
-            free(demangled_name);
       }
-      else
-        {
-          btstr +=  strings[i] +
-            std::string("\n");
-        }
+      else {
+        btstr += strings[i] +
+          std::string("\n");
+      }
     }
     else {
       ss << stack_frames[i];
@@ -327,7 +332,9 @@ static inline void _getBacktrace(std::string &btstr)
         std::string("\n");
     }
   }
-  free(strings);  
+  if (string != NULL) {
+    TRI_SystemFree(strings);  
+  }
 #endif
 }
 #endif
