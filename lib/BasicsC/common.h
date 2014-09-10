@@ -332,7 +332,7 @@ static inline void _getBacktrace (std::string& btstr) {
         std::string("\n");
     }
   }
-  if (string != NULL) {
+  if (strings != NULL) {
     TRI_SystemFree(strings);  
   }
 #endif
