@@ -690,9 +690,9 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         if (low.isDefined() || high.isDefined()) {
           buildRangeInfo(nextNode, enumCollVar, attr);
           if (! enumCollVar.empty()) {
-            std::cout << "davor: " << _ranges->toJson().toString() << std::endl;
+            //std::cout << "davor: " << _ranges->toJson().toString() << std::endl;
             _ranges->insert(enumCollVar, attr.substr(0, attr.size()-1), low, high);
-            std::cout << "danach: " << _ranges->toJson().toString() << std::endl;
+            //std::cout << "danach: " << _ranges->toJson().toString() << std::endl;
           }
         }
       }
