@@ -496,7 +496,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           break;
         }
         case EN::INTERSECTION:
-        case EN::SINGLETON:
         case EN::AGGREGATE:
         case EN::LOOKUP_JOIN:
         case EN::MERGE_JOIN:
@@ -506,6 +505,11 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         case EN::CONCATENATION:
         case EN::MERGE:
         case EN::REMOTE:
+          // in these cases we simply ignore the intermediate nodes, note
+          // that we have taken care of nodes that could throw exceptions
+          // above.
+          break;
+        case EN::SINGLETON:
         case EN::INSERT:
         case EN::REMOVE:
         case EN::REPLACE:
@@ -513,10 +517,11 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         case EN::RETURN:
         case EN::NORESULTS:
         case EN::ILLEGAL:
-          break;
+          // in all these cases something is seriously wrong and we better abort
+          return true;
         case EN::LIMIT:           
-          // if we meet a limit node between a filter and an enumerate collection,
-          // we abort . . . 
+          // if we meet a limit node between a filter and an enumerate
+          // collection, we abort . . .
           return true;
         case EN::SORT:
         case EN::INDEX_RANGE:
@@ -527,11 +532,11 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           auto map = _ranges->find(var->name);        // check if we have any ranges with this var
           
           if (map != nullptr) {
-            // check the first components of <map> against indexes of <node> . . .
+            // check the first components of <map> against indexes of <node>...
             std::unordered_set<std::string> attrs;
             
-            bool valid = true;     // are all the range infos valid
-            bool equality = true;  // are all the range infos equalities
+            bool valid = true;     // are all the range infos valid?
+            bool equality = true;  // are all the range infos equalities?
 
             for(auto x: *map) {
               valid &= x.second._valid; 
@@ -569,7 +574,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                 node->getIndexesForIndexRangeNode(attrs, idxs, prefixes);
 
                 // make one new plan for every index in <idxs> that replaces the
-                // enumerate collection node with a RangeIndexNode . . . 
+                // enumerate collection node with a IndexRangeNode ... 
                 
                 for (size_t i = 0; i < idxs.size(); i++) {
                   std::vector<std::vector<RangeInfo>> rangeInfo;
@@ -684,35 +689,43 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         auto rhs = node->getMember(1);
         RangeInfoBound low;
         RangeInfoBound high;
-        AstNode *nextNode;
 
-        if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && lhs->type == NODE_TYPE_VALUE) {
-          if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
-              node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
-            high.assign(lhs, include);
-          } 
-          else {
-            low.assign(lhs, include);
-          }
-          nextNode = rhs;
-        }
-        else if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->type == NODE_TYPE_VALUE) {
-          if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
-              node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
-            low.assign(rhs, include);
-          } 
-          else {
-            high.assign(rhs, include);
-          }
-          nextNode = lhs;
-        }
-
-        if (low.isDefined() || high.isDefined()) {
-          buildRangeInfo(nextNode, enumCollVar, attr);
+        if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+          // Attribute access on the right:
+          // First find out whether there is a multiple attribute access
+          // of a variable on the right:
+          buildRangeInfo(rhs, enumCollVar, attr);
           if (! enumCollVar.empty()) {
-            //std::cout << "davor: " << _ranges->toJson().toString() << std::endl;
-            _ranges->insert(enumCollVar, attr.substr(0, attr.size()-1), low, high);
-            //std::cout << "danach: " << _ranges->toJson().toString() << std::endl;
+            if (lhs->type == NODE_TYPE_VALUE) {
+              // Constant value on the left, so insert a constant condition:
+              if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
+                  node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
+                high.assign(lhs, include);
+              } 
+              else {
+                low.assign(lhs, include);
+              }
+              _ranges->insert(enumCollVar, attr.substr(0, attr.size()-1), low, high);
+            }
+          }
+        }
+        else if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+          // Attribute access on the left:
+          // First find out whether there is a multiple attribute access
+          // of a variable on the left:
+          buildRangeInfo(lhs, enumCollVar, attr);
+          if (! enumCollVar.empty()) {
+            if (rhs->type == NODE_TYPE_VALUE) {
+              // Constant value on the right, so insert a constant condition:
+              if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
+                  node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
+                low.assign(rhs, include);
+              } 
+              else {
+                high.assign(rhs, include);
+              }
+              _ranges->insert(enumCollVar, attr.substr(0, attr.size()-1), low, high);
+            }
           }
         }
       }
