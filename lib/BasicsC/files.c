@@ -343,8 +343,8 @@ bool TRI_SetCloseOnExitFile (int fileDescriptor) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int64_t TRI_SizeFile (char const* path) {
-  struct stat stbuf;
-  int res = stat(path, &stbuf);
+  TRI_stat_t stbuf;
+  int res = TRI_STAT(path, &stbuf);
 
   if (res != 0) {
     // an error occurred
@@ -387,10 +387,10 @@ bool TRI_IsWritable (char const* path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsDirectory (char const* path) {
-  struct stat stbuf;
+  TRI_stat_t stbuf;
   int res;
 
-  res = stat(path, &stbuf);
+  res = TRI_STAT(path, &stbuf);
 
   return (res == 0) && ((stbuf.st_mode & S_IFMT) == S_IFDIR);
 }
@@ -430,7 +430,7 @@ bool TRI_ExistsFile (char const* path) {
     return false;
   }
   else {
-    struct stat stbuf;
+    TRI_stat_t stbuf;
     size_t len;
     int res;
 
@@ -447,11 +447,11 @@ bool TRI_ExistsFile (char const* path) {
       // remove trailing slash
       RemoveTrailingSeparator(copy);
 
-      res = stat(copy, &stbuf);
+      res = TRI_STAT(copy, &stbuf);
       TRI_FreeString(TRI_CORE_MEM_ZONE, copy);
     }
     else {
-      res = stat(path, &stbuf);
+      res = TRI_STAT(path, &stbuf);
     }
 
     return res == 0;
@@ -468,7 +468,7 @@ bool TRI_ExistsFile (char const* path) {
     struct stat stbuf;
     int res;
 
-    res = stat(path, &stbuf);
+    res = TRI_STAT(path, &stbuf);
 
     return res == 0;
   }

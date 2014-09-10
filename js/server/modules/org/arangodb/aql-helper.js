@@ -30,7 +30,6 @@
 
 var internal = require("internal");
 var arangodb = require("org/arangodb");
-var _ = require("underscore");
 var ShapedJson = internal.ShapedJson;
 
 // -----------------------------------------------------------------------------

@@ -773,7 +773,7 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
   }
 
   // compute the size of the file
-  res = fstat(fd, &status);
+  res = TRI_FSTAT(fd, &status);
 
   if (res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
