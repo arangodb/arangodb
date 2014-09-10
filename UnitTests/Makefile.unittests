@@ -8,8 +8,8 @@ FORCE = 0
 SKIP_BOOST = 0
 SKIP_GEO = 0
 SKIP_RANGES = 0
-VALGRIND = 
-NO_LOG = 
+VALGRIND =
+NO_LOG =
 USERNAME = root
 PASSWORD =
 PROTO = http
@@ -103,7 +103,7 @@ CERT_FILE := @top_srcdir@/UnitTests/server.pem
 ### @brief start the arango server
 ################################################################################
 
-SERVER_START := 
+SERVER_START :=
 
 SERVER_OPT := \
 	--configuration none \
@@ -126,7 +126,7 @@ CLIENT_OPT := \
 start-server:
 	@echo
 	@echo "================================================================================"
-	@(test "$(PROTO)" == "http"  && echo "<< STARTING SERVER ON TCP ENDPOINT                                            >>") || true 
+	@(test "$(PROTO)" == "http"  && echo "<< STARTING SERVER ON TCP ENDPOINT                                            >>") || true
 	@(test "$(PROTO)" == "https" && echo "<< STARTING SERVER ON SSL ENDPOINT                                            >>") || true
 	@(test "$(PROTO)" == "unix"  && echo "<< STARTING SERVER ON UNIX SOCKET ENDPOINT                                    >>") || true
 	@echo "================================================================================"
@@ -279,20 +279,20 @@ unittests-config:
 	@echo "<< CONFIGURATION FILE TESTS                                                   >>"
 	@echo "================================================================================"
 	@echo
-	
-	@builddir@/bin/arangod --configuration @builddir@/etc/arangodb/arangod.conf --help 1> /dev/null || false 
-	@builddir@/bin/arangob --configuration @builddir@/etc/arangodb/arangob.conf --help 1> /dev/null || false 
-	@builddir@/bin/arangodump --configuration @builddir@/etc/arangodb/arangodump.conf --help 1> /dev/null || false 
-	@builddir@/bin/arangoimp --configuration @builddir@/etc/arangodb/arangoimp.conf --help 1> /dev/null || false 
-	@builddir@/bin/arangorestore --configuration @builddir@/etc/arangodb/arangorestore.conf --help 1> /dev/null || false 
-	@builddir@/bin/arangosh --configuration @builddir@/etc/arangodb/arangosh.conf --help 1> /dev/null || false 
-	
-	@builddir@/bin/arangod --configuration @builddir@/etc/relative/arangod.conf --help 1> /dev/null || false 
-	@builddir@/bin/arangob --configuration @builddir@/etc/relative/arangob.conf --help 1> /dev/null || false 
-	@builddir@/bin/arangodump --configuration @builddir@/etc/relative/arangodump.conf --help 1> /dev/null || false 
-	@builddir@/bin/arangoimp --configuration @builddir@/etc/relative/arangoimp.conf --help 1> /dev/null || false 
-	@builddir@/bin/arangorestore --configuration @builddir@/etc/relative/arangorestore.conf --help 1> /dev/null || false 
-	@builddir@/bin/arangosh --configuration @builddir@/etc/relative/arangosh.conf --help 1> /dev/null || false 
+
+	@builddir@/bin/arangod --configuration @builddir@/etc/arangodb/arangod.conf --help 1> /dev/null || false
+	@builddir@/bin/arangob --configuration @builddir@/etc/arangodb/arangob.conf --help 1> /dev/null || false
+	@builddir@/bin/arangodump --configuration @builddir@/etc/arangodb/arangodump.conf --help 1> /dev/null || false
+	@builddir@/bin/arangoimp --configuration @builddir@/etc/arangodb/arangoimp.conf --help 1> /dev/null || false
+	@builddir@/bin/arangorestore --configuration @builddir@/etc/arangodb/arangorestore.conf --help 1> /dev/null || false
+	@builddir@/bin/arangosh --configuration @builddir@/etc/arangodb/arangosh.conf --help 1> /dev/null || false
+
+	@builddir@/bin/arangod --configuration @builddir@/etc/relative/arangod.conf --help 1> /dev/null || false
+	@builddir@/bin/arangob --configuration @builddir@/etc/relative/arangob.conf --help 1> /dev/null || false
+	@builddir@/bin/arangodump --configuration @builddir@/etc/relative/arangodump.conf --help 1> /dev/null || false
+	@builddir@/bin/arangoimp --configuration @builddir@/etc/relative/arangoimp.conf --help 1> /dev/null || false
+	@builddir@/bin/arangorestore --configuration @builddir@/etc/relative/arangorestore.conf --help 1> /dev/null || false
+	@builddir@/bin/arangosh --configuration @builddir@/etc/relative/arangosh.conf --help 1> /dev/null || false
 
 ################################################################################
 ### @brief BOOST TESTS
@@ -316,8 +316,8 @@ unittests-boost: UnitTests/basics_suite UnitTests/geo_suite
 
 noinst_PROGRAMS += UnitTests/basics_suite UnitTests/geo_suite
 
-UnitTests_basics_suite_CPPFLAGS = -I@top_srcdir@/arangod -I@top_srcdir@/lib @ICU_CPPFLAGS@ 
-UnitTests_basics_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework @ICU_LDFLAGS@ 
+UnitTests_basics_suite_CPPFLAGS = -I@top_srcdir@/arangod -I@top_srcdir@/lib @ICU_CPPFLAGS@
+UnitTests_basics_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework @ICU_LDFLAGS@
 UnitTests_basics_suite_DEPENDENCIES = @top_builddir@/lib/libarango.a
 
 UnitTests_basics_suite_SOURCES = \
@@ -340,7 +340,7 @@ UnitTests_basics_suite_SOURCES = \
 	UnitTests/Basics/vector-test.cpp \
 	UnitTests/Basics/EndpointTest.cpp \
 	UnitTests/Basics/StringBufferTest.cpp \
-	UnitTests/Basics/StringUtilsTest.cpp 
+	UnitTests/Basics/StringUtilsTest.cpp
 
 UnitTests_geo_suite_CPPFLAGS = -I@top_srcdir@/arangod -I@top_builddir@/lib -I@top_srcdir@/lib
 UnitTests_geo_suite_LDADD = -L@top_builddir@/lib -larango -lboost_unit_test_framework
@@ -453,6 +453,7 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-wal-noncluster.js \
                @top_srcdir@/js/server/tests/shell-sharding-helpers.js \
                @top_srcdir@/js/server/tests/shell-compaction-noncluster.js \
+               @top_srcdir@/js/server/tests/shell-shaped-noncluster.js \
                @top_srcdir@/js/server/tests/shell-tasks.js \
                @top_srcdir@/js/server/tests/shell-transactions-noncluster.js \
                @top_srcdir@/js/server/tests/shell-routing.js \
@@ -461,6 +462,7 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-database-noncluster.js \
                @top_srcdir@/js/server/tests/shell-foxx.js \
                @top_srcdir@/js/server/tests/shell-foxx-repository-spec.js \
+               @top_srcdir@/js/server/tests/shell-foxx-query-spec.js \
                @top_srcdir@/js/server/tests/shell-foxx-model.js \
                @top_srcdir@/js/server/tests/shell-foxx-base-middleware.js \
                @top_srcdir@/js/server/tests/shell-foxx-template-middleware.js \
@@ -568,7 +570,7 @@ SHELL_SERVER_AHUACATL_EXTENDED = \
 			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-13.js \
 			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-14.js \
 			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-15.js \
-			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-16.js 
+			@top_srcdir@/js/server/tests/ahuacatl-ranges-combined-16.js
 
 .PHONY: unittests-shell-server-ahuacatl
 
@@ -748,8 +750,8 @@ unittests-import:
 ### starts two servers (master & slave) and checks for data drift
 ################################################################################
 
-.PHONY: unittests-replication unittests-replication-server unittests-replication-http unittests-replication-data 
-	
+.PHONY: unittests-replication unittests-replication-server unittests-replication-http unittests-replication-data
+
 unittests-replication: unittests-replication-server unittests-replication-http unittests-replication-data
 
 unittests-replication-server:
@@ -824,7 +826,7 @@ unittests-upgrade:
 
 	@rm -rf "$(VOCDIR)"
 	@mkdir -p "$(VOCDIR)/databases"
-	@sleep 2 
+	@sleep 2
 
 	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --console --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --upgrade || test "x$(FORCE)" == "x1"
 	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --console --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --upgrade || test "x$(FORCE)" == "x1"
@@ -833,7 +835,7 @@ unittests-upgrade:
 	@echo
 
 ################################################################################
-### @brief DATAFILE DEBUGGER TESTS      
+### @brief DATAFILE DEBUGGER TESTS
 ###
 ### this test just checks whether the dfdb starts.
 ### we will send an EOT signal to the dfdb process to stop it right away.
@@ -1055,7 +1057,7 @@ cppcheck:
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
 ## -----------------------------------------------------------------------------
-  
+
 ## Local Variables:
 ## mode: outline-minor
 ## outline-regexp: "^\\(### @brief\\|## --SECTION--\\|# -\\*- \\)"

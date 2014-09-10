@@ -273,7 +273,7 @@ return returnVal;
 
       return dt.getUTCFullYear() + '-'
       + pad(dt.getUTCMonth() + 1) + '-'
-      + pad(dt.getUTCDate()) + ' <br>'
+      + pad(dt.getUTCDate()) + ' '
       + pad(dt.getUTCHours()) + ':'
       + pad(dt.getUTCMinutes()) + ':'
       + pad(dt.getUTCSeconds());

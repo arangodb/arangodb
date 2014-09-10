@@ -1,7 +1,7 @@
 /*jshint browser: true */
 /*jshint unused: false */
 /*global require, exports, Backbone, EJS, $, setTimeout, localStorage, ace, Storage, window, _ */
-/*global arangoHelper, templateEngine, jQuery, Joi*/
+/*global _, arangoHelper, templateEngine, jQuery, Joi*/
 
 (function () {
   "use strict";
@@ -73,13 +73,16 @@
         {'keyup #new-query-name' : this.listenKey.bind(this)});
     },
 
-    updateTable:  function () {
+    updateTable: function () {
       this.tableDescription.rows = this.customQueries;
 
-      _.each(this.tableDescription.rows, function(k,v) {
+      _.each(this.tableDescription.rows, function(k, v) {
         k.thirdRow = '<a class="deleteButton"><span class="icon_arangodb_roundminus"' +
               ' title="Delete query"></span></a>';
       });
+
+      // escape all columns but the third (which contains HTML)
+      this.tableDescription.unescaped = [ false, false, true ];
 
       this.$(this.id).html(this.table.render({content: this.tableDescription}));
     },
@@ -123,7 +126,8 @@
           $('#modalButton1').addClass('button-warning');
           $('#modalButton1').text('Update');
             boolTemp = true;
-        } else {
+        } 
+        else {
           $('#modalButton1').removeClass('button-warning');
           $('#modalButton1').addClass('button-success');
           $('#modalButton1').text('Save');
@@ -188,9 +192,9 @@
       var sizeBox = $('#querySize');
       sizeBox.empty();
       [ 100, 250, 500, 1000, 2500, 5000 ].forEach(function (value) {
-        sizeBox.append('<option value="' + value + '"' +
+        sizeBox.append('<option value="' + _.escape(value) + '"' +
           (querySize === value ? ' selected' : '') +
-          '>' + value + ' results</option>');
+          '>' + _.escape(value) + ' results</option>');
       });
 
       var outputEditor = ace.edit("queryOutput");
@@ -433,12 +437,12 @@
       //check for already existing entry
       var quit = false;
       $.each(this.customQueries, function (k, v) {
-          if (v.name === saveName) {
-            v.value = content;
-            quit = !isUpdate;
-            return;
-          }
-        });
+        if (v.name === saveName) {
+          v.value = content;
+          quit = !isUpdate;
+          return;
+        }
+      });
 
       if (quit === true) {
         //Heiko: Form-Validator - name already taken
@@ -446,7 +450,7 @@
         return;
       }
 
-      if (!isUpdate) {
+      if (! isUpdate) {
         //this.customQueries.push({
          // name: saveName,
          // value: content
@@ -468,8 +472,6 @@
       this.renderSelectboxes();
       $('#querySelect').val(saveName);
     },
-
-
 
     getSystemQueries: function () {
       var self = this;
@@ -498,6 +500,7 @@
       });
       return returnVal;
     },
+
     importSelected: function (e) {
       var inputEditor = ace.edit("aqlEditor");
       $.each(this.queries, function (k, v) {
@@ -513,29 +516,28 @@
 
       this.deselect(ace.edit("aqlEditor"));
     },
+
     renderSelectboxes: function () {
       this.sortQueries();
       var selector = '';
-        selector = '#querySelect';
-        $(selector).empty();
+      selector = '#querySelect';
+      $(selector).empty();
 
-        $(selector).append('<option id="emptyquery">Insert Query</option>');
+      $(selector).append('<option id="emptyquery">Insert Query</option>');
 
-        $(selector).append('<optgroup label="Example queries">');
-        jQuery.each(this.queries, function (k, v) {
-          var escapedName = arangoHelper.escapeHtml(v.name);
-          $(selector).append('<option id="' + escapedName + '">' + escapedName + '</option>');
+      $(selector).append('<optgroup label="Example queries">');
+      jQuery.each(this.queries, function (k, v) {
+        $(selector).append('<option id="' + _.escape(v.name) + '">' + _.escape(v.name) + '</option>');
+      });
+      $(selector).append('</optgroup>');
+
+      if (this.customQueries.length > 0) {
+        $(selector).append('<optgroup label="Custom queries">');
+        jQuery.each(this.customQueries, function (k, v) {
+          $(selector).append('<option id="' + _.escape(v.name) + '">' + _.escape(v.name) + '</option>');
         });
         $(selector).append('</optgroup>');
-
-        if (this.customQueries.length > 0) {
-          $(selector).append('<optgroup label="Custom queries">');
-          jQuery.each(this.customQueries, function (k, v) {
-            var escapedName = arangoHelper.escapeHtml(v.name);
-            $(selector).append('<option id="' + escapedName + '">' + escapedName + '</option>');
-          });
-          $(selector).append('</optgroup>');
-        }
+      }
     },
     undoText: function () {
       var inputEditor = ace.edit("aqlEditor");
@@ -614,7 +616,7 @@
       var changeTab = function (element, index, array){
         var divId = "#" + element.replace("-switch", "");
         var contentDivId = "#tabContent" + divId.charAt(1).toUpperCase() + divId.substr(2);
-        if ( element === switchId){
+        if (element === switchId) {
           $("#" + element).parent().addClass("active");
           $(divId).addClass("active");
           $(contentDivId).show();
