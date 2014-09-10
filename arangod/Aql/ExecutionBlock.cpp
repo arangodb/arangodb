@@ -790,13 +790,20 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
    std::cout << "USING INDEX: " << ep->_index->_iid << ", " <<
      TRI_TypeNameIndex(ep->_index->_type) << "\n";
   */
+  // TODO: detect whether all ranges are constant
+  // TODO: if not, instanciate expressions
 }
 
 IndexRangeBlock::~IndexRangeBlock () {
+  // TODO: free expressions
 }
 
 bool IndexRangeBlock::readIndex () {
 
+  // TODO: adjust to make callable multiple times with proper cleanup
+  // TODO: in variable case, evaluate all expressions, work actual values
+  //       into constant bound and finally use these
+  
   if (_documents.empty()) {
     _documents.reserve(DefaultBatchSize);
   }
@@ -804,7 +811,6 @@ bool IndexRangeBlock::readIndex () {
   _documents.clear();
   
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
- 
     
   if (en->_index->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
     readSkiplistIndex();
@@ -827,6 +833,7 @@ int IndexRangeBlock::initialize () {
     }
   }
   
+  // TODO: if all constant, then do it here, otherwise not
   readIndex();
   return res;
 }
@@ -911,6 +918,9 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t atLeast,
       delete cur;
       _pos = 0;
     }
+    
+    // TODO: if bounds are variable, then repeat readIndex here
+
   }
 
   // Clear out registers no longer needed later:
