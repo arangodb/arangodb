@@ -1,5 +1,12 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
+* Added a _relation function in the general-graph module.
+ 
+  This deprecated _directedRelation and _undirectedRelation.
+  ArangoDB does not offer any constraints for undirected edges
+  which caused some confusion of users how undirected relations
+  have to be handled. Relation now only supports directed relations
+  and the user can actively simulate undirected relations.
 
 * changed return value of Foxx.applicationContext#collectionName:
 
