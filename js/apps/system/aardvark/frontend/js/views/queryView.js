@@ -196,7 +196,6 @@
       var inputEditor = ace.edit("aqlEditor");
       inputEditor.getSession().setMode("ace/mode/aql");
       inputEditor.setFontSize("16px");
-      inputEditor.setOptions({fontFamily: "Courier New"});
       inputEditor.commands.addCommand({
         name: "togglecomment",
         bindKey: {win: "Ctrl-Shift-C", linux: "Ctrl-Shift-C", mac: "Command-Shift-C"},
