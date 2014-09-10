@@ -124,7 +124,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
       int level;
       auto p = _plans.pop_front(level);
 
-      if (level == maxRuleLevel) {
+      if (level >= maxRuleLevel) {
         _newPlans.push_back(p, level);  // nothing to do, just keep it
       }
       else {   // find next rule
@@ -181,7 +181,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
       break;
     }
   }
-
+  
   TRI_ASSERT(_plans.size() >= 1);
 
   estimatePlans();
