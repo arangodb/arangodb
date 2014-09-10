@@ -1,6 +1,31 @@
 v2.2.4 (2014-XX-XX)
 -------------------
 
+* fixed issue #1016: AQL editor bug
+
+* fixed issue #1014: WITHIN function returns wrong distance
+
+* fixed AQL shortest path calculation in function `GRAPH_SHORTEST_PATH` to return
+  complete vertex objects instead of just vertex ids
+
+* allow changing of attributes of documents stored in server-side JavaScript variables 
+
+  Previously, the following did not work:
+
+      var doc = db.collection.document(key);
+      doc._key = "abc"; // overwriting internal attributes not supported
+      doc.value = 123;  // overwriting existing attributes not supported 
+
+  Now, modifying documents stored in server-side variables (e.g. `doc` in the above case)
+  is supported. Modifying the variables will not update the documents in the database,
+  but will modify the JavaScript object (which can be written back to the database using
+  `db.collection.update` or `db.collection.replace`)
+
+* fixed issue #997: arangoimp apparently doesn't support files >2gig on Windows
+
+  large file support (requires using `_stat64` instead of `stat`) is now supported on 
+  Windows
+
 
 v2.2.3 (2014-09-02)
 -------------------
