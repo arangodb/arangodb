@@ -1,6 +1,16 @@
 v2.3.0 (XXXX-XX-XX)
 -------------------
 
+* changed return value of Foxx.applicationContext#collectionName:
+
+  Previously, the function could return invalid collection names because
+  invalid characters were not replaced in the application name prefix, only
+  in the collection name passed.
+
+  Now, the function replaces invalid characters also in the application name
+  prefix, which might to slightly different results for application names that
+  contained any characters outside the ranges [a-z], [A-Z] and [0-9].
+
 * prevent XSS in AQL editor and logs view
 
 * integrated tutorial into ArangoShell and web interface
@@ -77,8 +87,39 @@ v2.3.0 (XXXX-XX-XX)
   storing JavaScript date objects in the database in a sensible manner.
 
 
-v2.2.3 (2014-XX-XX)
+v2.2.4 (2014-XX-XX)
 -------------------
+
+* fixed issue #1016: AQL editor bug
+
+* fixed issue #1014: WITHIN function returns wrong distance
+
+* fixed AQL shortest path calculation in function `GRAPH_SHORTEST_PATH` to return
+  complete vertex objects instead of just vertex ids
+
+* allow changing of attributes of documents stored in server-side JavaScript variables 
+
+  Previously, the following did not work:
+
+      var doc = db.collection.document(key);
+      doc._key = "abc"; // overwriting internal attributes not supported
+      doc.value = 123;  // overwriting existing attributes not supported 
+
+  Now, modifying documents stored in server-side variables (e.g. `doc` in the above case)
+  is supported. Modifying the variables will not update the documents in the database,
+  but will modify the JavaScript object (which can be written back to the database using
+  `db.collection.update` or `db.collection.replace`)
+
+* fixed issue #997: arangoimp apparently doesn't support files >2gig on Windows
+
+  large file support (requires using `_stat64` instead of `stat`) is now supported on 
+  Windows
+
+
+v2.2.3 (2014-09-02)
+-------------------
+
+* added `around` for Foxx controller
 
 * added `type` option for HTTP API `GET /_api/document?collection=...`
 
