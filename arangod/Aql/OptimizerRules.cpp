@@ -586,8 +586,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                     for (size_t j = 0; j < idx->_fields._length; j++) {
                       auto range = map->find(std::string(idx->_fields._buffer[j]));
                    
-                      if (! range->second.isConstant() ||
-                          ! range->second.is1ValueRangeInfo()) {
+                      if (! range->second.is1ValueRangeInfo()) {
                         rangeInfo.at(0).clear();   // not usable
                         break;
                       }
@@ -598,17 +597,12 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                   if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
                     size_t j = 0;
                     auto range = map->find(std::string(idx->_fields._buffer[0]));
-                    if (range->second.isConstant()) {
+                    rangeInfo.at(0).push_back(range->second);
+                    bool equality = range->second.is1ValueRangeInfo();
+                    while (++j < prefixes.at(i) && equality) {
+                      range = map->find(std::string(idx->_fields._buffer[j]));
                       rangeInfo.at(0).push_back(range->second);
-                      bool equality = range->second.is1ValueRangeInfo();
-                      while (++j < prefixes.at(i) && equality) {
-                        range = map->find(std::string(idx->_fields._buffer[j]));
-                        if (! range->second.isConstant()) {
-                          break;
-                        }
-                        rangeInfo.at(0).push_back(range->second);
-                        equality = equality && range->second.is1ValueRangeInfo();
-                      }
+                      equality = equality && range->second.is1ValueRangeInfo();
                     }
                   }
                   
