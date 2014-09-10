@@ -40,6 +40,15 @@ var assertQueryError = helper.assertQueryError;
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlQueryGeneralEdgesTestSuite() {
+
+  var v1 = "UnitTestsAhuacatlVertex1";
+  var v2 = "UnitTestsAhuacatlVertex2";
+  var v3 = "UnitTestsAhuacatlVertex3";
+  var v4 = "UnitTestsAhuacatlVertex4";
+  var e1 = "UnitTestsAhuacatlEdge1";
+  var e2 = "UnitTestsAhuacatlEdge2";
+  var or = "UnitTestsAhuacatlOrphan";
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -47,21 +56,21 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
-      db._drop("UnitTestsAhuacatlVertex1");
-      db._drop("UnitTestsAhuacatlVertex2");
-      db._drop("UnitTestsAhuacatlVertex3");
-      db._drop("UnitTestsAhuacatlVertex4");
-      db._drop("UnitTestsAhuacatlEdge1");
-      db._drop("UnitTestsAhuacatlEdge2");
-      db._drop("UnitTestsAhuacatlOrphan");
+      db._drop(v1);
+      db._drop(v2);
+      db._drop(v3);
+      db._drop(v4);
+      db._drop(e1);
+      db._drop(e2);
+      db._drop(or);
 
-      var vertex1 = db._create("UnitTestsAhuacatlVertex1");
-      var vertex2 = db._create("UnitTestsAhuacatlVertex2");
-      var vertex3 = db._create("UnitTestsAhuacatlVertex3");
-      var vertex4 = db._create("UnitTestsAhuacatlVertex4");
-      var edge1 = db._createEdgeCollection("UnitTestsAhuacatlEdge1");
-      var edge2 = db._createEdgeCollection("UnitTestsAhuacatlEdge2");
-      var oprhan = db._create("UnitTestsAhuacatlOrphan");
+      var vertex1 = db._create(v1);
+      var vertex2 = db._create(v2);
+      var vertex3 = db._create(v3);
+      var vertex4 = db._create(v4);
+      var edge1 = db._createEdgeCollection(e1);
+      var edge2 = db._createEdgeCollection(e2);
+      var oprhan = db._create(or);
 
       vertex1.save({ _key: "v1", hugo: true});
       vertex1.save({ _key: "v2", hugo: true});
@@ -77,14 +86,14 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
         collection.save(from, to, { what: from.split("/")[1] + "->" + to.split("/")[1] });
       }
 
-      makeEdge("UnitTestsAhuacatlVertex1/v1", "UnitTestsAhuacatlVertex1/v2", edge1);
-      makeEdge("UnitTestsAhuacatlVertex1/v2", "UnitTestsAhuacatlVertex1/v1", edge1);
-      makeEdge("UnitTestsAhuacatlVertex1/v1", "UnitTestsAhuacatlVertex3/v5", edge2);
-      makeEdge("UnitTestsAhuacatlVertex1/v2", "UnitTestsAhuacatlVertex3/v5", edge2);
-      makeEdge("UnitTestsAhuacatlVertex2/v3", "UnitTestsAhuacatlVertex3/v6", edge2);
-      makeEdge("UnitTestsAhuacatlVertex2/v4", "UnitTestsAhuacatlVertex4/v7", edge2);
-      makeEdge("UnitTestsAhuacatlVertex2/v3", "UnitTestsAhuacatlVertex3/v5", edge2);
-      makeEdge("UnitTestsAhuacatlVertex2/v3", "UnitTestsAhuacatlVertex4/v8", edge2);
+      makeEdge(v1 + "/v1", v1 + "/v2", edge1);
+      makeEdge(v1 + "/v2", v1 + "/v1", edge1);
+      makeEdge(v1 + "/v1", v3 + "/v5", edge2);
+      makeEdge(v1 + "/v2", v3 + "/v5", edge2);
+      makeEdge(v2 + "/v3", v3 + "/v6", edge2);
+      makeEdge(v2 + "/v4", v4 + "/v7", edge2);
+      makeEdge(v2 + "/v3", v3 + "/v5", edge2);
+      makeEdge(v2 + "/v3", v4 + "/v8", edge2);
 
       try {
         db._collection("_graphs").remove("_graphs/bla3");
@@ -93,13 +102,13 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       graph._create(
         "bla3",
         graph._edgeDefinitions(
-          graph._undirectedRelation("UnitTestsAhuacatlEdge1", "UnitTestsAhuacatlVertex1"),
-          graph._directedRelation("UnitTestsAhuacatlEdge2",
-            ["UnitTestsAhuacatlVertex1", "UnitTestsAhuacatlVertex2"],
-            ["UnitTestsAhuacatlVertex3", "UnitTestsAhuacatlVertex4"]
+          graph._relation(e1, v1, v1),
+          graph._relation(e2,
+            [v1, v2],
+            [v3, v4]
           )
         ),
-        ["UnitTestsAhuacatlOrphan"]
+        [or]
       );
     },
 
@@ -108,13 +117,13 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
-      db._drop("UnitTestsAhuacatlVertex1");
-      db._drop("UnitTestsAhuacatlVertex2");
-      db._drop("UnitTestsAhuacatlVertex3");
-      db._drop("UnitTestsAhuacatlVertex4");
-      db._drop("UnitTestsAhuacatlEdge1");
-      db._drop("UnitTestsAhuacatlEdge2");
-      db._drop("UnitTestsAhuacatlOrphan");
+      db._drop(v1);
+      db._drop(v2);
+      db._drop(v3);
+      db._drop(v4);
+      db._drop(e1);
+      db._drop(e2);
+      db._drop(or);
       db._collection("_graphs").remove("_graphs/bla3");
     },
 
@@ -125,8 +134,8 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
     testEdgesAny: function () {
 
       var actual;
-      actual = getRawQueryResults("FOR e IN GRAPH_VERTICES('bla3', 'UnitTestsAhuacatlVertex1/v1', {direction : 'any'}) RETURN e");
-      assertEqual(actual[0]._id, 'UnitTestsAhuacatlVertex1/v1');
+      actual = getRawQueryResults("FOR e IN GRAPH_VERTICES('bla3', '" + v1 + "/v1', {direction : 'any'}) RETURN e");
+      assertEqual(actual[0]._id, v1 + '/v1');
 
       actual = getRawQueryResults("FOR e IN GRAPH_VERTICES('bla3', {}, {direction : 'any', vertexCollectionRestriction : 'UnitTestsAhuacatlOrphan'}) RETURN e");
       assertEqual(actual[0]._id, 'UnitTestsAhuacatlOrphan/orphan');
@@ -309,7 +318,7 @@ function ahuacatlQueryGeneralCommonTestSuite() {
       graph._create(
         "bla3",
         graph._edgeDefinitions(
-          graph._directedRelation("UnitTestsAhuacatlEdge1",
+          graph._relation("UnitTestsAhuacatlEdge1",
             ["UnitTestsAhuacatlVertex1", "UnitTestsAhuacatlVertex2"],
             ["UnitTestsAhuacatlVertex1", "UnitTestsAhuacatlVertex2"]
           )
@@ -496,8 +505,8 @@ function ahuacatlQueryGeneralPathsTestSuite() {
       var g = graph._create(
         "bla3",
         graph._edgeDefinitions(
-          graph._undirectedRelation("UnitTestsAhuacatlEdge1", "UnitTestsAhuacatlVertex1"),
-          graph._directedRelation("UnitTestsAhuacatlEdge2",
+          graph._relation("UnitTestsAhuacatlEdge1", "UnitTestsAhuacatlVertex1", "UnitTestsAhuacatlVertex1"),
+          graph._relation("UnitTestsAhuacatlEdge2",
             ["UnitTestsAhuacatlVertex1", "UnitTestsAhuacatlVertex2"],
             ["UnitTestsAhuacatlVertex3", "UnitTestsAhuacatlVertex4"]
           )
@@ -725,8 +734,8 @@ function ahuacatlQueryGeneralTraversalTestSuite() {
       var g = graph._create(
         "werKenntWen",
         graph._edgeDefinitions(
-          graph._undirectedRelation(KenntAnderenBerliner, "UnitTests_Berliner"),
-          graph._directedRelation(KenntAnderen,
+          graph._relation(KenntAnderenBerliner, "UnitTests_Berliner", "UnitTests_Berliner"),
+          graph._relation(KenntAnderen,
             ["UnitTests_Hamburger", "UnitTests_Frankfurter", "UnitTests_Berliner", "UnitTests_Leipziger"],
             ["UnitTests_Hamburger", "UnitTests_Frankfurter", "UnitTests_Berliner", "UnitTests_Leipziger"]
           )
@@ -1690,8 +1699,8 @@ function ahuacatlQueryGeneralCyclesSuite() {
       var g = graph._create(
         "werKenntWen",
         graph._edgeDefinitions(
-          graph._undirectedRelation(KenntAnderenBerliner, "UnitTests_Berliner"),
-          graph._directedRelation(KenntAnderen,
+          graph._relation(KenntAnderenBerliner, "UnitTests_Berliner", "UnitTests_Berliner"),
+          graph._relation(KenntAnderen,
             ["UnitTests_Hamburger", "UnitTests_Frankfurter", "UnitTests_Berliner", "UnitTests_Leipziger"],
             ["UnitTests_Hamburger", "UnitTests_Frankfurter", "UnitTests_Berliner", "UnitTests_Leipziger"]
           )
