@@ -48,7 +48,10 @@ namespace triagens {
 /// @brief struct to keep an upper or lower bound named _bound and a bool
 /// _include which indicates if the _bound is included or not. This can
 /// hold a constant value (NODE_TYPE_VALUE) or a subexpression, which is
-/// indicated by the boolean flag _isConstant.
+/// indicated by the boolean flag _isConstant. The whole thing can be
+/// not _defined, which counts as _isConstant.
+/// We have the following invariants:
+///  (! _defined) ==> _isConstant
 ////////////////////////////////////////////////////////////////////////////////
 
     struct RangeInfoBound {
@@ -73,11 +76,16 @@ namespace triagens {
         }
         
         RangeInfoBound (basics::Json const& json) 
-          : _bound(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE,
-              basics::JsonHelper::checkAndGetArrayValue(json.json(), "bound"))),
+          : _bound(),
             _include(basics::JsonHelper::checkAndGetBooleanValue(json.json(),
                                                                  "include")),
+            _isConstant(basics::JsonHelper::checkAndGetBooleanValue(json.json(),
+                                                             "isConstant")),
             _defined(true) {
+          Json bound = json.get("bound");
+          if (! bound.isEmpty()) {
+            _bound = bound;
+          }
         }
       
         RangeInfoBound () 
@@ -107,9 +115,10 @@ namespace triagens {
 
         void assign (basics::Json const& json) {
           _defined = false;   // keep it undefined in case of an exception
-          _bound = Json(TRI_UNKNOWN_MEM_ZONE,
-            basics::JsonHelper::checkAndGetArrayValue(json.json(), "bound"), 
-            basics::Json::NOFREE).copy();
+          Json bound = json.get("bound");
+          if (! bound.isEmpty()) {
+            _bound = bound;
+          }
           _include = basics::JsonHelper::checkAndGetBooleanValue(
                            json.json(), "include");
           _isConstant = basics::JsonHelper::checkAndGetBooleanValue(
@@ -133,7 +142,7 @@ namespace triagens {
           _defined = true;
         }
       
-        void assign (RangeInfoBound& copy) {
+        void assign (RangeInfoBound const& copy) {
           _defined = false;
           _bound = copy._bound.copy(); 
           _include = copy._include;
@@ -147,9 +156,11 @@ namespace triagens {
 
         Json toJson () const {
           Json item(basics::Json::Array, 3);
-          item("bound", _bound.copy())
-              ("include", Json(_include))
-              ("isConstant", Json(_isConstant));
+          if (! _bound.isEmpty()) {
+            item("bound", _bound.copy());
+          }
+          item("include", Json(_include))
+              ("isConstant", Json(! _defined || _isConstant));
           return item;
         }
 
@@ -208,7 +219,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool isConstant () const {
-          return _isConstant;
+          return ! _defined || _isConstant;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -249,13 +260,17 @@ namespace triagens {
     };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief struct to keep a list of RangeInfoBounds for _low and one for _high, 
-/// and _valid to indicate if the range is valid (i.e. not known to be
-/// empty), the two vectors are always of length at least 1, if necessary,
-/// they contain a single, undefined bound, in the case of all constant
-/// bounds the vectors are kept at length exactly 1 by combining the
-/// bounds, the constant bounds are always combined into the first one,
-/// all non-constant ones are kept afterwards. 
+/// @brief struct to keep a vector of RangeInfoBounds for _lows and one for 
+///_highs, as well as constant _lowConst and _highConst. All constant bounds
+/// will be combined into _lowConst and _highConst respectively, they
+/// can also be not _defined. All bounds in _lows and _highs are defined
+/// and not constant. The flag _defined is only false if the whole RangeInfo
+/// is not defined (default constructor). 
+/// This struct keeps _valid and _equality up to date at all times.
+/// _valid is false iff the range is known to be empty. _equality is
+/// true iff upper and lower bounds were given as (list of) identical
+/// pairs. Note that _equality can be set and yet we only notice that
+/// the RangeInfo is empty at runtime, if more than one equality was given!
 ////////////////////////////////////////////////////////////////////////////////
     
     struct RangeInfo {
@@ -271,8 +286,37 @@ namespace triagens {
                     bool equality)
           : _var(var), _attr(attr), _valid(true), _defined(true),
             _equality(equality) {
-          _low.emplace_back(low);
-          _high.emplace_back(high);
+
+          if (low.isConstant()) {
+            _lowConst.assign(low);
+          }
+          else {
+            _lows.emplace_back(low);
+          }
+          if (high.isConstant()) {
+            _highConst.assign(high);
+          }
+          else {
+            _highs.emplace_back(high);
+          }
+
+          // Maybe the range is known to be invalid right away?
+          if (_lowConst.isDefined() && _lowConst.isConstant() &&
+              _highConst.isDefined() && _highConst.isConstant()) {
+            int cmp = TRI_CompareValuesJson(_lowConst.bound().json(),
+                                            _highConst.bound().json(), true);
+            if (cmp == 1) {
+              _valid = false;
+            }
+            else if (cmp == 0) {
+              if (_lowConst.inclusive() && _highConst.inclusive()) {
+                _equality = true;
+              }
+              else {
+                _valid = false;
+              }
+            }
+          }
         }
 
         RangeInfo ( std::string var,
@@ -317,28 +361,15 @@ namespace triagens {
 /// @brief is1ValueRangeInfo
 ////////////////////////////////////////////////////////////////////////////////
         
-        // is the range a unique value (i.e. something like x<=1 and x>=1)
-        bool is1ValueRangeInfo () { 
-          if (! _valid) {
+        // is the range a unique value (i.e. something like x<=1 and x>=1),
+        // note again that with variable bounds it can turn out only at 
+        // runTime that two or more expressions actually contradict each other.
+        // In this case this method will return true nevertheless.
+        bool is1ValueRangeInfo () const { 
+          if (! _defined || ! _valid) {
             return false;
           }
-          if (_equality) {
-            return true;
-          }
-          // Detect an equality even if it was not given as one:
-          bool res = _valid && _low.size() == 1 && _high.size() == 1 &&
-                     _low[0].isDefined() && _high[0].isDefined() &&
-                     _low[0].isConstant() && _high[0].isConstant();
-          if (res == false) {
-            return false;
-          }
-          res = TRI_CheckSameValueJson(_low[0].bound().json(),
-                                       _high[0].bound().json()) &&
-                _low[0].inclusive() && _high[0].inclusive();
-          if (res == true) {
-            _equality = true;
-          }
-          return res;
+          return _equality;
         }
         
 ////////////////////////////////////////////////////////////////////////////////
@@ -366,6 +397,26 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief isConstant
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isConstant () const {
+          if (! _defined) {
+            return false;
+          }
+          if (! _valid) {
+            return true;
+          }
+          return _lows.size() == 0 && _highs.size() == 0;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fuse, fuse two ranges, must be for the same variable and attribute
+////////////////////////////////////////////////////////////////////////////////
+
+        void fuse (RangeInfo const& that);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief _var, the AQL variable name
 ////////////////////////////////////////////////////////////////////////////////
         
@@ -379,18 +430,28 @@ namespace triagens {
         std::string _attr;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _low, all lower bounds, constant lower bounds are combined into
-/// the first one (index 0)
+/// @brief _lows, all non-constant lower bounds
 ////////////////////////////////////////////////////////////////////////////////
         
-        std::vector<RangeInfoBound> _low;
+        std::vector<RangeInfoBound> _lows;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _high, all upper bounds, constant upper bounds are combined into
-/// the first one (index 0)
+/// @brief _lowConst, all constant lower bounds combined, or not _defined
 ////////////////////////////////////////////////////////////////////////////////
         
-        std::vector<RangeInfoBound> _high;
+        RangeInfoBound _lowConst;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _highs, all non-constant upper bounds
+////////////////////////////////////////////////////////////////////////////////
+        
+        std::vector<RangeInfoBound> _highs;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _highConst, all constant upper bounds combined, or not _defined
+////////////////////////////////////////////////////////////////////////////////
+        
+        RangeInfoBound _highConst;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _valid, this is set to true iff the range is known to be non-empty

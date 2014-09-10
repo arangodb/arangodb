@@ -645,7 +645,7 @@ double IndexRangeNode::estimateCost () {
   }
   else if (_index->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
     for (auto x: _ranges.at(0)) { //only doing the 1-d case so far
-      if (x._low[0].isDefined() && x._high[0].isDefined() ) {
+      if (x._lowConst.isDefined() && x._highConst.isDefined() ) {
         if (x.is1ValueRangeInfo()) {
           if (!_index->_unique) {
             cost *= oldCost / 100;
@@ -657,7 +657,7 @@ double IndexRangeNode::estimateCost () {
           count ++;
         }
       }
-      else if (x._low[0].isDefined() || x._high[0].isDefined()){
+      else if (x._lowConst.isDefined() || x._highConst.isDefined()){
         cost *= oldCost / 2;
         count ++;
       }

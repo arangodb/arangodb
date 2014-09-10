@@ -32,7 +32,8 @@ using namespace triagens::basics;
 using namespace triagens::aql;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 3-way comparison of the tightness of upper or lower RangeInfoBounds.
+/// @brief 3-way comparison of the tightness of upper or lower constant
+/// RangeInfoBounds.
 /// Returns -1 if <left> is tighter than <right>, 1 if <right> is tighter than
 /// <left>, and 0 if the bounds are the same. The argument <lowhigh> should be
 /// -1 if we are comparing lower bounds and 1 if we are comparing upper bounds. 
@@ -90,11 +91,11 @@ RangeInfo::RangeInfo (basics::Json const& json) :
   _defined(true),
   _equality(basics::JsonHelper::checkAndGetBooleanValue(json.json(), "equality")) {
 
-  Json lows = json.get("low");
+  Json lows = json.get("lows");
   if (! lows.isList()) {
     THROW_INTERNAL_ERROR("low attribute must be a list");
   }
-  Json highs = json.get("high");
+  Json highs = json.get("highs");
   if (! highs.isList()) {
     THROW_INTERNAL_ERROR("high attribute must be a list");
   }
@@ -102,11 +103,13 @@ RangeInfo::RangeInfo (basics::Json const& json) :
   // vectors _low and _high will be destroyed properly, so no 
   // try/catch is needed.
   for (size_t i = 0; i < lows.size(); i++) {
-    _low.emplace_back(lows.at(i));
+    _lows.emplace_back(lows.at(i));
   }
   for (size_t i = 0; i < highs.size(); i++) {
-    _high.emplace_back(highs.at(i));
+    _highs.emplace_back(highs.at(i));
   }
+  _lowConst.assign(json.get("lowConst"));
+  _highConst.assign(json.get("highConst"));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -116,21 +119,19 @@ RangeInfo::RangeInfo (basics::Json const& json) :
 Json RangeInfo::toJson () {
   Json item(basics::Json::Array);
   item("variable", Json(_var))
-      ("attr", Json(_attr));
-  Json lowList(Json::List, _low.size());
-  for (auto l : _low) {
-    if (l.isDefined()) {
-      lowList(l.toJson());
-    }
+      ("attr", Json(_attr))
+      ("lowConst", _lowConst.toJson())
+      ("highConst", _highConst.toJson());
+  Json lowList(Json::List, _lows.size());
+  for (auto l : _lows) {
+    lowList(l.toJson());
   }
-  item("low", lowList);
-  Json highList(Json::List, _high.size());
-  for (auto h : _high) {
-    if (h.isDefined()) {
-      highList(h.toJson());
-    }
+  item("lows", lowList);
+  Json highList(Json::List, _highs.size());
+  for (auto h : _highs) {
+    highList(h.toJson());
   }
-  item("high", highList);
+  item("highs", highList);
   item("valid", Json(_valid));
   item("equality", Json(_equality));
   return item;
@@ -167,37 +168,66 @@ void RangesInfo::insert (RangeInfo newRange) {
 
   RangeInfo& oldRange((*it).second);
 
-  if (! oldRange.isValid()) { 
+  oldRange.fuse(newRange);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+///// @brief fuse, fuse two ranges, must be for the same variable and attribute
+////////////////////////////////////////////////////////////////////////////////
+
+void RangeInfo::fuse (RangeInfo const& that) {
+
+  TRI_ASSERT(_var == that._var);
+  TRI_ASSERT(_attr == that._attr);
+
+  if (! isValid()) { 
     // intersection of the empty set with any set is empty!
     return;
   }
   
-  // this case is not covered by those below . . .
-  if (oldRange.is1ValueRangeInfo() && newRange.is1ValueRangeInfo()) {
-    if (!TRI_CheckSameValueJson(oldRange._low[0].bound().json(), 
-                                newRange._low[0].bound().json())) {
-      oldRange.invalidate();
+  if (! that.isValid()) {
+    // intersection of the empty set with any set is empty!
+    invalidate();
+    return;
+  }
+
+  if (_equality && that._equality && 
+      _lowConst.isDefined() && that._lowConst.isDefined()) {
+    if (! TRI_CheckSameValueJson(_lowConst.bound().json(),
+                                 that._lowConst.bound().json())) {
+      invalidate();
       return;
     }
   }
 
-  if (CompareRangeInfoBound(newRange._low[0], oldRange._low[0], -1) == -1) {
-    oldRange._low[0].assign(newRange._low[0]);
+  // First sort out the constant low bounds:
+  if (CompareRangeInfoBound(that._lowConst, _lowConst, -1) == -1) {
+    _lowConst.assign(that._lowConst);
   }
-  
-  if (CompareRangeInfoBound(newRange._high[0], oldRange._high[0], 1) == -1) {
-    oldRange._high[0].assign(newRange._high[0]);
+  // Now simply append the variable ones:
+  for (auto l : that._lows) {
+    _lows.emplace_back(l);
   }
 
-  // check the new range bounds are valid
-  if (oldRange._low[0].isDefined() && oldRange._high[0].isDefined()) {
-    int cmp = TRI_CompareValuesJson(oldRange._low[0].bound().json(), 
-            oldRange._high[0].bound().json());
-    if (cmp == 1 || (cmp == 0 && 
-          !(oldRange._low[0].inclusive() == true && 
-            oldRange._high[0].inclusive() == true ))) {
+  // Now sort out the constant high bounds:
+  if (CompareRangeInfoBound(that._highConst, _highConst, 1) == -1) {
+    _highConst.assign(that._highConst);
+  }
+  // Now simply append the variable ones:
+  for (auto h : that._highs) {
+    _highs.emplace_back(h);
+  }
+    
+  // check the new range constant bounds are valid:
+  if (_lowConst.isDefined() && _highConst.isDefined()) {
+    int cmp = TRI_CompareValuesJson(_lowConst.bound().json(), 
+                                    _highConst.bound().json());
+    if (cmp == 1 || 
+        (cmp == 0 && 
+         !(_lowConst.inclusive() == true && 
+           _highConst.inclusive() == true )) ) {
       // range invalid
-      oldRange.invalidate();
+      invalidate();
     }
   }
 };
