@@ -49,6 +49,7 @@ migrations will also be detailed here.
 * Http: In `POST _api/traversal` the usage of the body parameter `edgeCollection` is now deprecated, it will raise a warning if you use it. To suppress the warning, please start `arangod` with the option `--server.default-api-compatibility 20200`. Please use `graphName` instead.
 * Replication: the methods `logger.start`, `logger.stop` and `logger.properties` are now deprecated. Using them will raise a warning. 
 * Replication: the HTTP methods `PUT /_api/replication/logger-start`, `PUT /_api/replication/logger-stop`, `GET /_api/replication/logger-config` and `PUT /_api/replication/logger-config` are now deprecated. Using them will raise a warning.
+* General-Graph: In the module `org/arangodb/general-graph` the functions `_undirectedRelation` and `_directedRelation` is no longer suggested, they will be deprecated int the next version. Both functions have been unified to `_relation`.
 
 ## 2.4
 
@@ -68,6 +69,8 @@ migrations will also be detailed here.
 * Http: In `POST _api/traversal` the usage of the body parameter `edgeCollection` is no longer available by default. If you still want to use it, please start `arangod` with the option `--server.default-api-compatibility 20200`. Please use `graphName` instead.
 * Replication: the methods `logger.start`, `logger.stop` and `logger.properties` are no longer available.
 * Replication: the HTTP methods `PUT /_api/replication/logger-start`, `PUT /_api/replication/logger-stop`, `GET /_api/replication/logger-config` and `PUT /_api/replication/logger-config` are no longer available.
+To suppress the warning, please start `arangod` with the option `--server.default-api-compatibility 20200`. 
+* General-Graph: In the module `org/arangodb/general-graph` the functions `_undirectedRelation` and `_directedRelation` are deprecated and will throw an error if you use them. Both functions have been unified to `_relation`.
 
 ## 2.5
 
@@ -85,3 +88,4 @@ migrations will also be detailed here.
 * Traversal: The usage of the traversal datasource `collectionDatasourceFactory` has been removed entirely. Please use `generalGraphDatasourceFactory` instead.
 * Http: The api `_api/graph` has been removed entirely. Please use the general graph api `_api/gharial` instead.
 * Http: In `POST _api/traversal` the usage of the body parameter `edgeCollection` has been removed entirely. Please use `graphName` instead.
+* General-Graph: In the module `org/arangodb/general-graph` the functions `_undirectedRelation` and `_directedRelation` are no longer available by default, if you still want to use them start `arangod` with the option `--server.default-api-compatibility 20300`. Both functions have been unified to `_relation`.
