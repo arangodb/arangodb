@@ -1412,7 +1412,7 @@ var _undirectedRelation = function (relationName, vertexCollections) {
 ////////////////////////////////////////////////////////////////////////////////
 
 
-var _directedRelation = function (
+var _relation = function (
   relationName, fromVertexCollections, toVertexCollections) {
   var err;
   if (arguments.length < 3) {
@@ -4423,7 +4423,10 @@ Graph.prototype._PRINT = function(context) {
 // -----------------------------------------------------------------------------
 
 exports._undirectedRelation = _undirectedRelation;
-exports._directedRelation = _directedRelation;
+exports._directedRelation = function () {
+  return _relation.apply(this, arguments);
+} ;
+exports._relation = _relation;
 exports._graph = _graph;
 exports._edgeDefinitions = _edgeDefinitions;
 exports._extendEdgeDefinitions = _extendEdgeDefinitions;
