@@ -362,8 +362,8 @@ namespace triagens {
 
 
       bool isDirectory (string const& path) {
-        struct stat stbuf;
-        int res = stat(path.c_str(), &stbuf);
+        TRI_stat_t stbuf;
+        int res = TRI_STAT(path.c_str(), &stbuf);
         return (res == 0) && ((stbuf.st_mode & S_IFMT) == S_IFDIR);
       }
 
@@ -384,7 +384,7 @@ namespace triagens {
 #else
 
         struct stat stbuf;
-        int res = stat(path.c_str(), &stbuf);
+        int res = TRI_STAT(path.c_str(), &stbuf);
 
         return (res == 0) && ((stbuf.st_mode & S_IFMT) == S_IFLNK);
 
@@ -394,17 +394,16 @@ namespace triagens {
 
 
       bool isRegularFile (string const& path) {
-        struct stat stbuf;
-        int res = stat(path.c_str(), &stbuf);
-
+        TRI_stat_t stbuf;
+        int res = TRI_STAT(path.c_str(), &stbuf);
         return (res == 0) && ((stbuf.st_mode & S_IFMT) == S_IFREG);
       }
 
 
 
       bool exists (string const& path) {
-        struct stat stbuf;
-        int res = stat(path.c_str(), &stbuf);
+        TRI_stat_t stbuf;
+        int res = TRI_STAT(path.c_str(), &stbuf);
 
         return res == 0;
       }

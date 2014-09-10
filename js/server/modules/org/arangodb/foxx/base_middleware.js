@@ -325,19 +325,19 @@ BaseMiddleware = function () {
         }
         console.log("%s, outgoing response with status %s of type %s, body length: %d",
                     options.mount,
-                    response.responseCode,
+                    response.responseCode || 200,
                     response.contentType,
                     bodyLength);
       } else if (response.hasOwnProperty("bodyFromFile")) {
         console.log("%s, outgoing response with status %s of type %s, body file: %s",
                     options.mount,
-                    response.responseCode,
+                    response.responseCode || 200,
                     response.contentType,
                     response.bodyFromFile);
       } else {
         console.log("%s, outgoing response with status %s of type %s, no body",
                     options.mount,
-                    response.responseCode,
+                    response.responseCode || 200,
                     response.contentType);
       }
     }

@@ -66,12 +66,13 @@
         img = currentUser.get("extra").img;
         active = currentUser.get("active");
       }
-      if (!img) {
+      if (! img) {
         img = "img/arangodblogoAvatar_24.png";
-      } else {
+      } 
+      else {
         img = "https://s.gravatar.com/avatar/" + img + "?s=24";
       }
-      if (!name) {
+      if (! name) {
         name = "";
       }
 

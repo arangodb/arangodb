@@ -46,10 +46,10 @@
         $('#collectionsToggle').addClass('activated');
       }
 
+      var length = searchOptions.searchPhrase.length;
       $('#searchInput').val(searchOptions.searchPhrase);
-      $('#searchInput').focus();
-      var val = $('#searchInput').val();
-      $('#searchInput').val(val);
+      $('#searchInput').focus();  
+      $('#searchInput')[0].setSelectionRange(length, length);
 
       arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "left");
 
