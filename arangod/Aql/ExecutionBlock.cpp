@@ -31,6 +31,7 @@
 #include "Basics/json-utilities.h"
 #include "HashIndex/hash-index.h"
 #include "Utils/Exception.h"
+#include "VocBase/edge-collection.h"
 #include "VocBase/index.h"
 #include "VocBase/vocbase.h"
 
@@ -270,6 +271,10 @@ void ExecutionBlock::staticAnalysis (ExecutionBlock* super) {
   */
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize
+////////////////////////////////////////////////////////////////////////////////
+
 int ExecutionBlock::initialize () {
   for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
     int res = (*it)->initialize();
@@ -279,6 +284,10 @@ int ExecutionBlock::initialize () {
   }
   return TRI_ERROR_NO_ERROR;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shutdown, will be called exactly once for the whole query
+////////////////////////////////////////////////////////////////////////////////
 
 int ExecutionBlock::shutdown () {
   for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
@@ -296,9 +305,58 @@ int ExecutionBlock::shutdown () {
   return TRI_ERROR_NO_ERROR;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSome, gets some more items, semantic is as follows: not
+/// more than atMost items may be delivered. The method tries to
+/// return a block of at least atLeast items, however, it may return
+/// less (for example if there are not enough items to come). However,
+/// if it returns an actual block, it must contain at least one item.
+////////////////////////////////////////////////////////////////////////////////
+
+AqlItemBlock* ExecutionBlock::getSome (size_t atLeast, size_t atMost) {
+  std::unique_ptr<AqlItemBlock> result(getSomeWithoutRegisterClearout(atLeast, atMost));
+  clearRegisters(result.get());
+  return result.release();
+}
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                                         protected
+// --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief resolve a collection name and return cid and document key
+/// this is used for parsing _from, _to and _id values
+////////////////////////////////////////////////////////////////////////////////
+  
+int ExecutionBlock::resolve (char const* handle, 
+                             TRI_voc_cid_t& cid, 
+                             std::string& key) const {
+  char const* p = strchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR);
+  if (p == nullptr || *p == '\0') {
+    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+  }
+  
+  if (*handle >= '0' && *handle <= '9') {
+    cid = triagens::basics::StringUtils::uint64(handle, p - handle);
+  }
+  else {
+    std::string const name(handle, p - handle);
+    cid = _trx->resolver()->getCollectionIdCluster(name);
+  }
+  
+  if (cid == 0) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  key = std::string(p + 1);
+
+  return TRI_ERROR_NO_ERROR;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copy register data from one block (src) into another (dst)
+/// register values are cloned
+////////////////////////////////////////////////////////////////////////////////
 
 void ExecutionBlock::inheritRegisters (AqlItemBlock const* src,
                                        AqlItemBlock* dst,
@@ -323,6 +381,12 @@ void ExecutionBlock::inheritRegisters (AqlItemBlock const* src,
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the following is internal to pull one more block and append it to
+/// our _buffer deque. Returns true if a new block was appended and false if
+/// the dependent node is exhausted.
+////////////////////////////////////////////////////////////////////////////////
+
 bool ExecutionBlock::getBlock (size_t atLeast, size_t atMost) {
   AqlItemBlock* docs = _dependencies[0]->getSome(atLeast, atMost);
   if (docs == nullptr) {
@@ -338,11 +402,13 @@ bool ExecutionBlock::getBlock (size_t atLeast, size_t atMost) {
   return true;
 }
 
-AqlItemBlock* ExecutionBlock::getSome(size_t atLeast, size_t atMost) {
-  std::unique_ptr<AqlItemBlock> result(getSomeWithoutRegisterClearout(atLeast, atMost));
-  clearRegisters(result.get());
-  return result.release();
-}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getSomeWithoutRegisterClearout, same as above, however, this
+/// is the actual worker which does not clear out registers at the end
+/// the idea is that somebody who wants to call the generic functionality
+/// in a derived class but wants to modify the results before the register
+/// cleanup can use this method, internal use only
+////////////////////////////////////////////////////////////////////////////////
 
 AqlItemBlock* ExecutionBlock::getSomeWithoutRegisterClearout (
                                   size_t atLeast, size_t atMost) {
@@ -917,6 +983,9 @@ bool IndexRangeBlock::readIndex () {
   else if (en->_index->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
     readSkiplistIndex(*condition);
   }
+  else if (en->_index->_type == TRI_IDX_TYPE_EDGE_INDEX) {
+    readEdgeIndex(*condition);
+  }
   else {
     TRI_ASSERT(false);
   }
@@ -1102,6 +1171,157 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
   return skipped; 
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read documents using the primary index
+////////////////////////////////////////////////////////////////////////////////
+
+void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
+  TRI_primary_index_t* primaryIndex = &(_collection->documentCollection()->_primaryIndex);
+     
+  char const* key = nullptr;  
+  for (auto x: ranges.at(0)) {
+    if (x._attr == std::string(TRI_VOC_ATTRIBUTE_KEY)) {
+      // we can use lower bound because only equality is supported
+      TRI_ASSERT(x.is1ValueRangeInfo());
+      auto const json = x._lowConst.bound().json();
+      if (TRI_IsStringJson(json)) {
+        key = json->_value._string.data;
+      }
+      break;
+    }
+  }
+
+  if (key != nullptr) { 
+    auto found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(primaryIndex, key));
+    if (found != nullptr) {
+      _documents.push_back(*found);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read documents using a hash index
+////////////////////////////////////////////////////////////////////////////////
+
+void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
+  auto en = static_cast<IndexRangeNode const*>(getPlanNode());
+  TRI_index_t* idx = en->_index;
+  TRI_ASSERT(idx != nullptr);
+  TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
+             
+  TRI_shaper_t* shaper = _collection->documentCollection()->getShaper(); 
+  TRI_ASSERT(shaper != nullptr);
+  
+  TRI_index_search_value_t searchValue;
+  
+  auto destroySearchValue = [&]() {
+    if (searchValue._values != nullptr) {
+      for (size_t i = 0; i < searchValue._length; ++i) {
+        TRI_DestroyShapedJson(shaper->_memoryZone, &searchValue._values[i]);
+      }
+      TRI_Free(TRI_CORE_MEM_ZONE, searchValue._values);
+    }
+    searchValue._values = nullptr;
+  };
+
+  auto setupSearchValue = [&]() {
+    size_t const n = hashIndex->_paths._length;
+    searchValue._length = 0;
+    searchValue._values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, 
+          n * sizeof(TRI_shaped_json_t), true));
+
+    if (searchValue._values == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+    
+    searchValue._length = n;
+
+    for (size_t i = 0;  i < n;  ++i) {
+      TRI_shape_pid_t pid = *(static_cast<TRI_shape_pid_t*>(TRI_AtVector(&hashIndex->_paths, i)));
+      TRI_ASSERT(pid != 0);
+   
+      char const* name = TRI_AttributeNameShapePid(shaper, pid);
+
+      for (auto x: ranges.at(0)) {
+        if (x._attr == std::string(name)) {    //found attribute
+          auto shaped = TRI_ShapedJsonJson(shaper, x._lowConst.bound().json(), false); 
+          // here x->_low->_bound = x->_high->_bound 
+          searchValue._values[i] = *shaped;
+          TRI_Free(shaper->_memoryZone, shaped);
+        }
+      }
+
+    }
+  };
+ 
+  setupSearchValue();  
+  TRI_index_result_t list = TRI_LookupHashIndex(idx, &searchValue);
+
+  destroySearchValue();
+  
+  size_t const n = list._length;
+  for (size_t i = 0; i < n; ++i) {
+    _documents.push_back(*(list._documents[i]));
+  }
+  
+  TRI_DestroyIndexResult(&list);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read documents using the edges index
+////////////////////////////////////////////////////////////////////////////////
+
+void IndexRangeBlock::readEdgeIndex (IndexOrCondition const& ranges) {
+  TRI_document_collection_t* document = _collection->documentCollection();
+     
+  char const* key = nullptr; 
+  TRI_edge_direction_e direction;
+   
+  for (auto x: ranges.at(0)) {
+    if (x._attr == std::string(TRI_VOC_ATTRIBUTE_FROM)) {
+      // we can use lower bound because only equality is supported
+      TRI_ASSERT(x.is1ValueRangeInfo());
+      auto const json = x._lowConst.bound().json();
+      if (TRI_IsStringJson(json)) {
+        // no error will be thrown if _from is not a string
+        key = json->_value._string.data;
+        direction = TRI_EDGE_OUT;
+      }
+      break;
+    }
+    else if (x._attr == std::string(TRI_VOC_ATTRIBUTE_TO)) {
+      // we can use lower bound because only equality is supported
+      TRI_ASSERT(x.is1ValueRangeInfo());
+      auto const json = x._lowConst.bound().json();
+      if (TRI_IsStringJson(json)) {
+        // no error will be thrown if _to is not a string
+        key = json->_value._string.data;
+        direction = TRI_EDGE_IN;
+      }
+      break;
+    }
+  }
+
+  if (key != nullptr) { 
+    TRI_voc_cid_t documentCid;
+    std::string documentKey;
+
+    int errorCode = resolve(key, documentCid, documentKey);
+
+    if (errorCode == TRI_ERROR_NO_ERROR) {
+      // silently ignore all errors due to wrong _from / _to specifications
+      auto&& result = TRI_LookupEdgesDocumentCollection(document, direction, documentCid, (TRI_voc_key_t) documentKey.c_str());
+      for (auto it : result) {
+        _documents.push_back((it));
+      }
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read documents using a skiplist index
+////////////////////////////////////////////////////////////////////////////////
+
 // it is only possible to query a skip list using more than one attribute if we
 // only have equalities followed by a single arbitrary comparison (i.e x.a == 1
 // && x.b == 2 && x.c > 3 && x.c <= 4). Then we do: 
@@ -1221,99 +1441,6 @@ void IndexRangeBlock::readSkiplistIndex (IndexOrCondition const& ranges) {
   TRI_FreeSkiplistIterator(skiplistIterator);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read documents using the primary index
-////////////////////////////////////////////////////////////////////////////////
-
-void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
-  TRI_primary_index_t* primaryIndex = &(_collection->documentCollection()->_primaryIndex);
-     
-  char const* key = nullptr;  
-  for (auto x: ranges.at(0)) {
-    if (x._attr == std::string(TRI_VOC_ATTRIBUTE_KEY)) {
-      auto const json = x._lowConst.bound().json();
-      if (TRI_IsStringJson(json)) {
-        key = json->_value._string.data;
-      }
-      break;
-    }
-  }
-
-  if (key != nullptr) { 
-    auto found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(primaryIndex, key));
-    if (found != nullptr) {
-      _documents.push_back(*found);
-    }
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read documents using a hash index
-////////////////////////////////////////////////////////////////////////////////
-
-void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
-  auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  TRI_index_t* idx = en->_index;
-  TRI_ASSERT(idx != nullptr);
-  TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
-             
-  TRI_shaper_t* shaper = _collection->documentCollection()->getShaper(); 
-  TRI_ASSERT(shaper != nullptr);
-  
-  TRI_index_search_value_t searchValue;
-  
-  auto destroySearchValue = [&]() {
-    if (searchValue._values != nullptr) {
-      for (size_t i = 0; i < searchValue._length; ++i) {
-        TRI_DestroyShapedJson(shaper->_memoryZone, &searchValue._values[i]);
-      }
-      TRI_Free(TRI_CORE_MEM_ZONE, searchValue._values);
-    }
-    searchValue._values = nullptr;
-  };
-
-  auto setupSearchValue = [&]() {
-    size_t const n = hashIndex->_paths._length;
-    searchValue._length = 0;
-    searchValue._values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, 
-          n * sizeof(TRI_shaped_json_t), true));
-
-    if (searchValue._values == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-    
-    searchValue._length = n;
-
-    for (size_t i = 0;  i < n;  ++i) {
-      TRI_shape_pid_t pid = *(static_cast<TRI_shape_pid_t*>(TRI_AtVector(&hashIndex->_paths, i)));
-      TRI_ASSERT(pid != 0);
-   
-      char const* name = TRI_AttributeNameShapePid(shaper, pid);
-
-      for (auto x: ranges.at(0)) {
-        if (x._attr == std::string(name)) {    //found attribute
-          auto shaped = TRI_ShapedJsonJson(shaper, x._lowConst.bound().json(), false); 
-          // here x->_low->_bound = x->_high->_bound 
-          searchValue._values[i] = *shaped;
-          TRI_Free(shaper->_memoryZone, shaped);
-        }
-      }
-
-    }
-  };
- 
-  setupSearchValue();  
-  TRI_index_result_t list = TRI_LookupHashIndex(idx, &searchValue);
-
-  destroySearchValue();
-  
-  size_t const n = list._length;
-  for (size_t i = 0; i < n; ++i) {
-    _documents.push_back(*(list._documents[i]));
-  }
-  
-  TRI_DestroyIndexResult(&list);
-}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          class EnumerateListBlock
@@ -2574,35 +2701,6 @@ AqlItemBlock* ModificationBlock::getSome (size_t atLeast,
     throw;
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief resolve a collection name and return cid and document key
-////////////////////////////////////////////////////////////////////////////////
-  
-int ModificationBlock::resolve (char const* handle, 
-                                TRI_voc_cid_t& cid, 
-                                std::string& key) const {
-  char const* p = strchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR);
-  if (p == nullptr || *p == '\0') {
-    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
-  }
-  
-  if (*handle >= '0' && *handle <= '9') {
-    cid = triagens::basics::StringUtils::uint64(handle, p - handle);
-  }
-  else {
-    std::string const name(handle, p - handle);
-    cid = _trx->resolver()->getCollectionIdCluster(name);
-  }
-  
-  if (cid == 0) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
-
-  key = std::string(p + 1);
-
-  return TRI_ERROR_NO_ERROR;
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a key from the AqlValue passed

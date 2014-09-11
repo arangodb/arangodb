@@ -542,13 +542,17 @@ void EnumerateCollectionNode::getIndexesForIndexRangeNode
     
     else if (idxType == TRI_IDX_TYPE_EDGE_INDEX) {
       // edge index allows lookups on "_from" and "_to" in isolation
-      for (size_t i = 0; i < idx->_fields._length; ++i) {
-        if (attrs.find(std::string(idx->_fields._buffer[i])) != attrs.end()) {
-          // can use index
-          idxs.push_back(idx);
-          // <prefixes> not used for this type of index
-          prefixes.push_back(0);
-        }
+      if (attrs.find(std::string(TRI_VOC_ATTRIBUTE_FROM)) != attrs.end()) {
+        // can use index
+        idxs.push_back(idx);
+        // <prefixes> not used for this type of index
+        prefixes.push_back(0);
+      }
+      if (attrs.find(std::string(TRI_VOC_ATTRIBUTE_TO)) != attrs.end()) {
+        // can use index
+        idxs.push_back(idx);
+        // <prefixes> not used for this type of index
+        prefixes.push_back(0);
       }
     }
     
