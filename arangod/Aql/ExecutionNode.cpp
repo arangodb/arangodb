@@ -469,6 +469,25 @@ void EnumerateCollectionNode::toJsonHelper (triagens::basics::Json& nodes,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the number of usable fields from the index (according to the
+/// attributes passed)
+////////////////////////////////////////////////////////////////////////////////
+
+size_t EnumerateCollectionNode::getUsableFieldsOfIndex (TRI_index_t const* idx,
+                                                        std::unordered_set<std::string> const& attrs) const {
+  size_t count = 0;
+  for (size_t i = 0; i < idx->_fields._length; i++) {
+    if (attrs.find(std::string(idx->_fields._buffer[i])) == attrs.end()) {
+      break;
+    }
+
+    ++count;
+  }
+  
+  return count;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get vector of indices with fields <attrs> 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -477,28 +496,64 @@ void EnumerateCollectionNode::toJsonHelper (triagens::basics::Json& nodes,
 // so that . . . 
 
 void EnumerateCollectionNode::getIndexesForIndexRangeNode
-  (std::unordered_set<std::string> attrs, std::vector<TRI_index_t*>& idxs, 
+  (std::unordered_set<std::string> const& attrs, std::vector<TRI_index_t*>& idxs, 
    std::vector<size_t>& prefixes) const {
 
   TRI_document_collection_t* document = _collection->documentCollection();
+  TRI_ASSERT(document != nullptr);
 
   for (size_t i = 0; i < document->_allIndexes._length; ++i) {
-    size_t prefix = 0;
     TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
-    for (size_t j = 0; j < idx->_fields._length; j++) {
-      if (attrs.find(std::string(idx->_fields._buffer[j])) != attrs.end()) {
-        prefix++;
-      }
-      else { 
-        break;
+    TRI_ASSERT(idx != nullptr);
+
+    auto const idxType = idx->_type;
+
+    if (idxType != TRI_IDX_TYPE_PRIMARY_INDEX &&
+        idxType != TRI_IDX_TYPE_HASH_INDEX &&
+        idxType != TRI_IDX_TYPE_SKIPLIST_INDEX &&
+        idxType != TRI_IDX_TYPE_EDGE_INDEX) {
+      // only these index types can be used
+      continue;
+    }
+
+    size_t prefix = 0;
+
+    if (idxType == TRI_IDX_TYPE_PRIMARY_INDEX ||
+        idxType == TRI_IDX_TYPE_HASH_INDEX) {
+      prefix = getUsableFieldsOfIndex(idx, attrs);
+
+      if (prefix == idx->_fields._length) {
+        // can use index
+        idxs.push_back(idx);
+        // <prefixes> not used for this type of index
+        prefixes.push_back(0);
+      } 
+    }
+
+    else if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+      prefix = getUsableFieldsOfIndex(idx, attrs);
+
+      if (prefix > 0) {
+        // can use index
+        idxs.push_back(idx);
+        prefixes.push_back(prefix);
       }
     }
-  
-    if (((idx->_type == TRI_IDX_TYPE_HASH_INDEX) && prefix == idx->_fields._length ) 
-        || ((idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) && prefix > 0 )) {
-      // all fields equal 
-      idxs.push_back(idx);
-      prefixes.push_back(prefix);
+    
+    else if (idxType == TRI_IDX_TYPE_EDGE_INDEX) {
+      // edge index allows lookups on "_from" and "_to" in isolation
+      for (size_t i = 0; i < idx->_fields._length; ++i) {
+        if (attrs.find(std::string(idx->_fields._buffer[i])) != attrs.end()) {
+          // can use index
+          idxs.push_back(idx);
+          // <prefixes> not used for this type of index
+          prefixes.push_back(0);
+        }
+      }
+    }
+    
+    else {
+      TRI_ASSERT(false);
     }
   }
 }
@@ -633,40 +688,59 @@ bool IndexRangeNode::MatchesIndex (IndexMatchVec pattern) const {
         
 double IndexRangeNode::estimateCost () { 
   // the cost of the enumerate collection node we are replacing . . .
-  double oldCost = static_cast<double>(_collection->count()) * 
-    _dependencies.at(0)->getCost();
+  double dependencyCost = _dependencies.at(0)->getCost();
+  double oldCost = static_cast<double>(_collection->count()) * dependencyCost; 
 
-  double cost = 1;
-  size_t count = 0;
+  if (_index->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
+    return dependencyCost;
+  }
   
-  if (_index->_type == TRI_IDX_TYPE_HASH_INDEX) {
+  if (_index->_type == TRI_IDX_TYPE_EDGE_INDEX) {
     return oldCost / 1000;
   }
-  else if (_index->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
-    for (auto x: _ranges.at(0)) { //only doing the 1-d case so far
-      if (x._lowConst.isDefined() && x._highConst.isDefined() ) {
-        if (x.is1ValueRangeInfo()) {
-          if (!_index->_unique) {
-            cost *= oldCost / 100;
-            count ++;
-          }
-        }
-        else {
-          cost *= oldCost / 10;
-          count ++;
-        }
-      }
-      else if (x._lowConst.isDefined() || x._highConst.isDefined()){
-        cost *= oldCost / 2;
-        count ++;
+  
+  if (_index->_type == TRI_IDX_TYPE_HASH_INDEX) {
+    if (_index->_unique) {
+      return dependencyCost;
+    }
+    return oldCost / 1000;
+  }
+
+  if (_index->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+    auto const count = _ranges.at(0).size();
+    
+    if (count == 0) {
+      // no ranges? so this is unlimited -> has to be more expensive
+      return oldCost;
+    }
+
+    if (_index->_unique && 
+        count == _index->_fields._length) {
+      // unique index, all attributes compared using eq (==) operator
+      if (_ranges.at(0).back().is1ValueRangeInfo()) {
+        return dependencyCost;
       }
     }
+
+    double cost = oldCost;
+    for (auto x: _ranges.at(0)) { //only doing the 1-d case so far
+      if (x._lowConst.isDefined() && x._highConst.isDefined()) {
+        if (x.is1ValueRangeInfo()) {
+          cost /= 100;
+        }
+        else {
+          cost /= 10;
+        }
+      }
+      else if (x._lowConst.isDefined() || x._highConst.isDefined()) {
+        cost /= 2;
+      }
+    }
+    return cost;
   }
-  if (count == 0) {
-    // no ranges? so this is unlimited -> has to be more expensive
-    cost *= oldCost;
-  }
-  return cost;
+
+  // no index
+  return dependencyCost;
 }
 
 // -----------------------------------------------------------------------------

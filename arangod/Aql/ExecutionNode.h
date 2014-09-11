@@ -686,10 +686,18 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the number of usable fields from the index (according to the
+/// attributes passed)
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t getUsableFieldsOfIndex (TRI_index_t const* idx,
+                                       std::unordered_set<std::string> const&) const;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get vector of indices that has any match in its fields with <attrs> 
 ////////////////////////////////////////////////////////////////////////////////
 
-        void getIndexesForIndexRangeNode (std::unordered_set<std::string> attrs, 
+        void getIndexesForIndexRangeNode (std::unordered_set<std::string> const& attrs, 
            std::vector<TRI_index_t*>& idxs, std::vector<size_t>& prefixes) const;
 
 ////////////////////////////////////////////////////////////////////////////////
