@@ -60,8 +60,9 @@ using namespace triagens::aql;
 /// (2, true)=(x<=2). 
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CompareRangeInfoBound (RangeInfoBound left, RangeInfoBound right, 
-        int lowhigh) {
+static int CompareRangeInfoBound (RangeInfoBound const& left, 
+                                  RangeInfoBound const& right, 
+                                  int lowhigh) {
   if (! left.isDefined()) {
     return (right.isDefined() ? 1 : 0);
   } 
@@ -75,6 +76,34 @@ static int CompareRangeInfoBound (RangeInfoBound left, RangeInfoBound right,
   }
   return cmp * lowhigh;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class RangeInfoBound
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief andCombineLowerBounds, changes the bound in *this and replaces
+/// it by the stronger bound of *this and that, interpreting both as lower
+/// bounds, this only works for constant bounds.
+////////////////////////////////////////////////////////////////////////////////
+
+void RangeInfoBound::andCombineLowerBounds (RangeInfoBound const& that) {
+  if (CompareRangeInfoBound(that, *this, -1) == -1) {
+    assign(that);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief andCombineUpperBounds, changes the bound in *this and replaces
+/// it by the stronger bound of *this and that, interpreting both as upper
+/// bounds, this only works for constant bounds.
+////////////////////////////////////////////////////////////////////////////////
+
+void RangeInfoBound::andCombineUpperBounds (RangeInfoBound const& that) {
+  if (CompareRangeInfoBound(that, *this, 1) == -1) {
+    assign(that);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class RangeInfo
@@ -191,6 +220,7 @@ void RangeInfo::fuse (RangeInfo const& that) {
     return;
   }
 
+  // The following is a corner case for constant bounds:
   if (_equality && that._equality && 
       _lowConst.isDefined() && that._lowConst.isDefined()) {
     if (! TRI_CheckSameValueJson(_lowConst.bound().json(),
@@ -201,33 +231,35 @@ void RangeInfo::fuse (RangeInfo const& that) {
   }
 
   // First sort out the constant low bounds:
-  if (CompareRangeInfoBound(that._lowConst, _lowConst, -1) == -1) {
-    _lowConst.assign(that._lowConst);
-  }
-  // Now simply append the variable ones:
+  _lowConst.andCombineLowerBounds(that._lowConst);
+  // Simply append the variable ones:
   for (auto l : that._lows) {
     _lows.emplace_back(l);
   }
 
-  // Now sort out the constant high bounds:
-  if (CompareRangeInfoBound(that._highConst, _highConst, 1) == -1) {
-    _highConst.assign(that._highConst);
-  }
-  // Now simply append the variable ones:
+  // Sort out the constant high bounds:
+  _highConst.andCombineUpperBounds(that._highConst);
+  // Simply append the variable ones:
   for (auto h : that._highs) {
     _highs.emplace_back(h);
   }
     
-  // check the new range constant bounds are valid:
+  // check the new constant range bounds are valid:
   if (_lowConst.isDefined() && _highConst.isDefined()) {
     int cmp = TRI_CompareValuesJson(_lowConst.bound().json(), 
                                     _highConst.bound().json());
-    if (cmp == 1 || 
-        (cmp == 0 && 
-         !(_lowConst.inclusive() == true && 
-           _highConst.inclusive() == true )) ) {
-      // range invalid
+    if (cmp == 1) {
       invalidate();
+      return;
+    }
+    if (cmp == 0) {
+      if (! (_lowConst.inclusive() && _highConst.inclusive()) ) {
+        // range invalid
+        invalidate();
+      }
+      else {
+        _equality = true;  // Can only be at most one value
+      }
     }
   }
 };
