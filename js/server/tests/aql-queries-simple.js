@@ -184,9 +184,9 @@ function ahuacatlQuerySimpleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRange9 : function () {
-      var expected = [ [ 1.5, 2.5, 3.5, 4.5 ] ];
+      var expected = [ [ 1, 2, 3, 4 ] ];
 
-      var actual = getQueryResults("RETURN 1.5..4.76");
+      var actual = AQL_EXECUTE("RETURN 1.5..4.76").json;
       assertEqual(expected, actual);
     },
 

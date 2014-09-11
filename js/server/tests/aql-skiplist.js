@@ -29,7 +29,6 @@ var internal = require("internal");
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults2;
-var getQueryExplanation = helper.getQueryExplanation;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -37,6 +36,10 @@ var getQueryExplanation = helper.getQueryExplanation;
 
 function ahuacatlSkiplistTestSuite () {
   var skiplist;
+      
+  var explain = function (query, params) {
+    return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-index-range" ] } })).map(function(node) { return node.type; });
+  };
 
   return {
 
@@ -55,7 +58,6 @@ function ahuacatlSkiplistTestSuite () {
       }
 
       skiplist.ensureSkiplist("a", "b");
-//      skiplist.ensureSkiplist("a");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,9 +80,7 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
       
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,9 +94,7 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
       
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,9 +108,7 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
       
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,9 +122,7 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
       
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,10 +130,13 @@ function ahuacatlSkiplistTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEqSingle3 : function () {
+      var query = "FOR v IN " + skiplist.name() + " FILTER v.a == 5 SORT v.b RETURN [ v.a, v.b ]";
       var expected = [ [ 5, 1 ], [ 5, 2 ], [ 5, 3 ], [ 5, 4 ], [ 5, 5 ] ];
-      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER v.a == 5 SORT v.b RETURN [ v.a, v.b ]");
+      var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
+      
+      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -147,10 +144,13 @@ function ahuacatlSkiplistTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEqSingle4 : function () {
+      var query = "FOR v IN " + skiplist.name() + " FILTER 5 == v.a SORT v.b RETURN [ v.a, v.b ]";
       var expected = [ [ 5, 1 ], [ 5, 2 ], [ 5, 3 ], [ 5, 4 ], [ 5, 5 ] ];
-      var actual = getQueryResults("FOR v IN " + skiplist.name() + " FILTER 5 == v.a SORT v.b RETURN [ v.a, v.b ]");
+      var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
+      
+      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -164,38 +164,36 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
       
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the first skiplist index - optimizer should remove sort.
 ////////////////////////////////////////////////////////////////////////////////
-/* todo: this does not trigger use-index-range!
+
     testEqSingle6 : function () {
-      var query = "FOR v IN " + skiplist.name() + " FILTER v.a >= 4 SORT v.a RETURN [ v.a ]";
-      var expected = [ [ 1 ], [ 1 ], [ 1 ], [ 1 ], [ 1 ] ];
+      var query = "FOR v IN " + skiplist.name() + " FILTER v.a >= 4 SORT v.a RETURN v.a";
+      var expected = [ 4, 4, 4, 4, 4, 5, 5, 5, 5, 5 ];
       var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
       
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test the first skiplist index - optimizer should remove sort.
+////////////////////////////////////////////////////////////////////////////////
+
     testEqSingle7: function () {
-      var query = "FOR v IN " + skiplist.name() + " FILTER v.a >= 4 && v.a < 10 SORT v.a RETURN [ v.a ]";
-      var expected = [ [ 1 ], [ 1 ], [ 1 ], [ 1 ], [ 1 ] ];
+      var query = "FOR v IN " + skiplist.name() + " FILTER v.a >= 4 && v.a < 5 SORT v.a RETURN v.a";
+      var expected = [ 4, 4, 4, 4, 4 ];
       var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
       
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
-//*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the first skiplist index field with greater than 
@@ -389,9 +387,7 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
       
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("index", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -405,9 +401,7 @@ function ahuacatlSkiplistTestSuite () {
 
       assertEqual(expected, actual);
       
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("index", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -445,9 +439,7 @@ function ahuacatlSkiplistTestSuite () {
 
           assertEqual(expected, actual);
       
-          var explain = getQueryExplanation(query, { "a": i, "b": j });
-          assertEqual("for", explain[0].type);
-          assertEqual("index", explain[0].expression.extra.accessType);
+          assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query, { a: i, b: j }));
         }
       }
     },
@@ -1093,9 +1085,7 @@ function ahuacatlSkiplistTestSuite () {
       
       assertEqual(expected, actual);
 
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1109,9 +1099,7 @@ function ahuacatlSkiplistTestSuite () {
       
       assertEqual(expected, actual);
         
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1131,9 +1119,7 @@ function ahuacatlSkiplistTestSuite () {
       
       assertEqual(expected, actual);
         
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
       
       query = "FOR a IN " + skiplist.name() + " FILTER a.a == 20 SORT a.a, a.c RETURN [ a.a, a.c ]";
       actual = getQueryResults(query);
@@ -1141,9 +1127,7 @@ function ahuacatlSkiplistTestSuite () {
       
       assertEqual(expected, actual);
         
-      explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
       
       query = "FOR a IN " + skiplist.name() + " FILTER a.a >= 20 SORT a.a, a.c RETURN [ a.a, a.c ]";
       actual = getQueryResults(query);
@@ -1151,9 +1135,7 @@ function ahuacatlSkiplistTestSuite () {
       
       assertEqual(expected, actual);
         
-      explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
       
       query = "FOR a IN " + skiplist.name() + " FILTER a.a >= 21 && a.a <= 21 SORT a.a, a.c RETURN [ a.a, a.c ]";
       actual = getQueryResults(query);
@@ -1161,9 +1143,7 @@ function ahuacatlSkiplistTestSuite () {
       
       assertEqual(expected, actual);
       
-      explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
       
       query = "FOR a IN " + skiplist.name() + " FILTER a.a >= 20 && a.a <= 21 && a.c <= 2 SORT a.a, a.c RETURN [ a.a, a.c ]";
       actual = getQueryResults(query);
@@ -1171,9 +1151,7 @@ function ahuacatlSkiplistTestSuite () {
       
       assertEqual(expected, actual);
         
-      explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
       
       query = "FOR a IN " + skiplist.name() + " FILTER a.a == 20 && a.c >= 1 SORT a.a, a.c RETURN [ a.a, a.c ]";
       actual = getQueryResults(query);
@@ -1181,9 +1159,7 @@ function ahuacatlSkiplistTestSuite () {
       
       assertEqual(expected, actual);
         
-      explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     }
 
   };
