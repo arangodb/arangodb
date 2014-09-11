@@ -569,6 +569,8 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                 // {idxs.at(i)->_fields[0]..idxs.at(i)->_fields[prefixes.at(i)]}
                 // is a subset of <attrs>
 
+                // note: prefixes are only used for skiplist indexes
+                // for all other index types, the prefix value will always be 0
                 node->getIndexesForIndexRangeNode(attrs, idxs, prefixes);
 
                 // make one new plan for every index in <idxs> that replaces the
@@ -582,7 +584,9 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                   // followed by a single <, >, >=, or <= if a skip index in the
                   // order of the fields of the index.
                   auto idx = idxs.at(i);
-                  if (idx->_type == TRI_IDX_TYPE_HASH_INDEX) {
+
+                  if (idx->_type == TRI_IDX_TYPE_HASH_INDEX ||
+                      idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
                     for (size_t j = 0; j < idx->_fields._length; j++) {
                       auto range = map->find(std::string(idx->_fields._buffer[j]));
                    
@@ -593,8 +597,21 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                       rangeInfo.at(0).push_back(range->second);
                     }
                   }
+                  else if (idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
+                    for (size_t j = 0; j < idx->_fields._length; j++) {
+                      auto range = map->find(std::string(idx->_fields._buffer[j]));
                   
-                  if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+                      if (range == map->end()) {
+                        continue;
+                      }
+                      if (! range->second.is1ValueRangeInfo()) {
+                        rangeInfo.at(0).clear();   // not usable
+                        break;
+                      }
+                      rangeInfo.at(0).push_back(range->second);
+                    }
+                  }
+                  else if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
                     size_t j = 0;
                     auto range = map->find(std::string(idx->_fields._buffer[0]));
                     rangeInfo.at(0).push_back(range->second);
@@ -606,7 +623,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                     }
                   }
                   
-                  if (rangeInfo.at(0).size() != 0) {
+                  if (! rangeInfo.at(0).empty()) {
                     auto newPlan = _plan->clone();
                     try {
                       ExecutionNode* newNode = new IndexRangeNode(newPlan->nextId(), node->vocbase(), 
