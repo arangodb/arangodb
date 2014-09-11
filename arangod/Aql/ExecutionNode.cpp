@@ -505,7 +505,8 @@ void EnumerateCollectionNode::getIndexesForIndexRangeNode
   }
 }
 
-std::vector<EnumerateCollectionNode::IndexMatch> EnumerateCollectionNode::getIndicesOrdered (IndexMatchVec &attrs) const {
+std::vector<EnumerateCollectionNode::IndexMatch> 
+    EnumerateCollectionNode::getIndicesOrdered (IndexMatchVec &attrs) const {
 
   std::vector<IndexMatch> out;
   TRI_document_collection_t* document = _collection->documentCollection();

@@ -44,11 +44,12 @@ using namespace triagens::aql;
 /// @brief create the engine
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionEngine::ExecutionEngine (AQL_TRANSACTION_V8* trx)
+ExecutionEngine::ExecutionEngine (AQL_TRANSACTION_V8* trx, Query* query)
   : _stats(),
     _blocks(),
     _root(nullptr),
-    _trx(trx) {
+    _trx(trx),
+    _query(query) {
 
   _blocks.reserve(8);
 }
@@ -220,8 +221,9 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
 ////////////////////////////////////////////////////////////////////////////////
 
 ExecutionEngine* ExecutionEngine::instanciateFromPlan (AQL_TRANSACTION_V8* trx,
+                                                       Query* query,
                                                        ExecutionPlan* plan) {
-  auto engine = new ExecutionEngine(trx);
+  auto engine = new ExecutionEngine(trx, query);
 
   try {
     if (! plan->varUsageComputed()) {

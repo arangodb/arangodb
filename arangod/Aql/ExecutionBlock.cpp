@@ -782,20 +782,66 @@ size_t EnumerateCollectionBlock::skipSome (size_t atLeast, size_t atMost) {
 // -----------------------------------------------------------------------------
 
 IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
-                                  IndexRangeNode const* ep)
-  : ExecutionBlock(engine, ep),
-    _collection(ep->_collection),
-    _posInDocs(0) {
- /* 
-   std::cout << "USING INDEX: " << ep->_index->_iid << ", " <<
-     TRI_TypeNameIndex(ep->_index->_type) << "\n";
+                                  IndexRangeNode const* en)
+  : ExecutionBlock(engine, en),
+    _collection(en->_collection),
+    _posInDocs(0),
+    _allBoundsConstant(true) {
+   
+  /*
+     std::cout << "USING INDEX: " << en->_index->_iid << ", " <<
+     TRI_TypeNameIndex(en->_index->_type) << "\n";
   */
-  // TODO: detect whether all ranges are constant
-  // TODO: if not, instanciate expressions
+
+  std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;
+
+  TRI_ASSERT(orRanges.size() == 1);  // OR expressions not yet implemented
+
+  // Detect, whether all ranges are constant:
+  std::vector<RangeInfo> const& attrRanges = orRanges[0];
+  for (auto r : attrRanges) {
+    _allBoundsConstant &= r.isConstant();
+  }
+
+  // instanciate expressions:
+  auto instanciateExpression = [&] (Json const& json) -> void {
+    auto a = new AstNode(engine->getQuery()->ast(), json);
+    // all new AstNodes are registered with the Ast in the Query
+    auto e = new Expression(engine->getQuery()->executor(), a);
+    try {
+      _allVariableBoundExpressions.push_back(e);
+    }
+    catch (...) {
+      delete e;
+      throw;
+    }
+  };
+
+  if (! _allBoundsConstant) {
+    try {
+      for (auto r : attrRanges) {
+        for (auto l : r._lows) {
+          instanciateExpression(l.bound());
+        }
+        for (auto h : r._highs) {
+          instanciateExpression(h.bound());
+        }
+      }
+    }
+    catch (...) {
+      for (auto e : _allVariableBoundExpressions) {
+        delete e;
+      }
+      throw;
+    }
+  }
 }
 
 IndexRangeBlock::~IndexRangeBlock () {
-  // TODO: free expressions
+  for (auto e : _allVariableBoundExpressions) {
+    delete e;
+  }
+  _allVariableBoundExpressions.clear();
 }
 
 bool IndexRangeBlock::readIndex () {

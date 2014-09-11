@@ -786,7 +786,7 @@ int triagens::aql::useIndexRange (Optimizer* opt,
 /// @brief analyse the sortnode and its calculation nodes
 ////////////////////////////////////////////////////////////////////////////////
 
-class sortAnalysis {
+class SortAnalysis {
   using ECN = triagens::aql::EnumerateCollectionNode;
 
   typedef std::pair<ECN::IndexMatchVec, RangeInfoVec> Range_IndexPair;
@@ -807,31 +807,38 @@ public:
 /// @brief constructor; fetches the referenced calculation nodes and builds 
 ///   _sortNodeData for later use.
 ////////////////////////////////////////////////////////////////////////////////
-  sortAnalysis (SortNode * node)
-  : sortNodeID(node->id())
+
+  SortAnalysis (SortNode* node)
+    : sortNodeID(node->id())
   {
     auto sortParams = node->getCalcNodePairs();
 
     for (size_t n = 0; n < sortParams.size(); n++) {
       auto d = new sortNodeData;
-      d->ASC = sortParams[n].second;
-      d->calculationNodeID = sortParams[n].first->id();
+      try {
+        d->ASC = sortParams[n].second;
+        d->calculationNodeID = sortParams[n].first->id();
 
-      if (sortParams[n].first->getType() == EN::CALCULATION) {
-        auto cn = static_cast<triagens::aql::CalculationNode*>(sortParams[n].first);
-        auto oneSortExpression = cn->expression();
-        
-        if (oneSortExpression->isAttributeAccess()) {
-          auto simpleExpression = oneSortExpression->getMultipleAttributes();
-          d->variableName = simpleExpression.first;
-          d->attributevec = simpleExpression.second;
+        if (sortParams[n].first->getType() == EN::CALCULATION) {
+          auto cn = static_cast<triagens::aql::CalculationNode*>(sortParams[n].first);
+          auto oneSortExpression = cn->expression();
+          
+          if (oneSortExpression->isAttributeAccess()) {
+            auto simpleExpression = oneSortExpression->getMultipleAttributes();
+            d->variableName = simpleExpression.first;
+            d->attributevec = simpleExpression.second;
+          }
         }
+        _sortNodeData.push_back(d);
       }
-      _sortNodeData.push_back(d);
+      catch (...) {
+        delete d;
+        throw;
+      }
     }
   }
 
-  ~sortAnalysis () {
+  ~SortAnalysis () {
     for (auto x : _sortNodeData){
       delete x;
     }
@@ -840,6 +847,7 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the whether we only have simple calculation nodes
 ////////////////////////////////////////////////////////////////////////////////
+
   bool isAnalyzeable () {
     if (_sortNodeData.size() == 0) {
       return false;
@@ -874,6 +882,7 @@ public:
 /// @brief checks whether our calculation nodes reference variableName; 
 /// @returns pair used for further processing with the indices.
 ////////////////////////////////////////////////////////////////////////////////
+
   Range_IndexPair getAttrsForVariableName (std::string &variableName) {
     ECN::IndexMatchVec v;
     RangeInfoVec rangeInfo;
@@ -883,17 +892,22 @@ public:
         return std::make_pair(v, rangeInfo); // for now, no mixed support.
       }
     }
+    // Collect the right data for the sorting:
     for (size_t j = 0; j < _sortNodeData.size(); j ++) {
       v.push_back(std::make_pair(_sortNodeData[j]->attributevec,
                                  _sortNodeData[j]->ASC));
-      rangeInfo.push_back(std::vector<RangeInfo>());
     }
+    // We only need one or-condition (because this is mandatory) which
+    // refers to 0 of the attributes:
+    rangeInfo.push_back(std::vector<RangeInfo>());
     return std::make_pair(v, rangeInfo);
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes the sortNode and its referenced Calculationnodes from the plan.
+/// @brief removes the sortNode and its referenced Calculationnodes from
+/// the plan.
 ////////////////////////////////////////////////////////////////////////////////
+
   void removeSortNodeFromPlan (ExecutionPlan *newPlan) {
     newPlan->unlinkNode(newPlan->getNodeById(sortNodeID));
   }
@@ -904,7 +918,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
 
   Optimizer*           _opt;
   ExecutionPlan*       _plan;
-  sortAnalysis*        _sortNode;
+  SortAnalysis*        _sortNode;
   Optimizer::RuleLevel _level;
 
   public:
@@ -913,7 +927,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
 
   sortToIndexNode (Optimizer* opt,
                    ExecutionPlan* plan,
-                   sortAnalysis* Node,
+                   SortAnalysis* Node,
                    Optimizer::RuleLevel level)
     : _opt(opt),
       _plan(plan),
@@ -1036,7 +1050,7 @@ int triagens::aql::useIndexForSort (Optimizer* opt,
     = plan->findNodesOfType(triagens::aql::ExecutionNode::SORT, true);
   for (auto n : nodes) {
     auto thisSortNode = static_cast<SortNode*>(n);
-    sortAnalysis node(thisSortNode);
+    SortAnalysis node(thisSortNode);
     if (node.isAnalyzeable()) {
       sortToIndexNode finder(opt, plan, &node, rule->level);
       thisSortNode->walk(&finder);/// todo auf der dependency anfangen

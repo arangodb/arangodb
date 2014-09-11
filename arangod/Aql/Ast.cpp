@@ -30,7 +30,6 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Executor.h"
-#include "Aql/Parser.h"
 #include "BasicsC/tri-strings.h"
 #include "Utils/Exception.h"
 #include "VocBase/collection.h"
@@ -55,10 +54,8 @@ AstNode const Ast::NopNode = { NODE_TYPE_NOP };
 /// @brief create the AST
 ////////////////////////////////////////////////////////////////////////////////
 
-Ast::Ast (Query* query,
-          Parser* parser)
+Ast::Ast (Query* query)
   : _query(query),
-    _parser(parser),
     _nodes(),
     _scopes(),
     _variables(),
@@ -68,7 +65,6 @@ Ast::Ast (Query* query,
     _writeCollection(nullptr) {
 
   TRI_ASSERT(_query != nullptr);
-  TRI_ASSERT(_parser != nullptr);
 
   _nodes.reserve(32);
 
