@@ -788,10 +788,10 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
     _posInDocs(0),
     _allBoundsConstant(true) {
    
-  /*
+ /* 
      std::cout << "USING INDEX: " << en->_index->_iid << ", " <<
      TRI_TypeNameIndex(en->_index->_type) << "\n";
-  */
+ */
 
   std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;
 
@@ -907,12 +907,15 @@ bool IndexRangeBlock::readIndex () {
     condition = newCondition;
 #endif
   }
-
-  if (en->_index->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
-    readSkiplistIndex(*condition);
+  
+  if (en->_index->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
+    readPrimaryIndex(*condition);
   }
   else if (en->_index->_type == TRI_IDX_TYPE_HASH_INDEX) {
     readHashIndex(*condition);
+  }
+  else if (en->_index->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+    readSkiplistIndex(*condition);
   }
   else {
     TRI_ASSERT(false);
@@ -1218,6 +1221,36 @@ void IndexRangeBlock::readSkiplistIndex (IndexOrCondition const& ranges) {
   TRI_FreeSkiplistIterator(skiplistIterator);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read documents using the primary index
+////////////////////////////////////////////////////////////////////////////////
+
+void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
+  TRI_primary_index_t* primaryIndex = &(_collection->documentCollection()->_primaryIndex);
+     
+  char const* key = nullptr;  
+  for (auto x: ranges.at(0)) {
+    if (x._attr == std::string(TRI_VOC_ATTRIBUTE_KEY)) {
+      auto const json = x._lowConst.bound().json();
+      if (TRI_IsStringJson(json)) {
+        key = json->_value._string.data;
+      }
+      break;
+    }
+  }
+
+  if (key != nullptr) { 
+    auto found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(primaryIndex, key));
+    if (found != nullptr) {
+      _documents.push_back(*found);
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read documents using a hash index
+////////////////////////////////////////////////////////////////////////////////
+
 void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
   TRI_index_t* idx = en->_index;
@@ -1258,7 +1291,7 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
       char const* name = TRI_AttributeNameShapePid(shaper, pid);
 
       for (auto x: ranges.at(0)) {
-        if (x._attr == std::string(name)){    //found attribute
+        if (x._attr == std::string(name)) {    //found attribute
           auto shaped = TRI_ShapedJsonJson(shaper, x._lowConst.bound().json(), false); 
           // here x->_low->_bound = x->_high->_bound 
           searchValue._values[i] = *shaped;
