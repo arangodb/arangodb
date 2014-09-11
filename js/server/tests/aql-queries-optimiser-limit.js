@@ -29,7 +29,6 @@ var jsunity = require("jsunity");
 var internal = require("internal");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults2;
-var getQueryExplanation = helper.getQueryExplanation;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -38,6 +37,10 @@ var getQueryExplanation = helper.getQueryExplanation;
 function ahuacatlQueryOptimiserLimitTestSuite () {
   var collection = null;
   var cn = "UnitTestsAhuacatlOptimiserLimit";
+  
+  var explain = function (query, params) {
+    return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-index-range" ] } })).map(function(node) { return node.type; });
+  };
 
   return {
 
@@ -97,9 +100,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
         var actual = getQueryResults(query);
         assertEqual(test.expectedLength, actual.length);
 
-        var explain = getQueryExplanation(query);
-        assertEqual("for", explain[0].type);
-        assertEqual(true, explain[0].limit);
+        assertEqual([ "SingletonNode", "CalculationNode", "EnumerateListNode", "LimitNode", "ReturnNode" ], explain(query));
       }
     },
 
@@ -133,9 +134,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
         var actual = getQueryResults(query);
         assertEqual(test.expectedLength, actual.length);
 
-        var explain = getQueryExplanation(query);
-        assertEqual("for", explain[0].type);
-        assertEqual(test.offset + test.limit, explain[0]["expression"]["extra"]["limit"]);
+        assertEqual([ "SingletonNode", "EnumerateCollectionNode", "LimitNode", "ReturnNode" ], explain(query));
       }
     },
 
@@ -167,9 +166,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
         var actual = getQueryResults(query);
         assertEqual(0, actual.length);
 
-        var explain = getQueryExplanation(query);
-        assertEqual("return (empty)", explain[0].type);
-        assertEqual("const list", explain[0].expression.type);
+        assertEqual([ "SingletonNode", "CalculationNode", "EnumerateListNode", "LimitNode", "ReturnNode" ], explain(query));
       }
     },
 
@@ -196,9 +193,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
         var actual = getQueryResults(query);
         assertEqual(0, actual.length);
 
-        var explain = getQueryExplanation(query);
-        assertEqual("return (empty)", explain[0].type);
-        assertEqual("const list", explain[0].expression.type);
+        assertEqual([ "SingletonNode", "EnumerateCollectionNode", "LimitNode", "ReturnNode" ], explain(query));
       }
     },
       
@@ -217,9 +212,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       var actual = getQueryResults(query);
       assertEqual(0, actual.length);
 
-      var explain = getQueryExplanation(query);
-      assertEqual("return (empty)", explain[0].type);
-      assertEqual("const list", explain[0].expression.type);
+      assertEqual([ "SingletonNode", "CalculationNode", "EnumerateListNode", "LimitNode", "LimitNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -232,9 +225,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       var actual = getQueryResults(query);
       assertEqual(0, actual.length);
 
-      var explain = getQueryExplanation(query);
-      assertEqual("return (empty)", explain[0].type);
-      assertEqual("const list", explain[0].expression.type);
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "LimitNode", "LimitNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -267,9 +258,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
         var actual = getQueryResults(query);
         assertEqual(test.expectedLength, actual.length);
 
-        var explain = getQueryExplanation(query);
-        assertEqual("for", explain[0].type);
-        assertEqual(true, explain[0].limit);
+        assertEqual([ "SingletonNode", "CalculationNode", "EnumerateListNode", "LimitNode", "LimitNode", "ReturnNode" ], explain(query));
       }
     },
 
@@ -347,9 +336,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
         var actual = getQueryResults(query);
         assertEqual(test.expectedLength, actual.length);
       
-        var explain = getQueryExplanation(query);
-        assertEqual("for", explain[0].type);
-        assertEqual(true, explain[0].limit);
+        assertEqual([ "SingletonNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "FilterNode", "LimitNode", "ReturnNode" ], explain(query));
       }
     },
     
@@ -395,9 +382,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
         var actual = getQueryResults(query);
         assertEqual(test.expectedLength, actual.length);
       
-        var explain = getQueryExplanation(query);
-        assertEqual("for", explain[0].type);
-        assertEqual(true, explain[0].limit);
+        assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "LimitNode", "ReturnNode" ], explain(query));
       }
     },
 
@@ -443,9 +428,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
         var actual = getQueryResults(query);
         assertEqual(test.expectedLength, actual.length);
       
-        var explain = getQueryExplanation(query);
-        assertEqual("for", explain[0].type);
-        assertEqual(undefined, explain[0].limit);
+        assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "FilterNode", "LimitNode", "ReturnNode" ], explain(query));
       }
     },
 
@@ -463,9 +446,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       assertEqual(23, actual[0].value);
       assertEqual(24, actual[1].value);
 
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual(true, explain[0].limit);
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -483,9 +464,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       assertEqual(21, actual[1].value);
       assertEqual(29, actual[9].value);
 
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual(true, explain[0].limit);
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -503,9 +482,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       assertEqual(21, actual[1].value);
       assertEqual(29, actual[9].value);
 
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual(undefined, explain[0].limit);
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "FilterNode", "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -522,9 +499,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       assertEqual(23, actual[0].value);
       assertEqual(24, actual[1].value);
 
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual(true, explain[0].limit);
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -541,10 +516,8 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       assertEqual(20, actual[0].value);
       assertEqual(21, actual[1].value);
       assertEqual(29, actual[9].value);
-
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual(true, explain[0].limit);
+      
+      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -562,9 +535,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       assertEqual(21, actual[1].value);
       assertEqual(29, actual[9].value);
 
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual(undefined, explain[0].limit);
+      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "FilterNode", "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -580,9 +551,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       assertEqual(21, actual[1].value);
       assertEqual(29, actual[9].value);
 
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual(true, explain[0].limit);
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -600,9 +569,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       assertEqual(22, actual[2].value);
       assertEqual(29, actual[9].value);
 
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual(true, explain[0].limit);
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "LimitNode", "CalculationNode", "SortNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -615,9 +582,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       var actual = getQueryResults(query);
       assertEqual(0, actual.length);
       
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual(undefined, explain[0].limit);
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "LimitNode", "CalculationNode", "FilterNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -635,9 +600,7 @@ function ahuacatlQueryOptimiserLimitTestSuite () {
       assertEqual(22, actual[2].value);
       assertEqual(29, actual[9].value);
         
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual(undefined, explain[0].limit);
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "LimitNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
