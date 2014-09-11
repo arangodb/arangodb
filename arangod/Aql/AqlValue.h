@@ -145,6 +145,12 @@ namespace triagens {
       void destroy ();
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the name of an AqlValue type
+////////////////////////////////////////////////////////////////////////////////
+      
+      std::string getTypeString () const; 
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief clone for recursive copying
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -180,6 +186,32 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       std::string toString () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the numeric value of an AqlValue
+/// this will fail if the value is not a number
+////////////////////////////////////////////////////////////////////////////////
+
+      template<typename T>
+      T toNumber () const {
+        switch (_type) {
+          case JSON: {
+            TRI_json_t const* json = _json->json();
+            TRI_ASSERT(TRI_IsNumberJson(json));
+            return static_cast<T>(json->_value._number);
+          }
+
+          case SHAPED: 
+          case DOCVEC: 
+          case RANGE: 
+          case EMPTY: {
+            // cannot convert these types
+            return 0;
+          }
+        }   
+
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a string representation of the AqlValue
