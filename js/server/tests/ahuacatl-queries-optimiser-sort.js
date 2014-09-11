@@ -29,7 +29,6 @@ var jsunity = require("jsunity");
 var internal = require("internal");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
-var getQueryExplanation = helper.getQueryExplanation;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -78,11 +77,6 @@ function ahuacatlQueryOptimiserSortTestSuite () {
       assertEqual(50, actual[50].value);
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
-      
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("sort", explain[1].type); // no optimisation as there's no index
-      assertEqual("return", explain[2].type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,11 +95,6 @@ function ahuacatlQueryOptimiserSortTestSuite () {
       assertEqual(49, actual[50].value);
       assertEqual(1, actual[98].value);
       assertEqual(0, actual[99].value);
-      
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("sort", explain[1].type); // no optimisation as there's no index
-      assertEqual("return", explain[2].type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,11 +115,6 @@ function ahuacatlQueryOptimiserSortTestSuite () {
       assertEqual(50, actual[50].value);
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
-      
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("sort", explain[1].type); // no optimisation as there's no filter and thus no index involved
-      assertEqual("return", explain[2].type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -150,11 +134,6 @@ function ahuacatlQueryOptimiserSortTestSuite () {
       assertEqual(18, actual[3].value);
       assertEqual(98, actual[83].value);
       assertEqual(99, actual[84].value);
-      
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("filter", explain[1].type); // sort optimised away
-      assertEqual("return", explain[2].type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -174,12 +153,6 @@ function ahuacatlQueryOptimiserSortTestSuite () {
       assertEqual(96, actual[3].value);
       assertEqual(16, actual[83].value);
       assertEqual(15, actual[84].value);
-      
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("filter", explain[1].type); 
-      assertEqual("sort", explain[2].type); // sort still there because sort order is DESC
-      assertEqual("return", explain[3].type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -200,11 +173,6 @@ function ahuacatlQueryOptimiserSortTestSuite () {
       assertEqual(50, actual[50].value);
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
-      
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("filter", explain[1].type); // sort optimised away
-      assertEqual("return", explain[2].type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -225,12 +193,6 @@ function ahuacatlQueryOptimiserSortTestSuite () {
       assertEqual(49, actual[50].value);
       assertEqual(1, actual[98].value);
       assertEqual(0, actual[99].value);
-      
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("filter", explain[1].type); 
-      assertEqual("sort", explain[2].type); // sort still there
-      assertEqual("return", explain[3].type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -243,7 +205,6 @@ function ahuacatlQueryOptimiserSortTestSuite () {
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value DESC SORT c.value RETURN c";
 
       var actual = getQueryResults(query);
-      var explain = getQueryExplanation(query);
       assertEqual(100, actual.length);
       assertEqual(0, actual[0].value);
       assertEqual(1, actual[1].value);
@@ -252,13 +213,6 @@ function ahuacatlQueryOptimiserSortTestSuite () {
       assertEqual(50, actual[50].value);
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
-      
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("filter", explain[1].type); 
-      assertEqual("sort", explain[2].type); // sort still there
-      assertEqual("sort", explain[3].type); // sort still there
-      assertEqual("return", explain[4].type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -280,22 +234,11 @@ function ahuacatlQueryOptimiserSortTestSuite () {
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
       
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("filter", explain[1].type); 
-      assertEqual("sort", explain[2].type); // sort still there
-      assertEqual("return", explain[3].type);
-      
       query = "FOR c IN " + cn + " FILTER c.value == 0 && c.value2 >= 0 SORT c.value RETURN c";
 
       actual = getQueryResults(query);
       assertEqual(1, actual.length);
       assertEqual(0, actual[0].value);
-      
-      explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("filter", explain[1].type); // sort optimised away
-      assertEqual("return", explain[2].type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -317,22 +260,11 @@ function ahuacatlQueryOptimiserSortTestSuite () {
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
       
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("filter", explain[1].type); 
-      assertEqual("sort", explain[2].type); // sort still there
-      assertEqual("return", explain[3].type);
-      
       query = "FOR c IN " + cn + " FILTER c.value == 0 && c.value2 <= 1 SORT c.value, c.value2 RETURN c";
 
       actual = getQueryResults(query);
       assertEqual(1, actual.length);
       assertEqual(0, actual[0].value);
-
-      explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("filter", explain[1].type); // sort optimised away
-      assertEqual("return", explain[2].type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -353,12 +285,6 @@ function ahuacatlQueryOptimiserSortTestSuite () {
       assertEqual(50, actual[50].value);
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
-      
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("filter", explain[1].type); 
-      assertEqual("sort", explain[2].type); // cannot use index for sorting
-      assertEqual("return", explain[3].type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -379,12 +305,6 @@ function ahuacatlQueryOptimiserSortTestSuite () {
       assertEqual(50, actual[50].value);
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
-      
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("filter", explain[1].type); // cannot use index for sorting
-      assertEqual("sort", explain[2].type); // cannot use index for sorting
-      assertEqual("return", explain[3].type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -405,12 +325,6 @@ function ahuacatlQueryOptimiserSortTestSuite () {
       assertEqual(50, actual[50].value);
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
-      
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("filter", explain[1].type); 
-      assertEqual("sort", explain[2].type); // cannot use index for sorting
-      assertEqual("return", explain[3].type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -431,12 +345,6 @@ function ahuacatlQueryOptimiserSortTestSuite () {
       assertEqual(50, actual[50].value);
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
-      
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("filter", explain[1].type); 
-      assertEqual("sort", explain[2].type); // sort still there
-      assertEqual("return", explain[3].type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -457,12 +365,6 @@ function ahuacatlQueryOptimiserSortTestSuite () {
       assertEqual(50, actual[50].value);
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
-      
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("filter", explain[1].type); 
-      assertEqual("sort", explain[2].type); // sort still there
-      assertEqual("return", explain[3].type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -483,12 +385,6 @@ function ahuacatlQueryOptimiserSortTestSuite () {
       assertEqual(50, actual[50].value);
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
-      
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("filter", explain[1].type); 
-      assertEqual("sort", explain[2].type); // sort still there
-      assertEqual("return", explain[3].type);
     }
 
   }
