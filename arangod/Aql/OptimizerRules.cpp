@@ -598,17 +598,30 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                     }
                   }
                   else if (idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
-                    for (size_t j = 0; j < idx->_fields._length; j++) {
-                      auto range = map->find(std::string(idx->_fields._buffer[j]));
-                  
-                      if (range == map->end()) {
-                        continue;
-                      }
+                    bool handled = false;
+                    auto range = map->find(std::string(TRI_VOC_ATTRIBUTE_FROM));
+                
+                    if (range != map->end()) { 
                       if (! range->second.is1ValueRangeInfo()) {
                         rangeInfo.at(0).clear();   // not usable
-                        break;
                       }
-                      rangeInfo.at(0).push_back(range->second);
+                      else {
+                        rangeInfo.at(0).push_back(range->second);
+                        handled = true;
+                      }
+                    }
+
+                    if (! handled) {
+                      range = map->find(std::string(TRI_VOC_ATTRIBUTE_TO));
+
+                      if (range != map->end()) {
+                        if (! range->second.is1ValueRangeInfo()) {
+                          rangeInfo.at(0).clear();   // not usable
+                        }
+                        else {
+                          rangeInfo.at(0).push_back(range->second);
+                        }
+                      }
                     }
                   }
                   else if (idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
