@@ -565,12 +565,14 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
   }
 
   // put together the range info . . .
-  Json ranges(Json::List);
+  Json ranges(Json::List, _ranges.size());
 
   for (auto x : _ranges) {
+    Json range(Json::List, x.size());
     for(auto y : x) {
-      ranges(y.toJson());
+      range.add(y.toJson());
     }
+    ranges.add(range);
   }
       
   // Now put info about vocbase and cid in there
@@ -603,12 +605,15 @@ IndexRangeNode::IndexRangeNode (Ast* ast, basics::Json const& json)
     _vocbase(ast->query()->vocbase()),
     _collection(ast->query()->collections()->add(JsonHelper::checkAndGetStringValue(json.json(), 
             "collection"), TRI_TRANSACTION_READ)),
-    _outVariable(varFromJson(ast, json, "outVariable")), _ranges() {
+    _outVariable(varFromJson(ast, json, "outVariable")), 
+    _ranges() {
 
-  Json ranges(TRI_UNKNOWN_MEM_ZONE, JsonHelper::checkAndGetListValue(json.json(), "ranges"));
-  for(size_t i = 0; i < ranges.size(); i++){ //loop over the ranges . . .
-    for(size_t j = 0; j < ranges.at(i).size(); j++){
-      _ranges.at(i).push_back(RangeInfo(ranges.at(i).at(j)));
+  Json rangesJson(TRI_UNKNOWN_MEM_ZONE, JsonHelper::checkAndGetListValue(json.json(), "ranges"));
+  for(size_t i = 0; i < rangesJson.size(); i++){ //loop over the ranges . . .
+    _ranges.emplace_back();
+    Json rangeJson(rangesJson.at(i));
+    for(size_t j = 0; j < rangeJson.size(); j++){
+      _ranges.at(i).emplace_back(rangeJson.at(j));
     }
   }
   
