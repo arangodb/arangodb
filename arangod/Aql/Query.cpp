@@ -200,6 +200,7 @@ void Query::registerError (int code,
   }
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute an AQL query 
 ////////////////////////////////////////////////////////////////////////////////
@@ -236,12 +237,7 @@ QueryResult Query::execute () {
       }
     }
     else {
-      // we have an execution plan in JSON format
-      plan = ExecutionPlan::instanciateFromJson(parser.ast(), _queryJson);
-      if (plan == nullptr) {
-        // oops
-        return QueryResult(TRI_ERROR_INTERNAL);
-      }
+      ExecutionPlan::getCollectionsFromJson(parser.ast(), _queryJson);
 
       // creating the plan may have produced some collections
       // we need to add them to the transaction now (otherwise the query will fail)
@@ -254,6 +250,14 @@ QueryResult Query::execute () {
       if (res != TRI_ERROR_NO_ERROR) {
         return transactionError(res, trx);
       }
+
+      // we have an execution plan in JSON format
+      plan = ExecutionPlan::instanciateFromJson(parser.ast(), _queryJson);
+      if (plan == nullptr) {
+        // oops
+        return QueryResult(TRI_ERROR_INTERNAL);
+      }
+
     }
     
     // get enabled/disabled rules
@@ -405,7 +409,7 @@ QueryResult Query::explain () {
       for (auto it : plans) {
         TRI_ASSERT(it != nullptr);
 
-        out.add(it->toJson(TRI_UNKNOWN_MEM_ZONE, verbosePlans()));
+        out.add(it->toJson(parser.ast(), TRI_UNKNOWN_MEM_ZONE, verbosePlans()));
       }
       
       result.json = out.steal();
@@ -415,7 +419,7 @@ QueryResult Query::explain () {
       plan = opt.stealBest(); // Now we own the best one again
       TRI_ASSERT(plan != nullptr);
 
-      result.json = plan->toJson(TRI_UNKNOWN_MEM_ZONE, verbosePlans()).steal(); 
+      result.json = plan->toJson(parser.ast(), TRI_UNKNOWN_MEM_ZONE, verbosePlans()).steal(); 
 
       delete plan;
     }

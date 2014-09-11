@@ -442,7 +442,7 @@ void SingletonNode::toJsonHelper (triagens::basics::Json& nodes,
 EnumerateCollectionNode::EnumerateCollectionNode (Ast* ast, basics::Json const& base)
   : ExecutionNode(base),
     _vocbase(ast->query()->vocbase()),
-    _collection(ast->query()->collections()->add(JsonHelper::checkAndGetStringValue(base.json(), "collection"), TRI_TRANSACTION_READ)),
+    _collection(ast->query()->collections()->get(JsonHelper::checkAndGetStringValue(base.json(), "collection"))),
     _outVariable(varFromJson(ast, base, "outVariable")) {
 }
 
@@ -660,8 +660,8 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
 IndexRangeNode::IndexRangeNode (Ast* ast, basics::Json const& json)
   : ExecutionNode(json),
     _vocbase(ast->query()->vocbase()),
-    _collection(ast->query()->collections()->add(JsonHelper::checkAndGetStringValue(json.json(), 
-            "collection"), TRI_TRANSACTION_READ)),
+    _collection(ast->query()->collections()->get(JsonHelper::checkAndGetStringValue(json.json(), 
+            "collection"))),
     _outVariable(varFromJson(ast, json, "outVariable")), _ranges() {
 
   Json ranges(TRI_UNKNOWN_MEM_ZONE, JsonHelper::checkAndGetListValue(json.json(), "ranges"));
@@ -1215,7 +1215,7 @@ ModificationNode::ModificationNode (Ast* ast,
                                     basics::Json const& base)
   : ExecutionNode(base), 
     _vocbase(ast->query()->vocbase()),
-    _collection(ast->query()->collections()->add(JsonHelper::checkAndGetStringValue(base.json(), "collection"), TRI_TRANSACTION_WRITE)),
+    _collection(ast->query()->collections()->get(JsonHelper::checkAndGetStringValue(base.json(), "collection"))),
     _options(base) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);

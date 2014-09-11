@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 200, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, assertTrue, assertEqual, AQL_EXECUTE, AQL_EXPLAIN, fail, loopmax */
+/*global require, exports, assertTrue, assertEqual, AQL_EXECUTE, AQL_EXECUTEJSON, AQL_EXPLAIN, fail, loopmax */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -37,6 +37,35 @@ var assertQueryError = helper.assertQueryError2;
 var isEqual = helper.isEqual;
 var findExecutionNodes = helper.findExecutionNodes;
 var findReferencedNodes = helper.findReferencedNodes;
+//var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
+
+function getQueryMultiplePlansAndExecutions (query, bindVars) {
+    var plan;
+    var i;
+    var plans = [];
+    var allPlans = [];
+    var results = [];
+    var paramNone     = { optimizer: { rules: [ "-all" ]},  verbosePlans: true};
+    var paramAllPlans = { allPlans : true, verbosePlans: true};
+    PY(query);
+    // first fetch the unmodified version
+    plans [0] = AQL_EXPLAIN(query, bindVars, paramNone);
+    // then all of the ones permuted by by the optimizer.
+    allPlans = AQL_EXPLAIN(query, bindVars, paramAllPlans);
+
+    PY(allPlans.plans[0]);
+
+    for (i=0; i < allPlans.plans.length; i++) {
+        plans[i+1] = {'plan':allPlans.plans[i]};
+    }
+    // Now execute each of these variations.
+    for (i=0; i < plans.length; i++) {
+        PY(plans[i]);
+        results += AQL_EXECUTEJSON(plans[i].plan, {});
+    }
+
+    return {'plans': plans, 'results': results};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -223,7 +252,7 @@ function optimizerRuleTestSuite() {
 /// @brief test that rule has an effect
 ////////////////////////////////////////////////////////////////////////////////
     testRuleHasEffect : function () {
-
+        var allresults;
         var queries = [ 
             
             "FOR v IN " + colName + " SORT v.d DESC RETURN [v.d]",// currently only ASC supported, but we use the index range anyways. todo: this may change.
@@ -242,11 +271,14 @@ function optimizerRuleTestSuite() {
             QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort ).json;
             
             assertTrue(isEqual(QResults[0], QResults[1]), "Result " + i + " is Equal?");
+
+            allresults = getQueryMultiplePlansAndExecutions(query, {});
+            PY(allresults);
             i++;
         });
 
     },
-
+/*
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test that rule has an effect, but the sort is kept in place since 
@@ -768,7 +800,7 @@ function optimizerRuleTestSuite() {
 //          assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
           
       }
-
+*/
   };
 }
 
