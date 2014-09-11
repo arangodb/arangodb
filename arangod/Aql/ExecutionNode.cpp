@@ -133,17 +133,17 @@ ExecutionNode* ExecutionNode::fromJsonFactory (Ast* ast,
 
       Variable *outVariable = varFromJson(ast, oneNode, "outVariable", Optional);
 
-      Json jsonAaggregates = oneNode.get("aggregates");
-      if (! jsonAaggregates.isList()){
+      Json jsonAggregates = oneNode.get("aggregates");
+      if (! jsonAggregates.isList()){
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "missing node type in valueTypeNames"); 
       }
 
-      int len = jsonAaggregates.size();
+      size_t len = jsonAggregates.size();
       std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables;
 
       aggregateVariables.reserve(len);
-      for (int i = 0; i < len; i++) {
-        Json oneJsonAggregate = jsonAaggregates.at(i);
+      for (size_t i = 0; i < len; i++) {
+        Json oneJsonAggregate = jsonAggregates.at(i);
         Variable* outVariable = varFromJson(ast, oneJsonAggregate, "outVariable");
         Variable* inVariable =  varFromJson(ast, oneJsonAggregate, "inVariable");
 
@@ -151,10 +151,10 @@ ExecutionNode* ExecutionNode::fromJsonFactory (Ast* ast,
       }
 
       return new AggregateNode(ast,
-                              oneNode,
-                              outVariable,
-                              ast->variables()->variables(false),
-                              aggregateVariables);
+                               oneNode,
+                               outVariable,
+                               ast->variables()->variables(false),
+                               aggregateVariables);
     }
     case INSERT:
       return new InsertNode(ast, oneNode);
@@ -666,6 +666,7 @@ IndexRangeNode::IndexRangeNode (Ast* ast, basics::Json const& json)
 
   Json ranges(TRI_UNKNOWN_MEM_ZONE, JsonHelper::checkAndGetListValue(json.json(), "ranges"));
   for(size_t i = 0; i < ranges.size(); i++){ //loop over the ranges . . .
+
     for(size_t j = 0; j < ranges.at(i).size(); j++){
       _ranges.at(i).push_back(RangeInfo(ranges.at(i).at(j)));
     }
@@ -695,6 +696,8 @@ double IndexRangeNode::estimateCost () {
   double dependencyCost = _dependencies.at(0)->getCost();
   double oldCost = static_cast<double>(_collection->count()) * dependencyCost; 
 
+  TRI_ASSERT(! _ranges.empty());
+  
   if (_index->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
     return dependencyCost;
   }
