@@ -100,6 +100,27 @@ void AqlValue::destroy () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the name of an AqlValue type
+////////////////////////////////////////////////////////////////////////////////
+      
+std::string AqlValue::getTypeString () const {
+  switch (_type) {
+    case JSON: 
+      return "json";
+    case SHAPED: 
+      return "shaped";
+    case DOCVEC: 
+      return "docvec";
+    case RANGE: 
+      return "range";
+    case EMPTY: 
+      return "empty";
+  }
+
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief clone for recursive copying
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -241,7 +262,6 @@ bool AqlValue::isArray () const {
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a string representation of the AqlValue
@@ -578,10 +598,15 @@ Json AqlValue::extractListMember (AQL_TRANSACTION_V8* trx,
     case RANGE: {
       TRI_ASSERT(_range != nullptr);
       size_t const n = _range->size();
-      size_t const p = static_cast<size_t>(position);
 
-      if (p < n) {
-        return Json(static_cast<double>(_range->at(p)));
+      if (position < 0) {
+        // a negative position is allowed
+        position = static_cast<int64_t>(n) + position;
+      }
+
+      if (position >= 0 && position < static_cast<int64_t>(n)) {
+        // only look up the value if it is within list bounds
+        return Json(static_cast<double>(_range->at(static_cast<size_t>(position))));
       }
       break; // fall-through to returning null 
     }

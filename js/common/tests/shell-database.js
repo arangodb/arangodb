@@ -420,7 +420,7 @@ function DatabaseSuite () {
       internal.db._useDatabase("UnitTestsDatabase0");
       assertEqual("UnitTestsDatabase0", internal.db._name());
       var c1 = internal.db._create("test1");
-      assertEqual([ "test1" ], getCollections());
+      assertNotEqual(-1, getCollections().indexOf("test1"));
       c1.save({ "_key": "foo" });
       assertEqual(1, internal.db._collection("test1").count());
       assertEqual(1, c1.count());
@@ -429,7 +429,7 @@ function DatabaseSuite () {
       internal.db._useDatabase("UNITTESTSDATABASE0");
       assertEqual("UNITTESTSDATABASE0", internal.db._name());
       var c2 = internal.db._create("test1");
-      assertEqual([ "test1" ], getCollections());
+      assertNotEqual(-1, getCollections().indexOf("test1"));
       c2.save({ "_key": "foo" });
       c2.save({ "_key": "bar" });
       c2.save({ "_key": "baz" });

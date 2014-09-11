@@ -366,7 +366,7 @@ Variable* ExecutionNode::varFromJson (Ast* ast,
     }
     else {
       std::string msg;
-      msg += "Mandatory variable \"" + std::string(variableName) + "\"not found.";
+      msg += "Mandatory variable \"" + std::string(variableName) + "\" not found.";
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
     }
   }
@@ -406,10 +406,8 @@ Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Json& nodes,
     json("parents", parents);
   }
   json("id", Json(static_cast<double>(id())));
+  json("estimatedCost", Json(_estimatedCost));
 
-  if (_estimatedCost != 0.0) {
-    json("estimatedCost", Json(_estimatedCost));
-  }
   return json;
 }
 
