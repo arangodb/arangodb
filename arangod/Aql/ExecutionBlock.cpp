@@ -853,9 +853,10 @@ bool IndexRangeBlock::readIndex () {
   if (_documents.empty()) {
     _documents.reserve(DefaultBatchSize);
   }
+  else {
+    _documents.clear();
+  }
 
-  _documents.clear();
-  
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
     
   if (en->_index->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
@@ -879,8 +880,9 @@ int IndexRangeBlock::initialize () {
     }
   }
   
-  // TODO: if all constant, then do it here, otherwise not
-  readIndex();
+  if (_allBoundsConstant) {
+    readIndex();
+  }
   return res;
 }
 
@@ -915,10 +917,16 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t atLeast,
       return nullptr;
     }
     _pos = 0;           // this is in the first block
+
+    // This is a new item, so let's read the index if bounds are variable:
+    if (! _allBoundsConstant) {
+      readIndex();
+    }
+
     _posInDocs = 0;     // position in _documents . . .
   }
 
-  // If we get here, we do have _buffer.front()
+  // If we get here, we do have _buffer.front() and _pos points into it
   AqlItemBlock* cur = _buffer.front();
   size_t const curRegs = cur->getNrRegs();
 
@@ -956,17 +964,22 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t atLeast,
 
   // Advance read position:
   if (_posInDocs >= _documents.size()) {
-    // we have exhausted our local documents buffer
-    _posInDocs = 0;
+    // we have exhausted our local documents buffer,
 
     if (++_pos >= cur->size()) {
       _buffer.pop_front();  // does not throw
       delete cur;
       _pos = 0;
     }
-    
-    // TODO: if bounds are variable, then repeat readIndex here
 
+    // let's read the index if bounds are variable:
+    if (! _buffer.empty() && ! _allBoundsConstant) {
+      readIndex();
+    }
+    _posInDocs = 0;
+    
+    // If _buffer is empty, then we will fetch a new block in the next call
+    // and then read the index.
   }
 
   // Clear out registers no longer needed later:
@@ -991,31 +1004,47 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
     if (_buffer.empty()) {
       if (! ExecutionBlock::getBlock(DefaultBatchSize, DefaultBatchSize)) {
         _done = true;
-        return 0;
+        return skipped;
       }
       _pos = 0;           // this is in the first block
+      
+      // This is a new item, so let's read the index if bounds are variable:
+      if (! _allBoundsConstant) {
+        readIndex();
+      }
+
+      _posInDocs = 0;     // position in _documents . . .
     }
 
-    // If we get here, we do have _buffer.front()
+    // If we get here, we do have _buffer.front() and _pos points into it
     AqlItemBlock* cur = _buffer.front();
 
-    _posInDocs += std::min(atMost, _documents.size() - _posInDocs);
+    size_t available = _documents.size() - _posInDocs;
+    size_t toSkip = std::min(atMost - skipped, available);
 
+    _posInDocs += toSkip;
+    skipped += toSkip;
     
-    if (atMost < _documents.size() - _posInDocs){
-      // eat just enough of _documents . . .
-      _posInDocs += atMost;
-      skipped = atMost;
-    }
-    else {
-      // eat the whole of the current inVariable and proceed . . .
-      skipped += (_documents.size() - _posInDocs);
-      _posInDocs = 0;
-      delete cur;
-      _buffer.pop_front();
-      _pos = 0;
+    // Advance read position:
+    if (_posInDocs >= _documents.size()) {
+      // we have exhausted our local documents buffer,
 
+      if (++_pos >= cur->size()) {
+        _buffer.pop_front();  // does not throw
+        delete cur;
+        _pos = 0;
+      }
+
+      // let's read the index if bounds are variable:
+      if (! _buffer.empty() && ! _allBoundsConstant) {
+        readIndex();
+      }
+      _posInDocs = 0;
+      
+      // If _buffer is empty, then we will fetch a new block in the next round
+      // and then read the index.
     }
+
   }
 
   return skipped; 
