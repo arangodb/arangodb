@@ -85,6 +85,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan from JSON
 ////////////////////////////////////////////////////////////////////////////////
+        static void getCollectionsFromJson(Ast *ast, 
+                                           triagens::basics::Json const& Json);
+
 
         static ExecutionPlan* instanciateFromJson (Ast* ast,
                                                    triagens::basics::Json const& Json);
@@ -93,7 +96,8 @@ namespace triagens {
 /// @brief export to JSON, returns an AUTOFREE Json object
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::basics::Json toJson (TRI_memory_zone_t* zone,
+        triagens::basics::Json toJson (Ast* ast,
+                                       TRI_memory_zone_t* zone,
                                        bool verbose) const;
 
 ////////////////////////////////////////////////////////////////////////////////

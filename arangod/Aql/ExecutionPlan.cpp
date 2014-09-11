@@ -101,6 +101,28 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast* ast) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan from JSON
 ////////////////////////////////////////////////////////////////////////////////
+void ExecutionPlan::getCollectionsFromJson(Ast *ast, 
+                                           triagens::basics::Json const& json)
+{
+  Json jsonCollectionList = json.get("collections");
+
+  auto const size = jsonCollectionList.size();
+
+  if (! jsonCollectionList.isList()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json collections is not list");
+  }
+    
+  for (size_t i = 0; i < size; i++) {
+    Json oneJsonCollection = jsonCollectionList.at(i);
+    auto typeStr = JsonHelper::checkAndGetStringValue(oneJsonCollection.json(), "type");
+      
+    ast->query()->collections()->add(
+                                     JsonHelper::checkAndGetStringValue(oneJsonCollection.json(), "name"),
+                                     TRI_GetTransactionTypeFromStr(JsonHelper::checkAndGetStringValue(oneJsonCollection.json(), "type").c_str()));
+ }
+
+}
+
 
 ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast* ast,
                                                    triagens::basics::Json const& json) {
@@ -121,7 +143,8 @@ ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast* ast,
 /// @brief export to JSON, returns an AUTOFREE Json object
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::basics::Json ExecutionPlan::toJson (TRI_memory_zone_t* zone,
+triagens::basics::Json ExecutionPlan::toJson (Ast* ast,
+                                              TRI_memory_zone_t* zone,
                                               bool verbose) const {
   triagens::basics::Json result = _root->toJson(zone, verbose); 
  
@@ -133,6 +156,17 @@ triagens::basics::Json ExecutionPlan::toJson (TRI_memory_zone_t* zone,
   }
   result.set("rules", rules);
 
+  triagens::basics::Json jsonCollectionList(Json::List);
+  auto usedCollections = *ast->query()->collections()->collections();
+
+  for (auto c : usedCollections) {
+    Json json(Json::Array);
+
+    jsonCollectionList(json("name", Json(c.first))
+                           ("type", Json(TRI_TransactionTypeGetStr(c.second->accessType))));
+
+  }
+  result.set("collections", jsonCollectionList);
   return result;
 }
 
@@ -1180,6 +1214,7 @@ ExecutionNode* ExecutionPlan::fromJson (Ast* ast,
                                         Json const& json) {
   ExecutionNode* ret = nullptr;
   Json nodes = json.get("nodes");
+  std::cout << nodes.toString() << "\n";
 
   if (! nodes.isList()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nodes is not a list");

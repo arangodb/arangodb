@@ -256,29 +256,8 @@ namespace triagens {
         virtual int shutdown ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief copy register data from one block (src) into another (dst)
-/// register values are cloned
-////////////////////////////////////////////////////////////////////////////////
-
-      protected:
-
-        void inheritRegisters (AqlItemBlock const* src,
-                               AqlItemBlock* dst,
-                               size_t row);
-        
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the following is internal to pull one more block and append it to
-/// our _buffer deque. Returns true if a new block was appended and false if
-/// the dependent node is exhausted.
-////////////////////////////////////////////////////////////////////////////////
-
-        bool getBlock (size_t atLeast, size_t atMost);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief getOne, gets one more item
 ////////////////////////////////////////////////////////////////////////////////
-
-      public:
 
         virtual AqlItemBlock* getOne () {
           return getSome(1, 1);
@@ -294,6 +273,38 @@ namespace triagens {
 
         virtual AqlItemBlock* getSome (size_t atLeast, size_t atMost);
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief resolve a collection name and return cid and document key
+/// this is used for parsing _from, _to and _id values
+////////////////////////////////////////////////////////////////////////////////
+  
+        int resolve (char const*, 
+                     TRI_voc_cid_t&, 
+                     std::string&) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copy register data from one block (src) into another (dst)
+/// register values are cloned
+////////////////////////////////////////////////////////////////////////////////
+
+        void inheritRegisters (AqlItemBlock const* src,
+                               AqlItemBlock* dst,
+                               size_t row);
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the following is internal to pull one more block and append it to
+/// our _buffer deque. Returns true if a new block was appended and false if
+/// the dependent node is exhausted.
+////////////////////////////////////////////////////////////////////////////////
+
+        bool getBlock (size_t atLeast, size_t atMost);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getSomeWithoutRegisterClearout, same as above, however, this
 /// is the actual worker which does not clear out registers at the end
@@ -301,8 +312,6 @@ namespace triagens {
 /// in a derived class but wants to modify the results before the register
 /// cleanup can use this method, internal use only
 ////////////////////////////////////////////////////////////////////////////////
-
-      protected:
 
         AqlItemBlock* getSomeWithoutRegisterClearout (size_t atLeast, size_t atMost);
 
@@ -647,6 +656,18 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 
         bool readIndex ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read using the primary index
+////////////////////////////////////////////////////////////////////////////////
+
+        void readPrimaryIndex (IndexOrCondition const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read using the edges index
+////////////////////////////////////////////////////////////////////////////////
+        
+        void readEdgeIndex (IndexOrCondition const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read using a skiplist index
@@ -1228,14 +1249,6 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual void work (std::vector<AqlItemBlock*>&) = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief resolve a collection name and return cid and document key
-////////////////////////////////////////////////////////////////////////////////
-  
-        int resolve (char const*, 
-                     TRI_voc_cid_t&, 
-                     std::string&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a key from the AqlValue passed
