@@ -177,6 +177,17 @@ TRI_transaction_collection_t;
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
+inline const char* TRI_TransactionTypeGetStr(TRI_transaction_type_e t) {
+    switch (t) {
+    case TRI_TRANSACTION_READ:
+      return "read";
+    case TRI_TRANSACTION_WRITE:
+      return "write";
+    }
+    return "";
+}
+
+TRI_transaction_type_e TRI_GetTransactionTypeFromStr(const char* s);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new transaction
