@@ -590,15 +590,15 @@ namespace triagens {
     };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief RangeInfoVec, type for vector of vector of RangeInfo. The meaning
+/// @brief IndexOrCondition, type for vector of vector of RangeInfo. The meaning
 /// is: the outer vector means an implicit "OR" between the entries. Each
-/// entry is a vector which means an implicit "AND" between the individual
-/// RangeInfo objects. This is actually the disjunctive normal form of
-/// all conditions, therefore, every boolean expression of ANDs and ORs
-/// can be expressed in this form.
+/// entry is a vector whose entries correspond to the attributes of the
+/// index. They are a RangeInfo specifying the condition for that attribute.
+/// Note that in the variable range bound case one RangeInfo can contain
+/// multiple conditions which are implicitly "AND"ed.
 ////////////////////////////////////////////////////////////////////////////////
     
-    typedef std::vector<std::vector<RangeInfo>> RangeInfoVec;
+    typedef std::vector<std::vector<RangeInfo>> IndexOrCondition;
   }
 }
 
