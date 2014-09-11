@@ -44,6 +44,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     struct Range {
+      Range () = delete;
+
       Range (int64_t low, 
              int64_t high) 
         : _low(low), 
