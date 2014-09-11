@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require, exports, module */
+/*global require, exports, module, AQL_PARSE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoStatement
@@ -52,7 +52,7 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.parse = function () {
-  var result = internal.AQL_PARSE(this._query);
+  var result = AQL_PARSE(this._query);
 
   return {
     bindVars : result.parameters,

@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require, exports, assertTrue, assertEqual, fail, AQL_EXECUTE */
+/*global require, exports, assertTrue, assertEqual, fail, AQL_EXECUTE, AQL_PARSE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aql test helper functions
@@ -72,7 +72,7 @@ function normalizeRow (row, recursive) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function getParseResults (query) {
-  return internal.AQL_PARSE(query);
+  return AQL_PARSE(query);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -32,6 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/Collection.h"
+#include "Utils/Exception.h"
 
 struct TRI_vocbase_s;
 
@@ -77,6 +78,10 @@ namespace triagens {
           auto it = _collections.find(name);
 
           if (it == _collections.end()) {
+            if (_collections.size() >= MaxCollections) {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS);
+            }
+
             auto collection = new Collection(name, _vocbase, accessType);
             try {
               _collections.emplace(std::make_pair(name, collection));
@@ -115,6 +120,8 @@ namespace triagens {
         struct TRI_vocbase_s*               _vocbase;
 
         std::map<std::string, Collection*>  _collections;
+
+        static size_t const                 MaxCollections = 32;
     };
 
   }
