@@ -162,6 +162,7 @@ namespace triagens {
 
         Ast* ast () const {
           return _ast;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief should we return verbose plans?
