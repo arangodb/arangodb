@@ -782,21 +782,74 @@ size_t EnumerateCollectionBlock::skipSome (size_t atLeast, size_t atMost) {
 // -----------------------------------------------------------------------------
 
 IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
-                                  IndexRangeNode const* ep)
-  : ExecutionBlock(engine, ep),
-    _collection(ep->_collection),
-    _posInDocs(0) {
- /* 
-   std::cout << "USING INDEX: " << ep->_index->_iid << ", " <<
-     TRI_TypeNameIndex(ep->_index->_type) << "\n";
+                                  IndexRangeNode const* en)
+  : ExecutionBlock(engine, en),
+    _collection(en->_collection),
+    _posInDocs(0),
+    _allBoundsConstant(true) {
+   
+  /*
+     std::cout << "USING INDEX: " << en->_index->_iid << ", " <<
+     TRI_TypeNameIndex(en->_index->_type) << "\n";
   */
+
+  std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;
+
+  TRI_ASSERT(orRanges.size() == 1);  // OR expressions not yet implemented
+
+  // Detect, whether all ranges are constant:
+  std::vector<RangeInfo> const& attrRanges = orRanges[0];
+  for (auto r : attrRanges) {
+    _allBoundsConstant &= r.isConstant();
+  }
+
+  // instanciate expressions:
+  auto instanciateExpression = [&] (Json const& json) -> void {
+    auto a = new AstNode(engine->getQuery()->ast(), json);
+    // all new AstNodes are registered with the Ast in the Query
+    auto e = new Expression(engine->getQuery()->executor(), a);
+    try {
+      _allVariableBoundExpressions.push_back(e);
+    }
+    catch (...) {
+      delete e;
+      throw;
+    }
+  };
+
+  if (! _allBoundsConstant) {
+    try {
+      for (auto r : attrRanges) {
+        for (auto l : r._lows) {
+          instanciateExpression(l.bound());
+        }
+        for (auto h : r._highs) {
+          instanciateExpression(h.bound());
+        }
+      }
+    }
+    catch (...) {
+      for (auto e : _allVariableBoundExpressions) {
+        delete e;
+      }
+      throw;
+    }
+  }
 }
 
 IndexRangeBlock::~IndexRangeBlock () {
+  for (auto e : _allVariableBoundExpressions) {
+    delete e;
+  }
+  _allVariableBoundExpressions.clear();
 }
 
 bool IndexRangeBlock::readIndex () {
 
+  // TODO: adjust to make callable multiple times with proper cleanup
+  // TODO: in variable case, evaluate all expressions, work actual values
+  //       into constant bound and finally use these
+  
   if (_documents.empty()) {
     _documents.reserve(DefaultBatchSize);
   }
@@ -804,7 +857,6 @@ bool IndexRangeBlock::readIndex () {
   _documents.clear();
   
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
- 
     
   if (en->_index->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
     readSkiplistIndex();
@@ -827,6 +879,7 @@ int IndexRangeBlock::initialize () {
     }
   }
   
+  // TODO: if all constant, then do it here, otherwise not
   readIndex();
   return res;
 }
@@ -911,6 +964,9 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t atLeast,
       delete cur;
       _pos = 0;
     }
+    
+    // TODO: if bounds are variable, then repeat readIndex here
+
   }
 
   // Clear out registers no longer needed later:
@@ -1002,7 +1058,7 @@ void IndexRangeBlock::readSkiplistIndex () {
   TRI_index_t* idx = en->_index;
   TRI_ASSERT(idx != nullptr);
   
-  std::vector<std::vector<RangeInfo>> ranges = en->_ranges;
+  std::vector<std::vector<RangeInfo>> const& ranges = en->_ranges;
 
   TRI_shaper_t* shaper = _collection->documentCollection()->getShaper(); 
   TRI_ASSERT(shaper != nullptr);
@@ -1016,15 +1072,15 @@ void IndexRangeBlock::readSkiplistIndex () {
     // TODO only doing 1 dim case at the moment . . .
     auto range = ranges.at(0).at(i);
     if (range.is1ValueRangeInfo()) {   // it's an equality . . . 
-      parameters(range._low._bound.get("value").copy());
+      parameters(range._lowConst.bound().copy());
     } 
     else {                          // it's not an equality and so the final comparison 
       if (parameters.size() != 0) {
         skiplistOperator = TRI_CreateIndexOperator(TRI_EQ_INDEX_OPERATOR, nullptr,
             nullptr, parameters.copy().steal(), shaper, nullptr, i, nullptr);
       }
-      if (! range._low._undefined) {
-        auto op = range._low.toIndexOperator(false, parameters.copy(), shaper);
+      if (range._lowConst.isDefined()) {
+        auto op = range._lowConst.toIndexOperator(false, parameters.copy(), shaper);
         if (skiplistOperator != nullptr) {
           skiplistOperator = TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, 
               skiplistOperator, op, nullptr, shaper, nullptr, 2, nullptr);
@@ -1033,8 +1089,8 @@ void IndexRangeBlock::readSkiplistIndex () {
           skiplistOperator = op;
         }
       }
-      if (! range._high._undefined) {
-        auto op = range._high.toIndexOperator(true, parameters.copy(), shaper);
+      if (range._highConst.isDefined()) {
+        auto op = range._highConst.toIndexOperator(true, parameters.copy(), shaper);
         if (skiplistOperator != nullptr) {
           skiplistOperator = TRI_CreateIndexOperator(TRI_AND_INDEX_OPERATOR, 
               skiplistOperator, op, nullptr, shaper, nullptr, 2, nullptr);
@@ -1125,8 +1181,7 @@ void IndexRangeBlock::readHashIndex () {
 
       for (auto x: en->_ranges.at(0)) {
         if (x._attr == std::string(name)){//found attribute
-          auto shaped = TRI_ShapedJsonJson(shaper, 
-              JsonHelper::getArrayElement(x._low._bound.json(), "value"), false); 
+          auto shaped = TRI_ShapedJsonJson(shaper, x._lowConst.bound().json(), false); 
           // here x->_low->_bound = x->_high->_bound 
           searchValue._values[i] = *shaped;
           TRI_Free(shaper->_memoryZone, shaped);

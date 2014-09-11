@@ -43,7 +43,7 @@ using namespace triagens::aql;
 
 Parser::Parser (Query* query)
   : _query(query),
-    _ast(nullptr),
+    _ast(query->ast()),
     _scanner(nullptr),
     _buffer(query->queryString()),
     _remainingLength(query->queryLength()),
@@ -51,8 +51,6 @@ Parser::Parser (Query* query)
     _marker(nullptr),
     _stack() {
   
-  _ast = new Ast(query, this);
-
   _stack.reserve(16);
 }
 
@@ -61,9 +59,6 @@ Parser::Parser (Query* query)
 ////////////////////////////////////////////////////////////////////////////////
 
 Parser::~Parser () {
-  if (_ast != nullptr) {
-    delete _ast;
-  }
 }
 
 // -----------------------------------------------------------------------------

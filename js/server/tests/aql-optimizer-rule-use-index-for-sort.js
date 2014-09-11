@@ -83,6 +83,12 @@ function optimizerRuleTestSuite() {
     var hasNoSortNode = function (plan) {
         assertEqual(findExecutionNodes(plan, "SortNode").length, 0, "Has NO SortNode");
     };
+    var hasNoIndexRangeNode = function (plan) {
+        assertEqual(findExecutionNodes(plan, "IndexRangeNode").length, 0, "Has NO IndexRangeNode");
+    };
+    var hasNoResultsNode = function (plan) {
+        assertEqual(findExecutionNodes(plan, "NoResultsNode").length, 1, "Has NoResultsNode");
+    };
     var hasCalculationNodes = function (plan, countXPect) {
         assertEqual(findExecutionNodes(plan, "CalculationNode").length,
                     countXPect,
@@ -548,13 +554,12 @@ function optimizerRuleTestSuite() {
 
           // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
           var RAs = getRangeAttributes(XPresult);
-          //require("internal").print(RAs);
           var first = getRangeAttribute(RAs, "v", "a", 1);
           
-          //require("internal").print(first);
-          assertEqual(first.low.bound.vType,  "int", "Type is int");
-          assertEqual(first.high.bound.vType, "int", "Type is int");
-          assertEqual(first.low.bound.value, first.high.bound.value);
+          assertEqual(first.lows.length, 0, "no non-constant low bounds");
+          assertEqual(first.highs.length, 0, "no non-constant high bounds");
+          assertEqual(first.lowConst.bound, 1, "correctness of bound");
+          assertEqual(first.lowConst.bound, first.highConst.bound, "bounds equality");
 
           for (i = 1; i < 2; i++) {
               assertTrue(isEqual(QResults[0].sort(sortArray), QResults[i]), "Result " + i + " is Equal?");
@@ -564,9 +569,9 @@ function optimizerRuleTestSuite() {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test in detail that an index range can be used for a less then filter.
+/// @brief test in detail that an index range can be used for a less than filter.
 ////////////////////////////////////////////////////////////////////////////////
-      testRangeLessThen: function () {
+      testRangeLessThan: function () {
           var query = "FOR v IN " + colName + " FILTER v.a < 5 RETURN [v.a, v.b]";
 
           var XPresult;
@@ -586,16 +591,18 @@ function optimizerRuleTestSuite() {
           // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
           var RAs = getRangeAttributes(XPresult);
           var first = getRangeAttribute(RAs, "v", "a", 1);
-          assertEqual(first.high.bound.vType, "int", "Type is int");
-          assertEqual(first.high.bound.value, 5, "proper value was set");
+          assertEqual(first.lowConst.bound, undefined, "no constant lower bound");
+          assertEqual(first.lows.length, 0, "no variable low bound");
+          assertEqual(first.highs.length, 0, "no variable high bound");
+          assertEqual(first.highConst.bound, 5, "proper value was set");
 
           assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
       },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test in detail that an index range can be used for a greater then filter.
+/// @brief test in detail that an index range can be used for a greater than filter.
 ////////////////////////////////////////////////////////////////////////////////
-      testRangeGreaterThen: function () {
+      testRangeGreaterThan: function () {
           var query = "FOR v IN " + colName + " FILTER v.a > 5 RETURN [v.a, v.b]";
           var XPresult;
           var QResults=[];
@@ -615,8 +622,10 @@ function optimizerRuleTestSuite() {
           var RAs = getRangeAttributes(XPresult);
           var first = getRangeAttribute(RAs, "v", "a", 1);
           
-          assertEqual(first.low.bound.vType, "int", "Type is int");
-          assertEqual(first.low.bound.value, 5, "proper value was set");
+          assertEqual(first.highConst.bound, undefined, "no constant upper bound");
+          assertEqual(first.highs.length, 0, "no variable high bound");
+          assertEqual(first.lows.length, 0, "no variable low bound");
+          assertEqual(first.lowConst.bound, 5, "proper value was set");
 
           assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
 
@@ -624,7 +633,7 @@ function optimizerRuleTestSuite() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test in detail that an index range can be used for an and combined 
-///   greater then + less then filter spanning a range.
+///   greater than + less than filter spanning a range.
 ////////////////////////////////////////////////////////////////////////////////
       testRangeBandpass: function () {
           var query = "FOR v IN " + colName + " FILTER v.a > 4 && v.a < 10 RETURN [v.a, v.b]";
@@ -646,20 +655,22 @@ function optimizerRuleTestSuite() {
           var RAs = getRangeAttributes(XPresult);
           var first = getRangeAttribute(RAs, "v", "a", 1);
           
-          assertEqual(first.low.bound.vType, "int", "Type is int");
-          assertEqual(first.low.bound.value, 4, "proper value was set");
-          assertEqual(first.high.bound.vType, "int", "Type is int");
-          assertEqual(first.high.bound.value, 10, "proper value was set");
+          assertEqual(first.highs.length, 0, "no variable high bounds");
+          assertEqual(first.lows.length, 0, "no variable low bounds");
+          assertEqual(first.lowConst.bound, 4, "proper value was set");
+          assertEqual(first.highConst.bound, 10, "proper value was set");
 
           assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
       },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test in detail that an index range can be used for an and combined 
-///   greater then + less then filter spanning a range. TODO: doesn't work now.
+///   greater than + less than filter spanning an empty range. This actually
+///   recognises the empty range and introduces a NoResultsNode but not an
+///   IndexRangeNode.
 ////////////////////////////////////////////////////////////////////////////////
+
       testRangeBandpassInvalid: function () {
-// TODO: this doesn't do anything. should it simply flush that range since its empty? or even raise? -> NoResultsNode????
         var query = "FOR v IN " + colName + " FILTER v.a > 7 && v.a < 4 RETURN [v.a, v.b]";
 
         var XPresult;
@@ -673,22 +684,12 @@ function optimizerRuleTestSuite() {
 
 
         XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
-        require("internal").print(XPresult);              
         assertEqual([ secondRuleName ], XPresult.plan.rules);
         // the sortnode and its calculation node should be there.
         hasCalculationNodes(XPresult, 2);
 
-        // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
-        var RAs = getRangeAttributes(XPresult);
-          require("internal").print(RAs);
-        var first = getRangeAttribute(RAs, "v", "a", 1);
-        
-        require("internal").print(first);
-          require("internal").print(first);
-        assertEqual(first.low.bound.vType, "int", "Type is int");
-        assertEqual(first.low.bound.value, 4, "proper value was set");
-        assertEqual(first.high.bound.vType, "int", "Type is int");
-        assertEqual(first.high.bound.value, 10, "proper value was set");
+        hasNoResultsNode(XPresult);
+        hasNoIndexRangeNode(XPresult);
 
         assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
           
@@ -697,7 +698,7 @@ function optimizerRuleTestSuite() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test in detail that an index range can be used for an or combined 
-///   greater then + less then filter spanning a range. TODO: doesn't work now.
+///   greater than + less than filter spanning a range. TODO: doesn't work now.
 ////////////////////////////////////////////////////////////////////////////////
       testRangeBandstop: function () {
 // TODO: OR  isn't implemented
@@ -733,7 +734,7 @@ function optimizerRuleTestSuite() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test in detail that an index range can be used for an or combined 
-///   greater then + less then filter spanning multiple ranges. TODO: doesn't work now.
+///   greater than + less than filter spanning multiple ranges. TODO: doesn't work now.
 ////////////////////////////////////////////////////////////////////////////////
       testMultiRangeBandpass: function () {
 // TODO: OR  isn't implemented
