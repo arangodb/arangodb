@@ -406,10 +406,8 @@ Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Json& nodes,
     json("parents", parents);
   }
   json("id", Json(static_cast<double>(id())));
+  json("estimatedCost", Json(_estimatedCost));
 
-  if (_estimatedCost != 0.0) {
-    json("estimatedCost", Json(_estimatedCost));
-  }
   return json;
 }
 

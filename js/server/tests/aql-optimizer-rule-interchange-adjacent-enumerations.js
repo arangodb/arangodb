@@ -85,6 +85,7 @@ function optimizerRuleTestSuite () {
       
       var opts = _.clone(paramNone);
       opts.allPlans = true;
+      opts.verbosePlans = true;
 
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query, { }, opts);
@@ -109,6 +110,7 @@ function optimizerRuleTestSuite () {
 
       var opts = _.clone(paramEnabled);
       opts.allPlans = true;
+      opts.verbosePlans = true;
 
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query, { }, opts);
@@ -135,6 +137,7 @@ function optimizerRuleTestSuite () {
       
       var opts = _.clone(paramEnabled);
       opts.allPlans = true;
+      opts.verbosePlans = true;
 
       queries.forEach(function(query) {
         var withRule = 0;
@@ -171,6 +174,7 @@ function optimizerRuleTestSuite () {
       
       var opts = _.clone(paramEnabled);
       opts.allPlans = true;
+      opts.verbosePlans = true;
 
       queries.forEach(function(query) {
         var planDisabled   = AQL_EXPLAIN(query[0], { }, paramDisabled);
