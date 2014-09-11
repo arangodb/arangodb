@@ -64,6 +64,19 @@
 /// @brief whether or not a transaction consists of a single operation
 ////////////////////////////////////////////////////////////////////////////////
 
+
+TRI_transaction_type_e TRI_GetTransactionTypeFromStr(const char* s) {
+  if (!strcmp(s, "read")) {
+    return TRI_TRANSACTION_READ;
+  }
+  else if (!strcmp(s, "write")) {
+    return TRI_TRANSACTION_WRITE;
+  }
+  else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid transaction type");
+  }
+}
+
 static triagens::wal::LogfileManager* GetLogfileManager () {
   return triagens::wal::LogfileManager::instance();
 }
