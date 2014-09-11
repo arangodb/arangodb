@@ -935,13 +935,6 @@ bool IndexRangeBlock::readIndex () {
   // Therefore, we can use the register values in _buffer.front() in row
   // _pos to evaluate the variable bounds.
   
-  // The following are needed to evaluate expressions with local data from
-  // the current incoming item:
-  AqlItemBlock* cur = _buffer.front();
-  vector<AqlValue>& data(cur->getData());
-  vector<TRI_document_collection_t const*> docColls(cur->getDocumentCollections());
-  RegisterId nrRegs = cur->getNrRegs();
-
   if (_documents.empty()) {
     _documents.reserve(DefaultBatchSize);
   }
@@ -954,6 +947,13 @@ bool IndexRangeBlock::readIndex () {
    
   // Find out about the actual values for the bounds in the variable bound case:
   if (! _allBoundsConstant) {
+    // The following are needed to evaluate expressions with local data from
+    // the current incoming item:
+    AqlItemBlock* cur = _buffer.front();
+    vector<AqlValue>& data(cur->getData());
+    vector<TRI_document_collection_t const*> docColls(cur->getDocumentCollections());
+    RegisterId nrRegs = cur->getNrRegs();
+
     auto newCondition = new IndexOrCondition();
     try {
       newCondition->push_back(std::vector<RangeInfo>());
