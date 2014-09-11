@@ -95,9 +95,7 @@ function assertParseError (errorCode, query) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function getQueryExplanation (query, bindVars) {
-  var result = internal.AQL_EXPLAIN(query, bindVars);
-
-  return result;
+  return AQL_EXPLAIN(query, bindVars);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
