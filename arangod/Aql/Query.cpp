@@ -353,7 +353,7 @@ QueryResult Query::parse () {
 /// @brief explain an AQL query
 ////////////////////////////////////////////////////////////////////////////////
 
-QueryResult Query::explain (bool returnAllPlans) {
+QueryResult Query::explain () {
   try {
     ExecutionPlan* plan;
     Parser parser(this);
@@ -393,14 +393,14 @@ QueryResult Query::explain (bool returnAllPlans) {
       
     QueryResult result(TRI_ERROR_NO_ERROR);
 
-    if (returnAllPlans) {
+    if (allPlans()) {
       triagens::basics::Json out(triagens::basics::Json::List);
 
       auto plans = opt.getPlans();
       for (auto it : plans) {
         TRI_ASSERT(it != nullptr);
 
-        out.add(it->toJson(TRI_UNKNOWN_MEM_ZONE, true));
+        out.add(it->toJson(TRI_UNKNOWN_MEM_ZONE, verbosePlans()));
       }
       
       result.json = out.steal();
@@ -410,7 +410,7 @@ QueryResult Query::explain (bool returnAllPlans) {
       plan = opt.stealBest(); // Now we own the best one again
       TRI_ASSERT(plan != nullptr);
 
-      result.json = plan->toJson(TRI_UNKNOWN_MEM_ZONE, false).steal(); 
+      result.json = plan->toJson(TRI_UNKNOWN_MEM_ZONE, verbosePlans()).steal(); 
 
       delete plan;
     }
@@ -503,13 +503,29 @@ char* Query::registerString (std::string const& p,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief fetch a boolean value from the options
+////////////////////////////////////////////////////////////////////////////////
+
+bool Query::getBooleanOption (char const* option, bool defaultValue) const {  
+  if (! TRI_IsArrayJson(_options)) {
+    return defaultValue;
+  }
+
+  TRI_json_t const* valueJson = TRI_LookupArrayJson(_options, option);
+  if (! TRI_IsBooleanJson(valueJson)) {
+    return defaultValue;
+  }
+
+  return valueJson->_value._boolean;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief neatly format transaction errors to the user.
 ////////////////////////////////////////////////////////////////////////////////
 
-QueryResult Query::transactionError (int errorCode, AQL_TRANSACTION_V8 const& trx)
+QueryResult Query::transactionError (int errorCode, AQL_TRANSACTION_V8 const& trx) const
 {
-  std::string err;
-  err += std::string(TRI_errno_string(errorCode));
+  std::string err(TRI_errno_string(errorCode));
 
   auto detail = trx.getErrorData();
   if (detail.size() > 0) {
@@ -520,7 +536,6 @@ QueryResult Query::transactionError (int errorCode, AQL_TRANSACTION_V8 const& tr
 
   return QueryResult(errorCode, err);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read the "optimizer.rules" section from the options
