@@ -571,10 +571,16 @@ bool AstNode::isSimple () const {
   
   if (type == NODE_TYPE_FCALL) {
     // some functions have C++ handlers
+    // check if the called function is one of them
     auto func = static_cast<Function*>(getData());
     TRI_ASSERT(func != nullptr);
 
     return (func->implementation != nullptr && getMember(0)->isSimple());
+  }
+  
+  if (type == NODE_TYPE_RANGE) {
+    // a range is simple if both bounds are simple
+    return (getMember(0)->isSimple() && getMember(1)->isSimple()); 
   }
 
   return false;
