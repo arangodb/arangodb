@@ -846,9 +846,14 @@ IndexRangeBlock::~IndexRangeBlock () {
 
 bool IndexRangeBlock::readIndex () {
 
-  // TODO: adjust to make callable multiple times with proper cleanup
-  // TODO: in variable case, evaluate all expressions, work actual values
-  //       into constant bound and finally use these
+  // This is either called from initialize if all bounds are constant,
+  // in this case it is never called again. If there is at least one
+  // variable bound, then readIndex is called once for every item coming
+  // in from our dependency. In that case, it is guaranteed that
+  //   _buffer   is not empty, in particular _buffer.front() is defined
+  //   _pos      points to a position in _buffer.front()
+  // Therefore, we can use the register values in _buffer.front() in row
+  // _pos to evaluate the variable bounds.
   
   if (_documents.empty()) {
     _documents.reserve(DefaultBatchSize);
@@ -858,12 +863,56 @@ bool IndexRangeBlock::readIndex () {
   }
 
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-    
+  IndexOrCondition const* condition = &en->_ranges;
+   
+  // Find out about the actual values for the bounds in the variable bound case:
+  if (! _allBoundsConstant) {
+#if 0
+    auto newCondition = new IndexOrCondition();
+    try {
+      newCondition->push_back(std::vector<RangeInfo>());
+      size_t posInExpressions = 0;
+      for (auto r : en->_ranges.at(0)) {
+        // First create a new RangeInfo containing only the constant 
+        // low and high bound of r:
+        RangeInfo actualRange(r._var, r._attr, r._lowConst, r._highConst,
+                              r.equality);
+        // Now work the actual values of the variable lows and highs into 
+        // this constant range:
+        Expression* e;
+        for (auto l : r._lows) {
+          e = &(_allVariableBoundExpressions[posInExpressions++]);
+          //AqlValue a = e.execute(...);
+          if (a._type == AqlValue::JSON) {
+            //RangeInfoBound b(
+            //actualRange.andCombineLowerBounds(
+
+          }
+          else {
+          }
+        }
+        for (auto h : r._highs) {
+          e = &(_allVariableBoundExpressions[posInExpressions++]);
+          //...
+        }
+
+        newCondition->at(0).push_back(actualRange);
+      }
+      
+    }
+    catch (...) {
+      delete newCondition;
+      throw;
+    }
+    condition = newCondition;
+#endif
+  }
+
   if (en->_index->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
-    readSkiplistIndex();
+    readSkiplistIndex(*condition);
   }
   else if (en->_index->_type == TRI_IDX_TYPE_HASH_INDEX) {
-    readHashIndex();
+    readHashIndex(*condition);
   }
   else {
     TRI_ASSERT(false);
@@ -1082,13 +1131,11 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
 // (i.e. the 1 in x.c >= 1) cannot be lists or arrays.
 //
 
-void IndexRangeBlock::readSkiplistIndex () {
+void IndexRangeBlock::readSkiplistIndex (IndexOrCondition const& ranges) {
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
   TRI_index_t* idx = en->_index;
   TRI_ASSERT(idx != nullptr);
   
-  std::vector<std::vector<RangeInfo>> const& ranges = en->_ranges;
-
   TRI_shaper_t* shaper = _collection->documentCollection()->getShaper(); 
   TRI_ASSERT(shaper != nullptr);
   
@@ -1098,8 +1145,10 @@ void IndexRangeBlock::readSkiplistIndex () {
   size_t i = 0;
   for (;i < ranges.at(0).size(); i++) {
     // ranges.at(0) corresponds to a prefix of idx->_fields . . .
-    // TODO only doing 1 dim case at the moment . . .
+    // TODO only doing case with a single OR (i.e. ranges.size()==1 at the
+    // moment ...
     auto range = ranges.at(0).at(i);
+    TRI_ASSERT(range.isConstant());
     if (range.is1ValueRangeInfo()) {   // it's an equality . . . 
       parameters(range._lowConst.bound().copy());
     } 
@@ -1169,7 +1218,7 @@ void IndexRangeBlock::readSkiplistIndex () {
   TRI_FreeSkiplistIterator(skiplistIterator);
 }
 
-void IndexRangeBlock::readHashIndex () {
+void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
   TRI_index_t* idx = en->_index;
   TRI_ASSERT(idx != nullptr);
@@ -1208,8 +1257,8 @@ void IndexRangeBlock::readHashIndex () {
    
       char const* name = TRI_AttributeNameShapePid(shaper, pid);
 
-      for (auto x: en->_ranges.at(0)) {
-        if (x._attr == std::string(name)){//found attribute
+      for (auto x: ranges.at(0)) {
+        if (x._attr == std::string(name)){    //found attribute
           auto shaped = TRI_ShapedJsonJson(shaper, x._lowConst.bound().json(), false); 
           // here x->_low->_bound = x->_high->_bound 
           searchValue._values[i] = *shaped;
