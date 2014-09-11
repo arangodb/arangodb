@@ -48,6 +48,7 @@ namespace triagens {
     class Expression;
     struct Variable;
     struct AstNode;
+    class Ast;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -153,6 +154,14 @@ namespace triagens {
 
         size_t queryLength () const {
           return _queryLength;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getter for _ast
+////////////////////////////////////////////////////////////////////////////////
+
+        Ast* ast () const {
+          return _ast;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -291,6 +300,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<char const*>   _strings;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _ast, we need an ast to manage the memory for AstNodes, even
+/// if we do not have a parser, because AstNodes occur in plans and engines
+////////////////////////////////////////////////////////////////////////////////
+
+        Ast*                       _ast;
     };
 
   }
