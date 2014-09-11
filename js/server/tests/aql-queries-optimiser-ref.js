@@ -29,7 +29,6 @@ var jsunity = require("jsunity");
 var internal = require("internal");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults2;
-var getQueryExplanation = helper.getQueryExplanation;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -38,6 +37,10 @@ var getQueryExplanation = helper.getQueryExplanation;
 function ahuacatlQueryOptimiserRefTestSuite () {
   var users = null;
   var cn = "UnitTestsAhuacatlOptimiserRef";
+  
+  var explain = function (query, params) {
+    return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-index-range" ] } })).map(function(node) { return node.type; });
+  };
 
   return {
 
@@ -177,9 +180,7 @@ function ahuacatlQueryOptimiserRefTestSuite () {
 
       assertEqual(expected, actual);
 
-      var explain = getQueryExplanation(query, { "att": "name", "what": "age" });
-      assertEqual("for", explain[0].type);
-      assertEqual("index", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query, { att: "name", what: "age" }));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -193,9 +194,7 @@ function ahuacatlQueryOptimiserRefTestSuite () {
 
       assertEqual(expected, actual);
 
-      var explain = getQueryExplanation(query, { "att": "age", "what": "name" });
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query, { att: "age", what: "name" }));
     }
 
   };

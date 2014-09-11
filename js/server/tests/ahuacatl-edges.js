@@ -29,7 +29,6 @@ var jsunity = require("jsunity");
 var internal = require("internal");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
-var getQueryExplanation = helper.getQueryExplanation;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -78,46 +77,6 @@ function ahuacatlQueryEdgesTestSuite () {
     tearDown : function () {
       internal.db._drop("UnitTestsAhuacatlUsers");
       internal.db._drop("UnitTestsAhuacatlUserRelations");
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the explain output
-////////////////////////////////////////////////////////////////////////////////
-
-    testFromQueryExplain : function () {
-      var actual = getQueryExplanation("FOR r IN UnitTestsAhuacatlUserRelations FILTER r._from == \"" + docs["John"]._id +"\" RETURN { \"from\" : r._from, \"to\" : r._to }");
-      assertEqual("index", actual[0].expression.extra.accessType);
-      assertEqual("edge", actual[0].expression.extra.index.type);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the explain output
-////////////////////////////////////////////////////////////////////////////////
-
-    testToQueryExplain : function () {
-      var actual = getQueryExplanation("FOR r IN UnitTestsAhuacatlUserRelations FILTER r._to == \"" + docs["Fred"]._id +"\" RETURN { \"from\" : r._from, \"to\" : r._to }");
-      assertEqual("index", actual[0].expression.extra.accessType);
-      assertEqual("edge", actual[0].expression.extra.index.type);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the explain output
-////////////////////////////////////////////////////////////////////////////////
-
-    testFromToQueryExplain : function () {
-      var actual = getQueryExplanation("FOR r IN UnitTestsAhuacatlUserRelations FILTER r._from == \"" + docs["John"]._id +"\" && r._to == \"" + docs["Fred"]._id + "\" RETURN { \"from\" : r._from, \"to\" : r._to }");
-      assertEqual("index", actual[0].expression.extra.accessType);
-      assertEqual("edge", actual[0].expression.extra.index.type);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the explain output
-////////////////////////////////////////////////////////////////////////////////
-
-    testFromToQuerySelfExplain : function () {
-      var actual = getQueryExplanation("FOR r IN UnitTestsAhuacatlUserRelations FILTER r._from == \"" + docs["Self"]._id +"\" && r._to == \"" + docs["Self"]._id + "\" RETURN { \"from\" : r._from, \"to\" : r._to }");
-      assertEqual("index", actual[0].expression.extra.accessType);
-      assertEqual("edge", actual[0].expression.extra.index.type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

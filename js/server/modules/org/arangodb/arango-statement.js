@@ -65,7 +65,7 @@ ArangoStatement.prototype.parse = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.explain = function () {
-  return internal.AQL_EXPLAIN(this._query, this._bindVars);
+  return AQL_EXPLAIN(this._query, this._bindVars);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
