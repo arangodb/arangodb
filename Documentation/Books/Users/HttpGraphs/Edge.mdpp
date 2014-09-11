@@ -1,5 +1,7 @@
 !CHAPTER Edge
 
+**Warning Deprecated**
+
 `POST /_api/graph/graph-name/edge-name`*(create edge)*
 
 !SUBSECTION URL parameters
