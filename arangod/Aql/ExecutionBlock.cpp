@@ -881,6 +881,20 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
       delete e;
       throw;
     }
+    // Prepare _inVars and _inRegs:
+    _inVars.emplace_back();
+    std::vector<Variable*>& inVarsCur = _inVars.back();
+    _inRegs.emplace_back();
+    std::vector<RegisterId>& inRegsCur = _inRegs.back();
+
+    std::unordered_set<Variable*> inVars = e->variables();
+    for (auto v : inVars) {
+      inVarsCur.push_back(v);
+      auto it = _varOverview->varInfo.find(v->id);
+      TRI_ASSERT(it != _varOverview->varInfo.end());
+      inRegsCur.push_back(it->second.registerId);
+    }
+
   };
 
   if (! _allBoundsConstant) {
@@ -921,6 +935,13 @@ bool IndexRangeBlock::readIndex () {
   // Therefore, we can use the register values in _buffer.front() in row
   // _pos to evaluate the variable bounds.
   
+  // The following are needed to evaluate expressions with local data from
+  // the current incoming item:
+  AqlItemBlock* cur = _buffer.front();
+  vector<AqlValue>& data(cur->getData());
+  vector<TRI_document_collection_t const*> docColls(cur->getDocumentCollections());
+  RegisterId nrRegs = cur->getNrRegs();
+
   if (_documents.empty()) {
     _documents.reserve(DefaultBatchSize);
   }
@@ -933,7 +954,6 @@ bool IndexRangeBlock::readIndex () {
    
   // Find out about the actual values for the bounds in the variable bound case:
   if (! _allBoundsConstant) {
-#if 0
     auto newCondition = new IndexOrCondition();
     try {
       newCondition->push_back(std::vector<RangeInfo>());
@@ -942,24 +962,47 @@ bool IndexRangeBlock::readIndex () {
         // First create a new RangeInfo containing only the constant 
         // low and high bound of r:
         RangeInfo actualRange(r._var, r._attr, r._lowConst, r._highConst,
-                              r.equality);
+                              r.is1ValueRangeInfo());
         // Now work the actual values of the variable lows and highs into 
         // this constant range:
-        Expression* e;
         for (auto l : r._lows) {
-          e = &(_allVariableBoundExpressions[posInExpressions++]);
-          //AqlValue a = e.execute(...);
+          Expression* e = _allVariableBoundExpressions[posInExpressions];
+          AqlValue a = e->execute(_trx, docColls, data, nrRegs * _pos,
+                                  _inVars[posInExpressions],
+                                  _inRegs[posInExpressions]);
+          posInExpressions++;
           if (a._type == AqlValue::JSON) {
-            //RangeInfoBound b(
-            //actualRange.andCombineLowerBounds(
-
+            Json json(Json::Array, 3);
+            json("include", Json(l.inclusive()))
+                ("isConstant", Json(true))
+                ("bound", *(a._json));
+            a.destroy();  // the TRI_json_t* of a._json has been stolen
+            RangeInfoBound b(json);   // Construct from JSON
+            actualRange._lowConst.andCombineLowerBounds(b);
           }
           else {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
+                "AQL: computed a variable bound and got non-JSON");
           }
         }
         for (auto h : r._highs) {
-          e = &(_allVariableBoundExpressions[posInExpressions++]);
-          //...
+          Expression* e = _allVariableBoundExpressions[posInExpressions++];
+          AqlValue a = e->execute(_trx, docColls, data, nrRegs * _pos,
+                                  _inVars[posInExpressions],
+                                  _inRegs[posInExpressions]);
+          if (a._type == AqlValue::JSON) {
+            Json json(Json::Array, 3);
+            json("include", Json(h.inclusive()))
+                ("isConstant", Json(true))
+                ("bound", *(a._json));
+            a.destroy();  // the TRI_json_t* of a._json has been stolen
+            RangeInfoBound b(json);   // Construct from JSON
+            actualRange._highConst.andCombineUpperBounds(b);
+          }
+          else {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, 
+                "AQL: computed a variable bound and got non-JSON");
+          }
         }
 
         newCondition->at(0).push_back(actualRange);
@@ -971,7 +1014,6 @@ bool IndexRangeBlock::readIndex () {
       throw;
     }
     condition = newCondition;
-#endif
   }
   
   if (en->_index->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {

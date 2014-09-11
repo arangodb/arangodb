@@ -719,6 +719,20 @@ public:
         
         std::vector<Expression*> _allVariableBoundExpressions;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _inVars, a vector containing for each expression above
+/// a vector of Variable*, used to execute the expression
+////////////////////////////////////////////////////////////////////////////////
+        
+        std::vector<std::vector<Variable*>> _inVars;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _inRegs, a vector containing for each expression above
+/// a vector of RegisterId, used to execute the expression
+////////////////////////////////////////////////////////////////////////////////
+        
+        std::vector<std::vector<RegisterId>> _inRegs;
+
     };
 
 // -----------------------------------------------------------------------------
