@@ -32,7 +32,8 @@ using namespace triagens::basics;
 using namespace triagens::aql;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 3-way comparison of the tightness of upper or lower RangeInfoBounds.
+/// @brief 3-way comparison of the tightness of upper or lower constant
+/// RangeInfoBounds.
 /// Returns -1 if <left> is tighter than <right>, 1 if <right> is tighter than
 /// <left>, and 0 if the bounds are the same. The argument <lowhigh> should be
 /// -1 if we are comparing lower bounds and 1 if we are comparing upper bounds. 
@@ -59,21 +60,115 @@ using namespace triagens::aql;
 /// (2, true)=(x<=2). 
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CompareRangeInfoBound (RangeInfoBound left, RangeInfoBound right, 
-        int lowhigh) {
-  if (left._undefined) {
-    return (right._undefined ? 0 : 1);
+static int CompareRangeInfoBound (RangeInfoBound const& left, 
+                                  RangeInfoBound const& right, 
+                                  int lowhigh) {
+  if (! left.isDefined()) {
+    return (right.isDefined() ? 1 : 0);
   } 
-  if (right._undefined) {
+  if (! right.isDefined()) {
     return -1;
   }
 
-  int cmp = TRI_CompareValuesJson(left._bound.json(), right._bound.json());
-  if (cmp == 0 && (left._include != right._include)) {
-    return (left._include?1:-1);
+  int cmp = TRI_CompareValuesJson(left.bound().json(), right.bound().json());
+  if (cmp == 0 && (left.inclusive() != right.inclusive())) {
+    return (left.inclusive() ? 1 : -1);
   }
   return cmp * lowhigh;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class RangeInfoBound
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief andCombineLowerBounds, changes the bound in *this and replaces
+/// it by the stronger bound of *this and that, interpreting both as lower
+/// bounds, this only works for constant bounds.
+////////////////////////////////////////////////////////////////////////////////
+
+void RangeInfoBound::andCombineLowerBounds (RangeInfoBound const& that) {
+  if (CompareRangeInfoBound(that, *this, -1) == -1) {
+    assign(that);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief andCombineUpperBounds, changes the bound in *this and replaces
+/// it by the stronger bound of *this and that, interpreting both as upper
+/// bounds, this only works for constant bounds.
+////////////////////////////////////////////////////////////////////////////////
+
+void RangeInfoBound::andCombineUpperBounds (RangeInfoBound const& that) {
+  if (CompareRangeInfoBound(that, *this, 1) == -1) {
+    assign(that);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class RangeInfo
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor from JSON
+////////////////////////////////////////////////////////////////////////////////
+
+RangeInfo::RangeInfo (basics::Json const& json) :
+  _var(basics::JsonHelper::checkAndGetStringValue(json.json(), "variable")),
+  _attr(basics::JsonHelper::checkAndGetStringValue(json.json(), "attr")),
+  _valid(basics::JsonHelper::checkAndGetBooleanValue(json.json(), "valid")),
+  _defined(true),
+  _equality(basics::JsonHelper::checkAndGetBooleanValue(json.json(), "equality")) {
+
+  Json lows = json.get("lows");
+  if (! lows.isList()) {
+    THROW_INTERNAL_ERROR("low attribute must be a list");
+  }
+  Json highs = json.get("highs");
+  if (! highs.isList()) {
+    THROW_INTERNAL_ERROR("high attribute must be a list");
+  }
+  // If an exception is thrown from within these loops, then the
+  // vectors _low and _high will be destroyed properly, so no 
+  // try/catch is needed.
+  for (size_t i = 0; i < lows.size(); i++) {
+    _lows.emplace_back(lows.at(i));
+  }
+  for (size_t i = 0; i < highs.size(); i++) {
+    _highs.emplace_back(highs.at(i));
+  }
+  _lowConst.assign(json.get("lowConst"));
+  _highConst.assign(json.get("highConst"));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson for a RangeInfo
+////////////////////////////////////////////////////////////////////////////////
+
+Json RangeInfo::toJson () {
+  Json item(basics::Json::Array);
+  item("variable", Json(_var))
+      ("attr", Json(_attr))
+      ("lowConst", _lowConst.toJson())
+      ("highConst", _highConst.toJson());
+  Json lowList(Json::List, _lows.size());
+  for (auto l : _lows) {
+    lowList(l.toJson());
+  }
+  item("lows", lowList);
+  Json highList(Json::List, _highs.size());
+  for (auto h : _highs) {
+    highList(h.toJson());
+  }
+  item("highs", highList);
+  item("valid", Json(_valid));
+  item("equality", Json(_equality));
+  return item;
+}
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class RangesInfo
+////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief  insert if there is no range corresponding to variable name <var>,
@@ -82,7 +177,7 @@ static int CompareRangeInfoBound (RangeInfoBound left, RangeInfoBound right,
 
 void RangesInfo::insert (RangeInfo newRange) { 
   
-  TRI_ASSERT(!newRange._undefined);
+  TRI_ASSERT(newRange.isDefined());
 
   std::unordered_map<std::string, RangeInfo>* oldMap = find(newRange._var);
 
@@ -102,35 +197,69 @@ void RangesInfo::insert (RangeInfo newRange) {
 
   RangeInfo& oldRange((*it).second);
 
-  if (!oldRange._valid) { // intersection of the empty set with any set is empty!
+  oldRange.fuse(newRange);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+///// @brief fuse, fuse two ranges, must be for the same variable and attribute
+////////////////////////////////////////////////////////////////////////////////
+
+void RangeInfo::fuse (RangeInfo const& that) {
+
+  TRI_ASSERT(_var == that._var);
+  TRI_ASSERT(_attr == that._attr);
+
+  if (! isValid()) { 
+    // intersection of the empty set with any set is empty!
     return;
   }
   
-  //this case is not covered by those below . . .
-  if (oldRange.is1ValueRangeInfo() && newRange.is1ValueRangeInfo()) {
-    if (!TRI_CheckSameValueJson(oldRange._low._bound.json(), 
-        newRange._low._bound.json())) {
-      oldRange._valid = false;
+  if (! that.isValid()) {
+    // intersection of the empty set with any set is empty!
+    invalidate();
+    return;
+  }
+
+  // The following is a corner case for constant bounds:
+  if (_equality && that._equality && 
+      _lowConst.isDefined() && that._lowConst.isDefined()) {
+    if (! TRI_CheckSameValueJson(_lowConst.bound().json(),
+                                 that._lowConst.bound().json())) {
+      invalidate();
       return;
     }
   }
 
-  if (CompareRangeInfoBound(newRange._low, oldRange._low, -1) == -1) {
-    oldRange._low.assign(newRange._low);
-  }
-  
-  if (CompareRangeInfoBound(newRange._high, oldRange._high, 1) == -1) {
-    oldRange._high.assign(newRange._high);
+  // First sort out the constant low bounds:
+  _lowConst.andCombineLowerBounds(that._lowConst);
+  // Simply append the variable ones:
+  for (auto l : that._lows) {
+    _lows.emplace_back(l);
   }
 
-  // check the new range bounds are valid
-  if (!oldRange._low._undefined && !oldRange._high._undefined) {
-    int cmp = TRI_CompareValuesJson(oldRange._low._bound.json(), 
-            oldRange._high._bound.json());
-    if (cmp == 1 || (cmp == 0 && 
-          !(oldRange._low._include == true && oldRange._high._include == true ))) {
-      // range invalid
-      oldRange._valid = false;
+  // Sort out the constant high bounds:
+  _highConst.andCombineUpperBounds(that._highConst);
+  // Simply append the variable ones:
+  for (auto h : that._highs) {
+    _highs.emplace_back(h);
+  }
+    
+  // check the new constant range bounds are valid:
+  if (_lowConst.isDefined() && _highConst.isDefined()) {
+    int cmp = TRI_CompareValuesJson(_lowConst.bound().json(), 
+                                    _highConst.bound().json());
+    if (cmp == 1) {
+      invalidate();
+      return;
+    }
+    if (cmp == 0) {
+      if (! (_lowConst.inclusive() && _highConst.inclusive()) ) {
+        // range invalid
+        invalidate();
+      }
+      else {
+        _equality = true;  // Can only be at most one value
+      }
     }
   }
 };
@@ -141,7 +270,8 @@ void RangesInfo::insert (RangeInfo newRange) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RangesInfo::insert (std::string var, std::string name, 
-                         RangeInfoBound low, RangeInfoBound high) { 
-  insert(RangeInfo(var, name, low, high));
+                         RangeInfoBound low, RangeInfoBound high,
+                         bool equality) { 
+  insert(RangeInfo(var, name, low, high, equality));
 };
 

@@ -67,10 +67,13 @@ Query::Query (TRI_vocbase_t* vocbase,
     _bindParameters(bindParameters),
     _options(options),
     _collections(vocbase),
-    _strings() {
+    _strings(),
+    _ast(nullptr) {
 
   TRI_ASSERT(_vocbase != nullptr);
   
+  _ast = new Ast(this);
+
   _strings.reserve(32);
 }
 
@@ -86,10 +89,12 @@ Query::Query (TRI_vocbase_t* vocbase,
     _bindParameters(nullptr),
     _options(nullptr),
     _collections(vocbase),
-    _strings() {
+    _strings(),
+    _ast(nullptr) {
 
   TRI_ASSERT(_vocbase != nullptr);
 
+  _ast = new Ast(this);
   _strings.reserve(32);
 }
 
@@ -278,7 +283,7 @@ QueryResult Query::execute () {
     triagens::basics::Json stats;
 
     try { 
-      auto engine = ExecutionEngine::instanciateFromPlan(&trx, plan);
+      auto engine = ExecutionEngine::instanciateFromPlan(&trx, this, plan);
 
       try {
         AqlItemBlock* value;

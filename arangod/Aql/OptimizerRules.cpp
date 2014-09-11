@@ -496,7 +496,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           break;
         }
         case EN::INTERSECTION:
-        case EN::SINGLETON:
         case EN::AGGREGATE:
         case EN::LOOKUP_JOIN:
         case EN::MERGE_JOIN:
@@ -506,6 +505,11 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         case EN::CONCATENATION:
         case EN::MERGE:
         case EN::REMOTE:
+          // in these cases we simply ignore the intermediate nodes, note
+          // that we have taken care of nodes that could throw exceptions
+          // above.
+          break;
+        case EN::SINGLETON:
         case EN::INSERT:
         case EN::REMOVE:
         case EN::REPLACE:
@@ -513,10 +517,11 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         case EN::RETURN:
         case EN::NORESULTS:
         case EN::ILLEGAL:
-          break;
+          // in all these cases something is seriously wrong and we better abort
+          return true;
         case EN::LIMIT:           
-          // if we meet a limit node between a filter and an enumerate collection,
-          // we abort . . . 
+          // if we meet a limit node between a filter and an enumerate
+          // collection, we abort . . .
           return true;
         case EN::SORT:
         case EN::INDEX_RANGE:
@@ -527,18 +532,16 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           auto map = _ranges->find(var->name);        // check if we have any ranges with this var
           
           if (map != nullptr) {
-            // check the first components of <map> against indexes of <node> . . .
+            // check the first components of <map> against indexes of <node>...
             std::unordered_set<std::string> attrs;
             
-            bool valid = true;     // are all the range infos valid
-            bool equality = true;  // are all the range infos equalities
+            bool valid = true;     // are all the range infos valid?
 
             for(auto x: *map) {
-              valid &= x.second._valid; 
+              valid &= x.second.isValid(); 
               if (!valid) {
                 break;
               }
-              equality &= x.second.is1ValueRangeInfo();
               attrs.insert(x.first);
             }
 
@@ -569,7 +572,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                 node->getIndexesForIndexRangeNode(attrs, idxs, prefixes);
 
                 // make one new plan for every index in <idxs> that replaces the
-                // enumerate collection node with a RangeIndexNode . . . 
+                // enumerate collection node with a IndexRangeNode ... 
                 
                 for (size_t i = 0; i < idxs.size(); i++) {
                   std::vector<std::vector<RangeInfo>> rangeInfo;
@@ -579,9 +582,14 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                   // followed by a single <, >, >=, or <= if a skip index in the
                   // order of the fields of the index.
                   auto idx = idxs.at(i);
-                  if (idx->_type == TRI_IDX_TYPE_HASH_INDEX && equality) {
+                  if (idx->_type == TRI_IDX_TYPE_HASH_INDEX) {
                     for (size_t j = 0; j < idx->_fields._length; j++) {
                       auto range = map->find(std::string(idx->_fields._buffer[j]));
+                   
+                      if (! range->second.is1ValueRangeInfo()) {
+                        rangeInfo.at(0).clear();   // not usable
+                        break;
+                      }
                       rangeInfo.at(0).push_back(range->second);
                     }
                   }
@@ -590,8 +598,8 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                     size_t j = 0;
                     auto range = map->find(std::string(idx->_fields._buffer[0]));
                     rangeInfo.at(0).push_back(range->second);
-                    equality = range->second.is1ValueRangeInfo();
-                    while (++j < prefixes.at(i) && equality){
+                    bool equality = range->second.is1ValueRangeInfo();
+                    while (++j < prefixes.at(i) && equality) {
                       range = map->find(std::string(idx->_fields._buffer[j]));
                       rangeInfo.at(0).push_back(range->second);
                       equality = equality && range->second.is1ValueRangeInfo();
@@ -646,29 +654,41 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
         auto lhs = node->getMember(0);
         auto rhs = node->getMember(1);
-        AstNode const* val;
-        AstNode const* nextNode;
-        if(rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && lhs->type == NODE_TYPE_VALUE) {
-          val = lhs;
-          nextNode = rhs;
-        }
-        else if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->type == NODE_TYPE_VALUE) {
-          val = rhs;
-          nextNode = lhs;
-        }
-        else {
-          val = nullptr;
-        }
-        
-        if (val != nullptr) {
-          buildRangeInfo(nextNode, enumCollVar, attr);
+        bool found = false;
+        AstNode const* val = nullptr;
+        if(rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+          buildRangeInfo(rhs, enumCollVar, attr);
           if (! enumCollVar.empty()) {
-            _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
-                RangeInfoBound(val, true), RangeInfoBound(val, true));
+            // Found a multiple attribute access of a variable
+            if (lhs->type == NODE_TYPE_VALUE) {
+              val = lhs;
+              found = true;
+            }
+            else {
+              enumCollVar.clear();
+            }
           }
         }
-        attr = "";
-        enumCollVar = "";
+        if (! found && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+          buildRangeInfo(lhs, enumCollVar, attr);
+          if (! enumCollVar.empty()) {
+            // Found a multiple attribute access of a variable
+            if (rhs->type == NODE_TYPE_VALUE) {
+              val = rhs;
+              found = true;
+            }
+            else {
+              enumCollVar.clear();
+            }
+          }
+        }
+        
+        if (found) {
+          _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
+              RangeInfoBound(val, true), RangeInfoBound(val, true), true);
+        }
+        attr.clear();
+        enumCollVar.clear();
         return;
       }
 
@@ -684,33 +704,41 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         auto rhs = node->getMember(1);
         RangeInfoBound low;
         RangeInfoBound high;
-        AstNode *nextNode;
 
-        if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && lhs->type == NODE_TYPE_VALUE) {
-          if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
-              node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
-            high.assign(lhs, include);
-          } 
-          else {
-            low.assign(lhs, include);
-          }
-          nextNode = rhs;
-        }
-        else if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->type == NODE_TYPE_VALUE) {
-          if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
-              node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
-            low.assign(rhs, include);
-          } 
-          else {
-            high.assign(rhs, include);
-          }
-          nextNode = lhs;
-        }
-
-        if (!low._undefined || !high._undefined) {
-          buildRangeInfo(nextNode, enumCollVar, attr);
+        if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+          // Attribute access on the right:
+          // First find out whether there is a multiple attribute access
+          // of a variable on the right:
+          buildRangeInfo(rhs, enumCollVar, attr);
           if (! enumCollVar.empty()) {
-            _ranges->insert(enumCollVar, attr.substr(0, attr.size()-1), low, high);
+            // Constant value on the left, so insert a constant condition:
+            if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
+                node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
+              high.assign(lhs, include);
+            } 
+            else {
+              low.assign(lhs, include);
+            }
+            _ranges->insert(enumCollVar, attr.substr(0, attr.size()-1), 
+                            low, high, false);
+          }
+        }
+        else if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+          // Attribute access on the left:
+          // First find out whether there is a multiple attribute access
+          // of a variable on the left:
+          buildRangeInfo(lhs, enumCollVar, attr);
+          if (! enumCollVar.empty()) {
+            // Constant value on the right, so insert a constant condition:
+            if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
+                node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
+              low.assign(rhs, include);
+            } 
+            else {
+              high.assign(rhs, include);
+            }
+            _ranges->insert(enumCollVar, attr.substr(0, attr.size()-1), 
+                            low, high, false);
           }
         }
       }
@@ -758,7 +786,7 @@ int triagens::aql::useIndexRange (Optimizer* opt,
 /// @brief analyse the sortnode and its calculation nodes
 ////////////////////////////////////////////////////////////////////////////////
 
-class sortAnalysis {
+class SortAnalysis {
   using ECN = triagens::aql::EnumerateCollectionNode;
 
   typedef std::pair<ECN::IndexMatchVec, RangeInfoVec> Range_IndexPair;
@@ -779,31 +807,38 @@ public:
 /// @brief constructor; fetches the referenced calculation nodes and builds 
 ///   _sortNodeData for later use.
 ////////////////////////////////////////////////////////////////////////////////
-  sortAnalysis (SortNode * node)
-  : sortNodeID(node->id())
+
+  SortAnalysis (SortNode* node)
+    : sortNodeID(node->id())
   {
     auto sortParams = node->getCalcNodePairs();
 
     for (size_t n = 0; n < sortParams.size(); n++) {
       auto d = new sortNodeData;
-      d->ASC = sortParams[n].second;
-      d->calculationNodeID = sortParams[n].first->id();
+      try {
+        d->ASC = sortParams[n].second;
+        d->calculationNodeID = sortParams[n].first->id();
 
-      if (sortParams[n].first->getType() == EN::CALCULATION) {
-        auto cn = static_cast<triagens::aql::CalculationNode*>(sortParams[n].first);
-        auto oneSortExpression = cn->expression();
-        
-        if (oneSortExpression->isAttributeAccess()) {
-          auto simpleExpression = oneSortExpression->getMultipleAttributes();
-          d->variableName = simpleExpression.first;
-          d->attributevec = simpleExpression.second;
+        if (sortParams[n].first->getType() == EN::CALCULATION) {
+          auto cn = static_cast<triagens::aql::CalculationNode*>(sortParams[n].first);
+          auto oneSortExpression = cn->expression();
+          
+          if (oneSortExpression->isAttributeAccess()) {
+            auto simpleExpression = oneSortExpression->getMultipleAttributes();
+            d->variableName = simpleExpression.first;
+            d->attributevec = simpleExpression.second;
+          }
         }
+        _sortNodeData.push_back(d);
       }
-      _sortNodeData.push_back(d);
+      catch (...) {
+        delete d;
+        throw;
+      }
     }
   }
 
-  ~sortAnalysis () {
+  ~SortAnalysis () {
     for (auto x : _sortNodeData){
       delete x;
     }
@@ -812,6 +847,7 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the whether we only have simple calculation nodes
 ////////////////////////////////////////////////////////////////////////////////
+
   bool isAnalyzeable () {
     if (_sortNodeData.size() == 0) {
       return false;
@@ -846,6 +882,7 @@ public:
 /// @brief checks whether our calculation nodes reference variableName; 
 /// @returns pair used for further processing with the indices.
 ////////////////////////////////////////////////////////////////////////////////
+
   Range_IndexPair getAttrsForVariableName (std::string &variableName) {
     ECN::IndexMatchVec v;
     RangeInfoVec rangeInfo;
@@ -855,17 +892,22 @@ public:
         return std::make_pair(v, rangeInfo); // for now, no mixed support.
       }
     }
+    // Collect the right data for the sorting:
     for (size_t j = 0; j < _sortNodeData.size(); j ++) {
       v.push_back(std::make_pair(_sortNodeData[j]->attributevec,
                                  _sortNodeData[j]->ASC));
-      rangeInfo.push_back(std::vector<RangeInfo>());
     }
+    // We only need one or-condition (because this is mandatory) which
+    // refers to 0 of the attributes:
+    rangeInfo.push_back(std::vector<RangeInfo>());
     return std::make_pair(v, rangeInfo);
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes the sortNode and its referenced Calculationnodes from the plan.
+/// @brief removes the sortNode and its referenced Calculationnodes from
+/// the plan.
 ////////////////////////////////////////////////////////////////////////////////
+
   void removeSortNodeFromPlan (ExecutionPlan *newPlan) {
     newPlan->unlinkNode(newPlan->getNodeById(sortNodeID));
   }
@@ -876,7 +918,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
 
   Optimizer*           _opt;
   ExecutionPlan*       _plan;
-  sortAnalysis*        _sortNode;
+  SortAnalysis*        _sortNode;
   Optimizer::RuleLevel _level;
 
   public:
@@ -885,7 +927,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
 
   sortToIndexNode (Optimizer* opt,
                    ExecutionPlan* plan,
-                   sortAnalysis* Node,
+                   SortAnalysis* Node,
                    Optimizer::RuleLevel level)
     : _opt(opt),
       _plan(plan),
@@ -1008,7 +1050,7 @@ int triagens::aql::useIndexForSort (Optimizer* opt,
     = plan->findNodesOfType(triagens::aql::ExecutionNode::SORT, true);
   for (auto n : nodes) {
     auto thisSortNode = static_cast<SortNode*>(n);
-    sortAnalysis node(thisSortNode);
+    SortAnalysis node(thisSortNode);
     if (node.isAnalyzeable()) {
       sortToIndexNode finder(opt, plan, &node, rule->level);
       thisSortNode->walk(&finder);/// todo auf der dependency anfangen

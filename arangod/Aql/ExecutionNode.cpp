@@ -503,7 +503,8 @@ void EnumerateCollectionNode::getIndexesForIndexRangeNode
   }
 }
 
-std::vector<EnumerateCollectionNode::IndexMatch> EnumerateCollectionNode::getIndicesOrdered (IndexMatchVec &attrs) const {
+std::vector<EnumerateCollectionNode::IndexMatch> 
+    EnumerateCollectionNode::getIndicesOrdered (IndexMatchVec &attrs) const {
 
   std::vector<IndexMatch> out;
   TRI_document_collection_t* document = _collection->documentCollection();
@@ -643,7 +644,7 @@ double IndexRangeNode::estimateCost () {
   }
   else if (_index->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
     for (auto x: _ranges.at(0)) { //only doing the 1-d case so far
-      if (!x._low._undefined && !x._high._undefined ) {
+      if (x._lowConst.isDefined() && x._highConst.isDefined() ) {
         if (x.is1ValueRangeInfo()) {
           if (!_index->_unique) {
             cost *= oldCost / 100;
@@ -655,7 +656,7 @@ double IndexRangeNode::estimateCost () {
           count ++;
         }
       }
-      else if (!(x._low._undefined && x._high._undefined)){
+      else if (x._lowConst.isDefined() || x._highConst.isDefined()){
         cost *= oldCost / 2;
         count ++;
       }
