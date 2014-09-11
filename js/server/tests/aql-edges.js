@@ -29,7 +29,6 @@ var jsunity = require("jsunity");
 var internal = require("internal");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults2;
-var getQueryExplanation = helper.getQueryExplanation;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -39,6 +38,10 @@ function ahuacatlQueryEdgesTestSuite () {
   var users = null;
   var relations = null;
   var docs = { };
+  
+  var explain = function (query, params) {
+    return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-index-range" ] } })).map(function(node) { return node.type; });
+  };
 
   return {
 
@@ -85,9 +88,9 @@ function ahuacatlQueryEdgesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFromQueryExplain : function () {
-      var actual = getQueryExplanation("FOR r IN UnitTestsAhuacatlUserRelations FILTER r._from == \"" + docs["John"]._id +"\" RETURN { \"from\" : r._from, \"to\" : r._to }");
-      assertEqual("index", actual[0].expression.extra.accessType);
-      assertEqual("edge", actual[0].expression.extra.index.type);
+      var query = "FOR r IN UnitTestsAhuacatlUserRelations FILTER r._from == \"" + docs["John"]._id +"\" RETURN { \"from\" : r._from, \"to\" : r._to }";
+      
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -95,9 +98,9 @@ function ahuacatlQueryEdgesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testToQueryExplain : function () {
-      var actual = getQueryExplanation("FOR r IN UnitTestsAhuacatlUserRelations FILTER r._to == \"" + docs["Fred"]._id +"\" RETURN { \"from\" : r._from, \"to\" : r._to }");
-      assertEqual("index", actual[0].expression.extra.accessType);
-      assertEqual("edge", actual[0].expression.extra.index.type);
+      var query = "FOR r IN UnitTestsAhuacatlUserRelations FILTER r._to == \"" + docs["Fred"]._id +"\" RETURN { \"from\" : r._from, \"to\" : r._to }";
+
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,9 +108,9 @@ function ahuacatlQueryEdgesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFromToQueryExplain : function () {
-      var actual = getQueryExplanation("FOR r IN UnitTestsAhuacatlUserRelations FILTER r._from == \"" + docs["John"]._id +"\" && r._to == \"" + docs["Fred"]._id + "\" RETURN { \"from\" : r._from, \"to\" : r._to }");
-      assertEqual("index", actual[0].expression.extra.accessType);
-      assertEqual("edge", actual[0].expression.extra.index.type);
+      var query = "FOR r IN UnitTestsAhuacatlUserRelations FILTER r._from == \"" + docs["John"]._id +"\" && r._to == \"" + docs["Fred"]._id + "\" RETURN { \"from\" : r._from, \"to\" : r._to }";
+
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -115,9 +118,9 @@ function ahuacatlQueryEdgesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFromToQuerySelfExplain : function () {
-      var actual = getQueryExplanation("FOR r IN UnitTestsAhuacatlUserRelations FILTER r._from == \"" + docs["Self"]._id +"\" && r._to == \"" + docs["Self"]._id + "\" RETURN { \"from\" : r._from, \"to\" : r._to }");
-      assertEqual("index", actual[0].expression.extra.accessType);
-      assertEqual("edge", actual[0].expression.extra.index.type);
+      var query = "FOR r IN UnitTestsAhuacatlUserRelations FILTER r._from == \"" + docs["Self"]._id +"\" && r._to == \"" + docs["Self"]._id + "\" RETURN { \"from\" : r._from, \"to\" : r._to }";
+      
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

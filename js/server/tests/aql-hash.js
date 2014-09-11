@@ -29,7 +29,6 @@ var internal = require("internal");
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults2;
-var getQueryExplanation = helper.getQueryExplanation;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -37,6 +36,10 @@ var getQueryExplanation = helper.getQueryExplanation;
 
 function ahuacatlHashTestSuite () {
   var hash;
+  
+  var explain = function (query, params) {
+    return helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-index-range" ] } })).map(function(node) { return node.type; });
+  };
 
   return {
 
@@ -79,9 +82,7 @@ function ahuacatlHashTestSuite () {
 
       assertEqual(expected, actual);
       
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("index", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -95,9 +96,7 @@ function ahuacatlHashTestSuite () {
 
       assertEqual(expected, actual);
       
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("index", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,9 +134,7 @@ function ahuacatlHashTestSuite () {
 
           assertEqual(expected, actual);
       
-          var explain = getQueryExplanation(query, { "a": i, "b": j });
-          assertEqual("for", explain[0].type);
-          assertEqual("index", explain[0].expression.extra.accessType);
+          assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query, { a: i, b: j }));
         }
       }
     },
@@ -155,9 +152,7 @@ function ahuacatlHashTestSuite () {
 
           assertEqual(expected, actual);
           
-          var explain = getQueryExplanation(query, { "a": i, "b": j });
-          assertEqual("for", explain[0].type);
-          assertEqual("index", explain[0].expression.extra.accessType);
+          assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query, { a: i, b: j }));
         }
       }
     },
@@ -172,11 +167,8 @@ function ahuacatlHashTestSuite () {
       var actual = getQueryResults(query);
 
       assertEqual(expected, actual);
-          
-      var explain = getQueryExplanation(query);
-      assertEqual("let", explain[0].type);
-      assertEqual("for", explain[1].type);
-      assertEqual("index", explain[1].expression.extra.accessType);
+      
+      assertEqual([ "SingletonNode", "CalculationNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -266,9 +258,7 @@ function ahuacatlHashTestSuite () {
 
       assertEqual(expected, actual);
 
-      var explain = getQueryExplanation(query, { "a": 2, "b": 3 });
-      assertEqual("for", explain[0].type);
-      assertEqual("index", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "IndexRangeNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query, { a: 2, b: 3 }));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -282,9 +272,7 @@ function ahuacatlHashTestSuite () {
       
       assertEqual(expected, actual);
 
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -298,9 +286,7 @@ function ahuacatlHashTestSuite () {
       
       assertEqual(expected, actual);
 
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -314,9 +300,7 @@ function ahuacatlHashTestSuite () {
       
       assertEqual(expected, actual);
 
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -330,9 +314,7 @@ function ahuacatlHashTestSuite () {
       
       assertEqual(expected, actual);
 
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -346,10 +328,8 @@ function ahuacatlHashTestSuite () {
       
       assertEqual(expected, actual);
 
-      var explain = getQueryExplanation(query);
-      assertEqual("for", explain[0].type);
-      assertEqual("all", explain[0].expression.extra.accessType);
-    },
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "CalculationNode", "ReturnNode" ], explain(query));
+    }
 
   };
 }
