@@ -83,6 +83,12 @@ function optimizerRuleTestSuite() {
     var hasNoSortNode = function (plan) {
         assertEqual(findExecutionNodes(plan, "SortNode").length, 0, "Has NO SortNode");
     };
+    var hasNoIndexRangeNode = function (plan) {
+        assertEqual(findExecutionNodes(plan, "IndexRangeNode").length, 0, "Has NO IndexRangeNode");
+    };
+    var hasNoResultsNode = function (plan) {
+        assertEqual(findExecutionNodes(plan, "NoResultsNode").length, 1, "Has NoResultsNode");
+    };
     var hasCalculationNodes = function (plan, countXPect) {
         assertEqual(findExecutionNodes(plan, "CalculationNode").length,
                     countXPect,
@@ -659,10 +665,12 @@ function optimizerRuleTestSuite() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test in detail that an index range can be used for an and combined 
-///   greater than + less than filter spanning a range. TODO: doesn't work now.
+///   greater than + less than filter spanning an empty range. This actually
+///   recognises the empty range and introduces a NoResultsNode but not an
+///   IndexRangeNode.
 ////////////////////////////////////////////////////////////////////////////////
+
       testRangeBandpassInvalid: function () {
-// TODO: this doesn't do anything. should it simply flush that range since its empty? or even raise? -> NoResultsNode????
         var query = "FOR v IN " + colName + " FILTER v.a > 7 && v.a < 4 RETURN [v.a, v.b]";
 
         var XPresult;
@@ -676,22 +684,12 @@ function optimizerRuleTestSuite() {
 
 
         XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
-        require("internal").print(XPresult);              
         assertEqual([ secondRuleName ], XPresult.plan.rules);
         // the sortnode and its calculation node should be there.
         hasCalculationNodes(XPresult, 2);
 
-        // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
-        var RAs = getRangeAttributes(XPresult);
-          require("internal").print(RAs);
-        var first = getRangeAttribute(RAs, "v", "a", 1);
-        
-        require("internal").print(first);
-          require("internal").print(first);
-        assertEqual(first.low.bound.vType, "int", "Type is int");
-        assertEqual(first.low.bound.value, 4, "proper value was set");
-        assertEqual(first.high.bound.vType, "int", "Type is int");
-        assertEqual(first.high.bound.value, 10, "proper value was set");
+        hasNoResultsNode(XPresult);
+        hasNoIndexRangeNode(XPresult);
 
         assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
           
