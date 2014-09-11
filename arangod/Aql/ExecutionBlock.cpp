@@ -1188,7 +1188,6 @@ void IndexRangeBlock::readHashIndex () {
         }
       }
 
-      //std::cout << "PID: " << pid << ", NAME: " << name << "\n";
     }
   };
  
@@ -1415,7 +1414,7 @@ size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
         break;
       }
       case AqlValue::RANGE: {
-        sizeInVar = inVarReg._range->_high - inVarReg._range->_low + 1;
+        sizeInVar = inVarReg._range->size();
         break;
       }
       case AqlValue::DOCVEC: {
@@ -1467,7 +1466,7 @@ AqlValue EnumerateListBlock::getAqlValue (AqlValue inVarReg) {
       return AqlValue(new Json(inVarReg._json->at(_index++).copy()));
     }
     case AqlValue::RANGE: {
-      return AqlValue(new Json(static_cast<double>(inVarReg._range->_low + _index++)));
+      return AqlValue(new Json(static_cast<double>(inVarReg._range->at(_index++))));
     }
     case AqlValue::DOCVEC: { // incoming doc vec has a single column
       AqlValue out = inVarReg._vector->at(_thisblock)->getValue(_index -

@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require, exports, assertTrue, assertEqual, fail, AQL_EXECUTE */
+/*global require, exports, assertTrue, assertEqual, fail, AQL_EXECUTE, AQL_PARSE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief aql test helper functions
@@ -72,7 +72,7 @@ function normalizeRow (row, recursive) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function getParseResults (query) {
-  return internal.AQL_PARSE(query);
+  return AQL_PARSE(query);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -112,6 +112,20 @@ function getModifyQueryResults (query, bindVars) {
   }
 
   return queryResult.extra;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the results of a modify-query; compare aql 1 & 2 results
+////////////////////////////////////////////////////////////////////////////////
+
+function getModifyQueryResults2 (query, bindVars) {
+  var queryResult = AQL_EXECUTE(query, bindVars);
+
+  if (queryResult instanceof arangodb.ArangoCursor) {
+    return queryResult.getExtra();
+  }
+
+  return queryResult.stats;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -468,21 +482,22 @@ function findReferencedNodes(plan, testNode) {
 // --SECTION--                                                    module exports
 // -----------------------------------------------------------------------------
 
-exports.isEqual               = isEqual;
-exports.getParseResults       = getParseResults;
-exports.assertParseError      = assertParseError;
-exports.getQueryExplanation   = getQueryExplanation;
-exports.getModifyQueryResults = getModifyQueryResults;
-exports.getRawQueryResults    = getRawQueryResults;
-exports.getQueryResults       = getQueryResults;
-exports.getQueryResults2      = getQueryResults2;
-exports.getQueryResultsAQL2   = getQueryResultsAQL2;
-exports.assertQueryError      = assertQueryError;
-exports.assertQueryError2     = assertQueryError2;
-exports.getLinearizedPlan     = getLinearizedPlan;
-exports.getCompactPlan        = getCompactPlan;
-exports.findExecutionNodes    = findExecutionNodes;
-exports.findReferencedNodes   = findReferencedNodes;
+exports.isEqual                = isEqual;
+exports.getParseResults        = getParseResults;
+exports.assertParseError       = assertParseError;
+exports.getQueryExplanation    = getQueryExplanation;
+exports.getModifyQueryResults  = getModifyQueryResults;
+exports.getModifyQueryResults2 = getModifyQueryResults2;
+exports.getRawQueryResults     = getRawQueryResults;
+exports.getQueryResults        = getQueryResults;
+exports.getQueryResults2       = getQueryResults2;
+exports.getQueryResultsAQL2    = getQueryResultsAQL2;
+exports.assertQueryError       = assertQueryError;
+exports.assertQueryError2      = assertQueryError2;
+exports.getLinearizedPlan      = getLinearizedPlan;
+exports.getCompactPlan         = getCompactPlan;
+exports.findExecutionNodes     = findExecutionNodes;
+exports.findReferencedNodes    = findReferencedNodes;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
