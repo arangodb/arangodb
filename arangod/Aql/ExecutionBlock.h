@@ -652,13 +652,13 @@ public:
 /// @brief read using a skiplist index
 ////////////////////////////////////////////////////////////////////////////////
 
-        void readSkiplistIndex ();
+        void readSkiplistIndex (IndexOrCondition const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read using a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-        void readHashIndex ();
+        void readHashIndex (IndexOrCondition const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

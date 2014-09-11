@@ -806,7 +806,7 @@ int triagens::aql::useIndexRange (Optimizer* opt,
 class SortAnalysis {
   using ECN = triagens::aql::EnumerateCollectionNode;
 
-  typedef std::pair<ECN::IndexMatchVec, RangeInfoVec> Range_IndexPair;
+  typedef std::pair<ECN::IndexMatchVec, IndexOrCondition> Range_IndexPair;
 
   struct sortNodeData {
     bool ASC;
@@ -902,7 +902,7 @@ public:
 
   Range_IndexPair getAttrsForVariableName (std::string &variableName) {
     ECN::IndexMatchVec v;
-    RangeInfoVec rangeInfo;
+    IndexOrCondition rangeInfo;
 
     for (size_t j = 0; j < _sortNodeData.size(); j ++) {
       if (_sortNodeData[j]->variableName != variableName) {
