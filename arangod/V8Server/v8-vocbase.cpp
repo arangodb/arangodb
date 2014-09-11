@@ -829,6 +829,7 @@ static v8::Handle<v8::Value> JS_ParseAql (v8::Arguments const& argv) {
   }
 
   v8::Handle<v8::Object> result = v8::Object::New();
+  result->Set(v8::String::New("parsed"), v8::True());
 
   {
     v8::Handle<v8::Array> collections = v8::Array::New();
@@ -845,7 +846,7 @@ static v8::Handle<v8::Value> JS_ParseAql (v8::Arguments const& argv) {
     for (auto it = parseResult.bindParameters.begin(); it != parseResult.bindParameters.end(); ++it) {
       bindVars->Set(i++, v8::String::New((*it).c_str()));
     }
-    result->Set(TRI_V8_STRING("bindVars"), bindVars); 
+    result->Set(TRI_V8_STRING("parameters"), bindVars); 
   }
 
   result->Set(TRI_V8_STRING("ast"), TRI_ObjectJson(parseResult.json));
@@ -1446,83 +1447,6 @@ static v8::Handle<v8::Value> JS_ExplainAhuacatl (v8::Arguments const& argv) {
 
   return scope.Close(result);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parses an AQL query and returns the parse result
-////////////////////////////////////////////////////////////////////////////////
-
-static v8::Handle<v8::Value> JS_ParseAhuacatl (v8::Arguments const& argv) {
-  v8::HandleScope scope;
-  v8::TryCatch tryCatch;
-
-  if (argv.Length() != 1) {
-    TRI_V8_EXCEPTION_USAGE(scope, "AHUACATL_PARSE(<querystring>)");
-  }
-
-  TRI_vocbase_t* vocbase = GetContextVocBase();
-
-  if (vocbase == 0) {
-    TRI_V8_EXCEPTION(scope, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-
-  // get the query string
-  v8::Handle<v8::Value> queryArg = argv[0];
-
-  if (!queryArg->IsString()) {
-    TRI_V8_TYPE_ERROR(scope, "expecting string for <querystring>");
-  }
-
-  string queryString = TRI_ObjectToString(queryArg);
-
-  AhuacatlGuard context(vocbase, queryString, 0);
-
-  if (! context.valid()) {
-    TRI_V8_EXCEPTION_MEMORY(scope);
-  }
-
-  // parse & validate
-  if (! TRI_ValidateQueryContextAql(context.ptr())) {
-    v8::Handle<v8::Object> errorObject = CreateErrorObjectAhuacatl(&(context.ptr())->_error);
-    return scope.Close(v8::ThrowException(errorObject));
-  }
-
-  // setup result
-  v8::Handle<v8::Object> result = v8::Object::New();
-
-  result->Set(v8::String::New("parsed"), v8::True());
-
-  // return the bind parameter names
-  result->Set(v8::String::New("parameters"), TRI_ArrayAssociativePointer(&(context.ptr())->_parameters._names));
-  // return the collection names
-  result->Set(v8::String::New("collections"), TRI_ArrayAssociativePointer(&(context.ptr())->_collectionNames));
-  context.free();
-
-  if (tryCatch.HasCaught()) {
-    if (tryCatch.CanContinue()) {
-      if (tryCatch.Exception()->IsObject() && v8::Handle<v8::Array>::Cast(tryCatch.Exception())->HasOwnProperty(v8::String::New("errorNum"))) {
-        // we already have an ArangoError object
-        return scope.Close(v8::ThrowException(tryCatch.Exception()));
-      }
-
-      // create a new error object
-      v8::Handle<v8::Object> errorObject = TRI_CreateErrorObject(
-        __FILE__,
-        __LINE__,
-        TRI_ERROR_QUERY_SCRIPT,
-        TRI_ObjectToString(tryCatch.Exception()).c_str());
-      return scope.Close(v8::ThrowException(errorObject));
-    }
-    else {
-      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(v8::Isolate::GetCurrent()->GetData());
-      v8g->_canceled = true;
-      return scope.Close(result);
-    }
-  }
-
-  return scope.Close(result);
-}
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       TRI_VOCBASE_COL_T FUNCTIONS
@@ -2752,7 +2676,6 @@ void TRI_InitV8VocBridge (v8::Handle<v8::Context> context,
   // AQL functions. not intended to be used by end users
   TRI_AddGlobalFunctionVocbase(context, "AHUACATL_RUN", JS_RunAhuacatl, true);
   TRI_AddGlobalFunctionVocbase(context, "AHUACATL_EXPLAIN", JS_ExplainAhuacatl, true);
-  TRI_AddGlobalFunctionVocbase(context, "AHUACATL_PARSE", JS_ParseAhuacatl, true);
   
   // new AQL functions. not intended to be used directly by end users
   TRI_AddGlobalFunctionVocbase(context, "AQL_EXECUTE", JS_ExecuteAql, true);

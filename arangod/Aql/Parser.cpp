@@ -112,6 +112,11 @@ bool Parser::configureWriteQuery (QueryType type,
 ////////////////////////////////////////////////////////////////////////////////
 
 QueryResult Parser::parse () {
+  char const* q = queryString();
+  if (q == nullptr || *q == '\0') {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_EMPTY);
+  }
+
   // start main scope
   auto scopes = _ast->scopes();
   scopes->start(AQL_SCOPE_MAIN);
