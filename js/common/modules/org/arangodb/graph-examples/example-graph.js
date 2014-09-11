@@ -33,7 +33,7 @@
 
   var createTraversalExample = function() {
     var g = Graph._create("knows_graph",
-      [Graph._undirectedRelation("knows", "persons")]
+      [Graph._relation("knows", "persons", "persons")]
     );
     var a = g.persons.save({name: "Alice", _key: "alice"})._id;
     var b = g.persons.save({name: "Bob", _key: "bob"})._id;
@@ -50,7 +50,7 @@
 
   var createSocialGraph = function() {
     var edgeDefinition = [];
-    edgeDefinition.push(Graph._undirectedRelation("relation", ["female", "male"]));
+    edgeDefinition.push(Graph._relation("relation", ["female", "male"], ["female", "male"]));
     var g = Graph._create("social", edgeDefinition);
     var a = g.female.save({name: "Alice", _key: "alice"});
     var b = g.male.save({name: "Bob", _key: "bob"});
@@ -65,13 +65,13 @@
 
   var createRoutePlannerGraph = function() {
     var edgeDefinition = [];
-    edgeDefinition.push(Graph._directedRelation(
+    edgeDefinition.push(Graph._relation(
       "germanHighway", ["germanCity"], ["germanCity"])
     );
     edgeDefinition.push(
-      Graph._directedRelation("frenchHighway", ["frenchCity"], ["frenchCity"])
+      Graph._relation("frenchHighway", ["frenchCity"], ["frenchCity"])
     );
-    edgeDefinition.push(Graph._directedRelation(
+    edgeDefinition.push(Graph._relation(
       "internationalHighway", ["frenchCity", "germanCity"], ["frenchCity", "germanCity"])
     );
     var g = Graph._create("routeplanner", edgeDefinition);

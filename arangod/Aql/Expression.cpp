@@ -156,7 +156,7 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
 
 void Expression::analyzeExpression () {
   TRI_ASSERT(_type == UNPROCESSED);
-  
+
   if (_node->isConstant()) {
     // generate a constant value
     _data = _node->toJsonValue(TRI_UNKNOWN_MEM_ZONE);
@@ -346,6 +346,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
  
   else if (node->type == NODE_TYPE_FCALL) {
     // some functions have C++ handlers
+    // check if the called function has one
     auto func = static_cast<Function*>(node->getData());
     TRI_ASSERT(func->implementation != nullptr);
 
@@ -356,6 +357,21 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     auto res2 = func->implementation(trx, myCollection, result);
     result.destroy();
     return res2;
+  }
+
+  else if (node->type == NODE_TYPE_RANGE) {
+    TRI_document_collection_t const* myCollection = nullptr;
+
+    auto low = node->getMember(0);
+    auto high = node->getMember(1);
+    AqlValue resultLow = executeSimpleExpression(low, &myCollection, trx, docColls, argv, startPos, vars, regs);
+    AqlValue resultHigh = executeSimpleExpression(high, &myCollection, trx, docColls, argv, startPos, vars, regs);
+
+    if (! resultLow.isNumber() || ! resultHigh.isNumber()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid data type for range");
+    }
+    
+    return AqlValue(resultLow.toNumber<int64_t>(), resultHigh.toNumber<int64_t>());
   }
   
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unhandled type in simple expression");
