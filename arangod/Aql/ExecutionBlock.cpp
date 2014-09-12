@@ -1220,21 +1220,21 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
 void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
   TRI_primary_index_t* primaryIndex = &(_collection->documentCollection()->_primaryIndex);
      
-  char const* key = nullptr;  
+  std::string key;
   for (auto x: ranges.at(0)) {
     if (x._attr == std::string(TRI_VOC_ATTRIBUTE_KEY)) {
       // we can use lower bound because only equality is supported
       TRI_ASSERT(x.is1ValueRangeInfo());
       auto const json = x._lowConst.bound().json();
       if (TRI_IsStringJson(json)) {
-        key = json->_value._string.data;
+        key = std::string(json->_value._string.data, json->_value._string.length - 1);
       }
       break;
     }
   }
 
-  if (key != nullptr) { 
-    auto found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(primaryIndex, key));
+  if (! key.empty()) {
+    auto found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(primaryIndex, key.c_str()));
     if (found != nullptr) {
       _documents.push_back(*found);
     }
@@ -1316,7 +1316,7 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
 void IndexRangeBlock::readEdgeIndex (IndexOrCondition const& ranges) {
   TRI_document_collection_t* document = _collection->documentCollection();
      
-  char const* key = nullptr; 
+  std::string key;
   TRI_edge_direction_e direction;
    
   for (auto x: ranges.at(0)) {
@@ -1326,7 +1326,7 @@ void IndexRangeBlock::readEdgeIndex (IndexOrCondition const& ranges) {
       auto const json = x._lowConst.bound().json();
       if (TRI_IsStringJson(json)) {
         // no error will be thrown if _from is not a string
-        key = json->_value._string.data;
+        key = std::string(json->_value._string.data, json->_value._string.length - 1);
         direction = TRI_EDGE_OUT;
       }
       break;
@@ -1337,18 +1337,18 @@ void IndexRangeBlock::readEdgeIndex (IndexOrCondition const& ranges) {
       auto const json = x._lowConst.bound().json();
       if (TRI_IsStringJson(json)) {
         // no error will be thrown if _to is not a string
-        key = json->_value._string.data;
+        key = std::string(json->_value._string.data, json->_value._string.length - 1);
         direction = TRI_EDGE_IN;
       }
       break;
     }
   }
 
-  if (key != nullptr) { 
+  if (! key.empty()) {
     TRI_voc_cid_t documentCid;
     std::string documentKey;
 
-    int errorCode = resolve(key, documentCid, documentKey);
+    int errorCode = resolve(key.c_str(), documentCid, documentKey);
 
     if (errorCode == TRI_ERROR_NO_ERROR) {
       // silently ignore all errors due to wrong _from / _to specifications
