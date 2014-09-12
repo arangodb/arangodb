@@ -461,7 +461,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int create (TRI_transaction_collection_t* trxCollection,
-                    TRI_df_marker_type_e markerType,
                     TRI_doc_mptr_copy_t* mptr,
                     TRI_json_t const* json,
                     void const* data,

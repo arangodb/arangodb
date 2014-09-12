@@ -30,8 +30,9 @@
 
 #include "Basics/Common.h"
 #include "Aql/AstNode.h"
-#include "Aql/Types.h"
 #include "Aql/Query.h"
+#include "Aql/Types.h"
+#include "Aql/Variable.h"
 #include "Basics/JsonHelper.h"
 #include "Utils/AqlTransaction.h"
 
@@ -40,6 +41,7 @@ struct TRI_json_s;
 namespace triagens {
   namespace basics {
     class Json;
+    class StringBuffer;
   }
 
   namespace aql {
@@ -47,7 +49,6 @@ namespace triagens {
     class AqlItemBlock;
     struct AqlValue;
     class Ast;
-    struct Variable;
     class Executor;
     struct V8Expression;
 
@@ -102,7 +103,10 @@ namespace triagens {
 /// @brief whether or not the expression can throw an exception
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline bool canThrow () const {
+        inline bool canThrow () {
+          if (_type == UNPROCESSED) {
+            analyzeExpression();
+          }
           return _canThrow;
         }
 
@@ -110,7 +114,10 @@ namespace triagens {
 /// @brief whether or not the expression is deterministic
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline bool isDeterministic () const {
+        inline bool isDeterministic () {
+          if (_type == UNPROCESSED) {
+            analyzeExpression();
+          }
           return _isDeterministic;
         }
 
@@ -150,10 +157,13 @@ namespace triagens {
                           std::vector<RegisterId> const&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether this is a simple expression.
+/// @brief check whether this is a simple expression
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isSimple () const {
+        bool isSimple () {
+          if (_type == UNPROCESSED) {
+            analyzeExpression();
+          }
           return _type == SIMPLE;
         }
 
@@ -175,14 +185,20 @@ namespace triagens {
 /// call isSimpleAccessReference in advance to ensure no exceptions.
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::pair<std::string, std::string> getMultipleAttributes() const;
+        std::pair<std::string, std::string> getMultipleAttributes();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stringify an expression
 /// note that currently stringification is only supported for certain node types
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string stringify () const;
+        void stringify (triagens::basics::StringBuffer*) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replace variables in the expression
+////////////////////////////////////////////////////////////////////////////////
+
+        void replaceVariables (std::unordered_map<VariableId, Variable const*> const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions

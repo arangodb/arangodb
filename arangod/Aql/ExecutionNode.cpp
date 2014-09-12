@@ -30,11 +30,13 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/Ast.h"
+#include "Basics/StringBuffer.h"
 
 using namespace triagens::basics;
 using namespace triagens::aql;
 
 const static bool Optional = true;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static initialization
 // -----------------------------------------------------------------------------
@@ -87,7 +89,7 @@ void ExecutionNode::validateType (int type) {
   }
 }
 
-ExecutionNode* ExecutionNode::fromJsonFactory (Ast* ast,
+ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
                                                Json const& oneNode) {
   auto JsonString = oneNode.toString();
 
@@ -97,19 +99,19 @@ ExecutionNode* ExecutionNode::fromJsonFactory (Ast* ast,
   NodeType nodeType = (NodeType) nodeTypeID;
   switch (nodeType) {
     case SINGLETON:
-      return new SingletonNode(ast, oneNode);
+      return new SingletonNode(plan, oneNode);
     case ENUMERATE_COLLECTION:
-      return new EnumerateCollectionNode(ast, oneNode);
+      return new EnumerateCollectionNode(plan, oneNode);
     case ENUMERATE_LIST:
-      return new EnumerateListNode(ast, oneNode);
+      return new EnumerateListNode(plan, oneNode);
     case FILTER:
-      return new FilterNode(ast, oneNode);
+      return new FilterNode(plan, oneNode);
     case LIMIT:
-      return new LimitNode(ast, oneNode);
+      return new LimitNode(plan, oneNode);
     case CALCULATION:
-      return new CalculationNode(ast, oneNode);
+      return new CalculationNode(plan, oneNode);
     case SUBQUERY: 
-      return new SubqueryNode(ast, oneNode);
+      return new SubqueryNode(plan, oneNode);
     case SORT: {
       Json jsonElements = oneNode.get("elements");
       if (! jsonElements.isList()){
@@ -121,17 +123,17 @@ ExecutionNode* ExecutionNode::fromJsonFactory (Ast* ast,
       for (size_t i = 0; i < len; i++) {
         Json oneJsonElement = jsonElements.at(i);
         bool ascending = JsonHelper::checkAndGetBooleanValue(oneJsonElement.json(), "ascending");
-        Variable *v = varFromJson(ast, oneJsonElement, "inVariable");
+        Variable *v = varFromJson(plan->getAst(), oneJsonElement, "inVariable");
         elements.push_back(std::make_pair(v, ascending));
       }
 
       bool stable = JsonHelper::checkAndGetBooleanValue(oneNode.json(), "stable");
 
-      return new SortNode(ast, oneNode, elements, stable);
+      return new SortNode(plan, oneNode, elements, stable);
     }
     case AGGREGATE: {
 
-      Variable *outVariable = varFromJson(ast, oneNode, "outVariable", Optional);
+      Variable *outVariable = varFromJson(plan->getAst(), oneNode, "outVariable", Optional);
 
       Json jsonAggregates = oneNode.get("aggregates");
       if (! jsonAggregates.isList()){
@@ -144,32 +146,32 @@ ExecutionNode* ExecutionNode::fromJsonFactory (Ast* ast,
       aggregateVariables.reserve(len);
       for (size_t i = 0; i < len; i++) {
         Json oneJsonAggregate = jsonAggregates.at(i);
-        Variable* outVariable = varFromJson(ast, oneJsonAggregate, "outVariable");
-        Variable* inVariable =  varFromJson(ast, oneJsonAggregate, "inVariable");
+        Variable* outVariable = varFromJson(plan->getAst(), oneJsonAggregate, "outVariable");
+        Variable* inVariable =  varFromJson(plan->getAst(), oneJsonAggregate, "inVariable");
 
         aggregateVariables.push_back(std::make_pair(outVariable, inVariable));
       }
 
-      return new AggregateNode(ast,
+      return new AggregateNode(plan,
                                oneNode,
                                outVariable,
-                               ast->variables()->variables(false),
+                               plan->getAst()->variables()->variables(false),
                                aggregateVariables);
     }
     case INSERT:
-      return new InsertNode(ast, oneNode);
+      return new InsertNode(plan, oneNode);
     case REMOVE:
-      return new RemoveNode(ast, oneNode);
+      return new RemoveNode(plan, oneNode);
     case REPLACE:
-      return new ReplaceNode(ast, oneNode);
+      return new ReplaceNode(plan, oneNode);
     case UPDATE:
-      return new UpdateNode(ast, oneNode);
+      return new UpdateNode(plan, oneNode);
     case RETURN:
-      return new ReturnNode(ast, oneNode);
+      return new ReturnNode(plan, oneNode);
     case NORESULTS:
-      return new NoResultsNode(ast, oneNode);
+      return new NoResultsNode(plan, oneNode);
     case INDEX_RANGE:
-      return new IndexRangeNode(ast, oneNode);
+      return new IndexRangeNode(plan, oneNode);
     case INTERSECTION:
     case LOOKUP_JOIN:
     case MERGE_JOIN:
@@ -194,8 +196,9 @@ ExecutionNode* ExecutionNode::fromJsonFactory (Ast* ast,
 /// @brief create an ExecutionNode from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode::ExecutionNode (triagens::basics::Json const& json) 
-  : ExecutionNode(JsonHelper::checkAndGetNumericValue<size_t>(json.json(), "id")) {
+ExecutionNode::ExecutionNode (ExecutionPlan* plan,
+                              triagens::basics::Json const& json) 
+  : ExecutionNode(plan, JsonHelper::checkAndGetNumericValue<size_t>(json.json(), "id")) {
   // TODO: decide whether it should be allowed to create an abstract ExecutionNode at all
 }
 
@@ -419,8 +422,9 @@ Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Json& nodes,
 /// @brief toJson, for SingletonNode
 ////////////////////////////////////////////////////////////////////////////////
 
-SingletonNode::SingletonNode (Ast* ast, basics::Json const& base)
-  : ExecutionNode(base) {
+SingletonNode::SingletonNode (ExecutionPlan* plan, 
+                              basics::Json const& base)
+  : ExecutionNode(plan, base) {
 }
 
 void SingletonNode::toJsonHelper (triagens::basics::Json& nodes,
@@ -439,11 +443,12 @@ void SingletonNode::toJsonHelper (triagens::basics::Json& nodes,
 // --SECTION--                                methods of EnumerateCollectionNode
 // -----------------------------------------------------------------------------
 
-EnumerateCollectionNode::EnumerateCollectionNode (Ast* ast, basics::Json const& base)
-  : ExecutionNode(base),
-    _vocbase(ast->query()->vocbase()),
-    _collection(ast->query()->collections()->get(JsonHelper::checkAndGetStringValue(base.json(), "collection"))),
-    _outVariable(varFromJson(ast, base, "outVariable")) {
+EnumerateCollectionNode::EnumerateCollectionNode (ExecutionPlan* plan,
+                                                  basics::Json const& base)
+  : ExecutionNode(plan, base),
+    _vocbase(plan->getAst()->query()->vocbase()),
+    _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(base.json(), "collection"))),
+    _outVariable(varFromJson(plan->getAst(), base, "outVariable")) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -585,10 +590,11 @@ std::vector<EnumerateCollectionNode::IndexMatch>
 // --SECTION--                                      methods of EnumerateListNode
 // -----------------------------------------------------------------------------
 
-EnumerateListNode::EnumerateListNode (Ast* ast, basics::Json const& base)
-  : ExecutionNode(base),
-    _inVariable(varFromJson(ast, base, "inVariable")),
-    _outVariable(varFromJson(ast, base, "outVariable")) {
+EnumerateListNode::EnumerateListNode (ExecutionPlan* plan,
+                                      basics::Json const& base)
+  : ExecutionNode(plan, base),
+    _inVariable(varFromJson(plan->getAst(), base, "inVariable")),
+    _outVariable(varFromJson(plan->getAst(), base, "outVariable")) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -659,12 +665,13 @@ void IndexRangeNode::toJsonHelper (triagens::basics::Json& nodes,
 /// @brief constructor for IndexRangeNode from Json
 ////////////////////////////////////////////////////////////////////////////////
 
-IndexRangeNode::IndexRangeNode (Ast* ast, basics::Json const& json)
-  : ExecutionNode(json),
-    _vocbase(ast->query()->vocbase()),
-    _collection(ast->query()->collections()->get(JsonHelper::checkAndGetStringValue(json.json(), 
+IndexRangeNode::IndexRangeNode (ExecutionPlan* plan,
+                                basics::Json const& json)
+  : ExecutionNode(plan, json),
+    _vocbase(plan->getAst()->query()->vocbase()),
+    _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(json.json(), 
             "collection"))),
-    _outVariable(varFromJson(ast, json, "outVariable")), 
+    _outVariable(varFromJson(plan->getAst(), json, "outVariable")), 
     _ranges() {
 
   Json rangesJson(TRI_UNKNOWN_MEM_ZONE, JsonHelper::checkAndGetListValue(json.json(), "ranges"));
@@ -754,12 +761,47 @@ double IndexRangeNode::estimateCost () {
   return dependencyCost;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<Variable const*> IndexRangeNode::getVariablesUsedHere () const {
+  std::vector<Variable const*> v;
+  std::unordered_set<Variable const*> s;
+
+  for (auto const& x : _ranges) {
+    for (RangeInfo const& y : x) {
+      auto inserter = [&] (RangeInfoBound const& b) -> void {
+        AstNode const* a = b.getExpressionAst(_plan->getAst());
+        std::unordered_set<Variable*> vars
+            = Ast::getReferencedVariables(a);
+        for (auto vv : vars) {
+          s.insert(vv);
+        }
+      };
+
+      for (RangeInfoBound const& z : y._lows) {
+        inserter(z);
+      }
+      for (RangeInfoBound const& z : y._highs) {
+        inserter(z);
+      }
+    }
+  }
+
+  // Copy set elements into vector:
+  for (auto vv : s) {
+    v.push_back(vv);
+  }
+  return v;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                              methods of LimitNode
 // -----------------------------------------------------------------------------
 
-LimitNode::LimitNode (Ast* ast, basics::Json const& base)
-  : ExecutionNode(base) {
+LimitNode::LimitNode (ExecutionPlan* plan, basics::Json const& base)
+  : ExecutionNode(plan, base) {
   _offset = JsonHelper::checkAndGetNumericValue<double>(base.json(), "offset");
   _limit = JsonHelper::checkAndGetNumericValue<double>(base.json(), "limit");
 }
@@ -787,10 +829,11 @@ void LimitNode::toJsonHelper (triagens::basics::Json& nodes,
 // --SECTION--                                        methods of CalculationNode
 // -----------------------------------------------------------------------------
 
-CalculationNode::CalculationNode (Ast* ast, basics::Json const& base)
-  : ExecutionNode(base),
-    _outVariable(varFromJson(ast, base, "outVariable")),
-    _expression(new Expression(ast, base)) {
+CalculationNode::CalculationNode (ExecutionPlan* plan,
+                                  basics::Json const& base)
+  : ExecutionNode(plan, base),
+    _outVariable(varFromJson(plan->getAst(), base, "outVariable")),
+    _expression(new Expression(plan->getAst(), base)) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -818,11 +861,11 @@ void CalculationNode::toJsonHelper (triagens::basics::Json& nodes,
 // --SECTION--                                           methods of SubqueryNode
 // -----------------------------------------------------------------------------
 
-SubqueryNode::SubqueryNode (Ast* ast,
+SubqueryNode::SubqueryNode (ExecutionPlan* plan,
                             basics::Json const& base)
-  : ExecutionNode(base),
+  : ExecutionNode(plan, base),
     _subquery(nullptr),
-    _outVariable(varFromJson(ast, base, "outVariable")) {
+    _outVariable(varFromJson(plan->getAst(), base, "outVariable")) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -874,7 +917,7 @@ struct SubqueryVarUsageFinder : public WalkerWorker<ExecutionNode> {
     }
   }
 
-  bool enterSubquery (ExecutionNode* super, ExecutionNode* sub) {
+  bool enterSubquery (ExecutionNode*, ExecutionNode* sub) {
     SubqueryVarUsageFinder subfinder;
     sub->walk(&subfinder);
 
@@ -922,7 +965,7 @@ struct CanThrowFinder : public WalkerWorker<ExecutionNode> {
   ~CanThrowFinder () {
   };
 
-  bool enterSubQuery (ExecutionNode* super, ExecutionNode* sub) {
+  bool enterSubQuery (ExecutionNode*, ExecutionNode*) {
     return false;
   }
 
@@ -949,9 +992,9 @@ bool SubqueryNode::canThrow () {
 // --SECTION--                                             methods of FilterNode
 // -----------------------------------------------------------------------------
 
-FilterNode::FilterNode (Ast* ast, basics::Json const& base)
-  : ExecutionNode(base),
-    _inVariable(varFromJson(ast, base, "inVariable")) {
+FilterNode::FilterNode (ExecutionPlan* plan, basics::Json const& base)
+  : ExecutionNode(plan, base),
+    _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -976,11 +1019,11 @@ void FilterNode::toJsonHelper (triagens::basics::Json& nodes,
 // --SECTION--                                               methods of SortNode
 // -----------------------------------------------------------------------------
 
-SortNode::SortNode (Ast* ast,
+SortNode::SortNode (ExecutionPlan* plan,
                     basics::Json const& base,
                     std::vector<std::pair<Variable const*, bool>> const& elements,
                     bool stable)
-  : ExecutionNode(base),
+  : ExecutionNode(plan, base),
     _elements(elements),
     _stable(stable) {
 }
@@ -1056,14 +1099,15 @@ std::vector<std::pair<ExecutionNode*, bool>> SortNode::getCalcNodePairs ()
 /// @brief returns all sort information 
 ////////////////////////////////////////////////////////////////////////////////
 
-SortInformation SortNode::getSortInformation (ExecutionPlan* plan) const {
+SortInformation SortNode::getSortInformation (ExecutionPlan* plan,
+                                              triagens::basics::StringBuffer* buffer) const {
   SortInformation result;
 
   auto elements = getElements();
   for (auto it = elements.begin(); it != elements.end(); ++it) {
     auto variable = (*it).first;
     TRI_ASSERT(variable != nullptr);
-    auto setter = plan->getVarSetBy(variable->id);
+    auto setter = _plan->getVarSetBy(variable->id);
       
     if (setter == nullptr) {
       result.isValid = false;
@@ -1084,7 +1128,9 @@ SortInformation SortNode::getSortInformation (ExecutionPlan* plan) const {
         break;
       }
 
-      result.criteria.emplace_back(std::make_tuple(setter, expression->stringify(), (*it).second));
+      expression->stringify(buffer);
+      result.criteria.emplace_back(std::make_tuple(setter, buffer->c_str(), (*it).second));
+      buffer->reset();
     }
     else {
       // use variable only. note that we cannot use the variable's name as it is not
@@ -1100,12 +1146,12 @@ SortInformation SortNode::getSortInformation (ExecutionPlan* plan) const {
 // --SECTION--                                          methods of AggregateNode
 // -----------------------------------------------------------------------------
 
-AggregateNode::AggregateNode (Ast* ast,
+AggregateNode::AggregateNode (ExecutionPlan* plan,
                               basics::Json const& base,
                               Variable const* outVariable,
                               std::unordered_map<VariableId, std::string const> const& variableMap,
                               std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables)
-  : ExecutionNode(base),
+  : ExecutionNode(plan, base),
     _aggregateVariables(aggregateVariables), 
     _outVariable(outVariable),
     _variableMap(variableMap) {
@@ -1150,7 +1196,7 @@ struct UserVarFinder : public WalkerWorker<ExecutionNode> {
   ~UserVarFinder () {};
   std::vector<Variable const*> userVars;
 
-  bool enterSubquery (ExecutionNode* super, ExecutionNode* sub) {
+  bool enterSubquery (ExecutionNode*, ExecutionNode*) {
     return false;
   }
   bool before (ExecutionNode* en) {
@@ -1190,9 +1236,9 @@ std::vector<Variable const*> AggregateNode::getVariablesUsedHere () const {
 // --SECTION--                                             methods of ReturnNode
 // -----------------------------------------------------------------------------
 
-ReturnNode::ReturnNode (Ast* ast, basics::Json const& base)
-  : ExecutionNode(base),
-    _inVariable(varFromJson(ast, base, "inVariable")) {
+ReturnNode::ReturnNode (ExecutionPlan* plan, basics::Json const& base)
+  : ExecutionNode(plan, base),
+    _inVariable(varFromJson(plan->getAst(), base, "inVariable")) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1218,11 +1264,11 @@ void ReturnNode::toJsonHelper (triagens::basics::Json& nodes,
 // --SECTION--                                                  ModificationNode
 // -----------------------------------------------------------------------------
 
-ModificationNode::ModificationNode (Ast* ast,
+ModificationNode::ModificationNode (ExecutionPlan* plan,
                                     basics::Json const& base)
-  : ExecutionNode(base), 
-    _vocbase(ast->query()->vocbase()),
-    _collection(ast->query()->collections()->get(JsonHelper::checkAndGetStringValue(base.json(), "collection"))),
+  : ExecutionNode(plan, base), 
+    _vocbase(plan->getAst()->query()->vocbase()),
+    _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(base.json(), "collection"))),
     _options(base) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
@@ -1232,10 +1278,10 @@ ModificationNode::ModificationNode (Ast* ast,
 // --SECTION--                                             methods of RemoveNode
 // -----------------------------------------------------------------------------
 
-RemoveNode::RemoveNode (Ast* ast, basics::Json const& base)
-  : ModificationNode(ast, base),
-    _inVariable(varFromJson(ast, base, "inVariable")),
-    _outVariable(varFromJson(ast, base, "outVariable", Optional)) {
+RemoveNode::RemoveNode (ExecutionPlan* plan, basics::Json const& base)
+  : ModificationNode(plan, base),
+    _inVariable(varFromJson(plan->getAst(), base, "inVariable")),
+    _outVariable(varFromJson(plan->getAst(), base, "outVariable", Optional)) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1269,10 +1315,10 @@ void RemoveNode::toJsonHelper (triagens::basics::Json& nodes,
 // --SECTION--                                             methods of InsertNode
 // -----------------------------------------------------------------------------
 
-InsertNode::InsertNode (Ast* ast, basics::Json const& base)
-  : ModificationNode(ast, base),
-    _inVariable(varFromJson(ast, base, "inVariable")),
-    _outVariable(varFromJson(ast, base, "outVariable", Optional)) {
+InsertNode::InsertNode (ExecutionPlan* plan, basics::Json const& base)
+  : ModificationNode(plan, base),
+    _inVariable(varFromJson(plan->getAst(), base, "inVariable")),
+    _outVariable(varFromJson(plan->getAst(), base, "outVariable", Optional)) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1306,11 +1352,11 @@ void InsertNode::toJsonHelper (triagens::basics::Json& nodes,
 // --SECTION--                                             methods of UpdateNode
 // -----------------------------------------------------------------------------
 
-UpdateNode::UpdateNode (Ast* ast, basics::Json const& base)
-  : ModificationNode(ast, base),
-    _inDocVariable(varFromJson(ast, base, "inDocVariable")),
-    _inKeyVariable(varFromJson(ast, base, "inKeyVariable", Optional)),
-    _outVariable(varFromJson(ast, base, "outVariable", Optional)) {
+UpdateNode::UpdateNode (ExecutionPlan* plan, basics::Json const& base)
+  : ModificationNode(plan, base),
+    _inDocVariable(varFromJson(plan->getAst(), base, "inDocVariable")),
+    _inKeyVariable(varFromJson(plan->getAst(), base, "inKeyVariable", Optional)),
+    _outVariable(varFromJson(plan->getAst(), base, "outVariable", Optional)) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1349,11 +1395,11 @@ void UpdateNode::toJsonHelper (triagens::basics::Json& nodes,
 // --SECTION--                                            methods of ReplaceNode
 // -----------------------------------------------------------------------------
 
-ReplaceNode::ReplaceNode (Ast* ast, basics::Json const& base)
-  : ModificationNode(ast, base),
-    _inDocVariable(varFromJson(ast, base, "inDocVariable")),
-    _inKeyVariable(varFromJson(ast, base, "inKeyVariable", Optional)),
-    _outVariable(varFromJson(ast, base, "outVariable", Optional)) {
+ReplaceNode::ReplaceNode (ExecutionPlan* plan, basics::Json const& base)
+  : ModificationNode(plan, base),
+    _inDocVariable(varFromJson(plan->getAst(), base, "inDocVariable")),
+    _inKeyVariable(varFromJson(plan->getAst(), base, "inKeyVariable", Optional)),
+    _outVariable(varFromJson(plan->getAst(), base, "outVariable", Optional)) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

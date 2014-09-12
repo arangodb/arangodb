@@ -753,7 +753,7 @@ AstNode* Ast::createNodeNop () {
 void Ast::injectBindParameters (BindParameters& parameters) {
   auto p = parameters();
 
-  auto func = [&](AstNode* node, void* data) -> AstNode* {
+  auto func = [&](AstNode* node, void*) -> AstNode* {
     if (node->type == NODE_TYPE_PARAMETER) {
       // found a bind parameter in the query string
       char const* param = node->getStringValue();
@@ -832,11 +832,42 @@ void Ast::injectBindParameters (BindParameters& parameters) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief replace variables
+////////////////////////////////////////////////////////////////////////////////
+
+void Ast::replaceVariables (AstNode* node,
+                            std::unordered_map<VariableId, Variable const*> const& replacements) {
+  auto func = [&](AstNode* node, void*) -> AstNode* {
+    if (node == nullptr) {
+      return nullptr;
+    }
+
+    // reference to a variable
+    if (node->type == NODE_TYPE_REFERENCE) {
+      auto variable = static_cast<Variable*>(node->getData());
+      if (variable != nullptr) {
+        auto it = replacements.find(variable->id);
+        if (it != replacements.end()) {
+          node = createNode(NODE_TYPE_REFERENCE);
+          node->setData((*it).second);
+        }
+      }
+      // fall-through intentional
+    }
+    
+    return node;
+  };
+
+  // optimization
+  _root = traverse(node, func, nullptr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief optimizes the AST
 ////////////////////////////////////////////////////////////////////////////////
 
 void Ast::optimize () {
-  auto func = [&](AstNode* node, void* data) -> AstNode* {
+  auto func = [&](AstNode* node, void*) -> AstNode* {
     if (node == nullptr) {
       return nullptr;
     }

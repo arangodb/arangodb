@@ -39,65 +39,89 @@ using namespace triagens::aql;
 using JsonHelper = triagens::basics::JsonHelper;
 using Json = triagens::basics::Json;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                            static initializations
+// -----------------------------------------------------------------------------
+
+std::unordered_map<int, std::string const> const AstNode::Operators{ 
+  { static_cast<int>(NODE_TYPE_OPERATOR_UNARY_NOT),       "!" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_UNARY_PLUS),      "+" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_UNARY_MINUS),     "-" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_AND),      "&&" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_OR),       "||" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_PLUS),     "+" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_MINUS),    "-" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_TIMES),    "*" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_DIV),      "/" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_MOD),      "%" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_EQ),       "==" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NE),       "!=" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LT),       "<" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE),       "<=" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT),       ">" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE),       ">=" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_IN),       "IN" }
+};
+
 std::unordered_map<int, std::string const> const AstNode::TypeNames{ 
-    { static_cast<int>(NODE_TYPE_ROOT),                     "root" },
-    { static_cast<int>(NODE_TYPE_FOR),                      "for" },
-    { static_cast<int>(NODE_TYPE_LET),                      "let" },
-    { static_cast<int>(NODE_TYPE_FILTER),                   "filter" },
-    { static_cast<int>(NODE_TYPE_RETURN),                   "return" },
-    { static_cast<int>(NODE_TYPE_REMOVE),                   "remove" },
-    { static_cast<int>(NODE_TYPE_INSERT),                   "insert" },
-    { static_cast<int>(NODE_TYPE_UPDATE),                   "update" },
-    { static_cast<int>(NODE_TYPE_REPLACE),                  "replace" },
-    { static_cast<int>(NODE_TYPE_COLLECT),                  "collect" },
-    { static_cast<int>(NODE_TYPE_SORT),                     "sort" },
-    { static_cast<int>(NODE_TYPE_SORT_ELEMENT),             "sort element" },
-    { static_cast<int>(NODE_TYPE_LIMIT),                    "limit" },
-    { static_cast<int>(NODE_TYPE_VARIABLE),                 "variable" },
-    { static_cast<int>(NODE_TYPE_ASSIGN),                   "assign" },
-    { static_cast<int>(NODE_TYPE_OPERATOR_UNARY_PLUS),      "unary plus" },
-    { static_cast<int>(NODE_TYPE_OPERATOR_UNARY_MINUS),     "unary minus" },
-    { static_cast<int>(NODE_TYPE_OPERATOR_UNARY_NOT),       "unary not" },
-    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_AND),      "logical and" },
-    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_OR),       "logical or" },
-    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_PLUS),     "plus" },
-    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_MINUS),    "minus" },
-    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_TIMES),    "times" },
-    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_DIV),      "division" },
-    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_MOD),      "modulus" },
-    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_EQ),       "compare ==" },
-    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NE),       "compare !=" },
-    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LT),       "compare <" },
-    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE),       "compare <=" },
-    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT),       "compare >" },
-    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE),       "compare >=" },
-    { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_IN),       "compare in" },
-    { static_cast<int>(NODE_TYPE_OPERATOR_TERNARY),         "ternary" },
-    { static_cast<int>(NODE_TYPE_SUBQUERY),                 "subquery" },
-    { static_cast<int>(NODE_TYPE_ATTRIBUTE_ACCESS),         "attribute access" },
-    { static_cast<int>(NODE_TYPE_BOUND_ATTRIBUTE_ACCESS),   "bound attribute access" },
-    { static_cast<int>(NODE_TYPE_INDEXED_ACCESS),           "indexed access" },
-    { static_cast<int>(NODE_TYPE_EXPAND),                   "expand" },
-    { static_cast<int>(NODE_TYPE_ITERATOR),                 "iterator" },
-    { static_cast<int>(NODE_TYPE_VALUE),                    "value" },
-    { static_cast<int>(NODE_TYPE_LIST),                     "list" },
-    { static_cast<int>(NODE_TYPE_ARRAY),                    "array" },
-    { static_cast<int>(NODE_TYPE_ARRAY_ELEMENT),            "array element" },
-    { static_cast<int>(NODE_TYPE_COLLECTION),               "collection" },
-    { static_cast<int>(NODE_TYPE_REFERENCE),                "reference" },
-    { static_cast<int>(NODE_TYPE_PARAMETER),                "parameter" },
-    { static_cast<int>(NODE_TYPE_FCALL),                    "function call" },
-    { static_cast<int>(NODE_TYPE_FCALL_USER),               "user function call" },
-    { static_cast<int>(NODE_TYPE_RANGE),                    "range" },
-    { static_cast<int>(NODE_TYPE_NOP),                      "no-op" }
+  { static_cast<int>(NODE_TYPE_ROOT),                     "root" },
+  { static_cast<int>(NODE_TYPE_FOR),                      "for" },
+  { static_cast<int>(NODE_TYPE_LET),                      "let" },
+  { static_cast<int>(NODE_TYPE_FILTER),                   "filter" },
+  { static_cast<int>(NODE_TYPE_RETURN),                   "return" },
+  { static_cast<int>(NODE_TYPE_REMOVE),                   "remove" },
+  { static_cast<int>(NODE_TYPE_INSERT),                   "insert" },
+  { static_cast<int>(NODE_TYPE_UPDATE),                   "update" },
+  { static_cast<int>(NODE_TYPE_REPLACE),                  "replace" },
+  { static_cast<int>(NODE_TYPE_COLLECT),                  "collect" },
+  { static_cast<int>(NODE_TYPE_SORT),                     "sort" },
+  { static_cast<int>(NODE_TYPE_SORT_ELEMENT),             "sort element" },
+  { static_cast<int>(NODE_TYPE_LIMIT),                    "limit" },
+  { static_cast<int>(NODE_TYPE_VARIABLE),                 "variable" },
+  { static_cast<int>(NODE_TYPE_ASSIGN),                   "assign" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_UNARY_PLUS),      "unary plus" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_UNARY_MINUS),     "unary minus" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_UNARY_NOT),       "unary not" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_AND),      "logical and" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_OR),       "logical or" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_PLUS),     "plus" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_MINUS),    "minus" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_TIMES),    "times" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_DIV),      "division" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_MOD),      "modulus" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_EQ),       "compare ==" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NE),       "compare !=" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LT),       "compare <" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE),       "compare <=" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT),       "compare >" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE),       "compare >=" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_IN),       "compare in" },
+  { static_cast<int>(NODE_TYPE_OPERATOR_TERNARY),         "ternary" },
+  { static_cast<int>(NODE_TYPE_SUBQUERY),                 "subquery" },
+  { static_cast<int>(NODE_TYPE_ATTRIBUTE_ACCESS),         "attribute access" },
+  { static_cast<int>(NODE_TYPE_BOUND_ATTRIBUTE_ACCESS),   "bound attribute access" },
+  { static_cast<int>(NODE_TYPE_INDEXED_ACCESS),           "indexed access" },
+  { static_cast<int>(NODE_TYPE_EXPAND),                   "expand" },
+  { static_cast<int>(NODE_TYPE_ITERATOR),                 "iterator" },
+  { static_cast<int>(NODE_TYPE_VALUE),                    "value" },
+  { static_cast<int>(NODE_TYPE_LIST),                     "list" },
+  { static_cast<int>(NODE_TYPE_ARRAY),                    "array" },
+  { static_cast<int>(NODE_TYPE_ARRAY_ELEMENT),            "array element" },
+  { static_cast<int>(NODE_TYPE_COLLECTION),               "collection" },
+  { static_cast<int>(NODE_TYPE_REFERENCE),                "reference" },
+  { static_cast<int>(NODE_TYPE_PARAMETER),                "parameter" },
+  { static_cast<int>(NODE_TYPE_FCALL),                    "function call" },
+  { static_cast<int>(NODE_TYPE_FCALL_USER),               "user function call" },
+  { static_cast<int>(NODE_TYPE_RANGE),                    "range" },
+  { static_cast<int>(NODE_TYPE_NOP),                      "no-op" }
 };
 
 std::unordered_map<int, std::string const> const AstNode::valueTypeNames{
-    { static_cast<int>(VALUE_TYPE_NULL),                    "null" },
-    { static_cast<int>(VALUE_TYPE_BOOL),                    "bool" },
-    { static_cast<int>(VALUE_TYPE_INT),                     "int" },
-    { static_cast<int>(VALUE_TYPE_DOUBLE),                  "double" },
-    { static_cast<int>(VALUE_TYPE_STRING),                  "string" }
+  { static_cast<int>(VALUE_TYPE_NULL),                    "null" },
+  { static_cast<int>(VALUE_TYPE_BOOL),                    "bool" },
+  { static_cast<int>(VALUE_TYPE_INT),                     "int" },
+  { static_cast<int>(VALUE_TYPE_DOUBLE),                  "double" },
+  { static_cast<int>(VALUE_TYPE_STRING),                  "string" }
 };
 
 // -----------------------------------------------------------------------------
@@ -775,7 +799,7 @@ bool AstNode::isDeterministic () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief append a JavaScript representation of the node into a string buffer
+/// @brief append a string representation of the node into a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
 void AstNode::append (triagens::basics::StringBuffer* buffer) const {
@@ -824,6 +848,59 @@ void AstNode::append (triagens::basics::StringBuffer* buffer) const {
     buffer->appendText(" }");
     return;
   }
+    
+  if (type == NODE_TYPE_REFERENCE) {
+    // not used by V8
+    auto variable = static_cast<Variable*>(getData());
+    TRI_ASSERT(variable != nullptr);
+    // we're intentionally not using the variable name as it is not necessarily
+    // unique within a query (hey COLLECT, I am looking at you!)
+    buffer->appendChar('$');
+    buffer->appendInteger(variable->id);
+    return;
+  }
+    
+  if (type == NODE_TYPE_INDEXED_ACCESS) {
+    // not used by V8
+    auto member = getMember(0);
+    auto index = getMember(1);
+    member->append(buffer);
+    buffer->appendChar('[');
+    index->append(buffer);
+    buffer->appendChar(']');
+    return;
+  }
+    
+  if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    // not used by V8
+    auto member = getMember(0);
+    member->append(buffer);
+    buffer->appendChar('.');
+    buffer->appendText(getStringValue());
+    return;
+  }
+    
+  if (type == NODE_TYPE_FCALL) {
+    auto func = static_cast<Function*>(getData());
+    buffer->appendText(func->externalName);
+    buffer->appendChar('(');
+    getMember(0)->append(buffer);
+    buffer->appendChar(')');
+    return;
+  } 
+  
+  if (type == NODE_TYPE_OPERATOR_UNARY_NOT ||
+      type == NODE_TYPE_OPERATOR_UNARY_PLUS ||
+      type == NODE_TYPE_OPERATOR_UNARY_MINUS) {
+    TRI_ASSERT(numMembers() == 1);
+    auto it = Operators.find(static_cast<int>(type));
+    TRI_ASSERT(it != Operators.end());
+    buffer->appendChar(' ');
+    buffer->appendText((*it).second);
+
+    getMember(0)->append(buffer);
+    return;
+  }
 
   if (type == NODE_TYPE_OPERATOR_BINARY_AND ||
       type == NODE_TYPE_OPERATOR_BINARY_OR ||
@@ -839,42 +916,21 @@ void AstNode::append (triagens::basics::StringBuffer* buffer) const {
       type == NODE_TYPE_OPERATOR_BINARY_GT ||
       type == NODE_TYPE_OPERATOR_BINARY_GE ||
       type == NODE_TYPE_OPERATOR_BINARY_IN) {
-    size_t const n = numMembers();
-    TRI_ASSERT(n == 2);
+    TRI_ASSERT(numMembers() == 2);
+    auto it = Operators.find(type);
+    TRI_ASSERT(it != Operators.end());
 
     getMember(0)->append(buffer);
-
-    buffer->appendText(", ");
-
+    buffer->appendChar(' ');
+    buffer->appendText((*it).second);
+    buffer->appendChar(' ');
     getMember(1)->append(buffer);
+    return;
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stringify a node
-/// note that currently stringification is only supported for certain node types
-////////////////////////////////////////////////////////////////////////////////
-
-std::string AstNode::stringify () const {
-  switch (type) {
-    case NODE_TYPE_ATTRIBUTE_ACCESS: {
-      auto member = getMember(0);
-      return member->stringify() + std::string(".") + getStringValue();
-    }
-
-    case NODE_TYPE_REFERENCE: {
-      auto variable = static_cast<Variable*>(getData());
-      TRI_ASSERT(variable != nullptr);
-      // we're intentionally not using the variable name as it is not necessarily
-      // unique within a query (hey COLLECT, I am looking at you!)
-      return std::to_string(variable->id);
-    }
-
-    default: {
-    }
-  }
-
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "stringification not supported for node type");
+  
+  std::string message("stringification not supported for node type ");
+  message.append(getTypeString());
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
 }
 
 // -----------------------------------------------------------------------------
@@ -883,6 +939,7 @@ std::string AstNode::stringify () const {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stringify the value of a node into a string buffer
+/// this method is used when generated JavaScript code for the node!
 ////////////////////////////////////////////////////////////////////////////////
 
 void AstNode::appendValue (triagens::basics::StringBuffer* buffer) const {

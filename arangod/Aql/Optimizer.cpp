@@ -312,6 +312,11 @@ void Optimizer::setupRules () {
   registerRule("move-filters-up",
                moveFiltersUpRule,
                moveFiltersUpRule_pass1);
+  
+  // remove redundant calculations
+  registerRule("remove-redundant-calculations", 
+               removeRedundantCalculationsRule,
+               removeRedundantCalculationsRule_pass1);
 
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 2": try to remove redundant or unnecessary nodes

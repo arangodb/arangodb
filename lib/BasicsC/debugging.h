@@ -71,6 +71,7 @@ extern "C" {
 void TRI_SegfaultDebugging (char const*);
 #else
 static inline void TRI_SegfaultDebugging (char const* unused) {
+  (void) unused;
 }
 #endif
 
@@ -82,6 +83,7 @@ static inline void TRI_SegfaultDebugging (char const* unused) {
 bool TRI_ShouldFailDebugging (char const*);
 #else
 static inline bool TRI_ShouldFailDebugging (char const* unused) {
+  (void) unused;
   return false;
 }
 #endif
@@ -94,6 +96,7 @@ static inline bool TRI_ShouldFailDebugging (char const* unused) {
 void TRI_AddFailurePointDebugging (char const*);
 #else
 static inline void TRI_AddFailurePointDebugging (char const* unused) {
+  (void) unused;
 }
 #endif
 
@@ -105,6 +108,7 @@ static inline void TRI_AddFailurePointDebugging (char const* unused) {
 void TRI_RemoveFailurePointDebugging (char const*);
 #else
 static inline void TRI_RemoveFailurePointDebugging (char const* unused) {
+  (void) unused;
 }
 #endif
 
