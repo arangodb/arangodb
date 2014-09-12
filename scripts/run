@@ -11,7 +11,7 @@ for i in $*; do
         export VG='valgrind --log-file=/tmp/valgrindlog.%p --show-possibly-lost=no --track-fds=no --leak-check=full'
     fi
     if test "$i" == valgrindxml; then
-        export VG='valgrind --log-file=/tmp/valgrindlog.%p --show-possibly-lost=no --track-fds=no --leak-check=full'
+        export VG='valgrind --xml-file=valgrind_testrunner.xml --xml=yes --show-possibly-lost=no --track-fds=no --leak-check=full'
     fi
     ARGS="$ARGS --javascript.script-parameter $i"
 done
