@@ -1214,7 +1214,7 @@ ExecutionNode* ExecutionPlan::fromJson (Ast* ast,
                                         Json const& json) {
   ExecutionNode* ret = nullptr;
   Json nodes = json.get("nodes");
-  std::cout << nodes.toString() << "\n";
+  //std::cout << nodes.toString() << "\n";
 
   if (! nodes.isList()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nodes is not a list");
