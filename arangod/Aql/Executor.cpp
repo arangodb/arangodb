@@ -257,7 +257,7 @@ V8Expression* Executor::generateExpression (AstNode const* node) {
 
   v8::TryCatch tryCatch;
   // compile the expression
-  v8::Handle<v8::Value> func = compileExpression();
+  v8::Handle<v8::Value> func(compileExpression());
   
   // exit early if an error occurred
   HandleV8Error(tryCatch, func);
@@ -280,7 +280,7 @@ TRI_json_t* Executor::executeExpression (AstNode const* node) {
 
   v8::TryCatch tryCatch;
   // compile the expression
-  v8::Handle<v8::Value> func = compileExpression();
+  v8::Handle<v8::Value> func(compileExpression());
 
   // exit early if an error occurred
   HandleV8Error(tryCatch, func);
@@ -559,7 +559,7 @@ void Executor::generateCodeTernaryOperator (AstNode const* node) {
 void Executor::generateCodeReference (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 0);
-  
+ 
   auto variable = static_cast<Variable*>(node->getData());
 
   _buffer->appendText("vars[");
