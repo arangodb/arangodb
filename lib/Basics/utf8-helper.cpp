@@ -50,20 +50,20 @@ UChar* TRI_Utf8ToUChar (TRI_memory_zone_t* zone,
   // 1. convert utf8 string to utf16
   // calculate utf16 string length
   status = U_ZERO_ERROR;
-  u_strFromUTF8(NULL, 0, &utf16Length, utf8, (int32_t) inLength, &status);
+  u_strFromUTF8(nullptr, 0, &utf16Length, utf8, (int32_t) inLength, &status);
   if (status != U_BUFFER_OVERFLOW_ERROR) {
-    return NULL;
+    return nullptr;
   }
 
   utf16 = (UChar *) TRI_Allocate(zone, (utf16Length + 1) * sizeof(UChar), false);
-  if (utf16 == NULL) {
-    return NULL;
+  if (utf16 == nullptr) {
+    return nullptr;
   }
 
   // now convert
   status = U_ZERO_ERROR;
   // the +1 will append a 0 byte at the end
-  u_strFromUTF8(utf16, utf16Length + 1, NULL, utf8, (int32_t) inLength, &status);
+  u_strFromUTF8(utf16, utf16Length + 1, nullptr, utf8, (int32_t) inLength, &status);
   if (status != U_ZERO_ERROR) {
     TRI_Free(zone, utf16);
     return 0;
@@ -88,23 +88,24 @@ char* TRI_UCharToUtf8 (TRI_memory_zone_t* zone,
 
   // calculate utf8 string length
   status = U_ZERO_ERROR;
-  u_strToUTF8(NULL, 0, &utf8Length, uchar, (int32_t) inLength, &status);
+  u_strToUTF8(nullptr, 0, &utf8Length, uchar, (int32_t) inLength, &status);
   if (status != U_BUFFER_OVERFLOW_ERROR) {
-    return NULL;
+    return nullptr;
   }
 
-  utf8 = TRI_Allocate(zone, (utf8Length + 1) * sizeof(char), false);
-  if (utf8 == NULL) {
-    return NULL;
+  utf8 = static_cast<char*>(TRI_Allocate(zone, (utf8Length + 1) * sizeof(char), false));
+
+  if (utf8 == nullptr) {
+    return nullptr;
   }
 
   // convert to utf8
   status = U_ZERO_ERROR;
   // the +1 will append a 0 byte at the end
-  u_strToUTF8(utf8, utf8Length + 1, NULL, uchar, (int32_t) inLength, &status);
+  u_strToUTF8(utf8, utf8Length + 1, nullptr, uchar, (int32_t) inLength, &status);
   if (status != U_ZERO_ERROR) {
     TRI_Free(zone, utf8);
-    return NULL;
+    return nullptr;
   }
 
   *outLength = ((size_t) utf8Length);
@@ -131,16 +132,17 @@ char* TRI_normalize_utf8_to_NFC (TRI_memory_zone_t* zone,
   *outLength = 0;
 
   if (inLength == 0) {
-    utf8Dest = TRI_Allocate(zone, sizeof(char), false);
-    if (utf8Dest != 0) {
+    utf8Dest = static_cast<char*>(TRI_Allocate(zone, sizeof(char), false));
+
+    if (utf8Dest != nullptr) {
       utf8Dest[0] = '\0';
     }
     return utf8Dest;
   }
 
   utf16 = TRI_Utf8ToUChar(zone, utf8, inLength, &utf16Length);
-  if (utf16 == NULL) {
-    return NULL;
+  if (utf16 == nullptr) {
+    return nullptr;
   }
 
   // continue in TR_normalize_utf16_to_NFC
@@ -169,18 +171,18 @@ char* TRI_normalize_utf16_to_NFC (TRI_memory_zone_t* zone,
   *outLength = 0;
 
   if (inLength == 0) {
-    utf8Dest = TRI_Allocate(zone, sizeof(char), false);
-    if (utf8Dest != 0) {
+    utf8Dest = static_cast<char*>(TRI_Allocate(zone, sizeof(char), false));
+    if (utf8Dest != nullptr) {
       utf8Dest[0] = '\0';
     }
     return utf8Dest;
   }
 
   status = U_ZERO_ERROR;
-  norm2 = unorm2_getInstance(NULL, "nfc", UNORM2_COMPOSE, &status);
+  norm2 = unorm2_getInstance(nullptr, "nfc", UNORM2_COMPOSE, &status);
 
   if (status != U_ZERO_ERROR) {
-    return 0;
+    return nullptr;
   }
 
   // normalize UChar (UTF-16)
@@ -193,8 +195,8 @@ char* TRI_normalize_utf16_to_NFC (TRI_memory_zone_t* zone,
   else {
     // use dynamic memory
     utf16Dest = (UChar *) TRI_Allocate(zone, (inLength + 1) * sizeof(UChar), false);
-    if (utf16Dest == NULL) {
-      return 0;
+    if (utf16Dest == nullptr) {
+      return nullptr;
     }
     mustFree = true;
   }
@@ -205,7 +207,7 @@ char* TRI_normalize_utf16_to_NFC (TRI_memory_zone_t* zone,
     if (mustFree) {
       TRI_Free(zone, utf16Dest);
     }
-    return 0;
+    return nullptr;
   }
 
   // Convert data back from UChar (UTF-16) to UTF-8

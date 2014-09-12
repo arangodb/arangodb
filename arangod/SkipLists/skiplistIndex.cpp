@@ -29,7 +29,7 @@
 
 #include "skiplistIndex.h"
 
-#include "BasicsC/utf8-helper.h"
+#include "Basics/utf8-helper.h"
 #include "ShapedJson/json-shaper.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"

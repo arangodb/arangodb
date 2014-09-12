@@ -27,7 +27,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "BasicsC/string-buffer.h"
+#include "Basics/string-buffer.h"
 #include "Basics/json-utilities.h"
 
 // -----------------------------------------------------------------------------

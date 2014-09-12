@@ -39,7 +39,7 @@
 #include "BasicsC/logging.h"
 #include "BasicsC/random.h"
 #include "Basics/tri-strings.h"
-#include "BasicsC/string-buffer.h"
+#include "Basics/string-buffer.h"
 #include "BasicsC/terminal-utils.h"
 #include "Rest/Endpoint.h"
 #include "Rest/HttpRequest.h"

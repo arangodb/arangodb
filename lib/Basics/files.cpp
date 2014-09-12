@@ -47,7 +47,7 @@
 #include "BasicsC/locks.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/random.h"
-#include "BasicsC/string-buffer.h"
+#include "Basics/string-buffer.h"
 #include "Basics/tri-strings.h"
 #include "BasicsC/threads.h"
 

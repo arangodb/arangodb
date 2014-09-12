@@ -35,7 +35,7 @@
 #include "Basics/Dictionary.h"
 
 #include "Basics/json.h"
-#include "BasicsC/string-buffer.h"
+#include "Basics/string-buffer.h"
 #include "Basics/StringBuffer.h"
 #include "Rest/ConnectionInfo.h"
 #include "Rest/RequestContext.h"

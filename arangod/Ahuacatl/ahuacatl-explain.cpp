@@ -30,7 +30,7 @@
 #include "Ahuacatl/ahuacatl-explain.h"
 
 #include "Basics/json.h"
-#include "BasicsC/string-buffer.h"
+#include "Basics/string-buffer.h"
 
 #include "Ahuacatl/ahuacatl-collections.h"
 #include "Ahuacatl/ahuacatl-context.h"

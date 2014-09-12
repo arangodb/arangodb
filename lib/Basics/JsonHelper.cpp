@@ -30,7 +30,7 @@
 #include "Basics/JsonHelper.h"
 
 #include "Basics/conversions.h"
-#include "BasicsC/string-buffer.h"
+#include "Basics/string-buffer.h"
 
 using namespace triagens::basics;
 

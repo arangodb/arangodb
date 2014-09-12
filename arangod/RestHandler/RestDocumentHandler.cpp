@@ -32,7 +32,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
 #include "Basics/json.h"
-#include "BasicsC/string-buffer.h"
+#include "Basics/string-buffer.h"
 #include "Basics/json-utilities.h"
 #include "Rest/HttpRequest.h"
 #include "VocBase/document-collection.h"

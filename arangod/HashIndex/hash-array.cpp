@@ -31,7 +31,7 @@
 
 #include "hash-array.h"
 
-#include "BasicsC/fasthash.h"
+#include "Basics/fasthash.h"
 #include "HashIndex/hash-index.h"
 #include "VocBase/document-collection.h"
 

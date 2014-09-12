@@ -32,7 +32,7 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
-#include "BasicsC/string-buffer.h"
+#include "Basics/string-buffer.h"
 #include "Basics/tri-strings.h"
 #include "Rest/HttpRequest.h"
 #include "ShapedJson/shaped-json.h"
