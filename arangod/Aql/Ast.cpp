@@ -832,6 +832,37 @@ void Ast::injectBindParameters (BindParameters& parameters) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief replace variables
+////////////////////////////////////////////////////////////////////////////////
+
+void Ast::replaceVariables (AstNode* node,
+                            std::unordered_map<VariableId, Variable const*> const& replacements) {
+  auto func = [&](AstNode* node, void*) -> AstNode* {
+    if (node == nullptr) {
+      return nullptr;
+    }
+
+    // reference to a variable
+    if (node->type == NODE_TYPE_REFERENCE) {
+      auto variable = static_cast<Variable*>(node->getData());
+      if (variable != nullptr) {
+        auto it = replacements.find(variable->id);
+        if (it != replacements.end()) {
+          node = createNode(NODE_TYPE_REFERENCE);
+          node->setData((*it).second);
+        }
+      }
+      // fall-through intentional
+    }
+    
+    return node;
+  };
+
+  // optimization
+  _root = traverse(node, func, nullptr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief optimizes the AST
 ////////////////////////////////////////////////////////////////////////////////
 

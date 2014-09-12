@@ -49,11 +49,16 @@
 using Json = triagens::basics::Json;
 
 namespace triagens {
+  namespace basics {
+    class StringBuffer;
+  }
+
   namespace aql {
 
+    class Ast;
     class ExecutionBlock;
     class ExecutionPlan;
-    class Ast;
+    class RedundantCalculationsReplacer;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class ExecutionNode, abstract base class of all execution Nodes
@@ -758,6 +763,7 @@ namespace triagens {
       
       friend class ExecutionBlock;
       friend class EnumerateListBlock;
+      friend class RedundantCalculationsReplacer;
       friend struct VarUsageFinder;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1104,6 +1110,7 @@ namespace triagens {
       
       friend class ExecutionBlock;
       friend class CalculationBlock;
+      friend class RedundantCalculationsReplacer;
 
       public:
 
@@ -1380,6 +1387,7 @@ namespace triagens {
       
       friend class ExecutionBlock;
       friend class FilterBlock;
+      friend class RedundantCalculationsReplacer;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructors for various arguments, always with offset and limit
@@ -1524,6 +1532,7 @@ namespace triagens {
       
       friend class ExecutionBlock;
       friend class SortBlock;
+      friend class RedundantCalculationsReplacer;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -1616,7 +1625,8 @@ namespace triagens {
 /// @brief returns all sort information 
 ////////////////////////////////////////////////////////////////////////////////
 
-        SortInformation getSortInformation (ExecutionPlan*) const;
+        SortInformation getSortInformation (ExecutionPlan*,
+                                            triagens::basics::StringBuffer*) const;
 
         std::vector<std::pair<ExecutionNode*, bool>> getCalcNodePairs ();
 
@@ -1653,6 +1663,7 @@ namespace triagens {
       
       friend class ExecutionBlock;
       friend class AggregateBlock;
+      friend class RedundantCalculationsReplacer;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -1710,6 +1721,14 @@ namespace triagens {
         double estimateCost () {
           return 2 * _dependencies.at(0)->getCost();
           //FIXME improve this estimate . . .
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the node has an outVariable (i.e. INTO ...)
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool hasOutVariable () const {
+          return _outVariable != nullptr;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1772,6 +1791,7 @@ namespace triagens {
       
       friend class ExecutionBlock;
       friend class ReturnBlock;
+      friend class RedundantCalculationsReplacer;
       
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructors for various arguments, always with offset and limit

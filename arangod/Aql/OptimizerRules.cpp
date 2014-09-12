@@ -49,6 +49,8 @@ int triagens::aql::removeRedundantSorts (Optimizer* opt,
                                          Optimizer::Rule const* rule) { 
   std::vector<ExecutionNode*> nodes = plan->findNodesOfType(triagens::aql::ExecutionNode::SORT, true);
   std::unordered_set<ExecutionNode*> toUnlink;
+
+  triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
  
   for (auto n : nodes) {
     if (toUnlink.find(n) != toUnlink.end()) {
@@ -58,7 +60,7 @@ int triagens::aql::removeRedundantSorts (Optimizer* opt,
 
     auto const sortNode = static_cast<SortNode*>(n);
 
-    auto sortInfo = sortNode->getSortInformation(plan);
+    auto sortInfo = sortNode->getSortInformation(plan, &buffer);
 
     if (sortInfo.isValid && ! sortInfo.criteria.empty()) {
       // we found a sort that we can understand
@@ -77,7 +79,7 @@ int triagens::aql::removeRedundantSorts (Optimizer* opt,
         if (current->getType() == triagens::aql::ExecutionNode::SORT) {
           // we found another sort. now check if they are compatible!
     
-          auto other = static_cast<SortNode*>(current)->getSortInformation(plan);
+          auto other = static_cast<SortNode*>(current)->getSortInformation(plan, &buffer);
 
           switch (sortInfo.isCoveredBy(other)) {
             case SortInformation::unequal: {
@@ -394,6 +396,225 @@ int triagens::aql::moveFiltersUpRule (Optimizer* opt,
   }
   
   opt->addPlan(plan, rule->level, modified);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+
+class triagens::aql::RedundantCalculationsReplacer : public WalkerWorker<ExecutionNode> {
+
+  public:
+
+    RedundantCalculationsReplacer (std::unordered_map<VariableId, Variable const*> const& replacements)
+      : _replacements(replacements) {
+    }
+
+    template<typename T>
+    void replaceInVariable (ExecutionNode* en) {
+      auto node = static_cast<T*>(en);
+   
+      node->_inVariable = Variable::replace(node->_inVariable, _replacements); 
+    }
+
+    void replaceInCalculation (ExecutionNode* en) {
+      auto node = static_cast<CalculationNode*>(en);
+      auto&& variables = node->expression()->variables();
+          
+      // check if the calculation uses any of the variables that we want to replace
+      for (auto it = variables.begin(); it != variables.end(); ++it) {
+        if (_replacements.find((*it)->id) != _replacements.end()) {
+          // calculation uses a to-be-replaced variable
+          node->expression()->replaceVariables(_replacements);
+          return;
+        }
+      }
+    }
+
+    bool enterSubQuery () { return true; }
+
+    bool before (ExecutionNode* en) {
+      switch (en->getType()) {
+        case EN::ENUMERATE_LIST: {
+          replaceInVariable<EnumerateListNode>(en);
+          break;
+        }
+      
+        case EN::RETURN: {
+          replaceInVariable<ReturnNode>(en);
+          break;
+        }
+  
+        case EN::CALCULATION: {
+          replaceInCalculation(en);
+          break;
+        }
+
+        case EN::FILTER: {
+          replaceInVariable<FilterNode>(en);
+          break;
+        }
+
+        case EN::AGGREGATE: {
+          auto node = static_cast<AggregateNode*>(en);
+          for (auto variable : node->_aggregateVariables) {
+            variable.second = Variable::replace(variable.second, _replacements);
+          }
+          break;
+        }
+
+        case EN::SORT: {
+          auto node = static_cast<SortNode*>(en);
+          for (auto variable : node->_elements) {
+            variable.second = Variable::replace(variable.first, _replacements);
+          }
+          break;
+        }
+
+        default: {
+          // ignore all other types of nodes
+        }
+      }
+
+      // always continue
+      return false;
+    }
+ 
+  private:
+   
+    std::unordered_map<VariableId, Variable const*> const& _replacements;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove CalculationNode(s) that are repeatedly used in a query
+/// (i.e. common expressions)
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::removeRedundantCalculationsRule (Optimizer* opt, 
+                                                    ExecutionPlan* plan,
+                                                    Optimizer::Rule const* rule) {
+  triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+  std::unordered_map<VariableId, Variable const*> replacements;
+
+  std::vector<ExecutionNode*> nodes
+    = plan->findNodesOfType(triagens::aql::ExecutionNode::CALCULATION, true);
+
+  for (auto n : nodes) {
+    auto nn = static_cast<CalculationNode*>(n);
+
+    if (! nn->expression()->isDeterministic()) {
+      // If this node is non-deterministic, we must not touch it!
+      continue;
+    }
+    
+    auto outvar = n->getVariablesSetHere();
+    TRI_ASSERT(outvar.size() == 1);
+
+    try {
+      nn->expression()->stringify(&buffer);
+    }
+    catch (...) {
+      // expression could not be stringified (maybe because not all node types
+      // are supported). this is not an error, we just skip the optimization
+      buffer.reset();
+      continue;
+    }
+     
+    std::string const referenceExpression(buffer.c_str(), buffer.length());
+    buffer.reset();
+
+    std::vector<ExecutionNode*> stack;
+    for (auto dep : n->getDependencies()) {
+      stack.push_back(dep);
+    }
+
+    while (! stack.empty()) {
+      auto current = stack.back();
+      stack.pop_back();
+
+      if (current->getType() == triagens::aql::ExecutionNode::CALCULATION) {
+        try {
+          static_cast<CalculationNode*>(current)->expression()->stringify(&buffer);
+        }
+        catch (...) {
+          // expression could not be stringified (maybe because not all node types
+          // are supported). this is not an error, we just skip the optimization
+          buffer.reset();
+          continue;
+        }
+      
+        std::string const compareExpression(buffer.c_str(), buffer.length());
+        buffer.reset();
+        
+        if (compareExpression == referenceExpression) {
+          // expressions are identical
+          auto outvars = current->getVariablesSetHere();
+          TRI_ASSERT(outvars.size() == 1);
+          
+          // check if target variable is already registered as a replacement
+          // this covers the following case: 
+          // - replacements is set to B => C
+          // - we're now inserting a replacement A => B
+          // the goal now is to enter a replacement A => C instead of A => B
+          auto target = outvars[0];
+          while (target != nullptr) {
+            auto it = replacements.find(target->id);
+            if (it != replacements.end()) {
+              target = (*it).second;
+            }
+            else {
+              break;
+            }
+          }
+          replacements.emplace(std::make_pair(outvar[0]->id, target));
+          
+          // also check if the insertion enables further shortcuts
+          // this covers the following case:
+          // - replacements is set to A => B
+          // - we have just inserted a replacement B => C
+          // the goal now is to change the replacement A => B to A => C
+          for (auto it = replacements.begin(); it != replacements.end(); ++it) {
+            if ((*it).second == outvar[0]) {
+              (*it).second = target;
+            }
+          }
+        }
+      }
+
+      if (current->getType() == triagens::aql::ExecutionNode::AGGREGATE) {
+        if (static_cast<AggregateNode*>(current)->hasOutVariable()) {
+          // COLLECT ... INTO is evil (tm): it needs to keep all already defined variables
+          // we need to abort optimization here
+          break;
+        }
+      }
+
+      auto deps = current->getDependencies();
+      if (deps.size() != 1) {
+        // node either has no or more than one dependency. we don't know what to do and must abort
+        // note: this will also handle Singleton nodes
+        break;
+      }
+      
+      for (auto dep : deps) {
+        stack.push_back(dep);
+      }
+    }
+  }
+
+  if (! replacements.empty()) {
+    // finally replace the variables
+
+    RedundantCalculationsReplacer finder(replacements);
+    plan->root()->walk(&finder);
+    plan->findVarUsage();
+
+    opt->addPlan(plan, rule->level, true);
+  }
+  else {
+    // no changes
+    opt->addPlan(plan, rule->level, false);
+  }
+
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -943,7 +1164,7 @@ public:
   }
 };
 
-class sortToIndexNode : public WalkerWorker<ExecutionNode> {
+class SortToIndexNode : public WalkerWorker<ExecutionNode> {
   using ECN = triagens::aql::EnumerateCollectionNode;
 
   Optimizer*           _opt;
@@ -955,7 +1176,7 @@ class sortToIndexNode : public WalkerWorker<ExecutionNode> {
   bool                 planModified;
 
 
-  sortToIndexNode (Optimizer* opt,
+  SortToIndexNode (Optimizer* opt,
                    ExecutionPlan* plan,
                    SortAnalysis* Node,
                    Optimizer::RuleLevel level)
@@ -1082,7 +1303,7 @@ int triagens::aql::useIndexForSort (Optimizer* opt,
     auto thisSortNode = static_cast<SortNode*>(n);
     SortAnalysis node(thisSortNode);
     if (node.isAnalyzeable()) {
-      sortToIndexNode finder(opt, plan, &node, rule->level);
+      SortToIndexNode finder(opt, plan, &node, rule->level);
       thisSortNode->walk(&finder);/// todo auf der dependency anfangen
       if (finder.planModified) {
         planModified = true;
