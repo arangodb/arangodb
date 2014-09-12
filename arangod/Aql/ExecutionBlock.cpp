@@ -854,11 +854,6 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
     _posInDocs(0),
     _allBoundsConstant(true) {
    
- /* 
-     std::cout << "USING INDEX: " << en->_index->_iid << ", " <<
-     TRI_TypeNameIndex(en->_index->_type) << "\n";
- */
-
   std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;
 
   TRI_ASSERT(orRanges.size() == 1);  // OR expressions not yet implemented
