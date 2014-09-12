@@ -40,31 +40,31 @@ var findReferencedNodes = helper.findReferencedNodes;
 //var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
 
 function getQueryMultiplePlansAndExecutions (query, bindVars) {
-    var plan;
-    var i;
-    var plans = [];
-    var allPlans = [];
-    var results = [];
-    var paramNone     = { optimizer: { rules: [ "-all" ]},  verbosePlans: true};
-    var paramAllPlans = { allPlans : true, verbosePlans: true};
-    PY(query);
-    // first fetch the unmodified version
-    plans [0] = AQL_EXPLAIN(query, bindVars, paramNone);
-    // then all of the ones permuted by by the optimizer.
-    allPlans = AQL_EXPLAIN(query, bindVars, paramAllPlans);
+  var plan;
+  var i;
+  var plans = [];
+  var allPlans = [];
+  var results = [];
+  var paramNone     = { optimizer: { rules: [ "-all" ]},  verbosePlans: true};
+  var paramAllPlans = { allPlans : true, verbosePlans: true};
+  PY(query);
+  // first fetch the unmodified version
+  plans [0] = AQL_EXPLAIN(query, bindVars, paramNone);
+  // then all of the ones permuted by by the optimizer.
+  allPlans = AQL_EXPLAIN(query, bindVars, paramAllPlans);
 
-    PY(allPlans.plans[0]);
+  PY(allPlans.plans[0]);
 
-    for (i=0; i < allPlans.plans.length; i++) {
-        plans[i+1] = {'plan':allPlans.plans[i]};
-    }
-    // Now execute each of these variations.
-    for (i=0; i < plans.length; i++) {
-        PY(plans[i]);
-        results += AQL_EXECUTEJSON(plans[i].plan, {});
-    }
+  for (i=0; i < allPlans.plans.length; i++) {
+    plans[i+1] = {'plan':allPlans.plans[i]};
+  }
+  // Now execute each of these variations.
+  for (i=0; i < plans.length; i++) {
+    PY(plans[i]);
+    results += AQL_EXECUTEJSON(plans[i].plan, {});
+  }
 
-    return {'plans': plans, 'results': results};
+  return {'plans': plans, 'results': results};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -72,213 +72,213 @@ function getQueryMultiplePlansAndExecutions (query, bindVars) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerRuleTestSuite() {
-    var ruleName = "use-index-for-sort";
-    var secondRuleName = "use-index-range";
-    var removeCalculationNodes = "remove-unnecessary-calculations-2";
-    var thirdRuleName = "remove-redundant-sorts";
-    var colName = "UnitTestsAqlOptimizer" + ruleName.replace(/-/g, "_");
-    var colNameOther = colName + "_XX";
+  var ruleName = "use-index-for-sort";
+  var secondRuleName = "use-index-range";
+  var removeCalculationNodes = "remove-unnecessary-calculations-2";
+  var thirdRuleName = "remove-redundant-sorts";
+  var colName = "UnitTestsAqlOptimizer" + ruleName.replace(/-/g, "_");
+  var colNameOther = colName + "_XX";
 
-    // various choices to control the optimizer: 
-    var paramNone = { optimizer: { rules: [ "-all" ] } };
-    var paramIndexFromSort  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
-    var paramIndexRange   = { optimizer: { rules: [ "-all", "+" + secondRuleName ] } };
-    var paramRedundantSort   = { optimizer: { rules: [ "-all", "+" + thirdRuleName ] } };
-    var paramIndexFromSort_IndexRange = { optimizer: { rules: [ "-all", "+" + ruleName, "+" + secondRuleName ] } };
-    var paramIndexRangeRemoveCalculations   = {
-        optimizer: { rules: [ "-all", "+" + secondRuleName, "+" + removeCalculationNodes ] }
-    };
-    var paramIndexFromSort_IndexRange_RemoveCalculations = {
-        optimizer: { rules: [ "-all", "+" + ruleName, "+" + secondRuleName, "+" + removeCalculationNodes ] }
-    };
-    var paramIndexFromSort_RemoveCalculations = {
-        optimizer: { rules: [ "-all", "+" + ruleName, "+" + removeCalculationNodes ] }
-    };
+  // various choices to control the optimizer: 
+  var paramNone = { optimizer: { rules: [ "-all" ] } };
+  var paramIndexFromSort  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
+  var paramIndexRange   = { optimizer: { rules: [ "-all", "+" + secondRuleName ] } };
+  var paramRedundantSort   = { optimizer: { rules: [ "-all", "+" + thirdRuleName ] } };
+  var paramIndexFromSort_IndexRange = { optimizer: { rules: [ "-all", "+" + ruleName, "+" + secondRuleName ] } };
+  var paramIndexRangeRemoveCalculations   = {
+    optimizer: { rules: [ "-all", "+" + secondRuleName, "+" + removeCalculationNodes ] }
+  };
+  var paramIndexFromSort_IndexRange_RemoveCalculations = {
+    optimizer: { rules: [ "-all", "+" + ruleName, "+" + secondRuleName, "+" + removeCalculationNodes ] }
+  };
+  var paramIndexFromSort_RemoveCalculations = {
+    optimizer: { rules: [ "-all", "+" + ruleName, "+" + removeCalculationNodes ] }
+  };
 
-    var skiplist;
-    var skiplist2;
-    var sortArray = function (l, r) {
-              if (l[0] !== r[0]) {
-                  return l[0] < r[0] ? -1 : 1;
-              }
-              if (l[1] !== r[1]) {
-                  return l[1] < r[1] ? -1 : 1;
-              }
-              return 0;
-          };
-    var hasSortNode = function (plan) {
-        assertEqual(findExecutionNodes(plan, "SortNode").length, 1, "Has SortNode");
-    };
-    var hasNoSortNode = function (plan) {
-        assertEqual(findExecutionNodes(plan, "SortNode").length, 0, "Has NO SortNode");
-    };
-    var hasNoIndexRangeNode = function (plan) {
-        assertEqual(findExecutionNodes(plan, "IndexRangeNode").length, 0, "Has NO IndexRangeNode");
-    };
-    var hasNoResultsNode = function (plan) {
-        assertEqual(findExecutionNodes(plan, "NoResultsNode").length, 1, "Has NoResultsNode");
-    };
-    var hasCalculationNodes = function (plan, countXPect) {
-        assertEqual(findExecutionNodes(plan, "CalculationNode").length,
-                    countXPect,
-                    "Has " + countXPect +  " CalculationNode");
-    };
-    var hasNoCalculationNode = function (plan) {
-        assertEqual(findExecutionNodes(plan, "CalculationNode").length, 0, "Has NO CalculationNode");
-    };
-    var hasIndexRangeNode_WithRanges = function (plan, haveRanges) {
-        var rn = findExecutionNodes(plan, "IndexRangeNode");
-        assertEqual(rn.length, 1, "Has IndexRangeNode");
-        if (haveRanges) {
-            assertTrue(rn[0].ranges.length > 0, "Have IndexRangeNode with ranges");
+  var skiplist;
+  var skiplist2;
+  var sortArray = function (l, r) {
+    if (l[0] !== r[0]) {
+      return l[0] < r[0] ? -1 : 1;
+    }
+    if (l[1] !== r[1]) {
+      return l[1] < r[1] ? -1 : 1;
+    }
+    return 0;
+  };
+  var hasSortNode = function (plan) {
+    assertEqual(findExecutionNodes(plan, "SortNode").length, 1, "Has SortNode");
+  };
+  var hasNoSortNode = function (plan) {
+    assertEqual(findExecutionNodes(plan, "SortNode").length, 0, "Has NO SortNode");
+  };
+  var hasNoIndexRangeNode = function (plan) {
+    assertEqual(findExecutionNodes(plan, "IndexRangeNode").length, 0, "Has NO IndexRangeNode");
+  };
+  var hasNoResultsNode = function (plan) {
+    assertEqual(findExecutionNodes(plan, "NoResultsNode").length, 1, "Has NoResultsNode");
+  };
+  var hasCalculationNodes = function (plan, countXPect) {
+    assertEqual(findExecutionNodes(plan, "CalculationNode").length,
+                countXPect,
+                "Has " + countXPect +  " CalculationNode");
+  };
+  var hasNoCalculationNode = function (plan) {
+    assertEqual(findExecutionNodes(plan, "CalculationNode").length, 0, "Has NO CalculationNode");
+  };
+  var hasIndexRangeNode_WithRanges = function (plan, haveRanges) {
+    var rn = findExecutionNodes(plan, "IndexRangeNode");
+    assertEqual(rn.length, 1, "Has IndexRangeNode");
+    if (haveRanges) {
+      assertTrue(rn[0].ranges.length > 0, "Have IndexRangeNode with ranges");
+    }
+    else {
+      assertEqual(rn[0].ranges.length, 0, "Have IndexRangeNode with NO ranges");
+    }
+  };
+  var getRangeAttributes = function (plan) {
+    var rn = findExecutionNodes(plan, "IndexRangeNode");
+    assertEqual(rn.length, 1, "Has IndexRangeNode");
+    assertTrue(rn[0].ranges.length > 0, "Have IndexRangeNode with ranges");
+    return rn[0].ranges;
+  };
+  var getRangeAttribute = function (rangeAttributes, varcmp, attrcmp, getNth) {
+    var ret = {};
+    rangeAttributes.forEach(function compare(oneRA) {
+      if ( (oneRA.variable  === varcmp) &&
+           (oneRA.attr === attrcmp)) {
+        getNth --;
+        if (getNth === 0) {
+          ret = oneRA;
         }
-        else {
-            assertEqual(rn[0].ranges.length, 0, "Have IndexRangeNode with NO ranges");
-        }
-    };
-    var getRangeAttributes = function (plan) {
-        var rn = findExecutionNodes(plan, "IndexRangeNode");
-        assertEqual(rn.length, 1, "Has IndexRangeNode");
-        assertTrue(rn[0].ranges.length > 0, "Have IndexRangeNode with ranges");
-        return rn[0].ranges;
-    };
-    var getRangeAttribute = function (rangeAttributes, varcmp, attrcmp, getNth) {
-        var ret = {};
-        rangeAttributes.forEach(function compare(oneRA) {
-            if ( (oneRA.variable  === varcmp) &&
-                 (oneRA.attr === attrcmp)) {
-                getNth --;
-                if (getNth === 0) {
-                    ret = oneRA;
-                }
-            }
+      }
 
-        });
-        return ret;
-    };
-    var isNodeType = function(node, type) {
-        assertEqual(node.type, type, "check whether this node is of type "+type);
-    };
+    });
+    return ret;
+  };
+  var isNodeType = function(node, type) {
+    assertEqual(node.type, type, "check whether this node is of type "+type);
+  };
 
-    return {
+  return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-// Datastructure: 
-//  - double index on (a,b)/(f,g) for tests with these
-//  - single column index on d/j to test sort behaviour without sub-columns
-//  - non-indexed columns c/h to sort without indices.
-//  - non-skiplist indexed columns e/j to check whether its not selecting them.
-//  - join column 'joinme' to intersect both tables.
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    // Datastructure: 
+    //  - double index on (a,b)/(f,g) for tests with these
+    //  - single column index on d/j to test sort behaviour without sub-columns
+    //  - non-indexed columns c/h to sort without indices.
+    //  - non-skiplist indexed columns e/j to check whether its not selecting them.
+    //  - join column 'joinme' to intersect both tables.
+    ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-        var loopto;
-        if (typeof loopmax === 'undefined') {
-            loopto = 10;
+      var loopto;
+      if (typeof loopmax === 'undefined') {
+        loopto = 10;
+      }
+      else {
+        loopto = loopmax;
+      }
+      /// require("internal").print("loopto: " + loopto + "\n");
+      
+      internal.db._drop(colName);
+      skiplist = internal.db._create(colName);
+      var i, j;
+      for (j = 1; j <= loopto; ++j) {
+        for (i = 1; i <= loopto; ++i) {
+          skiplist.save({ "a" : i, "b": j , "c": j, "d": i, "e": i, "joinme" : "aoeu " + j});
         }
-        else {
-            loopto = loopmax;
-        }
-        /// require("internal").print("loopto: " + loopto + "\n");
- 
-        internal.db._drop(colName);
-        skiplist = internal.db._create(colName);
-        var i, j;
-        for (j = 1; j <= loopto; ++j) {
-            for (i = 1; i <= loopto; ++i) {
-                skiplist.save({ "a" : i, "b": j , "c": j, "d": i, "e": i, "joinme" : "aoeu " + j});
-            }
-            skiplist.save(    { "a" : i,          "c": j, "d": i, "e": i, "joinme" : "aoeu " + j});
-            skiplist.save(    {                   "c": j,                 "joinme" : "aoeu " + j});
-        }
+        skiplist.save(    { "a" : i,          "c": j, "d": i, "e": i, "joinme" : "aoeu " + j});
+        skiplist.save(    {                   "c": j,                 "joinme" : "aoeu " + j});
+      }
 
-        skiplist.ensureSkiplist("a", "b");
-        skiplist.ensureSkiplist("d");
-        skiplist.ensureIndex({ type: "hash", fields: [ "c" ], unique: false });
+      skiplist.ensureSkiplist("a", "b");
+      skiplist.ensureSkiplist("d");
+      skiplist.ensureIndex({ type: "hash", fields: [ "c" ], unique: false });
 
-        skiplist2 = internal.db._create(colNameOther);
-        for (j = 1; j <= loopto; ++j) {
-            for (i = 1; i <= loopto; ++i) {
-                skiplist2.save({ "f" : i, "g": j , "h": j, "i": i, "j": i, "joinme" : "aoeu " + j});
-            }
-            skiplist2.save(    { "f" : i, "g": j,          "i": i, "j": i, "joinme" : "aoeu " + j});
-            skiplist2.save(    {                   "h": j,                 "joinme" : "aoeu " + j});
+      skiplist2 = internal.db._create(colNameOther);
+      for (j = 1; j <= loopto; ++j) {
+        for (i = 1; i <= loopto; ++i) {
+          skiplist2.save({ "f" : i, "g": j , "h": j, "i": i, "j": i, "joinme" : "aoeu " + j});
         }
-        skiplist2.ensureSkiplist("f", "g");
-        skiplist2.ensureSkiplist("i");
-        skiplist2.ensureIndex({ type: "hash", fields: [ "h" ], unique: false });
+        skiplist2.save(    { "f" : i, "g": j,          "i": i, "j": i, "joinme" : "aoeu " + j});
+        skiplist2.save(    {                   "h": j,                 "joinme" : "aoeu " + j});
+      }
+      skiplist2.ensureSkiplist("f", "g");
+      skiplist2.ensureSkiplist("i");
+      skiplist2.ensureIndex({ type: "hash", fields: [ "h" ], unique: false });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief tear down
+    ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-        internal.db._drop(colName);
-        internal.db._drop(colNameOther);
-        skiplist = null;
+      internal.db._drop(colName);
+      internal.db._drop(colNameOther);
+      skiplist = null;
     },
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test that rule has no effect
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test that rule has no effect
+    ////////////////////////////////////////////////////////////////////////////////
 
     testRuleNoEffect : function () {
 
       var queries = [ 
 
-          "FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]",
-// todo: we use an index anyways right now.          "FOR v IN " + colName + " SORT v.a DESC RETURN [v.a, v.b]",// currently only ASC supported.
-          "FOR v IN " + colName + " SORT v.b, v.a  RETURN [v.a, v.b]",
-          "FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]",
-          "FOR v IN " + colName + " SORT v.a + 1 RETURN [v.a, v.b]",
-          "FOR v IN " + colName + " SORT CONCAT(TO_STRING(v.a), \"lol\") RETURN [v.a, v.b]",
-          "FOR v IN " + colName + " FILTER v.a > 2 LIMIT 3 SORT v.a RETURN [v.a, v.b]  ", // TODO: limit blocks sort atm.
-          "FOR v IN " + colName + " FOR w IN " + colNameOther + " SORT v.a RETURN [v.a, v.b]"
+        "FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]",
+        // todo: we use an index anyways right now.          "FOR v IN " + colName + " SORT v.a DESC RETURN [v.a, v.b]",// currently only ASC supported.
+        "FOR v IN " + colName + " SORT v.b, v.a  RETURN [v.a, v.b]",
+        "FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]",
+        "FOR v IN " + colName + " SORT v.a + 1 RETURN [v.a, v.b]",
+        "FOR v IN " + colName + " SORT CONCAT(TO_STRING(v.a), \"lol\") RETURN [v.a, v.b]",
+        "FOR v IN " + colName + " FILTER v.a > 2 LIMIT 3 SORT v.a RETURN [v.a, v.b]  ", // TODO: limit blocks sort atm.
+        "FOR v IN " + colName + " FOR w IN " + colNameOther + " SORT v.a RETURN [v.a, v.b]"
       ];
 
       queries.forEach(function(query) {
-          
-          var result = AQL_EXPLAIN(query, { }, paramIndexFromSort);
-          assertEqual([], result.plan.rules, query);
+        
+        var result = AQL_EXPLAIN(query, { }, paramIndexFromSort);
+        assertEqual([], result.plan.rules, query);
       });
 
     },
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test that rule has an effect
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test that rule has an effect
+    ////////////////////////////////////////////////////////////////////////////////
     testRuleHasEffect : function () {
-        var allresults;
-        var queries = [ 
-            
-            "FOR v IN " + colName + " SORT v.d DESC RETURN [v.d]",// currently only ASC supported, but we use the index range anyways. todo: this may change.
-            "FOR v IN " + colName + " SORT v.d FILTER v.a > 2 LIMIT 3 RETURN [v.d]  ",
-            "FOR v IN " + colName + " FOR w IN 1..10 SORT v.d RETURN [v.d]",
-            
-            "FOR v IN " + colName + " LET x = (FOR w IN " + colNameOther + " RETURN w.f ) SORT v.a RETURN [v.a]"
-        ];
-        var QResults = [];
-        var i = 0;
-        queries.forEach(function(query) {
-          
-            var result = AQL_EXPLAIN(query, { }, paramIndexFromSort);
-            assertEqual([ ruleName ], result.plan.rules, query);
-            QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
-            QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort ).json;
-            
-            assertTrue(isEqual(QResults[0], QResults[1]), "Result " + i + " is Equal?");
+      var allresults;
+      var queries = [ 
+        
+        "FOR v IN " + colName + " SORT v.d DESC RETURN [v.d]",// currently only ASC supported, but we use the index range anyways. todo: this may change.
+        "FOR v IN " + colName + " SORT v.d FILTER v.a > 2 LIMIT 3 RETURN [v.d]  ",
+        "FOR v IN " + colName + " FOR w IN 1..10 SORT v.d RETURN [v.d]",
+        
+        "FOR v IN " + colName + " LET x = (FOR w IN " + colNameOther + " RETURN w.f ) SORT v.a RETURN [v.a]"
+      ];
+      var QResults = [];
+      var i = 0;
+      queries.forEach(function(query) {
+        
+        var result = AQL_EXPLAIN(query, { }, paramIndexFromSort);
+        assertEqual([ ruleName ], result.plan.rules, query);
+        QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
+        QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort ).json;
+        
+        assertTrue(isEqual(QResults[0], QResults[1]), "Result " + i + " is Equal?");
 
-            allresults = getQueryMultiplePlansAndExecutions(query, {});
-            PY(allresults);
-            i++;
-        });
+        allresults = getQueryMultiplePlansAndExecutions(query, {});
+        PY(allresults);
+        i++;
+      });
 
     },
-/*
+    /*
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test that rule has an effect, but the sort is kept in place since 
