@@ -529,9 +529,37 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         case EN::ENUMERATE_COLLECTION:{
           auto node = static_cast<EnumerateCollectionNode*>(en);
           auto var = node->getVariablesSetHere()[0];  // should only be 1
-          auto map = _ranges->find(var->name);        // check if we have any ranges with this var
+          std::unordered_map<std::string, RangeInfo>* map
+              = _ranges->find(var->name);        
+              // check if we have any ranges with this var
           
           if (map != nullptr) {
+            // Remove all variable bounds that are no longer defined here:
+            std::unordered_set<Variable const*> varsDefined 
+                = node->getVarsValid();
+            for (auto x : *map) {
+              auto worker = [&] (std::vector<RangeInfoBound>& bounds) -> void {
+                for (auto it = bounds.begin(); it != bounds.end(); ++it) {
+                  AstNode const* a = it->getExpressionAst(_plan->getAst());
+                  std::unordered_set<Variable*> varsUsed
+                      = Ast::getReferencedVariables(a);
+                  bool bad = false;
+                  for (auto v : varsUsed) {
+                    if (varsDefined.find(const_cast<Variable const*>(v))
+                        == varsDefined.end()) {
+                      bad = true;
+                    }
+                  }
+                  if (bad) {
+#if 0
+                    it = bounds.erase(it);
+#endif
+                  }
+                }
+              };
+              worker(x.second._lows);
+              worker(x.second._highs);
+            }
             // check the first components of <map> against indexes of <node>...
             std::unordered_set<std::string> attrs;
             
