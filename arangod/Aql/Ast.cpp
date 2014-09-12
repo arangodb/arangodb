@@ -835,8 +835,8 @@ void Ast::injectBindParameters (BindParameters& parameters) {
 /// @brief replace variables
 ////////////////////////////////////////////////////////////////////////////////
 
-void Ast::replaceVariables (AstNode* node,
-                            std::unordered_map<VariableId, Variable const*> const& replacements) {
+AstNode* Ast::replaceVariables (AstNode* node,
+                                std::unordered_map<VariableId, Variable const*> const& replacements) {
   auto func = [&](AstNode* node, void*) -> AstNode* {
     if (node == nullptr) {
       return nullptr;
@@ -848,7 +848,7 @@ void Ast::replaceVariables (AstNode* node,
       if (variable != nullptr) {
         auto it = replacements.find(variable->id);
         if (it != replacements.end()) {
-          node = createNode(NODE_TYPE_REFERENCE);
+          // overwrite the node in place
           node->setData((*it).second);
         }
       }
@@ -858,8 +858,7 @@ void Ast::replaceVariables (AstNode* node,
     return node;
   };
 
-  // optimization
-  _root = traverse(node, func, nullptr);
+  return traverse(node, func, nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -975,6 +974,59 @@ std::unordered_set<Variable*> Ast::getReferencedVariables (AstNode const* node) 
 
 void Ast::addNode (AstNode* node) {
   _nodes.push_back(node);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief recursively clone a node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::clone (AstNode const* node) {
+  auto type = node->type;
+  auto copy = createNode(type);
+
+  // special handling for certain node types
+  // copy payload...
+  if (type == NODE_TYPE_COLLECTION ||
+      type == NODE_TYPE_PARAMETER ||
+      type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+      type == NODE_TYPE_ARRAY_ELEMENT ||
+      type == NODE_TYPE_FCALL_USER) {
+    copy->setStringValue(node->getStringValue());
+  }
+  else if (type == NODE_TYPE_VARIABLE ||
+           type == NODE_TYPE_REFERENCE ||
+           type == NODE_TYPE_FCALL) {
+    copy->setData(node->getData());
+  }
+  else if (type == NODE_TYPE_SORT_ELEMENT) {
+    copy->setBoolValue(node->getBoolValue());
+  }
+  else if (type == NODE_TYPE_VALUE) {
+    switch (node->value.type) {
+      case VALUE_TYPE_BOOL:
+        copy->setBoolValue(node->getBoolValue());
+        break;
+      case VALUE_TYPE_INT:
+        copy->setIntValue(node->getIntValue());
+        break;
+      case VALUE_TYPE_DOUBLE:
+        copy->setDoubleValue(node->getDoubleValue());
+        break;
+      case VALUE_TYPE_STRING:
+        copy->setStringValue(node->getStringValue());
+        break;
+      default: {
+      }
+    }
+  }
+
+  // recursively clone subnodes
+  size_t const n = node->numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    copy->addMember(clone(node->getMember(i)));
+  }
+
+  return copy;
 }
 
 // -----------------------------------------------------------------------------

@@ -161,7 +161,10 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 void Expression::replaceVariables (std::unordered_map<VariableId, Variable const*> const& replacements) {
-//  ast->replaceVariables(_node, replacements);
+  _node = _ast->clone(_node);
+  TRI_ASSERT(_node != nullptr);
+
+  _ast->replaceVariables(const_cast<AstNode*>(_node), replacements);
     
   if (_type == V8) {
     delete _func;
