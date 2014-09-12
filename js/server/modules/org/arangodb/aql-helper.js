@@ -31,6 +31,7 @@
 var internal = require("internal");
 var arangodb = require("org/arangodb");
 var ShapedJson = internal.ShapedJson;
+var printYaml = function (plan) { require("internal").print(require("js-yaml").safeDump(plan));};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         AQL test helper functions
@@ -475,7 +476,7 @@ function findReferencedNodes(plan, testNode) {
   return matches;
 }
 
-function getQueryMultiplePlansAndExecutions (query, bindVars) {
+function getQueryMultiplePlansAndExecutions (query, bindVars, debug) {
   var plan;
   var i;
   var plans = [];
@@ -484,19 +485,43 @@ function getQueryMultiplePlansAndExecutions (query, bindVars) {
   var paramNone     = { optimizer: { rules: [ "-all" ]},  verbosePlans: true};
   var paramAllPlans = { allPlans : true, verbosePlans: true};
 
+  if (debug === undefined)
+    debug = false;
+
   // first fetch the unmodified version
+  if (debug) {
+    require("internal").print("Analysing Query unoptimized: " + query);
+  }
   plans [0] = AQL_EXPLAIN(query, bindVars, paramNone);
   // then all of the ones permuted by by the optimizer.
+  if (debug) {
+    require("internal").print("Unoptimized Plan (0):");
+    printYaml(plans [0]);
+
+  }
   allPlans = AQL_EXPLAIN(query, bindVars, paramAllPlans);
 
   for (i=0; i < allPlans.plans.length; i++) {
+    if (debug) {
+      require("internal").print("Optimized Plan ["+(i+1)+"]:");
+      printYaml(allPlans.plans [i]);
+    }
     plans[i+1] = {'plan':allPlans.plans[i]};
   }
   // Now execute each of these variations.
   for (i=0; i < plans.length; i++) {
-    results += AQL_EXECUTEJSON(plans[i].plan, paramNone);
+    if (debug) {
+      require("internal").print("Executing Plan No: " + i + "\n");
+    }
+    results[i] = AQL_EXECUTEJSON(plans[i].plan, paramNone);
+    if (debug) {
+      require("internal").print("\nDONE\n");
+    }
   }
 
+  if (debug) {
+    require("internal").print("done\n");
+  }
   return {'plans': plans, 'results': results};
 }
 
