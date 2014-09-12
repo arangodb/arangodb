@@ -79,7 +79,8 @@ Query::Query (TRI_vocbase_t* vocbase,
 
 Query::Query (TRI_vocbase_t* vocbase,
               triagens::basics::Json queryStruct,
-              QueryType Type)
+              QueryType Type,
+              TRI_json_t* options)
   : _vocbase(vocbase),
     _executor(nullptr),
     _queryString(nullptr),
@@ -87,7 +88,7 @@ Query::Query (TRI_vocbase_t* vocbase,
     _queryJson(queryStruct),
     _type(Type),
     _bindParameters(nullptr),
-    _options(nullptr),
+    _options(options),
     _collections(vocbase),
     _strings(),
     _ast(nullptr) {
@@ -276,7 +277,7 @@ QueryResult Query::execute () {
     plan = opt.stealBest(); // Now we own the best one again
     TRI_ASSERT(plan != nullptr);
     /* // for debugging of serialisation/deserialisation . . .
-    auto JsonPlan = plan->toJson(TRI_UNKNOWN_MEM_ZONE, true);
+    auto JsonPlan = plan->toJson(parser.ast(),TRI_UNKNOWN_MEM_ZONE, true);
     auto JsonString = JsonPlan.toString();
     std::cout << "original plan: \n" << JsonString << "\n";
 
