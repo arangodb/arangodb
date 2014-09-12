@@ -63,7 +63,8 @@ namespace triagens {
         RangeInfoBound (AstNode const* bound, bool include) 
           : _bound(), 
             _include(include), 
-            _defined(false) {
+            _defined(false),
+            _expressionAst(nullptr) {
           if (bound->type == NODE_TYPE_VALUE) {
             _bound = Json(TRI_UNKNOWN_MEM_ZONE,
                           bound->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
@@ -73,6 +74,7 @@ namespace triagens {
             _bound = Json(TRI_UNKNOWN_MEM_ZONE,
                           bound->toJson(TRI_UNKNOWN_MEM_ZONE, true));
             _isConstant = false;
+            _expressionAst = bound;
           }
           _defined = true;
         }
@@ -83,7 +85,8 @@ namespace triagens {
                                                                  "include")),
             _isConstant(basics::JsonHelper::checkAndGetBooleanValue(json.json(),
                                                              "isConstant")),
-            _defined(true) {
+            _defined(true),
+            _expressionAst(nullptr) {
           Json bound = json.get("bound");
           if (! bound.isEmpty()) {
             _bound = bound;
@@ -94,14 +97,16 @@ namespace triagens {
           : _bound(), 
             _include(false), 
             _isConstant(false), 
-            _defined(false) {
+            _defined(false),
+            _expressionAst(nullptr) {
         }
 
         RangeInfoBound (RangeInfoBound const& copy) 
             : _bound(copy._bound.copy()), 
               _include(copy._include), 
               _isConstant(copy._isConstant), 
-              _defined(copy._defined) {
+              _defined(copy._defined),
+              _expressionAst(nullptr) {
         } 
           
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,6 +136,7 @@ namespace triagens {
           _isConstant = basics::JsonHelper::checkAndGetBooleanValue(
                            json.json(), "isConstant");
           _defined = true;
+          _expressionAst = nullptr;
         }
 
         void assign (AstNode const* bound, bool include) {
@@ -140,11 +146,13 @@ namespace triagens {
             _bound = Json(TRI_UNKNOWN_MEM_ZONE,
                           bound->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
             _isConstant = true;
+            _expressionAst = nullptr;
           }
           else {
             _bound = Json(TRI_UNKNOWN_MEM_ZONE,
                           bound->toJson(TRI_UNKNOWN_MEM_ZONE, true));
             _isConstant = false;
+            _expressionAst = bound;
           }
           _defined = true;
         }
@@ -155,6 +163,7 @@ namespace triagens {
           _include = copy._include;
           _isConstant = copy._isConstant;
           _defined = copy._defined;
+          _expressionAst = copy._expressionAst;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -254,6 +263,14 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief getExpressionAst, looks up or computes (if necessary) an AST
+/// for the variable bound, return nullptr for a constant bound, the new
+/// (if needed) nodes are registered with the ast
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNode const* getExpressionAst(Ast* ast) const;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief _bound as Json, this is either for constant values 
 /// (_isConstant==true) or for JSON-serialised subexpressions
 /// (_isConstant==false).
@@ -280,6 +297,18 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _defined;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _expressionAst, this remembers the AST for the expression
+/// in the variable case, for constant expressions this is always a nullptr.
+/// If the bound is made from Json, then _expressionAst is initially set
+/// to nullptr and only later computed by getExpressionAst and then
+/// cached. Note that the memory management is done by an object of type
+/// Ast outside of this class. Therefore the destructor does not delete
+/// the pointer here.
+////////////////////////////////////////////////////////////////////////////////
+
+        mutable AstNode const* _expressionAst;
     };
 
 ////////////////////////////////////////////////////////////////////////////////
