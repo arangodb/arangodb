@@ -29,7 +29,7 @@
 
 #include "DummyShell.h"
 
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "BasicsC/files.h"
 
 using namespace std;

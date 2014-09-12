@@ -34,7 +34,7 @@
 
 #include "V8/v8-globals.h"
 
-#include "BasicsC/json.h"
+#include "Basics/json.h"
 #include "ShapedJson/json-shaper.h"
 
 // -----------------------------------------------------------------------------

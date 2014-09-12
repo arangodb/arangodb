@@ -36,7 +36,7 @@
 #include "unicode/ustdio.h"
 
 #include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "BasicsC/utf8-helper.h"
 
 using namespace triagens::basics;

@@ -29,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "associative-multi.h"
-#include "BasicsC/prime-numbers.h"
+#include "Basics/prime-numbers.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              ASSOCIATIVE POINTERS
@@ -79,8 +79,8 @@ int TRI_InitMultiPointer (TRI_multi_pointer_t* array,
   array->_nrUsed  = 0;
   array->_nrAlloc = 0;
 
-  if (NULL == (array->_table_alloc = TRI_Allocate(zone,
-                 sizeof(TRI_multi_pointer_entry_t) * INITIAL_SIZE + 64, true))) {
+  if (NULL == (array->_table_alloc = static_cast<TRI_multi_pointer_entry_t*>(TRI_Allocate(zone,
+                 sizeof(TRI_multi_pointer_entry_t) * INITIAL_SIZE + 64, true)))) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
   array->_table = (TRI_multi_pointer_entry_t*) TRI_Align64(array->_table_alloc);
@@ -649,8 +649,8 @@ static int ResizeMultiPointer (TRI_multi_pointer_t* array, size_t size) {
   oldAlloc = array->_nrAlloc;
 
   array->_nrAlloc = TRI_NearPrime((uint64_t) size);
-  array->_table_alloc = TRI_Allocate(array->_memoryZone,
-                 array->_nrAlloc * sizeof(TRI_multi_pointer_entry_t) + 64,true);
+  array->_table_alloc = static_cast<TRI_multi_pointer_entry_t*>(TRI_Allocate(array->_memoryZone,
+                 array->_nrAlloc * sizeof(TRI_multi_pointer_entry_t) + 64, true));
   array->_table = (TRI_multi_pointer_entry_t*) TRI_Align64(array->_table_alloc);
 
   if (array->_table == NULL) {

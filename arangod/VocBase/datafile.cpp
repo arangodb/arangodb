@@ -33,11 +33,11 @@
 
 #include "datafile.h"
 
-#include "BasicsC/conversions.h"
-#include "BasicsC/hashes.h"
+#include "Basics/conversions.h"
+#include "Basics/hashes.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/memory-map.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "BasicsC/files.h"
 #include "VocBase/server.h"
 

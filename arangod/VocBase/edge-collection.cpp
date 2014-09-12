@@ -30,7 +30,7 @@
 
 #include "edge-collection.h"
 
-#include "BasicsC/associative-multi.h"
+#include "Basics/associative-multi.h"
 #include "BasicsC/logging.h"
 
 #include "VocBase/document-collection.h"

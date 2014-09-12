@@ -45,7 +45,7 @@ struct TRI_string_buffer_s;
 /// @brief create a json struct from a value node
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_json_s* TRI_NodeJsonAql (struct TRI_aql_context_s* const,
+struct TRI_json_t* TRI_NodeJsonAql (struct TRI_aql_context_s* const,
                                     const TRI_aql_node_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,7 +53,7 @@ struct TRI_json_s* TRI_NodeJsonAql (struct TRI_aql_context_s* const,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_aql_node_t* TRI_JsonNodeAql (struct TRI_aql_context_s* const,
-                                 const struct TRI_json_s* const);
+                                 const struct TRI_json_t* const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a value node to its Javascript representation

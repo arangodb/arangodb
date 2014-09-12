@@ -30,7 +30,7 @@
 #include "tri-zip.h"
 
 #include "BasicsC/files.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "Zip/unzip.h"
 #include "Zip/zip.h"
 

@@ -30,7 +30,7 @@
 #include "init.h"
 
 #include "BasicsC/files.h"
-#include "BasicsC/hashes.h"
+#include "Basics/hashes.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/process-utils.h"
 #include "BasicsC/random.h"

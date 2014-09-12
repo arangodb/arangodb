@@ -31,7 +31,7 @@
 #include "HttpResponse.h"
 
 #include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "Basics/StringUtils.h"
 
 using namespace triagens::basics;

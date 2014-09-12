@@ -57,9 +57,9 @@ void TRI_InitCsvParser (TRI_csv_parser_t* parser,
 
   parser->_memoryZone = zone;
 
-  parser->_begin = TRI_Allocate(zone, length, false);
+  parser->_begin = static_cast<char*>(TRI_Allocate(zone, length, false));
 
-  if (parser->_begin == NULL) {
+  if (parser->_begin == nullptr) {
     length = 0;
   }
 
@@ -69,9 +69,9 @@ void TRI_InitCsvParser (TRI_csv_parser_t* parser,
   parser->_stop    = parser->_begin;
   parser->_end     = parser->_begin + length;
 
-  parser->_dataBegin = NULL;
-  parser->_dataAdd   = NULL;
-  parser->_dataEnd   = NULL;
+  parser->_dataBegin = nullptr;
+  parser->_dataAdd   = nullptr;
+  parser->_dataEnd   = nullptr;
 
   parser->begin = begin;
   parser->add   = add;
@@ -87,7 +87,7 @@ void TRI_InitCsvParser (TRI_csv_parser_t* parser,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyCsvParser (TRI_csv_parser_t* parser) {
-  if (parser->_begin != NULL) {
+  if (parser->_begin != nullptr) {
     TRI_Free(parser->_memoryZone, parser->_begin);
   }
 }
@@ -144,7 +144,7 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
   char* qtr;
 
   // append line to buffer
-  if (line != NULL) {
+  if (line != nullptr) {
     TRI_ASSERT(parser->_begin <= parser->_start);
     TRI_ASSERT(parser->_start <= parser->_written);
     TRI_ASSERT(parser->_written <= parser->_current);
@@ -189,9 +189,9 @@ int TRI_ParseCsvString2 (TRI_csv_parser_t* parser, char const* line, size_t leng
         l4 = parser->_written - parser->_start;
         l5 = parser->_current - parser->_start;
 
-        ptr = TRI_Allocate(parser->_memoryZone, l3, false);
+        ptr = static_cast<char*>(TRI_Allocate(parser->_memoryZone, l3, false));
 
-        if (ptr == NULL) {
+        if (ptr == nullptr) {
           return TRI_ERROR_OUT_OF_MEMORY;
         }
 

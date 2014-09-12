@@ -73,7 +73,7 @@ TRI_json_type_e;
 /// @brief json object
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_json_s {
+typedef struct TRI_json_t {
   TRI_json_type_e _type;
 
   union {

@@ -29,7 +29,7 @@
 
 #include "terminal-utils.h"
 
-#include "BasicsC/conversions.h"
+#include "Basics/conversions.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions

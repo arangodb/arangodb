@@ -542,7 +542,7 @@ uint32_t TRI_Crc32HashPointer (void const* data, size_t length) {
   uint32_t crc;
 
   crc = TRI_InitialCrc32();
-  crc = TRI_BlockCrc32(crc, data, length);
+  crc = TRI_BlockCrc32(crc, static_cast<char const*>(data), length);
 
   return TRI_FinalCrc32(crc);
 }

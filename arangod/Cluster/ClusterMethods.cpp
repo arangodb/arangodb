@@ -30,9 +30,9 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterComm.h"
 
-#include "BasicsC/conversions.h"
-#include "BasicsC/json.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/conversions.h"
+#include "Basics/json.h"
+#include "Basics/tri-strings.h"
 #include "BasicsC/vector.h"
 #include "Basics/json-utilities.h"
 #include "Basics/StringUtils.h"

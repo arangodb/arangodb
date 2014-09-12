@@ -42,13 +42,13 @@
 #endif
 
 
-#include "BasicsC/conversions.h"
-#include "BasicsC/hashes.h"
+#include "Basics/conversions.h"
+#include "Basics/hashes.h"
 #include "BasicsC/locks.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/random.h"
 #include "BasicsC/string-buffer.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "BasicsC/threads.h"
 
 #ifdef _WIN32

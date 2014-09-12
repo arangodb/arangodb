@@ -36,7 +36,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 
 #include <vector>
 

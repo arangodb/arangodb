@@ -29,7 +29,7 @@
 
 #include "vector.h"
 
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants

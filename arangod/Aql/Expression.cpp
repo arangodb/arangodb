@@ -36,7 +36,7 @@
 #include "Aql/Variable.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/StringBuffer.h"
-#include "BasicsC/json.h"
+#include "Basics/json.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"
 #include "Utils/Exception.h"

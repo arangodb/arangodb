@@ -32,7 +32,7 @@
 
 #include "BasicsC/common.h"
 
-#include "BasicsC/json.h"
+#include "Basics/json.h"
 
 #ifdef __cplusplus
 extern "C" {

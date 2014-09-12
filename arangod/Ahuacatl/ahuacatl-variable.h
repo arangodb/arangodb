@@ -31,8 +31,8 @@
 #define ARANGODB_AHUACATL_AHUACATL__VARIABLE_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/tri-strings.h"
-#include "BasicsC/hashes.h"
+#include "Basics/tri-strings.h"
+#include "Basics/hashes.h"
 #include "BasicsC/vector.h"
 #include "BasicsC/associative.h"
 

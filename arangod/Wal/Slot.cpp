@@ -28,7 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Wal/Slot.h"
-#include "BasicsC/hashes.h"
+#include "Basics/hashes.h"
 
 using namespace triagens::wal;
 

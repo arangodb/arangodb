@@ -36,7 +36,7 @@
 #include "Basics/JsonHelper.h"
 #include "Utils/AqlTransaction.h"
 
-struct TRI_json_s;
+struct TRI_json_t;
 
 namespace triagens {
   namespace basics {
@@ -257,7 +257,7 @@ namespace triagens {
         union {
           V8Expression*           _func;
 
-          struct TRI_json_s*      _data;
+          struct TRI_json_t*      _data;
         };
 
 ////////////////////////////////////////////////////////////////////////////////

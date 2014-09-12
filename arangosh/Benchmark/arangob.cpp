@@ -38,7 +38,7 @@
 #include "Basics/init.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/random.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/terminal-utils.h"
 #include "Rest/Endpoint.h"

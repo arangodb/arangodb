@@ -38,7 +38,7 @@
 #include "Utils/AqlTransaction.h"
 #include "Utils/V8TransactionContext.h"
 
-struct TRI_json_s;
+struct TRI_json_t;
 struct TRI_vocbase_s;
 
 namespace triagens {
@@ -85,13 +85,13 @@ namespace triagens {
         Query (struct TRI_vocbase_s*,
                char const*,
                size_t,
-               struct TRI_json_s*,
-               struct TRI_json_s*);
+               struct TRI_json_t*,
+               struct TRI_json_t*);
 
         Query (struct TRI_vocbase_s*,
                triagens::basics::Json queryStruct,
                QueryType Type,
-               struct TRI_json_s*);
+               struct TRI_json_t*);
 
         ~Query ();
 

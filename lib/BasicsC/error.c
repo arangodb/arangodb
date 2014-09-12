@@ -35,7 +35,7 @@
 #endif
 #endif
 
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "BasicsC/vector.h"
 #include "BasicsC/associative.h"
 

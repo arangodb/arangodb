@@ -47,7 +47,7 @@
 
 #include "BasicsC/logging.h"
 #include "BasicsC/random.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/DocumentHelper.h"

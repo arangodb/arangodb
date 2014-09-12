@@ -12,16 +12,22 @@ lib_libarango_a_CPPFLAGS = \
 	$(AM_CPPFLAGS) 
 
 lib_libarango_a_SOURCES = \
+	lib/Basics/associative-multi.cpp \
 	lib/Basics/ConditionLocker.cpp \
 	lib/Basics/ConditionVariable.cpp \
+	lib/Basics/conversions.cpp \
+	lib/Basics/csv.cpp \
 	lib/Basics/Exceptions.cpp \
 	lib/Basics/FileUtils.cpp \
+	lib/Basics/hashes.cpp \
 	lib/Basics/InitialiseBasics.cpp \
+	lib/Basics/json.cpp \
 	lib/Basics/json-utilities.cpp \
 	lib/Basics/JsonHelper.cpp \
 	lib/Basics/Mutex.cpp \
 	lib/Basics/MutexLocker.cpp \
 	lib/Basics/Nonce.cpp \
+	lib/Basics/prime-numbers.cpp \
 	lib/Basics/ProgramOptions.cpp \
 	lib/Basics/ProgramOptionsDescription.cpp \
 	lib/Basics/RandomGenerator.cpp \
@@ -35,18 +41,14 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/WriteLocker.cpp \
 	lib/Basics/WriteUnlocker.cpp \
 	lib/Basics/ssl-helper.cpp \
+	lib/Basics/tri-strings.cpp \
 	lib/BasicsC/application-exit.c \
-	lib/BasicsC/associative-multi.c \
 	lib/BasicsC/associative.c \
-	lib/BasicsC/conversions.c \
-	lib/BasicsC/csv.c \
 	lib/BasicsC/debugging.c \
 	lib/BasicsC/error.c \
 	lib/BasicsC/fasthash.c \
 	lib/BasicsC/files.c \
-	lib/BasicsC/hashes.c \
 	lib/Basics/init.cpp \
-	lib/BasicsC/json.c \
 	lib/BasicsC/linked-list.c \
 	lib/BasicsC/locks-macos.c \
 	lib/BasicsC/locks-posix.c \
@@ -54,13 +56,11 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/memory.c \
 	lib/BasicsC/memory-map-posix.c \
 	lib/BasicsC/mimetypes.c \
-	lib/BasicsC/prime-numbers.c \
 	lib/BasicsC/process-utils.c \
 	lib/BasicsC/random.c \
 	lib/BasicsC/skip-list.c \
 	lib/BasicsC/socket-utils.c \
 	lib/BasicsC/string-buffer.c \
-	lib/BasicsC/tri-strings.c \
 	lib/BasicsC/structures.c \
 	lib/BasicsC/system-functions.c \
 	lib/BasicsC/terminal-utils-posix.c \

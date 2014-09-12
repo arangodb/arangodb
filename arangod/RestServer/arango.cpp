@@ -29,9 +29,9 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/messages.h"
+#include "Basics/messages.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "Rest/InitialiseRest.h"
 #include "RestServer/ArangoServer.h"
 

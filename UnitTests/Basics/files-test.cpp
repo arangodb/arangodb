@@ -29,11 +29,10 @@
 
 #include "Basics/StringBuffer.h"
 #include "BasicsC/files.h"
-#include "BasicsC/json.h"
+#include "Basics/json.h"
 #include "BasicsC/random.h"
 
 using namespace triagens::basics;
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
