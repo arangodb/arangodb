@@ -119,6 +119,7 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
                               std::vector<Variable*> const& vars,
                               std::vector<RegisterId> const& regs) {
 
+  AqlValue ret;
   TRI_ASSERT(_type != UNPROCESSED);
 
   // and execute
@@ -130,7 +131,17 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
 
     case V8: {
       TRI_ASSERT(_func != nullptr);
-      return _func->execute(trx, docColls, argv, startPos, vars, regs);
+      try {
+        ret = _func->execute(trx, docColls, argv, startPos, vars, regs);
+      }
+      catch (triagens::arango::Exception ex) {
+        ex.addToMessage("\nwhile evaluating Expression:\n");
+        ex.addToMessage(toJson(TRI_UNKNOWN_MEM_ZONE, true).toString());
+        ex.addToMessage("\n");
+        throw ex;
+      }
+      return ret;
+
     }
 
     case SIMPLE: {

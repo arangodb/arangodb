@@ -98,6 +98,10 @@ namespace triagens {
         int code () const throw () {
           return _code;
         }
+        
+        void addToMessage(std::string More) {
+          _errorMessage += More;
+        }
 
         static std::string FillExceptionString (int, ...);
 
