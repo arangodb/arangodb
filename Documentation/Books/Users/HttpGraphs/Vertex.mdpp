@@ -1,5 +1,7 @@
 !CHAPTER Vertex
 
+**Warning Deprecated**
+
 `POST /_api/graph/graph-name/vertex-name`*(create vertex)*
 
 !SUBSECTION URL parameters
@@ -383,7 +385,7 @@ content-type: application/json; charset=utf-8
 }
 ```
 
-<!-->
+<!--
 @CLEARPAGE
 @anchor A_JSF_POST_graph_vertex
 @copydetails JSF_post_graph_vertex

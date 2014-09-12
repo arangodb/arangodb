@@ -26,3 +26,4 @@ build-book:
 	python bot.py
 	cd $(NAME) && gitbook build -o ../books/$(NAME)
 	cp Users/Arangodb_Logo.png books/Users/
+	python deprecated.py
