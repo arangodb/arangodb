@@ -106,6 +106,23 @@ void RangeInfoBound::andCombineUpperBounds (RangeInfoBound const& that) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief getExpressionAst, looks up or computes (if necessary) an AST
+/// for the variable bound, return nullptr for a constant bound, the new
+/// (if needed) nodes are registered with the ast
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode const* RangeInfoBound::getExpressionAst(Ast* ast) const {
+  if (_expressionAst != nullptr) {
+    return _expressionAst;
+  }
+  if (_isConstant) {
+    return nullptr;
+  }
+  _expressionAst = new AstNode(ast, _bound);
+  return _expressionAst;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief class RangeInfo
 ////////////////////////////////////////////////////////////////////////////////
 

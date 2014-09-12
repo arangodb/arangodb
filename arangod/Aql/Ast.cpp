@@ -753,7 +753,7 @@ AstNode* Ast::createNodeNop () {
 void Ast::injectBindParameters (BindParameters& parameters) {
   auto p = parameters();
 
-  auto func = [&](AstNode* node, void* data) -> AstNode* {
+  auto func = [&](AstNode* node, void*) -> AstNode* {
     if (node->type == NODE_TYPE_PARAMETER) {
       // found a bind parameter in the query string
       char const* param = node->getStringValue();
@@ -867,7 +867,7 @@ void Ast::replaceVariables (AstNode* node,
 ////////////////////////////////////////////////////////////////////////////////
 
 void Ast::optimize () {
-  auto func = [&](AstNode* node, void* data) -> AstNode* {
+  auto func = [&](AstNode* node, void*) -> AstNode* {
     if (node == nullptr) {
       return nullptr;
     }

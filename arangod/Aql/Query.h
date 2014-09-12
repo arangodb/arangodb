@@ -90,7 +90,8 @@ namespace triagens {
 
         Query (struct TRI_vocbase_s*,
                triagens::basics::Json queryStruct,
-               QueryType Type);
+               QueryType Type,
+               struct TRI_json_s*);
 
         ~Query ();
 

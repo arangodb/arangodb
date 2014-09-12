@@ -211,12 +211,12 @@ struct StaticAnalysisDebugger : public WalkerWorker<ExecutionBlock> {
 
   int indent;
 
-  bool enterSubquery (ExecutionBlock* super, ExecutionBlock* sub) {
+  bool enterSubquery (ExecutionBlock*, ExecutionBlock*) {
     indent++;
     return true;
   }
 
-  void leaveSubquery (ExecutionBlock* super, ExecutionBlock* sub) {
+  void leaveSubquery (ExecutionBlock*, ExecutionBlock*) {
     indent--;
   }
 
@@ -612,8 +612,8 @@ int SingletonBlock::shutdown () {
   return res;
 }
 
-int SingletonBlock::getOrSkipSome (size_t atLeast,
-                                   size_t atMost,
+int SingletonBlock::getOrSkipSome (size_t,   // atLeast,
+                                   size_t,   // atMost,
                                    bool skipping,
                                    AqlItemBlock*& result,
                                    size_t& skipped) {
@@ -725,7 +725,7 @@ int EnumerateCollectionBlock::initializeCursor (AqlItemBlock* items, size_t pos)
 /// @brief getSome
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlItemBlock* EnumerateCollectionBlock::getSome (size_t atLeast,
+AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
                                                  size_t atMost) {
   if (_done) {
     return nullptr;
@@ -865,8 +865,8 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
   }
 
   // instanciate expressions:
-  auto instanciateExpression = [&] (Json const& json) -> void {
-    auto a = new AstNode(engine->getQuery()->ast(), json);
+  auto instanciateExpression = [&] (RangeInfoBound& b) -> void {
+    AstNode const* a = b.getExpressionAst(engine->getQuery()->ast());
     // all new AstNodes are registered with the Ast in the Query
     auto e = new Expression(engine->getQuery()->executor(), a);
     try {
@@ -896,10 +896,10 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
     try {
       for (auto r : attrRanges) {
         for (auto l : r._lows) {
-          instanciateExpression(l.bound());
+          instanciateExpression(l);
         }
         for (auto h : r._highs) {
-          instanciateExpression(h.bound());
+          instanciateExpression(h);
         }
       }
     }
@@ -1063,7 +1063,7 @@ int IndexRangeBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 /// @brief getSome
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlItemBlock* IndexRangeBlock::getSome (size_t atLeast,
+AqlItemBlock* IndexRangeBlock::getSome (size_t, // atLeast
                                         size_t atMost) {
   if (_done) {
     return nullptr;
@@ -1525,7 +1525,7 @@ int EnumerateListBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   return TRI_ERROR_NO_ERROR;
 }
 
-AqlItemBlock* EnumerateListBlock::getSome (size_t atLeast, size_t atMost) {
+AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
   if (_done) {
     return nullptr;
   }
@@ -2957,11 +2957,11 @@ void InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
             // edge
             edge._fromKey = (TRI_voc_key_t) from.c_str();
             edge._toKey = (TRI_voc_key_t) to.c_str();
-            errorCode = _trx->create(trxCollection, TRI_DOC_MARKER_KEY_EDGE, &mptr, json.json(), &edge, ep->_options.waitForSync);
+            errorCode = _trx->create(trxCollection, &mptr, json.json(), &edge, ep->_options.waitForSync);
           }
           else {
             // document
-            errorCode = _trx->create(trxCollection, TRI_DOC_MARKER_KEY_DOCUMENT, &mptr, json.json(), nullptr, ep->_options.waitForSync);
+            errorCode = _trx->create(trxCollection, &mptr, json.json(), nullptr, ep->_options.waitForSync);
           }
         }
 
@@ -3396,14 +3396,14 @@ void ExecutionBlock::VarOverview::after (ExecutionBlock *eb) {
 /// @brief initializeCursor, only call base
 ////////////////////////////////////////////////////////////////////////////////
 
-int NoResultsBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
+int NoResultsBlock::initializeCursor (AqlItemBlock*, size_t) {
   _done = true;
   return TRI_ERROR_NO_ERROR;
 }
 
-int NoResultsBlock::getOrSkipSome (size_t atLeast,
-                                   size_t atMost,
-                                   bool skipping,
+int NoResultsBlock::getOrSkipSome (size_t,   // atLeast
+                                   size_t,   // atMost
+                                   bool,     // skipping
                                    AqlItemBlock*& result,
                                    size_t& skipped) {
 

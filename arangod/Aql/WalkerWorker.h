@@ -55,20 +55,22 @@ namespace triagens {
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
-        virtual bool before (T* en) {
+        virtual bool before (T*) {
           return false; // true to abort the whole walking process
         }
 
-        virtual void after (T* en) {
+        virtual void after (T*) {
         }
 
-        virtual bool enterSubquery (T* super, 
-                                    T* sub) {
+        virtual bool enterSubquery (T*, // super 
+                                    T*  // sub
+                                   ) {
           return true;
         }
 
-        virtual void leaveSubquery (T* super,
-                                    T* sub) {
+        virtual void leaveSubquery (T*, // super,
+                                    T*  // sub
+                                   ) {
         }
 
         bool done (T* en) {

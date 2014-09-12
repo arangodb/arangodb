@@ -959,6 +959,7 @@ static v8::Handle<v8::Value> JS_ExecuteAqlJson (v8::Arguments const& argv) {
     TRI_V8_TYPE_ERROR(scope, "expecting object for <queryjson>");
   }
   TRI_json_t* queryjson = TRI_ObjectToJson(argv[0]);
+  TRI_json_t* options = nullptr;
 
   if (argv.Length() > 1) {
     // we have options! yikes!
@@ -992,9 +993,10 @@ static v8::Handle<v8::Value> JS_ExecuteAqlJson (v8::Arguments const& argv) {
     if (argValue->Has(optionName)) {
       extra = TRI_ObjectToJson(argValue->Get(optionName));
     }
+    options = TRI_ObjectToJson(argv[1]);
   }
 
-  triagens::aql::Query query(vocbase, Json(TRI_UNKNOWN_MEM_ZONE, queryjson), triagens::aql::AQL_QUERY_READ);
+  triagens::aql::Query query(vocbase, Json(TRI_UNKNOWN_MEM_ZONE, queryjson), triagens::aql::AQL_QUERY_READ, options);
   
   auto queryResult = query.execute();
   

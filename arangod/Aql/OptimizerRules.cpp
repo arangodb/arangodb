@@ -226,7 +226,7 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
     else {
       // filter is always false
       // now insert a NoResults node below it
-      auto noResults = new NoResultsNode(plan->nextId());
+      auto noResults = new NoResultsNode(plan, plan->nextId());
       plan->registerNode(noResults);
       plan->replaceNode(n, noResults);
       modified = true;
@@ -773,7 +773,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                 try {
                   auto parents = newPlan->getNodeById(node->id())->getParents();
                   for (auto x: parents) {
-                    auto noRes = new NoResultsNode(newPlan->nextId());
+                    auto noRes = new NoResultsNode(newPlan, newPlan->nextId());
                     newPlan->registerNode(noRes);
                     newPlan->insertDependency(x, noRes);
                     _opt->addPlan(newPlan, _level, true);
@@ -860,7 +860,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                   if (! rangeInfo.at(0).empty()) {
                     auto newPlan = _plan->clone();
                     try {
-                      ExecutionNode* newNode = new IndexRangeNode(newPlan->nextId(), node->vocbase(), 
+                      ExecutionNode* newNode = new IndexRangeNode(newPlan, newPlan->nextId(), node->vocbase(), 
                         node->collection(), node->outVariable(), idx, rangeInfo);
                       newPlan->registerNode(newNode);
                       newPlan->replaceNode(newPlan->getNodeById(node->id()), newNode);
@@ -1222,7 +1222,8 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
       // are checking equality)
       auto newPlan = _plan->clone();
       try {
-        ExecutionNode* newNode = new IndexRangeNode( newPlan->nextId(),
+        ExecutionNode* newNode = new IndexRangeNode( newPlan,
+                                      newPlan->nextId(),
                                       node->vocbase(), 
                                       node->collection(),
                                       node->outVariable(),
