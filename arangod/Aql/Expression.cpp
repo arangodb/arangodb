@@ -135,9 +135,11 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
         ret = _func->execute(trx, docColls, argv, startPos, vars, regs);
       }
       catch (triagens::arango::Exception ex) {
-        ex.addToMessage("\nwhile evaluating Expression:\n");
+        ex.addToMessage("\nwhile evaluating Expression \n");
+#ifdef TRI_ENABLE_MAINTAINER_MODE
         ex.addToMessage(toJson(TRI_UNKNOWN_MEM_ZONE, true).toString());
         ex.addToMessage("\n");
+#endif
         throw ex;
       }
       return ret;
