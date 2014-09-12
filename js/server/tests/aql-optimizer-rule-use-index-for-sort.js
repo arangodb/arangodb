@@ -95,11 +95,12 @@ function optimizerRuleTestSuite() {
   var hasIndexRangeNode_WithRanges = function (plan, haveRanges) {
     var rn = findExecutionNodes(plan, "IndexRangeNode");
     assertEqual(rn.length, 1, "Has IndexRangeNode");
+    assertTrue(rn[0].ranges.length > 0, "whether the IndexRangeNode ranges array is valid");
     if (haveRanges) {
-      assertTrue(rn[0].ranges.length > 0, "Have IndexRangeNode with ranges");
+      assertTrue(rn[0].ranges[0].length > 0, "Have IndexRangeNode with ranges");
     }
     else {
-      assertEqual(rn[0].ranges.length, 0, "Have IndexRangeNode with NO ranges");
+      assertEqual(rn[0].ranges[0].length, 0, "Have IndexRangeNode with NO ranges");
     }
   };
   var getRangeAttributes = function (plan) {
@@ -559,8 +560,7 @@ function optimizerRuleTestSuite() {
 
       // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
       var RAs = getRangeAttributes(XPresult);
-      var first = getRangeAttribute(RAs, "v", "a", 1);
-      
+      var first = getRangeAttribute(RAs[0], "v", "a", 1);
       assertEqual(first.lows.length, 0, "no non-constant low bounds");
       assertEqual(first.highs.length, 0, "no non-constant high bounds");
       assertEqual(first.lowConst.bound, 1, "correctness of bound");
@@ -596,7 +596,7 @@ function optimizerRuleTestSuite() {
 
       // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
       var RAs = getRangeAttributes(XPresult);
-      var first = getRangeAttribute(RAs, "v", "a", 1);
+      var first = getRangeAttribute(RAs[0], "v", "a", 1);
       assertEqual(first.lowConst.bound, undefined, "no constant lower bound");
       assertEqual(first.lows.length, 0, "no variable low bound");
       assertEqual(first.highs.length, 0, "no variable high bound");
@@ -627,7 +627,7 @@ function optimizerRuleTestSuite() {
 
       // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
       var RAs = getRangeAttributes(XPresult);
-      var first = getRangeAttribute(RAs, "v", "a", 1);
+      var first = getRangeAttribute(RAs[0], "v", "a", 1);
       
       assertEqual(first.highConst.bound, undefined, "no constant upper bound");
       assertEqual(first.highs.length, 0, "no variable high bound");
@@ -661,7 +661,7 @@ function optimizerRuleTestSuite() {
 
       // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
       var RAs = getRangeAttributes(XPresult);
-      var first = getRangeAttribute(RAs, "v", "a", 1);
+      var first = getRangeAttribute(RAs[0], "v", "a", 1);
       
       assertEqual(first.highs.length, 0, "no variable high bounds");
       assertEqual(first.lows.length, 0, "no variable low bounds");
@@ -731,7 +731,7 @@ function optimizerRuleTestSuite() {
 //        // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
 //        var RAs = getRangeAttributes(XPresult);
 //        require("internal").print(RAs);
-//        var first = getRangeAttribute(RAs, "v", "a", 1);
+//        var first = getRangeAttribute(RAs[0], "v", "a", 1);
 //        
 //        require("internal").print(first);
 //        assertEqual(first.low.bound.vType, "int", "Type is int");
@@ -769,7 +769,7 @@ function optimizerRuleTestSuite() {
 //          // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
 //          var RAs = getRangeAttributes(XPresult);
 ////          require("internal").print(RAs);
-//          var first = getRangeAttribute(RAs, "v", "a", 1);
+//          var first = getRangeAttribute(RAs[0], "v", "a", 1);
 //          
 ////          require("internal").print(first);
 //          assertEqual(first.low.bound.vType, "int", "Type is int");
