@@ -693,7 +693,7 @@ will fail with an error.
 !SUBSUBSECTION Graph functions
 
 AQL has the following functions to traverse graphs:
-
+<div class="deprecated">
 **Warning: Deprecated**
 
 This query is deprecated and will be removed soon.
@@ -1039,7 +1039,7 @@ Please use [Graph operations](../Aql/GraphOperations.md) instead.
 
       NEIGHBORS(friends, friendrelations, "friends/john", "outbound")
       NEIGHBORS(users, usersrelations, "users/john", "any", [ { "$label": "recommends" } ] )
-
+</div>
 !SUBSUBSECTION Control flow functions
 
 AQL offers the following functions to let the user control the flow of operations:
