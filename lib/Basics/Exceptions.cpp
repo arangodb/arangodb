@@ -41,7 +41,7 @@ using namespace triagens::basics;
 ////////////////////////////////////////////////////////////////////////////////
 
 TriagensError::TriagensError (string const& type, string const& details, char const* file, int line)
-  : _type("unknown"),
+  : _type(type),
     _details(details),
     _file(file),
     _line(line) {
