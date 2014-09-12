@@ -467,8 +467,8 @@ namespace triagens {
 /// @brief replace variables
 ////////////////////////////////////////////////////////////////////////////////
 
-        void replaceVariables (AstNode*,
-                               std::unordered_map<VariableId, Variable const*> const&);
+        AstNode* replaceVariables (AstNode*,
+                                   std::unordered_map<VariableId, Variable const*> const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimizes the AST
@@ -487,6 +487,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void addNode (AstNode*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief recursively clone a node
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNode* clone (AstNode const*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
