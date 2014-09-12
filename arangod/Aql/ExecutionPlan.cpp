@@ -276,17 +276,16 @@ void ExecutionPlan::unregisterNode (ExecutionNode* node) {
 /// @brief creates a calculation node for an arbitrary expression
 ////////////////////////////////////////////////////////////////////////////////
 
-CalculationNode* ExecutionPlan::createTemporaryCalculation (Ast const* ast,
-                                                            AstNode const* expression) {
+CalculationNode* ExecutionPlan::createTemporaryCalculation (AstNode const* expression) {
   // generate a temporary variable
-  auto out = ast->variables()->createTemporaryVariable();
+  auto out = _ast->variables()->createTemporaryVariable();
   TRI_ASSERT(out != nullptr);
 
   // generate a temporary calculation node
-  auto expr = new Expression(ast->query()->executor(), const_cast<AstNode*>(expression));
+  auto expr = new Expression(_ast->query()->executor(), const_cast<AstNode*>(expression));
 
   try {
-    auto en = new CalculationNode(nextId(), expr, out);
+    auto en = new CalculationNode(this, nextId(), expr, out);
 
     registerNode(reinterpret_cast<ExecutionNode*>(en));
     return en;
@@ -350,20 +349,20 @@ ExecutionNode* ExecutionPlan::fromNodeFor (Ast const* ast,
     if (collection == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no collection for EnumerateCollection");
     }
-    en = registerNode(new EnumerateCollectionNode(nextId(), ast->query()->vocbase(), collection, v));
+    en = registerNode(new EnumerateCollectionNode(this, nextId(), ast->query()->vocbase(), collection, v));
   }
   else if (expression->type == NODE_TYPE_REFERENCE) {
     // second operand is already a variable
     auto inVariable = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(inVariable != nullptr);
-    en = registerNode(new EnumerateListNode(nextId(), inVariable, v));
+    en = registerNode(new EnumerateListNode(this, nextId(), inVariable, v));
   }
   else {
     // second operand is some misc. expression
-    auto calc = createTemporaryCalculation(ast, expression);
+    auto calc = createTemporaryCalculation(expression);
 
     calc->addDependency(previous);
-    en = registerNode(new EnumerateListNode(nextId(), calc->outVariable(), v));
+    en = registerNode(new EnumerateListNode(this, nextId(), calc->outVariable(), v));
     previous = calc;
   }
 
@@ -376,8 +375,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor (Ast const* ast,
 /// @brief create an execution plan element from an AST FILTER node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* ExecutionPlan::fromNodeFilter (Ast const* ast,
-                                              ExecutionNode* previous,
+ExecutionNode* ExecutionPlan::fromNodeFilter (ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FILTER);
   TRI_ASSERT(node->numMembers() == 1);
@@ -390,14 +388,14 @@ ExecutionNode* ExecutionPlan::fromNodeFilter (Ast const* ast,
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new FilterNode(nextId(), v));
+    en = registerNode(new FilterNode(this, nextId(), v));
   }
   else {
     // operand is some misc expression
-    auto calc = createTemporaryCalculation(ast, expression);
+    auto calc = createTemporaryCalculation(expression);
 
     calc->addDependency(previous);
-    en = registerNode(new FilterNode(nextId(), calc->outVariable()));
+    en = registerNode(new FilterNode(this, nextId(), calc->outVariable()));
     previous = calc;
   }
 
@@ -431,14 +429,14 @@ ExecutionNode* ExecutionPlan::fromNodeLet (Ast const* ast,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
-    en = registerNode(new SubqueryNode(nextId(), subquery, v));
+    en = registerNode(new SubqueryNode(this, nextId(), subquery, v));
   }
   else {
     // operand is some misc expression, including references to other variables
     auto expr = new Expression(ast->query()->executor(), const_cast<AstNode*>(expression));
 
     try {
-      en = registerNode(new CalculationNode(nextId(), expr, v));
+      en = registerNode(new CalculationNode(this, nextId(), expr, v));
     }
     catch (...) {
       // prevent memleak
@@ -454,8 +452,7 @@ ExecutionNode* ExecutionPlan::fromNodeLet (Ast const* ast,
 /// @brief create an execution plan element from an AST SORT node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* ExecutionPlan::fromNodeSort (Ast const* ast,
-                                            ExecutionNode* previous,
+ExecutionNode* ExecutionPlan::fromNodeSort (ExecutionNode* previous,
                                             AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_SORT);
   TRI_ASSERT(node->numMembers() == 1);
@@ -484,7 +481,7 @@ ExecutionNode* ExecutionPlan::fromNodeSort (Ast const* ast,
       }
       else {
         // sort operand is some misc expression
-        auto calc = createTemporaryCalculation(ast, expression);
+        auto calc = createTemporaryCalculation(expression);
         temp.push_back(calc);
         elements.push_back(std::make_pair(calc->outVariable(), element->getBoolValue()));
       }
@@ -506,7 +503,7 @@ ExecutionNode* ExecutionPlan::fromNodeSort (Ast const* ast,
     previous = (*it);
   }
 
-  auto en = registerNode(new SortNode(nextId(), elements, false));
+  auto en = registerNode(new SortNode(this, nextId(), elements, false));
 
   return addDependency(previous, en);
 }
@@ -555,7 +552,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollect (Ast const* ast,
     }
     else {
       // operand is some misc expression
-      auto calc = createTemporaryCalculation(ast, expression);
+      auto calc = createTemporaryCalculation(expression);
 
       calc->addDependency(previous);
       previous = calc;
@@ -567,7 +564,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollect (Ast const* ast,
 
   // inject a sort node for all expressions / variables that we just picked up...
   // note that this sort is stable
-  auto sort = registerNode(new SortNode(nextId(), sortElements, true));
+  auto sort = registerNode(new SortNode(this, nextId(), sortElements, true));
   sort->addDependency(previous);
   previous = sort;
 
@@ -580,7 +577,8 @@ ExecutionNode* ExecutionPlan::fromNodeCollect (Ast const* ast,
     outVariable = static_cast<Variable*>(v->getData());
   }
 
-  auto en = registerNode(new AggregateNode(nextId(), aggregateVariables, outVariable, ast->variables()->variables(false)));
+  auto en = registerNode(new AggregateNode(this, nextId(), aggregateVariables, 
+                  outVariable, ast->variables()->variables(false)));
 
   return addDependency(previous, en);
 }
@@ -589,8 +587,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollect (Ast const* ast,
 /// @brief create an execution plan element from an AST LIMIT node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* ExecutionPlan::fromNodeLimit (Ast const* ast,
-                                             ExecutionNode* previous,
+ExecutionNode* ExecutionPlan::fromNodeLimit (ExecutionNode* previous,
                                              AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_LIMIT);
   TRI_ASSERT(node->numMembers() == 2);
@@ -601,7 +598,7 @@ ExecutionNode* ExecutionPlan::fromNodeLimit (Ast const* ast,
   TRI_ASSERT(offset->type == NODE_TYPE_VALUE);
   TRI_ASSERT(count->type == NODE_TYPE_VALUE);
 
-  auto en = registerNode(new LimitNode(nextId(), static_cast<size_t>(offset->getIntValue()), static_cast<size_t>(count->getIntValue())));
+  auto en = registerNode(new LimitNode(this, nextId(), static_cast<size_t>(offset->getIntValue()), static_cast<size_t>(count->getIntValue())));
 
   return addDependency(previous, en);
 }
@@ -610,8 +607,7 @@ ExecutionNode* ExecutionPlan::fromNodeLimit (Ast const* ast,
 /// @brief create an execution plan element from an AST RETURN node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* ExecutionPlan::fromNodeReturn (Ast const* ast,
-                                              ExecutionNode* previous,
+ExecutionNode* ExecutionPlan::fromNodeReturn (ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_RETURN);
   TRI_ASSERT(node->numMembers() == 1);
@@ -624,13 +620,13 @@ ExecutionNode* ExecutionPlan::fromNodeReturn (Ast const* ast,
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new ReturnNode(nextId(), v));
+    en = registerNode(new ReturnNode(this, nextId(), v));
   }
   else {
     // operand is some misc expression
-    auto calc = createTemporaryCalculation(ast, expression);
+    auto calc = createTemporaryCalculation(expression);
     calc->addDependency(previous);
-    en = registerNode(new ReturnNode(nextId(), calc->outVariable()));
+    en = registerNode(new ReturnNode(this, nextId(), calc->outVariable()));
     previous = calc;
   }
 
@@ -663,13 +659,13 @@ ExecutionNode* ExecutionPlan::fromNodeRemove (Ast const* ast,
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new RemoveNode(nextId(), ast->query()->vocbase(), collection, options, v, nullptr));
+    en = registerNode(new RemoveNode(this, nextId(), ast->query()->vocbase(), collection, options, v, nullptr));
   }
   else {
     // operand is some misc expression
-    auto calc = createTemporaryCalculation(ast, expression);
+    auto calc = createTemporaryCalculation(expression);
     calc->addDependency(previous);
-    en = registerNode(new RemoveNode(nextId(), ast->query()->vocbase(), collection, options, calc->outVariable(), nullptr));
+    en = registerNode(new RemoveNode(this, nextId(), ast->query()->vocbase(), collection, options, calc->outVariable(), nullptr));
     previous = calc;
   }
 
@@ -697,13 +693,15 @@ ExecutionNode* ExecutionPlan::fromNodeInsert (Ast const* ast,
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new InsertNode(nextId(), ast->query()->vocbase(), collection, options, v, nullptr));
+    en = registerNode(new InsertNode(this, nextId(), ast->query()->vocbase(),
+                                     collection, options, v, nullptr));
   }
   else {
     // operand is some misc expression
-    auto calc = createTemporaryCalculation(ast, expression);
+    auto calc = createTemporaryCalculation(expression);
     calc->addDependency(previous);
-    en = registerNode(new InsertNode(nextId(), ast->query()->vocbase(), collection, options, calc->outVariable(), nullptr));
+    en = registerNode(new InsertNode(this, nextId(), ast->query()->vocbase(),
+                      collection, options, calc->outVariable(), nullptr));
     previous = calc;
   }
 
@@ -738,7 +736,7 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate (Ast const* ast,
     }
     else {
       // key operand is some misc expression
-      auto calc = createTemporaryCalculation(ast, keyExpression);
+      auto calc = createTemporaryCalculation(keyExpression);
       calc->addDependency(previous);
       previous = calc;
       keyVariable = calc->outVariable();
@@ -749,13 +747,15 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate (Ast const* ast,
     // document operand is already a variable
     auto v = static_cast<Variable*>(docExpression->getData());
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new UpdateNode(nextId(), ast->query()->vocbase(), collection, options, v, keyVariable, nullptr));
+    en = registerNode(new UpdateNode(this, nextId(), ast->query()->vocbase(),
+                      collection, options, v, keyVariable, nullptr));
   }
   else {
     // document operand is some misc expression
-    auto calc = createTemporaryCalculation(ast, docExpression);
+    auto calc = createTemporaryCalculation(docExpression);
     calc->addDependency(previous);
-    en = registerNode(new UpdateNode(nextId(), ast->query()->vocbase(), collection, options, calc->outVariable(), keyVariable, nullptr));
+    en = registerNode(new UpdateNode(this, nextId(), ast->query()->vocbase(),
+              collection, options, calc->outVariable(), keyVariable, nullptr));
     previous = calc;
   }
 
@@ -790,7 +790,7 @@ ExecutionNode* ExecutionPlan::fromNodeReplace (Ast const* ast,
     }
     else {
       // key operand is some misc expression
-      auto calc = createTemporaryCalculation(ast, keyExpression);
+      auto calc = createTemporaryCalculation(keyExpression);
       calc->addDependency(previous);
       previous = calc;
       keyVariable = calc->outVariable();
@@ -801,13 +801,15 @@ ExecutionNode* ExecutionPlan::fromNodeReplace (Ast const* ast,
     // operand is already a variable
     auto v = static_cast<Variable*>(docExpression->getData());
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new ReplaceNode(nextId(), ast->query()->vocbase(), collection, options, v, keyVariable, nullptr));
+    en = registerNode(new ReplaceNode(this, nextId(), ast->query()->vocbase(),
+                      collection, options, v, keyVariable, nullptr));
   }
   else {
     // operand is some misc expression
-    auto calc = createTemporaryCalculation(ast, docExpression);
+    auto calc = createTemporaryCalculation(docExpression);
     calc->addDependency(previous);
-    en = registerNode(new ReplaceNode(nextId(), ast->query()->vocbase(), collection, options, calc->outVariable(), keyVariable, nullptr));
+    en = registerNode(new ReplaceNode(this, nextId(), ast->query()->vocbase(),
+              collection, options, calc->outVariable(), keyVariable, nullptr));
     previous = calc;
   }
 
@@ -822,7 +824,7 @@ ExecutionNode* ExecutionPlan::fromNode (Ast const* ast,
                                         AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
-  ExecutionNode* en = registerNode(new SingletonNode(nextId()));
+  ExecutionNode* en = registerNode(new SingletonNode(this, nextId()));
 
   size_t const n = node->numMembers();
 
@@ -930,7 +932,7 @@ class NodeFinder : public WalkerWorker<ExecutionNode> {
       return false;
     }
 
-    bool enterSubquery (ExecutionNode* super, ExecutionNode* sub) {
+    bool enterSubquery (ExecutionNode*, ExecutionNode*) {
       return _enterSubqueries;
     }
 };
@@ -1036,7 +1038,7 @@ struct VarUsageFinder : public WalkerWorker<ExecutionNode> {
       en->setVarUsageValid();
     }
 
-    bool enterSubquery (ExecutionNode* super, ExecutionNode* sub) {
+    bool enterSubquery (ExecutionNode*, ExecutionNode* sub) {
       VarUsageFinder subfinder;
       subfinder._valid = _valid;  // need a copy for the subquery!
       sub->walk(&subfinder);
@@ -1187,7 +1189,7 @@ class CloneNodeAdder : public WalkerWorker<ExecutionNode> {
 ExecutionPlan* ExecutionPlan::clone () {
   auto plan = new ExecutionPlan(_ast);
   try {
-    plan->_root = _root->clone();
+    plan->_root = _root->clone(plan);
     plan->_nextId = _nextId;
     plan->_appliedRules = _appliedRules;
     CloneNodeAdder adder(plan);
@@ -1231,8 +1233,7 @@ ExecutionNode* ExecutionPlan::fromJson (Ast* ast,
     if (! oneJsonNode.isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json node is not an array");
     }
-    ret = ExecutionNode::fromJsonFactory(ast,
-                                         oneJsonNode);
+    ret = ExecutionNode::fromJsonFactory(this, oneJsonNode);
 
     registerNode(ret);
 
@@ -1289,12 +1290,12 @@ struct Shower : public WalkerWorker<ExecutionNode> {
   }
   ~Shower () {}
 
-  bool enterSubquery (ExecutionNode* super, ExecutionNode* sub) {
+  bool enterSubquery (ExecutionNode*, ExecutionNode*) {
     indent++;
     return true;
   }
 
-  void leaveSubquery (ExecutionNode* super, ExecutionNode* sub) {
+  void leaveSubquery (ExecutionNode*, ExecutionNode*) {
     indent--;
   }
 
