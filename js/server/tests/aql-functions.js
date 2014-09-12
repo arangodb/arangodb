@@ -55,6 +55,38 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test is_string function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIsString : function () {
+      assertEqual([ false ], getQueryResults("RETURN IS_STRING(null)"));
+      assertEqual([ false ], getQueryResults("RETURN IS_STRING(false)"));
+      assertEqual([ false ], getQueryResults("RETURN IS_STRING(true)"));
+      assertEqual([ false ], getQueryResults("RETURN IS_STRING(1)"));
+      assertEqual([ false ], getQueryResults("RETURN IS_STRING([ ])"));
+      assertEqual([ false ], getQueryResults("RETURN IS_STRING([ 'foo ' ])"));
+      assertEqual([ false ], getQueryResults("RETURN IS_STRING({ })"));
+      assertEqual([ false ], getQueryResults("RETURN IS_STRING({ 'foo': 'bar' })"));
+      assertEqual([ true ], getQueryResults("RETURN IS_STRING('foo')"));
+      assertEqual([ true ], getQueryResults("RETURN IS_STRING('')"));
+      assertEqual([ true ], getQueryResults("RETURN IS_STRING('0')"));
+      assertEqual([ true ], getQueryResults("RETURN IS_STRING('1')"));
+      assertEqual([ true ], getQueryResults("RETURN IS_STRING('true')"));
+      assertEqual([ true ], getQueryResults("RETURN IS_STRING('false')"));
+      assertEqual([ false, false ], getQueryResults("FOR i IN 1..2 RETURN IS_STRING(i)"));
+      assertEqual([ true, true, true, false ], getQueryResults("FOR i IN [ 'foo', 'bar', 'baz', 42 ] RETURN IS_STRING(i)"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test is_string function, invalid arguments
+////////////////////////////////////////////////////////////////////////////////
+    
+    testIsStringInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN IS_STRING()"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN IS_STRING('a', 'b')"); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test like function, invalid arguments
 ////////////////////////////////////////////////////////////////////////////////
     
