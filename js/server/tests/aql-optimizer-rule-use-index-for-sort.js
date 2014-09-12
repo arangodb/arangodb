@@ -26,12 +26,9 @@
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-var PY = function (plan) { require("internal").print(require("js-yaml").safeDump(plan));};
 var internal = require("internal");
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
-// var getQueryResults = helper.getQueryResults2;
-// TODO! var assertQueryError = helper.assertQueryError2;
 var isEqual = helper.isEqual;
 var findExecutionNodes = helper.findExecutionNodes;
 var findReferencedNodes = helper.findReferencedNodes;
@@ -192,27 +189,37 @@ function optimizerRuleTestSuite() {
     /// @brief test that rule has no effect
     ////////////////////////////////////////////////////////////////////////////////
 
+
     testRuleNoEffect : function () {
 
       var queries = [ 
 
-        "FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]",
+        ["FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]",true],
         // todo: we use an index anyways right now.
         // currently only ASC supported.
-        // "FOR v IN " + colName + " SORT v.a DESC RETURN [v.a, v.b]",
-        "FOR v IN " + colName + " SORT v.b, v.a  RETURN [v.a, v.b]",
-        "FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]",
-        "FOR v IN " + colName + " SORT v.a + 1 RETURN [v.a, v.b]",
-        "FOR v IN " + colName + " SORT CONCAT(TO_STRING(v.a), \"lol\") RETURN [v.a, v.b]",
+        // "FOR v IN " + colName + " SORT v.a DESC RETURN [v.a, v.b]",true],
+        ["FOR v IN " + colName + " SORT v.b, v.a  RETURN [v.a, v.b]",true],
+        ["FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]",true],
+        ["FOR v IN " + colName + " SORT v.a + 1 RETURN [v.a, v.b]",false],// this will throw...
+        ["FOR v IN " + colName + " SORT CONCAT(TO_STRING(v.a), \"lol\") RETURN [v.a, v.b]",true],
         // TODO: limit blocks sort atm.
-        "FOR v IN " + colName + " FILTER v.a > 2 LIMIT 3 SORT v.a RETURN [v.a, v.b]  ",
-        "FOR v IN " + colName + " FOR w IN " + colNameOther + " SORT v.a RETURN [v.a, v.b]"
+        ["FOR v IN " + colName + " FILTER v.a > 2 LIMIT 3 SORT v.a RETURN [v.a, v.b]  ",true],
+        ["FOR v IN " + colName + " FOR w IN " + colNameOther + " SORT v.a RETURN [v.a, v.b]",true]
       ];
 
       queries.forEach(function(query) {
         
-        var result = AQL_EXPLAIN(query, { }, paramIndexFromSort);
+        var result = AQL_EXPLAIN(query[0], { }, paramIndexFromSort);
         assertEqual([], result.plan.rules, query);
+        if (query[1]) {
+          allresults = getQueryMultiplePlansAndExecutions(query[0], {});
+          for (j = 1; j <= allresults.length; j++) {
+            AssertTrue(isEqual(allresults.results[0],
+                               allresults.results[j]),
+                       "whether the execution of this plan gave the right results: " +
+                       allresults.plans[j]);
+          }
+        }
       });
 
     },
@@ -227,15 +234,17 @@ function optimizerRuleTestSuite() {
         // currently only ASC supported, but we use the index range anyways.
         // todo: this may change.
         "FOR v IN " + colName + " SORT v.d DESC RETURN [v.d]",
+
         "FOR v IN " + colName + " SORT v.d FILTER v.a > 2 LIMIT 3 RETURN [v.d]  ",
         "FOR v IN " + colName + " FOR w IN 1..10 SORT v.d RETURN [v.d]",
-        
+
         "FOR v IN " + colName + " LET x = (FOR w IN " + colNameOther + " RETURN w.f ) SORT v.a RETURN [v.a]"
       ];
       var QResults = [];
       var i = 0;
       queries.forEach(function(query) {
-        
+        var j;
+
         var result = AQL_EXPLAIN(query, { }, paramIndexFromSort);
         assertEqual([ ruleName ], result.plan.rules, query);
         QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
@@ -244,6 +253,14 @@ function optimizerRuleTestSuite() {
         assertTrue(isEqual(QResults[0], QResults[1]), "Result " + i + " is Equal?");
 
         allresults = getQueryMultiplePlansAndExecutions(query, {});
+        AQL_EXECUTEJSON(allresults.plans[0].plan, paramNone);
+
+        for (j = 1; j <= allresults.length; j++) {
+          AssertTrue(isEqual(allresults.results[0],
+                             allresults.results[j]),
+                     "whether the execution of this plan gave the right results: " +
+                     allresults.plans[j]);
+        }
         i++;
       });
 
@@ -263,7 +280,7 @@ function optimizerRuleTestSuite() {
       var QResults = [];
       var i = 0;
       queries.forEach(function(query) {
-
+        var j;
         var result = AQL_EXPLAIN(query, { }, paramIndexFromSort);
         assertEqual([ ruleName ], result.plan.rules);
         hasIndexRangeNode_WithRanges(result, false);
@@ -271,6 +288,14 @@ function optimizerRuleTestSuite() {
         QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
         QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort ).json;
         assertTrue(isEqual(QResults[0], QResults[1]), "Result " + i + " is Equal?");
+
+        allresults = getQueryMultiplePlansAndExecutions(query, {});
+        for (j = 1; j <= allresults.length; j++) {
+          AssertTrue(isEqual(allresults.results[0],
+                             allresults.results[j]),
+                     "whether the execution of this plan gave the right results: " +
+                     allresults.plans[j]);
+        }
         i++;
       });
 
@@ -291,7 +316,7 @@ function optimizerRuleTestSuite() {
 
       var XPresult;
       var QResults=[];
-      var i;
+      var i, j;
 
       // we have to re-sort here, because of the index has one more sort criteria.
       QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
@@ -323,7 +348,13 @@ function optimizerRuleTestSuite() {
       for (i = 1; i < 3; i++) {
         assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
       }
-
+      allresults = getQueryMultiplePlansAndExecutions(query, {});
+      for (j = 1; j <= allresults.length; j++) {
+        AssertTrue(isEqual(allresults.results[0],
+                           allresults.results[j]),
+                   "whether the execution of this plan gave the right results: " +
+                   allresults.plans[j]);
+      }
     },
 
 
@@ -387,6 +418,13 @@ function optimizerRuleTestSuite() {
       for (i = 1; i < 4; i++) {
         assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
       }
+      allresults = getQueryMultiplePlansAndExecutions(query, {});
+      for (j = 1; j <= allresults.length; j++) {
+        AssertTrue(isEqual(allresults.results[0],
+                           allresults.results[j]),
+                   "whether the execution of this plan gave the right results: " +
+                   allresults.plans[j]);
+      }
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -399,7 +437,7 @@ function optimizerRuleTestSuite() {
 
       var XPresult;
       var QResults=[];
-      var i;
+      var i, j;
 
       // the index we will compare to sorts by a & b, so we need to
       // re-sort the result here to accomplish similarity.
@@ -456,7 +494,13 @@ function optimizerRuleTestSuite() {
       for (i = 1; i < 5; i++) {
         assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
       }
-
+      allresults = getQueryMultiplePlansAndExecutions(query, {});
+      for (j = 1; j <= allresults.length; j++) {
+        AssertTrue(isEqual(allresults.results[0],
+                           allresults.results[j]),
+                   "whether the execution of this plan gave the right results: " +
+                   allresults.plans[j]);
+      }
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -468,7 +512,7 @@ function optimizerRuleTestSuite() {
       var query = "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a, v.b RETURN [v.a, v.b, v.c]";
       var XPresult;
       var QResults=[];
-      var i;
+      var i, j;
 
       // the index we will compare to sorts by a & b, so we need to
       // re-sort the result here to accomplish similarity.
@@ -528,6 +572,13 @@ function optimizerRuleTestSuite() {
       for (i = 1; i < 5; i++) {
         assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
       }
+      allresults = getQueryMultiplePlansAndExecutions(query, {});
+      for (j = 1; j <= allresults.length; j++) {
+        AssertTrue(isEqual(allresults.results[0],
+                           allresults.results[j]),
+                   "whether the execution of this plan gave the right results: " +
+                   allresults.plans[j]);
+      }
     },
 
 
@@ -545,7 +596,7 @@ function optimizerRuleTestSuite() {
 
       var XPresult;
       var QResults=[];
-      var i;
+      var i, j;
 
       // the index we will compare to sorts by a & b, so we need to
       // re-sort the result here to accomplish similarity.
@@ -569,7 +620,13 @@ function optimizerRuleTestSuite() {
       for (i = 1; i < 2; i++) {
         assertTrue(isEqual(QResults[0].sort(sortArray), QResults[i]), "Result " + i + " is Equal?");
       }
-
+      allresults = getQueryMultiplePlansAndExecutions(query, {});
+      for (j = 1; j <= allresults.length; j++) {
+        AssertTrue(isEqual(allresults.results[0],
+                           allresults.results[j]),
+                   "whether the execution of this plan gave the right results: " +
+                   allresults.plans[j]);
+      }
     },
 
 
@@ -581,6 +638,7 @@ function optimizerRuleTestSuite() {
 
       var XPresult;
       var QResults=[];
+      var j;
 
       // the index we will compare to sorts by a & b, so we need to
       // re-sort the result here to accomplish similarity.
@@ -603,6 +661,14 @@ function optimizerRuleTestSuite() {
       assertEqual(first.highConst.bound, 5, "proper value was set");
 
       assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
+
+      allresults = getQueryMultiplePlansAndExecutions(query, {});
+      for (j = 1; j <= allresults.length; j++) {
+        AssertTrue(isEqual(allresults.results[0],
+                           allresults.results[j]),
+                   "whether the execution of this plan gave the right results: " +
+                   allresults.plans[j]);
+      }
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -612,6 +678,7 @@ function optimizerRuleTestSuite() {
       var query = "FOR v IN " + colName + " FILTER v.a > 5 RETURN [v.a, v.b]";
       var XPresult;
       var QResults=[];
+      var j;
 
       // the index we will compare to sorts by a & b, so we need to
       // re-sort the result here to accomplish similarity.
@@ -636,6 +703,13 @@ function optimizerRuleTestSuite() {
 
       assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
 
+      allresults = getQueryMultiplePlansAndExecutions(query, {});
+      for (j = 1; j <= allresults.length; j++) {
+        AssertTrue(isEqual(allresults.results[0],
+                           allresults.results[j]),
+                   "whether the execution of this plan gave the right results: " +
+                   allresults.plans[j]);
+      }
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -646,6 +720,7 @@ function optimizerRuleTestSuite() {
       var query = "FOR v IN " + colName + " FILTER v.a > 4 && v.a < 10 RETURN [v.a, v.b]";
       var XPresult;
       var QResults=[];
+      var j;
 
       // the index we will compare to sorts by a & b, so we need to
       // re-sort the result here to accomplish similarity.
@@ -669,6 +744,14 @@ function optimizerRuleTestSuite() {
       assertEqual(first.highConst.bound, 10, "proper value was set");
 
       assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
+
+      allresults = getQueryMultiplePlansAndExecutions(query, {});
+      for (j = 1; j <= allresults.length; j++) {
+        AssertTrue(isEqual(allresults.results[0],
+                           allresults.results[j]),
+                   "whether the execution of this plan gave the right results: " +
+                   allresults.plans[j]);
+      }
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -680,7 +763,7 @@ function optimizerRuleTestSuite() {
 
     testRangeBandpassInvalid: function () {
       var query = "FOR v IN " + colName + " FILTER v.a > 7 && v.a < 4 RETURN [v.a, v.b]";
-
+      var j;
       var XPresult;
       var QResults=[];
 
@@ -701,7 +784,13 @@ function optimizerRuleTestSuite() {
       hasNoIndexRangeNode(XPresult);
 
       assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
-      
+      allresults = getQueryMultiplePlansAndExecutions(query, {});
+      for (j = 1; j <= allresults.length; j++) {
+        AssertTrue(isEqual(allresults.results[0],
+                           allresults.results[j]),
+                   "whether the execution of this plan gave the right results: " +
+                   allresults.plans[j]);
+      }
     },
 
 
@@ -780,6 +869,7 @@ function optimizerRuleTestSuite() {
 //          assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
       
     }
+
   };
 }
 
