@@ -870,8 +870,8 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
   }
 
   // instanciate expressions:
-  auto instanciateExpression = [&] (Json const& json) -> void {
-    auto a = new AstNode(engine->getQuery()->ast(), json);
+  auto instanciateExpression = [&] (RangeInfoBound& b) -> void {
+    AstNode const* a = b.getExpressionAst(engine->getQuery()->ast());
     // all new AstNodes are registered with the Ast in the Query
     auto e = new Expression(engine->getQuery()->executor(), a);
     try {
@@ -901,10 +901,10 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
     try {
       for (auto r : attrRanges) {
         for (auto l : r._lows) {
-          instanciateExpression(l.bound());
+          instanciateExpression(l);
         }
         for (auto h : r._highs) {
-          instanciateExpression(h.bound());
+          instanciateExpression(h);
         }
       }
     }

@@ -43,6 +43,7 @@
 #include "Aql/Types.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
+#include "Aql/Ast.h"
 
 #include "lib/Basics/json-utilities.h"
 
@@ -53,7 +54,6 @@ namespace triagens {
 
     class ExecutionBlock;
     class ExecutionPlan;
-    class Ast;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class ExecutionNode, abstract base class of all execution Nodes
@@ -955,7 +955,32 @@ namespace triagens {
 
         virtual std::vector<Variable const*> getVariablesUsedHere () const {
           std::vector<Variable const*> v;
-          // FIXME: need to consider the variable bounds of the ranges
+          std::unordered_set<Variable const*> s;
+
+          for (auto const& x : _ranges) {
+            for (RangeInfo const& y : x) {
+              auto inserter = [&] (RangeInfoBound const& b) -> void {
+                AstNode const* a = b.getExpressionAst();
+                std::unordered_set<Variable*> vars
+                    = Ast::getReferencedVariables(a);
+                for (auto vv : vars) {
+                  s.insert(vv);
+                }
+              };
+
+              for (RangeInfoBound const& z : y._lows) {
+                inserter(z);
+              }
+              for (RangeInfoBound const& z : y._highs) {
+                inserter(z);
+              }
+            }
+          }
+
+          // Copy set elements into vector:
+          for (auto vv : s) {
+            v.push_back(vv);
+          }
           return v;
         }
 
