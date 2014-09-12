@@ -88,7 +88,7 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast* ast) {
   auto plan = new ExecutionPlan(ast);
 
   try {
-    plan->_root = plan->fromNode(ast, root);
+    plan->_root = plan->fromNode(root);
     plan->findVarUsage();
     return plan;
     // just for debugging
@@ -130,7 +130,7 @@ ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast* ast,
   auto plan = new ExecutionPlan(ast);
 
   try {
-    plan->_root = plan->fromJson(ast, json);
+    plan->_root = plan->fromJson(json);
     plan->findVarUsage();
     return plan;
   }
@@ -323,8 +323,7 @@ ExecutionNode* ExecutionPlan::addDependency (ExecutionNode* previous,
 /// @brief create an execution plan element from an AST FOR node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* ExecutionPlan::fromNodeFor (Ast const* ast,
-                                           ExecutionNode* previous,
+ExecutionNode* ExecutionPlan::fromNodeFor (ExecutionNode* previous,
                                            AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_FOR);
   TRI_ASSERT(node->numMembers() == 2);
@@ -343,13 +342,13 @@ ExecutionNode* ExecutionPlan::fromNodeFor (Ast const* ast,
   if (expression->type == NODE_TYPE_COLLECTION) {
     // second operand is a collection
     char const* collectionName = expression->getStringValue();
-    auto collections = ast->query()->collections();
+    auto collections = _ast->query()->collections();
     auto collection = collections->get(collectionName);
 
     if (collection == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no collection for EnumerateCollection");
     }
-    en = registerNode(new EnumerateCollectionNode(this, nextId(), ast->query()->vocbase(), collection, v));
+    en = registerNode(new EnumerateCollectionNode(this, nextId(), _ast->query()->vocbase(), collection, v));
   }
   else if (expression->type == NODE_TYPE_REFERENCE) {
     // second operand is already a variable
@@ -408,8 +407,7 @@ ExecutionNode* ExecutionPlan::fromNodeFilter (ExecutionNode* previous,
 /// inside LET nodes)
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* ExecutionPlan::fromNodeLet (Ast const* ast,
-                                           ExecutionNode* previous,
+ExecutionNode* ExecutionPlan::fromNodeLet (ExecutionNode* previous,
                                            AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_LET);
   TRI_ASSERT(node->numMembers() == 2);
@@ -423,7 +421,7 @@ ExecutionNode* ExecutionPlan::fromNodeLet (Ast const* ast,
 
   if (expression->type == NODE_TYPE_SUBQUERY) {
     // operand is a subquery...
-    auto subquery = fromNode(ast, expression);
+    auto subquery = fromNode(expression);
 
     if (subquery == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -433,7 +431,7 @@ ExecutionNode* ExecutionPlan::fromNodeLet (Ast const* ast,
   }
   else {
     // operand is some misc expression, including references to other variables
-    auto expr = new Expression(ast->query()->executor(), const_cast<AstNode*>(expression));
+    auto expr = new Expression(_ast->query()->executor(), const_cast<AstNode*>(expression));
 
     try {
       en = registerNode(new CalculationNode(this, nextId(), expr, v));
@@ -514,8 +512,7 @@ ExecutionNode* ExecutionPlan::fromNodeSort (ExecutionNode* previous,
 /// node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* ExecutionPlan::fromNodeCollect (Ast const* ast,
-                                               ExecutionNode* previous,
+ExecutionNode* ExecutionPlan::fromNodeCollect (ExecutionNode* previous,
                                                AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_COLLECT);
   size_t const n = node->numMembers();
@@ -578,7 +575,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollect (Ast const* ast,
   }
 
   auto en = registerNode(new AggregateNode(this, nextId(), aggregateVariables, 
-                  outVariable, ast->variables()->variables(false)));
+                  outVariable, _ast->variables()->variables(false)));
 
   return addDependency(previous, en);
 }
@@ -637,15 +634,14 @@ ExecutionNode* ExecutionPlan::fromNodeReturn (ExecutionNode* previous,
 /// @brief create an execution plan element from an AST REMOVE node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* ExecutionPlan::fromNodeRemove (Ast const* ast,
-                                              ExecutionNode* previous,
+ExecutionNode* ExecutionPlan::fromNodeRemove (ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REMOVE);
   TRI_ASSERT(node->numMembers() == 3);
   
   auto options = createOptions(node->getMember(0));
   char const* collectionName = node->getMember(1)->getStringValue();
-  auto collections = ast->query()->collections();
+  auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
 
   if (collection == nullptr) {
@@ -659,13 +655,13 @@ ExecutionNode* ExecutionPlan::fromNodeRemove (Ast const* ast,
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new RemoveNode(this, nextId(), ast->query()->vocbase(), collection, options, v, nullptr));
+    en = registerNode(new RemoveNode(this, nextId(), _ast->query()->vocbase(), collection, options, v, nullptr));
   }
   else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(expression);
     calc->addDependency(previous);
-    en = registerNode(new RemoveNode(this, nextId(), ast->query()->vocbase(), collection, options, calc->outVariable(), nullptr));
+    en = registerNode(new RemoveNode(this, nextId(), _ast->query()->vocbase(), collection, options, calc->outVariable(), nullptr));
     previous = calc;
   }
 
@@ -676,15 +672,14 @@ ExecutionNode* ExecutionPlan::fromNodeRemove (Ast const* ast,
 /// @brief create an execution plan element from an AST INSERT node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* ExecutionPlan::fromNodeInsert (Ast const* ast,
-                                              ExecutionNode* previous,
+ExecutionNode* ExecutionPlan::fromNodeInsert (ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_INSERT);
   TRI_ASSERT(node->numMembers() == 3);
   
   auto options = createOptions(node->getMember(0));
   char const* collectionName = node->getMember(1)->getStringValue();
-  auto collections = ast->query()->collections();
+  auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
   auto expression = node->getMember(2);
   ExecutionNode* en = nullptr;
@@ -693,14 +688,14 @@ ExecutionNode* ExecutionPlan::fromNodeInsert (Ast const* ast,
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new InsertNode(this, nextId(), ast->query()->vocbase(),
+    en = registerNode(new InsertNode(this, nextId(), _ast->query()->vocbase(),
                                      collection, options, v, nullptr));
   }
   else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(expression);
     calc->addDependency(previous);
-    en = registerNode(new InsertNode(this, nextId(), ast->query()->vocbase(),
+    en = registerNode(new InsertNode(this, nextId(), _ast->query()->vocbase(),
                       collection, options, calc->outVariable(), nullptr));
     previous = calc;
   }
@@ -712,15 +707,14 @@ ExecutionNode* ExecutionPlan::fromNodeInsert (Ast const* ast,
 /// @brief create an execution plan element from an AST UPDATE node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* ExecutionPlan::fromNodeUpdate (Ast const* ast,
-                                              ExecutionNode* previous,
+ExecutionNode* ExecutionPlan::fromNodeUpdate (ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPDATE);
   TRI_ASSERT(node->numMembers() >= 3);
   
   auto options = createOptions(node->getMember(0));
   char const* collectionName = node->getMember(1)->getStringValue();
-  auto collections = ast->query()->collections();
+  auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
   auto docExpression = node->getMember(2);
   auto keyExpression = node->getOptionalMember(3);
@@ -747,14 +741,14 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate (Ast const* ast,
     // document operand is already a variable
     auto v = static_cast<Variable*>(docExpression->getData());
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new UpdateNode(this, nextId(), ast->query()->vocbase(),
+    en = registerNode(new UpdateNode(this, nextId(), _ast->query()->vocbase(),
                       collection, options, v, keyVariable, nullptr));
   }
   else {
     // document operand is some misc expression
     auto calc = createTemporaryCalculation(docExpression);
     calc->addDependency(previous);
-    en = registerNode(new UpdateNode(this, nextId(), ast->query()->vocbase(),
+    en = registerNode(new UpdateNode(this, nextId(), _ast->query()->vocbase(),
               collection, options, calc->outVariable(), keyVariable, nullptr));
     previous = calc;
   }
@@ -766,15 +760,14 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate (Ast const* ast,
 /// @brief create an execution plan element from an AST REPLACE node
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* ExecutionPlan::fromNodeReplace (Ast const* ast,
-                                               ExecutionNode* previous,
+ExecutionNode* ExecutionPlan::fromNodeReplace (ExecutionNode* previous,
                                                AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REPLACE);
   TRI_ASSERT(node->numMembers() >= 3);
   
   auto options = createOptions(node->getMember(0));
   char const* collectionName = node->getMember(1)->getStringValue();
-  auto collections = ast->query()->collections();
+  auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
   auto docExpression = node->getMember(2);
   auto keyExpression = node->getOptionalMember(3);
@@ -801,14 +794,14 @@ ExecutionNode* ExecutionPlan::fromNodeReplace (Ast const* ast,
     // operand is already a variable
     auto v = static_cast<Variable*>(docExpression->getData());
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new ReplaceNode(this, nextId(), ast->query()->vocbase(),
+    en = registerNode(new ReplaceNode(this, nextId(), _ast->query()->vocbase(),
                       collection, options, v, keyVariable, nullptr));
   }
   else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(docExpression);
     calc->addDependency(previous);
-    en = registerNode(new ReplaceNode(this, nextId(), ast->query()->vocbase(),
+    en = registerNode(new ReplaceNode(this, nextId(), _ast->query()->vocbase(),
               collection, options, calc->outVariable(), keyVariable, nullptr));
     previous = calc;
   }
@@ -820,8 +813,7 @@ ExecutionNode* ExecutionPlan::fromNodeReplace (Ast const* ast,
 /// @brief create an execution plan from an abstract syntax tree node
 ////////////////////////////////////////////////////////////////////////////////
   
-ExecutionNode* ExecutionPlan::fromNode (Ast const* ast,
-                                        AstNode const* node) {
+ExecutionNode* ExecutionPlan::fromNode (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
   ExecutionNode* en = registerNode(new SingletonNode(this, nextId()));
@@ -837,57 +829,57 @@ ExecutionNode* ExecutionPlan::fromNode (Ast const* ast,
 
     switch (member->type) {
       case NODE_TYPE_FOR: {
-        en = fromNodeFor(ast, en, member);
+        en = fromNodeFor(en, member);
         break;
       }
 
       case NODE_TYPE_FILTER: {
-        en = fromNodeFilter(ast, en, member);
+        en = fromNodeFilter(en, member);
         break;
       }
 
       case NODE_TYPE_LET: {
-        en = fromNodeLet(ast, en, member);
+        en = fromNodeLet(en, member);
         break;
       }
     
       case NODE_TYPE_SORT: {
-        en = fromNodeSort(ast, en, member);
+        en = fromNodeSort(en, member);
         break;
       }
     
       case NODE_TYPE_COLLECT: {
-        en = fromNodeCollect(ast, en, member);
+        en = fromNodeCollect(en, member);
         break;
       }
       
       case NODE_TYPE_LIMIT: {
-        en = fromNodeLimit(ast, en, member);
+        en = fromNodeLimit(en, member);
         break;
       }
     
       case NODE_TYPE_RETURN: {
-        en = fromNodeReturn(ast, en, member);
+        en = fromNodeReturn(en, member);
         break;
       }
     
       case NODE_TYPE_REMOVE: {
-        en = fromNodeRemove(ast, en, member);
+        en = fromNodeRemove(en, member);
         break;
       }
     
       case NODE_TYPE_INSERT: {
-        en = fromNodeInsert(ast, en, member);
+        en = fromNodeInsert(en, member);
         break;
       }
     
       case NODE_TYPE_UPDATE: {
-        en = fromNodeUpdate(ast, en, member);
+        en = fromNodeUpdate(en, member);
         break;
       }
     
       case NODE_TYPE_REPLACE: {
-        en = fromNodeReplace(ast, en, member);
+        en = fromNodeReplace(en, member);
         break;
       }
 
@@ -1213,8 +1205,7 @@ ExecutionPlan* ExecutionPlan::clone () {
 /// @brief create a plan from the JSON provided
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode* ExecutionPlan::fromJson (Ast* ast,
-                                        Json const& json) {
+ExecutionNode* ExecutionPlan::fromJson (Json const& json) {
   ExecutionNode* ret = nullptr;
   Json nodes = json.get("nodes");
   //std::cout << nodes.toString() << "\n";
@@ -1243,7 +1234,7 @@ ExecutionNode* ExecutionPlan::fromJson (Ast* ast,
       // found a subquery node. now do magick here
       Json subquery = oneJsonNode.get("subquery");
       // create the subquery nodes from the "subquery" sub-node
-      auto subqueryNode = fromJson(ast, subquery);
+      auto subqueryNode = fromJson(subquery);
     
       // register the just created subquery 
       static_cast<SubqueryNode*>(ret)->setSubquery(subqueryNode); 

@@ -281,96 +281,84 @@ namespace triagens {
 /// @brief create an execution plan element from an AST FOR node
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode* fromNodeFor (Ast const*,
-                                    ExecutionNode*,
+        ExecutionNode* fromNodeFor (ExecutionNode*,
                                     AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST FILTER node
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode* fromNodeFilter (Ast const*,
-                                       ExecutionNode*,
+        ExecutionNode* fromNodeFilter (ExecutionNode*,
                                        AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST LET node
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode* fromNodeLet (Ast const*,
-                                    ExecutionNode*,
+        ExecutionNode* fromNodeLet (ExecutionNode*,
                                     AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST SORT node
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode* fromNodeSort (Ast const*,
-                                     ExecutionNode*,
+        ExecutionNode* fromNodeSort (ExecutionNode*,
                                      AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST COLLECT node
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode* fromNodeCollect (Ast const*,
-                                        ExecutionNode*,
+        ExecutionNode* fromNodeCollect (ExecutionNode*,
                                         AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST LIMIT node
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode* fromNodeLimit (Ast const*,
-                                      ExecutionNode*,
+        ExecutionNode* fromNodeLimit (ExecutionNode*,
                                       AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST RETURN node
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode* fromNodeReturn (Ast const*,
-                                       ExecutionNode*,
+        ExecutionNode* fromNodeReturn (ExecutionNode*,
                                        AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST REMOVE node
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode* fromNodeRemove (Ast const*,
-                                       ExecutionNode*,
+        ExecutionNode* fromNodeRemove (ExecutionNode*,
                                        AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST INSERT node
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode* fromNodeInsert (Ast const*,
-                                       ExecutionNode*,
+        ExecutionNode* fromNodeInsert (ExecutionNode*,
                                        AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST UPDATE node
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode* fromNodeUpdate (Ast const*,
-                                       ExecutionNode*,
+        ExecutionNode* fromNodeUpdate (ExecutionNode*,
                                        AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST REPLACE node
 ////////////////////////////////////////////////////////////////////////////////
 
-        ExecutionNode* fromNodeReplace (Ast const*,
-                                        ExecutionNode*,
+        ExecutionNode* fromNodeReplace (ExecutionNode*,
                                         AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan from an abstract syntax tree node
 ////////////////////////////////////////////////////////////////////////////////
   
-        ExecutionNode* fromNode (Ast const*,
-                                 AstNode const*);
+        ExecutionNode* fromNode (AstNode const*);
 
         ExecutionNode* fromJson (triagens::basics::Json const& Json);
 
