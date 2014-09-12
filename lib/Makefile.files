@@ -18,12 +18,14 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/conversions.cpp \
 	lib/Basics/csv.cpp \
 	lib/Basics/Exceptions.cpp \
+	lib/Basics/files.cpp \
 	lib/Basics/FileUtils.cpp \
 	lib/Basics/hashes.cpp \
 	lib/Basics/InitialiseBasics.cpp \
 	lib/Basics/json.cpp \
 	lib/Basics/json-utilities.cpp \
 	lib/Basics/JsonHelper.cpp \
+	lib/Basics/linked-list.cpp \
 	lib/Basics/Mutex.cpp \
 	lib/Basics/MutexLocker.cpp \
 	lib/Basics/Nonce.cpp \
@@ -47,9 +49,7 @@ lib_libarango_a_SOURCES = \
 	lib/BasicsC/debugging.c \
 	lib/BasicsC/error.c \
 	lib/BasicsC/fasthash.c \
-	lib/BasicsC/files.c \
 	lib/Basics/init.cpp \
-	lib/BasicsC/linked-list.c \
 	lib/BasicsC/locks-macos.c \
 	lib/BasicsC/locks-posix.c \
 	lib/BasicsC/logging.c \

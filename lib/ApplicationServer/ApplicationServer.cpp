@@ -46,7 +46,7 @@
 #include "Basics/delete_object.h"
 #include "Basics/conversions.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/files.h"
+#include "Basics/files.h"
 #include "Basics/tri-strings.h"
 
 using namespace triagens::basics;

@@ -50,7 +50,7 @@ uint64_t HashKey (TRI_associative_pointer_t* array, void const* key) {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t HashElement (TRI_associative_pointer_t* array, void const* element) {
-  TRI_linked_list_entry_t const* entry = element;
+  TRI_linked_list_entry_t const* entry = static_cast<TRI_linked_list_entry_t const*>(element);
 
   return (uint64_t) (uintptr_t) entry->_data;
 }
@@ -60,7 +60,7 @@ uint64_t HashElement (TRI_associative_pointer_t* array, void const* element) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool EqualKey (TRI_associative_pointer_t* array, void const* key, void const* element) {
-  TRI_linked_list_entry_t const* entry = element;
+  TRI_linked_list_entry_t const* entry = static_cast<TRI_linked_list_entry_t const*>(element);
 
   return key == entry->_data;
 }
@@ -70,8 +70,8 @@ bool EqualKey (TRI_associative_pointer_t* array, void const* key, void const* el
 ////////////////////////////////////////////////////////////////////////////////
 
 bool EqualElement (TRI_associative_pointer_t* array, void const* left, void const* right) {
-  TRI_linked_list_entry_t const* l = left;
-  TRI_linked_list_entry_t const* r = right;
+  TRI_linked_list_entry_t const* l = static_cast<TRI_linked_list_entry_t const*>(left);
+  TRI_linked_list_entry_t const* r = static_cast<TRI_linked_list_entry_t const*>(right);
 
   return l->_data == r->_data;
 }
@@ -87,7 +87,7 @@ static int AddLinkedArray (TRI_linked_array_t* array,
   TRI_linked_list_entry_t* found;
 
   // create entry
-  entry = TRI_Allocate(array->_memoryZone, sizeof(TRI_linked_list_entry_t), false);
+  entry = static_cast<TRI_linked_list_entry_t*>(TRI_Allocate(array->_memoryZone, sizeof(TRI_linked_list_entry_t), false));
 
   if (entry == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -96,7 +96,7 @@ static int AddLinkedArray (TRI_linked_array_t* array,
   entry->_data = data;
 
   // insert to lookup table
-  found = TRI_InsertElementAssociativePointer(&array->_array, entry, true);
+  found = static_cast<TRI_linked_list_entry_t*>(TRI_InsertElementAssociativePointer(&array->_array, entry, true));
 
   if (TRI_errno() == TRI_ERROR_OUT_OF_MEMORY) {
     TRI_Free(array->_memoryZone, entry);
@@ -287,7 +287,7 @@ int TRI_AddFrontLinkedArray (TRI_linked_array_t* array, void const* data) {
 void TRI_RemoveLinkedArray (TRI_linked_array_t* array, void const* data) {
   TRI_linked_list_entry_t* found;
 
-  found = TRI_RemoveKeyAssociativePointer(&array->_array, data);
+  found = static_cast<TRI_linked_list_entry_t*>(TRI_RemoveKeyAssociativePointer(&array->_array, data));
 
   if (found != NULL) {
     TRI_RemoveLinkedList(&array->_list, found);
@@ -302,7 +302,7 @@ void TRI_RemoveLinkedArray (TRI_linked_array_t* array, void const* data) {
 void TRI_MoveToBackLinkedArray (TRI_linked_array_t* array, void const* data) {
   TRI_linked_list_entry_t* found;
 
-  found = TRI_LookupByKeyAssociativePointer(&array->_array, data);
+  found = static_cast<TRI_linked_list_entry_t*>(TRI_LookupByKeyAssociativePointer(&array->_array, data));
 
   if (found) {
     if (found->_next != NULL) {
