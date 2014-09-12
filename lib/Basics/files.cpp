@@ -896,9 +896,7 @@ int TRI_UnlinkFile (char const* filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ReadPointer (int fd, void* buffer, size_t length) {
-  char* ptr;
-
-  ptr = buffer;
+  char* ptr = static_cast<char*>(buffer);
 
   while (0 < length) {
     ssize_t n = TRI_READ(fd, ptr, (unsigned int) length);
@@ -926,9 +924,7 @@ bool TRI_ReadPointer (int fd, void* buffer, size_t length) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_WritePointer (int fd, void const* buffer, size_t length) {
-  char const* ptr;
-
-  ptr = buffer;
+  char const* ptr = static_cast<char const*>(buffer);
 
   while (0 < length) {
     ssize_t n = TRI_WRITE(fd, ptr, (TRI_write_t) length);
@@ -1499,7 +1495,6 @@ char* TRI_GetAbsolutePath (char const* fileName, char const* currentWorkingDirec
 #else
 
 char* TRI_GetAbsolutePath (char const* file, char const* cwd) {
-  char* result;
   char* ptr;
   size_t cwdLength;
   bool isAbsolute;
@@ -1531,7 +1526,8 @@ char* TRI_GetAbsolutePath (char const* file, char const* cwd) {
   cwdLength = strlen(cwd);
   TRI_ASSERT(cwdLength > 0);
 
-  result = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (cwdLength + strlen(file) + 2) * sizeof(char), false);
+  char* result = static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (cwdLength + strlen(file) + 2) * sizeof(char), false));
+
   if (result != NULL) {
     ptr = result;
     memcpy(ptr, cwd, cwdLength);
@@ -1721,7 +1717,7 @@ int TRI_Crc32File (char const* path, uint32_t* crc) {
     }
 
     if (sizeRead > 0) {
-      *crc = TRI_BlockCrc32(*crc, buffer, sizeRead);
+      *crc = TRI_BlockCrc32(*crc, static_cast<char const*>(buffer), sizeRead);
     }
     else if (sizeRead <= 0) {
       break;

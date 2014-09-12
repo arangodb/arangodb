@@ -51,12 +51,14 @@ add_library(
     Basics/conversions.cpp
     Basics/csv.cpp
     Basics/Exceptions.cpp
+    Basics/files.cpp
     Basics/FileUtils.cpp
     Basics/hashes.cpp
     Basics/InitialiseBasics.cpp
     Basics/json.cpp
     Basics/json-utilities.cpp
     Basics/JsonHelper.cpp
+    Basics/linked-list.cpp
     Basics/Mutex.cpp
     Basics/MutexLocker.cpp
     Basics/Nonce.cpp
@@ -80,9 +82,7 @@ add_library(
     BasicsC/debugging.c
     BasicsC/error.c
     BasicsC/fasthash.c
-    BasicsC/files.c
     Basics/init.cpp
-    BasicsC/linked-list.c
     BasicsC/logging.c
     BasicsC/memory.c
     BasicsC/mimetypes.c
