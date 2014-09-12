@@ -113,6 +113,11 @@ Query::~Query () {
     _executor = nullptr;
   }
 
+  if (_ast != nullptr) {
+    delete _ast;
+    _ast = nullptr;
+  }
+
   // free strings
   for (auto it = _strings.begin(); it != _strings.end(); ++it) {
     TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, const_cast<char*>(*it));
