@@ -35,6 +35,7 @@
 #include "Aql/V8Expression.h"
 #include "Aql/Variable.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/StringBuffer.h"
 #include "BasicsC/json.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"
@@ -62,8 +63,6 @@ Expression::Expression (Executor* executor,
 
   TRI_ASSERT(_executor != nullptr);
   TRI_ASSERT(_node != nullptr);
-  
-  analyzeExpression();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,7 +77,6 @@ Expression::Expression (Ast* ast,
 
   TRI_ASSERT(_executor != nullptr);
   TRI_ASSERT(_node != nullptr);
-  analyzeExpression();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -118,6 +116,9 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
                               size_t startPos,
                               std::vector<Variable*> const& vars,
                               std::vector<RegisterId> const& regs) {
+  if (_type == UNPROCESSED) {
+    analyzeExpression();
+  }
 
   AqlValue ret;
   TRI_ASSERT(_type != UNPROCESSED);
@@ -134,11 +135,11 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
       try {
         ret = _func->execute(trx, docColls, argv, startPos, vars, regs);
       }
-      catch (triagens::arango::Exception ex) {
-        ex.addToMessage("\nwhile evaluating Expression \n");
+      catch (triagens::arango::Exception& ex) {
+        ex.addToMessage("\nwhile evaluating expression");
 #ifdef TRI_ENABLE_MAINTAINER_MODE
-        ex.addToMessage(toJson(TRI_UNKNOWN_MEM_ZONE, true).toString());
         ex.addToMessage("\n");
+        ex.addToMessage(toJson(TRI_UNKNOWN_MEM_ZONE, true).toString());
 #endif
         throw ex;
       }
@@ -156,6 +157,19 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
   }
       
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid simple expression");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replace variables in the expression with other variables
+////////////////////////////////////////////////////////////////////////////////
+
+void Expression::replaceVariables (std::unordered_map<VariableId, Variable const*> const& replacements) {
+//  ast->replaceVariables(_node, replacements);
+    
+  if (_type == V8) {
+    delete _func;
+    _type = UNPROCESSED;
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -422,7 +436,7 @@ bool Expression::isReference () const {
 /// call isSimpleAccessReference in advance to ensure no exceptions.
 ////////////////////////////////////////////////////////////////////////////////
 
-std::pair<std::string, std::string> Expression::getMultipleAttributes() const {
+std::pair<std::string, std::string> Expression::getMultipleAttributes() {
   if (! isSimple()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "getAccessNRef works only on simple expressions!");
@@ -438,15 +452,16 @@ std::pair<std::string, std::string> Expression::getMultipleAttributes() const {
 
   while (expNode->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
     attributeVector.push_back(expNode->getStringValue());
-    expNode = expNode->getMember (0);
+    expNode = expNode->getMember(0);
   }
   
-  std::string attributeVectorStr = "";
+  std::string attributeVectorStr;
   for (auto oneAttr = attributeVector.rbegin();
        oneAttr != attributeVector.rend();
        ++oneAttr) {
-    if (attributeVectorStr.size() > 0)
+    if (! attributeVectorStr.empty()) {
       attributeVectorStr += std::string(".");
+    }
     attributeVectorStr += *oneAttr;
   }
 
@@ -458,7 +473,6 @@ std::pair<std::string, std::string> Expression::getMultipleAttributes() const {
   auto variable = static_cast<Variable*>(expNode->getData());
 
   return std::make_pair(variable->name, attributeVectorStr);
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -466,8 +480,8 @@ std::pair<std::string, std::string> Expression::getMultipleAttributes() const {
 /// note that currently stringification is only supported for certain node types
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string Expression::stringify () const {
-  return _node->stringify();
+void Expression::stringify (triagens::basics::StringBuffer* buffer) const {
+  _node->append(buffer);
 }
 
 // -----------------------------------------------------------------------------

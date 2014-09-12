@@ -30,11 +30,13 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/Ast.h"
+#include "Basics/StringBuffer.h"
 
 using namespace triagens::basics;
 using namespace triagens::aql;
 
 const static bool Optional = true;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static initialization
 // -----------------------------------------------------------------------------
@@ -1097,7 +1099,8 @@ std::vector<std::pair<ExecutionNode*, bool>> SortNode::getCalcNodePairs ()
 /// @brief returns all sort information 
 ////////////////////////////////////////////////////////////////////////////////
 
-SortInformation SortNode::getSortInformation () const {
+SortInformation SortNode::getSortInformation (ExecutionPlan* plan,
+                                              triagens::basics::StringBuffer* buffer) const {
   SortInformation result;
 
   auto elements = getElements();
@@ -1125,7 +1128,9 @@ SortInformation SortNode::getSortInformation () const {
         break;
       }
 
-      result.criteria.emplace_back(std::make_tuple(setter, expression->stringify(), (*it).second));
+      expression->stringify(buffer);
+      result.criteria.emplace_back(std::make_tuple(setter, buffer->c_str(), (*it).second));
+      buffer->reset();
     }
     else {
       // use variable only. note that we cannot use the variable's name as it is not
