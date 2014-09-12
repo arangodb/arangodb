@@ -864,11 +864,34 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
     _allBoundsConstant &= r.isConstant();
   }
 
+}
+
+IndexRangeBlock::~IndexRangeBlock () {
+  for (auto e : _allVariableBoundExpressions) {
+    delete e;
+  }
+  _allVariableBoundExpressions.clear();
+}
+
+int IndexRangeBlock::initialize () {
+  int res = ExecutionBlock::initialize();
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    if (_trx->orderBarrier(_trx->trxCollection(_collection->cid())) == nullptr) {
+      res = TRI_ERROR_OUT_OF_MEMORY;
+    }
+  }
+  
+  // Get the ranges from the node:
+  auto en = static_cast<IndexRangeNode const*>(getPlanNode());
+  std::vector<std::vector<RangeInfo>> const& orRanges = en->_ranges;
+  std::vector<RangeInfo> const& attrRanges = orRanges[0];
+
   // instanciate expressions:
   auto instanciateExpression = [&] (RangeInfoBound& b) -> void {
-    AstNode const* a = b.getExpressionAst(engine->getQuery()->ast());
+    AstNode const* a = b.getExpressionAst(_engine->getQuery()->ast());
     // all new AstNodes are registered with the Ast in the Query
-    auto e = new Expression(engine->getQuery()->ast(), a);
+    auto e = new Expression(_engine->getQuery()->ast(), a);
     try {
       _allVariableBoundExpressions.push_back(e);
     }
@@ -910,13 +933,10 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
       throw;
     }
   }
-}
-
-IndexRangeBlock::~IndexRangeBlock () {
-  for (auto e : _allVariableBoundExpressions) {
-    delete e;
+  else {   // _allBoundsConstant
+    readIndex();
   }
-  _allVariableBoundExpressions.clear();
+  return res;
 }
 
 bool IndexRangeBlock::readIndex () {
@@ -1027,21 +1047,6 @@ bool IndexRangeBlock::readIndex () {
     TRI_ASSERT(false);
   }
   return (!_documents.empty());
-}
-
-int IndexRangeBlock::initialize () {
-  int res = ExecutionBlock::initialize();
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    if (_trx->orderBarrier(_trx->trxCollection(_collection->cid())) == nullptr) {
-      res = TRI_ERROR_OUT_OF_MEMORY;
-    }
-  }
-  
-  if (_allBoundsConstant) {
-    readIndex();
-  }
-  return res;
 }
 
 int IndexRangeBlock::initializeCursor (AqlItemBlock* items, size_t pos) {

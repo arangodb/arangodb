@@ -312,7 +312,7 @@ namespace triagens {
     };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief struct to keep a vector of RangeInfoBounds for _lows and one for 
+/// @brief struct to keep a list of RangeInfoBounds for _lows and one for 
 ///_highs, as well as constant _lowConst and _highConst. All constant bounds
 /// will be combined into _lowConst and _highConst respectively, they
 /// can also be not _defined. All bounds in _lows and _highs are defined
@@ -485,7 +485,7 @@ namespace triagens {
 /// @brief _lows, all non-constant lower bounds
 ////////////////////////////////////////////////////////////////////////////////
         
-        std::vector<RangeInfoBound> _lows;
+        std::list<RangeInfoBound> _lows;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _lowConst, all constant lower bounds combined, or not _defined
@@ -497,7 +497,7 @@ namespace triagens {
 /// @brief _highs, all non-constant upper bounds
 ////////////////////////////////////////////////////////////////////////////////
         
-        std::vector<RangeInfoBound> _highs;
+        std::list<RangeInfoBound> _highs;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _highConst, all constant upper bounds combined, or not _defined

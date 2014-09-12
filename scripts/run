@@ -10,6 +10,9 @@ for i in $*; do
     if test "$i" == valgrind; then
         export VG='valgrind --log-file=/tmp/valgrindlog.%p --show-possibly-lost=no --track-fds=no --leak-check=full'
     fi
+    if test "$i" == valgrindxml; then
+        export VG='valgrind --log-file=/tmp/valgrindlog.%p --show-possibly-lost=no --track-fds=no --leak-check=full'
+    fi
     ARGS="$ARGS --javascript.script-parameter $i"
 done
 echo Database has its data in data-$PID
