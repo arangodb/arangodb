@@ -53,7 +53,7 @@
 #include <TlHelp32.h>
 #endif
 
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "BasicsC/string-buffer.h"
 #include "BasicsC/locks.h"
 #include "BasicsC/logging.h"

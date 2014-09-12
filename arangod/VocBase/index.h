@@ -34,9 +34,8 @@
 
 #include "VocBase/vocbase.h"
 
-#include "BasicsC/associative-multi.h"
-#include "BasicsC/json.h"
-#include "BasicsC/linked-list.h"
+#include "Basics/associative-multi.h"
+#include "Basics/json.h"
 #include "BitIndexes/bitarrayIndex.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "GeoIndex/GeoIndex.h"

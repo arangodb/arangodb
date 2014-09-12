@@ -36,7 +36,7 @@
 #endif
 
 #include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            THREAD

@@ -33,10 +33,10 @@
 
 #include "compactor.h"
 
-#include "BasicsC/conversions.h"
+#include "Basics/conversions.h"
 #include "BasicsC/files.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "Utils/transactions.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/primary-index.h"

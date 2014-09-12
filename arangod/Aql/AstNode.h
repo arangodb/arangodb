@@ -31,7 +31,7 @@
 #define ARANGODB_AQL_ASTNODE_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/json.h"
+#include "Basics/json.h"
 #include "BasicsC/vector.h"
 #include "Basics/JsonHelper.h"
 #include "Utils/Exception.h"

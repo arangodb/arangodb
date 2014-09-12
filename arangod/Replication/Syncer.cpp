@@ -30,8 +30,8 @@
 #include "Syncer.h"
 
 #include "BasicsC/files.h"
-#include "BasicsC/json.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/json.h"
+#include "Basics/tri-strings.h"
 #include "Basics/JsonHelper.h"
 #include "Rest/HttpRequest.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"

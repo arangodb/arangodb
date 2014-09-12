@@ -33,7 +33,7 @@
 
 #include "BasicsC/files.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 
 #include "mruby/array.h"
 #include "mruby/compile.h"

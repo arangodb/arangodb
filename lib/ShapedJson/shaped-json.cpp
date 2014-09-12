@@ -31,10 +31,10 @@
 #include "shaped-json.h"
 
 #include "BasicsC/associative.h"
-#include "BasicsC/hashes.h"
+#include "Basics/hashes.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/string-buffer.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "BasicsC/vector.h"
 #include "ShapedJson/json-shaper.h"
 

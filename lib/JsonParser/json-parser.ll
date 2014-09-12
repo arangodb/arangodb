@@ -28,8 +28,8 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/json.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/json.h"
+#include "Basics/tri-strings.h"
 #include "BasicsC/logging.h"
 
 #ifdef _WIN32

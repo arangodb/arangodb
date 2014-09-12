@@ -30,7 +30,7 @@
 #include "fulltext-query.h"
 
 #include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "BasicsC/utf8-helper.h"
 
 #include "fulltext-index.h"

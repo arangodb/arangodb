@@ -28,8 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-vocbaseprivate.h"
-#include "BasicsC/conversions.h"
-#include "BasicsC/conversions.h"
+#include "Basics/conversions.h"
 #include "VocBase/key-generator.h"
 #include "V8/v8-conv.h"
 #include "Utils/DocumentHelper.h"

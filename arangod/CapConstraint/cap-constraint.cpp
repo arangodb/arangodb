@@ -30,7 +30,7 @@
 #include "cap-constraint.h"
 
 #include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "Utils/Exception.h"
 #include "Utils/transactions.h"
 #include "VocBase/document-collection.h"

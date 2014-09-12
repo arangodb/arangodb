@@ -29,7 +29,7 @@
 
 #include "RecoverState.h"
 #include "Basics/FileUtils.h"
-#include "BasicsC/conversions.h"
+#include "Basics/conversions.h"
 #include "BasicsC/files.h"
 #include "VocBase/collection.h"
 #include "VocBase/replication-applier.h"

@@ -35,7 +35,7 @@
 #include <iostream>
 
 #include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 

@@ -35,7 +35,7 @@
 #include "Basics/ssl-helper.h"
 #include "Basics/FileUtils.h"
 #include "Basics/RandomGenerator.h"
-#include "BasicsC/json.h"
+#include "Basics/json.h"
 #include "BasicsC/logging.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "HttpServer/HttpHandlerFactory.h"

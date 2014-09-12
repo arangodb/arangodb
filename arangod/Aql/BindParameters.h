@@ -31,14 +31,12 @@
 #define ARANGODB_AQL_QUERY_BIND_PARAMETERS_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/json.h"
-
-struct TRI_json_s;
+#include "Basics/json.h"
 
 namespace triagens {
   namespace aql {
 
-    typedef std::unordered_map<std::string, std::pair<struct TRI_json_s const*, bool>> BindParametersType;
+    typedef std::unordered_map<std::string, std::pair<TRI_json_t const*, bool>> BindParametersType;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class BindParameters
@@ -101,7 +99,7 @@ namespace triagens {
 /// @brief the parameter json
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_json_s*  _json;
+        TRI_json_t*  _json;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pointer to collection parameters

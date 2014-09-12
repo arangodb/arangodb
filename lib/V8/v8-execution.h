@@ -38,7 +38,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
-struct TRI_json_s;
+struct TRI_json_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
@@ -80,7 +80,7 @@ void TRI_FreeExecutionContext (TRI_js_exec_context_t*);
 /// @brief executes a result context
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_json_s* TRI_ExecuteResultContext (TRI_js_exec_context_t* context);
+struct TRI_json_t* TRI_ExecuteResultContext (TRI_js_exec_context_t* context);
 
 #endif
 

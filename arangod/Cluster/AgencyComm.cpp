@@ -33,7 +33,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/WriteLocker.h"
-#include "BasicsC/json.h"
+#include "Basics/json.h"
 #include "BasicsC/logging.h"
 #include "Cluster/ServerState.h"
 #include "Rest/Endpoint.h"

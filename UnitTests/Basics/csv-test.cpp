@@ -29,8 +29,8 @@
 
 #include <sstream>
 
-#include "BasicsC/csv.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/csv.h"
+#include "Basics/tri-strings.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a parser instance

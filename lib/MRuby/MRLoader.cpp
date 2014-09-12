@@ -33,7 +33,7 @@
 #include "Basics/StringUtils.h"
 #include "BasicsC/files.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "MRuby/mr-utils.h"
 
 using namespace std;

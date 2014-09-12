@@ -46,7 +46,7 @@
 struct TRI_document_collection_t;
 struct TRI_col_info_s;
 struct TRI_general_cursor_store_s;
-struct TRI_json_s;
+struct TRI_json_t;
 struct TRI_server_s;
 struct TRI_vector_pointer_s;
 struct TRI_vector_string_s;
@@ -472,7 +472,7 @@ TRI_vector_string_t TRI_CollectionNamesVocBase (TRI_vocbase_t*);
 /// and optionally indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_json_s* TRI_InventoryCollectionsVocBase (TRI_vocbase_t*,
+struct TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t*,
                                                     TRI_voc_tick_t,
                                                     bool (*)(TRI_vocbase_col_t*, void*),
                                                     void*);

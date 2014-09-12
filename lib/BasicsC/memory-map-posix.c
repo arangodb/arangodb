@@ -32,7 +32,7 @@
 #ifdef TRI_HAVE_POSIX_MMAP
 
 #include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 
 #include <sys/mman.h>
 

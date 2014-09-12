@@ -31,7 +31,7 @@
 #define ARANGODB_WAL_MARKER_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "ShapedJson/Legends.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/datafile.h"

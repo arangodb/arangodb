@@ -45,16 +45,22 @@ add_library(
     ${LIB_ARANGO_APPLE}
     ${LIB_ARANGO_MSVC}
     ${LIB_ARANGO_POSIX}
+    Basics/associative-multi.cpp
     Basics/ConditionLocker.cpp
     Basics/ConditionVariable.cpp
+    Basics/conversions.cpp
+    Basics/csv.cpp
     Basics/Exceptions.cpp
     Basics/FileUtils.cpp
+    Basics/hashes.cpp
     Basics/InitialiseBasics.cpp
+    Basics/json.cpp
     Basics/json-utilities.cpp
     Basics/JsonHelper.cpp
     Basics/Mutex.cpp
     Basics/MutexLocker.cpp
     Basics/Nonce.cpp
+    Basics/prime-numbers.cpp
     Basics/ProgramOptions.cpp
     Basics/ProgramOptionsDescription.cpp
     Basics/RandomGenerator.cpp
@@ -64,33 +70,27 @@ add_library(
     Basics/StringUtils.cpp
     Basics/Thread.cpp
     Basics/Timing.cpp
+    Basics/tri-strings.cpp
     Basics/Utf8Helper.cpp
     Basics/WriteLocker.cpp
     Basics/WriteUnlocker.cpp
     Basics/ssl-helper.cpp
     BasicsC/application-exit.c
-    BasicsC/associative-multi.c
     BasicsC/associative.c
-    BasicsC/conversions.c
-    BasicsC/csv.c
     BasicsC/debugging.c
     BasicsC/error.c
     BasicsC/fasthash.c
     BasicsC/files.c
-    BasicsC/hashes.c
     Basics/init.cpp
-    BasicsC/json.c
     BasicsC/linked-list.c
     BasicsC/logging.c
     BasicsC/memory.c
     BasicsC/mimetypes.c
-    BasicsC/prime-numbers.c
     BasicsC/process-utils.c
     BasicsC/random.c
     BasicsC/skip-list.c
     BasicsC/socket-utils.c
     BasicsC/string-buffer.c
-    BasicsC/tri-strings.c
     BasicsC/structures.c
     BasicsC/system-functions.c
     BasicsC/terminal-utils.c

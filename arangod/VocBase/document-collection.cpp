@@ -29,10 +29,10 @@
 
 #include "document-collection.h"
 
-#include "BasicsC/conversions.h"
+#include "Basics/conversions.h"
 #include "BasicsC/files.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "CapConstraint/cap-constraint.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "GeoIndex/geo-index.h"

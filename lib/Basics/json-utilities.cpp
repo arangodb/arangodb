@@ -31,7 +31,7 @@
 
 #include "BasicsC/utf8-helper.h"
 #include "BasicsC/string-buffer.h"
-#include "BasicsC/hashes.h"
+#include "Basics/hashes.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions

@@ -35,15 +35,15 @@
 
 #include <regex.h>
 
-#include "BasicsC/conversions.h"
+#include "Basics/conversions.h"
 #include "BasicsC/files.h"
-#include "BasicsC/hashes.h"
-#include "BasicsC/json.h"
+#include "Basics/hashes.h"
+#include "Basics/json.h"
 #include "BasicsC/locks.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/memory-map.h"
 #include "BasicsC/random.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "Basics/JsonHelper.h"
 #include "Ahuacatl/ahuacatl-statementlist.h"
 #include "Utils/Exception.h"

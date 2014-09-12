@@ -41,7 +41,7 @@
 #include "Basics/StringBuffer.h"
 #include "BasicsC/files.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 
 namespace triagens {
   namespace basics {

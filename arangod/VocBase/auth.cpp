@@ -29,9 +29,9 @@
 
 #include "auth.h"
 
-#include "BasicsC/json.h"
+#include "Basics/json.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "Basics/JsonHelper.h"
 #include "Rest/SslInterface.h"
 #include "ShapedJson/shape-accessor.h"

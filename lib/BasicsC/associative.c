@@ -30,8 +30,8 @@
 
 #include "associative.h"
 
-#include "BasicsC/hashes.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/hashes.h"
+#include "Basics/tri-strings.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 ASSOCIATIVE ARRAY

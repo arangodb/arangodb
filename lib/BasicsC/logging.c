@@ -42,9 +42,9 @@
 #endif
 
 #include "BasicsC/files.h"
-#include "BasicsC/hashes.h"
+#include "Basics/hashes.h"
 #include "BasicsC/locks.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "BasicsC/threads.h"
 #include "BasicsC/vector.h"
 

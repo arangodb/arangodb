@@ -32,7 +32,7 @@
 
 #include "Basics/Common.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/json.h"
+#include "Basics/json.h"
 
 #include "VocBase/general-cursor.h"
 

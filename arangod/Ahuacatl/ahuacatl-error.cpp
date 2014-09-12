@@ -29,7 +29,7 @@
 
 #include "Ahuacatl/ahuacatl-error.h"
 
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           defines

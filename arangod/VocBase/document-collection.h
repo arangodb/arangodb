@@ -52,7 +52,7 @@
 struct TRI_cap_constraint_s;
 struct TRI_document_edge_s;
 struct TRI_index_s;
-struct TRI_json_s;
+struct TRI_json_t;
 
 class KeyGenerator;
 
@@ -706,7 +706,7 @@ bool TRI_IsFullyCollectedDocumentCollection (TRI_document_collection_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t*,
-                                         struct TRI_json_s const*,
+                                         struct TRI_json_t const*,
                                          struct TRI_index_s**);
 
 ////////////////////////////////////////////////////////////////////////////////

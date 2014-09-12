@@ -30,7 +30,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Executor.h"
-#include "BasicsC/tri-strings.h"
+#include "Basics/tri-strings.h"
 #include "Utils/Exception.h"
 #include "VocBase/collection.h"
 
