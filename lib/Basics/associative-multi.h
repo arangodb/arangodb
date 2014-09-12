@@ -35,8 +35,8 @@
 
 #include "BasicsC/common.h"
 
-#include "BasicsC/locks.h"
-#include "BasicsC/vector.h"
+#include "Basics/locks.h"
+#include "Basics/vector.h"
 
 #ifdef __cplusplus
 extern "C" {

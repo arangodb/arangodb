@@ -32,7 +32,7 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/socket-utils.h"
+#include "Basics/socket-utils.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 
 #include "openssl/bio.h"

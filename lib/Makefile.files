@@ -13,6 +13,7 @@ lib_libarango_a_CPPFLAGS = \
 
 lib_libarango_a_SOURCES = \
 	lib/Basics/associative-multi.cpp \
+	lib/Basics/associative.cpp \
 	lib/Basics/ConditionLocker.cpp \
 	lib/Basics/ConditionVariable.cpp \
 	lib/Basics/conversions.cpp \
@@ -27,48 +28,47 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/json-utilities.cpp \
 	lib/Basics/JsonHelper.cpp \
 	lib/Basics/linked-list.cpp \
+	lib/Basics/locks-macos.cpp \
+	lib/Basics/locks-posix.cpp \
 	lib/Basics/Mutex.cpp \
 	lib/Basics/MutexLocker.cpp \
 	lib/Basics/Nonce.cpp \
 	lib/Basics/prime-numbers.cpp \
+	lib/Basics/process-utils.cpp \
 	lib/Basics/ProgramOptions.cpp \
 	lib/Basics/ProgramOptionsDescription.cpp \
+	lib/Basics/random.cpp \
 	lib/Basics/RandomGenerator.cpp \
 	lib/Basics/ReadLocker.cpp \
 	lib/Basics/ReadUnlocker.cpp \
 	lib/Basics/ReadWriteLock.cpp \
+	lib/Basics/skip-list.cpp \
+	lib/Basics/socket-utils.cpp \
 	lib/Basics/ssl-helper.cpp \
 	lib/Basics/string-buffer.cpp \
 	lib/Basics/StringUtils.cpp \
+	lib/Basics/structures.cpp \
+	lib/Basics/terminal-utils-posix.cpp \
+	lib/Basics/terminal-utils.cpp \
 	lib/Basics/Thread.cpp \
+	lib/Basics/threads-posix.cpp \
 	lib/Basics/Timing.cpp \
 	lib/Basics/tri-strings.cpp \
 	lib/Basics/Utf8Helper.cpp \
 	lib/Basics/utf8-helper.cpp \
+	lib/Basics/vector.cpp \
 	lib/Basics/WriteLocker.cpp \
 	lib/Basics/WriteUnlocker.cpp \
 	lib/Basics/xxhash.cpp \
 	lib/BasicsC/application-exit.c \
-	lib/BasicsC/associative.c \
 	lib/BasicsC/debugging.c \
 	lib/BasicsC/error.c \
 	lib/Basics/init.cpp \
-	lib/BasicsC/locks-macos.c \
-	lib/BasicsC/locks-posix.c \
 	lib/BasicsC/logging.c \
 	lib/BasicsC/memory.c \
 	lib/BasicsC/memory-map-posix.c \
 	lib/BasicsC/mimetypes.c \
-	lib/BasicsC/process-utils.c \
-	lib/BasicsC/random.c \
-	lib/BasicsC/skip-list.c \
-	lib/BasicsC/socket-utils.c \
-	lib/BasicsC/structures.c \
 	lib/BasicsC/system-functions.c \
-	lib/BasicsC/terminal-utils-posix.c \
-	lib/BasicsC/terminal-utils.c \
-	lib/BasicsC/threads-posix.c \
-	lib/BasicsC/vector.c \
 	lib/BasicsC/voc-errors.c \
 	lib/BasicsC/voc-mimetypes.c \
 	lib/BasicsC/tri-zip.c \

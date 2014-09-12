@@ -32,7 +32,7 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/associative.h"
+#include "Basics/associative.h"
 #include "Basics/string-buffer.h"
 #include "ShapedJson/shaped-json.h"
 #include "Utils/Exception.h"

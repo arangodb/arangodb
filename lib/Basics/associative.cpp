@@ -96,7 +96,7 @@ static void ResizeAssociativeArray (TRI_associative_array_t* array,
   array->_nrResizes++;
 #endif
 
-  array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * array->_elementSize, true);
+  array->_table = static_cast<char*>(TRI_Allocate(array->_memoryZone, array->_nrAlloc * array->_elementSize, true));
 
   if (array->_table == NULL) {
     array->_nrAlloc = oldAlloc;
@@ -146,7 +146,7 @@ int TRI_InitAssociativeArray (TRI_associative_array_t* array,
   array->_nrAlloc = 0;
   array->_nrUsed  = 0;
 
-  if (NULL == (array->_table = TRI_Allocate(zone, array->_elementSize * INITIAL_SIZE, true))) {
+  if (NULL == (array->_table = static_cast<char*>(TRI_Allocate(zone, array->_elementSize * INITIAL_SIZE, true)))) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -580,7 +580,7 @@ static bool ResizeAssociativePointer (TRI_associative_pointer_t* array,
   array->_nrResizes++;
 #endif
 
-  array->_table = TRI_Allocate(array->_memoryZone, (size_t) (array->_nrAlloc * sizeof(void*)), true);
+  array->_table = static_cast<void**>(TRI_Allocate(array->_memoryZone, (size_t) (array->_nrAlloc * sizeof(void*)), true));
 
   if (array->_table == NULL) {
     array->_nrAlloc = oldAlloc;
@@ -626,7 +626,7 @@ int TRI_InitAssociativePointer (TRI_associative_pointer_t* array,
   array->_nrAlloc = 0;
   array->_nrUsed  = 0;
 
-  if (NULL == (array->_table = TRI_Allocate(zone, sizeof(void*) * INITIAL_SIZE, true))) {
+  if (NULL == (array->_table = static_cast<void**>(TRI_Allocate(zone, sizeof(void*) * INITIAL_SIZE, true)))) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -1144,7 +1144,7 @@ static void ResizeAssociativeSynced (TRI_associative_synced_t* array,
   array->_nrResizes++;
 #endif
 
-  array->_table = TRI_Allocate(array->_memoryZone, array->_nrAlloc * sizeof(void*), true);
+  array->_table = static_cast<void**>(TRI_Allocate(array->_memoryZone, array->_nrAlloc * sizeof(void*), true));
 
   if (array->_table == NULL) {
     array->_nrAlloc = oldAlloc;
@@ -1188,7 +1188,7 @@ int TRI_InitAssociativeSynced (TRI_associative_synced_t* array,
   array->_nrAlloc = 0;
   array->_nrUsed  = 0;
 
-  if (NULL == (array->_table = TRI_Allocate(zone, sizeof(void*) * INITIAL_SIZE, true))) {
+  if (NULL == (array->_table = static_cast<void**>(TRI_Allocate(zone, sizeof(void*) * INITIAL_SIZE, true)))) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 

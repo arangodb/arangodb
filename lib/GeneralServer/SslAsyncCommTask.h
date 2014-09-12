@@ -39,7 +39,7 @@
 #include <openssl/err.h>
 
 #include "Basics/ssl-helper.h"
-#include "BasicsC/socket-utils.h"
+#include "Basics/socket-utils.h"
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"

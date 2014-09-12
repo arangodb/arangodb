@@ -31,7 +31,7 @@
 #define ARANGODB_AHUACATL_AHUACATL__NODE_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/vector.h"
+#include "Basics/vector.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros

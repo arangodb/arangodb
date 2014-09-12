@@ -31,7 +31,7 @@
 #define ARANGODB_BASICS_C_UTF8__HELPER_H 1
 
 #include "BasicsC/common.h"
-#include "BasicsC/vector.h"
+#include "Basics/vector.h"
 
 #include "unicode/ustring.h"
 

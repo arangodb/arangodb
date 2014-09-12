@@ -31,7 +31,7 @@
 #include "v8-vocindex.h"
 
 #include "BasicsC/logging.h"
-#include "BasicsC/random.h"
+#include "Basics/random.h"
 #include "Basics/string-buffer.h"
 #include "GeoIndex/geo-index.h"
 #include "HashIndex/hash-index.h"

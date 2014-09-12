@@ -125,7 +125,7 @@ typedef long suseconds_t;
 #include "BasicsC/debugging.h"
 #include "BasicsC/memory.h"
 #include "BasicsC/mimetypes.h"
-#include "BasicsC/structures.h"
+#include "Basics/structures.h"
 #undef TRI_WITHIN_COMMON
 
 // -----------------------------------------------------------------------------

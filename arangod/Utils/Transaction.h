@@ -46,7 +46,7 @@
 #include "VocBase/voc-types.h"
 
 #include "BasicsC/logging.h"
-#include "BasicsC/random.h"
+#include "Basics/random.h"
 #include "Basics/tri-strings.h"
 
 #include "Utils/CollectionNameResolver.h"

@@ -31,8 +31,8 @@
 #define ARANGODB_VOC_BASE_REPLICATION__APPLIER_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/locks.h"
-#include "BasicsC/threads.h"
+#include "Basics/locks.h"
+#include "Basics/threads.h"
 #include "Utils/ReplicationTransaction.h"
 #include "VocBase/replication-common.h"
 #include "VocBase/voc-types.h"

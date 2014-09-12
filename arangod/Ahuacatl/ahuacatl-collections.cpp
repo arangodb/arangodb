@@ -31,7 +31,7 @@
 
 #include "BasicsC/logging.h"
 #include "Basics/tri-strings.h"
-#include "BasicsC/vector.h"
+#include "Basics/vector.h"
 #include "VocBase/index.h"
 #include "VocBase/document-collection.h"
 

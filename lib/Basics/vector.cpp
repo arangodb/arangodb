@@ -128,7 +128,7 @@ int TRI_ReserveVector (TRI_vector_t* vector,
     newSize = (size_t) (1 + GROW_FACTOR * newSize);
   }
 
-  newBuffer = TRI_Reallocate(vector->_memoryZone, vector->_buffer, newSize * vector->_elementSize);
+  newBuffer = static_cast<char*>(TRI_Reallocate(vector->_memoryZone, vector->_buffer, newSize * vector->_elementSize));
 
   if (newBuffer == NULL) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -146,9 +146,7 @@ int TRI_ReserveVector (TRI_vector_t* vector,
 
 TRI_vector_t* TRI_CopyVector (TRI_memory_zone_t* zone,
                               TRI_vector_t const* vector) {
-  TRI_vector_t* copy;
-
-  copy = TRI_Allocate(zone, sizeof(TRI_vector_t), false);
+  TRI_vector_t* copy = static_cast<TRI_vector_t*>(TRI_Allocate(zone, sizeof(TRI_vector_t), false));
 
   if (copy == NULL) {
     return NULL;
@@ -163,7 +161,7 @@ TRI_vector_t* TRI_CopyVector (TRI_memory_zone_t* zone,
     copy->_capacity = 0;
   }
   else {
-    copy->_buffer = TRI_Allocate(zone, vector->_length * vector->_elementSize, false);
+    copy->_buffer = static_cast<char*>(TRI_Allocate(zone, vector->_length * vector->_elementSize, false));
 
     if (copy->_buffer == NULL) {
       TRI_Free(zone, copy);
@@ -198,7 +196,7 @@ int TRI_CopyDataVector (TRI_vector_t* dst,
   dst->_length = 0;
 
   if (source->_length > 0) {
-    dst->_buffer = TRI_Allocate(dst->_memoryZone, source->_length * source->_elementSize, false);
+    dst->_buffer = static_cast<char*>(TRI_Allocate(dst->_memoryZone, source->_length * source->_elementSize, false));
 
     if (dst->_buffer == NULL) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -426,7 +424,7 @@ int TRI_InitVectorPointer2 (TRI_vector_pointer_t* vector,
   TRI_InitVectorPointer(vector, zone);
 
   if (initialCapacity != 0) {
-    vector->_buffer = (void*) TRI_Allocate(vector->_memoryZone, (initialCapacity * sizeof(void*)), true);
+    vector->_buffer = static_cast<void**>(TRI_Allocate(vector->_memoryZone, (initialCapacity * sizeof(void*)), true));
 
     if (vector->_buffer == NULL) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -503,7 +501,7 @@ int TRI_ReserveVectorPointer (TRI_vector_pointer_t* vector,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  vector->_buffer = newBuffer;
+  vector->_buffer = static_cast<void**>(newBuffer);
   vector->_capacity = newSize;
 
   return TRI_ERROR_NO_ERROR;
@@ -515,7 +513,7 @@ int TRI_ReserveVectorPointer (TRI_vector_pointer_t* vector,
 
 TRI_vector_pointer_t* TRI_CopyVectorPointer (TRI_memory_zone_t* zone,
                                              TRI_vector_pointer_t const* vector) {
-  TRI_vector_pointer_t* copy = TRI_Allocate(zone, sizeof(TRI_vector_pointer_t), false);
+  TRI_vector_pointer_t* copy = static_cast<TRI_vector_pointer_t*>(TRI_Allocate(zone, sizeof(TRI_vector_pointer_t), false));
 
   if (copy == NULL) {
     return NULL;
@@ -529,7 +527,7 @@ TRI_vector_pointer_t* TRI_CopyVectorPointer (TRI_memory_zone_t* zone,
     copy->_capacity = 0;
   }
   else {
-    copy->_buffer = TRI_Allocate(zone, vector->_length * sizeof(void*), false);
+    copy->_buffer = static_cast<void**>(TRI_Allocate(zone, vector->_length * sizeof(void*), false));
 
     if (copy->_buffer == NULL) {
       TRI_Free(zone, copy);
@@ -613,7 +611,7 @@ int TRI_ResizeVectorPointer (TRI_vector_pointer_t* vector,
     }
 
     vector->_capacity = newSize;
-    vector->_buffer = newBuffer;
+    vector->_buffer = static_cast<void**>(newBuffer);
   }
 
   vector->_length = n;
@@ -636,7 +634,7 @@ int TRI_PushBackVectorPointer (TRI_vector_pointer_t* vector, void* element) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    vector->_buffer = newBuffer;
+    vector->_buffer = static_cast<void**>(newBuffer);
     // prefill the new vector elements with 0's
     memset(&vector->_buffer[vector->_capacity], 0, (newSize - vector->_capacity) * sizeof(void*));
     vector->_capacity = newSize;
@@ -671,7 +669,7 @@ int TRI_InsertVectorPointer (TRI_vector_pointer_t* vector, void* element, size_t
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
-    vector->_buffer = newBuffer;
+    vector->_buffer = static_cast<void**>(newBuffer);
     // prefill the new vector elements with 0's
     memset(&vector->_buffer[vector->_capacity], 0, (newSize - vector->_capacity) * sizeof(void*));
     vector->_capacity = newSize;
@@ -810,9 +808,7 @@ void TRI_FreeVectorString (TRI_memory_zone_t* zone, TRI_vector_string_t* vector)
 
 TRI_vector_string_t* TRI_CopyVectorString (TRI_memory_zone_t* zone,
                                            TRI_vector_string_t const* vector) {
-  TRI_vector_string_t* copy;
-
-  copy = TRI_Allocate(zone, sizeof(TRI_vector_t), false);
+  TRI_vector_string_t* copy = static_cast<TRI_vector_string_t*>(TRI_Allocate(zone, sizeof(TRI_vector_t), false));
 
   if (copy == NULL) {
     return NULL;
@@ -830,7 +826,7 @@ TRI_vector_string_t* TRI_CopyVectorString (TRI_memory_zone_t* zone,
     char** end;
     char** qtr;
 
-    copy->_buffer = TRI_Allocate(zone, vector->_length * sizeof(char*), false);
+    copy->_buffer = static_cast<char**>(TRI_Allocate(zone, vector->_length * sizeof(char*), false));
 
     if (copy->_buffer == NULL) {
       TRI_Free(zone, copy);
@@ -927,7 +923,7 @@ int TRI_CopyDataFromVectorPointerVectorString (TRI_memory_zone_t* zone,
     qtr = dst->_buffer;
 
     for (;  ptr < end;  ++ptr, ++qtr) {
-      *qtr = TRI_DuplicateStringZ(zone, *ptr);
+      *qtr = TRI_DuplicateStringZ(zone, static_cast<char const*>(*ptr));
 
       if (*qtr == NULL) {
         return TRI_ERROR_OUT_OF_MEMORY;
@@ -992,7 +988,7 @@ int TRI_ResizeVectorString (TRI_vector_string_t* vector, size_t n) {
     }
 
     vector->_capacity = n;
-    vector->_buffer = newBuffer;
+    vector->_buffer = static_cast<char**>(newBuffer);
   }
 
   vector->_length = n;

@@ -26,7 +26,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BasicsC/terminal-utils.h"
+#include "Basics/terminal-utils.h"
 
 #include <windows.h>
 

@@ -41,7 +41,7 @@
 #include "Basics/StringBuffer.h"
 
 #ifdef _WIN32
-#include "BasicsC/win-utils.h"
+#include "Basics/win-utils.h"
 #endif
 
 namespace triagens {

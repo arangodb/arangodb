@@ -36,8 +36,8 @@
 #endif
 
 #include "Basics/tri-strings.h"
-#include "BasicsC/vector.h"
-#include "BasicsC/associative.h"
+#include "Basics/vector.h"
+#include "Basics/associative.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types

@@ -30,7 +30,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/files.h"
 #include "Basics/json.h"
-#include "BasicsC/random.h"
+#include "Basics/random.h"
 
 using namespace triagens::basics;
 

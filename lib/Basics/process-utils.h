@@ -32,7 +32,7 @@
 
 #include "BasicsC/common.h"
 
-#include "BasicsC/threads.h"
+#include "Basics/threads.h"
 
 #ifdef __cplusplus
 extern "C" {

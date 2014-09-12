@@ -30,7 +30,7 @@
 #include "server.h"
 
 #ifdef _WIN32
-#include "BasicsC/win-utils.h"
+#include "Basics/win-utils.h"
 #endif
 
 #include <regex.h>
@@ -39,10 +39,10 @@
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/json.h"
-#include "BasicsC/locks.h"
+#include "Basics/locks.h"
 #include "BasicsC/logging.h"
 #include "BasicsC/memory-map.h"
-#include "BasicsC/random.h"
+#include "Basics/random.h"
 #include "Basics/tri-strings.h"
 #include "Basics/JsonHelper.h"
 #include "Ahuacatl/ahuacatl-statementlist.h"

@@ -29,7 +29,7 @@
 
 #include "fulltext-index.h"
 
-#include "BasicsC/locks.h"
+#include "Basics/locks.h"
 #include "BasicsC/logging.h"
 
 #include "fulltext-handles.h"

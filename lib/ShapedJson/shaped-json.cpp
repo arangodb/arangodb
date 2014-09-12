@@ -30,12 +30,12 @@
 
 #include "shaped-json.h"
 
-#include "BasicsC/associative.h"
+#include "Basics/associative.h"
 #include "Basics/hashes.h"
 #include "BasicsC/logging.h"
 #include "Basics/string-buffer.h"
 #include "Basics/tri-strings.h"
-#include "BasicsC/vector.h"
+#include "Basics/vector.h"
 #include "ShapedJson/json-shaper.h"
 
 // #define DEBUG_JSON_SHAPER 1

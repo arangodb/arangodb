@@ -32,7 +32,7 @@
 #include "Basics/conversions.h"
 #include "Basics/csv.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/shell-colors.h"
+#include "Basics/shell-colors.h"
 #include "Basics/string-buffer.h"
 #include "Basics/tri-strings.h"
 #include "ShapedJson/shaped-json.h"
