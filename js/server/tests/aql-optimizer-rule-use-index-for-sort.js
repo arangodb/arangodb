@@ -1,5 +1,4 @@
-/*jslint indent: 2, nomen: true, maxlen: 200, sloppy: true, vars: true, white: true, plusplus: true */
-/*global require, exports, assertTrue, assertEqual, AQL_EXECUTE, AQL_EXECUTEJSON, AQL_EXPLAIN, fail, loopmax */
+/*global require, assertTrue, assertEqual, AQL_EXECUTE, AQL_EXPLAIN, loopmax */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -30,42 +29,14 @@
 var PY = function (plan) { require("internal").print(require("js-yaml").safeDump(plan));};
 var internal = require("internal");
 var jsunity = require("jsunity");
-var errors = require("internal").errors;
 var helper = require("org/arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults2;
-var assertQueryError = helper.assertQueryError2;
+// var getQueryResults = helper.getQueryResults2;
+// TODO! var assertQueryError = helper.assertQueryError2;
 var isEqual = helper.isEqual;
 var findExecutionNodes = helper.findExecutionNodes;
 var findReferencedNodes = helper.findReferencedNodes;
-//var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
+var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
 
-function getQueryMultiplePlansAndExecutions (query, bindVars) {
-  var plan;
-  var i;
-  var plans = [];
-  var allPlans = [];
-  var results = [];
-  var paramNone     = { optimizer: { rules: [ "-all" ]},  verbosePlans: true};
-  var paramAllPlans = { allPlans : true, verbosePlans: true};
-  PY(query);
-  // first fetch the unmodified version
-  plans [0] = AQL_EXPLAIN(query, bindVars, paramNone);
-  // then all of the ones permuted by by the optimizer.
-  allPlans = AQL_EXPLAIN(query, bindVars, paramAllPlans);
-
-  PY(allPlans.plans[0]);
-
-  for (i=0; i < allPlans.plans.length; i++) {
-    plans[i+1] = {'plan':allPlans.plans[i]};
-  }
-  // Now execute each of these variations.
-  for (i=0; i < plans.length; i++) {
-    PY(plans[i]);
-    results += AQL_EXECUTEJSON(plans[i].plan, {});
-  }
-
-  return {'plans': plans, 'results': results};
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -75,7 +46,6 @@ function optimizerRuleTestSuite() {
   var ruleName = "use-index-for-sort";
   var secondRuleName = "use-index-range";
   var removeCalculationNodes = "remove-unnecessary-calculations-2";
-  var thirdRuleName = "remove-redundant-sorts";
   var colName = "UnitTestsAqlOptimizer" + ruleName.replace(/-/g, "_");
   var colNameOther = colName + "_XX";
 
@@ -83,11 +53,7 @@ function optimizerRuleTestSuite() {
   var paramNone = { optimizer: { rules: [ "-all" ] } };
   var paramIndexFromSort  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var paramIndexRange   = { optimizer: { rules: [ "-all", "+" + secondRuleName ] } };
-  var paramRedundantSort   = { optimizer: { rules: [ "-all", "+" + thirdRuleName ] } };
   var paramIndexFromSort_IndexRange = { optimizer: { rules: [ "-all", "+" + ruleName, "+" + secondRuleName ] } };
-  var paramIndexRangeRemoveCalculations   = {
-    optimizer: { rules: [ "-all", "+" + secondRuleName, "+" + removeCalculationNodes ] }
-  };
   var paramIndexFromSort_IndexRange_RemoveCalculations = {
     optimizer: { rules: [ "-all", "+" + ruleName, "+" + secondRuleName, "+" + removeCalculationNodes ] }
   };
@@ -181,7 +147,7 @@ function optimizerRuleTestSuite() {
         loopto = loopmax;
       }
       /// require("internal").print("loopto: " + loopto + "\n");
-      
+
       internal.db._drop(colName);
       skiplist = internal.db._create(colName);
       var i, j;
@@ -230,12 +196,15 @@ function optimizerRuleTestSuite() {
       var queries = [ 
 
         "FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]",
-        // todo: we use an index anyways right now.          "FOR v IN " + colName + " SORT v.a DESC RETURN [v.a, v.b]",// currently only ASC supported.
+        // todo: we use an index anyways right now.
+        // currently only ASC supported.
+        // "FOR v IN " + colName + " SORT v.a DESC RETURN [v.a, v.b]",
         "FOR v IN " + colName + " SORT v.b, v.a  RETURN [v.a, v.b]",
         "FOR v IN " + colName + " SORT v.c RETURN [v.a, v.b]",
         "FOR v IN " + colName + " SORT v.a + 1 RETURN [v.a, v.b]",
         "FOR v IN " + colName + " SORT CONCAT(TO_STRING(v.a), \"lol\") RETURN [v.a, v.b]",
-        "FOR v IN " + colName + " FILTER v.a > 2 LIMIT 3 SORT v.a RETURN [v.a, v.b]  ", // TODO: limit blocks sort atm.
+        // TODO: limit blocks sort atm.
+        "FOR v IN " + colName + " FILTER v.a > 2 LIMIT 3 SORT v.a RETURN [v.a, v.b]  ",
         "FOR v IN " + colName + " FOR w IN " + colNameOther + " SORT v.a RETURN [v.a, v.b]"
       ];
 
@@ -254,8 +223,9 @@ function optimizerRuleTestSuite() {
     testRuleHasEffect : function () {
       var allresults;
       var queries = [ 
-        
-        "FOR v IN " + colName + " SORT v.d DESC RETURN [v.d]",// currently only ASC supported, but we use the index range anyways. todo: this may change.
+        // currently only ASC supported, but we use the index range anyways.
+        // todo: this may change.
+        "FOR v IN " + colName + " SORT v.d DESC RETURN [v.d]",
         "FOR v IN " + colName + " SORT v.d FILTER v.a > 2 LIMIT 3 RETURN [v.d]  ",
         "FOR v IN " + colName + " FOR w IN 1..10 SORT v.d RETURN [v.d]",
         
@@ -273,473 +243,481 @@ function optimizerRuleTestSuite() {
         assertTrue(isEqual(QResults[0], QResults[1]), "Result " + i + " is Equal?");
 
         allresults = getQueryMultiplePlansAndExecutions(query, {});
-        PY(allresults);
         i++;
       });
 
     },
-    /*
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test that rule has an effect, but the sort is kept in place since 
-//   the index can't fullfill all the sorting.
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test that rule has an effect, but the sort is kept in place since 
+    //   the index can't fullfill all the sorting.
+    ////////////////////////////////////////////////////////////////////////////////
     testRuleHasEffectButSortsStill : function () {
 
-        var queries = [
-            "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a, v.c RETURN [v.a, v.b, v.c]",
-            "FOR v IN " + colName + " LET x = (FOR w IN " + colNameOther + " SORT w.j, w.h RETURN  w.f ) SORT v.a RETURN [v.a]"
-        ];
-        var QResults = [];
-        var i = 0;
-        queries.forEach(function(query) {
+      var queries = [
+        "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a, v.c RETURN [v.a, v.b, v.c]",
+        "FOR v IN " + colName + " LET x = (FOR w IN " 
+          + colNameOther + " SORT w.j, w.h RETURN  w.f ) SORT v.a RETURN [v.a]"
+      ];
+      var QResults = [];
+      var i = 0;
+      queries.forEach(function(query) {
 
-            var result = AQL_EXPLAIN(query, { }, paramIndexFromSort);
-            assertEqual([ ruleName ], result.plan.rules);
-            hasIndexRangeNode_WithRanges(result, false);
-            hasSortNode(result);
-            QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
-            QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort ).json;
-            assertTrue(isEqual(QResults[0], QResults[1]), "Result " + i + " is Equal?");
-            i++;
-        });
+        var result = AQL_EXPLAIN(query, { }, paramIndexFromSort);
+        assertEqual([ ruleName ], result.plan.rules);
+        hasIndexRangeNode_WithRanges(result, false);
+        hasSortNode(result);
+        QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
+        QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort ).json;
+        assertTrue(isEqual(QResults[0], QResults[1]), "Result " + i + " is Equal?");
+        i++;
+      });
 
     },
 
 
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  sortToIndexRange
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief this sort is replaceable by an index.
-////////////////////////////////////////////////////////////////////////////////
-      testSortIndexable: function () {
-
-          var query = "FOR v IN " + colName + " SORT v.a RETURN [v.a, v.b]";
-
-          var XPresult;
-          var QResults=[];
-          var i;
-
-          // we have to re-sort here, because of the index has one more sort criteria.
-          QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
-
-          // -> use-index-for-sort alone.
-          XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort);
-          QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
-          // our rule should have been applied.
-          assertEqual([ ruleName ], XPresult.plan.rules);
-          // The sortnode and its calculation node should have been removed.
-          hasNoSortNode(XPresult);
-          // the dependencies of the sortnode weren't removed...
-          hasCalculationNodes(XPresult, 2);
-          // The IndexRangeNode created by this rule is simple; it shouldn't have ranges.
-          hasIndexRangeNode_WithRanges(XPresult, false);
-
-          // -> combined use-index-for-sort and remove-unnecessary-calculations-2
-          XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_RemoveCalculations);
-          QResults[2] = AQL_EXECUTE(query, { }, paramIndexFromSort_RemoveCalculations).json;
-          // our rule should have been applied.
-          assertEqual([ ruleName, removeCalculationNodes ].sort(), XPresult.plan.rules.sort());
-          // The sortnode and its calculation node should have been removed.
-          hasNoSortNode(XPresult);
-          // now the dependencies of the sortnode should be gone:
-          hasCalculationNodes(XPresult, 1);
-          // The IndexRangeNode created by this rule is simple; it shouldn't have ranges.
-          hasIndexRangeNode_WithRanges(XPresult, false);
-
-          for (i = 1; i < 3; i++) {
-              assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
-          }
-
-      },
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test in detail that this rule has an effect, but the sort is kept in
-//    place since the index can't fullfill all of the sorting criteria.
-////////////////////////////////////////////////////////////////////////////////
-      testSortMoreThanIndexed: function () {
-
-          var query = "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a, v.c RETURN [v.a, v.b, v.c]";
-          // no index can be used for v.c -> sort has to remain in place!
-          var XPresult;
-          var QResults=[];
-          var i;
-
-          // the index we will compare to sorts by a & b, so we need to re-sort the result here to accomplish similarity.
-          QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
-
-
-          // -> use-index-for-sort alone.
-          QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
-          XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort);
-          // our rule should be there.
-          assertEqual([ ruleName ], XPresult.plan.rules);
-          // The sortnode and its calculation node should have been removed.
-          
-          hasSortNode(XPresult);
-          hasCalculationNodes(XPresult, 4);
-          // The IndexRangeNode created by this rule is simple; it shouldn't have ranges.
-          hasIndexRangeNode_WithRanges(XPresult, false);
-
-          // -> combined use-index-for-sort and use-index-range
-          //    use-index-range superseedes use-index-for-sort
-          QResults[2] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange).json;
-          XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange);
-
-          assertEqual([ secondRuleName ], XPresult.plan.rules.sort());
-          // The sortnode and its calculation node should not have been removed.
-          hasSortNode(XPresult);
-          hasCalculationNodes(XPresult, 4);
-          // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
-          hasIndexRangeNode_WithRanges(XPresult, true);
-
-          // -> use-index-range alone.
-          QResults[3] = AQL_EXECUTE(query, { }, paramIndexRange).json;
-          XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
-          assertEqual([ secondRuleName ], XPresult.plan.rules);
-          // the sortnode and its calculation node should be there. 
-
-          hasSortNode(XPresult);
-          hasCalculationNodes(XPresult,4);
-          // we should be able to find exactly one sortnode property - its a Calculation node.
-          var sortProperty = findReferencedNodes(XPresult, findExecutionNodes(XPresult, "SortNode")[0]);
-          assertEqual(sortProperty.length, 2);
-          assertEqual(sortProperty[0].type, "CalculationNode");
-          assertEqual(sortProperty[1].type, "CalculationNode");
-          // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
-          hasIndexRangeNode_WithRanges(XPresult, true);
-
-          for (i = 1; i < 4; i++) {
-              assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
-          }
-      },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test in detail that an index range fullfills everything the sort does, 
-//   and thus the sort is removed.
-////////////////////////////////////////////////////////////////////////////////
-      testRangeSuperseedsSort: function () {
-
-          var query = "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a RETURN [v.a, v.b, v.c]";
-
-          var XPresult;
-          var QResults=[];
-          var i;
-
-          // the index we will compare to sorts by a & b, so we need to re-sort the result here to accomplish similarity.
-          QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
-
-          // -> use-index-for-sort alone.
-          QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
-          XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort);
-          // our rule should be there.
-          assertEqual([ ruleName ], XPresult.plan.rules);
-          // The sortnode should be gone, its calculation node should not have been removed yet.
-          hasNoSortNode(XPresult);
-          hasCalculationNodes(XPresult, 3);
-
-
-          // The IndexRangeNode created by this rule is simple; it shouldn't have ranges.
-          hasIndexRangeNode_WithRanges(XPresult, false);
-
-          // -> combined use-index-for-sort and use-index-range
-          QResults[2] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange).json;
-          XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange);
-          assertEqual([ secondRuleName, ruleName ].sort(), XPresult.plan.rules.sort());
-          // The sortnode should be gone, its calculation node should not have been removed yet.
-          hasNoSortNode(XPresult);
-          hasCalculationNodes(XPresult, 3);
-          // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
-          hasIndexRangeNode_WithRanges(XPresult, true);
-
-          // -> use-index-range alone.
-          QResults[3] = AQL_EXECUTE(query, { }, paramIndexRange).json;
-          XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
-          assertEqual([ secondRuleName ], XPresult.plan.rules);
-          // the sortnode and its calculation node should be there.
-          hasSortNode(XPresult);
-          hasCalculationNodes(XPresult, 3);
-          // we should be able to find exactly one sortnode property - its a Calculation node.
-          var sortProperty = findReferencedNodes(XPresult, findExecutionNodes(XPresult, "SortNode")[0]);
-          assertEqual(sortProperty.length, 1);
-          isNodeType(sortProperty[0], "CalculationNode");
-          // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
-          hasIndexRangeNode_WithRanges(XPresult, true);
-
-          // -> combined use-index-for-sort, remove-unnecessary-calculations-2 and use-index-range
-          QResults[4] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange_RemoveCalculations).json;
-
-          XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange_RemoveCalculations);
-          assertEqual([ secondRuleName, removeCalculationNodes, ruleName ].sort(), XPresult.plan.rules.sort());
-          // the sortnode and its calculation node should be gone.
-          hasNoSortNode(XPresult);
-          hasCalculationNodes(XPresult, 2);
-          // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
-          hasIndexRangeNode_WithRanges(XPresult, true);
-
-          for (i = 1; i < 5; i++) {
-              assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
-          }
-
-      },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test in detail that an index range fullfills everything the sort does, 
-//   and thus the sort is removed; multi-dimensional indexes are utilized.
-////////////////////////////////////////////////////////////////////////////////
-      testRangeSuperseedsSort2: function () {
-
-          var query = "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a, v.b RETURN [v.a, v.b, v.c]";
-          var XPresult;
-          var QResults=[];
-          var i;
-
-          // the index we will compare to sorts by a & b, so we need to re-sort the result here to accomplish similarity.
-
-          QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
-
-          // -> use-index-for-sort alone.
-          QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
-          XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort);
-          // our rule should be there.
-          assertEqual([ ruleName ], XPresult.plan.rules);
-          // The sortnode should be gone, its calculation node should not have been removed yet.
-          hasNoSortNode(XPresult);
-          hasCalculationNodes(XPresult, 4);
-          // The IndexRangeNode created by this rule is simple; it shouldn't have ranges.
-          hasIndexRangeNode_WithRanges(XPresult, false);
-
-          // -> combined use-index-for-sort and use-index-range
-          QResults[2] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange).json;
-
-          XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange);
-          
-          assertEqual([ secondRuleName, ruleName ].sort(), XPresult.plan.rules.sort());
-          // The sortnode should be gone, its calculation node should not have been removed yet.
-          hasNoSortNode(XPresult);
-
-          hasCalculationNodes(XPresult, 4);
-          // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
-          hasIndexRangeNode_WithRanges(XPresult, true);
-
-          // -> use-index-range alone.
-          QResults[3] = AQL_EXECUTE(query, { }, paramIndexRange).json;
-          XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
-          assertEqual([ secondRuleName ], XPresult.plan.rules);
-          // the sortnode and its calculation node should be there.
-          hasSortNode(XPresult);
-          hasCalculationNodes(XPresult, 4);
-          // we should be able to find exactly one sortnode property - its a Calculation node.
-          var sortProperty = findReferencedNodes(XPresult, findExecutionNodes(XPresult, "SortNode")[0]);
-
-          assertEqual(sortProperty.length, 2);
-          isNodeType(sortProperty[0], "CalculationNode");
-          // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
-          hasIndexRangeNode_WithRanges(XPresult, true);
-
-          // -> combined use-index-for-sort, remove-unnecessary-calculations-2 and use-index-range
-          QResults[4] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange_RemoveCalculations).json;
-          XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange_RemoveCalculations);
-          assertEqual([ ruleName, secondRuleName, removeCalculationNodes].sort(), XPresult.plan.rules.sort());
-          // the sortnode and its calculation node should be there.
-          hasNoSortNode(XPresult);
-          hasCalculationNodes(XPresult, 2);
-
-          // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
-          hasIndexRangeNode_WithRanges(XPresult, true);
-
-          for (i = 1; i < 5; i++) {
-              assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
-          }
-      },
-
-
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      toIndexRange
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test in detail that an index range can be used for an equality filter.
-////////////////////////////////////////////////////////////////////////////////
-      testRangeEquals: function () {
-
-          var query = "FOR v IN " + colName + " FILTER v.a == 1 RETURN [v.a, v.b, v.c]";
-
-          var XPresult;
-          var QResults=[];
-          var i;
-
-          // the index we will compare to sorts by a & b, so we need to re-sort the result here to accomplish similarity.
-          QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
-
-          // -> use-index-range alone.
-          QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
-          XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
-          assertEqual([ secondRuleName ], XPresult.plan.rules);
-          // the sortnode and its calculation node should be there.
-          hasCalculationNodes(XPresult, 2);
-
-          // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
-          var RAs = getRangeAttributes(XPresult);
-          var first = getRangeAttribute(RAs, "v", "a", 1);
-          
-          assertEqual(first.lows.length, 0, "no non-constant low bounds");
-          assertEqual(first.highs.length, 0, "no non-constant high bounds");
-          assertEqual(first.lowConst.bound, 1, "correctness of bound");
-          assertEqual(first.lowConst.bound, first.highConst.bound, "bounds equality");
-
-          for (i = 1; i < 2; i++) {
-              assertTrue(isEqual(QResults[0].sort(sortArray), QResults[i]), "Result " + i + " is Equal?");
-          }
-
-      },
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test in detail that an index range can be used for a less than filter.
-////////////////////////////////////////////////////////////////////////////////
-      testRangeLessThan: function () {
-          var query = "FOR v IN " + colName + " FILTER v.a < 5 RETURN [v.a, v.b]";
-
-          var XPresult;
-          var QResults=[];
-
-          // the index we will compare to sorts by a & b, so we need to re-sort the result here to accomplish similarity.
-          QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
-
-          // -> use-index-range alone.
-          QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
-
-          XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
-          assertEqual([ secondRuleName ], XPresult.plan.rules);
-          // the sortnode and its calculation node should be there.
-          hasCalculationNodes(XPresult, 2);
-
-          // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
-          var RAs = getRangeAttributes(XPresult);
-          var first = getRangeAttribute(RAs, "v", "a", 1);
-          assertEqual(first.lowConst.bound, undefined, "no constant lower bound");
-          assertEqual(first.lows.length, 0, "no variable low bound");
-          assertEqual(first.highs.length, 0, "no variable high bound");
-          assertEqual(first.highConst.bound, 5, "proper value was set");
-
-          assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
-      },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test in detail that an index range can be used for a greater than filter.
-////////////////////////////////////////////////////////////////////////////////
-      testRangeGreaterThan: function () {
-          var query = "FOR v IN " + colName + " FILTER v.a > 5 RETURN [v.a, v.b]";
-          var XPresult;
-          var QResults=[];
-
-          // the index we will compare to sorts by a & b, so we need to re-sort the result here to accomplish similarity.
-          QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
-
-          // -> use-index-range alone.
-          QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
-
-          XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
-          assertEqual([ secondRuleName ], XPresult.plan.rules);
-          // the sortnode and its calculation node should be there.
-          hasCalculationNodes(XPresult, 2);
-
-          // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
-          var RAs = getRangeAttributes(XPresult);
-          var first = getRangeAttribute(RAs, "v", "a", 1);
-          
-          assertEqual(first.highConst.bound, undefined, "no constant upper bound");
-          assertEqual(first.highs.length, 0, "no variable high bound");
-          assertEqual(first.lows.length, 0, "no variable low bound");
-          assertEqual(first.lowConst.bound, 5, "proper value was set");
-
-          assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
-
-      },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test in detail that an index range can be used for an and combined 
-///   greater than + less than filter spanning a range.
-////////////////////////////////////////////////////////////////////////////////
-      testRangeBandpass: function () {
-          var query = "FOR v IN " + colName + " FILTER v.a > 4 && v.a < 10 RETURN [v.a, v.b]";
-          var XPresult;
-          var QResults=[];
-
-          // the index we will compare to sorts by a & b, so we need to re-sort the result here to accomplish similarity.
-          QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
-
-          // -> use-index-range alone.
-          QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
-
-          XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
-          assertEqual([ secondRuleName ], XPresult.plan.rules);
-          // the sortnode and its calculation node should be there.
-          hasCalculationNodes(XPresult, 2);
-
-          // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
-          var RAs = getRangeAttributes(XPresult);
-          var first = getRangeAttribute(RAs, "v", "a", 1);
-          
-          assertEqual(first.highs.length, 0, "no variable high bounds");
-          assertEqual(first.lows.length, 0, "no variable low bounds");
-          assertEqual(first.lowConst.bound, 4, "proper value was set");
-          assertEqual(first.highConst.bound, 10, "proper value was set");
-
-          assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
-      },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test in detail that an index range can be used for an and combined 
-///   greater than + less than filter spanning an empty range. This actually
-///   recognises the empty range and introduces a NoResultsNode but not an
-///   IndexRangeNode.
-////////////////////////////////////////////////////////////////////////////////
-
-      testRangeBandpassInvalid: function () {
-        var query = "FOR v IN " + colName + " FILTER v.a > 7 && v.a < 4 RETURN [v.a, v.b]";
-
-        var XPresult;
-        var QResults=[];
-
-        // the index we will compare to sorts by a & b, so we need to re-sort the result here to accomplish similarity.
-        QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
-
-        // -> use-index-range alone.
-        QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
-
-
-        XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
-        assertEqual([ secondRuleName ], XPresult.plan.rules);
-        // the sortnode and its calculation node should be there.
-        hasCalculationNodes(XPresult, 2);
-
-        hasNoResultsNode(XPresult);
-        hasNoIndexRangeNode(XPresult);
-
-        assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
-          
-      },
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test in detail that an index range can be used for an or combined 
-///   greater than + less than filter spanning a range. TODO: doesn't work now.
-////////////////////////////////////////////////////////////////////////////////
-      testRangeBandstop: function () {
+    // -----------------------------------------------------------------------------
+    // --SECTION--                                                  sortToIndexRange
+    // -----------------------------------------------------------------------------
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief this sort is replaceable by an index.
+    ////////////////////////////////////////////////////////////////////////////////
+    testSortIndexable: function () {
+
+      var query = "FOR v IN " + colName + " SORT v.a RETURN [v.a, v.b]";
+
+      var XPresult;
+      var QResults=[];
+      var i;
+
+      // we have to re-sort here, because of the index has one more sort criteria.
+      QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
+
+      // -> use-index-for-sort alone.
+      XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort);
+      QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
+      // our rule should have been applied.
+      assertEqual([ ruleName ], XPresult.plan.rules);
+      // The sortnode and its calculation node should have been removed.
+      hasNoSortNode(XPresult);
+      // the dependencies of the sortnode weren't removed...
+      hasCalculationNodes(XPresult, 2);
+      // The IndexRangeNode created by this rule is simple; it shouldn't have ranges.
+      hasIndexRangeNode_WithRanges(XPresult, false);
+
+      // -> combined use-index-for-sort and remove-unnecessary-calculations-2
+      XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_RemoveCalculations);
+      QResults[2] = AQL_EXECUTE(query, { }, paramIndexFromSort_RemoveCalculations).json;
+      // our rule should have been applied.
+      assertEqual([ ruleName, removeCalculationNodes ].sort(), XPresult.plan.rules.sort());
+      // The sortnode and its calculation node should have been removed.
+      hasNoSortNode(XPresult);
+      // now the dependencies of the sortnode should be gone:
+      hasCalculationNodes(XPresult, 1);
+      // The IndexRangeNode created by this rule is simple; it shouldn't have ranges.
+      hasIndexRangeNode_WithRanges(XPresult, false);
+
+      for (i = 1; i < 3; i++) {
+        assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
+      }
+
+    },
+
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test in detail that this rule has an effect, but the sort is kept in
+    //    place since the index can't fullfill all of the sorting criteria.
+    ////////////////////////////////////////////////////////////////////////////////
+    testSortMoreThanIndexed: function () {
+
+      var query = "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a, v.c RETURN [v.a, v.b, v.c]";
+      // no index can be used for v.c -> sort has to remain in place!
+      var XPresult;
+      var QResults=[];
+      var i;
+
+      // the index we will compare to sorts by a & b, so we need to
+      // re-sort the result here to accomplish similarity.
+      QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
+
+
+      // -> use-index-for-sort alone.
+      QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
+      XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort);
+      // our rule should be there.
+      assertEqual([ ruleName ], XPresult.plan.rules);
+      // The sortnode and its calculation node should have been removed.
+      
+      hasSortNode(XPresult);
+      hasCalculationNodes(XPresult, 4);
+      // The IndexRangeNode created by this rule is simple; it shouldn't have ranges.
+      hasIndexRangeNode_WithRanges(XPresult, false);
+
+      // -> combined use-index-for-sort and use-index-range
+      //    use-index-range superseedes use-index-for-sort
+      QResults[2] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange).json;
+      XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange);
+
+      assertEqual([ secondRuleName ], XPresult.plan.rules.sort());
+      // The sortnode and its calculation node should not have been removed.
+      hasSortNode(XPresult);
+      hasCalculationNodes(XPresult, 4);
+      // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
+      hasIndexRangeNode_WithRanges(XPresult, true);
+
+      // -> use-index-range alone.
+      QResults[3] = AQL_EXECUTE(query, { }, paramIndexRange).json;
+      XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
+      assertEqual([ secondRuleName ], XPresult.plan.rules);
+      // the sortnode and its calculation node should be there. 
+
+      hasSortNode(XPresult);
+      hasCalculationNodes(XPresult,4);
+      // we should be able to find exactly one sortnode property - its a Calculation node.
+      var sortProperty = findReferencedNodes(XPresult, findExecutionNodes(XPresult, "SortNode")[0]);
+      assertEqual(sortProperty.length, 2);
+      assertEqual(sortProperty[0].type, "CalculationNode");
+      assertEqual(sortProperty[1].type, "CalculationNode");
+      // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
+      hasIndexRangeNode_WithRanges(XPresult, true);
+
+      for (i = 1; i < 4; i++) {
+        assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
+      }
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test in detail that an index range fullfills everything the sort does, 
+    //   and thus the sort is removed.
+    ////////////////////////////////////////////////////////////////////////////////
+    testRangeSuperseedsSort: function () {
+
+      var query = "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a RETURN [v.a, v.b, v.c]";
+
+      var XPresult;
+      var QResults=[];
+      var i;
+
+      // the index we will compare to sorts by a & b, so we need to
+      // re-sort the result here to accomplish similarity.
+      QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
+
+      // -> use-index-for-sort alone.
+      QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
+      XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort);
+      // our rule should be there.
+      assertEqual([ ruleName ], XPresult.plan.rules);
+      // The sortnode should be gone, its calculation node should not have been removed yet.
+      hasNoSortNode(XPresult);
+      hasCalculationNodes(XPresult, 3);
+
+
+      // The IndexRangeNode created by this rule is simple; it shouldn't have ranges.
+      hasIndexRangeNode_WithRanges(XPresult, false);
+
+      // -> combined use-index-for-sort and use-index-range
+      QResults[2] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange).json;
+      XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange);
+      assertEqual([ secondRuleName, ruleName ].sort(), XPresult.plan.rules.sort());
+      // The sortnode should be gone, its calculation node should not have been removed yet.
+      hasNoSortNode(XPresult);
+      hasCalculationNodes(XPresult, 3);
+      // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
+      hasIndexRangeNode_WithRanges(XPresult, true);
+
+      // -> use-index-range alone.
+      QResults[3] = AQL_EXECUTE(query, { }, paramIndexRange).json;
+      XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
+      assertEqual([ secondRuleName ], XPresult.plan.rules);
+      // the sortnode and its calculation node should be there.
+      hasSortNode(XPresult);
+      hasCalculationNodes(XPresult, 3);
+      // we should be able to find exactly one sortnode property - its a Calculation node.
+      var sortProperty = findReferencedNodes(XPresult, findExecutionNodes(XPresult, "SortNode")[0]);
+      assertEqual(sortProperty.length, 1);
+      isNodeType(sortProperty[0], "CalculationNode");
+      // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
+      hasIndexRangeNode_WithRanges(XPresult, true);
+
+      // -> combined use-index-for-sort, remove-unnecessary-calculations-2 and use-index-range
+      QResults[4] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange_RemoveCalculations).json;
+
+      XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange_RemoveCalculations);
+      assertEqual([ secondRuleName, removeCalculationNodes, ruleName ].sort(), XPresult.plan.rules.sort());
+      // the sortnode and its calculation node should be gone.
+      hasNoSortNode(XPresult);
+      hasCalculationNodes(XPresult, 2);
+      // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
+      hasIndexRangeNode_WithRanges(XPresult, true);
+
+      for (i = 1; i < 5; i++) {
+        assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
+      }
+
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test in detail that an index range fullfills everything the sort does, 
+    //   and thus the sort is removed; multi-dimensional indexes are utilized.
+    ////////////////////////////////////////////////////////////////////////////////
+    testRangeSuperseedsSort2: function () {
+
+      var query = "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a, v.b RETURN [v.a, v.b, v.c]";
+      var XPresult;
+      var QResults=[];
+      var i;
+
+      // the index we will compare to sorts by a & b, so we need to
+      // re-sort the result here to accomplish similarity.
+
+      QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
+
+      // -> use-index-for-sort alone.
+      QResults[1] = AQL_EXECUTE(query, { }, paramIndexFromSort).json;
+      XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort);
+      // our rule should be there.
+      assertEqual([ ruleName ], XPresult.plan.rules);
+      // The sortnode should be gone, its calculation node should not have been removed yet.
+      hasNoSortNode(XPresult);
+      hasCalculationNodes(XPresult, 4);
+      // The IndexRangeNode created by this rule is simple; it shouldn't have ranges.
+      hasIndexRangeNode_WithRanges(XPresult, false);
+
+      // -> combined use-index-for-sort and use-index-range
+      QResults[2] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange).json;
+
+      XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange);
+      
+      assertEqual([ secondRuleName, ruleName ].sort(), XPresult.plan.rules.sort());
+      // The sortnode should be gone, its calculation node should not have been removed yet.
+      hasNoSortNode(XPresult);
+
+      hasCalculationNodes(XPresult, 4);
+      // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
+      hasIndexRangeNode_WithRanges(XPresult, true);
+
+      // -> use-index-range alone.
+      QResults[3] = AQL_EXECUTE(query, { }, paramIndexRange).json;
+      XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
+      assertEqual([ secondRuleName ], XPresult.plan.rules);
+      // the sortnode and its calculation node should be there.
+      hasSortNode(XPresult);
+      hasCalculationNodes(XPresult, 4);
+      // we should be able to find exactly one sortnode property - its a Calculation node.
+      var sortProperty = findReferencedNodes(XPresult, findExecutionNodes(XPresult, "SortNode")[0]);
+
+      assertEqual(sortProperty.length, 2);
+      isNodeType(sortProperty[0], "CalculationNode");
+      // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
+      hasIndexRangeNode_WithRanges(XPresult, true);
+
+      // -> combined use-index-for-sort, remove-unnecessary-calculations-2 and use-index-range
+      QResults[4] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange_RemoveCalculations).json;
+      XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange_RemoveCalculations);
+      assertEqual([ ruleName, secondRuleName, removeCalculationNodes].sort(), XPresult.plan.rules.sort());
+      // the sortnode and its calculation node should be there.
+      hasNoSortNode(XPresult);
+      hasCalculationNodes(XPresult, 2);
+
+      // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
+      hasIndexRangeNode_WithRanges(XPresult, true);
+
+      for (i = 1; i < 5; i++) {
+        assertTrue(isEqual(QResults[0], QResults[i]), "Result " + i + " is Equal?");
+      }
+    },
+
+
+
+    // -----------------------------------------------------------------------------
+    // --SECTION--                                                      toIndexRange
+    // -----------------------------------------------------------------------------
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test in detail that an index range can be used for an equality filter.
+    ////////////////////////////////////////////////////////////////////////////////
+    testRangeEquals: function () {
+
+      var query = "FOR v IN " + colName + " FILTER v.a == 1 RETURN [v.a, v.b, v.c]";
+
+      var XPresult;
+      var QResults=[];
+      var i;
+
+      // the index we will compare to sorts by a & b, so we need to
+      // re-sort the result here to accomplish similarity.
+      QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
+
+      // -> use-index-range alone.
+      QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
+      XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
+      assertEqual([ secondRuleName ], XPresult.plan.rules);
+      // the sortnode and its calculation node should be there.
+      hasCalculationNodes(XPresult, 2);
+
+      // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
+      var RAs = getRangeAttributes(XPresult);
+      var first = getRangeAttribute(RAs, "v", "a", 1);
+      
+      assertEqual(first.lows.length, 0, "no non-constant low bounds");
+      assertEqual(first.highs.length, 0, "no non-constant high bounds");
+      assertEqual(first.lowConst.bound, 1, "correctness of bound");
+      assertEqual(first.lowConst.bound, first.highConst.bound, "bounds equality");
+
+      for (i = 1; i < 2; i++) {
+        assertTrue(isEqual(QResults[0].sort(sortArray), QResults[i]), "Result " + i + " is Equal?");
+      }
+
+    },
+
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test in detail that an index range can be used for a less than filter.
+    ////////////////////////////////////////////////////////////////////////////////
+    testRangeLessThan: function () {
+      var query = "FOR v IN " + colName + " FILTER v.a < 5 RETURN [v.a, v.b]";
+
+      var XPresult;
+      var QResults=[];
+
+      // the index we will compare to sorts by a & b, so we need to
+      // re-sort the result here to accomplish similarity.
+      QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
+
+      // -> use-index-range alone.
+      QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
+
+      XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
+      assertEqual([ secondRuleName ], XPresult.plan.rules);
+      // the sortnode and its calculation node should be there.
+      hasCalculationNodes(XPresult, 2);
+
+      // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
+      var RAs = getRangeAttributes(XPresult);
+      var first = getRangeAttribute(RAs, "v", "a", 1);
+      assertEqual(first.lowConst.bound, undefined, "no constant lower bound");
+      assertEqual(first.lows.length, 0, "no variable low bound");
+      assertEqual(first.highs.length, 0, "no variable high bound");
+      assertEqual(first.highConst.bound, 5, "proper value was set");
+
+      assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test in detail that an index range can be used for a greater than filter.
+    ////////////////////////////////////////////////////////////////////////////////
+    testRangeGreaterThan: function () {
+      var query = "FOR v IN " + colName + " FILTER v.a > 5 RETURN [v.a, v.b]";
+      var XPresult;
+      var QResults=[];
+
+      // the index we will compare to sorts by a & b, so we need to
+      // re-sort the result here to accomplish similarity.
+      QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
+
+      // -> use-index-range alone.
+      QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
+
+      XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
+      assertEqual([ secondRuleName ], XPresult.plan.rules);
+      // the sortnode and its calculation node should be there.
+      hasCalculationNodes(XPresult, 2);
+
+      // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
+      var RAs = getRangeAttributes(XPresult);
+      var first = getRangeAttribute(RAs, "v", "a", 1);
+      
+      assertEqual(first.highConst.bound, undefined, "no constant upper bound");
+      assertEqual(first.highs.length, 0, "no variable high bound");
+      assertEqual(first.lows.length, 0, "no variable low bound");
+      assertEqual(first.lowConst.bound, 5, "proper value was set");
+
+      assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
+
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test in detail that an index range can be used for an and combined 
+    ///   greater than + less than filter spanning a range.
+    ////////////////////////////////////////////////////////////////////////////////
+    testRangeBandpass: function () {
+      var query = "FOR v IN " + colName + " FILTER v.a > 4 && v.a < 10 RETURN [v.a, v.b]";
+      var XPresult;
+      var QResults=[];
+
+      // the index we will compare to sorts by a & b, so we need to
+      // re-sort the result here to accomplish similarity.
+      QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
+
+      // -> use-index-range alone.
+      QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
+
+      XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
+      assertEqual([ secondRuleName ], XPresult.plan.rules);
+      // the sortnode and its calculation node should be there.
+      hasCalculationNodes(XPresult, 2);
+
+      // The IndexRangeNode created by this rule should be more clever, it knows the ranges.
+      var RAs = getRangeAttributes(XPresult);
+      var first = getRangeAttribute(RAs, "v", "a", 1);
+      
+      assertEqual(first.highs.length, 0, "no variable high bounds");
+      assertEqual(first.lows.length, 0, "no variable low bounds");
+      assertEqual(first.lowConst.bound, 4, "proper value was set");
+      assertEqual(first.highConst.bound, 10, "proper value was set");
+
+      assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test in detail that an index range can be used for an and combined 
+    ///   greater than + less than filter spanning an empty range. This actually
+    ///   recognises the empty range and introduces a NoResultsNode but not an
+    ///   IndexRangeNode.
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testRangeBandpassInvalid: function () {
+      var query = "FOR v IN " + colName + " FILTER v.a > 7 && v.a < 4 RETURN [v.a, v.b]";
+
+      var XPresult;
+      var QResults=[];
+
+      // the index we will compare to sorts by a & b, so we need to re-sort
+      // the result here to accomplish similarity.
+      QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
+
+      // -> use-index-range alone.
+      QResults[1] = AQL_EXECUTE(query, { }, paramIndexRange).json;
+
+
+      XPresult    = AQL_EXPLAIN(query, { }, paramIndexRange);
+      assertEqual([ secondRuleName ], XPresult.plan.rules);
+      // the sortnode and its calculation node should be there.
+      hasCalculationNodes(XPresult, 2);
+
+      hasNoResultsNode(XPresult);
+      hasNoIndexRangeNode(XPresult);
+
+      assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
+      
+    },
+
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test in detail that an index range can be used for an or combined 
+    ///   greater than + less than filter spanning a range. TODO: doesn't work now.
+    ////////////////////////////////////////////////////////////////////////////////
+    testRangeBandstop: function () {
 // TODO: OR  isn't implemented
 //        var query = "FOR v IN " + colName + " FILTER v.a < 5 || v.a > 10 RETURN [v.a, v.b]";
 //
 //        var XPresult;
 //        var QResults=[];
 //
-//        // the index we will compare to sorts by a & b, so we need to re-sort the result here to accomplish similarity.
+//        // the index we will compare to sorts by a & b, so we need to
+//        // re-sort the result here to accomplish similarity.
 //        QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
 //
 //        // -> use-index-range alone.
@@ -762,20 +740,22 @@ function optimizerRuleTestSuite() {
 //        require("internal").print(QResults[0]);
 //        require("internal").print(QResults[1]);              
 //        assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
-      },
+    },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test in detail that an index range can be used for an or combined 
-///   greater than + less than filter spanning multiple ranges. TODO: doesn't work now.
-////////////////////////////////////////////////////////////////////////////////
-      testMultiRangeBandpass: function () {
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test in detail that an index range can be used for an or combined 
+    ///   greater than + less than filter spanning multiple ranges. TODO: doesn't work now.
+    ////////////////////////////////////////////////////////////////////////////////
+    testMultiRangeBandpass: function () {
 // TODO: OR  isn't implemented
-//          var query = "FOR v IN " + colName + " FILTER ((v.a > 3 && v.a < 5) || (v.a > 4 && v.a < 7)) RETURN [v.a, v.b]";
+//          var query = "FOR v IN " + colName +
+//                 " FILTER ((v.a > 3 && v.a < 5) || (v.a > 4 && v.a < 7)) RETURN [v.a, v.b]";
 //
 //          var XPresult;
 //          var QResults=[];
 //
-//          // the index we will compare to sorts by a & b, so we need to re-sort the result here to accomplish similarity.
+//          // the index we will compare to sorts by a & b, so we need to
+//          // re-sort the result here to accomplish similarity.
 //          QResults[0] = AQL_EXECUTE(query, { }, paramNone).json.sort(sortArray);
 //
 //          // -> use-index-range alone.
@@ -798,9 +778,8 @@ function optimizerRuleTestSuite() {
 //          assertEqual(first.high.bound.value, 10, "proper value was set");
 //
 //          assertTrue(isEqual(QResults[0], QResults[1]), "Results are Equal?");
-          
-      }
-*/
+      
+    }
   };
 }
 

@@ -437,66 +437,90 @@ function getCompactPlan (explainResult) {
 }
 
 function findExecutionNodes(plan, nodetype) {
-    var matches = [];
-    plan.plan.nodes.forEach(function(node) {
-        if (node.type === nodetype) {
+  var matches = [];
+  plan.plan.nodes.forEach(function(node) {
+    if (node.type === nodetype) {
 
-            matches.push(node);
-        }
-        else if (node.type === "SubqueryNode") {
-            var subPlan = {"plan" : node.subquery};
-            matches = matches.concat(findExecutionNodes(subPlan, nodetype));
-        }
-    });
-    return matches;
+      matches.push(node);
+    }
+    else if (node.type === "SubqueryNode") {
+      var subPlan = {"plan" : node.subquery};
+      matches = matches.concat(findExecutionNodes(subPlan, nodetype));
+    }
+  });
+  return matches;
 }
 
 function findReferencedNodes(plan, testNode) {
-    var matches = [];
-    if (testNode.elements) {
-        testNode.elements.forEach(function(element) {
-            plan.plan.nodes.forEach(function(node) {
-                if (node.hasOwnProperty("outVariable") && 
-                    node.outVariable.id ===
-                    element.inVariable.id) {
-                    matches.push(node);
-                }
-            });
-        });
-    }
-    else {
-        plan.plan.nodes.forEach(function(node) {
-            if (node.outVariable.id === testNode.inVariable.id) {
-                matches.push(node);
-            }
-        });
-    }
+  var matches = [];
+  if (testNode.elements) {
+    testNode.elements.forEach(function(element) {
+      plan.plan.nodes.forEach(function(node) {
+        if (node.hasOwnProperty("outVariable") && 
+            node.outVariable.id ===
+            element.inVariable.id) {
+          matches.push(node);
+        }
+      });
+    });
+  }
+  else {
+    plan.plan.nodes.forEach(function(node) {
+      if (node.outVariable.id === testNode.inVariable.id) {
+        matches.push(node);
+      }
+    });
+  }
 
-    return matches;
+  return matches;
 }
 
+function getQueryMultiplePlansAndExecutions (query, bindVars) {
+  var plan;
+  var i;
+  var plans = [];
+  var allPlans = [];
+  var results = [];
+  var paramNone     = { optimizer: { rules: [ "-all" ]},  verbosePlans: true};
+  var paramAllPlans = { allPlans : true, verbosePlans: true};
+
+  // first fetch the unmodified version
+  plans [0] = AQL_EXPLAIN(query, bindVars, paramNone);
+  // then all of the ones permuted by by the optimizer.
+  allPlans = AQL_EXPLAIN(query, bindVars, paramAllPlans);
+
+  for (i=0; i < allPlans.plans.length; i++) {
+    plans[i+1] = {'plan':allPlans.plans[i]};
+  }
+  // Now execute each of these variations.
+  for (i=0; i < plans.length; i++) {
+    results += AQL_EXECUTEJSON(plans[i].plan, paramNone);
+  }
+
+  return {'plans': plans, 'results': results};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    module exports
 // -----------------------------------------------------------------------------
 
-exports.isEqual                = isEqual;
-exports.getParseResults        = getParseResults;
-exports.assertParseError       = assertParseError;
-exports.getQueryExplanation    = getQueryExplanation;
-exports.getModifyQueryResults  = getModifyQueryResults;
-exports.getModifyQueryResults2 = getModifyQueryResults2;
-exports.getRawQueryResults     = getRawQueryResults;
-exports.getQueryResults        = getQueryResults;
-exports.getQueryResults2       = getQueryResults2;
-exports.getQueryResultsAQL2    = getQueryResultsAQL2;
-exports.assertQueryError       = assertQueryError;
-exports.assertQueryError2      = assertQueryError2;
-exports.getLinearizedPlan      = getLinearizedPlan;
-exports.getCompactPlan         = getCompactPlan;
-exports.findExecutionNodes     = findExecutionNodes;
-exports.findReferencedNodes    = findReferencedNodes;
-
+exports.isEqual                            = isEqual;
+exports.getParseResults                    = getParseResults;
+exports.assertParseError                   = assertParseError;
+exports.getQueryExplanation                = getQueryExplanation;
+exports.getModifyQueryResults              = getModifyQueryResults;
+exports.getModifyQueryResults2             = getModifyQueryResults2;
+exports.getRawQueryResults                 = getRawQueryResults;
+exports.getQueryResults                    = getQueryResults;
+exports.getQueryResults2                   = getQueryResults2;
+exports.getQueryResultsAQL2                = getQueryResultsAQL2;
+exports.assertQueryError                   = assertQueryError;
+exports.assertQueryError2                  = assertQueryError2;
+exports.getLinearizedPlan                  = getLinearizedPlan;
+exports.getCompactPlan                     = getCompactPlan;
+exports.findExecutionNodes                 = findExecutionNodes;
+exports.findReferencedNodes                = findReferencedNodes;
+exports.getQueryMultiplePlansAndExecutions = getQueryMultiplePlansAndExecutions;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
