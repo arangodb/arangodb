@@ -61,7 +61,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         RangeInfoBound (AstNode const* bound, bool include) 
-          : _bound(), _include(include), _defined(false) {
+          : _bound(), 
+            _include(include), 
+            _defined(false) {
           if (bound->type == NODE_TYPE_VALUE) {
             _bound = Json(TRI_UNKNOWN_MEM_ZONE,
                           bound->toJsonValue(TRI_UNKNOWN_MEM_ZONE));
@@ -89,12 +91,17 @@ namespace triagens {
         }
       
         RangeInfoBound () 
-          : _bound(), _include(false), _isConstant(false), _defined(false) {
+          : _bound(), 
+            _include(false), 
+            _isConstant(false), 
+            _defined(false) {
         }
 
-        RangeInfoBound ( RangeInfoBound const& copy ) 
-            : _bound(copy._bound.copy()), _include(copy._include), 
-              _isConstant(copy._isConstant), _defined(copy._defined) {
+        RangeInfoBound (RangeInfoBound const& copy) 
+            : _bound(copy._bound.copy()), 
+              _include(copy._include), 
+              _isConstant(copy._isConstant), 
+              _defined(copy._defined) {
         } 
           
 ////////////////////////////////////////////////////////////////////////////////
@@ -107,7 +114,7 @@ namespace triagens {
 /// @brief delete assignment
 ////////////////////////////////////////////////////////////////////////////////
 
-        RangeInfoBound& operator= ( RangeInfoBound const& copy ) = delete;
+        RangeInfoBound& operator= (RangeInfoBound const& copy) = delete;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief explicit assign
