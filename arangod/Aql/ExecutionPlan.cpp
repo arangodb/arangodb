@@ -51,11 +51,12 @@ using JsonHelper = triagens::basics::JsonHelper;
 /// @brief create the plan
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionPlan::ExecutionPlan () 
+ExecutionPlan::ExecutionPlan (Ast* ast) 
   : _ids(),
     _root(nullptr),
     _varUsageComputed(false),
-    _nextId(0) {
+    _nextId(0),
+    _ast(ast) {
 
 }
 
@@ -84,7 +85,7 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast* ast) {
   TRI_ASSERT(root != nullptr);
   TRI_ASSERT(root->type == NODE_TYPE_ROOT);
 
-  auto plan = new ExecutionPlan();
+  auto plan = new ExecutionPlan(ast);
 
   try {
     plan->_root = plan->fromNode(ast, root);
@@ -126,7 +127,7 @@ void ExecutionPlan::getCollectionsFromJson(Ast *ast,
 
 ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast* ast,
                                                    triagens::basics::Json const& json) {
-  auto plan = new ExecutionPlan();
+  auto plan = new ExecutionPlan(ast);
 
   try {
     plan->_root = plan->fromJson(ast, json);
@@ -1184,7 +1185,7 @@ class CloneNodeAdder : public WalkerWorker<ExecutionNode> {
 };
 
 ExecutionPlan* ExecutionPlan::clone () {
-  auto plan = new ExecutionPlan();
+  auto plan = new ExecutionPlan(_ast);
   try {
     plan->_root = _root->clone();
     plan->_nextId = _nextId;
