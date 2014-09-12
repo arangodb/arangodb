@@ -137,7 +137,6 @@ namespace triagens {
           TRI_ASSERT(mptr != nullptr);
 
           return this->create(this->trxCollection(),
-                              TRI_DOC_MARKER_KEY_DOCUMENT,
                               mptr,
                               json,
                               nullptr,
@@ -161,7 +160,6 @@ namespace triagens {
           TRI_ASSERT(mptr != nullptr);
 
           return this->create(this->trxCollection(),
-                              TRI_DOC_MARKER_KEY_EDGE,
                               mptr,
                               json,
                               data,
