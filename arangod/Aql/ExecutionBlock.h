@@ -206,8 +206,8 @@ namespace triagens {
           VarOverview (VarOverview const& v, unsigned int newdepth);
           ~VarOverview () {};
 
-          virtual bool enterSubquery (ExecutionBlock* super,
-                                      ExecutionBlock* sub) {
+          virtual bool enterSubquery (ExecutionBlock*,
+                                      ExecutionBlock*) {
             return false;  // do not walk into subquery
           }
 

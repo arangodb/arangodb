@@ -243,6 +243,14 @@ namespace triagens {
 
         ExecutionPlan* clone ();
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get ast
+////////////////////////////////////////////////////////////////////////////////
+
+        Ast* getAst () {
+          return _ast;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -260,8 +268,7 @@ namespace triagens {
 /// @brief creates a calculation node for an arbitrary expression
 ////////////////////////////////////////////////////////////////////////////////
 
-        CalculationNode* createTemporaryCalculation (Ast const*,
-                                                     AstNode const*);
+        CalculationNode* createTemporaryCalculation (AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds "previous" as dependency to "plan", returns "plan"
@@ -365,8 +372,7 @@ namespace triagens {
         ExecutionNode* fromNode (Ast const*,
                                  AstNode const*);
 
-        ExecutionNode* fromJson (Ast*,
-                                 triagens::basics::Json const& Json);
+        ExecutionNode* fromJson (triagens::basics::Json const& Json);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
