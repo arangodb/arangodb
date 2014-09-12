@@ -37,7 +37,7 @@
 #include "BasicsC/locks.h"
 #include "BasicsC/logging.h"
 #include "Basics/tri-strings.h"
-#include "BasicsC/utf8-helper.h"
+#include "Basics/utf8-helper.h"
 #include "Utils/Exception.h"
 #include "VocBase/document-collection.h"
 #include "Wal/LogfileManager.h"

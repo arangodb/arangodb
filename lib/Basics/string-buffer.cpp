@@ -57,8 +57,6 @@ static inline size_t Remaining (TRI_string_buffer_t * self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int Reserve (TRI_string_buffer_t * self, const size_t size) {
-  char* ptr;
-
   if (size < 1) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -71,9 +69,9 @@ static int Reserve (TRI_string_buffer_t * self, const size_t size) {
     len = (size_t) (1.2 * (self->_len + size));
     TRI_ASSERT(len > 0);
 
-    ptr = TRI_Reallocate(self->_memoryZone, self->_buffer, len + 1);
+    char* ptr = static_cast<char*>(TRI_Reallocate(self->_memoryZone, self->_buffer, len + 1));
 
-    if (ptr == NULL) {
+    if (ptr == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
@@ -305,8 +303,8 @@ static void EscapeUtf8Range10000T10FFFF (TRI_string_buffer_t* self, char const**
 TRI_string_buffer_t* TRI_CreateStringBuffer (TRI_memory_zone_t* zone) {
   TRI_string_buffer_t* self = (TRI_string_buffer_t*) TRI_Allocate(zone, sizeof(TRI_string_buffer_t), false);
 
-  if (self == NULL) {
-    return NULL;
+  if (self == nullptr) {
+    return nullptr;
   }
 
   TRI_InitStringBuffer(self, zone);
@@ -322,8 +320,8 @@ TRI_string_buffer_t* TRI_CreateSizedStringBuffer (TRI_memory_zone_t* zone,
                                                   const size_t size) {
   TRI_string_buffer_t* self = (TRI_string_buffer_t*) TRI_Allocate(zone, sizeof(TRI_string_buffer_t), false);
 
-  if (self == NULL) {
-    return NULL;
+  if (self == nullptr) {
+    return nullptr;
   }
 
   TRI_InitSizedStringBuffer(self, zone, size);
@@ -339,7 +337,7 @@ TRI_string_buffer_t* TRI_CreateSizedStringBuffer (TRI_memory_zone_t* zone,
 
 void TRI_InitStringBuffer (TRI_string_buffer_t * self, TRI_memory_zone_t* zone) {
   self->_memoryZone = zone;
-  self->_buffer = NULL;
+  self->_buffer = nullptr;
   self->_current = 0;
   self->_len = 0;
 
@@ -370,7 +368,7 @@ void TRI_InitSizedStringBuffer (TRI_string_buffer_t * self,
 ////////////////////////////////////////////////////////////////////////////////
 
 void  TRI_DestroyStringBuffer (TRI_string_buffer_t * self) {
-  if (self->_buffer != NULL) {
+  if (self->_buffer != nullptr) {
     TRI_Free(self->_memoryZone, self->_buffer);
   }
 }
@@ -382,11 +380,11 @@ void  TRI_DestroyStringBuffer (TRI_string_buffer_t * self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AnnihilateStringBuffer (TRI_string_buffer_t * self) {
-  if (self->_buffer != NULL) {
+  if (self->_buffer != nullptr) {
     // somewhat paranoid? don't ask me
     memset(self->_buffer, 0, self->_len);
     TRI_Free(self->_memoryZone, self->_buffer);
-    self->_buffer = NULL;
+    self->_buffer = nullptr;
   }
 }
 
@@ -429,7 +427,7 @@ int TRI_DeflateStringBuffer (TRI_string_buffer_t* self,
 
   buffer = (char*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, bufferSize, false);
 
-  if (buffer == NULL) {
+  if (buffer == nullptr) {
     (void) deflateEnd(&strm);
 
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -566,7 +564,7 @@ bool TRI_EmptyStringBuffer (TRI_string_buffer_t const* self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ClearStringBuffer (TRI_string_buffer_t* self) {
-  if (self->_buffer != NULL) {
+  if (self->_buffer != nullptr) {
     if (self->_len > 0 && self->_current == self->_buffer) {
       // we're at the beginning of the buffer
       // avoid double erasure and exit early
@@ -584,7 +582,7 @@ void TRI_ClearStringBuffer (TRI_string_buffer_t* self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ResetStringBuffer (TRI_string_buffer_t* self) {
-  if (self->_buffer != NULL) {
+  if (self->_buffer != nullptr) {
     self->_current = self->_buffer;
 
     if (self->_len > 0) {
@@ -601,11 +599,11 @@ char* TRI_StealStringBuffer (TRI_string_buffer_t* self) {
   char* result = self->_buffer;
 
   // reset everthing
-  self->_buffer  = NULL;
-  self->_current = NULL;
+  self->_buffer  = nullptr;
+  self->_current = nullptr;
   self->_len     = 0;
 
-  // might be NULL
+  // might be nullptr
   return result;
 }
 
@@ -614,7 +612,7 @@ char* TRI_StealStringBuffer (TRI_string_buffer_t* self) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char TRI_LastCharStringBuffer (TRI_string_buffer_t const* self) {
-  if (self->_buffer != NULL && self->_current - self->_buffer > 0) {
+  if (self->_buffer != nullptr && self->_current - self->_buffer > 0) {
     return *(self->_current - 1);
   }
 

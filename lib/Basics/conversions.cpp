@@ -30,7 +30,7 @@
 #include "conversions.h"
 
 #include "Basics/tri-strings.h"
-#include "BasicsC/string-buffer.h"
+#include "Basics/string-buffer.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                          public functions for string to something

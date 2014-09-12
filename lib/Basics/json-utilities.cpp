@@ -29,8 +29,8 @@
 
 #include "Basics/json-utilities.h"
 
-#include "BasicsC/utf8-helper.h"
-#include "BasicsC/string-buffer.h"
+#include "Basics/utf8-helper.h"
+#include "Basics/string-buffer.h"
 #include "Basics/hashes.h"
 
 // -----------------------------------------------------------------------------

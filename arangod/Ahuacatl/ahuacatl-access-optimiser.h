@@ -31,7 +31,7 @@
 #define ARANGODB_AHUACATL_AHUACATL__ACCESS__OPTIMISER_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/string-buffer.h"
+#include "Basics/string-buffer.h"
 
 #include "Ahuacatl/ahuacatl-ast-node.h"
 

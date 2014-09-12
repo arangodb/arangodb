@@ -31,7 +31,7 @@
 
 #include "BasicsC/logging.h"
 #include "Basics/tri-strings.h"
-#include "BasicsC/string-buffer.h"
+#include "Basics/string-buffer.h"
 
 #include "Ahuacatl/ahuacatl-access-optimiser.h"
 #include "Ahuacatl/ahuacatl-context.h"

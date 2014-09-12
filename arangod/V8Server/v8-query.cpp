@@ -32,7 +32,7 @@
 
 #include "BasicsC/logging.h"
 #include "BasicsC/random.h"
-#include "BasicsC/string-buffer.h"
+#include "Basics/string-buffer.h"
 #include "GeoIndex/geo-index.h"
 #include "HashIndex/hash-index.h"
 #include "FulltextIndex/fulltext-index.h"

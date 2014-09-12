@@ -34,7 +34,7 @@
 #include "BasicsC/associative.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
-#include "BasicsC/string-buffer.h"
+#include "Basics/string-buffer.h"
 #include "BasicsC/vector.h"
 
 #include "Ahuacatl/ahuacatl-ast-node.h"

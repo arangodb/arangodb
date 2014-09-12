@@ -51,6 +51,7 @@ add_library(
     Basics/conversions.cpp
     Basics/csv.cpp
     Basics/Exceptions.cpp
+    Basics/fasthash.cpp
     Basics/files.cpp
     Basics/FileUtils.cpp
     Basics/hashes.cpp
@@ -69,19 +70,21 @@ add_library(
     Basics/ReadLocker.cpp
     Basics/ReadUnlocker.cpp
     Basics/ReadWriteLock.cpp
+    Basics/ssl-helper.cpp
+    Basics/string-buffer.cpp
     Basics/StringUtils.cpp
     Basics/Thread.cpp
     Basics/Timing.cpp
     Basics/tri-strings.cpp
     Basics/Utf8Helper.cpp
+    Basics/utf8-helper.cpp
     Basics/WriteLocker.cpp
     Basics/WriteUnlocker.cpp
-    Basics/ssl-helper.cpp
+    Basics/xxhash.cpp
     BasicsC/application-exit.c
     BasicsC/associative.c
     BasicsC/debugging.c
     BasicsC/error.c
-    BasicsC/fasthash.c
     Basics/init.cpp
     BasicsC/logging.c
     BasicsC/memory.c
@@ -90,16 +93,13 @@ add_library(
     BasicsC/random.c
     BasicsC/skip-list.c
     BasicsC/socket-utils.c
-    BasicsC/string-buffer.c
     BasicsC/structures.c
     BasicsC/system-functions.c
     BasicsC/terminal-utils.c
-    BasicsC/utf8-helper.c
     BasicsC/vector.c
     BasicsC/voc-errors.c
     BasicsC/voc-mimetypes.c
     BasicsC/tri-zip.c
-    BasicsC/xxhash.c
     JsonParser/json-parser.cpp
     ProgramOptions/program-options.cpp
     Rest/AnyServer.cpp

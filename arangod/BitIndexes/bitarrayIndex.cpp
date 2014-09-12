@@ -30,7 +30,7 @@
 #include "bitarrayIndex.h"
 
 #include "BasicsC/logging.h"
-#include "BasicsC/string-buffer.h"
+#include "Basics/string-buffer.h"
 #include "BitIndexes/bitarray.h"
 #include "ShapedJson/json-shaper.h"
 #include "ShapedJson/shaped-json.h"

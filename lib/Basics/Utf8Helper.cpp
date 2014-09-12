@@ -37,7 +37,7 @@
 
 #include "BasicsC/logging.h"
 #include "Basics/tri-strings.h"
-#include "BasicsC/utf8-helper.h"
+#include "Basics/utf8-helper.h"
 
 using namespace triagens::basics;
 using namespace std;

@@ -33,7 +33,7 @@
 #include "Basics/Common.h"
 
 #include "BasicsC/associative.h"
-#include "BasicsC/string-buffer.h"
+#include "Basics/string-buffer.h"
 #include "ShapedJson/shaped-json.h"
 #include "Utils/Exception.h"
 #include "VocBase/replication-common.h"
