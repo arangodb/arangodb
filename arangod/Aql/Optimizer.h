@@ -43,7 +43,7 @@ namespace triagens {
 
     public:
 
-      enum RuleLevel:int {
+      enum RuleLevel: int {
   // List all the rules in the system here:
   // lower level values mean earlier rule execution
   
@@ -61,44 +61,47 @@ namespace triagens {
 
   // move filters up the dependency chain (to make result sets as small
   // as possible as early as possible)
-          moveFiltersUpRule_pass1       = 120,
+        moveFiltersUpRule_pass1       = 120,
+  
+  // remove calculations that are repeatedly used in a query
+        removeRedundantCalculationsRule_pass1 = 130,
 
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 2": try to remove redundant or unnecessary nodes
   ///           use levels between 101 and 199 for this
   //////////////////////////////////////////////////////////////////////////////
-          pass2 = 200,
+        pass2 = 200,
   // remove filters from the query that are not necessary at all
   // filters that are always true will be removed entirely
   // filters that are always false will be replaced with a NoResults node
-          removeUnnecessaryFiltersRule_pass2 = 210,
+        removeUnnecessaryFiltersRule_pass2 = 210,
   
   // remove calculations that are never necessary
-          removeUnnecessaryCalculationsRule_pass2 = 220,
+        removeUnnecessaryCalculationsRule_pass2 = 220,
 
   // remove redundant sort blocks
-          removeRedundantSorts_pass2 = 230,
+        removeRedundantSorts_pass2 = 230,
 
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 3": interchange EnumerateCollection nodes in all possible ways
   ///           this is level 500, please never let new plans from higher
   ///           levels go back to this or lower levels!
   //////////////////////////////////////////////////////////////////////////////
-          pass3 = 500,
-          interchangeAdjacentEnumerations_pass3 = 510,
+        pass3 = 500,
+        interchangeAdjacentEnumerations_pass3 = 510,
 
   //////////////////////////////////////////////////////////////////////////////
   // "Pass 4": moving nodes "up" (potentially outside loops) (second try):
   //           please use levels between 501 and 599 here
   //////////////////////////////////////////////////////////////////////////////
-          pass4 = 600,
+        pass4 = 600,
   // move calculations up the dependency chain (to pull them out of
   // inner loops etc.)
-          moveCalculationsUpRule_pass4 = 610,
+        moveCalculationsUpRule_pass4 = 610,
 
   // move filters up the dependency chain (to make result sets as small
   // as possible as early as possible)
-          moveFiltersUpRule_pass4 = 620,
+        moveFiltersUpRule_pass4 = 620,
 
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 5": try to remove redundant or unnecessary nodes (second try)
@@ -108,27 +111,27 @@ namespace triagens {
   // remove filters from the query that are not necessary at all
   // filters that are always true will be removed entirely
   // filters that are always false will be replaced with a NoResults node
-          pass5 = 700,
-          removeUnnecessaryFiltersRule_pass5 = 710,
-  
+        pass5 = 700,
+        removeUnnecessaryFiltersRule_pass5 = 710,
+
   // remove calculations that are never necessary
-          removeUnnecessaryCalculationsRule_pass5 = 720,
+        removeUnnecessaryCalculationsRule_pass5 = 720,
 
   // remove redundant sort blocks
-          removeRedundantSorts_pass5 = 730,
+        removeRedundantSorts_pass5 = 730,
 
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
   ///           use levels between 701 and 799 for this
   //////////////////////////////////////////////////////////////////////////////
-          pass6 = 800,
+        pass6 = 800,
   // try to find a filter after an enumerate collection and find an index . . . 
-          useIndexRange_pass6 = 810,
+        useIndexRange_pass6 = 810,
 
   // try to find sort blocks which are superseeded by indexes
-          useIndexForSort_pass6 = 820
+        useIndexForSort_pass6 = 820
 
-          };
+      };
     
       public:
       

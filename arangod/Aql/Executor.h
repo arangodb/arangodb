@@ -32,6 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/Function.h"
+#include "Aql/Variable.h"
 #include "V8/v8-globals.h"
 
 struct TRI_json_s;

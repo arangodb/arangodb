@@ -141,6 +141,7 @@ namespace triagens {
 
     struct AstNode {
 
+      static std::unordered_map<int, std::string const> const Operators;
       static std::unordered_map<int, std::string const> const TypeNames;
       static std::unordered_map<int, std::string const> const valueTypeNames;
 
@@ -492,19 +493,11 @@ namespace triagens {
           value.value._data = const_cast<void*>(v);
         }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief append a JavaScript representation of the node into a string buffer
 ////////////////////////////////////////////////////////////////////////////////
 
         void append (triagens::basics::StringBuffer*) const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stringify a node
-/// note that currently stringification is only supported for certain node types
-////////////////////////////////////////////////////////////////////////////////
-
-        std::string stringify () const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
