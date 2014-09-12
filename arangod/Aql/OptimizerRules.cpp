@@ -747,7 +747,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         case EN::SORT:
         case EN::INDEX_RANGE:
           break;
-        case EN::ENUMERATE_COLLECTION:{
+        case EN::ENUMERATE_COLLECTION: {
           auto node = static_cast<EnumerateCollectionNode*>(en);
           auto var = node->getVariablesSetHere()[0];  // should only be 1
           std::unordered_map<std::string, RangeInfo>* map
@@ -759,7 +759,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             std::unordered_set<Variable const*> varsDefined 
                 = node->getVarsValid();
             for (auto x : *map) {
-              auto worker = [&] (std::vector<RangeInfoBound>& bounds) -> void {
+              auto worker = [&] (std::list<RangeInfoBound>& bounds) -> void {
                 for (auto it = bounds.begin(); it != bounds.end(); ++it) {
                   AstNode const* a = it->getExpressionAst(_plan->getAst());
                   std::unordered_set<Variable*> varsUsed
