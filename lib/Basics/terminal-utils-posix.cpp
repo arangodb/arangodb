@@ -26,7 +26,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BasicsC/terminal-utils.h"
+#include "Basics/terminal-utils.h"
 
 #ifdef TRI_HAVE_SYS_IOCTL_H
 

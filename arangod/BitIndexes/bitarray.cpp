@@ -30,7 +30,7 @@
 #include "bitarray.h"
 
 #include "BasicsC/logging.h"
-#include "BasicsC/random.h"
+#include "Basics/random.h"
 
 #include "VocBase/document-collection.h"
 

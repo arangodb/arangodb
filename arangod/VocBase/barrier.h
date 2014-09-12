@@ -32,7 +32,7 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/locks.h"
+#include "Basics/locks.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations

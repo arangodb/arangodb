@@ -34,7 +34,7 @@
 #include "Basics/json.h"
 #include "BasicsC/logging.h"
 #include "Basics/tri-strings.h"
-#include "BasicsC/vector.h"
+#include "Basics/vector.h"
 #include "Basics/json-utilities.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/ReadLocker.h"

@@ -38,7 +38,7 @@
 #include "Basics/init.h"
 #include "BasicsC/logging.h"
 #include "Basics/tri-strings.h"
-#include "BasicsC/terminal-utils.h"
+#include "Basics/terminal-utils.h"
 #include "ImportHelper.h"
 #include "Rest/Endpoint.h"
 #include "Rest/InitialiseRest.h"

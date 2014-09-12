@@ -31,11 +31,11 @@
 #ifndef ARANGODB_BIT_INDEXES_MASTERBLOCKTABLE_H
 #define ARANGODB_BIT_INDEXES_MASTERBLOCKTABLE_H 1
 
-#include "BasicsC/associative.h"
 #include "BasicsC/common.h"
+#include "Basics/associative.h"
 #include "Basics/hashes.h"
-#include "BasicsC/locks.h"
-#include "BasicsC/vector.h"
+#include "Basics/locks.h"
+#include "Basics/vector.h"
 
 #include "IndexIterators/index-iterator.h"
 

@@ -27,7 +27,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "BasicsC/associative.h"
+#include "Basics/associative.h"
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
 #include "Basics/conversions.h"

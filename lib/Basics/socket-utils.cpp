@@ -41,7 +41,7 @@
 #endif
 
 #include "BasicsC/logging.h"
-#include "BasicsC/locks.h"
+#include "Basics/locks.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions

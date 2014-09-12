@@ -31,7 +31,6 @@
 #include "RandomGenerator.h"
 
 #include "BasicsC/logging.h"
-#include "BasicsC/socket-utils.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"

@@ -44,12 +44,12 @@
 
 #include "Basics/conversions.h"
 #include "Basics/hashes.h"
-#include "BasicsC/locks.h"
+#include "Basics/locks.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/random.h"
+#include "Basics/random.h"
 #include "Basics/string-buffer.h"
+#include "Basics/threads.h"
 #include "Basics/tri-strings.h"
-#include "BasicsC/threads.h"
 
 #ifdef _WIN32
 #include <tchar.h>

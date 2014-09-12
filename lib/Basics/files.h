@@ -31,12 +31,12 @@
 #define ARANGODB_BASICS_C_FILES_H 1
 
 #ifdef _WIN32
- #include "BasicsC/win-utils.h"
+ #include "Basics/win-utils.h"
 #endif
 
 #include "BasicsC/common.h"
-#include "BasicsC/socket-utils.h"
-#include "BasicsC/vector.h"
+#include "Basics/socket-utils.h"
+#include "Basics/vector.h"
 
 #ifdef __cplusplus
 extern "C" {

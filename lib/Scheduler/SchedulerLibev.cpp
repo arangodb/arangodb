@@ -31,7 +31,7 @@
 #include "Scheduler/SchedulerLibev.h"
 
 #ifdef _WIN32
-#include "BasicsC/win-utils.h"
+#include "Basics/win-utils.h"
 #include <evwrap.h>
 #else
 #include <ev.h>

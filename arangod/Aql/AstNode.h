@@ -32,7 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/json.h"
-#include "BasicsC/vector.h"
+#include "Basics/vector.h"
 #include "Basics/JsonHelper.h"
 #include "Utils/Exception.h"
 #include "Aql/Query.h"

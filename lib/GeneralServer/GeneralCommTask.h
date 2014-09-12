@@ -32,9 +32,9 @@
 #define ARANGODB_GENERAL_SERVER_GENERAL_COMM_TASK_H 1
 
 #ifdef _WIN32
-  #include "BasicsC/win-utils.h"
+  #include "Basics/win-utils.h"
 #endif
-#include "BasicsC/socket-utils.h"
+#include "Basics/socket-utils.h"
 
 #include "Basics/Common.h"
 #include "BasicsC/logging.h"

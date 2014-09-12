@@ -32,10 +32,10 @@
 
 #include "Basics/Common.h"
 
-#include "BasicsC/associative.h"
-#include "BasicsC/locks.h"
-#include "BasicsC/threads.h"
-#include "BasicsC/vector.h"
+#include "Basics/associative.h"
+#include "Basics/locks.h"
+#include "Basics/threads.h"
+#include "Basics/vector.h"
 #include "BasicsC/voc-errors.h"
 #include "VocBase/vocbase-defaults.h"
 

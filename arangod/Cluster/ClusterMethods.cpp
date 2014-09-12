@@ -33,7 +33,7 @@
 #include "Basics/conversions.h"
 #include "Basics/json.h"
 #include "Basics/tri-strings.h"
-#include "BasicsC/vector.h"
+#include "Basics/vector.h"
 #include "Basics/json-utilities.h"
 #include "Basics/StringUtils.h"
 #include "VocBase/index.h"

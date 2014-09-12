@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief threads in win32 & win64
+/// @brief threads in posix
 ///
 /// @file
 ///
@@ -28,6 +28,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "threads.h"
+
+#ifdef TRI_HAVE_POSIX_THREADS
+
+#ifdef TRI_HAVE_SYS_PRCTL_H
+#include <sys/prctl.h>
+#endif
 
 #include "BasicsC/logging.h"
 #include "Basics/tri-strings.h"
@@ -59,15 +65,26 @@ thread_data_t;
 /// @brief starter function for thread
 ////////////////////////////////////////////////////////////////////////////////
 
-static DWORD __stdcall ThreadStarter (void* data) {
-  thread_data_t* d;
+static void* ThreadStarter (void* data) {
+  sigset_t all;
+  sigfillset(&all);
+  pthread_sigmask(SIG_SETMASK, &all, 0);
 
-  d = (thread_data_t*) data;
+  thread_data_t* d = static_cast<thread_data_t*>(data);
+
+  TRI_ASSERT(d != nullptr);
+
+#ifdef TRI_HAVE_SYS_PRCTL_H
+  prctl(PR_SET_NAME, d->_name, 0, 0, 0);
+#endif
+
   d->starter(d->_data);
 
+  TRI_FreeString(TRI_CORE_MEM_ZONE, d->_name);
   TRI_Free(TRI_CORE_MEM_ZONE, d);
+  d = nullptr;
 
-  return 0;
+  return nullptr;
 }
 
 // -----------------------------------------------------------------------------
@@ -79,7 +96,7 @@ static DWORD __stdcall ThreadStarter (void* data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitThread (TRI_thread_t* thread) {
-  *thread = 0;
+  memset(thread, 0, sizeof(TRI_thread_t));
 }
 
 // -----------------------------------------------------------------------------
@@ -91,7 +108,7 @@ void TRI_InitThread (TRI_thread_t* thread) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_pid_t TRI_CurrentProcessId () {
-  return _getpid();
+  return (TRI_pid_t) getpid();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -99,7 +116,11 @@ TRI_pid_t TRI_CurrentProcessId () {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_tpid_t TRI_CurrentThreadProcessId () {
-  return _getpid();
+#ifdef TRI_HAVE_GETTID
+  return gettid();
+#else
+  return getpid();
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -107,65 +128,55 @@ TRI_tpid_t TRI_CurrentThreadProcessId () {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_tid_t TRI_CurrentThreadId () {
-  return GetCurrentThreadId();
+  return (TRI_tid_t) pthread_self();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_StartThread (TRI_thread_t* thread, TRI_tid_t* threadId, const char* name, void (*starter)(void*), void* data) {
-  thread_data_t* d;
-
-  d = (thread_data_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(thread_data_t), false);
-
-  if (d == NULL) {
-    return false;
-  }
+bool TRI_StartThread (TRI_thread_t* thread,
+                      TRI_tid_t* threadId,
+                      char const* name,
+                      void (*starter)(void*),
+                      void* data) {
+  thread_data_t* d = static_cast<thread_data_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(thread_data_t), false));
 
   d->starter = starter;
   d->_data = data;
   d->_name = TRI_DuplicateString(name);
 
-  *thread = CreateThread(0, // default security attributes
-                         0, // use default stack size
-                         ThreadStarter, // thread function name
-                         d, // argument to thread function
-                         0, // use default creation flags
-                         threadId); // returns the thread identifier
+  int rc = pthread_create(thread, 0, &ThreadStarter, d);
 
-  if (*thread == 0) {
+  if (rc != 0) {
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    LOG_ERROR("could not start thread: %s", strerror(errno));
+
     TRI_Free(TRI_CORE_MEM_ZONE, d);
-    LOG_ERROR("could not start thread: %s ", strerror(errno));
     return false;
+  }
+
+  if (threadId != nullptr) {
+    *threadId = (TRI_tid_t) *thread;
   }
 
   return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief attempts to stop/terminate a thread
+/// @brief trys to stops a thread
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_StopThread (TRI_thread_t* thread) {
-  if (TerminateThread(*thread, 0) == 0) {
-    DWORD result = GetLastError();
-
-    LOG_ERROR("threads-win32.c:TRI_StopThread:could not stop thread -->%d", result);
-
-    return TRI_ERROR_INTERNAL;
-  }
-
-  return TRI_ERROR_NO_ERROR;
+  return pthread_cancel(*thread);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief waits for a thread to finish
+/// @brief detachs a thread
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DetachThread (TRI_thread_t* thread) {
-  // TODO: no native implementation
-  return TRI_ERROR_NO_ERROR;
+  return pthread_detach(*thread);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -173,65 +184,41 @@ int TRI_DetachThread (TRI_thread_t* thread) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_JoinThread (TRI_thread_t* thread) {
-  DWORD result = WaitForSingleObject(*thread, INFINITE);
-
-  switch (result) {
-    case WAIT_ABANDONED: {
-      LOG_FATAL_AND_EXIT("threads-win32.c:TRI_JoinThread:could not join thread --> WAIT_ABANDONED");
-    }
-
-    case WAIT_OBJECT_0: {
-      // everything ok
-      break;
-    }
-
-    case WAIT_TIMEOUT: {
-      LOG_FATAL_AND_EXIT("threads-win32.c:TRI_JoinThread:could not joint thread --> WAIT_TIMEOUT");
-    }
-
-    case WAIT_FAILED: {
-      result = GetLastError();
-      LOG_FATAL_AND_EXIT("threads-win32.c:TRI_JoinThread:could not join thread --> WAIT_FAILED - reason -->%d",result);
-    }
-  }
-
-  return TRI_ERROR_NO_ERROR;
+  return pthread_join(*thread, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sends a signal to a thread
+/// @brief sends a signal to the thread
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_SignalThread (TRI_thread_t* thread, int signum) {
-  // TODO:  NO NATIVE implementation of signals
-  return false;
+  int rc = pthread_kill(*thread, signum);
+
+  if (rc != 0) {
+    LOG_ERROR("could not send signal to thread: %s", strerror(errno));
+    return false;
+  }
+
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if this thread is the thread passed as a parameter
+/// @brief checks if we are the thread
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsSelfThread (TRI_thread_t* thread) {
-  return false;
-  // ...........................................................................
-  // The GetThreadID(...) function is only available in Windows Vista or Higher
-  // TODO: Change the TRI_thread_t into a structure which stores the thread id
-  // as well as the thread handle. This can then be passed around
-  // ...........................................................................
-  //return ( GetCurrentThreadId() == GetThreadId(thread) );
+  return pthread_self() == *thread;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief allow cancellation
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AllowCancelation(void) {
-  // TODO: No native implementation of this
+void TRI_AllowCancelation () {
+  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, 0);
 }
 
-
-
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

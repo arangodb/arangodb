@@ -31,11 +31,11 @@
 #define ARANGODB_BASICS_C_TRI__ZIP_H 1
 
 #ifdef _WIN32
- #include "BasicsC/win-utils.h"
+ #include "Basics/win-utils.h"
 #endif
 
 #include "BasicsC/common.h"
-#include "BasicsC/vector.h"
+#include "Basics/vector.h"
 
 #ifdef __cplusplus
 extern "C" {

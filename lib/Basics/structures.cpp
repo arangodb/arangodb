@@ -42,8 +42,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyBlob (TRI_memory_zone_t* zone, TRI_blob_t* blob) {
-  if (blob != NULL) {
-    if (blob->data != NULL) {
+  if (blob != nullptr) {
+    if (blob->data != nullptr) {
       TRI_Free(zone, blob->data);
     }
   }
@@ -54,7 +54,7 @@ void TRI_DestroyBlob (TRI_memory_zone_t* zone, TRI_blob_t* blob) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_FreeBlob (TRI_memory_zone_t* zone, TRI_blob_t* blob) {
-  if (blob != NULL) {
+  if (blob != nullptr) {
     TRI_DestroyBlob(zone, blob);
     TRI_Free(zone, blob);
   }
@@ -73,21 +73,21 @@ TRI_blob_t* TRI_CopyBlob (TRI_memory_zone_t* zone, TRI_blob_t const* src) {
 
   dst = (TRI_blob_t*) TRI_Allocate(zone, sizeof(TRI_blob_t), false);
 
-  if (dst == NULL) {
-    return NULL;
+  if (dst == nullptr) {
+    return nullptr;
   }
 
-  if (src->length == 0 || src->data == NULL) {
+  if (src->length == 0 || src->data == nullptr) {
     dst->length = 0;
-    dst->data = NULL;
+    dst->data = nullptr;
   }
   else {
     dst->length = src->length;
-    dst->data = TRI_Allocate(zone, dst->length, false);
+    dst->data = static_cast<char*>(TRI_Allocate(zone, dst->length, false));
 
-    if (dst->data == NULL) {
+    if (dst->data == nullptr) {
       TRI_Free(zone, dst);
-      return NULL;
+      return nullptr;
     }
 
     memcpy(dst->data, src->data, src->length);
@@ -101,15 +101,15 @@ TRI_blob_t* TRI_CopyBlob (TRI_memory_zone_t* zone, TRI_blob_t const* src) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_CopyToBlob (TRI_memory_zone_t* zone, TRI_blob_t* dst, TRI_blob_t const* src) {
-  if (src->length == 0 || src->data == NULL) {
+  if (src->length == 0 || src->data == nullptr) {
     dst->length = 0;
-    dst->data = NULL;
+    dst->data = nullptr;
   }
   else {
     dst->length = src->length;
-    dst->data = TRI_Allocate(zone, dst->length, false);
+    dst->data = static_cast<char*>(TRI_Allocate(zone, dst->length, false));
 
-    if (dst->data == NULL) {
+    if (dst->data == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
@@ -126,9 +126,9 @@ int TRI_CopyToBlob (TRI_memory_zone_t* zone, TRI_blob_t* dst, TRI_blob_t const* 
 int TRI_AssignToBlob (TRI_memory_zone_t* zone, TRI_blob_t* dst, TRI_blob_t const* src) {
   dst->length = src->length;
 
-  if (src->length == 0 || src->data == NULL) {
+  if (src->length == 0 || src->data == nullptr) {
     dst->length = 0;
-    dst->data = NULL;
+    dst->data = nullptr;
   }
   else {
     dst->length = src->length;

@@ -33,7 +33,7 @@
 
 #include "BasicsC/common.h"
 #include "Basics/hashes.h"
-#include "BasicsC/locks.h"
+#include "Basics/locks.h"
 
 struct TRI_doc_mptr_t;
 

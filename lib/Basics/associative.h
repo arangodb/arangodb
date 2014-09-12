@@ -33,7 +33,7 @@
 
 #include "BasicsC/common.h"
 
-#include "BasicsC/locks.h"
+#include "Basics/locks.h"
 
 #ifdef __cplusplus
 extern "C" {

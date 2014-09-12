@@ -28,11 +28,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-#include "win-utils.h"
+#include "Basics/win-utils.h"
 #endif
 
 #include "BasicsC/logging.h"
-#include "BasicsC/shell-colors.h"
+#include "Basics/shell-colors.h"
 
 #ifdef TRI_ENABLE_SYSLOG
 #define SYSLOG_NAMES
@@ -43,10 +43,10 @@
 
 #include "Basics/files.h"
 #include "Basics/hashes.h"
-#include "BasicsC/locks.h"
+#include "Basics/locks.h"
 #include "Basics/tri-strings.h"
-#include "BasicsC/threads.h"
-#include "BasicsC/vector.h"
+#include "Basics/threads.h"
+#include "Basics/vector.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           LOGGING

@@ -30,7 +30,7 @@
 #include "shape-accessor.h"
 
 #include "BasicsC/logging.h"
-#include "BasicsC/vector.h"
+#include "Basics/vector.h"
 #include "ShapedJson/json-shaper.h"
 #include "ShapedJson/shaped-json.h"
 

@@ -33,7 +33,7 @@
 #include "BasicsC/logging.h"
 #include "Basics/messages.h"
 #include "Basics/tri-strings.h"
-#include "BasicsC/terminal-utils.h"
+#include "Basics/terminal-utils.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ProgramOptionsDescription.h"
 #include "Basics/ProgramOptions.h"

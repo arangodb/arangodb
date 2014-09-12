@@ -31,8 +31,8 @@
 #define ARANGODB_AHUACATL_AHUACATL__CONTEXT_H 1
 
 #include "Basics/Common.h"
-#include "BasicsC/associative.h"
-#include "BasicsC/vector.h"
+#include "Basics/associative.h"
+#include "Basics/vector.h"
 
 #include "Ahuacatl/ahuacatl-error.h"
 #include "Ahuacatl/ahuacatl-statementlist.h"

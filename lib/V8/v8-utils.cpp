@@ -28,7 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-#include "BasicsC/win-utils.h"
+#include "Basics/win-utils.h"
 #endif
 
 #include "v8-utils.h"
@@ -43,7 +43,7 @@
 #include "Basics/csv.h"
 #include "Basics/files.h"
 #include "BasicsC/logging.h"
-#include "BasicsC/process-utils.h"
+#include "Basics/process-utils.h"
 #include "Basics/string-buffer.h"
 #include "Basics/tri-strings.h"
 #include "BasicsC/tri-zip.h"

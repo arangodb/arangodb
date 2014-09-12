@@ -55,7 +55,7 @@
 
 #include "Basics/tri-strings.h"
 #include "Basics/string-buffer.h"
-#include "BasicsC/locks.h"
+#include "Basics/locks.h"
 #include "BasicsC/logging.h"
 
 // -----------------------------------------------------------------------------
@@ -914,20 +914,17 @@ void TRI_CreateExternalProcess (const char* executable,
                                 size_t n,
                                 bool usePipes,
                                 TRI_external_id_t* pid) {
-  TRI_external_t* external;
-
-  size_t i;
 
   // create the external structure
-  external = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_external_t), true);
+  TRI_external_t* external = static_cast<TRI_external_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_external_t), true));
 
   external->_executable = TRI_DuplicateString(executable);
   external->_numberArguments = n+1;
 
-  external->_arguments = TRI_Allocate(TRI_CORE_MEM_ZONE, (n + 2) * sizeof(char*), true);
+  external->_arguments = static_cast<char**>(TRI_Allocate(TRI_CORE_MEM_ZONE, (n + 2) * sizeof(char*), true));
   external->_arguments[0] = TRI_DuplicateString(executable);
 
-  for (i = 0;  i < n;  ++i) {
+  for (size_t i = 0;  i < n;  ++i) {
     external->_arguments[i + 1] = TRI_DuplicateString(arguments[i]);
   }
 
@@ -969,7 +966,7 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
   status._exitStatus = 0;
 
   for (i = 0;  i < ExternalProcesses._length;  ++i) {
-    external = TRI_AtVectorPointer(&ExternalProcesses, i);
+    external = static_cast<TRI_external_t*>(TRI_AtVectorPointer(&ExternalProcesses, i));
 
     if (external->_pid == pid._pid) {
       break;
@@ -1128,7 +1125,7 @@ bool TRI_KillExternalProcess (TRI_external_id_t pid) {
   TRI_LockMutex(&ExternalProcessesLock);
 
   for (i = 0;  i < ExternalProcesses._length;  ++i) {
-    external = TRI_AtVectorPointer(&ExternalProcesses, i);
+    external = static_cast<TRI_external_t*>(TRI_AtVectorPointer(&ExternalProcesses, i));
 
     if (external->_pid == pid._pid) {
       break;
@@ -1143,7 +1140,7 @@ bool TRI_KillExternalProcess (TRI_external_id_t pid) {
       int count;
 
       // Otherwise we just let it be.
-      for (count = 0;count < 10;count++) {
+      for (count = 0; count < 10; count++) {
         int loc;
         pid_t p;
 
@@ -1168,6 +1165,7 @@ bool TRI_KillExternalProcess (TRI_external_id_t pid) {
       external->_status == TRI_EXT_STOPPED) {
     ok = ourKillProcess(external);
   }
+
   TRI_RemoveVectorPointer(&ExternalProcesses, i);
   TRI_UnlockMutex(&ExternalProcessesLock);
   FreeExternal(external);
