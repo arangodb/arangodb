@@ -53,14 +53,16 @@ using JsonHelper = triagens::basics::JsonHelper;
 /// @brief create the expression
 ////////////////////////////////////////////////////////////////////////////////
 
-Expression::Expression (Executor* executor,
+Expression::Expression (Ast* ast,
                         AstNode const* node)
-  : _executor(executor),
+  : _ast(ast),
+    _executor(_ast->query()->executor()),
     _node(node),
     _type(UNPROCESSED),
     _canThrow(true),
     _isDeterministic(false) {
 
+  TRI_ASSERT(_ast != nullptr);
   TRI_ASSERT(_executor != nullptr);
   TRI_ASSERT(_node != nullptr);
 }
@@ -71,12 +73,7 @@ Expression::Expression (Executor* executor,
 
 Expression::Expression (Ast* ast,
                         triagens::basics::Json const& json)
-  : _executor(ast->query()->executor()),
-    _node(new AstNode(ast, json.get("expression"))),
-    _type(UNPROCESSED) {
-
-  TRI_ASSERT(_executor != nullptr);
-  TRI_ASSERT(_node != nullptr);
+  : Expression(ast, new AstNode(ast, json.get("expression"))) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
