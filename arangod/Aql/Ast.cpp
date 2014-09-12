@@ -46,6 +46,19 @@ using namespace triagens::aql;
 
 AstNode const Ast::NopNode = { NODE_TYPE_NOP }; 
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inverse comparison operators
+////////////////////////////////////////////////////////////////////////////////
+
+std::unordered_map<int, AstNodeType> const Ast::ReverseOperators{ 
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_EQ), NODE_TYPE_OPERATOR_BINARY_NE },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NE), NODE_TYPE_OPERATOR_BINARY_EQ },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT), NODE_TYPE_OPERATOR_BINARY_LE },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE), NODE_TYPE_OPERATOR_BINARY_LT },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LT), NODE_TYPE_OPERATOR_BINARY_GE },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE), NODE_TYPE_OPERATOR_BINARY_GT }
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
@@ -1121,6 +1134,38 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic (AstNode* node) {
 /// the unary NOT operation will be replaced with the result of the operation
 ////////////////////////////////////////////////////////////////////////////////
 
+AstNode* Ast::optimizeNotExpression (AstNode* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_UNARY_NOT);
+  TRI_ASSERT(node->numMembers() == 1);
+
+  AstNode* operand = node->getMember(0);
+
+  if (operand->type == NODE_TYPE_OPERATOR_BINARY_EQ ||
+      operand->type == NODE_TYPE_OPERATOR_BINARY_NE ||
+      operand->type == NODE_TYPE_OPERATOR_BINARY_LT ||
+      operand->type == NODE_TYPE_OPERATOR_BINARY_LE ||
+      operand->type == NODE_TYPE_OPERATOR_BINARY_GT ||
+      operand->type == NODE_TYPE_OPERATOR_BINARY_GE) {
+    // remove the NOT and reverse the operation, e.g. NOT (a == b) => (a != b)
+    TRI_ASSERT(operand->numMembers() == 2);
+    auto lhs = operand->getMember(0);
+    auto rhs = operand->getMember(1);
+
+    auto it = ReverseOperators.find(static_cast<int>(operand->type));
+    TRI_ASSERT(it != ReverseOperators.end());
+
+    return createNodeBinaryOperator((*it).second, lhs, rhs); 
+  }
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizes the unary operator NOT
+/// the unary NOT operation will be replaced with the result of the operation
+////////////////////////////////////////////////////////////////////////////////
+
 AstNode* Ast::optimizeUnaryOperatorLogical (AstNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_UNARY_NOT);
@@ -1129,7 +1174,7 @@ AstNode* Ast::optimizeUnaryOperatorLogical (AstNode* node) {
   AstNode* operand = node->getMember(0);
   if (! operand->isConstant()) {
     // operand is dynamic, cannot statically optimize it
-    return node;
+    return optimizeNotExpression(node);
   }
 
   if (! operand->isBoolValue()) {
