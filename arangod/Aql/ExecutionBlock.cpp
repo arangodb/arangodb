@@ -868,7 +868,7 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
   auto instanciateExpression = [&] (RangeInfoBound& b) -> void {
     AstNode const* a = b.getExpressionAst(engine->getQuery()->ast());
     // all new AstNodes are registered with the Ast in the Query
-    auto e = new Expression(engine->getQuery()->executor(), a);
+    auto e = new Expression(engine->getQuery()->ast(), a);
     try {
       _allVariableBoundExpressions.push_back(e);
     }

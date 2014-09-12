@@ -75,7 +75,7 @@ namespace triagens {
 /// @brief constructor, using an AST start node
 ////////////////////////////////////////////////////////////////////////////////
 
-        Expression (Executor*,
+        Expression (Ast*,
                     AstNode const*);
 
         Expression (Ast*,
@@ -128,7 +128,7 @@ namespace triagens {
         Expression* clone () {
           // We do not need to copy the _ast, since it is managed by the
           // query object and the memory management of the ASTs
-          return new Expression(_executor, _node);
+          return new Expression(_ast, _node);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -230,6 +230,12 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the AST
+////////////////////////////////////////////////////////////////////////////////
+
+        Ast*                      _ast;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the V8 executor
