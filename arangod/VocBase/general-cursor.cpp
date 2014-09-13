@@ -30,7 +30,7 @@
 #include "VocBase/general-cursor.h"
 
 #include "Basics/json.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/vector.h"
 
 // -----------------------------------------------------------------------------

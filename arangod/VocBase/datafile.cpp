@@ -35,8 +35,8 @@
 
 #include "Basics/conversions.h"
 #include "Basics/hashes.h"
-#include "BasicsC/logging.h"
-#include "BasicsC/memory-map.h"
+#include "Basics/logging.h"
+#include "Basics/memory-map.h"
 #include "Basics/tri-strings.h"
 #include "Basics/files.h"
 #include "VocBase/server.h"

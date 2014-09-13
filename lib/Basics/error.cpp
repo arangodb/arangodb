@@ -153,7 +153,7 @@ int TRI_errno () {
 
   eptr = pthread_getspecific(ErrorKey);
 
-  if (eptr == NULL) {
+  if (eptr == nullptr) {
     return 0;
   }
   else {
@@ -185,7 +185,7 @@ char const* TRI_last_error () {
 
   eptr = pthread_getspecific(ErrorKey);
 
-  if (eptr == NULL) {
+  if (eptr == nullptr) {
     err = 0;
     sys = 0;
   }
@@ -205,7 +205,7 @@ char const* TRI_last_error () {
   entry = (TRI_error_t*)
     TRI_LookupByKeyAssociativePointer(&ErrorMessages, (void const*) &err);
 
-  if (entry == NULL) {
+  if (entry == nullptr) {
     return "general error";
   }
 
@@ -235,7 +235,7 @@ int TRI_set_errno (int error) {
 
   eptr = pthread_getspecific(ErrorKey);
 
-  if (eptr == NULL) {
+  if (eptr == nullptr) {
     eptr = TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(tri_error_t), false);
     pthread_setspecific(ErrorKey, eptr);
   }
@@ -268,7 +268,7 @@ void TRI_set_errno_string (int error, char const* msg) {
     // logic error, error number is redeclared
     printf("Error: duplicate declaration of error code %i in %s:%i\n",
            error, __FILE__, __LINE__);
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, NULL);
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
   entry = (TRI_error_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_error_t), false);
@@ -291,12 +291,12 @@ char const* TRI_errno_string (int error) {
 
   entry = (TRI_error_t*) TRI_LookupByKeyAssociativePointer(&ErrorMessages, (void const*) &error);
 
-  if (entry == NULL) {
-    // return a hard-coded string as not all callers check for NULL
+  if (entry == nullptr) {
+    // return a hard-coded string as not all callers check for nullptr
     return "unknown error";
   }
 
-  TRI_ASSERT(entry->_message != NULL);
+  TRI_ASSERT(entry->_message != nullptr);
 
   return entry->_message;
 }
@@ -351,9 +351,9 @@ void TRI_ShutdownError () {
   }
 
   for (i = 0; i < ErrorMessages._nrAlloc; i++) {
-    TRI_error_t* entry = ErrorMessages._table[i];
+    TRI_error_t* entry = static_cast<TRI_error_t*>(ErrorMessages._table[i]);
 
-    if (entry != NULL) {
+    if (entry != nullptr) {
       TRI_Free(TRI_CORE_MEM_ZONE, entry->_message);
       TRI_Free(TRI_CORE_MEM_ZONE, entry);
     }

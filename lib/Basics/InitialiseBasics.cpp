@@ -30,9 +30,9 @@
 #include "Basics/InitialiseBasics.h"
 
 #include "Basics/init.h"
-#include "BasicsC/error.h"
+#include "Basics/error.h"
 #include "Basics/hashes.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/random.h"
 #include "Basics/RandomGenerator.h"
 

@@ -35,13 +35,13 @@
 // -----------------------------------------------------------------------------
 
 #define TRI_WITHIN_COMMON 1
-#include "BasicsC/operating-system.h"
+#include "Basics/operating-system.h"
 #ifdef _WIN32
 #include "BasicsC/local-configuration-win.h"
 #else
 #include "BasicsC/local-configuration.h"
 #endif
-#include "BasicsC/application-exit.h"
+#include "Basics/application-exit.h"
 
 #include "build.h"
 
@@ -121,10 +121,10 @@ typedef long suseconds_t;
 
 #define TRI_WITHIN_COMMON 1
 #include "BasicsC/voc-errors.h"
-#include "BasicsC/error.h"
-#include "BasicsC/debugging.h"
-#include "BasicsC/memory.h"
-#include "BasicsC/mimetypes.h"
+#include "Basics/error.h"
+#include "Basics/debugging.h"
+#include "Basics/memory.h"
+#include "Basics/mimetypes.h"
 #include "Basics/structures.h"
 #undef TRI_WITHIN_COMMON
 
@@ -133,8 +133,8 @@ typedef long suseconds_t;
 // -----------------------------------------------------------------------------
 
 #define TRI_WITHIN_COMMON 1
-#include "BasicsC/system-compiler.h"
-#include "BasicsC/system-functions.h"
+#include "Basics/system-compiler.h"
+#include "Basics/system-functions.h"
 #undef TRI_WITHIN_COMMON
 
 // -----------------------------------------------------------------------------

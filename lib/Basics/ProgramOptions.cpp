@@ -31,7 +31,7 @@
 
 #include "Basics/tri-strings.h"
 #include "Basics/conversions.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/Exceptions.h"
 
 #include "ProgramOptions/program-options.h"

@@ -29,7 +29,7 @@
 
 #include <io.h>
 #include "win-utils.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include <windows.h>
 #include <string.h>
 #include <malloc.h>

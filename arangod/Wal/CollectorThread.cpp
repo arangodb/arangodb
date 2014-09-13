@@ -30,7 +30,7 @@
 #include "CollectorThread.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/hashes.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/ConditionLocker.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"

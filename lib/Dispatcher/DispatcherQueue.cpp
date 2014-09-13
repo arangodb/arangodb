@@ -35,7 +35,7 @@
 #include "DispatcherQueue.h"
 
 #include "Basics/ConditionLocker.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Dispatcher/DispatcherThread.h"
 
 using namespace triagens::rest;

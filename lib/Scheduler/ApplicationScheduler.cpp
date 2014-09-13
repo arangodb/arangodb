@@ -34,7 +34,7 @@
 #include "ApplicationScheduler.h"
 
 #include "Basics/Exceptions.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/process-utils.h"
 #include "Scheduler/PeriodicTask.h"
 #include "Scheduler/SchedulerLibev.h"

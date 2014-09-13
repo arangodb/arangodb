@@ -31,7 +31,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/hashes.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "VocBase/datafile.h"
 #include "VocBase/server.h"
 #include "Wal/LogfileManager.h"

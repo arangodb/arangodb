@@ -39,7 +39,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/WriteLocker.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "Rest/HttpRequest.h"

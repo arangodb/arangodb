@@ -29,7 +29,7 @@
 
 #include "BasicsC/common.h"
 #include "Basics/locks.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -61,15 +61,13 @@ TRI_read_write_lock_t FailurePointsLock;
 ////////////////////////////////////////////////////////////////////////////////
 
 static char* MakeValue (char const* value) {
-  char* delimited;
-
-  if (value == NULL || strlen(value) == 0) {
-    return NULL;
+  if (value == nullptr || strlen(value) == 0) {
+    return nullptr;
   }
 
-  delimited = TRI_Allocate(TRI_CORE_MEM_ZONE, strlen(value) + 3, false);
+  char* delimited = static_cast<char*>(TRI_Allocate(TRI_CORE_MEM_ZONE, strlen(value) + 3, false));
 
-  if (delimited != NULL) {
+  if (delimited != nullptr) {
     memcpy(delimited + 1, value, strlen(value));
     delimited[0] = ',';
     delimited[strlen(value) + 1] = ',';
@@ -108,19 +106,19 @@ void TRI_SegfaultDebugging (char const* message) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ShouldFailDebugging (char const* value) {
-  char* found = NULL;
+  char* found = nullptr;
 
   // try without the lock first (to speed things up)
-  if (FailurePoints == NULL) {
+  if (FailurePoints == nullptr) {
     return false;
   }
 
   TRI_ReadLockReadWriteLock(&FailurePointsLock);
 
-  if (FailurePoints != NULL) {
+  if (FailurePoints != nullptr) {
     char* checkValue = MakeValue(value);
 
-    if (checkValue != NULL) {
+    if (checkValue != nullptr) {
       found = strstr(FailurePoints, checkValue);
       TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
     }
@@ -128,7 +126,7 @@ bool TRI_ShouldFailDebugging (char const* value) {
 
   TRI_ReadUnlockReadWriteLock(&FailurePointsLock);
 
-  return (found != NULL);
+  return (found != nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -141,20 +139,20 @@ void TRI_AddFailurePointDebugging (char const* value) {
 
   checkValue = MakeValue(value);
 
-  if (checkValue == NULL) {
+  if (checkValue == nullptr) {
     return;
   }
 
   TRI_WriteLockReadWriteLock(&FailurePointsLock);
 
-  if (FailurePoints == NULL) {
-    found = NULL;
+  if (FailurePoints == nullptr) {
+    found = nullptr;
   }
   else {
     found = strstr(FailurePoints, checkValue);
   }
 
-  if (found == NULL) {
+  if (found == nullptr) {
     // not yet found. so add it
     char* copy;
     size_t n;
@@ -162,10 +160,10 @@ void TRI_AddFailurePointDebugging (char const* value) {
     LOG_WARNING("activating intentional failure point '%s'. the server will misbehave!", value);
     n = strlen(checkValue);
 
-    if (FailurePoints == NULL) {
-      copy = TRI_Allocate(TRI_CORE_MEM_ZONE, n + 1, false);
+    if (FailurePoints == nullptr) {
+      copy = static_cast<char*>(TRI_Allocate(TRI_CORE_MEM_ZONE, n + 1, false));
 
-      if (copy == NULL) {
+      if (copy == nullptr) {
         TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
         TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
         return;
@@ -175,9 +173,9 @@ void TRI_AddFailurePointDebugging (char const* value) {
       copy[n] = '\0';
     }
     else {
-      copy = TRI_Allocate(TRI_CORE_MEM_ZONE, n + strlen(FailurePoints), false);
+      copy = static_cast<char*>(TRI_Allocate(TRI_CORE_MEM_ZONE, n + strlen(FailurePoints), false));
 
-      if (copy == NULL) {
+      if (copy == nullptr) {
         TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
         TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
         return;
@@ -204,21 +202,21 @@ void TRI_RemoveFailurePointDebugging (char const* value) {
 
   TRI_WriteLockReadWriteLock(&FailurePointsLock);
 
-  if (FailurePoints == NULL) {
+  if (FailurePoints == nullptr) {
     TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
     return;
   }
 
   checkValue = MakeValue(value);
 
-  if (checkValue != NULL) {
+  if (checkValue != nullptr) {
     char* found;
     char* copy;
     size_t n;
 
     found = strstr(FailurePoints, checkValue);
 
-    if (found == NULL) {
+    if (found == nullptr) {
       TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
       TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
       return;
@@ -226,16 +224,16 @@ void TRI_RemoveFailurePointDebugging (char const* value) {
 
     if (strlen(FailurePoints) - strlen(checkValue) <= 2) {
       TRI_Free(TRI_CORE_MEM_ZONE, FailurePoints);
-      FailurePoints = NULL;
+      FailurePoints = nullptr;
 
       TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
       TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
       return;
     }
 
-    copy = TRI_Allocate(TRI_CORE_MEM_ZONE, strlen(FailurePoints) - strlen(checkValue) + 2, false);
+    copy = static_cast<char*>(TRI_Allocate(TRI_CORE_MEM_ZONE, strlen(FailurePoints) - strlen(checkValue) + 2, false));
 
-    if (copy == NULL) {
+    if (copy == nullptr) {
       TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
       TRI_Free(TRI_CORE_MEM_ZONE, checkValue);
       return;
@@ -264,11 +262,11 @@ void TRI_RemoveFailurePointDebugging (char const* value) {
 void TRI_ClearFailurePointsDebugging () {
   TRI_WriteLockReadWriteLock(&FailurePointsLock);
 
-  if (FailurePoints != NULL) {
+  if (FailurePoints != nullptr) {
     TRI_Free(TRI_CORE_MEM_ZONE, FailurePoints);
   }
 
-  FailurePoints = NULL;
+  FailurePoints = nullptr;
 
   TRI_WriteUnlockReadWriteLock(&FailurePointsLock);
 }
@@ -280,7 +278,7 @@ void TRI_ClearFailurePointsDebugging () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitialiseDebugging () {
-  FailurePoints = NULL;
+  FailurePoints = nullptr;
   TRI_InitReadWriteLock(&FailurePointsLock);
 }
 
@@ -289,11 +287,11 @@ void TRI_InitialiseDebugging () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownDebugging () {
-  if (FailurePoints != NULL) {
+  if (FailurePoints != nullptr) {
     TRI_Free(TRI_CORE_MEM_ZONE, FailurePoints);
   }
 
-  FailurePoints = NULL;
+  FailurePoints = nullptr;
 
   TRI_DestroyReadWriteLock(&FailurePointsLock);
 }

@@ -199,7 +199,7 @@ static char* FailMalloc (TRI_memory_zone_t* zone,
     return NULL;
   }
 
-  return BuiltInMalloc(n);
+  return static_cast<char*>(BuiltInMalloc(n));
 }
 #endif
 
@@ -218,7 +218,7 @@ static char* FailRealloc (TRI_memory_zone_t* zone,
     return NULL;
   }
 
-  return BuiltInRealloc(old, n);
+  return static_cast<char*>(BuiltInRealloc(old, n));
 }
 #endif
 
@@ -310,7 +310,7 @@ void* TRI_SystemAllocate (uint64_t n, bool set) {
   CheckSize(n, file, line);
 #endif
 
-  m = BuiltInMalloc((size_t) n);
+  m = static_cast<char*>(BuiltInMalloc((size_t) n));
 
   if (m != NULL) {
     if (set) {

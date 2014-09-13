@@ -29,7 +29,7 @@
 
 #include "RestBaseHandler.h"
 
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/StringUtils.h"
 #include "Rest/HttpRequest.h"

@@ -41,7 +41,7 @@
 #include "ApplicationServer/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/safe_cast.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/process-utils.h"
 
 using namespace std;

@@ -31,7 +31,7 @@
 
 #include "Basics/associative.h"
 #include "Basics/hashes.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 
 #include "Ahuacatl/ahuacatl-access-optimiser.h"

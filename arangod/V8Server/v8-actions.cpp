@@ -37,7 +37,7 @@
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/json.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"

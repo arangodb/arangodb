@@ -30,7 +30,7 @@
 
 #include "Basics/json.h"
 #include "Basics/tri-strings.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 
 #ifdef _WIN32
 #define YY_NO_UNISTD_H 1

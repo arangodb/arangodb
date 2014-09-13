@@ -21,7 +21,7 @@ endif ()
 if (MSVC)
   SET(LIB_ARANGO_MSVC
       Basics/locks-win32.cpp
-      BasicsC/memory-map-win32.c
+      Basics/memory-map-win32.cpp
       Basics/terminal-utils-win32.cpp
       Basics/threads-win32.cpp
       Basics/win-utils.cpp
@@ -31,7 +31,7 @@ if (MSVC)
 else ()
   SET(LIB_ARANGO_POSIX
       Basics/locks-posix.cpp
-      BasicsC/memory-map-posix.c
+      Basics/memory-map-posix.cpp
       Basics/terminal-utils-posix.cpp
       Basics/threads-posix.cpp
       Rest/EndpointUnixDomain.cpp
@@ -45,22 +45,29 @@ add_library(
     ${LIB_ARANGO_APPLE}
     ${LIB_ARANGO_MSVC}
     ${LIB_ARANGO_POSIX}
+    Basics/application-exit.cpp
     Basics/associative-multi.cpp
     Basics/associative.cpp
     Basics/ConditionLocker.cpp
     Basics/ConditionVariable.cpp
     Basics/conversions.cpp
     Basics/csv.cpp
+    Basics/debugging.cpp
+    Basics/error.cpp
     Basics/Exceptions.cpp
     Basics/fasthash.cpp
     Basics/files.cpp
     Basics/FileUtils.cpp
     Basics/hashes.cpp
+    Basics/init.cpp
     Basics/InitialiseBasics.cpp
     Basics/json.cpp
     Basics/json-utilities.cpp
     Basics/JsonHelper.cpp
     Basics/linked-list.cpp
+    Basics/logging.cpp
+    Basics/memory.cpp
+    Basics/mimetypes.cpp
     Basics/Mutex.cpp
     Basics/MutexLocker.cpp
     Basics/Nonce.cpp
@@ -79,27 +86,20 @@ add_library(
     Basics/string-buffer.cpp
     Basics/StringUtils.cpp
     Basics/structures.cpp
+    Basics/system-functions.cpp
+    Basics/terminal-utils.cpp
     Basics/Thread.cpp
     Basics/Timing.cpp
     Basics/tri-strings.cpp
+    Basics/tri-zip.cpp
     Basics/Utf8Helper.cpp
     Basics/utf8-helper.cpp
     Basics/vector.cpp
     Basics/WriteLocker.cpp
     Basics/WriteUnlocker.cpp
     Basics/xxhash.cpp
-    BasicsC/application-exit.c
-    BasicsC/debugging.c
-    BasicsC/error.c
-    Basics/init.cpp
-    BasicsC/logging.c
-    BasicsC/memory.c
-    BasicsC/mimetypes.c
-    BasicsC/system-functions.c
-    BasicsC/terminal-utils.c
     BasicsC/voc-errors.c
     BasicsC/voc-mimetypes.c
-    BasicsC/tri-zip.c
     JsonParser/json-parser.cpp
     ProgramOptions/program-options.cpp
     Rest/AnyServer.cpp

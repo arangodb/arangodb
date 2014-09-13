@@ -30,7 +30,7 @@
 #include "HeartbeatThread.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/JsonHelper.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerJob.h"

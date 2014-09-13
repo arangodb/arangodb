@@ -32,7 +32,7 @@
 
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Dispatcher/Dispatcher.h"
 #include "Dispatcher/DispatcherQueue.h"
 #include "Dispatcher/Job.h"

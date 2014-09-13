@@ -29,7 +29,7 @@
 
 #include "VocbaseContext.h"
 
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "Rest/ConnectionInfo.h"

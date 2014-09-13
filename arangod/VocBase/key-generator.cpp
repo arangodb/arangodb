@@ -31,7 +31,7 @@
 
 #include "Basics/conversions.h"
 #include "Basics/json.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "BasicsC/voc-errors.h"
 #include "Basics/MutexLocker.h"

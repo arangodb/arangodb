@@ -32,7 +32,7 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/files.h"
 #include "Basics/FileUtils.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"

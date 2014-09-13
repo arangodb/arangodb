@@ -45,7 +45,7 @@
 #include "Basics/conversions.h"
 #include "Basics/hashes.h"
 #include "Basics/locks.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/random.h"
 #include "Basics/string-buffer.h"
 #include "Basics/threads.h"

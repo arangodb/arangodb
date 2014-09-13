@@ -31,7 +31,7 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "HttpServer/HttpServer.h"
 #include "Rest/HttpRequest.h"
 

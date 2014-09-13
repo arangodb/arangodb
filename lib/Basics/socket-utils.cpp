@@ -40,7 +40,7 @@
 #include <sys/wait.h>
 #endif
 
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/locks.h"
 
 // -----------------------------------------------------------------------------

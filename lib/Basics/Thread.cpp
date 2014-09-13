@@ -38,7 +38,7 @@
 #include <signal.h>
 
 #include "Basics/ConditionLocker.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 
 
 using namespace triagens::basics;
