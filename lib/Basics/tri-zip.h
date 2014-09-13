@@ -31,15 +31,11 @@
 #define ARANGODB_BASICS_C_TRI__ZIP_H 1
 
 #ifdef _WIN32
- #include "Basics/win-utils.h"
+#include "Basics/win-utils.h"
 #endif
 
 #include "Basics/Common.h"
 #include "Basics/vector.h"
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -63,10 +59,6 @@ int TRI_UnzipFile (const char*,
                    const bool,
                    const bool,
                    const char*);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

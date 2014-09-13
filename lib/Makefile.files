@@ -96,9 +96,9 @@ lib_libarango_a_SOURCES = \
 	lib/Utilities/ScriptLoader.cpp \
 	lib/Utilities/ShellImplFactory.cpp \
 	lib/Utilities/ShellImplementation.cpp \
-	lib/Zip/ioapi.c \
-	lib/Zip/unzip.c \
-	lib/Zip/zip.c
+	lib/Zip/ioapi.cpp \
+	lib/Zip/unzip.cpp \
+	lib/Zip/zip.cpp
 
 if ENABLE_READLINE
 
