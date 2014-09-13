@@ -834,8 +834,34 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                   // order of the fields of the index.
                   auto idx = idxs.at(i);
 
-                  if (idx->_type == TRI_IDX_TYPE_HASH_INDEX ||
-                      idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
+                  if (idx->_type == TRI_IDX_TYPE_PRIMARY_INDEX) {
+                    bool handled = false;
+                    auto range = map->find(std::string(TRI_VOC_ATTRIBUTE_ID));
+                
+                    if (range != map->end()) { 
+                      if (! range->second.is1ValueRangeInfo()) {
+                        rangeInfo.at(0).clear();   // not usable
+                      }
+                      else {
+                        rangeInfo.at(0).push_back(range->second);
+                        handled = true;
+                      }
+                    }
+
+                    if (! handled) {
+                      range = map->find(std::string(TRI_VOC_ATTRIBUTE_KEY));
+
+                      if (range != map->end()) {
+                        if (! range->second.is1ValueRangeInfo()) {
+                          rangeInfo.at(0).clear();   // not usable
+                        }
+                        else {
+                          rangeInfo.at(0).push_back(range->second);
+                        }
+                      }
+                    }
+                  }
+                  else if (idx->_type == TRI_IDX_TYPE_HASH_INDEX) {
                     for (size_t j = 0; j < idx->_fields._length; j++) {
                       auto range = map->find(std::string(idx->_fields._buffer[j]));
                    
