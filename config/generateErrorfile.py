@@ -66,10 +66,9 @@ def genCFile(errors, filename):
   headerfile = os.path.splitext(filename)[0] + ".h"
 
   impl = prologue\
-         + "#include <BasicsC/common.h>\n"\
+         + "#include <Basics/Common.h>\n"\
          + "#include \"" + headerfile + "\"\n"\
          + "\n"\
-         + docstart\
          + "void TRI_InitialiseErrorMessages (void) {\n"
 
   # print individual errors
@@ -79,8 +78,7 @@ def genCFile(errors, filename):
            + "  REG_ERROR(" + e[0] + ", \"" + msg + "\");\n"
 
   impl = impl\
-       + "}\n"\
-       + docend
+       + "}\n"
 
   return impl
 
@@ -111,7 +109,6 @@ def genCHeaderFile(errors):
            + "\n"\
            + wiki\
            + "\n"\
-           + docstart\
            + "////////////////////////////////////////////////////////////////////////////////\n"\
            + "/// @brief helper macro to define an error string\n"\
            + "////////////////////////////////////////////////////////////////////////////////\n"\
@@ -140,7 +137,6 @@ def genCHeaderFile(errors):
            + "\n"
 
   header = header\
-         + docend\
          + "#ifdef __cplusplus\n"\
          + "}\n"\
          + "#endif\n"\
@@ -157,20 +153,6 @@ prologue = "////////////////////////////////////////////////////////////////////
          + "////////////////////////////////////////////////////////////////////////////////\n"\
          + "\n"
   
-docstart = "////////////////////////////////////////////////////////////////////////////////\n"\
-         + "/// @addtogroup VocError\n"\
-         + "/// @{\n"\
-         + "////////////////////////////////////////////////////////////////////////////////\n"\
-         + "\n"
-  
-docend   = "\n"\
-         + "////////////////////////////////////////////////////////////////////////////////\n"\
-         + "/// @}\n"\
-         + "////////////////////////////////////////////////////////////////////////////////\n"\
-         + "\n"
-
-
-
 if len(sys.argv) < 3:
   print >> sys.stderr, "usage: %s <sourcefile> <outfile>" % sys.argv[0]
   sys.exit()

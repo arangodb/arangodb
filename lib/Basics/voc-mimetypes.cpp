@@ -2,8 +2,8 @@
 /// @brief auto-generated file generated from mimetypes.dat
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BasicsC/common.h"
-#include "./lib/BasicsC/voc-mimetypes.h"
+#include "Basics/Common.h"
+#include "Basics/voc-mimetypes.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise mimetypes

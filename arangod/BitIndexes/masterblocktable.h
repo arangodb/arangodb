@@ -31,7 +31,7 @@
 #ifndef ARANGODB_BIT_INDEXES_MASTERBLOCKTABLE_H
 #define ARANGODB_BIT_INDEXES_MASTERBLOCKTABLE_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 #include "Basics/associative.h"
 #include "Basics/hashes.h"
 #include "Basics/locks.h"

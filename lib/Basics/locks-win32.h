@@ -30,7 +30,7 @@
 #ifndef ARANGODB_BASICS_C_LOCKS__WIN32_H
 #define ARANGODB_BASICS_C_LOCKS__WIN32_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #ifdef TRI_HAVE_WIN32_THREADS
 

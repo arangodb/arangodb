@@ -33,7 +33,7 @@
 #include "Basics/Common.h"
 
 #include "Basics/logging.h"
-#include "BasicsC/voc-errors.h"
+#include "Basics/voc-errors.h"
 #include "Basics/StringUtils.h"
 #include "Utils/Transaction.h"
 

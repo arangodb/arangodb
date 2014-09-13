@@ -30,7 +30,7 @@
 #ifndef ARANGODB_BASICS_C_PRIME__NUMBERS_H
 #define ARANGODB_BASICS_C_PRIME__NUMBERS_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #ifdef __cplusplus
 extern "C" {

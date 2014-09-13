@@ -31,7 +31,7 @@
 #ifndef ARANGODB_VOC_BASE_PRIMARY__INDEX_H
 #define ARANGODB_VOC_BASE_PRIMARY__INDEX_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 #include "Basics/hashes.h"
 #include "Basics/locks.h"
 

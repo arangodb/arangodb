@@ -27,7 +27,7 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #ifndef TRI_GCC_THREAD_LOCAL_STORAGE
 #ifdef TRI_HAVE_POSIX_THREADS

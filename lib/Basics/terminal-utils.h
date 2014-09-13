@@ -30,7 +30,7 @@
 #ifndef ARANGODB_BASICS_C_TERMINAL__UTILS_H
 #define ARANGODB_BASICS_C_TERMINAL__UTILS_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #ifdef TRI_HAVE_TERMIOS_H
 #include <termios.h>

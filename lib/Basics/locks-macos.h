@@ -30,7 +30,7 @@
 #ifndef ARANGODB_BASICS_C_LOCKS__MACOS_H
 #define ARANGODB_BASICS_C_LOCKS__MACOS_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #ifdef TRI_HAVE_MACOS_SPIN
 

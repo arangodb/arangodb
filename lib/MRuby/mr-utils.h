@@ -30,7 +30,7 @@
 #ifndef ARANGODB_MRUBY_MR__UTILS_H
 #define ARANGODB_MRUBY_MR__UTILS_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "Basics/json.h"
 

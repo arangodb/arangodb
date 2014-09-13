@@ -27,12 +27,12 @@
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "Basics/associative.h"
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
-#include "BasicsC/voc-mimetypes.h"
+#include "Basics/voc-mimetypes.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
