@@ -30,7 +30,7 @@
 #ifndef ARANGODB_BASICS_C_MEMORY__MAP_H
 #define ARANGODB_BASICS_C_MEMORY__MAP_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapper macro for anonymous memory mapping

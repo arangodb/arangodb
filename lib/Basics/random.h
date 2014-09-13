@@ -30,7 +30,7 @@
 #ifndef ARANGODB_BASICS_C_RANDOM_H
 #define ARANGODB_BASICS_C_RANDOM_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #ifdef __cplusplus
 extern "C" {

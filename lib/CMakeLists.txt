@@ -95,11 +95,11 @@ add_library(
     Basics/Utf8Helper.cpp
     Basics/utf8-helper.cpp
     Basics/vector.cpp
+    Basics/voc-errors.cpp
+    Basics/voc-mimetypes.cpp
     Basics/WriteLocker.cpp
     Basics/WriteUnlocker.cpp
     Basics/xxhash.cpp
-    BasicsC/voc-errors.c
-    BasicsC/voc-mimetypes.c
     JsonParser/json-parser.cpp
     ProgramOptions/program-options.cpp
     Rest/AnyServer.cpp
@@ -220,7 +220,7 @@ if (USE_MRUBY)
       STATIC
       MRuby/MRLoader.cpp
       MRuby/MRLineEditor.cpp
-      MRuby/mr-utils.c
+      MRuby/mr-utils.cpp
   )
 endif ()
 

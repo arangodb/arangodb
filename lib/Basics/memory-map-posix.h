@@ -30,7 +30,7 @@
 #ifndef ARANGODB_BASICS_C_MEMORY__MAP__POSIX_H
 #define ARANGODB_BASICS_C_MEMORY__MAP__POSIX_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #ifdef TRI_HAVE_POSIX_MMAP
 

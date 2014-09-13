@@ -36,7 +36,7 @@
 #include "Basics/locks.h"
 #include "Basics/threads.h"
 #include "Basics/vector.h"
-#include "BasicsC/voc-errors.h"
+#include "Basics/voc-errors.h"
 #include "VocBase/vocbase-defaults.h"
 
 // -----------------------------------------------------------------------------

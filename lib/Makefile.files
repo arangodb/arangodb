@@ -67,11 +67,11 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/Utf8Helper.cpp \
 	lib/Basics/utf8-helper.cpp \
 	lib/Basics/vector.cpp \
+	lib/Basics/voc-errors.cpp \
+	lib/Basics/voc-mimetypes.cpp \
 	lib/Basics/WriteLocker.cpp \
 	lib/Basics/WriteUnlocker.cpp \
 	lib/Basics/xxhash.cpp \
-	lib/BasicsC/voc-errors.c \
-	lib/BasicsC/voc-mimetypes.c \
 	lib/JsonParser/json-parser.cpp \
 	lib/ProgramOptions/program-options.cpp \
 	lib/Rest/AnyServer.cpp \
@@ -202,7 +202,7 @@ if ENABLE_MRUBY
 lib_libarango_mruby_a_SOURCES = \
 	lib/MRuby/MRLoader.cpp \
 	lib/MRuby/MRLineEditor.cpp \
-	lib/MRuby/mr-utils.c
+	lib/MRuby/mr-utils.cpp
 
 endif
 

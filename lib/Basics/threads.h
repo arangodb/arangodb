@@ -30,7 +30,7 @@
 #ifndef ARANGODB_BASICS_C_THREADS_H
 #define ARANGODB_BASICS_C_THREADS_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief posix threads

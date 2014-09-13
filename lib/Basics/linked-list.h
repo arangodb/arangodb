@@ -30,7 +30,7 @@
 #ifndef ARANGODB_BASICS_C_LINKED__LIST_H
 #define ARANGODB_BASICS_C_LINKED__LIST_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 #include "Basics/associative.h"
 

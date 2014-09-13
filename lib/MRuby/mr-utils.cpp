@@ -269,7 +269,7 @@ bool TRI_ExecuteRubyDirectory (mrb_state* mrb, char const* path) {
 
     filename = files._buffer[i];
 
-    if (! regexec(&re, filename, 0, 0, 0) == 0) {
+    if (regexec(&re, filename, 0, 0, 0) != 0) {
       continue;
     }
 

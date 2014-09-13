@@ -30,7 +30,7 @@
 #ifndef ARANGODB_BASICS_C_LOCKS_H
 #define ARANGODB_BASICS_C_LOCKS_H 1
 
-#include "BasicsC/common.h"
+#include "Basics/Common.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     PUBLIC MACROS
