@@ -56,7 +56,7 @@
 #include "Basics/tri-strings.h"
 #include "Basics/string-buffer.h"
 #include "Basics/locks.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types

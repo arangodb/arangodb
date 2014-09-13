@@ -31,7 +31,7 @@
 #include "HttpRequest.h"
 
 #include "Basics/conversions.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/utf8-helper.h"
 #include "Basics/StringBuffer.h"

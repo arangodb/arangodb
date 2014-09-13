@@ -12,17 +12,21 @@ lib_libarango_a_CPPFLAGS = \
 	$(AM_CPPFLAGS) 
 
 lib_libarango_a_SOURCES = \
+	lib/Basics/application-exit.cpp \
 	lib/Basics/associative-multi.cpp \
 	lib/Basics/associative.cpp \
 	lib/Basics/ConditionLocker.cpp \
 	lib/Basics/ConditionVariable.cpp \
 	lib/Basics/conversions.cpp \
 	lib/Basics/csv.cpp \
+	lib/Basics/debugging.cpp \
+	lib/Basics/error.cpp \
 	lib/Basics/Exceptions.cpp \
 	lib/Basics/fasthash.cpp \
 	lib/Basics/files.cpp \
 	lib/Basics/FileUtils.cpp \
 	lib/Basics/hashes.cpp \
+	lib/Basics/init.cpp \
 	lib/Basics/InitialiseBasics.cpp \
 	lib/Basics/json.cpp \
 	lib/Basics/json-utilities.cpp \
@@ -30,6 +34,10 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/linked-list.cpp \
 	lib/Basics/locks-macos.cpp \
 	lib/Basics/locks-posix.cpp \
+	lib/Basics/logging.cpp \
+	lib/Basics/memory.cpp \
+	lib/Basics/memory-map-posix.cpp \
+	lib/Basics/mimetypes.cpp \
 	lib/Basics/Mutex.cpp \
 	lib/Basics/MutexLocker.cpp \
 	lib/Basics/Nonce.cpp \
@@ -48,30 +56,22 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/string-buffer.cpp \
 	lib/Basics/StringUtils.cpp \
 	lib/Basics/structures.cpp \
+	lib/Basics/system-functions.cpp \
 	lib/Basics/terminal-utils-posix.cpp \
 	lib/Basics/terminal-utils.cpp \
 	lib/Basics/Thread.cpp \
 	lib/Basics/threads-posix.cpp \
 	lib/Basics/Timing.cpp \
 	lib/Basics/tri-strings.cpp \
+	lib/Basics/tri-zip.cpp \
 	lib/Basics/Utf8Helper.cpp \
 	lib/Basics/utf8-helper.cpp \
 	lib/Basics/vector.cpp \
 	lib/Basics/WriteLocker.cpp \
 	lib/Basics/WriteUnlocker.cpp \
 	lib/Basics/xxhash.cpp \
-	lib/BasicsC/application-exit.c \
-	lib/BasicsC/debugging.c \
-	lib/BasicsC/error.c \
-	lib/Basics/init.cpp \
-	lib/BasicsC/logging.c \
-	lib/BasicsC/memory.c \
-	lib/BasicsC/memory-map-posix.c \
-	lib/BasicsC/mimetypes.c \
-	lib/BasicsC/system-functions.c \
 	lib/BasicsC/voc-errors.c \
 	lib/BasicsC/voc-mimetypes.c \
-	lib/BasicsC/tri-zip.c \
 	lib/JsonParser/json-parser.cpp \
 	lib/ProgramOptions/program-options.cpp \
 	lib/Rest/AnyServer.cpp \

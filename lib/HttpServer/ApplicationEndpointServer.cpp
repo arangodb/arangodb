@@ -36,7 +36,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/RandomGenerator.h"
 #include "Basics/json.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpServer.h"

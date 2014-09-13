@@ -29,7 +29,7 @@
 
 #include "bitarray.h"
 
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/random.h"
 
 #include "VocBase/document-collection.h"

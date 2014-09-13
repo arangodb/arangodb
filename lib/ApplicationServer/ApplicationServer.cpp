@@ -45,7 +45,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/delete_object.h"
 #include "Basics/conversions.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
 

@@ -31,7 +31,7 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/StringBuffer.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 

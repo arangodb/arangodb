@@ -29,7 +29,7 @@
 
 #include "fulltext-query.h"
 
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/utf8-helper.h"
 

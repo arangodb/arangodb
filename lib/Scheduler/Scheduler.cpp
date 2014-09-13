@@ -38,7 +38,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/json.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Scheduler/SchedulerThread.h"
 #include "Scheduler/Task.h"
 

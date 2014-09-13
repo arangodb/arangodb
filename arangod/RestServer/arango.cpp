@@ -30,7 +30,7 @@
 #include "Basics/Common.h"
 
 #include "Basics/messages.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Rest/InitialiseRest.h"
 #include "RestServer/ArangoServer.h"

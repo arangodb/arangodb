@@ -29,7 +29,7 @@
 
 #include "bitarrayIndex.h"
 
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/string-buffer.h"
 #include "BitIndexes/bitarray.h"
 #include "ShapedJson/json-shaper.h"

@@ -35,7 +35,7 @@
 #include "Basics/associative.h"
 #include "Basics/hashes.h"
 #include "Basics/locks.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/utf8-helper.h"
 #include "Utils/Exception.h"

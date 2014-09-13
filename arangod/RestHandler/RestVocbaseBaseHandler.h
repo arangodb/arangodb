@@ -35,7 +35,7 @@
 #include "Admin/RestBaseHandler.h"
 
 #include "Basics/json.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/json-utilities.h"
 
 #include "Rest/HttpResponse.h"

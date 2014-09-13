@@ -29,7 +29,7 @@
 
 #include "Ahuacatl/ahuacatl-collections.h"
 
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/vector.h"
 #include "VocBase/index.h"

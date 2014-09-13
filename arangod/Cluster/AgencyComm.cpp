@@ -34,7 +34,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/json.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Cluster/ServerState.h"
 #include "Rest/Endpoint.h"
 #include "Rest/HttpRequest.h"

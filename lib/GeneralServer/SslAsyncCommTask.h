@@ -43,7 +43,7 @@
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 
 
 namespace triagens {

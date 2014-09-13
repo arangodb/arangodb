@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief memory mapped files in posix
+/// @brief memory mapped files
 ///
 /// @file
 ///
@@ -27,66 +27,62 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "memory-map.h"
+#ifndef ARANGODB_BASICS_C_MEMORY__MAP_H
+#define ARANGODB_BASICS_C_MEMORY__MAP_H 1
 
-#ifdef TRI_HAVE_POSIX_MMAP
-
-#include "BasicsC/logging.h"
-#include "Basics/tri-strings.h"
-
-#include <sys/mman.h>
+#include "BasicsC/common.h"
 
 ////////////////////////////////////////////////////////////////////////////////
-// @brief flush memory mapped file to disk
+/// @brief wrapper macro for anonymous memory mapping
+///
+/// it might or might not be defined by one of the following includes
+/// if still empty after the includes, no anonymous memory mapping is available
+/// on the platform
+////////////////////////////////////////////////////////////////////////////////
+
+#undef TRI_MMAP_ANONYMOUS
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief posix memory map
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_HAVE_POSIX_MMAP
+#include "Basics/memory-map-posix.h"
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief windows memory map
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef TRI_HAVE_WIN32_MMAP
+#include "Basics/memory-map-win32.h"
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                            THREAD
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flushes changes made in memory back to disk
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_FlushMMFile (int fileDescriptor,
                      void** mmHandle,
                      void* startingAddress,
                      size_t numOfBytesToFlush,
-                     int flags) {
+                     int flags);
 
-  // ...........................................................................
-  // Possible flags to send are (based upon the Ubuntu Linux ASM include files:
-  // #define MS_ASYNC        1             /* sync memory asynchronously */
-  // #define MS_INVALIDATE   2               /* invalidate the caches */
-  // #define MS_SYNC         4               /* synchronous memory sync */
-  // Note: under windows all flushes are achieved synchronously
-  //
-  // *mmHandle should always be NULL
-  // ...........................................................................
-
-  int res;
-
-  TRI_ASSERT(*mmHandle == NULL);
-
-  res = msync(startingAddress, numOfBytesToFlush, flags);
-
-#ifdef __APPLE__
-  if (res == 0) {
-    res = fcntl(fileDescriptor, F_FULLFSYNC, 0);
-  }
-#endif
-
-  if (res == 0) {
-    // msync was successful
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  if (errno == ENOMEM) {
-    // we have synced a region that was not mapped
-
-    // set a special error. ENOMEM (out of memory) is not appropriate
-    LOG_ERROR("msync failed for range %p - %p", startingAddress, (void*) (((char*) startingAddress) + numOfBytesToFlush));
-
-    return TRI_ERROR_ARANGO_MSYNC_FAILED;
-  }
-
-  return TRI_ERROR_SYS_ERROR;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
-// @brief memory map a file
+/// @brief maps a file on disk onto memory
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_MMFile (void* memoryAddress,
@@ -96,71 +92,32 @@ int TRI_MMFile (void* memoryAddress,
                 int fileDescriptor,
                 void** mmHandle,
                 int64_t offset,
-                void** result) {
+                void** result);
 
-  off_t offsetRetyped = (off_t)(offset);
-
-  *mmHandle = NULL; // only useful for windows
-
-  *result = mmap(memoryAddress, numOfBytesToInitialise, memoryProtection, flags, fileDescriptor, offsetRetyped);
-
-  if (*result != MAP_FAILED) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  if (errno == ENOMEM) {
-    return TRI_ERROR_OUT_OF_MEMORY_MMAP;
-  }
-
-  return TRI_ERROR_SYS_ERROR;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
-// @brief unmap a memory-mapped file
+/// @brief 'unmaps' or removes memory associated with a memory mapped file
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_UNMMFile (void* memoryAddress,
                   size_t numOfBytesToUnMap,
                   int fileDescriptor,
-                  void** mmHandle) {
-  int result;
+                  void** mmHandle);
 
-  TRI_ASSERT(*mmHandle == NULL);
-
-  result = munmap(memoryAddress, numOfBytesToUnMap);
-
-  if (result == 0) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  if (errno == ENOSPC) {
-    return TRI_ERROR_ARANGO_FILESYSTEM_FULL;
-  }
-
-  return TRI_ERROR_SYS_ERROR;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
-// @brief protect a region in a memory-mapped file
+/// @brief sets various protection levels with the memory mapped file
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_ProtectMMFile (void* memoryAddress,
                        size_t numOfBytesToProtect,
                        int flags,
                        int fileDescriptor,
-                       void** mmHandle) {
-  int result;
+                       void** mmHandle);
 
-  TRI_ASSERT(*mmHandle == NULL);
-
-  result = mprotect(memoryAddress, numOfBytesToProtect, flags);
-
-  if (result == 0) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  return TRI_ERROR_SYS_ERROR;
+#ifdef __cplusplus
 }
+#endif
 
 #endif
 

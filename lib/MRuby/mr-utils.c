@@ -32,7 +32,7 @@
 #include <regex.h>
 
 #include "Basics/files.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 
 #include "mruby/array.h"

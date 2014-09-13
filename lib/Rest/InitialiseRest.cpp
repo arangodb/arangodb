@@ -40,7 +40,7 @@
 #error missing thread support for openssl, please recomple OpenSSL with threads
 #endif
 
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 
 #include "Basics/InitialiseBasics.h"
 #include "Rest/HttpResponse.h"

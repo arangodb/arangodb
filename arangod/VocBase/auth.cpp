@@ -30,7 +30,7 @@
 #include "auth.h"
 
 #include "Basics/json.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/JsonHelper.h"
 #include "Rest/SslInterface.h"

@@ -37,7 +37,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Basics/init.h"
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/terminal-utils.h"
 #include "Rest/Endpoint.h"

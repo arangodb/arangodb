@@ -31,7 +31,7 @@
 
 #ifdef TRI_HAVE_POSIX_THREADS
 
-#include "BasicsC/logging.h"
+#include "Basics/logging.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           DEFINES
