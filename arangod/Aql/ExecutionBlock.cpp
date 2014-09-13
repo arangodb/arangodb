@@ -1222,7 +1222,33 @@ void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
      
   std::string key;
   for (auto x: ranges.at(0)) {
-    if (x._attr == std::string(TRI_VOC_ATTRIBUTE_KEY)) {
+    if (x._attr == std::string(TRI_VOC_ATTRIBUTE_ID)) {
+      // lookup by _id
+
+      // we can use lower bound because only equality is supported
+      TRI_ASSERT(x.is1ValueRangeInfo());
+      auto const json = x._lowConst.bound().json();
+
+      if (TRI_IsStringJson(json)) {
+        // _id must be a string
+        TRI_voc_cid_t documentCid;
+        std::string documentKey;
+
+        // parse _id value
+        int errorCode = resolve(json->_value._string.data, documentCid, documentKey);
+
+        if (errorCode == TRI_ERROR_NO_ERROR &&
+            documentCid == _collection->documentCollection()->_info._cid) {
+          // only continue lookup if the id value is syntactically correct and
+          // refers to "our" collection
+          key = documentKey;
+        }
+      }
+      break;
+    }
+    else if (x._attr == std::string(TRI_VOC_ATTRIBUTE_KEY)) {
+      // lookup by _key
+
       // we can use lower bound because only equality is supported
       TRI_ASSERT(x.is1ValueRangeInfo());
       auto const json = x._lowConst.bound().json();

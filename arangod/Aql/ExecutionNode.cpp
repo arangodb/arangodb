@@ -523,8 +523,18 @@ void EnumerateCollectionNode::getIndexesForIndexRangeNode
 
     size_t prefix = 0;
 
-    if (idxType == TRI_IDX_TYPE_PRIMARY_INDEX ||
-        idxType == TRI_IDX_TYPE_HASH_INDEX) {
+    if (idxType == TRI_IDX_TYPE_PRIMARY_INDEX) {
+      // primary index allows lookups on both "_id" and "_key" in isolation
+      if (attrs.find(std::string(TRI_VOC_ATTRIBUTE_ID)) != attrs.end() ||
+          attrs.find(std::string(TRI_VOC_ATTRIBUTE_KEY)) != attrs.end()) {
+        // can use index
+        idxs.push_back(idx);
+        // <prefixes> not used for this type of index
+        prefixes.push_back(0);
+      }
+    }
+
+    else if (idxType == TRI_IDX_TYPE_HASH_INDEX) {
       prefix = getUsableFieldsOfIndex(idx, attrs);
 
       if (prefix == idx->_fields._length) {
@@ -546,14 +556,9 @@ void EnumerateCollectionNode::getIndexesForIndexRangeNode
     }
     
     else if (idxType == TRI_IDX_TYPE_EDGE_INDEX) {
-      // edge index allows lookups on "_from" and "_to" in isolation
-      if (attrs.find(std::string(TRI_VOC_ATTRIBUTE_FROM)) != attrs.end()) {
-        // can use index
-        idxs.push_back(idx);
-        // <prefixes> not used for this type of index
-        prefixes.push_back(0);
-      }
-      if (attrs.find(std::string(TRI_VOC_ATTRIBUTE_TO)) != attrs.end()) {
+      // edge index allows lookups on both "_from" and "_to" in isolation
+      if (attrs.find(std::string(TRI_VOC_ATTRIBUTE_FROM)) != attrs.end() ||
+          attrs.find(std::string(TRI_VOC_ATTRIBUTE_TO)) != attrs.end()) {
         // can use index
         idxs.push_back(idx);
         // <prefixes> not used for this type of index
