@@ -582,6 +582,9 @@ operator_binary:
   | expression T_IN expression {
       $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN, $1, $3);
     }
+  | expression T_NOT T_IN expression {
+      $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NIN, $1, $4);
+    }
   ;
 
 operator_ternary:

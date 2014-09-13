@@ -93,6 +93,18 @@ namespace triagens {
   return T_DESC;
 }
 
+(?i:NOT) {
+  return T_NOT;
+}
+
+(?i:AND) {
+  return T_AND;
+}
+
+(?i:OR) {
+  return T_OR;
+}
+
 (?i:IN) {
   return T_IN;
 }

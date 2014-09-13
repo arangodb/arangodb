@@ -117,7 +117,6 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
     analyzeExpression();
   }
 
-  AqlValue ret;
   TRI_ASSERT(_type != UNPROCESSED);
 
   // and execute
@@ -130,7 +129,7 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
     case V8: {
       TRI_ASSERT(_func != nullptr);
       try {
-        ret = _func->execute(trx, docColls, argv, startPos, vars, regs);
+        return _func->execute(trx, docColls, argv, startPos, vars, regs);
       }
       catch (triagens::arango::Exception& ex) {
         ex.addToMessage("\nwhile evaluating expression");
@@ -140,8 +139,6 @@ AqlValue Expression::execute (AQL_TRANSACTION_V8* trx,
 #endif
         throw ex;
       }
-      return ret;
-
     }
 
     case SIMPLE: {

@@ -1951,6 +1951,18 @@ function RELATIONAL_IN (lhs, rhs) {
   return false;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief perform not-in list check
+///
+/// returns true if the left operand is not contained in the right operand
+////////////////////////////////////////////////////////////////////////////////
+
+function RELATIONAL_NOT_IN (lhs, rhs) {
+  "use strict";
+
+  return ! RELATIONAL_IN(lhs, rhs);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             arithmetic operations
 // -----------------------------------------------------------------------------
@@ -7286,6 +7298,7 @@ exports.RELATIONAL_LESS = RELATIONAL_LESS;
 exports.RELATIONAL_LESSEQUAL = RELATIONAL_LESSEQUAL;
 exports.RELATIONAL_CMP = RELATIONAL_CMP;
 exports.RELATIONAL_IN = RELATIONAL_IN;
+exports.RELATIONAL_NOT_IN = RELATIONAL_NOT_IN;
 exports.UNARY_PLUS = UNARY_PLUS;
 exports.UNARY_MINUS = UNARY_MINUS;
 exports.ARITHMETIC_PLUS = ARITHMETIC_PLUS;
