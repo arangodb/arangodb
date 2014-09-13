@@ -56,7 +56,9 @@ std::unordered_map<int, AstNodeType> const Ast::ReverseOperators{
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT), NODE_TYPE_OPERATOR_BINARY_LE },
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE), NODE_TYPE_OPERATOR_BINARY_LT },
   { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LT), NODE_TYPE_OPERATOR_BINARY_GE },
-  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE), NODE_TYPE_OPERATOR_BINARY_GT }
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE), NODE_TYPE_OPERATOR_BINARY_GT },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_IN), NODE_TYPE_OPERATOR_BINARY_NIN },
+  { static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NIN), NODE_TYPE_OPERATOR_BINARY_IN }
 };
 
 // -----------------------------------------------------------------------------
@@ -906,7 +908,8 @@ void Ast::optimize () {
         node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
         node->type == NODE_TYPE_OPERATOR_BINARY_GT ||
         node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
-        node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
+        node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
+        node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
       return optimizeBinaryOperatorRelational(node);
     }
     
@@ -1141,12 +1144,7 @@ AstNode* Ast::optimizeNotExpression (AstNode* node) {
 
   AstNode* operand = node->getMember(0);
 
-  if (operand->type == NODE_TYPE_OPERATOR_BINARY_EQ ||
-      operand->type == NODE_TYPE_OPERATOR_BINARY_NE ||
-      operand->type == NODE_TYPE_OPERATOR_BINARY_LT ||
-      operand->type == NODE_TYPE_OPERATOR_BINARY_LE ||
-      operand->type == NODE_TYPE_OPERATOR_BINARY_GT ||
-      operand->type == NODE_TYPE_OPERATOR_BINARY_GE) {
+  if (operand->isComparisonOperator()) {
     // remove the NOT and reverse the operation, e.g. NOT (a == b) => (a != b)
     TRI_ASSERT(operand->numMembers() == 2);
     auto lhs = operand->getMember(0);
@@ -1276,9 +1274,10 @@ AstNode* Ast::optimizeBinaryOperatorRelational (AstNode* node) {
     return node;
   }
   
-  if (node->type == NODE_TYPE_OPERATOR_BINARY_IN &&
-      rhs->type != NODE_TYPE_LIST) {
-    // right operand of IN must be a list
+  if (rhs->type != NODE_TYPE_LIST &&
+      (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
+       node->type == NODE_TYPE_OPERATOR_BINARY_NIN)) {
+    // right operand of IN or NOT IN must be a list
     _query->registerError(TRI_ERROR_QUERY_LIST_EXPECTED);
     return node;
   }
