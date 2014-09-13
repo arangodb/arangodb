@@ -35,10 +35,6 @@
 
 #include "Basics/locks.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 ASSOCIATIVE ARRAY
 // -----------------------------------------------------------------------------
@@ -446,10 +442,6 @@ void* TRI_RemoveKeyAssociativeSynced (TRI_associative_synced_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t TRI_GetLengthAssociativeSynced (TRI_associative_synced_t* const);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

@@ -32,10 +32,6 @@
 
 #include "Basics/Common.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                          public functions for string to something
 // -----------------------------------------------------------------------------
@@ -319,10 +315,6 @@ char* TRI_StringUInt32Octal (uint32_t);
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_StringUInt64Octal (uint64_t);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

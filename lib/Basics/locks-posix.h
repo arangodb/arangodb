@@ -36,10 +36,6 @@
 
 #include <pthread.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
@@ -81,10 +77,6 @@ typedef struct TRI_condition_s {
   pthread_mutex_t* _mutex;
 }
 TRI_condition_t;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

@@ -48,10 +48,6 @@
 #include "Basics/threads-win32.h"
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            THREAD
 // -----------------------------------------------------------------------------
@@ -129,10 +125,6 @@ bool TRI_IsSelfThread (TRI_thread_t* thread);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AllowCancelation (void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

@@ -31,11 +31,7 @@
 #define ARANGODB_BASICS_C_DEBUGGING_H 1
 
 #ifndef TRI_WITHIN_COMMON
-#error use <BasicsC/common.h>
-#endif
-
-#ifdef __cplusplus
-extern "C" {
+#error use <Basics/Common.h>
 #endif
 
 // -----------------------------------------------------------------------------
@@ -146,10 +142,6 @@ void TRI_InitialiseDebugging (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownDebugging (void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

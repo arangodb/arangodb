@@ -36,10 +36,6 @@
 #include <termios.h>
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
 // -----------------------------------------------------------------------------
@@ -65,10 +61,6 @@ int TRI_ColumnsWidth (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_SetStdinVisibility (bool);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

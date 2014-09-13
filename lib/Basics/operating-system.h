@@ -31,7 +31,7 @@
 #define ARANGODB_BASICS_C_OPERATING__SYSTEM_H 1
 
 #ifndef TRI_WITHIN_COMMON
-#error use <BasicsC/common.h>
+#error use <Basics/Common.h>
 #endif
 
 // -----------------------------------------------------------------------------
@@ -385,11 +385,6 @@
 // for usleep
 #ifndef __USE_BSD
 #define __USE_BSD
-#endif
-
-// for pthread_sigmask
-#ifndef __cplusplus
-#define __USE_UNIX98
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

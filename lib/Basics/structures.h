@@ -31,11 +31,7 @@
 #define ARANGODB_BASICS_C_STRUCTURES_H 1
 
 #ifndef TRI_WITHIN_COMMON
-#error use <BasicsC/common.h>
-#endif
-
-#ifdef __cplusplus
-extern "C" {
+#error use <Basics/Common.h>
 #endif
 
 // -----------------------------------------------------------------------------
@@ -124,10 +120,6 @@ int TRI_CopyToBlob (TRI_memory_zone_t*, TRI_blob_t* dst, TRI_blob_t const* src);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AssignToBlob (TRI_memory_zone_t* zone, TRI_blob_t* dst, TRI_blob_t const* src);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

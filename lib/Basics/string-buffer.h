@@ -32,10 +32,6 @@
 
 #include "Basics/Common.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
@@ -479,10 +475,6 @@ int TRI_AppendCsvUInt64StringBuffer (TRI_string_buffer_t * self, uint64_t i);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendCsvDoubleStringBuffer (TRI_string_buffer_t * self, double d);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

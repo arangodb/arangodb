@@ -36,10 +36,6 @@
 
 #include <sys/mman.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a wrapper for MAP_ANONYMOUS / MAP_ANON
 ///
@@ -51,10 +47,6 @@ extern "C" {
 #define TRI_MMAP_ANONYMOUS MAP_ANONYMOUS
 #elif MAP_ANON
 #define TRI_MMAP_ANONYMOUS MAP_ANON
-#endif
-
-#ifdef __cplusplus
-}
 #endif
 
 #endif

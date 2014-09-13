@@ -34,10 +34,6 @@
 
 #include "Basics/vector.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -351,10 +347,6 @@ char* TRI_PrefixUtf8String (const char*, const uint32_t);
 
 
 
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

@@ -31,11 +31,7 @@
 #define ARANGODB_BASICS_C_APPLICATION__EXIT_H 1
 
 #ifndef TRI_WITHIN_COMMON
-#error use <BasicsC/common.h>
-#endif
-
-#ifdef __cplusplus
-extern "C" {
+#error use <Basics/Common.h>
 #endif
 
 // -----------------------------------------------------------------------------
@@ -59,10 +55,6 @@ extern TRI_ExitFunction_t TRI_EXIT_FUNCTION;
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_Application_Exit_SetExit (TRI_ExitFunction_t);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

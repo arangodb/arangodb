@@ -34,10 +34,6 @@
 
 #include "Basics/associative.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       LINKED LIST
 // -----------------------------------------------------------------------------
@@ -170,10 +166,6 @@ void TRI_MoveToBackLinkedArray (TRI_linked_array_t* array, void const* data);
 ////////////////////////////////////////////////////////////////////////////////
 
 void const* TRI_PopFrontLinkedArray (TRI_linked_array_t* array);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

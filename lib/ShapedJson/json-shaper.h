@@ -31,9 +31,6 @@
 #ifndef ARANGODB_SHAPED_JSON_JSON__SHAPER_H
 #define ARANGODB_SHAPED_JSON_JSON__SHAPER_H 1
 
-// Note that this file is included in lib/BasicsC/init.c and thus must
-// use C linkage.
-
 #include "Basics/Common.h"
 
 #include "Basics/json.h"

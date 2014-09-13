@@ -31,11 +31,7 @@
 #define ARANGODB_BASICS_C_MEMORY_H 1
 
 #ifndef TRI_WITHIN_COMMON
-#error use <BasicsC/common.h>
-#endif
-
-#ifdef __cplusplus
-extern "C" {
+#error use <Basics/Common.h>
 #endif
 
 // -----------------------------------------------------------------------------
@@ -178,10 +174,6 @@ void TRI_InitialiseMemory (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownMemory (void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

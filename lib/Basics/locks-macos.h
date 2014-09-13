@@ -36,10 +36,6 @@
 
 #include <libkern/OSAtomic.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
@@ -56,10 +52,6 @@ extern "C" {
 
 #define TRI_spin_t OSSpinLock
 
-#endif
-
-#ifdef __cplusplus
-}
 #endif
 
 #endif

@@ -1,4 +1,4 @@
-/* lib/BasicsC/local-configuration.h.  Generated from local-configuration.h.in by configure.  */
+/* lib/Basics/local-configuration.h.  Generated from local-configuration.h.in by configure.  */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief High-Performance Database Framework made by triagens
 ///
@@ -32,7 +32,7 @@
 #define ARANGODB_BASICS_C_LOCAL__CONFIGURATION__WIN_H 1
 
 #ifndef TRI_WITHIN_COMMON
-#error use <BasicsC/common.h>
+#error use <Basics/Common.h>
 #endif
 
 // -----------------------------------------------------------------------------

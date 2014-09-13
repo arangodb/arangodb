@@ -34,10 +34,6 @@
 
 #ifdef TRI_HAVE_WIN32_THREADS
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
@@ -92,10 +88,6 @@ typedef struct TRI_condition_s {
   CONDITION_VARIABLE _conditionVariable;
 }
 TRI_condition_t;
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

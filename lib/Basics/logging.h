@@ -34,10 +34,6 @@
 
 #include "Basics/vector.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           LOGGING
 // -----------------------------------------------------------------------------
@@ -525,10 +521,6 @@ bool TRI_ShutdownLogging (bool);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReopenLogging (void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

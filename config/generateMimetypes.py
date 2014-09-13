@@ -78,19 +78,11 @@ def genCHeaderFile(types):
            + "#ifndef TRIAGENS_BASICS_C_VOC_MIMETYPES_H\n"\
            + "#define TRIAGENS_BASICS_C_VOC_MIMETYPES_H 1\n"\
            + "\n"\
-           + "#ifdef __cplusplus\n"\
-           + "extern \"C\" {\n"\
-           + "#endif\n"\
-           + "\n"\
            + "////////////////////////////////////////////////////////////////////////////////\n"\
            + "/// @brief initialise mimetypes\n"\
            + "////////////////////////////////////////////////////////////////////////////////\n"\
            + "\n"\
            + "void TRI_InitialiseEntriesMimetypes (void);\n"\
-           + "#ifdef __cplusplus\n"\
-           + "}\n"\
-           + "#endif\n"\
-           + "\n"\
            + "#endif\n"\
            + "\n"
 
@@ -127,7 +119,7 @@ prologue = "////////////////////////////////////////////////////////////////////
          + "/// @brief auto-generated file generated from mimetypes.dat\n"\
          + "////////////////////////////////////////////////////////////////////////////////\n"\
          + "\n"
-  
+ 
 if len(sys.argv) < 3:
   print >> sys.stderr, "usage: %s <sourcefile> <outfile>" % sys.argv[0]
   sys.exit()
@@ -165,7 +157,7 @@ if extension == ".js":
   out = genJsFile(types)
 elif extension == ".h":
   out = genCHeaderFile(types)
-elif extension == ".c":
+elif extension == ".cpp":
   out = genCFile(types, filename)
 else:
   print >> sys.stderr, "usage: %s <sourcefile> <outfile>" % sys.argv[0]

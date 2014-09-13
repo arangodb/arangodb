@@ -60,10 +60,6 @@
 #include "Basics/locks-macos.h"
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             MUTEX
 // -----------------------------------------------------------------------------
@@ -303,10 +299,6 @@ void TRI_LockCondition (TRI_condition_t* cond);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_UnlockCondition (TRI_condition_t* cond);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

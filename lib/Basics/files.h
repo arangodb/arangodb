@@ -38,10 +38,6 @@
 #include "Basics/socket-utils.h"
 #include "Basics/vector.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -319,10 +315,6 @@ void TRI_InitialiseFiles (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownFiles (void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

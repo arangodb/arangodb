@@ -47,10 +47,6 @@
 #include <WS2tcpip.h>
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
 // -----------------------------------------------------------------------------
@@ -303,10 +299,6 @@ void TRI_InitialiseSockets (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownSockets (void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

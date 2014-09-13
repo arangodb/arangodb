@@ -3,7 +3,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <Basics/Common.h>
-#include "Basics/voc-errors.h"
+#include "./lib/Basics/voc-errors.h"
 
 void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_NO_ERROR, "no error");
@@ -248,4 +248,3 @@ void TRI_InitialiseErrorMessages (void) {
   REG_ERROR(ERROR_QUEUE_UNKNOWN, "named queue does not exist");
   REG_ERROR(ERROR_QUEUE_FULL, "named queue is full");
 }
-

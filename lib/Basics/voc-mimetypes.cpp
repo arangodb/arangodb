@@ -2,8 +2,8 @@
 /// @brief auto-generated file generated from mimetypes.dat
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
-#include "Basics/voc-mimetypes.h"
+#include <Basics/Common.h>
+#include "./lib/Basics/voc-mimetypes.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise mimetypes
@@ -29,12 +29,3 @@ void TRI_InitialiseEntriesMimetypes (void) {
   TRI_RegisterMimetype("woff", "application/font-woff", false);
   TRI_RegisterMimetype("eot", "application/vnd.ms-fontobject", false);
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:
