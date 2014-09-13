@@ -26,7 +26,7 @@ if (MSVC)
       Basics/threads-win32.cpp
       Basics/win-utils.cpp
       Utilities/LinenoiseShell.cpp
-      Zip/iowin32.c
+      Zip/iowin32.cpp
   )
 else ()
   SET(LIB_ARANGO_POSIX
@@ -124,9 +124,9 @@ add_library(
     Utilities/LineEditor.cpp
     Utilities/ShellImplementation.cpp
     Utilities/ShellImplFactory.cpp
-    Zip/ioapi.c
-    Zip/unzip.c
-    Zip/zip.c
+    Zip/ioapi.cpp
+    Zip/unzip.cpp
+    Zip/zip.cpp
 )
 
 ################################################################################
