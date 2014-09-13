@@ -32,10 +32,6 @@
 
 #include "Basics/Common.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -71,10 +67,6 @@ void TRI_InitialiseRandom (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownRandom (void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

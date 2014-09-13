@@ -75,16 +75,6 @@
 #define PROT_GROWSDOWN  0x01000000      /* Extend change to start of growsdown vma (mprotect only).  */
 #define PROT_GROWSUP    0x02000000      /* Extend change to start of growsup vma (mprotect only).  */
 
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-
-#ifdef __cplusplus
-}
-#endif
-
 #endif
 
 #endif

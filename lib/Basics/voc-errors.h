@@ -2,13 +2,9 @@
 #ifndef TRIAGENS_BASICS_C_VOC_ERRORS_H
 #define TRIAGENS_BASICS_C_VOC_ERRORS_H 1
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @page ArangoErrors Error codes and meanings
-/// @startDocuBlock errorCodes
+///
 /// The following errors might be raised when running ArangoDB:
 ///
 /// - 0: @LIT{no error}
@@ -587,19 +583,13 @@ extern "C" {
 /// - 20000: @LIT{newest version of app already installed}
 ///   newest version of app already installed
 /// - 21000: @LIT{named queue already exists}
-///   Will be returned if a queue with this name already exists.
+///    "Will be returned if a queue with this name already exists."
 /// - 21001: @LIT{dispatcher stopped}
 ///   Will be returned if a shutdown is in progress.
 /// - 21002: @LIT{named queue does not exist}
-///   Will be returned if a queue with this name does not exist.
+///    "Will be returned if a queue with this name does not exist."
 /// - 21003: @LIT{named queue is full}
-///   Will be returned if a queue with this name is full.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @addtogroup VocError
-/// @{
+///    "Will be returned if a queue with this name is full."
 ////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3117,15 +3107,6 @@ void TRI_InitialiseErrorMessages (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUEUE_FULL                                              (21003)
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @}
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

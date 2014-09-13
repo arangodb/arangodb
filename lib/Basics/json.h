@@ -35,10 +35,6 @@
 #include "Basics/associative.h"
 #include "Basics/vector.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
@@ -414,10 +410,6 @@ TRI_json_t* TRI_JsonFile (TRI_memory_zone_t*, char const* path, char** error);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_EqualJsonJson (TRI_json_t*, TRI_json_t*);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

@@ -32,10 +32,6 @@
 
 #include <WinSock2.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // .............................................................................
 // Called before anything else starts - initialises whatever is required to be
 // initalised.
@@ -98,10 +94,6 @@ void TRI_sleep (unsigned long);
 // .............................................................................
 
 void TRI_usleep (unsigned long);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

@@ -34,10 +34,6 @@
 
 #include "Basics/threads.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
 // -----------------------------------------------------------------------------
@@ -224,10 +220,6 @@ void TRI_InitialiseProcess (int argc, char* argv[]);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownProcess (void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

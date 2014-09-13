@@ -32,10 +32,6 @@
 
 #include "Basics/Common.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       POD VECTORS
 // -----------------------------------------------------------------------------
@@ -440,10 +436,6 @@ void TRI_RemoveVectorString (TRI_vector_string_t*, size_t n);
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_AtVectorString (TRI_vector_string_t const*, size_t);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

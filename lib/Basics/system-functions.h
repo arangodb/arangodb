@@ -31,11 +31,7 @@
 #define ARANGODB_BASICS_C_SYSTEM__FUNCTIONS_H 1
 
 #ifndef TRI_WITHIN_COMMON
-#error use <BasicsC/common.h>
-#endif
-
-#ifdef __cplusplus
-extern "C" {
+#error use <Basics/Common.h>
 #endif
 
 // -----------------------------------------------------------------------------
@@ -77,10 +73,6 @@ void TRI_gmtime (time_t, struct tm*);
 ////////////////////////////////////////////////////////////////////////////////
 
 double TRI_microtime (void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

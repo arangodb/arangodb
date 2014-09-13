@@ -35,10 +35,6 @@
 
 #include "unicode/ustring.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -121,10 +117,6 @@ TRI_vector_string_t* TRI_get_words (const char* const text,
                                     const size_t minimalWordLength,
                                     const size_t maximalWordLength,
                                     bool lowerCase);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

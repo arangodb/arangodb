@@ -34,10 +34,6 @@
 
 #include "Basics/json.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include "mruby.h"
 
 // -----------------------------------------------------------------------------
@@ -129,10 +125,6 @@ bool TRI_ExecuteRubyString (mrb_state*,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitMRUtils (mrb_state* mrb);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

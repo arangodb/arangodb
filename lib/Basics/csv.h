@@ -32,10 +32,6 @@
 
 #include "Basics/Common.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
@@ -151,10 +147,6 @@ int TRI_ParseCsvString (TRI_csv_parser_t*, char const*);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_ParseCsvString2 (TRI_csv_parser_t*, char const*, size_t);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

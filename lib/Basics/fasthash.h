@@ -28,10 +28,6 @@
 
 #include "Basics/Common.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
  * fasthash32 - 32-bit implementation of fasthash
  * @buf:  data buffer
@@ -47,10 +43,6 @@ uint32_t fasthash32(const void *buf, size_t len, uint32_t seed);
  * @seed: the seed
  */
 uint64_t fasthash64(const void *buf, size_t len, uint64_t seed);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 // -----------------------------------------------------------------------------

@@ -20,18 +20,12 @@ def wrap(string, width=80, ind1=0, ind2=0, prefix=''):
 
 # generate javascript file from errors
 def genJsFile(errors):
-  jslint = "/*jslint indent: 2,\n"\
-           "         nomen: true,\n"\
-           "         maxlen: 240,\n"\
-           "         sloppy: true,\n"\
-           "         vars: true,\n"\
-           "         white: true,\n"\
-           "         plusplus: true */\n"\
-           "/*global require */\n\n"
+  jslint = "/*jshint maxlen: 240 */\n/*global require */\n\n"
 
   out = jslint \
       + prologue\
       + "(function () {\n"\
+      + "  \"use strict\";\n"\
       + "  var internal = require(\"internal\");\n"\
       + "\n"\
       + "  internal.errors = {\n"
@@ -103,10 +97,6 @@ def genCHeaderFile(errors):
            + "#ifndef TRIAGENS_BASICS_C_VOC_ERRORS_H\n"\
            + "#define TRIAGENS_BASICS_C_VOC_ERRORS_H 1\n"\
            + "\n"\
-           + "#ifdef __cplusplus\n"\
-           + "extern \"C\" {\n"\
-           + "#endif\n"\
-           + "\n"\
            + wiki\
            + "\n"\
            + "////////////////////////////////////////////////////////////////////////////////\n"\
@@ -137,10 +127,6 @@ def genCHeaderFile(errors):
            + "\n"
 
   header = header\
-         + "#ifdef __cplusplus\n"\
-         + "}\n"\
-         + "#endif\n"\
-         + "\n"\
          + "#endif\n"\
          + "\n"
 
@@ -190,7 +176,7 @@ if extension == ".js":
   out = genJsFile(errorsList)
 elif extension == ".h":
   out = genCHeaderFile(errorsList)
-elif extension == ".c":
+elif extension == ".cpp":
   out = genCFile(errorsList, filename)
 else:
   print >> sys.stderr, "usage: %s <sourcefile> <outfile>" % sys.argv[0]

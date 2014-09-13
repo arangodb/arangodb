@@ -58,10 +58,6 @@
 #include "Basics/memory-map-win32.h"
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            THREAD
 // -----------------------------------------------------------------------------
@@ -114,10 +110,6 @@ int TRI_ProtectMMFile (void* memoryAddress,
                        int flags,
                        int fileDescriptor,
                        void** mmHandle);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

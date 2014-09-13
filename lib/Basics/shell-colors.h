@@ -30,10 +30,6 @@
 #ifndef ARANGODB_BASICS_C_SHELL__COLORS_H
 #define ARANGODB_BASICS_C_SHELL__COLORS_H 1
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
 // -----------------------------------------------------------------------------
@@ -179,10 +175,6 @@ extern "C" {
 #define TRI_SHELL_COLOR_BRIGHT ""
 #define TRI_SHELL_COLOR_RESET ""
 
-#endif
-
-#ifdef __cplusplus
-}
 #endif
 
 #endif

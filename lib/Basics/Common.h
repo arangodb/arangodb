@@ -138,6 +138,29 @@ typedef long suseconds_t;
 #undef TRI_WITHIN_COMMON
 
 // -----------------------------------------------------------------------------
+// --SECTION--           C++ header files that are always present on all systems
+// -----------------------------------------------------------------------------
+
+#include <algorithm>
+#include <deque>
+#include <iostream>
+#include <list>
+#include <map>
+#include <queue>
+#include <set>
+#include <sstream>
+#include <fstream>
+#include <stack>
+#include <string>
+#include <vector>
+
+// C++11!!
+#include <unordered_map>
+#include <unordered_set>
+#include <memory>
+#include <atomic>
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 low level helpers
 // -----------------------------------------------------------------------------
 
@@ -185,10 +208,7 @@ static inline uint64_t TRI_DecModU64 (uint64_t i, uint64_t len) {
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a wrapper for assert()
-///
-/// This wrapper maps TRI_ASSERT() to (void) 0 for non-maintainers.
-/// It maps TRI_ASSERT() to assert() when TRI_ENABLE_MAINTAINER_MODE is set
+/// @brief backtrace functionality
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
@@ -197,10 +217,8 @@ static inline uint64_t TRI_DecModU64 (uint64_t i, uint64_t len) {
 
 #include <execinfo.h>
 
-#ifdef __cplusplus
 #define TRI_USE_DEMANGLING
 #include <cxxabi.h>
-#endif
 
 #endif
 static inline void _backtrace (void) {
@@ -264,9 +282,6 @@ static inline void _backtrace (void) {
 #endif
 }
 
-#ifdef __cplusplus
-#include <string>
-#include <sstream>
 static inline void _getBacktrace (std::string& btstr) {
 #if HAVE_BACKTRACE
   void* stack_frames[50];
@@ -337,7 +352,6 @@ static inline void _getBacktrace (std::string& btstr) {
   }
 #endif
 }
-#endif
 
 #ifndef TRI_ASSERT
 #define TRI_ASSERT(expr) { if (!(expr)) _backtrace(); assert(expr);}
@@ -347,13 +361,8 @@ static inline void _getBacktrace (std::string& btstr) {
 #else
 
 #ifndef TRI_ASSERT
-#if defined __cplusplus
 #define TRI_ASSERT(expr) (static_cast<void>(0))
 #define TRI_ASSERT_EXPENSIVE(expr) (static_cast<void>(0))
-#else
-#define TRI_ASSERT(expr) ((void) (0))
-#define TRI_ASSERT_EXPENSIVE(expr) ((void) (0))
-#endif
 #endif
 
 #endif
@@ -361,29 +370,6 @@ static inline void _getBacktrace (std::string& btstr) {
 #ifdef _WIN32
 #include "Basics/win-utils.h"
 #endif
-
-// -----------------------------------------------------------------------------
-// --SECTION--           C++ header files that are always present on all systems
-// -----------------------------------------------------------------------------
-
-#include <algorithm>
-#include <deque>
-#include <iostream>
-#include <list>
-#include <map>
-#include <queue>
-#include <set>
-#include <sstream>
-#include <fstream>
-#include <stack>
-#include <string>
-#include <vector>
-
-// C++11!!
-#include <unordered_map>
-#include <unordered_set>
-#include <memory>
-#include <atomic>
 
 // -----------------------------------------------------------------------------
 // --SECTIONS--                                               triagens namespace

@@ -31,11 +31,7 @@
 #define ARANGODB_BASICS_C_SYSTEM__COMPILER_H 1
 
 #ifndef TRI_WITHIN_COMMON
-#error use <BasicsC/common.h>
-#endif
-
-#ifdef __cplusplus
-extern "C" {
+#error use <Basics/Common.h>
 #endif
 
 // -----------------------------------------------------------------------------
@@ -112,10 +108,6 @@ extern "C" {
 #define PW(a) __builtin_prefetch(a, 1, 0)
 #else
 #define PW(a) /* prefetch write */
-#endif
-
-#ifdef __cplusplus
-}
 #endif
 
 #endif

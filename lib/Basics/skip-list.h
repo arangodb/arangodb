@@ -32,10 +32,6 @@
 
 #include "Basics/Common.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // We will probably never see more than 2^48 documents in a skip list
 #define TRI_SKIPLIST_MAX_HEIGHT 48
 
@@ -228,10 +224,6 @@ TRI_skiplist_node_t* TRI_SkipListLeftKeyLookup (TRI_skiplist_t *sl, void *key);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_skiplist_node_t* TRI_SkipListRightKeyLookup (TRI_skiplist_t *sl, void *key);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

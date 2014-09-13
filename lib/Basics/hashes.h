@@ -32,10 +32,6 @@
 
 #include "Basics/Common.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--        (FNV-1a Fowler–Noll–Vo hash function)                  FNV
 // -----------------------------------------------------------------------------
@@ -143,10 +139,6 @@ void TRI_InitialiseHashes (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownHashes (void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

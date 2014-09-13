@@ -31,11 +31,7 @@
 #define ARANGODB_BASICS_C_MIMETYPES_H 1
 
 #ifndef TRI_WITHIN_COMMON
-#error use <BasicsC/common.h>
-#endif
-
-#ifdef __cplusplus
-extern "C" {
+#error use <Basics/Common.h>
 #endif
 
 // -----------------------------------------------------------------------------
@@ -77,10 +73,6 @@ void TRI_InitialiseMimetypes (void);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownMimetypes (void);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

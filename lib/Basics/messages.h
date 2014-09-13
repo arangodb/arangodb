@@ -31,10 +31,6 @@
 #ifndef ARANGODB_BASICS_C_MESSAGES_H
 #define ARANGODB_BASICS_C_MESSAGES_H 1
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public defines
 // -----------------------------------------------------------------------------
@@ -71,10 +67,6 @@ extern "C" {
   TRI_BYE_MESSAGE_GR " " \
   TRI_BYE_MESSAGE_JP " " \
   TRI_BYE_MESSAGE_RU
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 

@@ -38,10 +38,6 @@
 #include "Basics/locks.h"
 #include "Basics/vector.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                        MULTI ASSOCIATIVE POINTERS
 // -----------------------------------------------------------------------------
@@ -397,10 +393,6 @@ void* TRI_RemovePairMultiPair (TRI_multi_pair_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_ResizeMultiPair (TRI_multi_pair_t*, size_t);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 
