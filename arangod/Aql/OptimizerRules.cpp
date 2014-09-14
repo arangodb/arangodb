@@ -25,6 +25,8 @@
 /// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#define DISABLE_VARIABLE_BOUNDS 1
+
 #include "Aql/OptimizerRules.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Indexes.h"
@@ -963,28 +965,36 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           buildRangeInfo(rhs, enumCollVar, attr);
           if (! enumCollVar.empty()) {
             // Found a multiple attribute access of a variable
+#ifdef DISABLE_VARIABLE_BOUNDS
             if (lhs->type == NODE_TYPE_VALUE) {
+#endif
               val = lhs;
               found = true;
+#ifdef DISABLE_VARIABLE_BOUNDS
             }
             else {
               enumCollVar.clear();
               attr.clear();
             }
+#endif
           }
         }
         if (! found && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           buildRangeInfo(lhs, enumCollVar, attr);
           if (! enumCollVar.empty()) {
             // Found a multiple attribute access of a variable
+#ifdef DISABLE_VARIABLE_BOUNDS
             if (rhs->type == NODE_TYPE_VALUE) {
+#endif
               val = rhs;
               found = true;
+#ifdef DISABLE_VARIABLE_BOUNDS
             }
             else {
               enumCollVar.clear();
               attr.clear();
             }
+#endif
           }
         }
         
@@ -1017,7 +1027,9 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           buildRangeInfo(rhs, enumCollVar, attr);
           if (! enumCollVar.empty()) {
             // Constant value on the left, so insert a constant condition:
+#ifdef DISABLE_VARIABLE_BOUNDS
             if (lhs->type == NODE_TYPE_VALUE) {
+#endif
               if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
                   node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
                 high.assign(lhs, include);
@@ -1027,11 +1039,13 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
               }
               _ranges->insert(enumCollVar, attr.substr(0, attr.size()-1), 
                               low, high, false);
+#ifdef DISABLE_VARIABLE_BOUNDS
             }
             else {
               enumCollVar.clear();
               attr.clear();
             }
+#endif
           }
         }
         else if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
@@ -1041,7 +1055,9 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           buildRangeInfo(lhs, enumCollVar, attr);
           if (! enumCollVar.empty()) {
             // Constant value on the right, so insert a constant condition:
+#ifdef DISABLE_VARIABLE_BOUNDS
             if (rhs->type == NODE_TYPE_VALUE) {
+#endif
               if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
                   node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
                 low.assign(rhs, include);
@@ -1051,11 +1067,13 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
               }
               _ranges->insert(enumCollVar, attr.substr(0, attr.size()-1), 
                               low, high, false);
+#ifdef DISABLE_VARIABLE_BOUNDS
             }
             else {
               enumCollVar.clear();
               attr.clear();
             }
+#endif
           }
         }
       }
