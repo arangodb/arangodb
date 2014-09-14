@@ -1,5 +1,7 @@
 !CHAPTER Edge Methods
 
+**Warning Deprecated**
+
 `edge.getId()`
 
 Returns the identifier of the edge.
