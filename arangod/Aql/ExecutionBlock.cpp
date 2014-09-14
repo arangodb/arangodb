@@ -1001,10 +1001,11 @@ bool IndexRangeBlock::readIndex () {
           }
         }
         for (auto h : r._highs) {
-          Expression* e = _allVariableBoundExpressions[posInExpressions++];
+          Expression* e = _allVariableBoundExpressions[posInExpressions];
           AqlValue a = e->execute(_trx, docColls, data, nrRegs * _pos,
                                   _inVars[posInExpressions],
                                   _inRegs[posInExpressions]);
+          posInExpressions++;
           if (a._type == AqlValue::JSON) {
             Json json(Json::Array, 3);
             json("include", Json(h.inclusive()))
@@ -1057,7 +1058,7 @@ int IndexRangeBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   _pos = 0;
   _posInDocs = 0;
   
-  if (_documents.size() == 0){
+  if (_allBoundsConstant && _documents.size() == 0) {
     _done = true;
   }
 
