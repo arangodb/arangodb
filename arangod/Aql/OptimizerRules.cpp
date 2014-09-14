@@ -759,7 +759,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             std::unordered_set<Variable const*> varsDefined 
                 = node->getVarsValid();
             for (auto x : *map) {
-              auto worker = [&] (std::vector<RangeInfoBound>& bounds) -> void {
+              auto worker = [&] (std::list<RangeInfoBound>& bounds) -> void {
                 for (auto it = bounds.begin(); it != bounds.end(); ++it) {
                   AstNode const* a = it->getExpressionAst(_plan->getAst());
                   std::unordered_set<Variable*> varsUsed
@@ -772,9 +772,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                     }
                   }
                   if (bad) {
-#if 0
                     it = bounds.erase(it);
-#endif
                   }
                 }
               };
