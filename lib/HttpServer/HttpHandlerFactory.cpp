@@ -37,12 +37,46 @@
 #include "BasicsC/tri-strings.h"
 #include "HttpServer/HttpHandler.h"
 #include "Rest/HttpRequest.h"
-#include "Rest/MaintenanceCallback.h"
 #include "Rest/SslInterface.h"
 
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace std;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+namespace {
+  sig_atomic_t MaintenanceMode = 0;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                MaintenanceHandler
+// -----------------------------------------------------------------------------
+
+namespace {
+  class MaintenanceHandler : public HttpHandler {
+    public:
+      MaintenanceHandler (HttpRequest* request) 
+        : HttpHandler(request) {
+      };
+
+      bool isDirect () {
+        return true;
+      };
+
+      status_t execute () {
+        _response = createResponse(HttpResponse::SERVICE_UNAVAILABLE);
+
+        return status_t(HANDLER_DONE);
+      };
+
+      void handleError (TriagensError const& error) {
+        _response = createResponse(HttpResponse::SERVICE_UNAVAILABLE);
+      };
+  };
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -109,6 +143,18 @@ HttpHandlerFactory::~HttpHandlerFactory () {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                             static public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets maintenance mode
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpHandlerFactory::setMaintenance (bool value) {
+  MaintenanceMode = value ? 1 : 0;
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
@@ -168,14 +214,6 @@ string const& HttpHandlerFactory::authenticationRealm (HttpRequest*) const {
 HttpRequest* HttpHandlerFactory::createRequest (ConnectionInfo const& info,
                                                 char const* ptr,
                                                 size_t length) {
-#if 0
-  READ_LOCKER(_maintenanceLock);
-
-  if (_maintenance) {
-    return ((S*) this)->createMaintenanceRequest(ptr, length);
-  }
-#endif
-
   HttpRequest* request = new HttpRequest(info, ptr, length, _minCompatibility, _allowMethodOverride);
 
   if (request != 0) {
@@ -190,13 +228,9 @@ HttpRequest* HttpHandlerFactory::createRequest (ConnectionInfo const& info,
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
-#if 0
-  READ_LOCKER(_maintenanceLock);
-
-  if (_maintenance) {
-    return ((S*) this)->createMaintenanceHandler();
+  if (MaintenanceMode) {
+    return new MaintenanceHandler(request);
   }
-#endif
 
 
   map<string, create_fptr> const& ii = _constructors;
@@ -304,63 +338,6 @@ HttpHandler* HttpHandlerFactory::createHandler (HttpRequest* request) {
   handler->setServer(this);
 
   return handler;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a handler from the list of active handlers and destroys it
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-void HttpHandlerFactory::unregisterHandler (HttpHandler* handler) {
-  vector<MaintenanceCallback*> callbacks;
-
-  {
-    MUTEX_LOCKER(_activeHandlersLock);
-    _numberActiveHandlers--;
-
-    if (0 == _numberActiveHandlers) {
-      _maintenanceCallbacks.swap(callbacks);
-    }
-  }
-
-  delete handler;
-
-  for (vector<MaintenanceCallback*>::iterator i = callbacks.begin();  i != callbacks.end();  ++i) {
-    MaintenanceCallback* callback = *i;
-
-    callback->completed();
-    delete callback;
-  }
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a maintenance handler
-////////////////////////////////////////////////////////////////////////////////
-
-void HttpHandlerFactory::addMaintenanceCallback (MaintenanceCallback* callback) {
-#if 0
-  bool direct = false;
-
-  {
-    MUTEX_LOCKER(_activeHandlersLock);
-
-    if (0 < _numberActiveHandlers) {
-      _maintenanceCallbacks.push_back(callback);
-    }
-    else {
-      direct = true;
-    }
-  }
-
-  // during maintainance the number of active handlers is
-  // decreasing, so if we reached 0, we will stay there
-
-  if (direct) {
-    callback->completed();
-    delete callback;
-  }
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
