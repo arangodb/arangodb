@@ -1,5 +1,7 @@
 !CHAPTER Graph Constructors and Methods
 
+**Warning Deprecated**
+
 The graph module provides basic functions dealing with graph structures.  The
 examples assume
 

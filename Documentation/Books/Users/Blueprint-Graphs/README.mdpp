@@ -1,4 +1,3 @@
-
 !CHAPTER Graphs
 
 **Warning: Deprecated**
@@ -16,6 +15,7 @@ you can build a graph using the Graph constructor.
 	
 	arango> g1 = new Graph("graph", "vertices", "edges");
 	Graph("vertices", "edges")
+
 
 <!--
 @verbinclude graph25

@@ -49,6 +49,9 @@ function autoCastToken(token) {
     return new SimpleReference(token);
   }
   if (typeof token === 'object') {
+    if (Object.prototype.toStrint.call(token) === '[object ArangoCollection]') {
+      return new Identifier(token.name);
+    }
     if (Object.prototype.toString.call(token) === '[object Array]') {
       return new ListLiteral(token);
     }
