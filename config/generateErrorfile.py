@@ -20,18 +20,13 @@ def wrap(string, width=80, ind1=0, ind2=0, prefix=''):
 
 # generate javascript file from errors
 def genJsFile(errors):
-  jslint = "/*jslint indent: 2,\n"\
-           "         nomen: true,\n"\
-           "         maxlen: 240,\n"\
-           "         sloppy: true,\n"\
-           "         vars: true,\n"\
-           "         white: true,\n"\
-           "         plusplus: true */\n"\
+  jslint = "/*jshint maxlen: 200 */\n"\
            "/*global require */\n\n"
 
   out = jslint \
       + prologue\
       + "(function () {\n"\
+      + "  \"use strict\";\n"\
       + "  var internal = require(\"internal\");\n"\
       + "\n"\
       + "  internal.errors = {\n"
@@ -47,7 +42,7 @@ def genJsFile(errors):
     i = i + 1 
 
     if i < len(errors):
-      out = out + ", \n"
+      out = out + ",\n"
     else:
       out = out + "\n"
 
