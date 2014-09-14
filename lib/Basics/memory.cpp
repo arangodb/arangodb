@@ -335,9 +335,9 @@ void* TRI_Allocate (TRI_memory_zone_t* zone, uint64_t n, bool set) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
   CheckSize(n, file, line);
 
-  m = MALLOC_WRAPPER(zone, (size_t) n + sizeof(uintptr_t));
+  m = static_cast<char*>(MALLOC_WRAPPER(zone, (size_t) n + sizeof(uintptr_t)));
 #else
-  m = MALLOC_WRAPPER(zone, (size_t) n);
+  m = static_cast<char*>(MALLOC_WRAPPER(zone, (size_t) n));
 #endif
 
   if (m == NULL) {
@@ -429,9 +429,9 @@ void* TRI_Reallocate (TRI_memory_zone_t* zone, void* m, uint64_t n) {
     TRI_ASSERT(false);
   }
 
-  p = REALLOC_WRAPPER(zone, p, (size_t) n + sizeof(uintptr_t));
+  p = static_cast<char*>(REALLOC_WRAPPER(zone, p, (size_t) n + sizeof(uintptr_t)));
 #else
-  p = REALLOC_WRAPPER(zone, p, (size_t) n);
+  p = static_cast<char*>(REALLOC_WRAPPER(zone, p, (size_t) n));
 #endif
 
   if (p == NULL) {
