@@ -969,6 +969,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             }
             else {
               enumCollVar.clear();
+              attr.clear();
             }
           }
         }
@@ -982,6 +983,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             }
             else {
               enumCollVar.clear();
+              attr.clear();
             }
           }
         }
@@ -990,8 +992,8 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           _ranges->insert(enumCollVar, attr.substr(0, attr.size() - 1), 
               RangeInfoBound(val, true), RangeInfoBound(val, true), true);
         }
-        attr.clear();
         enumCollVar.clear();
+        attr.clear();
         return;
       }
 
@@ -1015,15 +1017,21 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           buildRangeInfo(rhs, enumCollVar, attr);
           if (! enumCollVar.empty()) {
             // Constant value on the left, so insert a constant condition:
-            if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
-                node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
-              high.assign(lhs, include);
-            } 
-            else {
-              low.assign(lhs, include);
+            if (lhs->type == NODE_TYPE_VALUE) {
+              if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
+                  node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
+                high.assign(lhs, include);
+              } 
+              else {
+                low.assign(lhs, include);
+              }
+              _ranges->insert(enumCollVar, attr.substr(0, attr.size()-1), 
+                              low, high, false);
             }
-            _ranges->insert(enumCollVar, attr.substr(0, attr.size()-1), 
-                            low, high, false);
+            else {
+              enumCollVar.clear();
+              attr.clear();
+            }
           }
         }
         else if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
@@ -1033,15 +1041,21 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           buildRangeInfo(lhs, enumCollVar, attr);
           if (! enumCollVar.empty()) {
             // Constant value on the right, so insert a constant condition:
-            if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
-                node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
-              low.assign(rhs, include);
-            } 
-            else {
-              high.assign(rhs, include);
+            if (rhs->type == NODE_TYPE_VALUE) {
+              if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
+                  node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
+                low.assign(rhs, include);
+              } 
+              else {
+                high.assign(rhs, include);
+              }
+              _ranges->insert(enumCollVar, attr.substr(0, attr.size()-1), 
+                              low, high, false);
             }
-            _ranges->insert(enumCollVar, attr.substr(0, attr.size()-1), 
-                            low, high, false);
+            else {
+              enumCollVar.clear();
+              attr.clear();
+            }
           }
         }
       }
